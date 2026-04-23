@@ -145,8 +145,19 @@ impl CustomerService {
         customer_is_active: bool,
     ) -> AppResult<()> {
         #[cfg(feature = "postgres")]
-        let location_ids: Vec<String> = sqlx::query_scalar(
-            "SELECT DISTINCT location_id FROM pppoe_accounts WHERE tenant_id = $1 AND customer_id = $2",
+        let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT pa.location_id, cs.status
+            FROM (
+                SELECT DISTINCT location_id
+                FROM pppoe_accounts
+                WHERE tenant_id = $1 AND customer_id = $2
+            ) pa
+            LEFT JOIN customer_subscriptions cs
+              ON cs.tenant_id = $1
+             AND cs.customer_id = $2
+             AND cs.location_id = pa.location_id
+            "#,
         )
         .bind(tenant_id)
         .bind(customer_id)
@@ -154,39 +165,41 @@ impl CustomerService {
         .await?;
 
         #[cfg(feature = "sqlite")]
-        let location_ids: Vec<String> = sqlx::query_scalar(
-            "SELECT DISTINCT location_id FROM pppoe_accounts WHERE tenant_id = ? AND customer_id = ?",
+        let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT pa.location_id, cs.status
+            FROM (
+                SELECT DISTINCT location_id
+                FROM pppoe_accounts
+                WHERE tenant_id = ? AND customer_id = ?
+            ) pa
+            LEFT JOIN customer_subscriptions cs
+              ON cs.tenant_id = ?
+             AND cs.customer_id = ?
+             AND cs.location_id = pa.location_id
+            "#,
         )
+        .bind(tenant_id)
+        .bind(customer_id)
         .bind(tenant_id)
         .bind(customer_id)
         .fetch_all(&self.pool)
         .await?;
 
-        for location_id in location_ids {
-            #[cfg(feature = "postgres")]
-            let statuses: Vec<String> = sqlx::query_scalar(
-                "SELECT status FROM customer_subscriptions WHERE tenant_id = $1 AND customer_id = $2 AND location_id = $3",
-            )
-            .bind(tenant_id)
-            .bind(customer_id)
-            .bind(&location_id)
-            .fetch_all(&self.pool)
-            .await?;
+        let mut statuses_by_location: std::collections::HashMap<String, Vec<String>> =
+            std::collections::HashMap::new();
+        for (location_id, status) in rows {
+            let statuses = statuses_by_location.entry(location_id).or_default();
+            if let Some(status) = status {
+                statuses.push(status);
+            }
+        }
 
-            #[cfg(feature = "sqlite")]
-            let statuses: Vec<String> = sqlx::query_scalar(
-                "SELECT status FROM customer_subscriptions WHERE tenant_id = ? AND customer_id = ? AND location_id = ?",
-            )
-            .bind(tenant_id)
-            .bind(customer_id)
-            .bind(&location_id)
-            .fetch_all(&self.pool)
-            .await?;
-
+        for (location_id, statuses) in statuses_by_location {
             let disabled =
                 Self::should_disable_customer_location_pppoe(customer_is_active, &statuses);
             let _ = self
-                .set_location_pppoe_disabled_state(tenant_id, &location_id, disabled)
+                .set_location_pppoe_disabled_state(tenant_id, location_id.as_str(), disabled)
                 .await;
         }
 
