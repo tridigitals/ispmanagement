@@ -1056,32 +1056,38 @@ async fn attach_files_pg(
     message_id: &str,
     file_ids: &[String],
 ) -> Result<(), sqlx::Error> {
-    let now = Utc::now();
-    for fid in file_ids {
-        let exists: bool = sqlx::query_scalar(
-            "SELECT COUNT(*) > 0 FROM file_records WHERE id = $1 AND tenant_id = $2",
-        )
-        .bind(fid)
-        .bind(tenant_id)
-        .fetch_one(&mut **tx)
-        .await
-        .unwrap_or(false);
-
-        if !exists {
-            return Err(sqlx::Error::RowNotFound);
-        }
-
-        let aid = Uuid::new_v4().to_string();
-        let _ = sqlx::query(
-            "INSERT INTO support_ticket_attachments (id, message_id, file_id, created_at) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING",
-        )
-        .bind(aid)
-        .bind(message_id)
-        .bind(fid)
-        .bind(now)
-        .execute(&mut **tx)
-        .await;
+    if file_ids.is_empty() {
+        return Ok(());
     }
+
+    let expected_count = file_ids
+        .iter()
+        .map(String::as_str)
+        .collect::<HashSet<_>>()
+        .len();
+    let existing_ids: Vec<String> =
+        sqlx::query_scalar("SELECT id FROM file_records WHERE tenant_id = $1 AND id = ANY($2)")
+            .bind(tenant_id)
+            .bind(file_ids)
+            .fetch_all(&mut **tx)
+            .await?;
+    if existing_ids.len() != expected_count {
+        return Err(sqlx::Error::RowNotFound);
+    }
+
+    let now = Utc::now();
+    use sqlx::{Postgres, QueryBuilder};
+    let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
+        "INSERT INTO support_ticket_attachments (id, message_id, file_id, created_at) ",
+    );
+    qb.push_values(file_ids, |mut b, fid| {
+        b.push_bind(Uuid::new_v4().to_string())
+            .push_bind(message_id)
+            .push_bind(fid)
+            .push_bind(now);
+    });
+    qb.push(" ON CONFLICT DO NOTHING");
+    qb.build().execute(&mut **tx).await?;
     Ok(())
 }
 
