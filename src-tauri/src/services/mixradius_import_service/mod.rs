@@ -1065,60 +1065,67 @@ impl MixradiusImportService {
             .map(|row| (value(row, 0), value(row, 1)))
             .collect();
 
-        for row in &parsed.nas_rows {
-            sqlx::query(
+        for rows in parsed.nas_rows.chunks(MIXRADIUS_STAGE_INSERT_BATCH_SIZE) {
+            let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
                 r#"
                 INSERT INTO public.mixradius_staging_nas (
                     id, tenant_id, import_batch_id, source_ref,
                     nas_name, nas_ip_or_cidr, shortname, source_json, created_at, updated_at
                 )
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
                 "#,
-            )
-            .bind(Uuid::new_v4().to_string())
-            .bind(tenant_id)
-            .bind(batch_id)
-            .bind(source_ref(row, 0))
-            .bind(value(row, 2))
-            .bind(value(row, 1))
-            .bind(optional_value(row, 2))
-            .bind(source_json(row))
-            .bind(now)
-            .bind(now)
-            .execute(&mut *tx)
-            .await
-            .context("failed to insert MixRadius NAS staging row")?;
+            );
+            qb.push_values(rows, |mut b, row| {
+                b.push_bind(Uuid::new_v4().to_string())
+                    .push_bind(tenant_id)
+                    .push_bind(batch_id)
+                    .push_bind(source_ref(row, 0))
+                    .push_bind(value(row, 2))
+                    .push_bind(value(row, 1))
+                    .push_bind(optional_value(row, 2))
+                    .push_bind(source_json(row))
+                    .push_bind(now)
+                    .push_bind(now);
+            });
+            qb.build()
+                .execute(&mut *tx)
+                .await
+                .context("failed to insert MixRadius NAS staging rows")?;
         }
 
-        for row in &parsed.plan_rows {
-            sqlx::query(
+        for rows in parsed.plan_rows.chunks(MIXRADIUS_STAGE_INSERT_BATCH_SIZE) {
+            let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
                 r#"
                 INSERT INTO public.mixradius_staging_plans (
                     id, tenant_id, import_batch_id, source_ref,
                     plan_name, bandwidth_name, price, validity, shared_users, source_json, created_at, updated_at
                 )
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
                 "#,
-            )
-            .bind(Uuid::new_v4().to_string())
-            .bind(tenant_id)
-            .bind(batch_id)
-            .bind(source_ref(row, 0))
-            .bind(value(row, 1))
-            .bind(optional_value(row, 2))
-            .bind(parse_decimal(row, 4))
-            .bind(optional_validity(row, 15, 16))
-            .bind(parse_i32(row, 18))
-            .bind(source_json(row))
-            .bind(now)
-            .bind(now)
-            .execute(&mut *tx)
-            .await
-            .context("failed to insert MixRadius plan staging row")?;
+            );
+            qb.push_values(rows, |mut b, row| {
+                b.push_bind(Uuid::new_v4().to_string())
+                    .push_bind(tenant_id)
+                    .push_bind(batch_id)
+                    .push_bind(source_ref(row, 0))
+                    .push_bind(value(row, 1))
+                    .push_bind(optional_value(row, 2))
+                    .push_bind(parse_decimal(row, 4))
+                    .push_bind(optional_validity(row, 15, 16))
+                    .push_bind(parse_i32(row, 18))
+                    .push_bind(source_json(row))
+                    .push_bind(now)
+                    .push_bind(now);
+            });
+            qb.build()
+                .execute(&mut *tx)
+                .await
+                .context("failed to insert MixRadius plan staging rows")?;
         }
 
-        for row in &parsed.customer_rows {
-            sqlx::query(
+        for rows in parsed
+            .customer_rows
+            .chunks(MIXRADIUS_STAGE_INSERT_BATCH_SIZE)
+        {
+            let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
                 r#"
                 INSERT INTO public.mixradius_staging_customers (
                     id, tenant_id, import_batch_id, source_ref, member_id, username, password, fullname,
@@ -1126,45 +1133,49 @@ impl MixradiusImportService {
                     expired_on, trx_invoice, trx_status, payment_type, auth_status, bind_mac, mac_address,
                     source_json, created_at, updated_at
                 )
-                VALUES (
-                    $1,$2,$3,$4,$5,$6,$7,$8,
-                    $9,$10,$11,$12,$13,$14,$15,$16,
-                    $17,$18,$19,$20,$21,$22,$23,
-                    $24,$25,$26
-                )
                 "#,
-            )
-            .bind(Uuid::new_v4().to_string())
-            .bind(tenant_id)
-            .bind(batch_id)
-            .bind(source_ref(row, 0))
-            .bind(value(row, 1))
-            .bind(optional_value(row, 8))
-            .bind(optional_value(row, 9))
-            .bind(optional_value(row, 10))
-            .bind(optional_value(row, 11))
-            .bind(optional_value(row, 13))
-            .bind(optional_value(row, 12))
-            .bind(optional_value(row, 14))
-            .bind(optional_value(row, 16))
-            .bind(parse_decimal(row, 17))
-            .bind(parse_decimal(row, 22))
-            .bind(parse_datetime(row, 23))
-            .bind(parse_datetime(row, 24))
-            .bind(optional_value(row, 33))
-            .bind(optional_value(row, 35))
-            .bind(optional_value(row, 34))
-            .bind(optional_value(row, 37))
-            .bind(optional_value(row, 38))
-            .bind(optional_value(row, 39))
-            .bind(source_json(row))
-            .bind(now)
-            .bind(now)
-            .execute(&mut *tx)
-            .await
-            .context("failed to insert MixRadius customer staging row")?;
+            );
+            qb.push_values(rows, |mut b, row| {
+                b.push_bind(Uuid::new_v4().to_string())
+                    .push_bind(tenant_id)
+                    .push_bind(batch_id)
+                    .push_bind(source_ref(row, 0))
+                    .push_bind(value(row, 1))
+                    .push_bind(optional_value(row, 8))
+                    .push_bind(optional_value(row, 9))
+                    .push_bind(optional_value(row, 10))
+                    .push_bind(optional_value(row, 11))
+                    .push_bind(optional_value(row, 13))
+                    .push_bind(optional_value(row, 12))
+                    .push_bind(optional_value(row, 14))
+                    .push_bind(optional_value(row, 16))
+                    .push_bind(parse_decimal(row, 17))
+                    .push_bind(parse_decimal(row, 22))
+                    .push_bind(parse_datetime(row, 23))
+                    .push_bind(parse_datetime(row, 24))
+                    .push_bind(optional_value(row, 33))
+                    .push_bind(optional_value(row, 35))
+                    .push_bind(optional_value(row, 34))
+                    .push_bind(optional_value(row, 37))
+                    .push_bind(optional_value(row, 38))
+                    .push_bind(optional_value(row, 39))
+                    .push_bind(source_json(row))
+                    .push_bind(now)
+                    .push_bind(now);
+            });
+            qb.build()
+                .execute(&mut *tx)
+                .await
+                .context("failed to insert MixRadius customer staging rows")?;
         }
 
+        let mut prepared_customer_locations: Vec<(
+            String,
+            String,
+            Option<f64>,
+            Option<f64>,
+            Value,
+        )> = Vec::with_capacity(parsed.customer_location_rows.len());
         for row in &parsed.customer_location_rows {
             let source_customer_id = value(row, 1);
             let member_id = customer_id_to_member_id
@@ -1177,28 +1188,38 @@ impl MixradiusImportService {
                         source_customer_id
                     )
                 })?;
-
-            sqlx::query(
+            prepared_customer_locations.push((
+                source_ref(row, 0),
+                member_id,
+                parse_decimal(row, 2),
+                parse_decimal(row, 3),
+                source_json(row),
+            ));
+        }
+        for rows in prepared_customer_locations.chunks(MIXRADIUS_STAGE_INSERT_BATCH_SIZE) {
+            let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
                 r#"
                 INSERT INTO public.mixradius_staging_customer_locations (
                     id, tenant_id, import_batch_id, source_ref, member_id, latitude, longitude, source_json, created_at, updated_at
                 )
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
                 "#,
-            )
-            .bind(Uuid::new_v4().to_string())
-            .bind(tenant_id)
-            .bind(batch_id)
-            .bind(source_ref(row, 0))
-            .bind(member_id)
-            .bind(parse_decimal(row, 2))
-            .bind(parse_decimal(row, 3))
-            .bind(source_json(row))
-            .bind(now)
-            .bind(now)
-            .execute(&mut *tx)
-            .await
-            .context("failed to insert MixRadius location staging row")?;
+            );
+            qb.push_values(rows, |mut b, row| {
+                b.push_bind(Uuid::new_v4().to_string())
+                    .push_bind(tenant_id)
+                    .push_bind(batch_id)
+                    .push_bind(&row.0)
+                    .push_bind(&row.1)
+                    .push_bind(row.2)
+                    .push_bind(row.3)
+                    .push_bind(&row.4)
+                    .push_bind(now)
+                    .push_bind(now);
+            });
+            qb.build()
+                .execute(&mut *tx)
+                .await
+                .context("failed to insert MixRadius location staging rows")?;
         }
 
         for rows in parsed
