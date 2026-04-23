@@ -13,10 +13,13 @@ use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+use sqlx::{Postgres, QueryBuilder};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use uuid::Uuid;
+
+const MIXRADIUS_STAGE_INSERT_BATCH_SIZE: usize = 250;
 
 #[derive(Clone)]
 pub struct MixradiusImportService {
@@ -1198,61 +1201,68 @@ impl MixradiusImportService {
             .context("failed to insert MixRadius location staging row")?;
         }
 
-        for row in &parsed.transaction_rows {
-            sqlx::query(
+        for rows in parsed
+            .transaction_rows
+            .chunks(MIXRADIUS_STAGE_INSERT_BATCH_SIZE)
+        {
+            let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
                 r#"
                 INSERT INTO public.mixradius_staging_transactions (
                     id, tenant_id, import_batch_id, source_ref, invoice_no, member_id, username,
                     transaction_status, payment_type, amount, paid_at, source_json, created_at, updated_at
                 )
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
                 "#,
-            )
-            .bind(Uuid::new_v4().to_string())
-            .bind(tenant_id)
-            .bind(batch_id)
-            .bind(source_ref(row, 0))
-            .bind(optional_value(row, 1))
-            .bind(optional_value(row, 3))
-            .bind(optional_value(row, 4))
-            .bind(optional_value(row, 18))
-            .bind(optional_value(row, 17))
-            .bind(parse_decimal(row, 15))
-            .bind(parse_datetime(row, 20))
-            .bind(source_json(row))
-            .bind(now)
-            .bind(now)
-            .execute(&mut *tx)
-            .await
-            .context("failed to insert MixRadius transaction staging row")?;
+            );
+            qb.push_values(rows, |mut b, row| {
+                b.push_bind(Uuid::new_v4().to_string())
+                    .push_bind(tenant_id)
+                    .push_bind(batch_id)
+                    .push_bind(source_ref(row, 0))
+                    .push_bind(optional_value(row, 1))
+                    .push_bind(optional_value(row, 3))
+                    .push_bind(optional_value(row, 4))
+                    .push_bind(optional_value(row, 18))
+                    .push_bind(optional_value(row, 17))
+                    .push_bind(parse_decimal(row, 15))
+                    .push_bind(parse_datetime(row, 20))
+                    .push_bind(source_json(row))
+                    .push_bind(now)
+                    .push_bind(now);
+            });
+            qb.build()
+                .execute(&mut *tx)
+                .await
+                .context("failed to insert MixRadius transaction staging rows")?;
         }
 
-        for row in &parsed.usage_rows {
-            sqlx::query(
+        for rows in parsed.usage_rows.chunks(MIXRADIUS_STAGE_INSERT_BATCH_SIZE) {
+            let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
                 r#"
                 INSERT INTO public.mixradius_staging_usage (
                     id, tenant_id, import_batch_id, source_ref, member_id, username, usage_date,
                     session_count, download_bytes, upload_bytes, source_json, created_at, updated_at
                 )
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
                 "#,
-            )
-            .bind(Uuid::new_v4().to_string())
-            .bind(tenant_id)
-            .bind(batch_id)
-            .bind(source_ref(row, 0))
-            .bind(optional_value(row, 2))
-            .bind(optional_value(row, 1))
-            .bind(parse_date_from_datetime(row, 3))
-            .bind(Some(1_i32))
-            .bind(None::<i64>)
-            .bind(None::<i64>)
-            .bind(source_json(row))
-            .bind(now)
-            .bind(now)
-            .execute(&mut *tx)
-            .await
-            .context("failed to insert MixRadius usage staging row")?;
+            );
+            qb.push_values(rows, |mut b, row| {
+                b.push_bind(Uuid::new_v4().to_string())
+                    .push_bind(tenant_id)
+                    .push_bind(batch_id)
+                    .push_bind(source_ref(row, 0))
+                    .push_bind(optional_value(row, 2))
+                    .push_bind(optional_value(row, 1))
+                    .push_bind(parse_date_from_datetime(row, 3))
+                    .push_bind(Some(1_i32))
+                    .push_bind(None::<i64>)
+                    .push_bind(None::<i64>)
+                    .push_bind(source_json(row))
+                    .push_bind(now)
+                    .push_bind(now);
+            });
+            qb.build()
+                .execute(&mut *tx)
+                .await
+                .context("failed to insert MixRadius usage staging rows")?;
         }
 
         let summary = json!({
