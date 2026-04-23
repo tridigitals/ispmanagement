@@ -1666,6 +1666,33 @@ impl CustomerService {
         #[cfg(feature = "postgres")]
         let rows: Vec<CustomerSubscriptionView> = sqlx::query_as(
             r#"
+            WITH latest_work_orders AS (
+              SELECT
+                iwo.id,
+                iwo.tenant_id,
+                iwo.subscription_id,
+                iwo.status,
+                ROW_NUMBER() OVER (
+                  PARTITION BY iwo.tenant_id, iwo.subscription_id
+                  ORDER BY iwo.created_at DESC, iwo.id DESC
+                ) AS rn
+              FROM installation_work_orders iwo
+              WHERE iwo.tenant_id = $1
+            ),
+            latest_reschedules AS (
+              SELECT
+                worr.tenant_id,
+                iwo.subscription_id,
+                worr.status,
+                CAST(worr.requested_schedule_at AS TEXT) AS requested_schedule_at,
+                ROW_NUMBER() OVER (
+                  PARTITION BY worr.tenant_id, iwo.subscription_id
+                  ORDER BY worr.created_at DESC, worr.id DESC
+                ) AS rn
+              FROM work_order_reschedule_requests worr
+              JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
+              WHERE worr.tenant_id = $1
+            )
             SELECT
               cs.id,
               cs.tenant_id,
@@ -1687,56 +1714,27 @@ impl CustomerService {
               p.name AS package_name,
               l.label AS location_label,
               r.name AS router_name,
-              (
-                SELECT iwo.id
-                FROM installation_work_orders iwo
-                WHERE iwo.tenant_id = cs.tenant_id
-                  AND iwo.subscription_id = cs.id
-                ORDER BY iwo.created_at DESC
-                LIMIT 1
-              ) AS latest_work_order_id,
-              (
-                SELECT iwo.status
-                FROM installation_work_orders iwo
-                WHERE iwo.tenant_id = cs.tenant_id
-                  AND iwo.subscription_id = cs.id
-                ORDER BY iwo.created_at DESC
-                LIMIT 1
-              ) AS latest_work_order_status,
+              lwo.id AS latest_work_order_id,
+              lwo.status AS latest_work_order_status,
               CASE
                 WHEN LOWER(cs.status) = 'cancelled' THEN true
-                WHEN COALESCE((
-                  SELECT LOWER(iwo.status)
-                  FROM installation_work_orders iwo
-                  WHERE iwo.tenant_id = cs.tenant_id
-                    AND iwo.subscription_id = cs.id
-                  ORDER BY iwo.created_at DESC
-                  LIMIT 1
-                ), '') = 'cancelled' THEN true
+                WHEN COALESCE(LOWER(lwo.status), '') = 'cancelled' THEN true
                 ELSE false
               END AS can_request_reopen,
-              (
-                SELECT worr.status
-                FROM work_order_reschedule_requests worr
-                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
-                WHERE worr.tenant_id = cs.tenant_id
-                  AND iwo.subscription_id = cs.id
-                ORDER BY worr.created_at DESC
-                LIMIT 1
-              ) AS latest_reschedule_status,
-              (
-                SELECT CAST(worr.requested_schedule_at AS TEXT)
-                FROM work_order_reschedule_requests worr
-                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
-                WHERE worr.tenant_id = cs.tenant_id
-                  AND iwo.subscription_id = cs.id
-                ORDER BY worr.created_at DESC
-                LIMIT 1
-              ) AS latest_reschedule_requested_at
+              lr.status AS latest_reschedule_status,
+              lr.requested_schedule_at AS latest_reschedule_requested_at
             FROM customer_subscriptions cs
             LEFT JOIN isp_packages p ON p.id = cs.package_id
             LEFT JOIN customer_locations l ON l.id = cs.location_id
             LEFT JOIN mikrotik_routers r ON r.id = cs.router_id
+            LEFT JOIN latest_work_orders lwo
+              ON lwo.tenant_id = cs.tenant_id
+             AND lwo.subscription_id = cs.id
+             AND lwo.rn = 1
+            LEFT JOIN latest_reschedules lr
+              ON lr.tenant_id = cs.tenant_id
+             AND lr.subscription_id = cs.id
+             AND lr.rn = 1
             WHERE cs.tenant_id = $1 AND cs.customer_id = $2
             ORDER BY cs.updated_at DESC
             LIMIT $3 OFFSET $4
@@ -1752,6 +1750,33 @@ impl CustomerService {
         #[cfg(feature = "sqlite")]
         let rows: Vec<CustomerSubscriptionView> = sqlx::query_as(
             r#"
+            WITH latest_work_orders AS (
+              SELECT
+                iwo.id,
+                iwo.tenant_id,
+                iwo.subscription_id,
+                iwo.status,
+                ROW_NUMBER() OVER (
+                  PARTITION BY iwo.tenant_id, iwo.subscription_id
+                  ORDER BY iwo.created_at DESC, iwo.id DESC
+                ) AS rn
+              FROM installation_work_orders iwo
+              WHERE iwo.tenant_id = ?
+            ),
+            latest_reschedules AS (
+              SELECT
+                worr.tenant_id,
+                iwo.subscription_id,
+                worr.status,
+                CAST(worr.requested_schedule_at AS TEXT) AS requested_schedule_at,
+                ROW_NUMBER() OVER (
+                  PARTITION BY worr.tenant_id, iwo.subscription_id
+                  ORDER BY worr.created_at DESC, worr.id DESC
+                ) AS rn
+              FROM work_order_reschedule_requests worr
+              JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
+              WHERE worr.tenant_id = ?
+            )
             SELECT
               cs.id,
               cs.tenant_id,
@@ -1771,61 +1796,34 @@ impl CustomerService {
               p.name AS package_name,
               l.label AS location_label,
               r.name AS router_name,
-              (
-                SELECT iwo.id
-                FROM installation_work_orders iwo
-                WHERE iwo.tenant_id = cs.tenant_id
-                  AND iwo.subscription_id = cs.id
-                ORDER BY iwo.created_at DESC
-                LIMIT 1
-              ) AS latest_work_order_id,
-              (
-                SELECT iwo.status
-                FROM installation_work_orders iwo
-                WHERE iwo.tenant_id = cs.tenant_id
-                  AND iwo.subscription_id = cs.id
-                ORDER BY iwo.created_at DESC
-                LIMIT 1
-              ) AS latest_work_order_status,
+              lwo.id AS latest_work_order_id,
+              lwo.status AS latest_work_order_status,
               CASE
                 WHEN LOWER(cs.status) = 'cancelled' THEN 1
-                WHEN COALESCE((
-                  SELECT LOWER(iwo.status)
-                  FROM installation_work_orders iwo
-                  WHERE iwo.tenant_id = cs.tenant_id
-                    AND iwo.subscription_id = cs.id
-                  ORDER BY iwo.created_at DESC
-                  LIMIT 1
-                ), '') = 'cancelled' THEN 1
+                WHEN COALESCE(LOWER(lwo.status), '') = 'cancelled' THEN 1
                 ELSE 0
               END AS can_request_reopen,
-              (
-                SELECT worr.status
-                FROM work_order_reschedule_requests worr
-                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
-                WHERE worr.tenant_id = cs.tenant_id
-                  AND iwo.subscription_id = cs.id
-                ORDER BY worr.created_at DESC
-                LIMIT 1
-              ) AS latest_reschedule_status,
-              (
-                SELECT CAST(worr.requested_schedule_at AS TEXT)
-                FROM work_order_reschedule_requests worr
-                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
-                WHERE worr.tenant_id = cs.tenant_id
-                  AND iwo.subscription_id = cs.id
-                ORDER BY worr.created_at DESC
-                LIMIT 1
-              ) AS latest_reschedule_requested_at
+              lr.status AS latest_reschedule_status,
+              lr.requested_schedule_at AS latest_reschedule_requested_at
             FROM customer_subscriptions cs
             LEFT JOIN isp_packages p ON p.id = cs.package_id
             LEFT JOIN customer_locations l ON l.id = cs.location_id
             LEFT JOIN mikrotik_routers r ON r.id = cs.router_id
+            LEFT JOIN latest_work_orders lwo
+              ON lwo.tenant_id = cs.tenant_id
+             AND lwo.subscription_id = cs.id
+             AND lwo.rn = 1
+            LEFT JOIN latest_reschedules lr
+              ON lr.tenant_id = cs.tenant_id
+             AND lr.subscription_id = cs.id
+             AND lr.rn = 1
             WHERE cs.tenant_id = ? AND cs.customer_id = ?
             ORDER BY cs.updated_at DESC
             LIMIT ? OFFSET ?
             "#,
         )
+        .bind(tenant_id)
+        .bind(tenant_id)
         .bind(tenant_id)
         .bind(customer_id)
         .bind(per_page as i64)
