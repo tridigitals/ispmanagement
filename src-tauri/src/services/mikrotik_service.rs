@@ -2276,61 +2276,52 @@ impl MikrotikService {
         let threshold = ChronoDuration::minutes(threshold_minutes);
         let now = Utc::now();
 
-        let candidates: Vec<MikrotikIncident> = sqlx::query_as(
+        let escalated_incidents: Vec<(String, String)> = sqlx::query_as(
             r#"
-            SELECT *
-            FROM mikrotik_incidents
-            WHERE tenant_id = $1
-              AND resolved_at IS NULL
-              AND acked_at IS NULL
-              AND status IN ('open', 'in_progress')
-              AND severity <> 'critical'
-              AND first_seen_at <= $2
-            ORDER BY first_seen_at ASC
-            LIMIT 200
+            WITH candidates AS (
+                SELECT id
+                FROM mikrotik_incidents
+                WHERE tenant_id = $1
+                  AND resolved_at IS NULL
+                  AND acked_at IS NULL
+                  AND status IN ('open', 'in_progress')
+                  AND severity <> 'critical'
+                  AND first_seen_at <= $2
+                ORDER BY first_seen_at ASC
+                LIMIT 200
+            ),
+            escalated AS (
+                UPDATE mikrotik_incidents i
+                SET severity = 'critical',
+                    updated_at = $3
+                FROM candidates c
+                WHERE i.id = c.id
+                  AND i.tenant_id = $1
+                  AND i.severity <> 'critical'
+                  AND i.acked_at IS NULL
+                  AND i.resolved_at IS NULL
+                RETURNING i.id, i.title
+            )
+            SELECT id, title FROM escalated
             "#,
         )
         .bind(tenant_id)
         .bind(now - threshold)
+        .bind(now)
         .fetch_all(&self.pool)
         .await
         .map_err(AppError::Database)?;
 
-        let mut escalated_count: i64 = 0;
-        for incident in candidates {
-            let affected = sqlx::query(
-                r#"
-                UPDATE mikrotik_incidents
-                SET severity = 'critical',
-                    updated_at = $1
-                WHERE id = $2
-                  AND tenant_id = $3
-                  AND severity <> 'critical'
-                  AND acked_at IS NULL
-                  AND resolved_at IS NULL
-                "#,
-            )
-            .bind(now)
-            .bind(&incident.id)
-            .bind(tenant_id)
-            .execute(&self.pool)
-            .await
-            .map_err(AppError::Database)?
-            .rows_affected();
-
-            if affected == 0 {
-                continue;
-            }
-            escalated_count += affected as i64;
-
+        let escalated_count = escalated_incidents.len() as i64;
+        for (incident_id, incident_title) in escalated_incidents {
             self.notify_tenant(
                 tenant_id,
                 "Incident escalated",
                 format!(
                     "{} has exceeded {} minutes without acknowledgement.",
-                    incident.title, threshold_minutes
+                    incident_title, threshold_minutes
                 ),
-                Some(format!("/admin/network/incidents?incident={}", incident.id)),
+                Some(format!("/admin/network/incidents?incident={incident_id}")),
                 "error",
             )
             .await;
@@ -2341,10 +2332,10 @@ impl MikrotikService {
                     Some(tenant_id),
                     "escalate",
                     "mikrotik_incident",
-                    Some(&incident.id),
+                    Some(&incident_id),
                     Some(&format!(
                         "Auto escalated incident {} after {} minutes",
-                        incident.title, threshold_minutes
+                        incident_title, threshold_minutes
                     )),
                     None,
                 )

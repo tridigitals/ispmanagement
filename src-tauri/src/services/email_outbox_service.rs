@@ -20,6 +20,7 @@ struct EmailOutboxRow {
     pub subject: String,
     pub body: String,
     pub body_html: Option<String>,
+    pub attempts: i32,
     pub max_attempts: i32,
 }
 
@@ -331,7 +332,7 @@ impl EmailOutboxService {
 
             let rows: Vec<EmailOutboxRow> = sqlx::query_as(
                 r#"
-                SELECT id::text, tenant_id::text as tenant_id, to_email, subject, body, body_html, max_attempts
+                SELECT id::text, tenant_id::text as tenant_id, to_email, subject, body, body_html, attempts, max_attempts
                 FROM email_outbox
                 WHERE status = 'queued'
                   AND scheduled_at <= $1
@@ -364,20 +365,8 @@ impl EmailOutboxService {
             tx.commit().await.map_err(AppError::Database)?;
 
             for r in rows {
-                // Re-read attempts/max_attempts best-effort
-                let attempts: i32 =
-                    sqlx::query_scalar("SELECT attempts FROM email_outbox WHERE id = $1")
-                        .bind(&r.id)
-                        .fetch_one(&self.pool)
-                        .await
-                        .unwrap_or(1);
-
-                let max_attempts: i32 =
-                    sqlx::query_scalar("SELECT max_attempts FROM email_outbox WHERE id = $1")
-                        .bind(&r.id)
-                        .fetch_one(&self.pool)
-                        .await
-                        .unwrap_or(r.max_attempts);
+                let attempts = r.attempts.saturating_add(1);
+                let max_attempts = r.max_attempts;
 
                 match self
                     .email_service
