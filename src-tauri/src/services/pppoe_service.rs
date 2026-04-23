@@ -1691,6 +1691,11 @@ impl PppoeService {
         let mut present = 0i64;
         let mut missing = 0i64;
         let now = Utc::now();
+        let mut router_present_ids: Vec<String> = Vec::new();
+        let mut router_missing_ids: Vec<String> = Vec::new();
+        let mut radius_present_ids: Vec<String> = Vec::new();
+        let mut radius_missing_ids: Vec<String> = Vec::new();
+
         for (id, username, source) in rows {
             let is_present = match source {
                 PppoeAccountSource::Router => router_usernames.contains(username.as_str()),
@@ -1703,45 +1708,95 @@ impl PppoeService {
             }
             match source {
                 PppoeAccountSource::Router => {
-                    let _ = sqlx::query(
-                        r#"
-                        UPDATE pppoe_accounts SET
-                          router_present = $1,
-                          last_sync_at = $2,
-                          updated_at = $3
-                        WHERE tenant_id = $4 AND id = $5
-                        "#,
-                    )
-                    .bind(is_present)
-                    .bind(now)
-                    .bind(now)
-                    .bind(tenant_id)
-                    .bind(&id)
-                    .execute(&self.pool)
-                    .await;
+                    if is_present {
+                        router_present_ids.push(id);
+                    } else {
+                        router_missing_ids.push(id);
+                    }
                 }
                 PppoeAccountSource::ManagedRadius => {
-                    let _ = sqlx::query(
-                        r#"
-                        UPDATE pppoe_accounts SET
-                          radius_present = $1,
-                          radius_last_sync_at = $2,
-                          radius_last_error = CASE WHEN $1 THEN NULL ELSE 'Missing on managed RADIUS' END,
-                          last_sync_at = $2,
-                          last_error = CASE WHEN $1 THEN NULL ELSE 'Missing on managed RADIUS' END,
-                          updated_at = $3
-                        WHERE tenant_id = $4 AND id = $5
-                        "#,
-                    )
-                    .bind(is_present)
-                    .bind(now)
-                    .bind(now)
-                    .bind(tenant_id)
-                    .bind(&id)
-                    .execute(&self.pool)
-                    .await;
+                    if is_present {
+                        radius_present_ids.push(id);
+                    } else {
+                        radius_missing_ids.push(id);
+                    }
                 }
             }
+        }
+
+        if !router_present_ids.is_empty() {
+            let _ = sqlx::query(
+                r#"
+                UPDATE pppoe_accounts SET
+                  router_present = true,
+                  last_sync_at = $1,
+                  updated_at = $2
+                WHERE tenant_id = $3 AND id = ANY($4)
+                "#,
+            )
+            .bind(now)
+            .bind(now)
+            .bind(tenant_id)
+            .bind(&router_present_ids)
+            .execute(&self.pool)
+            .await;
+        }
+        if !router_missing_ids.is_empty() {
+            let _ = sqlx::query(
+                r#"
+                UPDATE pppoe_accounts SET
+                  router_present = false,
+                  last_sync_at = $1,
+                  updated_at = $2
+                WHERE tenant_id = $3 AND id = ANY($4)
+                "#,
+            )
+            .bind(now)
+            .bind(now)
+            .bind(tenant_id)
+            .bind(&router_missing_ids)
+            .execute(&self.pool)
+            .await;
+        }
+        if !radius_present_ids.is_empty() {
+            let _ = sqlx::query(
+                r#"
+                UPDATE pppoe_accounts SET
+                  radius_present = true,
+                  radius_last_sync_at = $1,
+                  radius_last_error = NULL,
+                  last_sync_at = $1,
+                  last_error = NULL,
+                  updated_at = $2
+                WHERE tenant_id = $3 AND id = ANY($4)
+                "#,
+            )
+            .bind(now)
+            .bind(now)
+            .bind(tenant_id)
+            .bind(&radius_present_ids)
+            .execute(&self.pool)
+            .await;
+        }
+        if !radius_missing_ids.is_empty() {
+            let _ = sqlx::query(
+                r#"
+                UPDATE pppoe_accounts SET
+                  radius_present = false,
+                  radius_last_sync_at = $1,
+                  radius_last_error = 'Missing on managed RADIUS',
+                  last_sync_at = $1,
+                  last_error = 'Missing on managed RADIUS',
+                  updated_at = $2
+                WHERE tenant_id = $3 AND id = ANY($4)
+                "#,
+            )
+            .bind(now)
+            .bind(now)
+            .bind(tenant_id)
+            .bind(&radius_missing_ids)
+            .execute(&self.pool)
+            .await;
         }
 
         self.audit_service
