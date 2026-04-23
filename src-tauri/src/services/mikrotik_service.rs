@@ -46,6 +46,7 @@ const WALLBOARD_TRACK_CACHE_TTL_SECS: u64 = 10;
 pub(crate) const MIKROTIK_LOGS_DEFAULT_PAGE: u32 = 1;
 pub(crate) const MIKROTIK_LOGS_DEFAULT_PER_PAGE: u32 = 25;
 pub(crate) const MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL: bool = false;
+const MIKROTIK_LOG_SYNC_BATCH_SIZE: usize = 250;
 
 #[derive(Clone, Copy)]
 struct Thresholds {
@@ -867,65 +868,101 @@ impl MikrotikService {
         }
 
         let now = Utc::now();
+        let prepared_rows: Vec<(
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            String,
+            String,
+        )> = raw_rows
+            .into_iter()
+            .map(|(router_log_id, router_time, topics, message)| {
+                let level = Self::log_level_from_topics(topics.as_deref());
+                (router_log_id, router_time, topics, level, message)
+            })
+            .collect();
         let mut upserted = 0u32;
 
-        for (router_log_id, router_time, topics, message) in raw_rows.iter() {
-            let level = Self::log_level_from_topics(topics.as_deref());
-            if let Some(rid) = router_log_id.as_ref() {
-                sqlx::query(
-                    r#"
-                    INSERT INTO mikrotik_logs
-                      (id, tenant_id, router_id, router_log_id, logged_at, router_time, topics, level, message, created_at, updated_at)
-                    VALUES
-                      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                    ON CONFLICT (router_id, router_log_id) WHERE router_log_id IS NOT NULL
-                    DO UPDATE SET
-                      router_time = EXCLUDED.router_time,
-                      topics = EXCLUDED.topics,
-                      level = EXCLUDED.level,
-                      message = EXCLUDED.message,
-                      logged_at = EXCLUDED.logged_at,
-                      updated_at = EXCLUDED.updated_at
-                    "#,
-                )
-                .bind(uuid::Uuid::new_v4().to_string())
-                .bind(tenant_id)
-                .bind(router_id)
-                .bind(rid)
-                .bind(now)
-                .bind(router_time)
-                .bind(topics)
-                .bind(level)
-                .bind(message)
-                .bind(now)
-                .bind(now)
-                .execute(&self.pool)
-                .await
-                .map_err(AppError::Database)?;
-            } else {
-                sqlx::query(
-                    r#"
-                    INSERT INTO mikrotik_logs
-                      (id, tenant_id, router_id, router_log_id, logged_at, router_time, topics, level, message, created_at, updated_at)
-                    VALUES
-                      ($1, $2, $3, NULL, $4, $5, $6, $7, $8, $9, $10)
-                    "#,
-                )
-                .bind(uuid::Uuid::new_v4().to_string())
-                .bind(tenant_id)
-                .bind(router_id)
-                .bind(now)
-                .bind(router_time)
-                .bind(topics)
-                .bind(level)
-                .bind(message)
-                .bind(now)
-                .bind(now)
-                .execute(&self.pool)
-                .await
-                .map_err(AppError::Database)?;
+        #[cfg(feature = "postgres")]
+        {
+            use sqlx::{Postgres, QueryBuilder};
+
+            for chunk in prepared_rows.chunks(MIKROTIK_LOG_SYNC_BATCH_SIZE) {
+                let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
+                    "INSERT INTO mikrotik_logs \
+                     (id, tenant_id, router_id, router_log_id, logged_at, router_time, topics, level, message, created_at, updated_at) ",
+                );
+                qb.push_values(chunk, |mut b, row| {
+                    b.push_bind(uuid::Uuid::new_v4().to_string())
+                        .push_bind(tenant_id)
+                        .push_bind(router_id)
+                        .push_bind(&row.0)
+                        .push_bind(now)
+                        .push_bind(&row.1)
+                        .push_bind(&row.2)
+                        .push_bind(&row.3)
+                        .push_bind(&row.4)
+                        .push_bind(now)
+                        .push_bind(now);
+                });
+                qb.push(
+                    " ON CONFLICT (router_id, router_log_id) WHERE router_log_id IS NOT NULL \
+                      DO UPDATE SET \
+                        router_time = EXCLUDED.router_time, \
+                        topics = EXCLUDED.topics, \
+                        level = EXCLUDED.level, \
+                        message = EXCLUDED.message, \
+                        logged_at = EXCLUDED.logged_at, \
+                        updated_at = EXCLUDED.updated_at",
+                );
+
+                qb.build()
+                    .execute(&self.pool)
+                    .await
+                    .map_err(AppError::Database)?;
+                upserted += chunk.len() as u32;
             }
-            upserted += 1;
+        }
+
+        #[cfg(feature = "sqlite")]
+        {
+            use sqlx::{QueryBuilder, Sqlite};
+
+            for chunk in prepared_rows.chunks(MIKROTIK_LOG_SYNC_BATCH_SIZE) {
+                let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
+                    "INSERT INTO mikrotik_logs \
+                     (id, tenant_id, router_id, router_log_id, logged_at, router_time, topics, level, message, created_at, updated_at) ",
+                );
+                qb.push_values(chunk, |mut b, row| {
+                    b.push_bind(uuid::Uuid::new_v4().to_string())
+                        .push_bind(tenant_id)
+                        .push_bind(router_id)
+                        .push_bind(&row.0)
+                        .push_bind(now)
+                        .push_bind(&row.1)
+                        .push_bind(&row.2)
+                        .push_bind(&row.3)
+                        .push_bind(&row.4)
+                        .push_bind(now)
+                        .push_bind(now);
+                });
+                qb.push(
+                    " ON CONFLICT (router_id, router_log_id) WHERE router_log_id IS NOT NULL \
+                      DO UPDATE SET \
+                        router_time = excluded.router_time, \
+                        topics = excluded.topics, \
+                        level = excluded.level, \
+                        message = excluded.message, \
+                        logged_at = excluded.logged_at, \
+                        updated_at = excluded.updated_at",
+                );
+
+                qb.build()
+                    .execute(&self.pool)
+                    .await
+                    .map_err(AppError::Database)?;
+                upserted += chunk.len() as u32;
+            }
         }
 
         let retention_days = self
@@ -952,7 +989,7 @@ impl MikrotikService {
         }
 
         Ok(MikrotikLogSyncResult {
-            seen: raw_rows.len() as u32,
+            seen: prepared_rows.len() as u32,
             upserted,
         })
     }
