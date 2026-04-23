@@ -2,6 +2,8 @@ use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::services::{EmailService, SettingsService};
 use chrono::{DateTime, Utc};
+#[cfg(feature = "postgres")]
+use sqlx::{Postgres, QueryBuilder};
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -196,10 +198,23 @@ impl EmailOutboxService {
                 .await
                 .map_err(AppError::Database)?;
 
+        if self.enabled().await {
+            self.enqueue_many(
+                tenant_id.as_deref(),
+                &emails,
+                subject,
+                body,
+                None,
+                self.max_attempts_default().await,
+            )
+            .await?;
+            return Ok(());
+        }
+
         for email in emails {
-            // Keep it simple: enqueue each recipient separately.
             let _ = self
-                .send_or_enqueue(tenant_id.clone(), &email, subject, body)
+                .email_service
+                .send_email_for_tenant(tenant_id.as_deref(), &email, subject, body)
                 .await;
         }
 
@@ -227,17 +242,82 @@ impl EmailOutboxService {
                 .await
                 .map_err(AppError::Database)?;
 
-        for email in emails {
-            let _ = self
-                .send_or_enqueue_with_html(
-                    tenant_id.clone(),
-                    &email,
-                    subject,
-                    body_text,
-                    body_html.clone(),
-                )
-                .await;
+        if self.enabled().await {
+            self.enqueue_many(
+                tenant_id.as_deref(),
+                &emails,
+                subject,
+                body_text,
+                body_html.as_deref(),
+                self.max_attempts_default().await,
+            )
+            .await?;
+            return Ok(());
         }
+
+        for email in emails {
+            if let Some(html) = body_html.as_deref() {
+                let _ = self
+                    .email_service
+                    .send_email_with_html_for_tenant(
+                        tenant_id.as_deref(),
+                        &email,
+                        subject,
+                        body_text,
+                        html,
+                    )
+                    .await;
+            } else {
+                let _ = self
+                    .email_service
+                    .send_email_for_tenant(tenant_id.as_deref(), &email, subject, body_text)
+                    .await;
+            }
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "postgres")]
+    async fn enqueue_many(
+        &self,
+        tenant_id: Option<&str>,
+        emails: &[String],
+        subject: &str,
+        body: &str,
+        body_html: Option<&str>,
+        max_attempts: i32,
+    ) -> AppResult<()> {
+        if emails.is_empty() {
+            return Ok(());
+        }
+
+        let now = Utc::now();
+        let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
+            r#"
+            INSERT INTO email_outbox
+              (id, tenant_id, to_email, subject, body, body_html, status, attempts, max_attempts, scheduled_at, last_error, sent_at, created_at, updated_at)
+            "#,
+        );
+        qb.push_values(emails, |mut b, email| {
+            b.push_bind(Uuid::new_v4().to_string())
+                .push_bind(tenant_id)
+                .push_bind(email)
+                .push_bind(subject)
+                .push_bind(body)
+                .push_bind(body_html)
+                .push_bind("queued")
+                .push_bind(0_i32)
+                .push_bind(max_attempts)
+                .push_bind(now)
+                .push_bind(None::<String>)
+                .push_bind(None::<DateTime<Utc>>)
+                .push_bind(now)
+                .push_bind(now);
+        });
+        qb.build()
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
         Ok(())
     }
 
