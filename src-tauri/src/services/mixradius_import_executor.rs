@@ -538,58 +538,133 @@ impl MixradiusImportExecutor {
             total_rows: staged_customers.len() as i64,
             ..Default::default()
         };
+        let mut staged_location_by_member_id: std::collections::HashMap<
+            String,
+            StagedCustomerLocationRow,
+        > = std::collections::HashMap::new();
+        for location in staged_locations {
+            staged_location_by_member_id
+                .entry(location.member_id.clone())
+                .or_insert(location);
+        }
 
         let mut tx = self
             .pool
             .begin()
             .await
             .context("failed to open MixRadius customer execution transaction")?;
+        let customer_source_refs: std::collections::HashSet<String> = staged_customers
+            .iter()
+            .map(|customer| customer.member_id.clone())
+            .collect();
+        let location_source_refs: std::collections::HashSet<String> = staged_customers
+            .iter()
+            .map(|customer| {
+                staged_location_by_member_id
+                    .get(customer.member_id.as_str())
+                    .map(|location| location.source_ref.clone())
+                    .unwrap_or_else(|| default_location_source_ref(&customer.member_id))
+            })
+            .collect();
+        let mut customer_external_refs: std::collections::HashMap<String, String> =
+            if customer_source_refs.is_empty() {
+                std::collections::HashMap::new()
+            } else {
+                sqlx::query_as::<_, (String, String)>(
+                    r#"
+                    SELECT source_ref, entity_id
+                    FROM public.mixradius_import_external_refs
+                    WHERE tenant_id = $1
+                      AND source_system = 'mixradius'
+                      AND entity_type = 'customer'
+                      AND source_ref = ANY($2)
+                    "#,
+                )
+                .bind(tenant_id)
+                .bind(
+                    &customer_source_refs
+                        .iter()
+                        .cloned()
+                        .collect::<Vec<String>>(),
+                )
+                .fetch_all(&mut *tx)
+                .await
+                .context("failed to preload MixRadius customer external refs")?
+                .into_iter()
+                .collect()
+            };
+        let mut location_external_refs: std::collections::HashMap<String, String> =
+            if location_source_refs.is_empty() {
+                std::collections::HashMap::new()
+            } else {
+                sqlx::query_as::<_, (String, String)>(
+                    r#"
+                    SELECT source_ref, entity_id
+                    FROM public.mixradius_import_external_refs
+                    WHERE tenant_id = $1
+                      AND source_system = 'mixradius'
+                      AND entity_type = 'location'
+                      AND source_ref = ANY($2)
+                    "#,
+                )
+                .bind(tenant_id)
+                .bind(
+                    &location_source_refs
+                        .iter()
+                        .cloned()
+                        .collect::<Vec<String>>(),
+                )
+                .fetch_all(&mut *tx)
+                .await
+                .context("failed to preload MixRadius location external refs")?
+                .into_iter()
+                .collect()
+            };
 
         for staged_customer in staged_customers {
             let customer_source_ref = staged_customer.member_id.clone();
-            let existing_customer_id =
-                find_external_ref_entity_id(&mut tx, tenant_id, "customer", &customer_source_ref)
-                    .await?;
+            let existing_customer_id = customer_external_refs.get(&customer_source_ref).cloned();
 
-            let (customer_id, customer_created) =
-                if let Some(existing_customer_id) = existing_customer_id {
-                    let existing_customer = sqlx::query_as::<_, ExistingCustomerRow>(
-                        r#"
+            let (customer_id, customer_created) = if let Some(existing_customer_id) =
+                existing_customer_id
+            {
+                let existing_customer = sqlx::query_as::<_, ExistingCustomerRow>(
+                    r#"
                     SELECT id, name, email, phone, notes
                     FROM public.customers
                     WHERE tenant_id = $1 AND id = $2
                     "#,
-                    )
-                    .bind(tenant_id)
-                    .bind(&existing_customer_id)
-                    .fetch_optional(&mut *tx)
-                    .await
-                    .context("failed to load existing customer from MixRadius external ref")?;
+                )
+                .bind(tenant_id)
+                .bind(&existing_customer_id)
+                .fetch_optional(&mut *tx)
+                .await
+                .context("failed to load existing customer from MixRadius external ref")?;
 
-                    if let Some(existing_customer) = existing_customer {
-                        let patch = safe_customer_update_patch(
-                            &StagedCustomer {
-                                source_ref: staged_customer.source_ref.clone(),
-                                member_id: staged_customer.member_id.clone(),
-                                username: staged_customer.username.clone(),
-                                fullname: staged_customer.fullname.clone(),
-                                email: staged_customer.email.clone(),
-                                phonenumber: staged_customer.phonenumber.clone(),
-                                trx_status: staged_customer.trx_status.clone(),
-                                expired_on: staged_customer.expired_on,
-                            },
-                            &ExistingCustomer {
-                                id: existing_customer.id.clone(),
-                                name: existing_customer.name.clone(),
-                                email: existing_customer.email.clone(),
-                                phone: existing_customer.phone.clone(),
-                                is_active: true,
-                            },
-                        );
-                        summary.warnings.extend(patch.warnings);
+                if let Some(existing_customer) = existing_customer {
+                    let patch = safe_customer_update_patch(
+                        &StagedCustomer {
+                            source_ref: staged_customer.source_ref.clone(),
+                            member_id: staged_customer.member_id.clone(),
+                            username: staged_customer.username.clone(),
+                            fullname: staged_customer.fullname.clone(),
+                            email: staged_customer.email.clone(),
+                            phonenumber: staged_customer.phonenumber.clone(),
+                            trx_status: staged_customer.trx_status.clone(),
+                            expired_on: staged_customer.expired_on,
+                        },
+                        &ExistingCustomer {
+                            id: existing_customer.id.clone(),
+                            name: existing_customer.name.clone(),
+                            email: existing_customer.email.clone(),
+                            phone: existing_customer.phone.clone(),
+                            is_active: true,
+                        },
+                    );
+                    summary.warnings.extend(patch.warnings);
 
-                        sqlx::query(
-                            r#"
+                    sqlx::query(
+                        r#"
                         UPDATE public.customers
                         SET name = COALESCE($1, name),
                             email = COALESCE($2, email),
@@ -597,58 +672,49 @@ impl MixradiusImportExecutor {
                             updated_at = $4
                         WHERE tenant_id = $5 AND id = $6
                         "#,
-                        )
-                        .bind(patch.name)
-                        .bind(patch.email)
-                        .bind(patch.phone)
-                        .bind(Utc::now())
-                        .bind(tenant_id)
-                        .bind(&existing_customer.id)
-                        .execute(&mut *tx)
-                        .await
-                        .context("failed to update existing imported customer safely")?;
+                    )
+                    .bind(patch.name)
+                    .bind(patch.email)
+                    .bind(patch.phone)
+                    .bind(Utc::now())
+                    .bind(tenant_id)
+                    .bind(&existing_customer.id)
+                    .execute(&mut *tx)
+                    .await
+                    .context("failed to update existing imported customer safely")?;
 
-                        if existing_customer.notes.is_none() {
-                            let imported_notes = build_customer_notes(&staged_customer);
-                            sqlx::query(
-                                r#"
+                    if existing_customer.notes.is_none() {
+                        let imported_notes = build_customer_notes(&staged_customer);
+                        sqlx::query(
+                            r#"
                             UPDATE public.customers
                             SET notes = $1, updated_at = $2
                             WHERE tenant_id = $3 AND id = $4
                               AND notes IS NULL
                             "#,
-                            )
-                            .bind(imported_notes)
-                            .bind(Utc::now())
-                            .bind(tenant_id)
-                            .bind(&existing_customer.id)
-                            .execute(&mut *tx)
-                            .await
-                            .context("failed to backfill imported customer notes")?;
-                        }
-
-                        upsert_external_ref(
-                            &mut tx,
-                            tenant_id,
-                            batch_id,
-                            "customer",
-                            &existing_customer.id,
-                            &customer_source_ref,
                         )
-                        .await?;
-                        summary.updated_rows += 1;
-                        (existing_customer.id, false)
-                    } else {
-                        let customer_id = insert_customer(
-                            &mut tx,
-                            tenant_id,
-                            &staged_customer,
-                            &customer_source_ref,
-                            batch_id,
-                        )
-                        .await?;
-                        (customer_id, true)
+                        .bind(imported_notes)
+                        .bind(Utc::now())
+                        .bind(tenant_id)
+                        .bind(&existing_customer.id)
+                        .execute(&mut *tx)
+                        .await
+                        .context("failed to backfill imported customer notes")?;
                     }
+
+                    upsert_external_ref(
+                        &mut tx,
+                        tenant_id,
+                        batch_id,
+                        "customer",
+                        &existing_customer.id,
+                        &customer_source_ref,
+                    )
+                    .await?;
+                    customer_external_refs
+                        .insert(customer_source_ref.clone(), existing_customer.id.clone());
+                    summary.updated_rows += 1;
+                    (existing_customer.id, false)
                 } else {
                     let customer_id = insert_customer(
                         &mut tx,
@@ -658,44 +724,31 @@ impl MixradiusImportExecutor {
                         batch_id,
                     )
                     .await?;
+                    customer_external_refs.insert(customer_source_ref.clone(), customer_id.clone());
                     (customer_id, true)
-                };
+                }
+            } else {
+                let customer_id = insert_customer(
+                    &mut tx,
+                    tenant_id,
+                    &staged_customer,
+                    &customer_source_ref,
+                    batch_id,
+                )
+                .await?;
+                customer_external_refs.insert(customer_source_ref.clone(), customer_id.clone());
+                (customer_id, true)
+            };
             if customer_created {
                 summary.imported_rows += 1;
             }
 
-            if summary.updated_rows + summary.imported_rows > 0 {
-                if find_external_ref_entity_id(&mut tx, tenant_id, "customer", &customer_source_ref)
-                    .await?
-                    .as_deref()
-                    == Some(customer_id.as_str())
-                {
-                    if !sqlx::query_scalar::<_, bool>(
-                        "SELECT EXISTS(SELECT 1 FROM public.customers WHERE tenant_id = $1 AND id = $2)",
-                    )
-                    .bind(tenant_id)
-                    .bind(&customer_id)
-                    .fetch_one(&mut *tx)
-                    .await
-                    .context("failed to verify imported customer")?
-                    {
-                        continue;
-                    }
-                }
-            }
-
-            let customer_location = staged_locations
-                .iter()
-                .find(|location| location.member_id == staged_customer.member_id);
+            let customer_location = staged_location_by_member_id.get(&staged_customer.member_id);
             let location_source_ref = customer_location
                 .map(|location| location.source_ref.clone())
-                .unwrap_or_else(|| {
-                    format!("customer:{}:default-location", staged_customer.member_id)
-                });
+                .unwrap_or_else(|| default_location_source_ref(&staged_customer.member_id));
 
-            let existing_location_id =
-                find_external_ref_entity_id(&mut tx, tenant_id, "location", &location_source_ref)
-                    .await?;
+            let existing_location_id = location_external_refs.get(&location_source_ref).cloned();
             let staged_address = normalize_optional(staged_customer.address.as_deref());
             let staged_coords = customer_location
                 .map(|location| (location.latitude, location.longitude))
@@ -768,9 +821,11 @@ impl MixradiusImportExecutor {
                         &location_source_ref,
                     )
                     .await?;
+                    location_external_refs
+                        .insert(location_source_ref.clone(), existing_location.id.clone());
                     summary.location_updated_rows += 1;
                 } else {
-                    create_location_for_customer(
+                    let location_id = create_location_for_customer(
                         &mut tx,
                         tenant_id,
                         batch_id,
@@ -782,10 +837,11 @@ impl MixradiusImportExecutor {
                         build_location_notes(&staged_customer),
                     )
                     .await?;
+                    location_external_refs.insert(location_source_ref.clone(), location_id);
                     summary.location_imported_rows += 1;
                 }
             } else {
-                create_location_for_customer(
+                let location_id = create_location_for_customer(
                     &mut tx,
                     tenant_id,
                     batch_id,
@@ -797,6 +853,7 @@ impl MixradiusImportExecutor {
                     build_location_notes(&staged_customer),
                 )
                 .await?;
+                location_external_refs.insert(location_source_ref.clone(), location_id);
                 summary.location_imported_rows += 1;
             }
         }
