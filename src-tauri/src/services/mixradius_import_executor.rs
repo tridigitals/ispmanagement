@@ -1869,26 +1869,42 @@ async fn resolve_mixradius_router_id(
     .await
     .context("failed to load staged MixRadius NAS rows for PPPoE router resolution")?;
 
+    if nas_refs.is_empty() {
+        return Ok(None);
+    }
+
+    let overrides_by_nas_ref: std::collections::HashMap<&str, &str> = mapping_overrides
+        .iter()
+        .filter(|item| {
+            item.target_kind == "router"
+                && (item.source_kind == "nas" || item.source_kind == "router")
+        })
+        .map(|item| (item.source_value.as_str(), item.target_value.as_str()))
+        .collect();
+    let candidate_router_ids: Vec<String> = nas_refs
+        .iter()
+        .filter_map(|nas_ref| overrides_by_nas_ref.get(nas_ref.as_str()))
+        .map(|router_id| (*router_id).to_string())
+        .collect();
+    if candidate_router_ids.is_empty() {
+        return Ok(None);
+    }
+
+    let valid_router_ids: std::collections::HashSet<String> = sqlx::query_scalar::<_, String>(
+        "SELECT id FROM public.mikrotik_routers WHERE tenant_id = $1 AND id = ANY($2)",
+    )
+    .bind(tenant_id)
+    .bind(&candidate_router_ids)
+    .fetch_all(&mut **tx)
+    .await
+    .context("failed to validate MixRadius PPPoE router targets")?
+    .into_iter()
+    .collect();
+
     for nas_ref in nas_refs {
-        if let Some(router_id) = mapping_overrides
-            .iter()
-            .find(|item| {
-                item.target_kind == "router"
-                    && (item.source_kind == "nas" || item.source_kind == "router")
-                    && item.source_value == nas_ref
-            })
-            .map(|item| item.target_value.clone())
-        {
-            let exists: Option<String> = sqlx::query_scalar(
-                "SELECT id FROM public.mikrotik_routers WHERE tenant_id = $1 AND id = $2",
-            )
-            .bind(tenant_id)
-            .bind(&router_id)
-            .fetch_optional(&mut **tx)
-            .await
-            .context("failed to validate MixRadius PPPoE router target")?;
-            if exists.is_some() {
-                return Ok(Some(router_id));
+        if let Some(router_id) = overrides_by_nas_ref.get(nas_ref.as_str()) {
+            if valid_router_ids.contains(*router_id) {
+                return Ok(Some((*router_id).to_string()));
             }
         }
     }
