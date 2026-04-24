@@ -203,31 +203,47 @@ impl MixradiusImportExecutor {
             .context("failed to open MixRadius package execution transaction")?;
         let target_router_id =
             resolve_mixradius_router_id(&mut tx, tenant_id, batch_id, mapping_overrides).await?;
+        let override_target_package_ids: std::collections::HashSet<String> = mapping_overrides
+            .iter()
+            .filter(|item| item.source_kind == "plan" && item.target_kind == "package")
+            .map(|item| item.target_value.clone())
+            .collect();
+        let valid_override_package_ids: std::collections::HashSet<String> =
+            if override_target_package_ids.is_empty() {
+                std::collections::HashSet::new()
+            } else {
+                sqlx::query_scalar::<_, String>(
+                    r#"
+                    SELECT id
+                    FROM public.isp_packages
+                    WHERE tenant_id = $1 AND id = ANY($2)
+                    "#,
+                )
+                .bind(tenant_id)
+                .bind(
+                    &override_target_package_ids
+                        .iter()
+                        .cloned()
+                        .collect::<Vec<String>>(),
+                )
+                .fetch_all(&mut *tx)
+                .await
+                .context("failed to validate package override targets")?
+                .into_iter()
+                .collect()
+            };
 
         for plan in staged_plans {
             if let Some(target_package_id) =
                 find_override_target(mapping_overrides, "plan", &plan.source_ref)
             {
-                let existing_override: Option<String> = sqlx::query_scalar(
-                    r#"
-                    SELECT id
-                    FROM public.isp_packages
-                    WHERE tenant_id = $1 AND id = $2
-                    "#,
-                )
-                .bind(tenant_id)
-                .bind(target_package_id)
-                .fetch_optional(&mut *tx)
-                .await
-                .context("failed to validate package override target")?;
-
-                if let Some(entity_id) = existing_override {
+                if valid_override_package_ids.contains(target_package_id) {
                     upsert_external_ref(
                         &mut tx,
                         tenant_id,
                         batch_id,
                         "package",
-                        &entity_id,
+                        target_package_id,
                         &plan.source_ref,
                     )
                     .await?;
@@ -235,7 +251,7 @@ impl MixradiusImportExecutor {
                         &mut tx,
                         tenant_id,
                         target_router_id.as_deref(),
-                        &entity_id,
+                        target_package_id,
                         &plan,
                         &mut summary,
                     )
