@@ -1,7 +1,8 @@
 use crate::db::DbPool;
 use crate::models::{
-    MixradiusImportBatch, MixradiusImportConflictState, MixradiusImportCustomerConflictResolution,
-    MixradiusImportExecuteRequest, MixradiusImportExecutionResult, MixradiusImportExecutionSummary,
+    MixradiusImportBatch, MixradiusImportBatchStatus, MixradiusImportConflictState,
+    MixradiusImportCustomerConflictResolution, MixradiusImportExecuteRequest,
+    MixradiusImportExecutionResult, MixradiusImportExecutionSummary,
     MixradiusImportLocationStrategy, MixradiusImportParseStatus, MixradiusImportPreview,
     MixradiusImportPreviewRequest, MixradiusImportPreviewRow, PaginatedResponse,
 };
@@ -784,6 +785,36 @@ impl MixradiusImportService {
         .context("failed to cancel MixRadius import batch")?;
 
         self.get_batch(tenant_id, batch_id).await
+    }
+
+    pub async fn delete_batch(&self, tenant_id: &str, batch_id: &str) -> Result<()> {
+        let batch = self.get_batch(tenant_id, batch_id).await?;
+
+        if batch.parse_status == MixradiusImportParseStatus::Running
+            || batch.execution_status == MixradiusImportBatchStatus::Running
+        {
+            return Err(anyhow!(
+                "Batch yang sedang diproses tidak bisa dihapus. Batalkan atau tunggu sampai selesai."
+            ));
+        }
+
+        let deleted = sqlx::query(
+            r#"
+            DELETE FROM public.mixradius_import_batches
+            WHERE tenant_id = $1 AND id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(batch_id)
+        .execute(&self.pool)
+        .await
+        .context("failed to delete MixRadius import batch")?;
+
+        if deleted.rows_affected() == 0 {
+            return Err(anyhow!("MixRadius import batch tidak ditemukan"));
+        }
+
+        Ok(())
     }
 
     async fn legacy_transaction_count(&self, tenant_id: &str, batch_id: &str) -> Result<i64> {

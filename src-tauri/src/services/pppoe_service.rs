@@ -37,6 +37,64 @@ struct RouterSecretRow {
     comment: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+struct InstallationPppoeScope {
+    customer_id: String,
+    location_id: String,
+    package_id: Option<String>,
+    router_id: Option<String>,
+    status: String,
+    assigned_to: Option<String>,
+}
+
+fn installation_pppoe_scope_allows(
+    actor_id: &str,
+    is_admin_or_owner: bool,
+    scope: &InstallationPppoeScope,
+    customer_id: &str,
+    location_id: &str,
+    package_id: Option<&str>,
+    router_id: &str,
+    router_matches_package_mapping: bool,
+) -> bool {
+    let status = scope.status.trim().to_ascii_lowercase();
+    if !matches!(status.as_str(), "pending" | "in_progress") {
+        return false;
+    }
+
+    let assigned_to = scope.assigned_to.as_deref().map(str::trim).unwrap_or("");
+    if !is_admin_or_owner && assigned_to != actor_id {
+        return false;
+    }
+
+    if scope.customer_id != customer_id || scope.location_id != location_id {
+        return false;
+    }
+
+    if let Some(expected_router_id) = scope
+        .router_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+    {
+        return expected_router_id == router_id;
+    }
+
+    let Some(scope_package_id) = scope
+        .package_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+    else {
+        return false;
+    };
+    let Some(account_package_id) = package_id.map(str::trim).filter(|v| !v.is_empty()) else {
+        return false;
+    };
+
+    scope_package_id == account_package_id && router_matches_package_mapping
+}
+
 #[derive(Clone)]
 pub struct PppoeService {
     pool: DbPool,
@@ -81,10 +139,136 @@ impl PppoeService {
             .await
     }
 
-    async fn require_manage_or_installation_manage(
+    async fn is_actor_admin_or_owner(&self, tenant_id: &str, actor_id: &str) -> AppResult<bool> {
+        #[cfg(feature = "postgres")]
+        let role_name: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT LOWER(COALESCE(r.name, tm.role, ''))
+            FROM tenant_members tm
+            LEFT JOIN roles r ON r.id = tm.role_id
+            WHERE tm.tenant_id = $1 AND tm.user_id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(actor_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        #[cfg(feature = "sqlite")]
+        let role_name: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT LOWER(COALESCE(r.name, tm.role, ''))
+            FROM tenant_members tm
+            LEFT JOIN roles r ON r.id = tm.role_id
+            WHERE tm.tenant_id = ? AND tm.user_id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(actor_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        Ok(matches!(
+            role_name.as_deref().unwrap_or_default(),
+            "admin" | "owner"
+        ))
+    }
+
+    async fn load_installation_pppoe_scope(
+        &self,
+        tenant_id: &str,
+        work_order_id: &str,
+    ) -> AppResult<InstallationPppoeScope> {
+        #[cfg(feature = "postgres")]
+        let row: Option<(
+            String,
+            String,
+            Option<String>,
+            Option<String>,
+            String,
+            Option<String>,
+        )> = sqlx::query_as(
+            r#"
+            SELECT
+              wo.customer_id,
+              wo.location_id,
+              cs.package_id,
+              COALESCE(wo.router_id, cs.router_id) AS router_id,
+              wo.status,
+              wo.assigned_to
+            FROM installation_work_orders wo
+            LEFT JOIN customer_subscriptions cs
+              ON cs.tenant_id = wo.tenant_id
+             AND cs.id = wo.subscription_id
+            WHERE wo.tenant_id = $1
+              AND wo.id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        #[cfg(feature = "sqlite")]
+        let row: Option<(
+            String,
+            String,
+            Option<String>,
+            Option<String>,
+            String,
+            Option<String>,
+        )> = sqlx::query_as(
+            r#"
+            SELECT
+              wo.customer_id,
+              wo.location_id,
+              cs.package_id,
+              COALESCE(wo.router_id, cs.router_id) AS router_id,
+              wo.status,
+              wo.assigned_to
+            FROM installation_work_orders wo
+            LEFT JOIN customer_subscriptions cs
+              ON cs.tenant_id = wo.tenant_id
+             AND cs.id = wo.subscription_id
+            WHERE wo.tenant_id = ?
+              AND wo.id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let (customer_id, location_id, package_id, router_id, status, assigned_to) =
+            row.ok_or_else(|| AppError::NotFound("Work order not found".to_string()))?;
+
+        Ok(InstallationPppoeScope {
+            customer_id,
+            location_id,
+            package_id,
+            router_id,
+            status,
+            assigned_to,
+        })
+    }
+
+    async fn require_pppoe_manage_or_installation_scope(
         &self,
         actor_id: &str,
         tenant_id: &str,
+        work_order_id: Option<&str>,
+        customer_id: &str,
+        location_id: &str,
+        package_id: Option<&str>,
+        router_id: &str,
     ) -> AppResult<()> {
         if self
             .auth_service
@@ -94,9 +278,108 @@ impl PppoeService {
         {
             return Ok(());
         }
+
         self.auth_service
             .check_permission(actor_id, tenant_id, "work_orders", "manage")
-            .await
+            .await?;
+
+        let work_order_id = work_order_id
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .ok_or_else(|| {
+                AppError::Forbidden("Installation work order context is required".into())
+            })?;
+        let scope = self
+            .load_installation_pppoe_scope(tenant_id, work_order_id)
+            .await?;
+        let is_admin_or_owner = self.is_actor_admin_or_owner(tenant_id, actor_id).await?;
+        let router_matches_package_mapping = if scope
+            .router_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .is_some()
+        {
+            false
+        } else if let (Some(scope_package_id), Some(account_package_id)) = (
+            scope
+                .package_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|v| !v.is_empty()),
+            package_id.map(str::trim).filter(|v| !v.is_empty()),
+        ) {
+            if scope_package_id != account_package_id {
+                false
+            } else {
+                self.package_router_mapping_exists(tenant_id, scope_package_id, router_id)
+                    .await?
+            }
+        } else {
+            false
+        };
+
+        if installation_pppoe_scope_allows(
+            actor_id,
+            is_admin_or_owner,
+            &scope,
+            customer_id,
+            location_id,
+            package_id,
+            router_id,
+            router_matches_package_mapping,
+        ) {
+            Ok(())
+        } else {
+            Err(AppError::Forbidden(
+                "PPPoE account is outside the assigned installation work order".into(),
+            ))
+        }
+    }
+
+    async fn package_router_mapping_exists(
+        &self,
+        tenant_id: &str,
+        package_id: &str,
+        router_id: &str,
+    ) -> AppResult<bool> {
+        #[cfg(feature = "postgres")]
+        let exists: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT id
+            FROM isp_package_router_mappings
+            WHERE tenant_id = $1
+              AND package_id = $2
+              AND router_id = $3
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(package_id)
+        .bind(router_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        #[cfg(feature = "sqlite")]
+        let exists: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT id
+            FROM isp_package_router_mappings
+            WHERE tenant_id = ?
+              AND package_id = ?
+              AND router_id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(package_id)
+        .bind(router_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        Ok(exists.is_some())
     }
 
     async fn is_auto_apply_enabled(&self, tenant_id: &str) -> bool {
@@ -994,8 +1277,16 @@ impl PppoeService {
         dto: CreatePppoeAccountRequest,
         ip_address: Option<&str>,
     ) -> AppResult<PppoeAccountPublic> {
-        self.require_manage_or_installation_manage(actor_id, tenant_id)
-            .await?;
+        self.require_pppoe_manage_or_installation_scope(
+            actor_id,
+            tenant_id,
+            dto.work_order_id.as_deref(),
+            dto.customer_id.as_str(),
+            dto.location_id.as_str(),
+            dto.package_id.as_deref(),
+            dto.router_id.as_str(),
+        )
+        .await?;
 
         self.ensure_router_access(tenant_id, dto.router_id.as_str())
             .await?;
@@ -1122,10 +1413,6 @@ impl PppoeService {
         dto: UpdatePppoeAccountRequest,
         ip_address: Option<&str>,
     ) -> AppResult<PppoeAccountPublic> {
-        self.auth_service
-            .check_permission(actor_id, tenant_id, "pppoe", "manage")
-            .await?;
-
         let mut account: PppoeAccount =
             sqlx::query_as("SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2")
                 .bind(tenant_id)
@@ -1134,6 +1421,17 @@ impl PppoeService {
                 .await
                 .map_err(AppError::Database)?
                 .ok_or_else(|| AppError::NotFound("PPPoE account not found".into()))?;
+
+        self.require_pppoe_manage_or_installation_scope(
+            actor_id,
+            tenant_id,
+            dto.work_order_id.as_deref(),
+            account.customer_id.as_str(),
+            account.location_id.as_str(),
+            account.package_id.as_deref(),
+            account.router_id.as_str(),
+        )
+        .await?;
 
         if let Some(u) = dto.username {
             let v = u.trim().to_string();
@@ -1317,10 +1615,34 @@ impl PppoeService {
         actor_id: &str,
         tenant_id: &str,
         id: &str,
+        work_order_id: Option<&str>,
         ip_address: Option<&str>,
     ) -> AppResult<PppoeAccountPublic> {
-        self.require_manage_or_installation_manage(actor_id, tenant_id)
+        if self
+            .auth_service
+            .check_permission(actor_id, tenant_id, "pppoe", "manage")
+            .await
+            .is_err()
+        {
+            let account: PppoeAccount =
+                sqlx::query_as("SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2")
+                    .bind(tenant_id)
+                    .bind(id)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .map_err(AppError::Database)?
+                    .ok_or_else(|| AppError::NotFound("PPPoE account not found".into()))?;
+            self.require_pppoe_manage_or_installation_scope(
+                actor_id,
+                tenant_id,
+                work_order_id,
+                account.customer_id.as_str(),
+                account.location_id.as_str(),
+                account.package_id.as_deref(),
+                account.router_id.as_str(),
+            )
             .await?;
+        }
 
         let updated = self.apply_account_internal(tenant_id, id).await?;
 
@@ -1825,7 +2147,10 @@ impl PppoeService {
 
 #[cfg(test)]
 mod tests {
-    use super::{should_disable_local_router_secret, PppoeAccountSource};
+    use super::{
+        installation_pppoe_scope_allows, should_disable_local_router_secret,
+        InstallationPppoeScope, PppoeAccountSource,
+    };
 
     #[test]
     fn managed_radius_accounts_disable_local_router_secret() {
@@ -1834,6 +2159,120 @@ mod tests {
         ));
         assert!(should_disable_local_router_secret(
             PppoeAccountSource::ManagedRadius
+        ));
+    }
+
+    fn scope() -> InstallationPppoeScope {
+        InstallationPppoeScope {
+            customer_id: "customer-1".to_string(),
+            location_id: "location-1".to_string(),
+            package_id: Some("package-1".to_string()),
+            router_id: Some("router-1".to_string()),
+            status: "in_progress".to_string(),
+            assigned_to: Some("tech-1".to_string()),
+        }
+    }
+
+    #[test]
+    fn installation_pppoe_scope_allows_assigned_technician_matching_work_order() {
+        assert!(installation_pppoe_scope_allows(
+            "tech-1",
+            false,
+            &scope(),
+            "customer-1",
+            "location-1",
+            Some("package-1"),
+            "router-1",
+            false,
+        ));
+    }
+
+    #[test]
+    fn installation_pppoe_scope_rejects_unassigned_technician() {
+        assert!(!installation_pppoe_scope_allows(
+            "tech-2",
+            false,
+            &scope(),
+            "customer-1",
+            "location-1",
+            Some("package-1"),
+            "router-1",
+            false,
+        ));
+    }
+
+    #[test]
+    fn installation_pppoe_scope_rejects_other_customer_or_router() {
+        assert!(!installation_pppoe_scope_allows(
+            "tech-1",
+            false,
+            &scope(),
+            "customer-2",
+            "location-1",
+            Some("package-1"),
+            "router-1",
+            false,
+        ));
+        assert!(!installation_pppoe_scope_allows(
+            "tech-1",
+            false,
+            &scope(),
+            "customer-1",
+            "location-1",
+            Some("package-1"),
+            "router-2",
+            false,
+        ));
+    }
+
+    #[test]
+    fn installation_pppoe_scope_rejects_closed_work_order() {
+        let mut closed = scope();
+        closed.status = "completed".to_string();
+
+        assert!(!installation_pppoe_scope_allows(
+            "tech-1",
+            false,
+            &closed,
+            "customer-1",
+            "location-1",
+            Some("package-1"),
+            "router-1",
+            false,
+        ));
+    }
+
+    #[test]
+    fn installation_pppoe_scope_allows_router_from_package_mapping_when_work_order_router_empty() {
+        let mut scope = scope();
+        scope.router_id = None;
+
+        assert!(installation_pppoe_scope_allows(
+            "tech-1",
+            false,
+            &scope,
+            "customer-1",
+            "location-1",
+            Some("package-1"),
+            "router-2",
+            true,
+        ));
+    }
+
+    #[test]
+    fn installation_pppoe_scope_rejects_package_mapping_for_different_package() {
+        let mut scope = scope();
+        scope.router_id = None;
+
+        assert!(!installation_pppoe_scope_allows(
+            "tech-1",
+            false,
+            &scope,
+            "customer-1",
+            "location-1",
+            Some("package-2"),
+            "router-2",
+            true,
         ));
     }
 }

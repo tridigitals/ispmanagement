@@ -165,4 +165,17 @@ describe('mixradius import api wrapper', () => {
       batch_id: 'batch-1',
     });
   });
+
+  it('deletes an import batch through the delete route key', async () => {
+    safeInvoke.mockResolvedValue(undefined);
+
+    const { mixradiusImport } = await import('./mixradiusImport');
+    await mixradiusImport.remove('batch-1');
+
+    expect(safeInvoke).toHaveBeenCalledWith('delete_mixradius_import_batch', {
+      token: 'token-123',
+      batchId: 'batch-1',
+      batch_id: 'batch-1',
+    });
+  });
 });

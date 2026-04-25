@@ -19,6 +19,7 @@
   import { toast } from '$lib/stores/toast';
   import { formatDateTime } from '$lib/utils/date';
   import {
+    buildInstallationSubscriptionFallback,
     getInstallationInternetTestTargetOptions,
     getInstallationInternetTestTargetHint,
     normalizeInstallationInternetTestTarget,
@@ -579,18 +580,24 @@
     installationPppoePassword = '';
     installationPppoeComment = '';
     try {
+      const fallbackSubscription = buildInstallationSubscriptionFallback(row) as CustomerSubscriptionView | null;
+      installationSubscription = fallbackSubscription;
       const [subRes, pppoeRes] = await Promise.all([
-        api.customers.subscriptions.list(row.customer_id, { page: 1, per_page: 200 }),
-        api.pppoe.accounts.list({
-          customer_id: row.customer_id,
-          location_id: row.location_id,
-          page: 1,
-          per_page: 50,
-        }),
+        api.customers.subscriptions
+          .list(row.customer_id, { page: 1, per_page: 200 })
+          .catch(() => ({ data: [] as CustomerSubscriptionView[] })),
+        api.pppoe.accounts
+          .list({
+            customer_id: row.customer_id,
+            location_id: row.location_id,
+            page: 1,
+            per_page: 50,
+          })
+          .catch(() => ({ data: [] as PppoeAccountPublic[] })),
       ]);
       const subscription =
         ((subRes?.data || []) as CustomerSubscriptionView[]).find((item) => item.id === row.subscription_id) ||
-        null;
+        fallbackSubscription;
       installationSubscription = subscription;
       installationPppoeAccount =
         (((pppoeRes?.data || []) as PppoeAccountPublic[]).find(
@@ -791,6 +798,7 @@
           address_pool: mapping.address_pool ?? null,
           comment: trimmedComment,
           account_source: selectedSource,
+          work_order_id: row.id,
         });
         toast.success(
           selectedSource === 'managed_radius'
@@ -809,6 +817,7 @@
           address_pool: mapping.address_pool ?? null,
           comment: trimmedComment,
           account_source: selectedSource,
+          work_order_id: row.id,
         });
         toast.success(
           tr('admin.network.installations.test_account_updated', 'Test account updated'),
@@ -817,7 +826,7 @@
 
       installationPppoeAccount = account;
       installationPppoePassword = '';
-      const applied = await api.pppoe.accounts.apply(account.id);
+      const applied = await api.pppoe.accounts.apply(account.id, { work_order_id: row.id });
       installationPppoeAccount = applied;
       checkPppoe = true;
       await savePlan();
@@ -837,10 +846,12 @@
   }
 
   async function applyInstallationPppoe() {
-    if (!installationPppoeAccount) return;
+    if (!installationPppoeAccount || !activeRow) return;
     savingInstallationPppoe = true;
     try {
-      const applied = await api.pppoe.accounts.apply(installationPppoeAccount.id);
+      const applied = await api.pppoe.accounts.apply(installationPppoeAccount.id, {
+        work_order_id: activeRow.id,
+      });
       installationPppoeAccount = applied;
       checkPppoe = true;
       await savePlan();

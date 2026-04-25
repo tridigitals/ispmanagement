@@ -3,6 +3,7 @@ import type {
   BankAccount,
   BillingCollectionLogView,
   BillingCollectionRunResult,
+  DuitkuPaymentMethod,
   BulkGenerateInvoicesResult,
   FxRate,
   Invoice,
@@ -111,6 +112,12 @@ export const payment = {
 
   payMidtrans: (id: string): Promise<string> =>
     safeInvoke('pay_invoice_midtrans', { token: getTokenOrThrow(), id }),
+
+  payDuitku: (id: string, paymentMethod?: string): Promise<string> =>
+    safeInvoke('pay_invoice_duitku', { token: getTokenOrThrow(), id, paymentMethod }),
+
+  listDuitkuPaymentMethods: (amount?: number): Promise<DuitkuPaymentMethod[]> =>
+    safeInvoke('list_duitku_payment_methods', { token: getTokenOrThrow(), amount }),
 
   checkStatus: (id: string): Promise<string> =>
     safeInvoke('check_payment_status', { token: getTokenOrThrow(), id }),

@@ -1,6 +1,9 @@
 <script lang="ts">
   import { get } from 'svelte/store';
   import { t } from 'svelte-i18n';
+  import { toast } from 'svelte-sonner';
+  import { api } from '$lib/api/client';
+  import type { DuitkuPaymentMethod } from '$lib/api/types';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Input from '$lib/components/ui/Input.svelte';
 
@@ -13,9 +16,51 @@
   export let addBankAccount: () => void;
   export let removeBankAccount: (id: string) => void;
 
+  let duitkuMethods: DuitkuPaymentMethod[] = [];
+  let loadingDuitkuMethods = false;
+
   function tt(key: string, fallback: string) {
     const value = get(t)(key);
     return value && value !== key ? value : fallback;
+  }
+
+  function selectedDuitkuMethods() {
+    const raw =
+      localSettings['payment_duitku_payment_methods'] ||
+      (localSettings['payment_duitku_payment_method']
+        ? JSON.stringify([localSettings['payment_duitku_payment_method']])
+        : '[]');
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed)
+        ? parsed.map((v) => String(v).trim().toUpperCase()).filter(Boolean)
+        : [];
+    } catch {
+      const value = String(raw).trim().toUpperCase();
+      return value ? [value] : [];
+    }
+  }
+
+  function toggleDuitkuMethod(code: string, checked: boolean) {
+    const selected = selectedDuitkuMethods();
+    const next = checked
+      ? Array.from(new Set([...selected, code]))
+      : selected.filter((item) => item !== code);
+    handleChange('payment_duitku_payment_methods', JSON.stringify(next));
+  }
+
+  async function loadDuitkuMethods() {
+    loadingDuitkuMethods = true;
+    try {
+      duitkuMethods = await api.payment.listDuitkuPaymentMethods(10000);
+      if (!duitkuMethods.length) {
+        toast.info('No Duitku payment methods returned for this merchant.');
+      }
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to load Duitku payment methods');
+    } finally {
+      loadingDuitkuMethods = false;
+    }
   }
 </script>
 
@@ -183,6 +228,113 @@
               />
               <span>Enable Production Mode (Live)</span>
             </label>
+          </div>
+        </div>
+      </div>
+    {/if}
+  </div>
+
+  <div class="method-card mt-6">
+    <div class="method-header">
+      <div class="m-icon duitku">D</div>
+      <div class="m-info">
+        <h4>Duitku Payment Gateway</h4>
+        <p>Accept payments via Duitku checkout redirect.</p>
+      </div>
+      <label class="toggle">
+        <input
+          type="checkbox"
+          checked={localSettings['payment_duitku_enabled'] === 'true'}
+          onchange={(e) => handleChange('payment_duitku_enabled', e.currentTarget.checked)}
+        />
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    {#if localSettings['payment_duitku_enabled'] === 'true'}
+      <div class="method-config fade-in">
+        <div class="config-grid">
+          <div class="setting-item">
+            <label for="duitku-merchant-code">Merchant Code</label>
+            <Input
+              id="duitku-merchant-code"
+              value={localSettings['payment_duitku_merchant_code']}
+              oninput={(e: any) => handleChange('payment_duitku_merchant_code', e.target.value)}
+              placeholder="D1234"
+            />
+          </div>
+          <div class="setting-item full-width">
+            <label for="duitku-api-key">API Key</label>
+            <Input
+              id="duitku-api-key"
+              type="password"
+              value={localSettings['payment_duitku_api_key']}
+              oninput={(e: any) => handleChange('payment_duitku_api_key', e.target.value)}
+              placeholder="Duitku API key"
+              showPasswordToggle={true}
+            />
+          </div>
+          <div class="setting-item full-width checkbox-row">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                checked={localSettings['payment_duitku_is_production'] === 'true'}
+                onchange={(e: any) =>
+                  handleChange('payment_duitku_is_production', e.currentTarget.checked)}
+              />
+              <span>Enable Production Mode (Live)</span>
+            </label>
+          </div>
+          <div class="setting-item full-width">
+            <div class="bm-header">
+              <span class="label-text">Enabled Payment Methods</span>
+              <button
+                class="btn btn-secondary btn-sm"
+                type="button"
+                onclick={loadDuitkuMethods}
+                disabled={loadingDuitkuMethods}
+              >
+                <Icon name="refresh-cw" size={14} />
+                {loadingDuitkuMethods ? 'Loading...' : 'Load Duitku Methods'}
+              </button>
+            </div>
+            <p class="help-text">
+              Select which Duitku channels customers can choose during checkout.
+            </p>
+            {#if duitkuMethods.length}
+              <div class="method-checklist">
+                {#each duitkuMethods as method}
+                  {@const selected = selectedDuitkuMethods().includes(method.code)}
+                  <label class="method-check">
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onchange={(e) => toggleDuitkuMethod(method.code, e.currentTarget.checked)}
+                    />
+                    <span>
+                      <strong>{method.name}</strong>
+                      <small>{method.code}{method.fee ? ` - Fee ${method.fee}` : ''}</small>
+                    </span>
+                  </label>
+                {/each}
+              </div>
+            {:else if selectedDuitkuMethods().length}
+              <div class="method-checklist">
+                {#each selectedDuitkuMethods() as code}
+                  <label class="method-check">
+                    <input
+                      type="checkbox"
+                      checked={true}
+                      onchange={(e) => toggleDuitkuMethod(code, e.currentTarget.checked)}
+                    />
+                    <span>
+                      <strong>{code}</strong>
+                      <small>Saved method</small>
+                    </span>
+                  </label>
+                {/each}
+              </div>
+            {/if}
           </div>
         </div>
       </div>
@@ -485,6 +637,13 @@
     color: white;
   }
 
+  .m-icon.duitku {
+    background: linear-gradient(135deg, #0f766e, #0b4f6c);
+    border-color: rgba(15, 118, 110, 0.45);
+    color: white;
+    font-weight: 800;
+  }
+
   .m-icon.manual {
     background: rgba(255, 255, 255, 0.06);
     color: var(--text-primary);
@@ -738,6 +897,45 @@
   .add-bank-card span {
     font-weight: 750;
     font-size: 0.92rem;
+  }
+
+  .method-checklist {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.9rem;
+  }
+
+  .method-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.9rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+    cursor: pointer;
+  }
+
+  .method-check input {
+    margin-top: 0.2rem;
+  }
+
+  .method-check span {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+  }
+
+  .method-check strong {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+  }
+
+  .method-check small {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
   }
 
   .empty-state {

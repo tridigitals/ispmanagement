@@ -314,7 +314,7 @@
 
                 {#if loadingInstallationPppoe}
                   <p class="helper-text">{tr('common.loading', 'Loading...')}</p>
-                {:else if !installationSubscription}
+                {:else if !installationSubscription && !activeRow?.package_id && !installationPppoeAccount?.package_id}
                   <p class="helper-text">Subscription internet untuk work order ini belum ditemukan.</p>
                 {:else}
                   <div class="form-grid two-col compact">

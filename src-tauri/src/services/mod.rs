@@ -49,7 +49,9 @@ pub use mikrotik_service::MikrotikService;
 pub use mixradius_import_service::MixradiusImportService;
 pub use network_mapping_service::NetworkMappingService;
 pub use notification_service::NotificationService;
-pub use payment_service::{BillingCollectionRunResult, BulkGenerateInvoicesResult, PaymentService};
+pub use payment_service::{
+    BillingCollectionRunResult, BulkGenerateInvoicesResult, DuitkuPaymentMethod, PaymentService,
+};
 pub use plan_service::PlanService;
 pub use pppoe_service::PppoeService;
 pub use role_service::RoleService;

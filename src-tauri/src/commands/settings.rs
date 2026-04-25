@@ -71,6 +71,9 @@ pub struct PublicSettings {
     pub payment_midtrans_enabled: bool,
     pub payment_midtrans_client_key: Option<String>,
     pub payment_midtrans_is_production: bool,
+    pub payment_duitku_enabled: bool,
+    pub payment_duitku_is_production: bool,
+    pub payment_duitku_payment_methods: Option<String>,
     pub payment_manual_enabled: bool,
 }
 
@@ -132,6 +135,18 @@ pub async fn get_public_settings(
         .get_value(None, "payment_midtrans_is_production")
         .await
         .unwrap_or_default();
+    let duitku_enabled_str = settings_service
+        .get_value(None, "payment_duitku_enabled")
+        .await
+        .unwrap_or_default();
+    let duitku_prod_str = settings_service
+        .get_value(None, "payment_duitku_is_production")
+        .await
+        .unwrap_or_default();
+    let payment_duitku_payment_methods = settings_service
+        .get_value(None, "payment_duitku_payment_methods")
+        .await
+        .unwrap_or_default();
     let manual_enabled_str = settings_service
         .get_value(None, "payment_manual_enabled")
         .await
@@ -140,6 +155,8 @@ pub async fn get_public_settings(
     let maintenance_mode = maintenance_mode_str.as_deref() == Some("true");
     let payment_midtrans_enabled = midtrans_enabled_str.as_deref() == Some("true");
     let payment_midtrans_is_production = midtrans_prod_str.as_deref() == Some("true");
+    let payment_duitku_enabled = duitku_enabled_str.as_deref() == Some("true");
+    let payment_duitku_is_production = duitku_prod_str.as_deref() == Some("true");
     let payment_manual_enabled = manual_enabled_str.as_deref() != Some("false"); // Default to true if missing
 
     Ok(PublicSettings {
@@ -154,6 +171,9 @@ pub async fn get_public_settings(
         payment_midtrans_enabled,
         payment_midtrans_client_key,
         payment_midtrans_is_production,
+        payment_duitku_enabled,
+        payment_duitku_is_production,
+        payment_duitku_payment_methods,
         payment_manual_enabled,
     })
 }

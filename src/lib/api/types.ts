@@ -706,6 +706,12 @@ export interface BankAccount {
   is_active: boolean;
 }
 
+export interface DuitkuPaymentMethod {
+  code: string;
+  name: string;
+  fee?: string | null;
+}
+
 export interface Notification {
   id: string;
   user_id: string;

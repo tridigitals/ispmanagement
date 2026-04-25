@@ -93,6 +93,7 @@ pub async fn create_pppoe_account(
     disabled: Option<bool>,
     comment: Option<String>,
     account_source: Option<PppoeAccountSource>,
+    work_order_id: Option<String>,
     auth: State<'_, AuthService>,
     pppoe: State<'_, PppoeService>,
 ) -> Result<PppoeAccountPublic, String> {
@@ -104,12 +105,12 @@ pub async fn create_pppoe_account(
         .tenant_id
         .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
-    require_pppoe_permission(&auth, &claims, &tenant_id, "manage").await?;
 
     let dto = CreatePppoeAccountRequest {
         router_id,
         customer_id,
         location_id,
+        work_order_id,
         username,
         password,
         package_id,
@@ -142,6 +143,7 @@ pub async fn update_pppoe_account(
     disabled: Option<bool>,
     comment: Option<String>,
     account_source: Option<PppoeAccountSource>,
+    work_order_id: Option<String>,
     auth: State<'_, AuthService>,
     pppoe: State<'_, PppoeService>,
 ) -> Result<PppoeAccountPublic, String> {
@@ -153,9 +155,9 @@ pub async fn update_pppoe_account(
         .tenant_id
         .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
-    require_pppoe_permission(&auth, &claims, &tenant_id, "manage").await?;
 
     let dto = UpdatePppoeAccountRequest {
+        work_order_id,
         username,
         password,
         package_id,
@@ -201,6 +203,7 @@ pub async fn delete_pppoe_account(
 pub async fn apply_pppoe_account(
     token: String,
     id: String,
+    work_order_id: Option<String>,
     auth: State<'_, AuthService>,
     pppoe: State<'_, PppoeService>,
 ) -> Result<PppoeAccountPublic, String> {
@@ -212,10 +215,15 @@ pub async fn apply_pppoe_account(
         .tenant_id
         .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
-    require_pppoe_permission(&auth, &claims, &tenant_id, "manage").await?;
 
     pppoe
-        .apply_account(&claims.sub, &tenant_id, &id, Some("127.0.0.1"))
+        .apply_account(
+            &claims.sub,
+            &tenant_id,
+            &id,
+            work_order_id.as_deref(),
+            Some("127.0.0.1"),
+        )
         .await
         .map_err(|e| e.to_string())
 }

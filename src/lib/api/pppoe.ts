@@ -30,6 +30,7 @@ export const pppoe = {
       disabled?: boolean;
       comment?: string | null;
       account_source?: 'router' | 'managed_radius' | null;
+      work_order_id?: string | null;
     }): Promise<PppoeAccountPublic> =>
       safeInvoke('create_pppoe_account', {
         token: getTokenOrThrow(),
@@ -46,6 +47,7 @@ export const pppoe = {
         disabled: dto.disabled ?? false,
         comment: dto.comment ?? null,
         account_source: dto.account_source ?? 'router',
+        work_order_id: dto.work_order_id ?? null,
       }),
 
     update: (
@@ -61,6 +63,7 @@ export const pppoe = {
         disabled?: boolean;
         comment?: string | null;
         account_source?: 'router' | 'managed_radius' | null;
+        work_order_id?: string | null;
       },
     ): Promise<PppoeAccountPublic> =>
       safeInvoke('update_pppoe_account', {
@@ -76,13 +79,18 @@ export const pppoe = {
         disabled: dto.disabled,
         comment: dto.comment ?? undefined,
         account_source: dto.account_source ?? undefined,
+        work_order_id: dto.work_order_id ?? undefined,
       }),
 
     delete: (id: string): Promise<void> =>
       safeInvoke('delete_pppoe_account', { token: getTokenOrThrow(), id }),
 
-    apply: (id: string): Promise<PppoeAccountPublic> =>
-      safeInvoke('apply_pppoe_account', { token: getTokenOrThrow(), id }),
+    apply: (id: string, params?: { work_order_id?: string | null }): Promise<PppoeAccountPublic> =>
+      safeInvoke('apply_pppoe_account', {
+        token: getTokenOrThrow(),
+        id,
+        work_order_id: params?.work_order_id ?? undefined,
+      }),
 
     reconcileRouter: (routerId: string): Promise<any> =>
       safeInvoke('reconcile_pppoe_router', {

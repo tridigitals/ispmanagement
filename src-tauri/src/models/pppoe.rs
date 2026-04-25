@@ -129,6 +129,7 @@ pub struct CreatePppoeAccountRequest {
     pub router_id: String,
     pub customer_id: String,
     pub location_id: String,
+    pub work_order_id: Option<String>,
     pub username: String,
     pub password: String,
     pub package_id: Option<String>,
@@ -144,6 +145,7 @@ pub struct CreatePppoeAccountRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UpdatePppoeAccountRequest {
+    pub work_order_id: Option<String>,
     pub username: Option<String>,
     pub password: Option<String>,
     pub package_id: Option<String>,

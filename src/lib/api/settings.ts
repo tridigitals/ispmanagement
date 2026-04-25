@@ -16,6 +16,9 @@ export const settings = {
     payment_midtrans_enabled?: boolean;
     payment_midtrans_client_key?: string;
     payment_midtrans_is_production?: boolean;
+    payment_duitku_enabled?: boolean;
+    payment_duitku_is_production?: boolean;
+    payment_duitku_payment_methods?: string;
     payment_manual_enabled?: boolean;
   }> => safeInvoke('get_public_settings'),
 

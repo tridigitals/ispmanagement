@@ -18,7 +18,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/imports", get(list_batches).post(upload_backup))
         .route("/imports/upload", post(upload_backup_file))
-        .route("/imports/{batch_id}", get(get_batch))
+        .route("/imports/{batch_id}", get(get_batch).delete(delete_batch))
         .route("/imports/{batch_id}/preview", post(preview_batch))
         .route("/imports/{batch_id}/execute", post(execute_batch))
         .route("/imports/{batch_id}/cancel", post(cancel_batch))
@@ -392,4 +392,24 @@ async fn cancel_batch(
         .map_err(|error| AppError::Internal(error.to_string()))?;
 
     Ok(Json(batch))
+}
+
+async fn delete_batch(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(batch_id): Path<String>,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_mixradius_permission(&state, &claims, &tenant_id, "manage").await?;
+
+    state
+        .mixradius_import_service
+        .delete_batch(&tenant_id, &batch_id)
+        .await
+        .map_err(|error| AppError::Internal(error.to_string()))?;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "batchId": batch_id
+    })))
 }

@@ -18,7 +18,7 @@ use chrono::{Datelike, Duration, Months, Utc};
 use reqwest::Client;
 use serde::Serialize;
 use serde_json::json;
-use sha2::{Digest, Sha512};
+use sha2::{Digest, Sha256, Sha512};
 use uuid::Uuid;
 
 use crate::services::subscription_lifecycle::{
@@ -44,6 +44,89 @@ use self::mapper::{filter_installation_request_user_ids, filter_owner_admin_user
 use self::validation::is_owner_admin_or_technician_role;
 use self::validation::is_owner_or_admin_role;
 
+fn md5_hex(input: &str) -> String {
+    format!("{:x}", md5::compute(input.as_bytes()))
+}
+
+fn duitku_create_signature(
+    merchant_code: &str,
+    merchant_order_id: &str,
+    payment_amount: i64,
+    api_key: &str,
+) -> String {
+    md5_hex(&format!(
+        "{}{}{}{}",
+        merchant_code, merchant_order_id, payment_amount, api_key
+    ))
+}
+
+fn duitku_callback_signature(
+    merchant_code: &str,
+    amount: &str,
+    merchant_order_id: &str,
+    api_key: &str,
+) -> String {
+    md5_hex(&format!(
+        "{}{}{}{}",
+        merchant_code, amount, merchant_order_id, api_key
+    ))
+}
+
+fn sha256_hex(input: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(input.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
+fn duitku_payment_methods_signature(
+    merchant_code: &str,
+    payment_amount: i64,
+    datetime: &str,
+    api_key: &str,
+) -> String {
+    sha256_hex(&format!(
+        "{}{}{}{}",
+        merchant_code, payment_amount, datetime, api_key
+    ))
+}
+
+fn parse_selected_duitku_payment_methods(raw: Option<&str>) -> Vec<String> {
+    let Some(raw) = raw.map(str::trim).filter(|v| !v.is_empty()) else {
+        return Vec::new();
+    };
+
+    let values = if raw.starts_with('[') {
+        serde_json::from_str::<Vec<String>>(raw).unwrap_or_default()
+    } else {
+        vec![raw.to_string()]
+    };
+
+    let mut out = Vec::new();
+    for value in values {
+        let code = value.trim().to_uppercase();
+        if !code.is_empty() && !out.contains(&code) {
+            out.push(code);
+        }
+    }
+    out
+}
+
+fn duitku_transaction_status_code_to_invoice_status(result_code: &str) -> &'static str {
+    match result_code {
+        "00" => "paid",
+        "02" => "failed",
+        _ => "pending",
+    }
+}
+
+pub(crate) fn duitku_callback_result_code_to_invoice_status(result_code: &str) -> &'static str {
+    match result_code {
+        "00" => "paid",
+        "01" | "02" => "failed",
+        _ => "pending",
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct BulkGenerateInvoicesResult {
     pub created_count: u32,
@@ -68,6 +151,13 @@ pub struct BillingCollectionSettings {
     pub auto_resume_on_payment: bool,
     pub reminder_enabled: bool,
     pub reminder_schedule: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DuitkuPaymentMethod {
+    pub code: String,
+    pub name: String,
+    pub fee: Option<String>,
 }
 
 impl Default for BillingCollectionSettings {
@@ -107,6 +197,83 @@ impl PaymentService {
             notification_service,
             pppoe_service,
         }
+    }
+
+    async fn payment_setting_for_invoice(
+        &self,
+        invoice: &Invoice,
+        key: &str,
+        default: &str,
+    ) -> AppResult<String> {
+        if let Some(merchant_id) = invoice.merchant_id.as_deref() {
+            #[cfg(feature = "postgres")]
+            let tenant_value: Option<String> =
+                sqlx::query_scalar("SELECT value FROM settings WHERE key = $1 AND tenant_id = $2")
+                    .bind(key)
+                    .bind(merchant_id)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+            #[cfg(feature = "sqlite")]
+            let tenant_value: Option<String> =
+                sqlx::query_scalar("SELECT value FROM settings WHERE key = ? AND tenant_id = ?")
+                    .bind(key)
+                    .bind(merchant_id)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+            if let Some(value) = tenant_value {
+                return Ok(value);
+            }
+        }
+
+        #[cfg(feature = "postgres")]
+        let global_value: Option<String> =
+            sqlx::query_scalar("SELECT value FROM settings WHERE key = $1 AND tenant_id IS NULL")
+                .bind(key)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let global_value: Option<String> =
+            sqlx::query_scalar("SELECT value FROM settings WHERE key = ? AND tenant_id IS NULL")
+                .bind(key)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(global_value.unwrap_or_else(|| default.to_string()))
+    }
+
+    async fn mark_invoice_payment_method(
+        &self,
+        invoice_id: &str,
+        payment_method: &str,
+    ) -> AppResult<()> {
+        let now = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        sqlx::query("UPDATE invoices SET payment_method = $1, updated_at = $2 WHERE id = $3")
+            .bind(payment_method)
+            .bind(now)
+            .bind(invoice_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query("UPDATE invoices SET payment_method = ?, updated_at = ? WHERE id = ?")
+            .bind(payment_method)
+            .bind(now.to_rfc3339())
+            .bind(invoice_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(())
     }
 
     pub fn start_customer_invoice_scheduler(&self) {
@@ -262,6 +429,34 @@ impl PaymentService {
         #[cfg(feature = "sqlite")]
         let invoice = sqlx::query_as("SELECT * FROM invoices WHERE id = ?")
             .bind(id)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|_| AppError::NotFound("Invoice not found".to_string()))?;
+
+        Ok(invoice)
+    }
+
+    async fn get_invoice_by_number(&self, invoice_number: &str) -> AppResult<Invoice> {
+        #[cfg(feature = "postgres")]
+        let invoice = sqlx::query_as::<_, Invoice>(
+            r#"
+            SELECT
+                id, tenant_id, invoice_number,
+                amount::FLOAT8 as amount,
+                currency_code, base_currency_code,
+                COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
+                status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at
+            FROM invoices WHERE invoice_number = $1
+            "#,
+        )
+        .bind(invoice_number)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|_| AppError::NotFound("Invoice not found".to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let invoice = sqlx::query_as("SELECT * FROM invoices WHERE invoice_number = ?")
+            .bind(invoice_number)
             .fetch_one(&self.pool)
             .await
             .map_err(|_| AppError::NotFound("Invoice not found".to_string()))?;
@@ -1847,11 +2042,246 @@ impl PaymentService {
         }
     }
 
+    pub async fn list_duitku_payment_methods(
+        &self,
+        tenant_id: Option<&str>,
+        payment_amount: Option<i64>,
+    ) -> AppResult<Vec<DuitkuPaymentMethod>> {
+        let merchant_code = self
+            .get_setting_value(tenant_id, "payment_duitku_merchant_code")
+            .await
+            .unwrap_or_default();
+        let api_key = self
+            .get_setting_value(tenant_id, "payment_duitku_api_key")
+            .await
+            .unwrap_or_default();
+        let is_production = self
+            .get_setting_value(tenant_id, "payment_duitku_is_production")
+            .await
+            .unwrap_or_else(|| "false".to_string())
+            == "true";
+
+        if merchant_code.trim().is_empty() || api_key.trim().is_empty() {
+            return Err(AppError::Configuration(
+                "Duitku Merchant Code or API Key not configured".to_string(),
+            ));
+        }
+
+        let amount = payment_amount.unwrap_or(10000).max(1);
+        let datetime = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        let signature = duitku_payment_methods_signature(
+            merchant_code.trim(),
+            amount,
+            &datetime,
+            api_key.trim(),
+        );
+        let base_url = if is_production {
+            "https://passport.duitku.com/webapi/api/merchant/paymentmethod/getpaymentmethod"
+        } else {
+            "https://sandbox.duitku.com/webapi/api/merchant/paymentmethod/getpaymentmethod"
+        };
+        let payload = json!({
+            "merchantcode": merchant_code.trim(),
+            "amount": amount,
+            "datetime": datetime,
+            "signature": signature,
+        });
+
+        let res = self
+            .http_client
+            .post(base_url)
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("Duitku API request failed: {}", e)))?;
+
+        let resp_json: serde_json::Value = res
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(format!("Duitku API parse failed: {}", e)))?;
+
+        let items = resp_json
+            .get("paymentFee")
+            .and_then(|v| v.as_array())
+            .ok_or_else(|| {
+                AppError::Internal(format!(
+                    "Duitku response missing paymentFee: {:?}",
+                    resp_json
+                ))
+            })?;
+
+        let mut methods = Vec::new();
+        for item in items {
+            let code = item
+                .get("paymentMethod")
+                .or_else(|| item.get("code"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .trim()
+                .to_uppercase();
+            if code.is_empty() {
+                continue;
+            }
+            let name = item
+                .get("paymentName")
+                .or_else(|| item.get("name"))
+                .and_then(|v| v.as_str())
+                .unwrap_or(&code)
+                .to_string();
+            let fee = item
+                .get("totalFee")
+                .or_else(|| item.get("fee"))
+                .and_then(|v| {
+                    v.as_str()
+                        .map(|s| s.to_string())
+                        .or_else(|| v.as_i64().map(|n| n.to_string()))
+                });
+            methods.push(DuitkuPaymentMethod { code, name, fee });
+        }
+
+        Ok(methods)
+    }
+
+    /// Initiate Duitku payment and return the hosted payment URL.
+    pub async fn initiate_duitku(
+        &self,
+        invoice_id: &str,
+        payment_method_override: Option<&str>,
+    ) -> AppResult<String> {
+        let invoice = self.get_invoice(invoice_id).await?;
+
+        if invoice.currency_code.to_uppercase() != "IDR" {
+            return Err(AppError::Configuration(format!(
+                "Duitku only supports IDR in this implementation (invoice currency: {}).",
+                invoice.currency_code
+            )));
+        }
+
+        let merchant_code = self
+            .payment_setting_for_invoice(&invoice, "payment_duitku_merchant_code", "")
+            .await?;
+        let api_key = self
+            .payment_setting_for_invoice(&invoice, "payment_duitku_api_key", "")
+            .await?;
+        let selected_methods_raw = self
+            .payment_setting_for_invoice(&invoice, "payment_duitku_payment_methods", "")
+            .await?;
+        let legacy_method = self
+            .payment_setting_for_invoice(&invoice, "payment_duitku_payment_method", "")
+            .await?;
+        let mut selected_methods =
+            parse_selected_duitku_payment_methods(Some(selected_methods_raw.as_str()));
+        if selected_methods.is_empty() {
+            selected_methods = parse_selected_duitku_payment_methods(Some(legacy_method.as_str()));
+        }
+        let requested_method = payment_method_override
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .map(|v| v.to_uppercase())
+            .or_else(|| selected_methods.first().cloned());
+        let is_production = self
+            .payment_setting_for_invoice(&invoice, "payment_duitku_is_production", "false")
+            .await?
+            == "true";
+
+        if merchant_code.trim().is_empty() || api_key.trim().is_empty() {
+            return Err(AppError::Configuration(
+                "Duitku Merchant Code or API Key not configured for this merchant".to_string(),
+            ));
+        }
+
+        let Some(payment_method) = requested_method else {
+            return Err(AppError::Configuration(
+                "No Duitku payment method selected for this merchant".to_string(),
+            ));
+        };
+
+        if !selected_methods.is_empty() && !selected_methods.contains(&payment_method) {
+            return Err(AppError::Configuration(
+                "Selected Duitku payment method is not enabled for this merchant".to_string(),
+            ));
+        }
+
+        let app_url: String = sqlx::query_scalar(
+            "SELECT value FROM settings WHERE key = 'app_public_url' AND tenant_id IS NULL",
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .unwrap_or(None)
+        .unwrap_or("http://localhost:3000".to_string());
+
+        let base_url = if is_production {
+            "https://passport.duitku.com/webapi/api/merchant/v2/inquiry"
+        } else {
+            "https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry"
+        };
+
+        let payment_amount = invoice.amount.round() as i64;
+        let signature = duitku_create_signature(
+            merchant_code.trim(),
+            &invoice.invoice_number,
+            payment_amount,
+            api_key.trim(),
+        );
+
+        let payload = json!({
+            "merchantCode": merchant_code.trim(),
+            "paymentAmount": payment_amount,
+            "paymentMethod": payment_method,
+            "merchantOrderId": invoice.invoice_number,
+            "productDetails": invoice.description.clone().unwrap_or_else(|| "Invoice payment".to_string()),
+            "customerVaName": invoice.tenant_id,
+            "callbackUrl": format!("{}/api/payment/duitku/callback", app_url.trim_end_matches('/')),
+            "returnUrl": format!("{}/pay/{}", app_url.trim_end_matches('/'), invoice.id),
+            "signature": signature,
+        });
+
+        let res = self
+            .http_client
+            .post(base_url)
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("Duitku API request failed: {}", e)))?;
+
+        let resp_json: serde_json::Value = res
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(format!("Duitku API parse failed: {}", e)))?;
+
+        let success = resp_json
+            .get("statusCode")
+            .and_then(|v| v.as_str())
+            .map(|v| v == "00")
+            .unwrap_or(true);
+
+        if !success {
+            return Err(AppError::Internal(format!("Duitku Error: {:?}", resp_json)));
+        }
+
+        if let Some(payment_url) = resp_json.get("paymentUrl").and_then(|v| v.as_str()) {
+            self.mark_invoice_payment_method(invoice_id, "duitku")
+                .await?;
+            Ok(payment_url.to_string())
+        } else {
+            Err(AppError::Internal(format!(
+                "Duitku response missing paymentUrl: {:?}",
+                resp_json
+            )))
+        }
+    }
+
     // ==================== BANK ACCOUNTS ====================
 
     /// Check Transaction Status (Manual/Poll)
     pub async fn check_transaction_status(&self, invoice_id: &str) -> AppResult<String> {
         let invoice = self.get_invoice(invoice_id).await?;
+
+        if invoice.payment_method.as_deref() == Some("duitku") {
+            return self.check_duitku_transaction_status(&invoice).await;
+        }
 
         // 1. Fetch Settings (Context Aware)
         let (server_key, is_production) = if let Some(mid) = &invoice.merchant_id {
@@ -1933,6 +2363,78 @@ impl PaymentService {
         if payment_status != invoice.status {
             self.process_midtrans_notification(&invoice.invoice_number, payment_status, None, None)
                 .await?;
+        }
+
+        Ok(payment_status.to_string())
+    }
+
+    async fn check_duitku_transaction_status(&self, invoice: &Invoice) -> AppResult<String> {
+        let merchant_code = self
+            .payment_setting_for_invoice(invoice, "payment_duitku_merchant_code", "")
+            .await?;
+        let api_key = self
+            .payment_setting_for_invoice(invoice, "payment_duitku_api_key", "")
+            .await?;
+        let is_production = self
+            .payment_setting_for_invoice(invoice, "payment_duitku_is_production", "false")
+            .await?
+            == "true";
+
+        if merchant_code.trim().is_empty() || api_key.trim().is_empty() {
+            return Err(AppError::Configuration(
+                "Duitku Merchant Code or API Key not configured".to_string(),
+            ));
+        }
+
+        let base_url = if is_production {
+            "https://passport.duitku.com/webapi/api/merchant/transactionStatus"
+        } else {
+            "https://sandbox.duitku.com/webapi/api/merchant/transactionStatus"
+        };
+        let signature = md5_hex(&format!(
+            "{}{}{}",
+            merchant_code.trim(),
+            invoice.invoice_number,
+            api_key.trim()
+        ));
+        let payload = json!({
+            "merchantCode": merchant_code.trim(),
+            "merchantOrderId": invoice.invoice_number,
+            "signature": signature,
+        });
+
+        let res = self
+            .http_client
+            .post(base_url)
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("Duitku API request failed: {}", e)))?;
+
+        let resp_json: serde_json::Value = res
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(format!("Duitku API parse failed: {}", e)))?;
+
+        let result_code = resp_json
+            .get("statusCode")
+            .or_else(|| resp_json.get("resultCode"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("01");
+        let payment_status = duitku_transaction_status_code_to_invoice_status(result_code);
+
+        if payment_status != invoice.status {
+            self.process_midtrans_notification(
+                &invoice.invoice_number,
+                payment_status,
+                None,
+                resp_json
+                    .get("reference")
+                    .and_then(|v| v.as_str())
+                    .or(Some("duitku-status")),
+            )
+            .await?;
         }
 
         Ok(payment_status.to_string())
@@ -2611,6 +3113,44 @@ impl PaymentService {
         let expected = format!("{:x}", hasher.finalize());
 
         Ok(expected.eq_ignore_ascii_case(signature_key))
+    }
+
+    pub async fn verify_duitku_callback_signature(
+        &self,
+        merchant_code: &str,
+        amount: &str,
+        merchant_order_id: &str,
+        signature: &str,
+    ) -> AppResult<bool> {
+        let invoice = self.get_invoice_by_number(merchant_order_id).await?;
+        let expected_merchant_code = self
+            .payment_setting_for_invoice(&invoice, "payment_duitku_merchant_code", "")
+            .await?;
+        let api_key = self
+            .payment_setting_for_invoice(&invoice, "payment_duitku_api_key", "")
+            .await?;
+
+        if expected_merchant_code.trim().is_empty() || api_key.trim().is_empty() {
+            return Err(AppError::Configuration(
+                "Duitku Merchant Code or API Key not configured for callback verification"
+                    .to_string(),
+            ));
+        }
+
+        if !expected_merchant_code
+            .trim()
+            .eq_ignore_ascii_case(merchant_code.trim())
+        {
+            return Ok(false);
+        }
+
+        let expected = duitku_callback_signature(
+            merchant_code.trim(),
+            amount.trim(),
+            merchant_order_id.trim(),
+            api_key.trim(),
+        );
+        Ok(expected.eq_ignore_ascii_case(signature.trim()))
     }
 
     async fn activate_subscription(

@@ -322,6 +322,8 @@ pub fn run() {
                                     get_fx_rate,
                                     get_invoice,
                                     pay_invoice_midtrans,
+                                    pay_invoice_duitku,
+                                    list_duitku_payment_methods,
                                     check_payment_status,
                                     list_invoices,
                                     list_customer_package_invoices,

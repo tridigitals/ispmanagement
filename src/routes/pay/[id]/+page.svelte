@@ -13,8 +13,11 @@
   let invoice = $state<Invoice | null>(null);
   let bankAccounts = $state<BankAccount[]>([]);
   let loading = $state(true);
-  let paymentMethod = $state<'online' | 'manual'>('online');
+  let paymentMethod = $state<'midtrans' | 'duitku' | 'manual'>('midtrans');
   let midtransEnabled = $state(false);
+  let duitkuEnabled = $state(false);
+  let duitkuPaymentMethods = $state<string[]>([]);
+  let selectedDuitkuPaymentMethod = $state('');
   let manualEnabled = $state(true);
   let snapToken = $state('');
   let snapReady = $state(false);
@@ -24,6 +27,79 @@
   let statusCheckAttempts = 0;
   const STATUS_CHECK_INTERVAL_MS = 3000;
   const MAX_STATUS_CHECK_ATTEMPTS = 20;
+  const DUITKU_PAYMENT_METHODS: Record<string, { name: string; description: string }> = {
+    M2: {
+      name: 'Mandiri Virtual Account',
+      description: 'Bayar dari ATM, mobile banking, atau internet banking Mandiri.',
+    },
+    VA: {
+      name: 'Maybank Virtual Account',
+      description: 'Bayar melalui kanal Virtual Account Maybank.',
+    },
+    I1: { name: 'BNI Virtual Account', description: 'Bayar melalui kanal Virtual Account BNI.' },
+    B1: {
+      name: 'CIMB Niaga Virtual Account',
+      description: 'Bayar melalui kanal Virtual Account CIMB Niaga.',
+    },
+    BT: {
+      name: 'Permata Bank Virtual Account',
+      description: 'Bayar melalui kanal Virtual Account Permata Bank.',
+    },
+    A1: {
+      name: 'ATM Bersama',
+      description: 'Bayar dari bank yang terhubung jaringan ATM Bersama.',
+    },
+    AG: {
+      name: 'Bank Artha Graha Virtual Account',
+      description: 'Bayar melalui kanal Virtual Account Bank Artha Graha.',
+    },
+    NC: {
+      name: 'Bank Neo Commerce Virtual Account',
+      description: 'Bayar melalui kanal Virtual Account Bank Neo Commerce.',
+    },
+    BR: {
+      name: 'BRI Virtual Account (BRIVA)',
+      description: 'Bayar melalui ATM, BRImo, atau internet banking BRI.',
+    },
+    S1: {
+      name: 'Bank Sahabat Sampoerna Virtual Account',
+      description: 'Bayar melalui kanal Virtual Account Bank Sahabat Sampoerna.',
+    },
+    DM: {
+      name: 'Danamon Virtual Account',
+      description: 'Bayar melalui kanal Virtual Account Danamon.',
+    },
+    BV: {
+      name: 'Bank Victoria Virtual Account',
+      description: 'Bayar melalui kanal Virtual Account Bank Victoria.',
+    },
+    BC: {
+      name: 'BCA Virtual Account',
+      description: 'Bayar melalui ATM, myBCA, BCA mobile, atau KlikBCA.',
+    },
+    FT: {
+      name: 'Retail Outlet',
+      description: 'Bayar melalui outlet ritel yang tersedia di checkout Duitku.',
+    },
+    IR: { name: 'Indomaret', description: 'Bayar tunai di gerai Indomaret.' },
+    OV: { name: 'OVO', description: 'Bayar menggunakan saldo atau aplikasi OVO.' },
+    SA: {
+      name: 'ShopeePay Apps',
+      description: 'Bayar menggunakan aplikasi Shopee atau ShopeePay.',
+    },
+    SP: {
+      name: 'ShopeePay QRIS',
+      description: 'Bayar dengan scan QRIS dari aplikasi yang mendukung.',
+    },
+    LQ: { name: 'LinkAja QRIS', description: 'Bayar dengan scan QRIS melalui LinkAja.' },
+    NQ: { name: 'Nobu QRIS', description: 'Bayar dengan scan QRIS dari aplikasi yang mendukung.' },
+    DA: { name: 'DANA', description: 'Bayar menggunakan saldo atau aplikasi DANA.' },
+    LA: { name: 'LinkAja', description: 'Bayar menggunakan saldo atau aplikasi LinkAja.' },
+    VC: {
+      name: 'Kartu Kredit',
+      description: 'Bayar menggunakan kartu kredit melalui checkout Duitku.',
+    },
+  };
   let manualInstructions = $state('');
   let publicSettings = $state<any>({});
   let returnPath = $derived($user?.role === 'admin' ? '/admin/subscription' : '/dashboard');
@@ -34,19 +110,26 @@
       publicSettings = await api.settings.getPublicSettings();
 
       midtransEnabled = !!publicSettings.payment_midtrans_enabled;
+      duitkuEnabled = !!publicSettings.payment_duitku_enabled;
+      duitkuPaymentMethods = parseDuitkuPaymentMethods(
+        publicSettings.payment_duitku_payment_methods,
+      );
+      selectedDuitkuPaymentMethod = duitkuPaymentMethods[0] || '';
       manualEnabled = publicSettings.payment_manual_enabled ?? true; // Default true
 
       // Set default method
-      if (midtransEnabled) paymentMethod = 'online';
+      if (midtransEnabled) paymentMethod = 'midtrans';
+      else if (duitkuEnabled) paymentMethod = 'duitku';
       else if (manualEnabled) paymentMethod = 'manual';
 
       // Load Invoice
       invoice = await api.payment.getInvoice(invoiceId);
 
-      // If invoice currency is not IDR, disable Midtrans (backend also enforces this)
+      // If invoice currency is not IDR, disable online gateways (backend also enforces this)
       if (invoice?.currency_code && String(invoice.currency_code).toUpperCase() !== 'IDR') {
         midtransEnabled = false;
-        if (paymentMethod === 'online') paymentMethod = 'manual';
+        duitkuEnabled = false;
+        if (paymentMethod === 'midtrans' || paymentMethod === 'duitku') paymentMethod = 'manual';
       }
 
       // Load Manual Bank Accounts & Instructions
@@ -61,7 +144,11 @@
         if (clientKey) loadSnapScript(clientKey, isProd);
       }
 
-      if (midtransEnabled && invoice?.status === 'pending' && hasMidtransPending()) {
+      if (
+        (midtransEnabled || duitkuEnabled) &&
+        invoice?.status === 'pending' &&
+        hasMidtransPending()
+      ) {
         startStatusPolling();
       }
     } catch (e: any) {
@@ -94,6 +181,28 @@
   function hasMidtransPending() {
     if (typeof localStorage === 'undefined') return false;
     return localStorage.getItem(pendingKey()) === '1';
+  }
+
+  function parseDuitkuPaymentMethods(raw?: string | null) {
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((value) => String(value).trim().toUpperCase()).filter(Boolean);
+    } catch {
+      const code = String(raw).trim().toUpperCase();
+      return code ? [code] : [];
+    }
+  }
+
+  function getDuitkuPaymentMethodInfo(code: string) {
+    const normalizedCode = String(code).trim().toUpperCase();
+    return (
+      DUITKU_PAYMENT_METHODS[normalizedCode] || {
+        name: `Metode Pembayaran Duitku`,
+        description: `Kode channel ${normalizedCode}. Detail pembayaran akan tampil di checkout Duitku.`,
+      }
+    );
   }
 
   function loadSnapScript(clientKey: string, isProd: boolean) {
@@ -133,6 +242,24 @@
 
   async function handlePayOnline() {
     if (!invoice) return;
+    if (paymentMethod === 'duitku') {
+      if (!selectedDuitkuPaymentMethod) {
+        toast.error('Please select a Duitku payment method first.');
+        return;
+      }
+      try {
+        const paymentUrl = await api.payment.payDuitku(invoice.id, selectedDuitkuPaymentMethod);
+        markMidtransPending();
+        window.location.href = paymentUrl;
+      } catch (e: any) {
+        toast.error(
+          (get(t)('payment.checkout.errors.initiate_failed') || 'Failed to initiate payment: ') +
+            e.message,
+        );
+      }
+      return;
+    }
+
     try {
       const token = await api.payment.payMidtrans(invoice.id);
       snapToken = token;
@@ -331,10 +458,7 @@
       <div class="state">{$t('payment.checkout.loading') || 'Loading invoice...'}</div>
     {:else if invoice}
       <div class="invoice-head">
-        <button
-          class="back-link"
-          onclick={() => goto(returnPath)}
-        >
+        <button class="back-link" onclick={() => goto(returnPath)}>
           <Icon name="arrow-left" size={16} />
           <span>{$t('common.back') || 'Back'}</span>
         </button>
@@ -416,11 +540,20 @@
           <div class="method-tabs">
             {#if midtransEnabled}
               <button
-                class="method-tab {paymentMethod === 'online' ? 'active' : ''}"
-                onclick={() => (paymentMethod = 'online')}
+                class="method-tab {paymentMethod === 'midtrans' ? 'active' : ''}"
+                onclick={() => (paymentMethod = 'midtrans')}
               >
                 <Icon name="credit-card" size={16} />
-                {$t('payment.checkout.tabs.online') || 'Online Payment'}
+                Midtrans
+              </button>
+            {/if}
+            {#if duitkuEnabled}
+              <button
+                class="method-tab {paymentMethod === 'duitku' ? 'active' : ''}"
+                onclick={() => (paymentMethod = 'duitku')}
+              >
+                <Icon name="wallet-cards" size={16} />
+                Duitku
               </button>
             {/if}
             {#if manualEnabled}
@@ -435,11 +568,70 @@
           </div>
 
           <div class="payment-block">
-            {#if paymentMethod === 'online' && midtransEnabled}
+            {#if paymentMethod === 'midtrans' && midtransEnabled}
               <p class="helper">
                 {$t('payment.checkout.online.description') ||
                   'Pay securely with Credit Card, GoPay, ShopeePay, or Virtual Account via Midtrans.'}
               </p>
+              <button class="btn btn-primary w-full" onclick={handlePayOnline}>
+                {$t('payment.checkout.online.pay_now') || 'Pay Now'}
+              </button>
+              <button
+                class="btn btn-secondary w-full"
+                onclick={() =>
+                  checkPaymentStatus({
+                    silent: false,
+                    notifyOnChange: true,
+                  })}
+                disabled={autoChecking}
+              >
+                {#if autoChecking}
+                  {$t('payment.checkout.online.checking') || 'Checking...'}
+                {:else}
+                  {$t('payment.checkout.online.check_status') || 'Check Payment Status'}
+                {/if}
+              </button>
+            {:else if paymentMethod === 'duitku' && duitkuEnabled}
+              <p class="helper">
+                Pilih kanal pembayaran. Setelah klik bayar, Anda akan diarahkan ke checkout aman
+                Duitku untuk menyelesaikan pembayaran.
+              </p>
+              {#if duitkuPaymentMethods.length > 1}
+                <div class="duitku-methods">
+                  {#each duitkuPaymentMethods as method}
+                    {@const methodInfo = getDuitkuPaymentMethodInfo(method)}
+                    <label
+                      class="duitku-method"
+                      class:selected={selectedDuitkuPaymentMethod === method}
+                    >
+                      <input
+                        type="radio"
+                        name="duitku-method"
+                        value={method}
+                        checked={selectedDuitkuPaymentMethod === method}
+                        onchange={() => (selectedDuitkuPaymentMethod = method)}
+                      />
+                      <span class="duitku-method-copy">
+                        <span class="duitku-method-title">
+                          <strong>{methodInfo.name}</strong>
+                          <small>Kode {method}</small>
+                        </span>
+                        <span class="duitku-method-description">{methodInfo.description}</span>
+                      </span>
+                    </label>
+                  {/each}
+                </div>
+              {:else if duitkuPaymentMethods.length === 1}
+                {@const methodInfo = getDuitkuPaymentMethodInfo(selectedDuitkuPaymentMethod)}
+                <div class="selected-method">
+                  <span>
+                    <small>Metode pembayaran</small>
+                    <strong>{methodInfo.name}</strong>
+                    <em>{methodInfo.description}</em>
+                  </span>
+                  <small>Kode {selectedDuitkuPaymentMethod}</small>
+                </div>
+              {/if}
               <button class="btn btn-primary w-full" onclick={handlePayOnline}>
                 {$t('payment.checkout.online.pay_now') || 'Pay Now'}
               </button>
@@ -513,10 +705,7 @@
               {$t('payment.checkout.pending.message') ||
                 'We have received your payment proof. Our team is verifying it. We will notify you once approved.'}
             </p>
-            <button
-              class="btn btn-secondary"
-              onclick={() => goto(returnPath)}
-            >
+            <button class="btn btn-secondary" onclick={() => goto(returnPath)}>
               {$t('payment.checkout.pending.back') || 'Return to Dashboard'}
             </button>
           </div>
@@ -530,10 +719,7 @@
               {$t('payment.checkout.success.message') ||
                 'Thank you for your payment. Your subscription has been activated.'}
             </p>
-            <button
-              class="btn btn-primary"
-              onclick={() => goto(returnPath)}
-            >
+            <button class="btn btn-primary" onclick={() => goto(returnPath)}>
               {$t('payment.checkout.success.cta') || 'Go to Subscription'}
             </button>
           </div>
@@ -613,12 +799,11 @@
     max-width: 820px;
     border: 1px solid color-mix(in srgb, var(--border-color) 88%, #ffffff12);
     border-radius: 22px;
-    background:
-      linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--bg-surface) 95%, #131827 5%) 0%,
-        color-mix(in srgb, var(--bg-surface) 92%, #0f1320 8%) 100%
-      );
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface) 95%, #131827 5%) 0%,
+      color-mix(in srgb, var(--bg-surface) 92%, #0f1320 8%) 100%
+    );
     box-shadow:
       0 26px 70px rgba(0, 0, 0, 0.45),
       inset 0 1px 0 rgba(255, 255, 255, 0.03);
@@ -681,8 +866,9 @@
   }
 
   .invoice-number {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-      'Courier New', monospace;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+      monospace;
     color: var(--text-secondary);
     font-size: 0.82rem;
   }
@@ -930,6 +1116,114 @@
     line-height: 1.45;
   }
 
+  .duitku-methods {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 0.55rem;
+  }
+
+  .duitku-method {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    border: 1px solid color-mix(in srgb, var(--border-color) 84%, #ffffff10);
+    border-radius: 10px;
+    background: var(--bg-surface);
+    padding: 0.75rem;
+    cursor: pointer;
+    color: var(--text-primary);
+    min-width: 0;
+    transition:
+      border-color 0.18s ease,
+      background 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  .duitku-method.selected {
+    border-color: color-mix(in srgb, var(--accent-primary) 58%, var(--border-color));
+    background: color-mix(in srgb, var(--accent-primary) 9%, var(--bg-surface));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 12%, transparent);
+  }
+
+  .duitku-method input {
+    flex: 0 0 auto;
+    margin-top: 0.18rem;
+  }
+
+  .duitku-method-copy {
+    display: grid;
+    gap: 0.28rem;
+    min-width: 0;
+  }
+
+  .duitku-method-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+    min-width: 0;
+  }
+
+  .duitku-method-title strong {
+    font-size: 0.94rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .duitku-method-title small,
+  .selected-method > small {
+    flex: 0 0 auto;
+    border: 1px solid color-mix(in srgb, var(--border-color) 86%, #ffffff10);
+    border-radius: 999px;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0.24rem 0.42rem;
+    white-space: nowrap;
+  }
+
+  .duitku-method-description {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .selected-method {
+    border: 1px solid color-mix(in srgb, var(--border-color) 84%, #ffffff10);
+    border-radius: 10px;
+    background: var(--bg-surface);
+    padding: 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+    align-items: flex-start;
+  }
+
+  .selected-method span {
+    display: grid;
+    gap: 0.22rem;
+    min-width: 0;
+  }
+
+  .selected-method span small {
+    color: var(--text-secondary);
+    font-size: 0.86rem;
+  }
+
+  .selected-method strong {
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .selected-method em {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-style: normal;
+    line-height: 1.35;
+  }
+
   .bank-list {
     display: grid;
     gap: 0.65rem;
@@ -957,8 +1251,9 @@
   }
 
   .number {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-      'Courier New', monospace;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+      monospace;
     font-weight: 700;
     font-size: 0.92rem;
     color: var(--text-primary);

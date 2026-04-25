@@ -69,9 +69,14 @@
   let previewTab = $state<'all' | MixradiusImportPreviewRow['conflictState']>('all');
   let batchHistory = $state<MixradiusBatchHistoryItem[]>([]);
   let historyLoading = $state(false);
+  let historyPage = $state(1);
+  let historyTotal = $state(0);
+  let deletingBatchId = $state<string | null>(null);
   let reportOpen = $state(false);
   let reportLoading = $state(false);
   let reportBatch = $state<MixradiusImportBatch | null>(null);
+  const historyPerPage = 2;
+  const historyTotalPages = $derived.by(() => Math.max(1, Math.ceil(historyTotal / historyPerPage)));
 
   let routerOptions = $state<Option[]>([]);
   let packageOptions = $state<Option[]>([]);
@@ -112,16 +117,28 @@
     }
   }
 
-  async function loadBatchHistory() {
+  async function loadBatchHistory(targetPage = historyPage) {
+    const requestedPage = Math.max(1, targetPage);
     historyLoading = true;
     try {
-      const response = await api.mixradiusImport.list({ page: 1, per_page: 8 });
+      const response = await api.mixradiusImport.list({ page: requestedPage, per_page: historyPerPage });
       batchHistory = buildMixradiusBatchHistory(response.data ?? []);
+      historyTotal = Math.max(0, Number(response.total ?? 0));
+      historyPage = Math.max(1, Number(response.page ?? requestedPage));
     } catch {
       batchHistory = [];
+      historyTotal = 0;
+      historyPage = 1;
     } finally {
       historyLoading = false;
     }
+  }
+
+  async function changeHistoryPage(nextPage: number) {
+    if (historyLoading) return;
+    const boundedPage = Math.max(1, Math.min(nextPage, historyTotalPages));
+    if (boundedPage === historyPage) return;
+    await loadBatchHistory(boundedPage);
   }
 
   async function pickBackup(file?: File) {
@@ -179,7 +196,7 @@
       });
       preview = initialPreview;
       step = 'source';
-      await loadBatchHistory();
+      await loadBatchHistory(1);
       toast.success('Backup MixRadius berhasil distaging.');
     } catch (e: any) {
       error = e?.message || String(e) || 'Gagal upload backup MixRadius';
@@ -224,7 +241,7 @@
       batch = executionResult.batch;
       preview = executionResult.preview ?? preview;
       executionMode = executionResult.summary.mode;
-      await loadBatchHistory();
+      await loadBatchHistory(1);
       toast.success('Import MixRadius selesai diproses.');
     } catch (e: any) {
       const message = e?.message || e || 'Gagal menjalankan import MixRadius';
@@ -232,7 +249,7 @@
         try {
           const refreshed = await api.mixradiusImport.get(batch.id);
           batch = refreshed;
-          await loadBatchHistory();
+          await loadBatchHistory(1);
           toast.error(
             'Request execute timeout di client, tetapi backend mungkin masih memproses batch. Cek status terbaru lalu resume bila perlu.'
           );
@@ -254,7 +271,7 @@
     }
     try {
       batch = await api.mixradiusImport.cancel(batch.id);
-      await loadBatchHistory();
+      await loadBatchHistory(1);
       toast.success('Batch import dibatalkan.');
       goto(`${tenantPrefix}/admin/network/import`);
     } catch (e: any) {
@@ -340,6 +357,40 @@
       reportLoading = false;
     }
   }
+
+  async function deleteBatch(item: MixradiusBatchHistoryItem) {
+    if (deletingBatchId) return;
+    const confirmed =
+      typeof window === 'undefined'
+        ? false
+        : window.confirm(`Hapus batch "${item.title}"? Data staging batch ini akan dihapus permanen.`);
+    if (!confirmed) return;
+
+    deletingBatchId = item.id;
+    try {
+      await api.mixradiusImport.remove(item.id);
+
+      if (batch?.id === item.id) {
+        batch = null;
+        initialPreview = null;
+        preview = null;
+        executionResult = null;
+        step = 'upload';
+      }
+      if (reportBatch?.id === item.id) {
+        reportOpen = false;
+        reportBatch = null;
+      }
+
+      const nextPage = batchHistory.length === 1 && historyPage > 1 ? historyPage - 1 : historyPage;
+      await loadBatchHistory(nextPage);
+      toast.success('Batch berhasil dihapus.');
+    } catch (e: any) {
+      toast.error(e?.message || e || 'Gagal menghapus batch import');
+    } finally {
+      deletingBatchId = null;
+    }
+  }
 </script>
 
 <div class="page-content fade-in">
@@ -373,7 +424,7 @@
             {#each batchHistory as item}
               <div class:active={batch?.id === item.id} class="history-item">
                 <div class="history-item-head">
-                  <strong>{item.title}</strong>
+                  <strong title={item.title}>{item.title}</strong>
                   <span class={`status ${item.status.tone}`}>{item.status.label}</span>
                 </div>
                 <div class="history-meta">
@@ -381,16 +432,55 @@
                   <small>{new Date(item.updatedAt).toLocaleString('id-ID')}</small>
                 </div>
                 <div class="history-actions">
-                  <button class="btn ghost small" type="button" onclick={() => void resumeBatch(item.id)}>
+                  <button
+                    class="btn ghost small"
+                    type="button"
+                    disabled={deletingBatchId === item.id}
+                    onclick={() => void resumeBatch(item.id)}
+                  >
                     Resume
                   </button>
-                  <button class="btn ghost small" type="button" onclick={() => void openBatchReport(item.id)}>
+                  <button
+                    class="btn ghost small"
+                    type="button"
+                    disabled={deletingBatchId === item.id}
+                    onclick={() => void openBatchReport(item.id)}
+                  >
                     Report
+                  </button>
+                  <button
+                    class="btn ghost small history-delete"
+                    type="button"
+                    disabled={deletingBatchId === item.id}
+                    onclick={() => void deleteBatch(item)}
+                  >
+                    {deletingBatchId === item.id ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
               </div>
             {/each}
           </div>
+          {#if historyTotal > historyPerPage}
+            <div class="history-pagination">
+              <button
+                class="btn ghost small"
+                type="button"
+                disabled={historyLoading || historyPage <= 1}
+                onclick={() => void changeHistoryPage(historyPage - 1)}
+              >
+                Sebelumnya
+              </button>
+              <small>Halaman {historyPage} / {historyTotalPages}</small>
+              <button
+                class="btn ghost small"
+                type="button"
+                disabled={historyLoading || historyPage >= historyTotalPages}
+                onclick={() => void changeHistoryPage(historyPage + 1)}
+              >
+                Berikutnya
+              </button>
+            </div>
+          {/if}
         {/if}
       </div>
 
@@ -492,9 +582,9 @@
 
   .wizard-rail {
     padding: 16px;
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 10px;
-    align-content: start;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
   }
 
@@ -543,8 +633,8 @@
   .history-block {
     display: grid;
     gap: 10px;
-    padding-bottom: 8px;
-    margin-bottom: 4px;
+    padding-bottom: 10px;
+    margin-bottom: 6px;
     border-bottom: 1px solid rgba(148, 163, 184, 0.16);
   }
 
@@ -556,9 +646,14 @@
     align-items: center;
   }
 
+  .history-head strong {
+    font-size: 1.04rem;
+    color: var(--text-primary);
+  }
+
   .history-list {
     display: grid;
-    gap: 8px;
+    gap: 10px;
   }
 
   .history-item,
@@ -566,7 +661,7 @@
     border: 1px solid rgba(148, 163, 184, 0.18);
     background: rgba(15, 23, 42, 0.3);
     border-radius: 16px;
-    padding: 10px 12px;
+    padding: 12px;
   }
 
   .history-item {
@@ -588,10 +683,14 @@
 
   .history-item-head strong {
     font-size: 0.98rem;
-    line-height: 1.45;
+    line-height: 1.35;
     color: var(--text-primary);
     word-break: break-word;
     overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
   }
 
   .history-item small,
@@ -600,15 +699,47 @@
   }
 
   .history-meta {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 4px;
   }
 
   .history-actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
-    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+
+  .history-actions :global(button) {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .history-delete {
+    color: #fda4af;
+    border-color: rgba(251, 113, 133, 0.4);
+  }
+
+  .history-delete:disabled {
+    opacity: 0.65;
+  }
+
+  .history-pagination {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
     margin-top: 2px;
+  }
+
+  .history-pagination small {
+    color: var(--text-secondary);
+    text-align: center;
+  }
+
+  .history-pagination :global(button:last-child) {
+    justify-self: end;
   }
 
   .status {
@@ -638,7 +769,7 @@
 
   @media (max-width: 920px) {
     .page-content {
-      padding: 20px;
+      padding: 16px;
     }
 
     .wizard-shell {
@@ -646,7 +777,38 @@
     }
 
     .wizard-rail {
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      padding: 14px;
+    }
+
+    .wizard-main {
+      padding: 16px;
+    }
+
+    .history-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .history-actions .history-delete {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .history-pagination {
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+
+    .history-pagination :global(button:last-child) {
+      justify-self: stretch;
+    }
+
+    .history-actions {
+      grid-template-columns: 1fr;
+    }
+
+    .history-actions .history-delete {
+      grid-column: auto;
     }
   }
 </style>

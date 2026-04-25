@@ -8,8 +8,8 @@ use crate::models::{
     InvoiceReminderLogView,
 };
 use crate::services::{
-    AuthService, BillingCollectionRunResult, BulkGenerateInvoicesResult, PaymentService,
-    PlanService,
+    AuthService, BillingCollectionRunResult, BulkGenerateInvoicesResult, DuitkuPaymentMethod,
+    PaymentService, PlanService,
 };
 use access::{
     authorize_invoice_access, require_payment_manage_access, require_payment_read_access,
@@ -338,6 +338,50 @@ pub async fn pay_invoice_midtrans(
     let _ = authorize_invoice_access(&claims, &payment_service, &id).await?;
     payment_service
         .initiate_midtrans(&id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn pay_invoice_duitku(
+    token: String,
+    id: String,
+    payment_method: Option<String>,
+    auth_service: State<'_, AuthService>,
+    payment_service: State<'_, PaymentService>,
+) -> Result<String, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    require_payment_manage_access(&auth_service, &claims).await?;
+    let _ = authorize_invoice_access(&claims, &payment_service, &id).await?;
+    payment_service
+        .initiate_duitku(&id, payment_method.as_deref())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_duitku_payment_methods(
+    token: String,
+    amount: Option<i64>,
+    auth_service: State<'_, AuthService>,
+    payment_service: State<'_, PaymentService>,
+) -> Result<Vec<DuitkuPaymentMethod>, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    require_payment_manage_access(&auth_service, &claims).await?;
+    let tenant_id = if claims.is_super_admin {
+        None
+    } else {
+        claims.tenant_id.as_deref()
+    };
+
+    payment_service
+        .list_duitku_payment_methods(tenant_id, amount)
         .await
         .map_err(|e| e.to_string())
 }

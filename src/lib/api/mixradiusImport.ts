@@ -142,4 +142,11 @@ export const mixradiusImport = {
       batchId,
       batch_id: batchId,
     }),
+
+  remove: (batchId: string): Promise<void> =>
+    safeInvoke('delete_mixradius_import_batch', {
+      token: getTokenOrThrow(),
+      batchId,
+      batch_id: batchId,
+    }),
 };

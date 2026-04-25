@@ -89,6 +89,11 @@
   let paymentMidtransServerKey = $state('');
   let paymentMidtransClientKey = $state('');
   let paymentMidtransIsProduction = $state(false);
+  let paymentDuitkuEnabled = $state(false);
+  let paymentDuitkuMerchantCode = $state('');
+  let paymentDuitkuApiKey = $state('');
+  let paymentDuitkuPaymentMethods = $state('[]');
+  let paymentDuitkuIsProduction = $state(false);
   let paymentManualEnabled = $state(true);
   let paymentManualInstructions = $state('');
   let installationSlaReminderEnabled = $state(true);
@@ -308,6 +313,15 @@
     paymentMidtransServerKey = settingsMap['payment_midtrans_server_key'] || '';
     paymentMidtransClientKey = settingsMap['payment_midtrans_client_key'] || '';
     paymentMidtransIsProduction = settingsMap['payment_midtrans_is_production'] === 'true';
+    paymentDuitkuEnabled = settingsMap['payment_duitku_enabled'] === 'true';
+    paymentDuitkuMerchantCode = settingsMap['payment_duitku_merchant_code'] || '';
+    paymentDuitkuApiKey = settingsMap['payment_duitku_api_key'] || '';
+    paymentDuitkuPaymentMethods =
+      settingsMap['payment_duitku_payment_methods'] ||
+      (settingsMap['payment_duitku_payment_method']
+        ? JSON.stringify([settingsMap['payment_duitku_payment_method']])
+        : '[]');
+    paymentDuitkuIsProduction = settingsMap['payment_duitku_is_production'] === 'true';
     paymentManualEnabled = settingsMap['payment_manual_enabled'] !== 'false'; // Default true
     paymentManualInstructions =
       settingsMap['payment_manual_instructions'] || 'Please transfer to our bank account.';
@@ -557,6 +571,27 @@
           'Midtrans Production Mode',
         ),
         api.settings.upsert(
+          'payment_duitku_enabled',
+          paymentDuitkuEnabled ? 'true' : 'false',
+          'Enable Duitku',
+        ),
+        api.settings.upsert(
+          'payment_duitku_merchant_code',
+          paymentDuitkuMerchantCode,
+          'Duitku Merchant Code',
+        ),
+        api.settings.upsert('payment_duitku_api_key', paymentDuitkuApiKey, 'Duitku API Key'),
+        api.settings.upsert(
+          'payment_duitku_payment_methods',
+          paymentDuitkuPaymentMethods,
+          'Enabled Duitku Payment Methods',
+        ),
+        api.settings.upsert(
+          'payment_duitku_is_production',
+          paymentDuitkuIsProduction ? 'true' : 'false',
+          'Duitku Production Mode',
+        ),
+        api.settings.upsert(
           'payment_manual_enabled',
           paymentManualEnabled ? 'true' : 'false',
           'Enable Manual Payment',
@@ -724,6 +759,11 @@
         payment_midtrans_server_key: paymentMidtransServerKey,
         payment_midtrans_client_key: paymentMidtransClientKey,
         payment_midtrans_is_production: paymentMidtransIsProduction ? 'true' : 'false',
+        payment_duitku_enabled: paymentDuitkuEnabled ? 'true' : 'false',
+        payment_duitku_merchant_code: paymentDuitkuMerchantCode,
+        payment_duitku_api_key: paymentDuitkuApiKey,
+        payment_duitku_payment_methods: paymentDuitkuPaymentMethods,
+        payment_duitku_is_production: paymentDuitkuIsProduction ? 'true' : 'false',
         payment_manual_enabled: paymentManualEnabled ? 'true' : 'false',
         payment_manual_instructions: paymentManualInstructions,
         alerting_enabled: alertingEnabled ? 'true' : 'false',
@@ -1013,6 +1053,11 @@
               bind:paymentMidtransServerKey
               bind:paymentMidtransClientKey
               bind:paymentMidtransIsProduction
+              bind:paymentDuitkuEnabled
+              bind:paymentDuitkuMerchantCode
+              bind:paymentDuitkuApiKey
+              bind:paymentDuitkuPaymentMethods
+              bind:paymentDuitkuIsProduction
               bind:paymentManualEnabled
               bind:paymentManualInstructions
               bind:installationSlaReminderEnabled

@@ -1,14 +1,22 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { t } from 'svelte-i18n';
+  import { toast } from 'svelte-sonner';
+  import { api } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
   import type { BankAccount } from '$lib/api/client';
+  import type { DuitkuPaymentMethod } from '$lib/api/types';
 
   export let paymentMidtransEnabled: boolean;
   export let paymentMidtransMerchantId: string;
   export let paymentMidtransServerKey: string;
   export let paymentMidtransClientKey: string;
   export let paymentMidtransIsProduction: boolean;
+  export let paymentDuitkuEnabled: boolean;
+  export let paymentDuitkuMerchantCode: string;
+  export let paymentDuitkuApiKey: string;
+  export let paymentDuitkuPaymentMethods: string;
+  export let paymentDuitkuIsProduction: boolean;
   export let paymentManualEnabled: boolean;
   export let paymentManualInstructions: string;
   export let installationSlaReminderEnabled: boolean;
@@ -23,6 +31,8 @@
   export let isMobile: boolean = false;
 
   const dispatch = createEventDispatcher();
+  let duitkuMethods: DuitkuPaymentMethod[] = [];
+  let loadingDuitkuMethods = false;
 
   function handleChange() {
     dispatch('change');
@@ -34,6 +44,40 @@
 
   function deleteBank(id: string) {
     dispatch('deleteBank', id);
+  }
+
+  function selectedDuitkuMethods() {
+    try {
+      const parsed = JSON.parse(paymentDuitkuPaymentMethods || '[]');
+      return Array.isArray(parsed)
+        ? parsed.map((v) => String(v).trim().toUpperCase()).filter(Boolean)
+        : [];
+    } catch {
+      const value = String(paymentDuitkuPaymentMethods || '').trim().toUpperCase();
+      return value ? [value] : [];
+    }
+  }
+
+  function toggleDuitkuMethod(code: string, checked: boolean) {
+    const selected = selectedDuitkuMethods();
+    paymentDuitkuPaymentMethods = JSON.stringify(
+      checked
+        ? Array.from(new Set([...selected, code]))
+        : selected.filter((item) => item !== code),
+    );
+    handleChange();
+  }
+
+  async function loadDuitkuMethods() {
+    loadingDuitkuMethods = true;
+    try {
+      duitkuMethods = await api.payment.listDuitkuPaymentMethods(10000);
+      if (!duitkuMethods.length) toast.info('No Duitku payment methods returned for this merchant.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to load Duitku payment methods');
+    } finally {
+      loadingDuitkuMethods = false;
+    }
   }
 </script>
 
@@ -121,6 +165,133 @@
             />
             <span class="slider"></span>
           </label>
+        </div>
+      </div>
+    {/if}
+  </div>
+</div>
+
+<div class="card section fade-in" style="margin-top: 1.5rem;">
+  <div class="card-header">
+    <h3>Duitku Gateway</h3>
+  </div>
+  <div class="card-body">
+    <div class="setting-row">
+      <div class="setting-info">
+        <label class="setting-label" for="duitku-toggle">Enable Duitku</label>
+        <p class="setting-description">Use Duitku hosted checkout for automated payments.</p>
+      </div>
+      <label class="toggle">
+        <input
+          id="duitku-toggle"
+          type="checkbox"
+          bind:checked={paymentDuitkuEnabled}
+          on:change={handleChange}
+        />
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    {#if paymentDuitkuEnabled}
+      <div class="sub-settings fade-in">
+        <div class="setting-row">
+          <div class="setting-info">
+            <label class="setting-label" for="duitku-merchant-code">Merchant Code</label>
+          </div>
+          <input
+            type="text"
+            id="duitku-merchant-code"
+            bind:value={paymentDuitkuMerchantCode}
+            on:input={handleChange}
+            class="form-input"
+            placeholder="D1234"
+          />
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <label class="setting-label" for="duitku-api-key">API Key</label>
+          </div>
+          <input
+            type="password"
+            id="duitku-api-key"
+            bind:value={paymentDuitkuApiKey}
+            on:input={handleChange}
+            class="form-input"
+          />
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <label class="setting-label" for="duitku-production">Environment</label>
+            <p class="setting-description">
+              {paymentDuitkuIsProduction
+                ? 'Production Mode (Live Payments)'
+                : 'Sandbox Mode (Testing)'}
+            </p>
+          </div>
+          <label class="toggle">
+            <input
+              id="duitku-production"
+              type="checkbox"
+              bind:checked={paymentDuitkuIsProduction}
+              on:change={handleChange}
+            />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="setting-row vertical">
+          <div class="setting-info full-width">
+            <div class="method-list-header">
+              <div>
+                <div class="setting-label">Enabled Payment Methods</div>
+                <p class="setting-description">
+                  Select which Duitku channels customers can choose during checkout.
+                </p>
+              </div>
+              <button
+                class="btn btn-secondary"
+                type="button"
+                on:click={loadDuitkuMethods}
+                disabled={loadingDuitkuMethods}
+              >
+                <Icon name="refresh-cw" size={14} />
+                {loadingDuitkuMethods ? 'Loading...' : 'Load Duitku Methods'}
+              </button>
+            </div>
+            {#if duitkuMethods.length}
+              <div class="method-checklist">
+                {#each duitkuMethods as method}
+                  {@const selected = selectedDuitkuMethods().includes(method.code)}
+                  <label class="method-check">
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      on:change={(e) => toggleDuitkuMethod(method.code, e.currentTarget.checked)}
+                    />
+                    <span>
+                      <strong>{method.name}</strong>
+                      <small>{method.code}{method.fee ? ` - Fee ${method.fee}` : ''}</small>
+                    </span>
+                  </label>
+                {/each}
+              </div>
+            {:else if selectedDuitkuMethods().length}
+              <div class="method-checklist">
+                {#each selectedDuitkuMethods() as code}
+                  <label class="method-check">
+                    <input
+                      type="checkbox"
+                      checked={true}
+                      on:change={(e) => toggleDuitkuMethod(code, e.currentTarget.checked)}
+                    />
+                    <span>
+                      <strong>{code}</strong>
+                      <small>Saved method</small>
+                    </span>
+                  </label>
+                {/each}
+              </div>
+            {/if}
+          </div>
         </div>
       </div>
     {/if}
@@ -708,6 +879,55 @@
   .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  .setting-row.vertical {
+    align-items: stretch;
+  }
+
+  .method-list-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .method-checklist {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .method-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+  }
+
+  .method-check input {
+    margin-top: 0.2rem;
+  }
+
+  .method-check span {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .method-check strong {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+  }
+
+  .method-check small {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
   }
 
   .fade-in {

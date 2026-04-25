@@ -8,8 +8,10 @@ use crate::security::secret::{decrypt_secret_opt_for, encrypt_secret_for};
 use chrono::Utc;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::sync::OnceLock;
 use tokio::process::Command;
+use tokio::sync::Mutex;
 use uuid::Uuid;
 
 const PURPOSE_MANAGED_RADIUS_DB: &str = "managed_radius_db";
@@ -19,6 +21,8 @@ const DEFAULT_RADIUS_ACCT_PORT: i32 = 1813;
 const MANAGED_RADIUS_UPGRADE_PATH: &str = "/admin/subscription";
 const MANAGED_RADIUS_RESTART_COMMAND_ENV: &str = "MANAGED_RADIUS_RESTART_COMMAND";
 const MANAGED_RADIUS_RESTART_WORKDIR_ENV: &str = "MANAGED_RADIUS_RESTART_WORKDIR";
+static MANAGED_RADIUS_SCHEMA_READY_CACHE: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+static MANAGED_RADIUS_POOL_CACHE: OnceLock<Mutex<HashMap<String, PgPool>>> = OnceLock::new();
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManagedRadiusAccountPayload {
@@ -207,19 +211,35 @@ impl ManagedRadiusService {
     }
 
     async fn connect_radius_db(&self, server: &ManagedRadiusServer) -> AppResult<PgPool> {
+        let cache = MANAGED_RADIUS_POOL_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+        let cache_key = Self::schema_cache_key(server);
+        {
+            let guard = cache.lock().await;
+            if let Some(pool) = guard.get(&cache_key) {
+                return Ok(pool.clone());
+            }
+        }
+
         let password = decrypt_secret_opt_for(PURPOSE_MANAGED_RADIUS_DB, &server.db_password_enc)?
             .unwrap_or_default();
         let url = format!(
             "postgres://{}:{}@{}:{}/{}",
             server.db_user, password, server.db_host, server.db_port, server.db_name
         );
-        PgPoolOptions::new()
+        let pool = PgPoolOptions::new()
             .max_connections(3)
             .connect(&url)
             .await
             .map_err(|e| {
                 AppError::ServiceUnavailable(format!("Managed RADIUS DB unavailable: {e}"))
-            })
+            })?;
+
+        let mut guard = cache.lock().await;
+        if let Some(existing) = guard.get(&cache_key) {
+            return Ok(existing.clone());
+        }
+        guard.insert(cache_key, pool.clone());
+        Ok(pool)
     }
 
     async fn ensure_radius_schema(&self, radius_pool: &PgPool) -> AppResult<()> {
@@ -273,6 +293,35 @@ impl ManagedRadiusService {
         Ok(())
     }
 
+    fn schema_cache_key(server: &ManagedRadiusServer) -> String {
+        format!(
+            "{}|{}|{}|{}|{}",
+            server.id, server.db_host, server.db_port, server.db_name, server.db_user
+        )
+    }
+
+    async fn ensure_radius_schema_cached(
+        &self,
+        server: &ManagedRadiusServer,
+        radius_pool: &PgPool,
+    ) -> AppResult<()> {
+        let cache = MANAGED_RADIUS_SCHEMA_READY_CACHE.get_or_init(|| Mutex::new(HashSet::new()));
+        let cache_key = Self::schema_cache_key(server);
+
+        {
+            let guard = cache.lock().await;
+            if guard.contains(&cache_key) {
+                return Ok(());
+            }
+        }
+
+        self.ensure_radius_schema(radius_pool).await?;
+
+        let mut guard = cache.lock().await;
+        guard.insert(cache_key);
+        Ok(())
+    }
+
     async fn upsert_nas(&self, radius_pool: &PgPool, nas: &ManagedRadiusNas) -> AppResult<()> {
         let secret =
             decrypt_secret_opt_for(PURPOSE_MANAGED_RADIUS_SHARED_SECRET, &nas.shared_secret_enc)?
@@ -323,7 +372,8 @@ impl ManagedRadiusService {
     async fn sync_runtime_nas(&self, nas: &ManagedRadiusNas) -> AppResult<()> {
         let server = self.load_server_by_id(&nas.radius_server_id).await?;
         let radius_pool = self.connect_radius_db(&server).await?;
-        self.ensure_radius_schema(&radius_pool).await?;
+        self.ensure_radius_schema_cached(&server, &radius_pool)
+            .await?;
         self.upsert_nas(&radius_pool, nas).await
     }
 
@@ -386,7 +436,8 @@ impl ManagedRadiusService {
             .load_router_config(tenant_id, &account.router_id)
             .await?;
         let radius_pool = self.connect_radius_db(&server).await?;
-        self.ensure_radius_schema(&radius_pool).await?;
+        self.ensure_radius_schema_cached(&server, &radius_pool)
+            .await?;
         self.upsert_nas(&radius_pool, &nas).await?;
 
         let payload = ManagedRadiusAccountPayload::from_account(account, cleartext_password);
@@ -437,7 +488,8 @@ impl ManagedRadiusService {
             .load_router_config(tenant_id, &account.router_id)
             .await?;
         let radius_pool = self.connect_radius_db(&server).await?;
-        self.ensure_radius_schema(&radius_pool).await?;
+        self.ensure_radius_schema_cached(&server, &radius_pool)
+            .await?;
 
         sqlx::query("DELETE FROM managed_radius_accounts WHERE tenant_id = $1 AND username = $2")
             .bind(tenant_id)
@@ -456,7 +508,8 @@ impl ManagedRadiusService {
     ) -> AppResult<HashSet<String>> {
         let (server, _) = self.load_router_config(tenant_id, router_id).await?;
         let radius_pool = self.connect_radius_db(&server).await?;
-        self.ensure_radius_schema(&radius_pool).await?;
+        self.ensure_radius_schema_cached(&server, &radius_pool)
+            .await?;
 
         let usernames = sqlx::query_scalar::<_, String>(
             r#"

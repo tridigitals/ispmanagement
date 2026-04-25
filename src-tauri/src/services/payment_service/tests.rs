@@ -163,3 +163,87 @@ fn midtrans_transition_decision_prevents_duplicate_or_downgrade_side_effects() {
         MidtransTransitionDecision::Apply
     );
 }
+
+#[test]
+fn duitku_create_signature_uses_merchant_order_amount_and_api_key() {
+    let signature =
+        super::duitku_create_signature("D1234", "INV-20260425-0001", 125000, "secret-key");
+
+    assert_eq!(signature, "54e75c0848f2e7b79eb399f1d43b6f71");
+}
+
+#[test]
+fn duitku_callback_signature_uses_merchant_amount_order_and_api_key() {
+    let signature =
+        super::duitku_callback_signature("D1234", "125000", "INV-20260425-0001", "secret-key");
+
+    assert_eq!(signature, "270e6fe9cfa2d7ca96975f8a514df6f7");
+}
+
+#[test]
+fn duitku_payment_methods_signature_uses_sha256() {
+    let signature = super::duitku_payment_methods_signature(
+        "D1234",
+        125000,
+        "2026-04-25 12:00:00",
+        "secret-key",
+    );
+
+    assert_eq!(
+        signature,
+        "19d2ced0363cf2ad57cfeac2bbb9a019df7c903004f415addd41ca3f4e8143d0"
+    );
+}
+
+#[test]
+fn selected_duitku_payment_methods_parse_json_array_and_legacy_single_value() {
+    assert_eq!(
+        super::parse_selected_duitku_payment_methods(Some("[\"VC\",\" BC \",\"\", \"VC\"]")),
+        vec!["VC".to_string(), "BC".to_string()]
+    );
+    assert_eq!(
+        super::parse_selected_duitku_payment_methods(Some("M2")),
+        vec!["M2".to_string()]
+    );
+    assert!(super::parse_selected_duitku_payment_methods(None).is_empty());
+}
+
+#[test]
+fn duitku_transaction_status_code_maps_to_invoice_status() {
+    assert_eq!(
+        super::duitku_transaction_status_code_to_invoice_status("00"),
+        "paid"
+    );
+    assert_eq!(
+        super::duitku_transaction_status_code_to_invoice_status("01"),
+        "pending"
+    );
+    assert_eq!(
+        super::duitku_transaction_status_code_to_invoice_status("02"),
+        "failed"
+    );
+    assert_eq!(
+        super::duitku_transaction_status_code_to_invoice_status("99"),
+        "pending"
+    );
+}
+
+#[test]
+fn duitku_callback_result_code_maps_to_invoice_status() {
+    assert_eq!(
+        super::duitku_callback_result_code_to_invoice_status("00"),
+        "paid"
+    );
+    assert_eq!(
+        super::duitku_callback_result_code_to_invoice_status("01"),
+        "failed"
+    );
+    assert_eq!(
+        super::duitku_callback_result_code_to_invoice_status("02"),
+        "failed"
+    );
+    assert_eq!(
+        super::duitku_callback_result_code_to_invoice_status("99"),
+        "pending"
+    );
+}

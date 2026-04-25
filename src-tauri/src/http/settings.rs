@@ -36,6 +36,9 @@ pub struct PublicSettings {
     pub payment_midtrans_enabled: bool,
     pub payment_midtrans_client_key: Option<String>,
     pub payment_midtrans_is_production: bool,
+    pub payment_duitku_enabled: bool,
+    pub payment_duitku_is_production: bool,
+    pub payment_duitku_payment_methods: Option<String>,
     pub payment_manual_enabled: bool,
 }
 
@@ -94,6 +97,18 @@ pub async fn get_public_settings(
         .settings_service
         .get_value(None, "payment_midtrans_is_production")
         .await?;
+    let duitku_enabled_str = state
+        .settings_service
+        .get_value(None, "payment_duitku_enabled")
+        .await?;
+    let duitku_is_prod_str = state
+        .settings_service
+        .get_value(None, "payment_duitku_is_production")
+        .await?;
+    let duitku_payment_methods = state
+        .settings_service
+        .get_value(None, "payment_duitku_payment_methods")
+        .await?;
     let manual_enabled_str = state
         .settings_service
         .get_value(None, "payment_manual_enabled")
@@ -102,6 +117,8 @@ pub async fn get_public_settings(
     let maintenance_mode = maintenance_mode_str.as_deref() == Some("true");
     let payment_midtrans_enabled = midtrans_enabled_str.as_deref() == Some("true");
     let payment_midtrans_is_production = midtrans_is_prod_str.as_deref() == Some("true");
+    let payment_duitku_enabled = duitku_enabled_str.as_deref() == Some("true");
+    let payment_duitku_is_production = duitku_is_prod_str.as_deref() == Some("true");
     // Default manual to true if not set, or check explicit "true"? Usually better to default false if system managed, but user said "only bank transfer appears", implying manual works.
     // If manual_enabled_str is None, user might see it enabled if I default true.
     // In frontend: `sMap["payment_manual_enabled"] !== "false"; // Default true`.
@@ -119,6 +136,9 @@ pub async fn get_public_settings(
         payment_midtrans_enabled,
         payment_midtrans_client_key: midtrans_client_key,
         payment_midtrans_is_production,
+        payment_duitku_enabled,
+        payment_duitku_is_production,
+        payment_duitku_payment_methods: duitku_payment_methods,
         payment_manual_enabled,
     }))
 }

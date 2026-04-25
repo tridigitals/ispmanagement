@@ -68,6 +68,7 @@ chrono-tz = "0.10"
 
 # Hashing
 sha2 = "0.10"
+md5 = "0.7"
 
 # Error Handling
 thiserror = "2"

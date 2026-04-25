@@ -280,6 +280,8 @@ const commandMap: Record<string, { method: string; path: string }> = {
   list_all_invoices: { method: 'GET', path: '/payment/invoices/all' },
   get_fx_rate: { method: 'GET', path: '/payment/fx-rate' },
   pay_invoice_midtrans: { method: 'POST', path: '/payment/invoices/:id/midtrans' },
+  pay_invoice_duitku: { method: 'POST', path: '/payment/invoices/:id/duitku' },
+  list_duitku_payment_methods: { method: 'GET', path: '/payment/duitku/payment-methods' },
   check_payment_status: { method: 'GET', path: '/payment/invoices/:id/status' },
   submit_payment_proof: { method: 'POST', path: '/payment/invoices/:invoiceId/proof' },
   list_notifications: { method: 'GET', path: '/notifications' },
@@ -430,6 +432,10 @@ const commandMap: Record<string, { method: string; path: string }> = {
   upload_mixradius_import: { method: 'POST', path: '/admin/pppoe/mixradius/imports' },
   list_mixradius_import_batches: { method: 'GET', path: '/admin/pppoe/mixradius/imports' },
   get_mixradius_import_batch: { method: 'GET', path: '/admin/pppoe/mixradius/imports/:batchId' },
+  delete_mixradius_import_batch: {
+    method: 'DELETE',
+    path: '/admin/pppoe/mixradius/imports/:batchId',
+  },
   preview_mixradius_import: {
     method: 'POST',
     path: '/admin/pppoe/mixradius/imports/:batchId/preview',

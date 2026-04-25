@@ -115,7 +115,6 @@ async fn create_account(
     Json(dto): Json<CreatePppoeAccountRequest>,
 ) -> AppResult<Json<PppoeAccountPublic>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
-    require_pppoe_permission(&state, &claims, &tenant_id, "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .pppoe_service
@@ -133,7 +132,6 @@ async fn update_account(
     Json(dto): Json<UpdatePppoeAccountRequest>,
 ) -> AppResult<Json<PppoeAccountPublic>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
-    require_pppoe_permission(&state, &claims, &tenant_id, "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .pppoe_service
@@ -159,19 +157,30 @@ async fn delete_account(
     Ok(Json(serde_json::json!({ "ok": true })))
 }
 
+#[derive(Debug, Deserialize)]
+struct ApplyAccountRequest {
+    work_order_id: Option<String>,
+}
+
 // POST /api/admin/pppoe/accounts/{id}/apply
 async fn apply_account(
     State(state): State<AppState>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
+    Json(body): Json<ApplyAccountRequest>,
 ) -> AppResult<Json<PppoeAccountPublic>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
-    require_pppoe_permission(&state, &claims, &tenant_id, "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .pppoe_service
-        .apply_account(&claims.sub, &tenant_id, &id, Some(&ip))
+        .apply_account(
+            &claims.sub,
+            &tenant_id,
+            &id,
+            body.work_order_id.as_deref(),
+            Some(&ip),
+        )
         .await?;
     Ok(Json(row))
 }

@@ -113,6 +113,7 @@ const iconModuleLoaders: Record<string, LucideModuleLoader> = {
   user: () => import('lucide-svelte/icons/user'),
   'user-check': () => import('lucide-svelte/icons/user-check'),
   users: () => import('lucide-svelte/icons/users'),
+  'wallet-cards': () => import('lucide-svelte/icons/wallet-cards'),
   wifi: () => import('lucide-svelte/icons/wifi'),
   'wifi-off': () => import('lucide-svelte/icons/wifi-off'),
   x: () => import('lucide-svelte/icons/x'),

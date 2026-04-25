@@ -1442,9 +1442,14 @@ impl MixradiusImportExecutor {
             .context("failed to commit MixRadius PPPoE execution transaction")?;
 
         if provisioning_target == MixradiusImportPppoeProvisioningTarget::ManagedRadius {
+            let managed_radius_service = ManagedRadiusService::new(self.pool.clone());
             for account_id in pending_managed_radius_sync_ids {
                 if let Err(error) = self
-                    .sync_managed_radius_account_after_import(tenant_id, &account_id)
+                    .sync_managed_radius_account_after_import(
+                        &managed_radius_service,
+                        tenant_id,
+                        &account_id,
+                    )
                     .await
                 {
                     summary.warnings.push(format!(
@@ -1459,6 +1464,7 @@ impl MixradiusImportExecutor {
 
     async fn sync_managed_radius_account_after_import(
         &self,
+        managed_radius_service: &ManagedRadiusService,
         tenant_id: &str,
         account_id: &str,
     ) -> Result<()> {
@@ -1476,7 +1482,6 @@ impl MixradiusImportExecutor {
             .ok_or_else(|| anyhow::anyhow!("imported PPPoE password is empty"))?;
 
         let now = Utc::now();
-        let managed_radius_service = ManagedRadiusService::new(self.pool.clone());
         match managed_radius_service
             .apply_account(tenant_id, &account, password.as_str())
             .await

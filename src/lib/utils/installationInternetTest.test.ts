@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildInstallationSubscriptionFallback,
   getInstallationInternetTestTargetOptions,
   getInstallationInternetTestTargetHint,
   resolveInstallationInternetTestRouterId,
@@ -130,5 +131,54 @@ describe('installation internet test helpers', () => {
         ],
       }),
     ).toBe('');
+  });
+
+  it('builds a subscription fallback from work order fields for technician context', () => {
+    expect(
+      buildInstallationSubscriptionFallback({
+        id: 'wo-1',
+        tenant_id: 'tenant-1',
+        subscription_id: 'sub-1',
+        customer_id: 'customer-1',
+        location_id: 'location-1',
+        package_id: 'pkg-1',
+        router_id: 'router-1',
+        package_name: 'Home 20M',
+        location_label: 'Main House',
+        router_name: 'Core Router',
+        subscription_status: 'pending_installation',
+        subscription_grace_until: '2026-04-25T12:00:00Z',
+        created_at: '2026-04-25T01:00:00Z',
+        updated_at: '2026-04-25T02:00:00Z',
+      }),
+    ).toMatchObject({
+      id: 'sub-1',
+      tenant_id: 'tenant-1',
+      customer_id: 'customer-1',
+      location_id: 'location-1',
+      package_id: 'pkg-1',
+      router_id: 'router-1',
+      package_name: 'Home 20M',
+      location_label: 'Main House',
+      router_name: 'Core Router',
+      status: 'pending_installation',
+      grace_until: '2026-04-25T12:00:00Z',
+    });
+  });
+
+  it('does not build a subscription fallback when work order lacks a package', () => {
+    expect(
+      buildInstallationSubscriptionFallback({
+        id: 'wo-1',
+        tenant_id: 'tenant-1',
+        subscription_id: 'sub-1',
+        customer_id: 'customer-1',
+        location_id: 'location-1',
+        package_id: null,
+        router_id: 'router-1',
+        created_at: '2026-04-25T01:00:00Z',
+        updated_at: '2026-04-25T02:00:00Z',
+      }),
+    ).toBeNull();
   });
 });

@@ -7,7 +7,7 @@ use crate::models::{
 };
 use crate::services::{BillingCollectionRunResult, BulkGenerateInvoicesResult, Claims};
 use axum::{
-    extract::{Extension, Path, Query, State},
+    extract::{Extension, Form, Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{delete, get, post},
@@ -58,10 +58,13 @@ pub fn router() -> Router<AppState> {
         .route("/invoices/{id}/proof", post(submit_payment_proof))
         .route("/invoices/{id}", get(get_invoice))
         .route("/invoices/{id}/midtrans", post(pay_invoice_midtrans))
+        .route("/invoices/{id}/duitku", post(pay_invoice_duitku))
         .route("/invoices/{id}/status", get(check_payment_status))
+        .route("/duitku/payment-methods", get(list_duitku_payment_methods))
         .route("/banks", get(list_bank_accounts).post(create_bank_account))
         .route("/banks/{id}", delete(delete_bank_account))
         .route("/midtrans/notification", post(midtrans_notification))
+        .route("/duitku/callback", post(duitku_callback))
 }
 
 #[derive(Serialize)]
@@ -418,6 +421,20 @@ struct VerifyCustomerPackagePaymentBody {
 #[serde(deny_unknown_fields)]
 struct SubmitPaymentProofBody {
     file_path: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+struct PayInvoiceDuitkuBody {
+    payment_method: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+struct DuitkuPaymentMethodsQuery {
+    amount: Option<i64>,
 }
 
 #[derive(Deserialize)]
@@ -1011,6 +1028,62 @@ async fn pay_invoice_midtrans(
         })
 }
 
+async fn pay_invoice_duitku(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<PayInvoiceDuitkuBody>,
+) -> Result<Json<String>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    let scope = resolve_payment_read_scope(&state, &claims).await?;
+    let _ = authorize_invoice_access(&state, &claims, &scope, &id).await?;
+
+    state
+        .payment_service
+        .initiate_duitku(&id, body.payment_method.as_deref())
+        .await
+        .map(Json)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
+}
+
+async fn list_duitku_payment_methods(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<DuitkuPaymentMethodsQuery>,
+) -> Result<
+    Json<Vec<crate::services::payment_service::DuitkuPaymentMethod>>,
+    (StatusCode, Json<ErrorResponse>),
+> {
+    let claims = authenticate(&state, &headers).await?;
+    require_payment_manage_access(&state, &claims).await?;
+    let tenant_id = if claims.is_super_admin {
+        None
+    } else {
+        claims.tenant_id.as_deref()
+    };
+
+    state
+        .payment_service
+        .list_duitku_payment_methods(tenant_id, q.amount)
+        .await
+        .map(Json)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
+}
+
 async fn check_payment_status(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -1180,6 +1253,87 @@ async fn midtrans_notification(
                 order_id,
                 error = %e,
                 "Failed to process notification"
+            );
+            (StatusCode::INTERNAL_SERVER_ERROR, "Processing Error")
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DuitkuCallbackPayload {
+    merchant_code: String,
+    amount: String,
+    merchant_order_id: String,
+    result_code: String,
+    signature: String,
+    #[serde(default)]
+    reference: Option<String>,
+}
+
+async fn duitku_callback(
+    State(state): State<AppState>,
+    Extension(correlation_id): Extension<CorrelationId>,
+    Form(payload): Form<DuitkuCallbackPayload>,
+) -> impl IntoResponse {
+    let payment_service = &state.payment_service;
+    tracing::info!(
+        request_id = correlation_id.as_str(),
+        merchant_order_id = payload.merchant_order_id.as_str(),
+        "Received Duitku callback"
+    );
+
+    if payload.merchant_code.trim().is_empty()
+        || payload.amount.trim().is_empty()
+        || payload.merchant_order_id.trim().is_empty()
+        || payload.result_code.trim().is_empty()
+        || payload.signature.trim().is_empty()
+    {
+        return (StatusCode::BAD_REQUEST, "Invalid Payload");
+    }
+
+    let signature_ok = match payment_service
+        .verify_duitku_callback_signature(
+            &payload.merchant_code,
+            &payload.amount,
+            &payload.merchant_order_id,
+            &payload.signature,
+        )
+        .await
+    {
+        Ok(ok) => ok,
+        Err(e) => {
+            tracing::error!("Failed Duitku signature verification: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Verification Error");
+        }
+    };
+
+    if !signature_ok {
+        tracing::warn!("Duitku callback rejected due to invalid signature");
+        return (StatusCode::UNAUTHORIZED, "Invalid Signature");
+    }
+
+    let payment_status =
+        crate::services::payment_service::duitku_callback_result_code_to_invoice_status(
+            payload.result_code.trim(),
+        );
+
+    match payment_service
+        .process_midtrans_notification(
+            &payload.merchant_order_id,
+            payment_status,
+            Some(correlation_id.as_str()),
+            payload.reference.as_deref().or(Some("duitku-callback")),
+        )
+        .await
+    {
+        Ok(_) => (StatusCode::OK, "SUCCESS"),
+        Err(e) => {
+            tracing::error!(
+                request_id = correlation_id.as_str(),
+                merchant_order_id = payload.merchant_order_id.as_str(),
+                error = %e,
+                "Failed to process Duitku callback"
             );
             (StatusCode::INTERNAL_SERVER_ERROR, "Processing Error")
         }
