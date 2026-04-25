@@ -151,6 +151,7 @@ export function openLinkPopup(args: {
   lngLat: { lng: number; lat: number };
   linkRows: NMLink[];
   onClose?: () => void;
+  onEdit: (link: NMLink) => void;
   onDelete: (linkId: string, linkName?: string) => void;
 }) {
   const props = args.feature.properties || {};
@@ -159,9 +160,14 @@ export function openLinkPopup(args: {
   if (!link) return;
 
   const popupUid = `nm-link-popup-${Math.random().toString(36).slice(2, 10)}`;
-  const popupContent = buildLinkPopupHtml({ popupUid, model: buildLinkPopupModel(link) });
+  const popupModel = buildLinkPopupModel(link);
+  const popupContent = buildLinkPopupHtml({ popupUid, model: popupModel });
   const popup = new args.maplibre.Popup(
-    popupOptionsForMap(args.map, [args.lngLat.lng, args.lngLat.lat], { width: 272, height: 250 }),
+    popupOptionsForMap(
+      args.map,
+      [args.lngLat.lng, args.lngLat.lat],
+      getPopupSizeForModel(popupModel),
+    ),
   )
     .setLngLat([args.lngLat.lng, args.lngLat.lat])
     .setHTML(popupContent.html);
@@ -169,9 +175,11 @@ export function openLinkPopup(args: {
 
   popup.on('open', () => {
     requestAnimationFrame(() => {
+      const popupElement =
+        typeof (popup as any).getElement === 'function' ? ((popup as any).getElement() as HTMLElement) : null;
+      popupElement?.classList.add('nm-popup-link-shell');
       nudgePopupElementIntoView({
-        popupElement:
-          typeof (popup as any).getElement === 'function' ? ((popup as any).getElement() as HTMLElement) : null,
+        popupElement,
         mapElement: args.map.getContainer(),
         padding: 18,
       });
@@ -185,6 +193,7 @@ export function openLinkPopup(args: {
       const button = document.getElementById(actionButton.buttonId) as HTMLButtonElement | null;
       button?.addEventListener('click', () => {
         popup.remove();
+        if (actionButton.key === 'edit') args.onEdit(link);
         if (actionButton.key === 'delete') args.onDelete(linkId, link.name);
       });
     }

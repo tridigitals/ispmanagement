@@ -49,6 +49,7 @@
     buildToggleLinkPickResult,
     createEditLinkForm,
     createLinkForm,
+    resolveLinkGeometryTextForSubmit,
     type LinkPickDrawMode,
   } from '$lib/components/network/networkMapLinkPicking';
   import {
@@ -58,7 +59,9 @@
     fetchNetworkMapData,
     getCachedMapData,
     getTopologySyncStrategy,
+    resolveNetworkMapFetchBbox,
     setCachedMapData,
+    shouldFetchRouterOverlay,
     syncTopologyAssetsIfNeeded,
     type NetworkMapCacheEntry,
   } from '$lib/components/network/networkMapData';
@@ -106,6 +109,7 @@
   } from '$lib/components/network/networkMapUiModules';
   import Icon from '$lib/components/ui/Icon.svelte';
   import MapCanvasShell from '$lib/components/network/MapCanvasShell.svelte';
+  import { canAccessNetworkMap } from '$lib/utils/adminNetworkAccess';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -238,6 +242,7 @@
   let activeDataAbortController: AbortController | null = null;
   let backgroundAssetSyncPromise: Promise<boolean> | null = null;
   let didInitialFitToMarkers = false;
+  let initialExtentLoaded = false;
   let lastAssetSyncAt = 0;
   let lastMapDataLoadedAt = $state(0);
   let lastMapDataSource = $state<'live' | 'cache' | 'none'>('none');
@@ -341,7 +346,7 @@
   });
 
   onMount(() => {
-    if (!$can('read', 'network_topology') && !$can('manage', 'network_topology')) {
+    if (!canAccessNetworkMap($can)) {
       goto('/unauthorized');
       return;
     }
@@ -640,7 +645,9 @@
       onClose: clearMapPopupSelection,
       onOpenCustomer: (customerId) => void goto(`${tenantPrefix}/admin/customers/${customerId}`),
       onOpenService: (customerId, serviceId) =>
-        void goto(`${tenantPrefix}/admin/customers/${customerId}?tab=subscriptions&service_id=${encodeURIComponent(serviceId)}`),
+        void goto(
+          `${tenantPrefix}/admin/customers/${customerId}?tab=subscriptions&service_id=${encodeURIComponent(serviceId)}`,
+        ),
       onConnect: startConnectFromNode,
       onEdit: openEditNodeModal,
       onOpenRouter: (routerId) => void goto(`${tenantPrefix}/admin/network/routers/${routerId}`),
@@ -668,6 +675,7 @@
       lngLat: e.lngLat,
       linkRows,
       onClose: clearMapPopupSelection,
+      onEdit: openEditLinkModal,
       onDelete: (linkId, linkName) => openDeleteConfirm('link', linkId, linkName),
     });
   }
@@ -889,8 +897,8 @@
   async function refreshMapData(force = false, options?: { skipAutoSync?: boolean }) {
     if (map && !mapReady) return;
     const requestId = ++lastRequestId;
-    const bbox = currentBboxString();
-    if (!bbox) return;
+    const viewportBbox = currentBboxString();
+    if (!viewportBbox) return;
 
     refreshing = true;
 
@@ -913,6 +921,14 @@
           queueBackgroundTopologySync();
         }
       }
+
+      const hasActiveFilters = !!(q.trim() || status || kind);
+      const bbox = resolveNetworkMapFetchBbox({
+        viewportBbox,
+        initialExtentLoaded,
+        hasActiveFilters,
+      });
+      const isInitialExtentRequest = bbox !== viewportBbox;
 
       const params = {
         q: q.trim() || undefined,
@@ -955,6 +971,7 @@
           },
           fitToMarkers: fitMapToAllMarkersOnFirstLoad,
         });
+        if (isInitialExtentRequest) initialExtentLoaded = true;
         return;
       }
 
@@ -963,7 +980,10 @@
       activeDataAbortController = abortController;
 
       const result = await fetchNetworkMapData(params, abortController.signal, {
-        includeRouters: canReadRouterInventory,
+        includeRouters: shouldFetchRouterOverlay({
+          canReadRouterInventory,
+          routersVisible,
+        }),
       });
 
       // Drop stale responses when user moves map quickly.
@@ -1007,6 +1027,7 @@
         },
         fitToMarkers: fitMapToAllMarkersOnFirstLoad,
       });
+      if (isInitialExtentRequest) initialExtentLoaded = true;
     } catch (e: any) {
       if ((e?.message || '').includes('Request canceled')) return;
       console.error(e);
@@ -1073,6 +1094,34 @@
     setLayerVisibility('nm-customers-cluster-circle', customersVisible);
     setLayerVisibility('nm-customers-cluster-count', customersVisible);
     setLayerVisibility('nm-customers-point', customersVisible);
+  }
+
+  function setNodesVisible(checked: boolean) {
+    nodesVisible = checked;
+    syncLayerVisibility();
+  }
+
+  function setLinksVisible(checked: boolean) {
+    linksVisible = checked;
+    syncLayerVisibility();
+  }
+
+  function setZonesVisible(checked: boolean) {
+    zonesVisible = checked;
+    syncLayerVisibility();
+  }
+
+  function setCustomersVisible(checked: boolean) {
+    customersVisible = checked;
+    syncLayerVisibility();
+  }
+
+  function setRoutersVisible(checked: boolean) {
+    routersVisible = checked;
+    syncLayerVisibility();
+    if (checked && canReadRouterInventory && routerRows.length === 0) {
+      void refreshMapData(true);
+    }
   }
 
   function syncBaseLayerVisibility() {
@@ -1359,6 +1408,7 @@
   async function submitLink() {
     savingLink = true;
     try {
+      linkForm.geometryText = resolveLinkGeometryTextForSubmit(linkForm, nodeRows);
       const ok = await submitLinkCrud({
         editingLinkId,
         linkForm,
@@ -1457,11 +1507,7 @@
     }
   }
 
-  function openDeleteConfirm(
-    targetType: 'node' | 'link' | 'zone',
-    id: string,
-    name?: string,
-  ) {
+  function openDeleteConfirm(targetType: 'node' | 'link' | 'zone', id: string, name?: string) {
     deleteTargetType = targetType;
     deleteTargetId = id;
     const copy = buildDeleteConfirmCopy(targetType, name);
@@ -1590,11 +1636,11 @@
           {customersVisible}
           canShowRouters={canReadRouterInventory}
           onViewModeChange={(mode: 'standard' | 'satellite') => (viewMode = mode)}
-          onNodesVisibleChange={(checked: boolean) => (nodesVisible = checked)}
-          onLinksVisibleChange={(checked: boolean) => (linksVisible = checked)}
-          onZonesVisibleChange={(checked: boolean) => (zonesVisible = checked)}
-          onRoutersVisibleChange={(checked: boolean) => (routersVisible = checked)}
-          onCustomersVisibleChange={(checked: boolean) => (customersVisible = checked)}
+          onNodesVisibleChange={setNodesVisible}
+          onLinksVisibleChange={setLinksVisible}
+          onZonesVisibleChange={setZonesVisible}
+          onRoutersVisibleChange={setRoutersVisible}
+          onCustomersVisibleChange={setCustomersVisible}
           onToggleHidden={() => (controlsHidden = !controlsHidden)}
         />
       {/if}
@@ -1633,7 +1679,6 @@
       {/if}
     </svelte:fragment>
   </MapCanvasShell>
-
 </div>
 
 {#if LinkModalComponent}
@@ -1655,8 +1700,7 @@
       fromNodeId: string,
       toNodeId: string,
       excludeLinkId?: string | null,
-    ) =>
-      hasExistingLinkBetweenNodes(linkRows, fromNodeId, toNodeId, excludeLinkId)}
+    ) => hasExistingLinkBetweenNodes(linkRows, fromNodeId, toNodeId, excludeLinkId)}
     onClose={closeLinkModal}
     onSubmit={() => void submitLink()}
     onTogglePickMode={toggleLinkPickMode}
@@ -1797,6 +1841,13 @@
     max-width: min(332px, calc(100vw - 44px)) !important;
   }
 
+  :global(.maplibregl-popup.nm-popup-link-shell .maplibregl-popup-content) {
+    width: min(252px, calc(100vw - 44px));
+    max-width: min(252px, calc(100vw - 44px)) !important;
+    padding: 8px;
+    border-color: rgba(59, 130, 246, 0.28);
+  }
+
   :global(.maplibregl-popup-tip) {
     border-top-color: #0f172a !important;
     border-bottom-color: #0f172a !important;
@@ -1825,6 +1876,14 @@
     gap: 10px;
   }
 
+  :global(.nm-popup-card-link) {
+    gap: 8px;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+    padding-bottom: 0;
+  }
+
   :global(.nm-popup-head) {
     display: flex;
     align-items: flex-start;
@@ -1849,11 +1908,26 @@
     line-height: 1.2;
   }
 
+  :global(.nm-popup-card-link .nm-popup-title) {
+    max-width: 160px;
+    overflow: hidden;
+    color: #f8fafc;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   :global(.nm-popup-subtitle) {
     margin-top: 3px;
     color: #cbd5e1;
     font-size: 0.76rem;
     line-height: 1.28;
+  }
+
+  :global(.nm-popup-card-link .nm-popup-subtitle) {
+    color: #93c5fd;
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: capitalize;
   }
 
   :global(.nm-popup-badge) {
@@ -1973,6 +2047,11 @@
     gap: 8px;
   }
 
+  :global(.nm-popup-summary-link) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
   :global(.nm-popup-summary-item) {
     border-radius: 12px;
     padding: 9px 10px;
@@ -2010,6 +2089,20 @@
     font-weight: 900;
     line-height: 1.2;
     word-break: break-word;
+  }
+
+  :global(.nm-popup-card-link .nm-popup-summary-item) {
+    min-height: 58px;
+    border-radius: 10px;
+    padding: 8px 9px;
+  }
+
+  :global(.nm-popup-card-link .nm-popup-summary-label) {
+    font-size: 0.62rem;
+  }
+
+  :global(.nm-popup-card-link .nm-popup-summary-value) {
+    font-size: 1rem;
   }
 
   :global(.nm-popup-label) {
@@ -2085,6 +2178,26 @@
     border-color: rgba(148, 163, 184, 0.18);
     background: transparent;
     color: #94a3b8;
+  }
+
+  :global(.nm-popup-actions-link) {
+    margin-top: 2px;
+    padding-top: 8px;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  :global(.nm-popup-actions-link .nm-popup-btn) {
+    min-height: 30px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 0.72rem;
+  }
+
+  :global(.nm-popup-actions-link .nm-popup-btn-close) {
+    border-color: rgba(148, 163, 184, 0.24);
+    background: transparent;
+    color: #cbd5e1;
   }
 
   :global(.nm-popup-btn) {
@@ -2213,13 +2326,12 @@
       position: sticky;
       bottom: 0;
       z-index: 2;
-      background:
-        linear-gradient(
-          180deg,
-          rgba(15, 23, 42, 0.05) 0%,
-          rgba(15, 23, 42, 0.92) 22%,
-          rgba(15, 23, 42, 0.98) 100%
-        );
+      background: linear-gradient(
+        180deg,
+        rgba(15, 23, 42, 0.05) 0%,
+        rgba(15, 23, 42, 0.92) 22%,
+        rgba(15, 23, 42, 0.98) 100%
+      );
       backdrop-filter: blur(8px);
     }
 

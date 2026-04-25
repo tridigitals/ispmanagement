@@ -198,7 +198,7 @@ describe('network map popup models', () => {
     );
   });
 
-  it('builds link popups with health and transport metrics', () => {
+  it('builds compact link popups with only essential health and transport context', () => {
     const link: NMLink = {
       id: 'link-1',
       name: 'Backhaul Ungaran',
@@ -221,12 +221,18 @@ describe('network map popup models', () => {
 
     const model = buildLinkPopupModel(link);
 
+    expect(model.variant).toBe('network-link');
     expect(model.kicker).toBe('Link');
     expect(model.contextText).toContain('fiber');
     expect(model.summaryItems.map((item) => item.label)).toEqual(
-      expect.arrayContaining(['Health', 'Capacity', 'Latency']),
+      expect.arrayContaining(['Health', 'Capacity']),
     );
-    expect(model.actions.map((action) => action.key)).toEqual(['delete']);
+    expect(model.summaryItems.map((item) => item.label)).not.toContain('Latency');
+    expect(model.detailPairs).toEqual([]);
+    expect(model.actions.map((action) => action.key)).toEqual(['edit', 'delete']);
+    expect(model.actions[0]).toEqual(
+      expect.objectContaining({ key: 'edit', label: 'Edit', tone: 'primary' }),
+    );
   });
 
   it('builds router popups with connection and version details', () => {

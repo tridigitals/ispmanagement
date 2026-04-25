@@ -7,6 +7,7 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
+  import { canAccessNetworkMap } from '$lib/utils/adminNetworkAccess';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { api, type Invoice } from '$lib/api/client';
   import Icon from '../ui/Icon.svelte';
@@ -295,7 +296,7 @@
             label: $t('sidebar.topology_map') || 'Topology Map',
             icon: 'map-pin',
             href: `${tenantPrefix}/admin/network/map`,
-            show: $can('read', 'network_topology') || $can('manage', 'network_topology'),
+            show: canAccessNetworkMap($can),
           },
           {
             label: $t('sidebar.wallboard') || 'Wallboard',

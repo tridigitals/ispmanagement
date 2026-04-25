@@ -85,7 +85,7 @@ export type NetworkMapPopupStatusChip = {
 };
 
 export type NetworkMapPopupModel = {
-  variant?: 'default' | 'workflow-service';
+  variant?: 'default' | 'workflow-service' | 'network-link';
   kicker: string;
   title: string;
   subtitle: string;
@@ -1000,18 +1000,16 @@ export function buildServicePopupModel(node: NMNode): NetworkMapPopupModel {
 
 export function buildLinkPopupModel(link: NMLink): NetworkMapPopupModel {
   const health = computeLinkHealth(link);
-  const endpoints = `${String(link.from_node_id || '-')} -> ${String(link.to_node_id || '-')}`;
   const capacity = link.capacity_mbps != null ? `${link.capacity_mbps} Mbps` : '-';
-  const latency = link.latency_ms != null ? `${link.latency_ms} ms` : '-';
-  const utilization = link.utilization_pct != null ? `${link.utilization_pct}%` : '-';
-  const loss = link.loss_db != null ? `${link.loss_db} dB` : '-';
+  const linkType = normalizePopupValue(link.link_type);
   return {
+    variant: 'network-link',
     kicker: 'Link',
     title: String(link.name || link.id || 'Link').trim(),
-    subtitle: endpoints,
+    subtitle: `${linkType} path`,
     statusText: popupStatusText(link.status),
     tone: health.tone === 'good' ? 'ok' : health.tone === 'warn' ? 'warn' : 'muted',
-    contextText: `${String(link.link_type || 'link')} transport path`,
+    contextText: `${linkType} transport path`,
     summaryItems: [
       {
         label: 'Health',
@@ -1019,16 +1017,9 @@ export function buildLinkPopupModel(link: NMLink): NetworkMapPopupModel {
         tone: health.tone === 'good' ? 'ok' : health.tone === 'warn' ? 'warn' : 'muted',
       },
       { label: 'Capacity', value: capacity },
-      { label: 'Latency', value: latency },
     ],
-    detailPairs: [
-      { label: 'Type', value: normalizePopupValue(link.link_type) },
-      { label: 'Endpoints', value: endpoints },
-      { label: 'Status', value: popupStatusText(link.status) },
-      { label: 'Utilization', value: utilization },
-      { label: 'Loss', value: loss },
-    ],
-    actions: [popupAction('delete', 'Delete', 'danger')],
+    detailPairs: [],
+    actions: [popupAction('edit', 'Edit', 'primary'), popupAction('delete', 'Delete', 'danger')],
   };
 }
 

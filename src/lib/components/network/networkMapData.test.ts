@@ -22,9 +22,13 @@ vi.mock('$lib/api/mikrotik', () => ({
 }));
 
 import {
+  buildMapDataCacheKey,
   extractMapRows,
   fetchNetworkMapData,
+  NETWORK_MAP_WORLD_BBOX,
   getTopologySyncStrategy,
+  resolveNetworkMapFetchBbox,
+  shouldFetchRouterOverlay,
 } from './networkMapData';
 
 describe('fetchNetworkMapData', () => {
@@ -112,6 +116,76 @@ describe('fetchNetworkMapData', () => {
       }),
     ]);
     expect(result.routerRows).toEqual([{ id: 'router-1', name: 'Router 1' }]);
+  });
+});
+
+describe('resolveNetworkMapFetchBbox', () => {
+  it('uses world extent for the first unfiltered load so initial fit can see all markers', () => {
+    expect(
+      resolveNetworkMapFetchBbox({
+        viewportBbox: '106,-7,107,-6',
+        initialExtentLoaded: false,
+        hasActiveFilters: false,
+      }),
+    ).toBe(NETWORK_MAP_WORLD_BBOX);
+  });
+
+  it('uses viewport extent after the initial load or when filters are active', () => {
+    expect(
+      resolveNetworkMapFetchBbox({
+        viewportBbox: '106,-7,107,-6',
+        initialExtentLoaded: true,
+        hasActiveFilters: false,
+      }),
+    ).toBe('106,-7,107,-6');
+
+    expect(
+      resolveNetworkMapFetchBbox({
+        viewportBbox: '106,-7,107,-6',
+        initialExtentLoaded: false,
+        hasActiveFilters: true,
+      }),
+    ).toBe('106,-7,107,-6');
+  });
+});
+
+describe('buildMapDataCacheKey', () => {
+  it('keeps cache keys stable across zoom changes because backend data is bbox based', () => {
+    const params = {
+      q: undefined,
+      status: undefined,
+      kind: undefined,
+      bbox: '106,-7,107,-6',
+      page: 1,
+      per_page: 1000,
+    };
+
+    expect(buildMapDataCacheKey(params, '10.00')).toBe(buildMapDataCacheKey(params, '13.00'));
+  });
+});
+
+describe('shouldFetchRouterOverlay', () => {
+  it('fetches router inventory only when the user can read it and the router layer is visible', () => {
+    expect(
+      shouldFetchRouterOverlay({
+        canReadRouterInventory: true,
+        routersVisible: true,
+      }),
+    ).toBe(true);
+
+    expect(
+      shouldFetchRouterOverlay({
+        canReadRouterInventory: true,
+        routersVisible: false,
+      }),
+    ).toBe(false);
+
+    expect(
+      shouldFetchRouterOverlay({
+        canReadRouterInventory: false,
+        routersVisible: true,
+      }),
+    ).toBe(false);
   });
 });
 

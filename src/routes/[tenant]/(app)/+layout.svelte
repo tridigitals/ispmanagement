@@ -14,6 +14,7 @@
   import { user } from '$lib/stores/auth';
   import { resolveTenantContext, APP_ROOT_SEGMENTS } from '$lib/utils/tenantRouting';
   import { isPlatformDomain } from '$lib/utils/domain';
+  import { canAccessNetworkMap } from '$lib/utils/adminNetworkAccess';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
 
@@ -109,7 +110,7 @@
       return $can('read', 'network_noc') || $can('manage', 'network_noc');
     }
     if (path.startsWith('/admin/network/map')) {
-      return $can('read', 'network_topology') || $can('manage', 'network_topology');
+      return canAccessNetworkMap($can);
     }
     if (path.startsWith('/admin/network/alerts')) {
       return $can('read', 'network_alerts') || $can('manage', 'network_alerts');

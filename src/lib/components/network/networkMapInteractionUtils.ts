@@ -155,10 +155,14 @@ function renderPopupModel(args: { popupUid: string; model: NetworkMapPopupModel 
   const cardClass =
     args.model.variant === 'workflow-service'
       ? 'nm-popup-card nm-popup-card-workflow'
+      : args.model.variant === 'network-link'
+        ? 'nm-popup-card nm-popup-card-link'
       : 'nm-popup-card';
   const summaryClass =
     args.model.variant === 'workflow-service'
       ? 'nm-popup-summary nm-popup-summary-workflow'
+      : args.model.variant === 'network-link'
+        ? 'nm-popup-summary nm-popup-summary-link'
       : 'nm-popup-summary';
   const statusChipsClass =
     args.model.variant === 'workflow-service'
@@ -171,7 +175,11 @@ function renderPopupModel(args: { popupUid: string; model: NetworkMapPopupModel 
   const actionsClass =
     args.model.variant === 'workflow-service'
       ? 'nm-popup-actions nm-popup-actions-workflow'
+      : args.model.variant === 'network-link'
+        ? 'nm-popup-actions nm-popup-actions-link'
       : 'nm-popup-actions';
+  const shouldRenderDetailGrid =
+    args.model.variant !== 'network-link' && args.model.detailPairs.length > 0;
 
   return {
     closeBtnId,
@@ -227,20 +235,26 @@ function renderPopupModel(args: { popupUid: string; model: NetworkMapPopupModel 
         `
             : ''
         }
-        <div class="nm-popup-grid">
-          ${args.model.detailPairs
-            .map(
-              (pair) => `
-            <div class="nm-popup-label">${escapePopupHtml(pair.label)}</div>
-            ${renderPopupTextValue({
-              value: pair.value,
-              className: 'nm-popup-value',
-              truncateTo: 32,
-            })}
-          `,
-            )
-            .join('')}
-        </div>
+        ${
+          shouldRenderDetailGrid
+            ? `
+          <div class="nm-popup-grid">
+            ${args.model.detailPairs
+              .map(
+                (pair) => `
+              <div class="nm-popup-label">${escapePopupHtml(pair.label)}</div>
+              ${renderPopupTextValue({
+                value: pair.value,
+                className: 'nm-popup-value',
+                truncateTo: 32,
+              })}
+            `,
+              )
+              .join('')}
+          </div>
+        `
+            : ''
+        }
         <div class="${actionsClass}">
           ${actionButtons.map((button) => button.html).join('')}
           <button id="${closeBtnId}" class="nm-popup-btn nm-popup-btn-close" type="button">Close</button>
@@ -268,6 +282,9 @@ export function getPopupSizeForModel(model: Pick<NetworkMapPopupModel, 'variant'
 } {
   if (model.variant === 'workflow-service') {
     return { width: 332, height: 320 };
+  }
+  if (model.variant === 'network-link') {
+    return { width: 252, height: 190 };
   }
   return { width: 288, height: 320 };
 }

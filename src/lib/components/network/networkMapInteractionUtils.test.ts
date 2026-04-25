@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildLinkPopupHtml,
   buildNodePopupHtml,
   computePopupPlacement,
   computePopupViewportNudge,
@@ -100,5 +101,40 @@ describe('buildNodePopupHtml', () => {
     expect(html.html).toContain('Arif Yudiyanto Dengan Nama...');
     expect(html.html).toContain('bandungan-duren-asepmulyana...');
     expect(html.html).toContain('Home-Silver-20Mbps-Super-Panj...');
+  });
+});
+
+describe('buildLinkPopupHtml', () => {
+  it('renders a compact link popup without the dense detail grid', () => {
+    const html = buildLinkPopupHtml({
+      popupUid: 'link-popup-1',
+      model: {
+        variant: 'network-link',
+        kicker: 'Link',
+        title: 'ODP 1 uplink',
+        subtitle: 'fiber path',
+        statusText: 'up',
+        tone: 'ok',
+        contextText: 'Fiber transport path',
+        summaryItems: [
+          { label: 'Health', value: '100', tone: 'ok' },
+          { label: 'Capacity', value: '1 Gbps' },
+        ],
+        detailPairs: [
+          { label: 'Endpoints', value: 'very-long-source -> very-long-target' },
+        ],
+        actions: [
+          { key: 'edit', label: 'Edit', tone: 'primary' },
+          { key: 'delete', label: 'Delete', tone: 'danger' },
+        ],
+      },
+    });
+
+    expect(html.html).toContain('nm-popup-card-link');
+    expect(html.html).toContain('Fiber transport path');
+    expect(html.html).toContain('action-edit');
+    expect(html.html).toContain('Edit');
+    expect(html.html).not.toContain('nm-popup-grid');
+    expect(html.html).not.toContain('very-long-source');
   });
 });

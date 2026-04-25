@@ -53,160 +53,597 @@
 <Modal
   {show}
   title={editingLinkId ? 'Edit Link' : 'Add Link'}
-  width="860px"
+  width="920px"
   onclose={() => !savingLink && onClose()}
 >
   {#if !editingLinkId}
-    <div class="link-pick-toolbar">
-      <div class="link-pick-mode">
+    <div class="link-workflow">
+      <div class="workflow-main">
+        <div class="segmented-control" aria-label="Link drawing mode">
+          <button
+            class:active={linkPickDrawMode === 'quick'}
+            type="button"
+            onclick={() => onSetDrawMode('quick')}
+          >
+            Quick
+          </button>
+          <button
+            class:active={linkPickDrawMode === 'path'}
+            type="button"
+            onclick={() => onSetDrawMode('path')}
+          >
+            Draw Path
+          </button>
+        </div>
+
         <button
-          class={`mode-btn ${linkPickDrawMode === 'quick' ? 'active' : ''}`}
+          class="workflow-action primary"
+          class:active={linkPickMode}
           type="button"
-          onclick={() => onSetDrawMode('quick')}
+          onclick={onTogglePickMode}
         >
-          Quick
-        </button>
-        <button
-          class={`mode-btn ${linkPickDrawMode === 'path' ? 'active' : ''}`}
-          type="button"
-          onclick={() => onSetDrawMode('path')}
-        >
-          Draw Path
+          <Icon name="map-pin" size={15} />
+          <span>
+            {linkPickMode
+              ? `Picking ${linkPickStep === 'from' ? 'source' : 'destination'}`
+              : linkPickDrawMode === 'quick'
+                ? 'Pick endpoints'
+                : 'Draw on map'}
+          </span>
         </button>
       </div>
-      {#if linkPickDrawMode === 'path'}
-        <button
-          class={`btn ghost btn-xs ${linkSnapToNodeEnabled ? 'active' : ''}`}
-          type="button"
-          onclick={onToggleSnap}
-          title="Snap bend points to nearest node"
-        >
-          Snap: {linkSnapToNodeEnabled ? 'On' : 'Off'}
-        </button>
+
+      {#if linkPickDrawMode === 'path' || linkPickMode}
+        <div class="workflow-tools">
+          {#if linkPickDrawMode === 'path'}
+            <button
+              class="workflow-action"
+              class:active={linkSnapToNodeEnabled}
+              type="button"
+              onclick={onToggleSnap}
+              title="Snap bend points to nearest node"
+            >
+              <Icon name="radio" size={14} />
+              Snap {linkSnapToNodeEnabled ? 'On' : 'Off'}
+            </button>
+          {/if}
+          {#if linkPickMode && linkPickDrawMode === 'path'}
+            <button
+              class="workflow-action"
+              type="button"
+              onclick={onUndoPathPoint}
+              disabled={linkPathBendPoints.length === 0}
+            >
+              <Icon name="arrow-left" size={14} />
+              Undo
+            </button>
+            <button
+              class="workflow-action"
+              type="button"
+              onclick={onClearPathPoints}
+              disabled={linkPathBendPoints.length === 0}
+            >
+              <Icon name="x-circle" size={14} />
+              Clear
+            </button>
+          {/if}
+        </div>
       {/if}
-      <button
-        class={`btn ghost btn-xs ${linkPickMode ? 'active' : ''}`}
-        type="button"
-        onclick={onTogglePickMode}
-      >
-        <Icon name="map-pin" size={14} />
-        {linkPickMode
-          ? `Picking ${linkPickStep === 'from' ? 'source' : 'destination'}...`
-          : linkPickDrawMode === 'quick'
-            ? 'Pick Endpoints on Map'
-            : 'Draw Path on Map'}
-      </button>
-      {#if linkPickMode && linkPickDrawMode === 'path'}
-        <button class="btn ghost btn-xs" type="button" onclick={onUndoPathPoint} disabled={linkPathBendPoints.length === 0}>
-          <Icon name="arrow-left" size={14} />
-          Undo
-        </button>
-        <button class="btn ghost btn-xs" type="button" onclick={onClearPathPoints} disabled={linkPathBendPoints.length === 0}>
-          <Icon name="x-circle" size={14} />
-          Clear
-        </button>
-      {/if}
-    </div>
-    {#if linkPickMode}
-      <div class="link-pick-hint">
-        {#if linkPickDrawMode === 'quick'}
-          Quick: click source node then destination node.
-        {:else if linkPickStep === 'from'}
-          Draw Path: click source node.
+
+      <div class="workflow-hint" class:active={linkPickMode}>
+        {#if linkPickMode && linkPickDrawMode === 'quick'}
+          Click the source node, then click the destination node.
+        {:else if linkPickMode && linkPickStep === 'from'}
+          Click the source node to start drawing the path.
+        {:else if linkPickMode}
+          Click the map to add bend points{linkSnapToNodeEnabled ? ' with snap enabled' : ''}, then
+          click the destination node.
         {:else}
-          Draw Path: click map to add bend points{linkSnapToNodeEnabled ? ' (auto-snap near node)' : ''}, then click destination node.
+          Choose a mode, then use the map picker or fill the endpoints manually.
         {/if}
       </div>
-    {/if}
-  {/if}
-  <div class="form-grid two-col">
-    <label class="field">
-      <span>Name</span>
-      <input class="input" bind:value={linkForm.name} />
-    </label>
-    <label class="field">
-      <span>Type</span>
-      <Select2
-        bind:value={linkForm.link_type}
-        options={linkTypeOptions}
-        width="100%"
-        placeholder="Select link type"
-        searchPlaceholder="Search type..."
-        noResultsText="No type found"
-      />
-    </label>
-    <label class="field">
-      <span>Status</span>
-      <Select2
-        bind:value={linkForm.status}
-        options={linkStatusOptions}
-        width="100%"
-        placeholder="Select status"
-        searchPlaceholder="Search status..."
-        noResultsText="No status found"
-      />
-    </label>
-    <label class="field">
-      <span>From Node</span>
-      <select class="input" bind:value={linkForm.from_node_id}>
-        <option value="">Select node</option>
-        {#each nodeRows as n}
-          <option value={n.id}>{n.name}</option>
-        {/each}
-      </select>
-    </label>
-    <label class="field">
-      <span>To Node</span>
-      <select class="input" bind:value={linkForm.to_node_id}>
-        <option value="">Select node</option>
-        {#each nodeRows as n}
-          <option
-            value={n.id}
-            disabled={n.id === linkForm.from_node_id || hasExistingLinkBetweenNodes(linkForm.from_node_id, n.id, editingLinkId)}
-          >
-            {n.name}
-          </option>
-        {/each}
-      </select>
-    </label>
-    <label class="field">
-      <span>Priority</span>
-      <input class="input" type="number" min="1" bind:value={linkForm.priority} />
-    </label>
-    <div class="field field-full link-type-helper">
-      <Icon name="info" size={14} />
-      <span>{linkFieldConfig.helper}</span>
     </div>
-    <label class="field">
-      <span>{linkFieldConfig.capacityLabel}</span>
-      <input class="input" type="number" min="0" step="0.01" bind:value={linkForm.capacity_mbps} />
-    </label>
-    <label class="field">
-      <span>{linkFieldConfig.utilizationLabel}</span>
-      <input class="input" type="number" min="0" max="100" step="0.01" bind:value={linkForm.utilization_pct} />
-    </label>
-    {#if linkFieldConfig.showLoss}
-      <label class="field">
-        <span>{linkFieldConfig.lossLabel}</span>
-        <input class="input" type="number" step="0.01" bind:value={linkForm.loss_db} />
-      </label>
-    {/if}
-    <label class="field">
-      <span>{linkFieldConfig.latencyLabel}</span>
-      <input class="input" type="number" min="0" step="0.01" bind:value={linkForm.latency_ms} />
-    </label>
-    <label class="field field-full">
-      <span>Geometry (GeoJSON LineString)</span>
-      <textarea class="input textarea" rows="7" bind:value={linkForm.geometryText}></textarea>
-    </label>
-  </div>
-  <div class="inline-actions">
-    <button class="btn ghost btn-xs" type="button" onclick={onUseStraightLine}>Use straight line from selected nodes</button>
+  {/if}
+
+  <div class="link-form">
+    <section class="form-section">
+      <div class="section-head">
+        <span class="section-kicker">Link</span>
+        <h4>Identity</h4>
+      </div>
+      <div class="form-grid identity-grid">
+        <label class="field span-6">
+          <span>Name</span>
+          <input class="input" bind:value={linkForm.name} placeholder="e.g. POP A to ODP 1" />
+        </label>
+        <label class="field span-3">
+          <span>Type</span>
+          <Select2
+            bind:value={linkForm.link_type}
+            options={linkTypeOptions}
+            width="100%"
+            placeholder="Select link type"
+            searchPlaceholder="Search type..."
+            noResultsText="No type found"
+          />
+        </label>
+        <label class="field span-3">
+          <span>Status</span>
+          <Select2
+            bind:value={linkForm.status}
+            options={linkStatusOptions}
+            width="100%"
+            placeholder="Select status"
+            searchPlaceholder="Search status..."
+            noResultsText="No status found"
+          />
+        </label>
+      </div>
+    </section>
+
+    <section class="form-section">
+      <div class="section-head endpoints-head">
+        <div>
+          <span class="section-kicker">Topology</span>
+          <h4>Endpoints</h4>
+        </div>
+        <button class="inline-link-action" type="button" onclick={onUseStraightLine}>
+          <Icon name="link" size={15} />
+          Use straight line
+        </button>
+      </div>
+      <div class="form-grid endpoints-grid">
+        <label class="field span-5">
+          <span>From Node</span>
+          <select class="input select-input" bind:value={linkForm.from_node_id}>
+            <option value="">Select node</option>
+            {#each nodeRows as n}
+              <option value={n.id}>{n.name}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="field span-5">
+          <span>To Node</span>
+          <select class="input select-input" bind:value={linkForm.to_node_id}>
+            <option value="">Select node</option>
+            {#each nodeRows as n}
+              <option
+                value={n.id}
+                disabled={n.id === linkForm.from_node_id ||
+                  hasExistingLinkBetweenNodes(linkForm.from_node_id, n.id, editingLinkId)}
+              >
+                {n.name}
+              </option>
+            {/each}
+          </select>
+        </label>
+        <label class="field span-2">
+          <span>Priority</span>
+          <input class="input" type="number" min="1" bind:value={linkForm.priority} />
+        </label>
+      </div>
+    </section>
+
+    <section class="form-section">
+      <div class="section-head with-helper">
+        <div>
+          <span class="section-kicker">Monitoring</span>
+          <h4>Link Metrics</h4>
+        </div>
+        <div class="helper-pill">
+          <Icon name="info" size={14} />
+          <span>{linkFieldConfig.helper}</span>
+        </div>
+      </div>
+      <div class="form-grid metrics-grid">
+        <label class="field">
+          <span>{linkFieldConfig.capacityLabel}</span>
+          <input
+            class="input"
+            type="number"
+            min="0"
+            step="0.01"
+            bind:value={linkForm.capacity_mbps}
+          />
+        </label>
+        <label class="field">
+          <span>{linkFieldConfig.utilizationLabel}</span>
+          <input
+            class="input"
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            bind:value={linkForm.utilization_pct}
+          />
+        </label>
+        {#if linkFieldConfig.showLoss}
+          <label class="field">
+            <span>{linkFieldConfig.lossLabel}</span>
+            <input class="input" type="number" step="0.01" bind:value={linkForm.loss_db} />
+          </label>
+        {/if}
+        <label class="field">
+          <span>{linkFieldConfig.latencyLabel}</span>
+          <input class="input" type="number" min="0" step="0.01" bind:value={linkForm.latency_ms} />
+        </label>
+      </div>
+    </section>
   </div>
   {#snippet footer()}
-    <button class="btn ghost" type="button" onclick={onClose} disabled={savingLink}>Cancel</button>
-    <button class="btn" type="button" onclick={onSubmit} disabled={savingLink}>
+    <button class="modal-btn secondary" type="button" onclick={onClose} disabled={savingLink}>
+      Cancel
+    </button>
+    <button class="modal-btn primary" type="button" onclick={onSubmit} disabled={savingLink}>
       {savingLink ? 'Saving...' : 'Save'}
     </button>
   {/snippet}
 </Modal>
+
+<style>
+  .link-workflow {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    margin-bottom: 18px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
+    border-radius: 14px;
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--color-primary) 8%, transparent),
+        transparent 58%
+      ),
+      color-mix(in srgb, var(--bg-app) 70%, var(--bg-surface));
+  }
+
+  .workflow-main,
+  .workflow-tools,
+  .section-head,
+  .endpoints-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .segmented-control {
+    display: inline-grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 210px;
+    padding: 3px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-surface) 76%, #020617);
+  }
+
+  .segmented-control button,
+  .workflow-action,
+  .inline-link-action,
+  .modal-btn {
+    border: 1px solid transparent;
+    font: inherit;
+    cursor: pointer;
+    transition:
+      background 0.16s ease,
+      border-color 0.16s ease,
+      color 0.16s ease,
+      box-shadow 0.16s ease;
+  }
+
+  .segmented-control button {
+    min-height: 34px;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+    font-weight: 800;
+  }
+
+  .segmented-control button.active {
+    background: var(--color-primary);
+    color: #fff;
+    box-shadow: 0 8px 22px color-mix(in srgb, var(--color-primary) 28%, transparent);
+  }
+
+  .workflow-action {
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 12px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--bg-surface) 78%, transparent);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    font-size: 0.84rem;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .workflow-action.primary {
+    background: color-mix(in srgb, var(--color-primary) 13%, var(--bg-surface));
+    border-color: color-mix(in srgb, var(--color-primary) 36%, var(--border-color));
+  }
+
+  .workflow-action.active {
+    color: #fff;
+    background: color-mix(in srgb, var(--color-primary) 80%, #0f172a);
+    border-color: color-mix(in srgb, var(--color-primary) 82%, #fff);
+  }
+
+  .workflow-action:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+  }
+
+  .workflow-hint {
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 10px;
+    color: var(--text-secondary);
+    background: color-mix(in srgb, var(--bg-app) 72%, transparent);
+    border: 1px dashed color-mix(in srgb, var(--border-color) 75%, transparent);
+    font-size: 0.84rem;
+    line-height: 1.35;
+  }
+
+  .workflow-hint.active {
+    color: var(--text-primary);
+    border-style: solid;
+    border-color: color-mix(in srgb, var(--color-primary) 42%, var(--border-color));
+    background: color-mix(in srgb, var(--color-primary) 10%, var(--bg-app));
+  }
+
+  .link-form {
+    display: grid;
+    gap: 14px;
+  }
+
+  .form-section {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 86%, transparent);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--bg-surface) 84%, #020617);
+  }
+
+  .section-head {
+    align-items: flex-start;
+  }
+
+  .section-head h4 {
+    margin: 2px 0 0;
+    color: var(--text-primary);
+    font-size: 0.98rem;
+    line-height: 1.2;
+  }
+
+  .section-kicker {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .section-head.with-helper {
+    align-items: center;
+  }
+
+  .helper-pill {
+    max-width: 520px;
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-app));
+    border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--border-color));
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+
+  .helper-pill :global(svg) {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: var(--color-primary);
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 12px;
+    align-items: start;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .field {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+  }
+
+  .field span {
+    color: var(--text-secondary);
+    font-size: 0.79rem;
+    font-weight: 800;
+    line-height: 1.25;
+  }
+
+  .span-2 {
+    grid-column: span 2;
+  }
+
+  .span-3 {
+    grid-column: span 3;
+  }
+
+  .span-5 {
+    grid-column: span 5;
+  }
+
+  .span-6 {
+    grid-column: span 6;
+  }
+
+  .input {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--bg-app) 78%, #020617);
+    color: var(--text-primary);
+    padding: 9px 11px;
+    font-size: 0.9rem;
+    outline: none;
+    transition:
+      border-color 0.16s ease,
+      box-shadow 0.16s ease,
+      background 0.16s ease;
+  }
+
+  .input:focus {
+    border-color: color-mix(in srgb, var(--color-primary) 58%, var(--border-color));
+    background: color-mix(in srgb, var(--bg-app) 88%, #020617);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
+  }
+
+  .select-input {
+    appearance: none;
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%),
+      linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);
+    background-position:
+      calc(100% - 16px) 17px,
+      calc(100% - 11px) 17px;
+    background-size:
+      5px 5px,
+      5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 32px;
+  }
+
+  .inline-link-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 0 11px;
+    border-radius: 10px;
+    background: transparent;
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 800;
+  }
+
+  .inline-link-action:hover,
+  .workflow-action:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--color-primary) 42%, var(--border-color));
+    background: color-mix(in srgb, var(--color-primary) 10%, var(--bg-surface));
+  }
+
+  .modal-btn {
+    min-width: 96px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 850;
+  }
+
+  .modal-btn.secondary {
+    background: transparent;
+    border-color: var(--border-color);
+    color: var(--text-primary);
+  }
+
+  .modal-btn.primary {
+    background: var(--color-primary);
+    border-color: color-mix(in srgb, var(--color-primary) 82%, #fff);
+    color: #fff;
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--color-primary) 24%, transparent);
+  }
+
+  .modal-btn:hover:not(:disabled) {
+    filter: brightness(1.06);
+  }
+
+  .modal-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.52;
+  }
+
+  :global(.select-trigger) {
+    min-height: 40px;
+  }
+
+  @media (max-width: 920px) {
+    .span-6,
+    .span-5,
+    .span-3,
+    .span-2 {
+      grid-column: span 12;
+    }
+
+    .metrics-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .helper-pill {
+      max-width: none;
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .link-workflow,
+    .form-section {
+      padding: 12px;
+      border-radius: 12px;
+    }
+
+    .workflow-main,
+    .workflow-tools,
+    .endpoints-head {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .segmented-control,
+    .workflow-action,
+    .inline-link-action {
+      width: 100%;
+    }
+
+    .workflow-action,
+    .inline-link-action {
+      justify-content: center;
+    }
+
+    .metrics-grid,
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .span-6,
+    .span-5,
+    .span-3,
+    .span-2 {
+      grid-column: auto;
+    }
+  }
+</style>

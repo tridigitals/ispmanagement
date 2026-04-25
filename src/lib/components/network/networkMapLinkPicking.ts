@@ -1,7 +1,10 @@
 import type { Geometry, LineString } from 'geojson';
 import { buildLinkDraftForm } from './networkMapActions';
-import { buildDefaultLineGeometry, hasExistingLinkBetweenNodes } from './networkMapInteractionUtils';
-import { prettyGeometry, type NMLink, type NMNode } from './networkMapUtils';
+import {
+  buildDefaultLineGeometry,
+  hasExistingLinkBetweenNodes,
+} from './networkMapInteractionUtils';
+import { parseGeometryText, prettyGeometry, type NMLink, type NMNode } from './networkMapUtils';
 
 export type LinkPickStep = 'from' | 'to';
 export type LinkPickDrawMode = 'quick' | 'path';
@@ -56,6 +59,26 @@ export function buildStraightLinkGeometryText(
   toNodeId: string,
 ) {
   return prettyGeometry(buildDefaultLineGeometry(nodeRows, fromNodeId, toNodeId));
+}
+
+export function resolveLinkGeometryTextForSubmit(
+  linkForm: Pick<NetworkMapLinkForm, 'from_node_id' | 'to_node_id' | 'geometryText'>,
+  nodeRows: NMNode[],
+) {
+  try {
+    const geometry = parseGeometryText(linkForm.geometryText);
+    if (
+      geometry.type !== 'LineString' ||
+      (Array.isArray(geometry.coordinates) && geometry.coordinates.length >= 2)
+    ) {
+      return linkForm.geometryText;
+    }
+  } catch {
+    // The raw geometry editor is hidden, so recover from stale/empty drafts with a simple link.
+  }
+
+  if (!linkForm.from_node_id || !linkForm.to_node_id) return linkForm.geometryText;
+  return buildStraightLinkGeometryText(nodeRows, linkForm.from_node_id, linkForm.to_node_id);
 }
 
 export function buildToggleLinkPickResult(args: {

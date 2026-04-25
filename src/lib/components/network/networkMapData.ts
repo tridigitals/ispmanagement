@@ -54,6 +54,8 @@ export type NetworkMapExtractedRows = {
   zoneCount: number;
 };
 
+export const NETWORK_MAP_WORLD_BBOX = '-180,-85,180,85';
+
 function buildDerivedRows(nodeRows: NMNode[]) {
   return {
     customerRows: (nodeRows || []).filter((row) => isCustomerNodeType(row.node_type)),
@@ -61,14 +63,36 @@ function buildDerivedRows(nodeRows: NMNode[]) {
   };
 }
 
-export function buildMapDataCacheKey(params: NetworkMapQueryParams, zoomSig: string) {
+export function resolveNetworkMapFetchBbox({
+  viewportBbox,
+  initialExtentLoaded,
+  hasActiveFilters,
+}: {
+  viewportBbox: string;
+  initialExtentLoaded: boolean;
+  hasActiveFilters: boolean;
+}) {
+  if (!initialExtentLoaded && !hasActiveFilters) return NETWORK_MAP_WORLD_BBOX;
+  return viewportBbox;
+}
+
+export function buildMapDataCacheKey(params: NetworkMapQueryParams, _zoomSig: string) {
   return JSON.stringify({
     q: params.q || '',
     status: params.status || '',
     kind: params.kind || '',
     bbox: params.bbox,
-    zoom: zoomSig,
   });
+}
+
+export function shouldFetchRouterOverlay({
+  canReadRouterInventory,
+  routersVisible,
+}: {
+  canReadRouterInventory: boolean;
+  routersVisible: boolean;
+}) {
+  return canReadRouterInventory && routersVisible;
 }
 
 export function getCachedMapData(
