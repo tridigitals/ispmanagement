@@ -294,6 +294,8 @@ const commandMap: Record<string, { method: string; path: string }> = {
   subscribe_push: { method: 'POST', path: '/notifications/push/subscribe' },
   unsubscribe_push: { method: 'POST', path: '/notifications/push/unsubscribe' },
   send_test_notification: { method: 'POST', path: '/notifications/test' },
+  send_test_whatsapp: { method: 'POST', path: '/whatsapp/test-send' },
+  list_whatsapp_events: { method: 'GET', path: '/whatsapp/events' },
   list_email_outbox: { method: 'GET', path: '/email-outbox' },
   get_email_outbox: { method: 'GET', path: '/email-outbox/:id' },
   get_email_outbox_stats: { method: 'GET', path: '/email-outbox/stats' },

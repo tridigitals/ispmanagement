@@ -22,6 +22,7 @@ import { superadmin } from './superadmin';
 import { tenant } from './tenant';
 import { team } from './team';
 import { users } from './users';
+import { whatsapp } from './whatsapp';
 import { workOrders } from './workOrders';
 export { announcements } from './announcements';
 export { audit } from './audit';
@@ -47,6 +48,7 @@ export { superadmin } from './superadmin';
 export { tenant } from './tenant';
 export { team } from './team';
 export { users } from './users';
+export { whatsapp } from './whatsapp';
 export { workOrders } from './workOrders';
 export type * from './types';
 // Combined API object
@@ -56,6 +58,7 @@ export const api = {
   roles,
   team,
   customers,
+  whatsapp,
   workOrders,
   pppoe,
   ispPackages,

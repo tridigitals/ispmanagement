@@ -24,6 +24,7 @@ export const loadRealtimeRuntime = createCachedLoader(async () => {
   return {
     connectWebSocket: websocketModule.connectWebSocket,
     disconnectWebSocket: websocketModule.disconnectWebSocket,
+    loadNotifications: notificationsModule.loadNotifications,
     refreshUnreadCount: notificationsModule.refreshUnreadCount,
     resetNotificationsState: notificationsModule.resetNotificationsState,
   };

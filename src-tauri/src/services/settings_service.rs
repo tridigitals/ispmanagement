@@ -192,6 +192,17 @@ impl SettingsService {
                 return true;
             }
 
+            if k.starts_with("wa_gateway_") {
+                return matches!(
+                    k,
+                    "wa_gateway_fonnte_token"
+                        | "wa_gateway_custom_headers"
+                        | "wa_gateway_custom_body_template"
+                ) || k.contains("token")
+                    || k.contains("secret")
+                    || k.contains("password");
+            }
+
             // Payments: redact server/secret keys, but allow auditing non-secret toggles.
             if k.starts_with("payment_") {
                 return matches!(

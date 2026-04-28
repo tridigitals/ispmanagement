@@ -1,6 +1,7 @@
 type RealtimeRuntime = {
   connectWebSocket: () => void;
   disconnectWebSocket: () => void;
+  loadNotifications: (page?: number) => Promise<void>;
   refreshUnreadCount: () => void;
 };
 
@@ -27,6 +28,7 @@ export function createRootRealtimeController(loadRuntime: LoadRealtimeRuntime) {
       connectInFlight = (async () => {
         const runtime = await getRuntime();
         runtime.connectWebSocket();
+        await runtime.loadNotifications(1);
         runtime.refreshUnreadCount();
         connected = true;
       })().finally(() => {

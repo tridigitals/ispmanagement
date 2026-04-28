@@ -2,7 +2,7 @@ use crate::services::{
     AuditService, AuthService, CustomerService, EmailService, IspPackageService,
     ManagedRadiusService, MikrotikService, MixradiusImportService, NetworkMappingService,
     NotificationService, PaymentService, PlanService, PppoeService, RoleService, SettingsService,
-    StorageService, SystemService, TeamService, UserService,
+    StorageService, SystemService, TeamService, UserService, WhatsappGatewayService,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -37,6 +37,7 @@ pub mod team;
 pub mod tenant;
 pub mod users;
 pub mod websocket;
+pub mod whatsapp;
 pub mod work_orders;
 
 pub use websocket::{WsEvent, WsHub};
@@ -69,6 +70,7 @@ pub struct AppState {
     pub storage_service: Arc<StorageService>,
     pub payment_service: Arc<PaymentService>,
     pub notification_service: Arc<NotificationService>,
+    pub whatsapp_gateway_service: Arc<WhatsappGatewayService>,
     pub mikrotik_service: Arc<MikrotikService>,
     pub managed_radius_service: Arc<ManagedRadiusService>,
     pub mixradius_import_service: Arc<MixradiusImportService>,

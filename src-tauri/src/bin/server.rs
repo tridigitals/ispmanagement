@@ -109,8 +109,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         email_service.clone(),
     );
     email_outbox_service.start_sender().await;
-    let notification_service =
-        NotificationService::new(pool.clone(), ws_hub.clone(), email_outbox_service.clone());
+    let whatsapp_gateway_service = saas_tauri_lib::services::WhatsappGatewayService::new(
+        pool.clone(),
+        settings_service.clone(),
+    );
+    let notification_service = NotificationService::new_with_whatsapp(
+        pool.clone(),
+        ws_hub.clone(),
+        email_outbox_service.clone(),
+        whatsapp_gateway_service,
+    );
     let customer_service = CustomerService::new(
         pool.clone(),
         auth_service.clone(),

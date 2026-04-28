@@ -7,6 +7,7 @@ describe('root realtime controller', () => {
     const runtime = {
       connectWebSocket: vi.fn(),
       disconnectWebSocket: vi.fn(),
+      loadNotifications: vi.fn(),
       refreshUnreadCount: vi.fn(),
     };
     const loadRuntime = vi.fn(async () => runtime);
@@ -16,6 +17,7 @@ describe('root realtime controller', () => {
 
     expect(loadRuntime).toHaveBeenCalledTimes(1);
     expect(runtime.connectWebSocket).toHaveBeenCalledTimes(1);
+    expect(runtime.loadNotifications).toHaveBeenCalledWith(1);
     expect(runtime.refreshUnreadCount).toHaveBeenCalledTimes(1);
     expect(runtime.disconnectWebSocket).not.toHaveBeenCalled();
   });
@@ -24,6 +26,7 @@ describe('root realtime controller', () => {
     const runtime = {
       connectWebSocket: vi.fn(),
       disconnectWebSocket: vi.fn(),
+      loadNotifications: vi.fn(),
       refreshUnreadCount: vi.fn(),
     };
     const loadRuntime = vi.fn(async () => runtime);
@@ -39,6 +42,7 @@ describe('root realtime controller', () => {
     const runtime = {
       connectWebSocket: vi.fn(),
       disconnectWebSocket: vi.fn(),
+      loadNotifications: vi.fn(),
       refreshUnreadCount: vi.fn(),
     };
     const loadRuntime = vi.fn(async () => runtime);
@@ -49,6 +53,7 @@ describe('root realtime controller', () => {
 
     expect(loadRuntime).toHaveBeenCalledTimes(1);
     expect(runtime.connectWebSocket).toHaveBeenCalledTimes(1);
+    expect(runtime.loadNotifications).toHaveBeenCalledWith(1);
     expect(runtime.refreshUnreadCount).toHaveBeenCalledTimes(1);
     expect(runtime.disconnectWebSocket).toHaveBeenCalledTimes(1);
   });

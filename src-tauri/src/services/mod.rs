@@ -19,6 +19,7 @@ pub mod settings_service;
 pub mod team_service;
 pub mod unsubscribe_token;
 pub mod user_service;
+pub mod whatsapp_gateway_service;
 
 pub use auth_service::*;
 pub mod announcement_service;
@@ -61,6 +62,7 @@ pub use system_service::SystemService;
 pub use team_service::TeamService;
 pub use unsubscribe_token::*;
 pub use user_service::UserService;
+pub use whatsapp_gateway_service::*;
 
 #[cfg(test)]
 mod mixradius_import_executor_tests;

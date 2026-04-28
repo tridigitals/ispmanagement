@@ -44,6 +44,14 @@ export const loadSettingsBackupTab = createCachedLoader(() =>
   import('$lib/components/superadmin/settings/SettingsBackupTab.svelte'),
 );
 
+export const loadSettingsWhatsAppTab = createCachedLoader(() =>
+  import('$lib/components/settings/WhatsAppGatewayTab.svelte'),
+);
+
+export const loadSettingsNotificationEventsTab = createCachedLoader(() =>
+  import('$lib/components/settings/NotificationEventsTab.svelte'),
+);
+
 export type SettingsTabId =
   | 'general'
   | 'auth'
@@ -52,7 +60,9 @@ export type SettingsTabId =
   | 'storage'
   | 'payment'
   | 'alerting'
-  | 'backup';
+  | 'backup'
+  | 'whatsapp'
+  | 'event_notifications';
 
 type SettingsTabLoader = () => Promise<{ default: DeferredComponent }>;
 
@@ -65,6 +75,8 @@ const settingsTabLoaders: Record<SettingsTabId, SettingsTabLoader> = {
   payment: loadSettingsPaymentTab,
   alerting: loadSettingsAlertingTab,
   backup: loadSettingsBackupTab,
+  whatsapp: loadSettingsWhatsAppTab,
+  event_notifications: loadSettingsNotificationEventsTab,
 };
 
 export async function loadSettingsTabComponent(tab: SettingsTabId): Promise<DeferredComponent> {

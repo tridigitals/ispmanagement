@@ -47,6 +47,9 @@ pub(crate) const MIKROTIK_LOGS_DEFAULT_PAGE: u32 = 1;
 pub(crate) const MIKROTIK_LOGS_DEFAULT_PER_PAGE: u32 = 25;
 pub(crate) const MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL: bool = false;
 const MIKROTIK_LOG_SYNC_BATCH_SIZE: usize = 250;
+const DEFAULT_LATENCY_PROBE_TARGET: &str = "google.com";
+const LATENCY_PROBE_COUNT: &str = "3";
+const LATENCY_PROBE_TIMEOUT_SECS: u64 = 7;
 
 #[derive(Clone, Copy)]
 struct Thresholds {
@@ -1941,13 +1944,15 @@ impl MikrotikService {
             .await?
             .ok_or_else(|| AppError::NotFound("Router not found".to_string()))?;
 
-        let started = Instant::now();
-        let latency_ms = Some(started.elapsed().as_millis().min(i32::MAX as u128) as i32);
-
         match self.connect_and_probe(&router).await {
             Ok((identity, version)) => {
                 // Treat a successful test as an explicit "online" signal.
                 let now = Utc::now();
+                let latency_ms = self
+                    .fetch_router_internet_latency_ms(&router)
+                    .await
+                    .ok()
+                    .flatten();
                 let _ = sqlx::query(
                     r#"
                     UPDATE mikrotik_routers SET
@@ -1983,6 +1988,7 @@ impl MikrotikService {
                 // Store last error so UI can surface it.
                 let now = Utc::now();
                 let msg = e.to_string();
+                let latency_ms: Option<i32> = None;
                 let _ = sqlx::query(
                     r#"
                     UPDATE mikrotik_routers SET
@@ -2062,6 +2068,35 @@ impl MikrotikService {
         }
 
         Ok((identity, version))
+    }
+
+    async fn fetch_router_internet_latency_ms(
+        &self,
+        router: &MikrotikRouter,
+    ) -> Result<Option<i32>, anyhow::Error> {
+        let target = std::env::var("MIKROTIK_LATENCY_PROBE_TARGET")
+            .ok()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| DEFAULT_LATENCY_PROBE_TARGET.to_string());
+        let addr = format!("{}:{}", router.host, router.port);
+        let password = decrypt_secret_opt(router.password.as_str())
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let dev = timeout(
+            Duration::from_secs(5),
+            MikrotikDevice::connect(addr, router.username.as_str(), password.as_deref()),
+        )
+        .await
+        .map_err(|_| anyhow::anyhow!("Connection timed out"))?
+        .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        timeout(
+            Duration::from_secs(LATENCY_PROBE_TIMEOUT_SECS),
+            fetch_router_ping_latency_ms(&dev, target.as_str()),
+        )
+        .await
+        .map_err(|_| anyhow::anyhow!("Router ping timed out"))?
     }
 
     /// Background poller (best-effort).
@@ -2354,14 +2389,19 @@ impl MikrotikService {
         let prev_online = router.is_online;
         let tenant_id = router.tenant_id.clone();
 
-        let probe = self.connect_and_probe(&router).await;
         let now = Utc::now();
-        let latency_ms = Some(started.elapsed().as_millis().min(i32::MAX as u128) as i32);
+        let probe = self.connect_and_probe(&router).await;
 
         let in_maintenance = router.maintenance_until.map(|u| u > now).unwrap_or(false);
 
         match probe {
             Ok((identity, version)) => {
+                let latency_ms = self
+                    .fetch_router_internet_latency_ms(&router)
+                    .await
+                    .ok()
+                    .flatten();
+
                 // Basic resource snapshot
                 let metric = self
                     .fetch_resource_metric(&router)
@@ -2537,6 +2577,7 @@ impl MikrotikService {
             }
             Err(e) => {
                 let msg = e.to_string();
+                let latency_ms: Option<i32> = None;
                 sqlx::query(
                     r#"
                     UPDATE mikrotik_routers SET
@@ -5251,6 +5292,82 @@ impl MikrotikService {
     }
 }
 
+fn parse_router_ping_time_ms(raw: &str) -> Option<i32> {
+    let value = raw.trim().to_ascii_lowercase();
+    if value.is_empty() || value.contains("timeout") {
+        return None;
+    }
+
+    let (number, multiplier) = if let Some(number) = value.strip_suffix("ms") {
+        (number.trim(), 1.0)
+    } else if let Some(number) = value.strip_suffix("us") {
+        (number.trim(), 0.001)
+    } else if let Some(number) = value.strip_suffix("s") {
+        (number.trim(), 1000.0)
+    } else {
+        return None;
+    };
+
+    let millis = number.parse::<f64>().ok()? * multiplier;
+    if !millis.is_finite() || millis < 0.0 {
+        return None;
+    }
+    if millis > 0.0 && millis < 1.0 {
+        return Some(1);
+    }
+    Some(millis.round().min(i32::MAX as f64) as i32)
+}
+
+fn average_router_ping_latency_ms<I>(samples: I) -> Option<i32>
+where
+    I: IntoIterator<Item = Option<String>>,
+{
+    let mut total = 0.0;
+    let mut count = 0.0;
+
+    for sample in samples {
+        if let Some(ms) = sample
+            .as_deref()
+            .and_then(parse_router_ping_time_ms)
+            .map(|value| value as f64)
+        {
+            total += ms;
+            count += 1.0;
+        }
+    }
+
+    if count == 0.0 {
+        None
+    } else {
+        Some((total / count).round().min(i32::MAX as f64) as i32)
+    }
+}
+
+async fn fetch_router_ping_latency_ms(
+    dev: &MikrotikDevice,
+    target: &str,
+) -> Result<Option<i32>, anyhow::Error> {
+    let cmd = CommandBuilder::new()
+        .command("/ping")
+        .attribute("address", Some(target))
+        .attribute("count", Some(LATENCY_PROBE_COUNT))
+        .build();
+    let mut rx = dev
+        .send_command(cmd)
+        .await
+        .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    let mut samples: Vec<Option<String>> = Vec::new();
+
+    while let Some(res) = rx.recv().await {
+        let response = res.map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        if let CommandResponse::Reply(reply) = response {
+            samples.push(reply.attributes.get("time").and_then(|value| value.clone()));
+        }
+    }
+
+    Ok(average_router_ping_latency_ms(samples))
+}
+
 fn parse_uptime_to_secs(s: &str) -> i64 {
     // RouterOS uptime string example: "1w2d3h4m5s" or "3h12m" etc.
     let mut total: i64 = 0;
@@ -5447,6 +5564,26 @@ mod tests {
         assert_eq!(resolve_router_log_retention_days(Some("90")), Some(90));
         assert_eq!(resolve_router_log_retention_days(Some("360")), Some(360));
         assert_eq!(resolve_router_log_retention_days(Some("365")), None);
+    }
+
+    #[test]
+    fn parses_router_ping_latency_time_units() {
+        assert_eq!(parse_router_ping_time_ms("12ms"), Some(12));
+        assert_eq!(parse_router_ping_time_ms("12.6ms"), Some(13));
+        assert_eq!(parse_router_ping_time_ms("850us"), Some(1));
+        assert_eq!(parse_router_ping_time_ms("1.5s"), Some(1500));
+    }
+
+    #[test]
+    fn averages_router_ping_samples_from_mikrotik_replies() {
+        let mut samples = vec![
+            Some("10ms".to_string()),
+            Some("25ms".to_string()),
+            None,
+            Some("timeout".to_string()),
+        ];
+
+        assert_eq!(average_router_ping_latency_ms(samples.drain(..)), Some(18));
     }
 
     #[test]

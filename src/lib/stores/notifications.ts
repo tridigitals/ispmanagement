@@ -167,7 +167,17 @@ export async function updatePreference(channel: string, category: string, enable
       newPrefs[idx] = { ...newPrefs[idx], enabled };
       return newPrefs;
     }
-    return prefs;
+    return [
+      ...prefs,
+      {
+        id: `local-${channel}-${category}`,
+        user_id: '',
+        channel: channel as any,
+        category,
+        enabled,
+        updated_at: new Date().toISOString(),
+      },
+    ];
   });
 
   try {

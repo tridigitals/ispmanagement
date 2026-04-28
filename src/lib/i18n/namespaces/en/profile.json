@@ -112,6 +112,7 @@
       "in_app": "In-App",
       "email": "Email",
       "push": "Push",
+      "whatsapp": "WhatsApp",
       "required": "Required"
     },
     "categories": {

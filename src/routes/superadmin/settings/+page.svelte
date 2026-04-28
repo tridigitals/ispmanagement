@@ -15,6 +15,7 @@
     loadSettingsTabComponent,
     type SettingsTabId,
   } from './settingsPageModules';
+  import { WHATSAPP_GATEWAY_SETTING_KEYS } from '$lib/utils/whatsappGateway';
 
   let loading = $state(true);
   let saving = $state(false);
@@ -125,6 +126,7 @@
   let backupTenantAt = $state('02:30');
   let backupTenantWeekday = $state<Weekday>('sun');
   let backupTenantRetentionDays = $state(14);
+  let whatsappSettings = $state<Record<string, string>>({});
 
   let hasChanges = $state(false);
 
@@ -172,6 +174,16 @@
       labelKey: 'superadmin.settings.categories.backup',
       labelFallback: 'Backups',
       icon: 'archive',
+    },
+    whatsapp: {
+      labelKey: 'superadmin.settings.categories.whatsapp',
+      labelFallback: 'WhatsApp Gateway',
+      icon: 'message-circle',
+    },
+    event_notifications: {
+      labelKey: 'superadmin.settings.categories.event_notifications',
+      labelFallback: 'Event Notifications',
+      icon: 'bell',
     },
   };
 
@@ -360,6 +372,19 @@
     backupTenantAt = settingsMap['backup_tenant_at'] || '02:30';
     backupTenantWeekday = (settingsMap['backup_tenant_weekday'] as Weekday) || 'sun';
     backupTenantRetentionDays = parseInt(settingsMap['backup_tenant_retention_days'] || '14');
+
+    const nextWhatsAppSettings: Record<string, string> = {};
+    for (const key of WHATSAPP_GATEWAY_SETTING_KEYS) {
+      nextWhatsAppSettings[key] = settingsMap[key] || '';
+    }
+    nextWhatsAppSettings['wa_gateway_enabled'] = settingsMap['wa_gateway_enabled'] || 'false';
+    nextWhatsAppSettings['wa_gateway_provider'] = settingsMap['wa_gateway_provider'] || 'disabled';
+    nextWhatsAppSettings['wa_gateway_custom_method'] =
+      settingsMap['wa_gateway_custom_method'] || 'POST';
+    nextWhatsAppSettings['wa_gateway_custom_success_statuses'] =
+      settingsMap['wa_gateway_custom_success_statuses'] || '200,201,202';
+    nextWhatsAppSettings['wa_events_platform'] = settingsMap['wa_events_platform'] || '{}';
+    whatsappSettings = nextWhatsAppSettings;
   }
 
   async function loadSettings(opts: { silent?: boolean } = {}) {
@@ -401,6 +426,14 @@
 
   function handleChange() {
     hasChanges = true;
+  }
+
+  function handleWhatsAppChange(key: string, value: string | boolean) {
+    whatsappSettings = {
+      ...whatsappSettings,
+      [key]: typeof value === 'boolean' ? (value ? 'true' : 'false') : value,
+    };
+    handleChange();
   }
 
   async function saveSettings() {
@@ -709,6 +742,9 @@
           backupTenantRetentionDays.toString(),
           'Retention days for tenant backups',
         ),
+        ...Object.entries(whatsappSettings).map(([key, value]) =>
+          api.settings.upsert(key, value, `WhatsApp Gateway setting: ${key}`),
+        ),
       ];
 
       await Promise.all(updates);
@@ -784,6 +820,7 @@
         backup_tenant_at: backupTenantAt,
         backup_tenant_weekday: backupTenantWeekday,
         backup_tenant_retention_days: backupTenantRetentionDays.toString(),
+        ...whatsappSettings,
       };
 
       superadminPlatformSettingsCache.set({
@@ -1122,6 +1159,47 @@
               on:change={handleChange}
               on:triggerGlobal={triggerGlobalBackup}
               on:triggerTenants={triggerTenantBackups}
+            />
+          {:else}
+            <div class="tab-loading card" aria-busy={activeTabLoading}>
+              <div class="tab-loading-bar"></div>
+              <div class="tab-loading-body"></div>
+            </div>
+          {/if}
+        {/if}
+
+        <!-- WhatsApp Gateway Tab -->
+        {#if activeTab === 'whatsapp'}
+          {#if CurrentTabComponent}
+            <CurrentTabComponent
+              localSettings={whatsappSettings}
+              handleChange={handleWhatsAppChange}
+              eventScope="platform"
+              title={$t('superadmin.settings.whatsapp.title') || 'WhatsApp Gateway'}
+              description={$t('superadmin.settings.whatsapp.description') ||
+                'Configure the global WhatsApp gateway.'}
+            />
+          {:else}
+            <div class="tab-loading card" aria-busy={activeTabLoading}>
+              <div class="tab-loading-bar"></div>
+              <div class="tab-loading-body"></div>
+            </div>
+          {/if}
+        {/if}
+
+        <!-- Event Notifications Tab -->
+        {#if activeTab === 'event_notifications'}
+          {#if CurrentTabComponent}
+            <CurrentTabComponent
+              localSettings={whatsappSettings}
+              handleChange={handleWhatsAppChange}
+              eventSettingsKey="wa_events_platform"
+              eventScope="platform"
+              emailReady={emailVerificationReadiness.ready}
+              emailReadinessReason={emailVerificationReadiness.reason}
+              title={$t('superadmin.settings.event_notifications.title') || 'Event Notifications'}
+              description={$t('superadmin.settings.event_notifications.description') ||
+                'Choose notification channels for each platform event.'}
             />
           {:else}
             <div class="tab-loading card" aria-busy={activeTabLoading}>

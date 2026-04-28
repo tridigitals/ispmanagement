@@ -4,11 +4,14 @@
   import WallboardInsightsControls from '$lib/components/network/WallboardInsightsControls.svelte';
   import WallboardInsightsSummary from '$lib/components/network/WallboardInsightsSummary.svelte';
   import WallboardAlertsPanel from '$lib/components/network/WallboardAlertsPanel.svelte';
+  import type { LayoutPreset } from '$lib/constants/wallboard';
+
+  type AlertSeverityFilter = 'all' | 'critical' | 'warning';
 
   let {
     insightsOpen = $bindable(false),
     alertsOpen = $bindable(false),
-    alertSeverityFilter = $bindable<'all' | 'critical' | 'warning'>('all'),
+    alertSeverityFilter = $bindable<AlertSeverityFilter>('all'),
     insightsBadge,
     sortedAlerts = [],
     refreshing,
@@ -16,7 +19,7 @@
     isFullscreen,
     criticalSoundEnabled,
     pollMs = $bindable(1000),
-    layout = $bindable('3x3'),
+    layout = $bindable<LayoutPreset>('3x3'),
     onRefresh,
     onTogglePaused,
     onToggleFullscreen,
@@ -47,6 +50,13 @@
     onAckVisible,
     onOpenAlerts,
     onToggleAlertsPanel,
+  }: {
+    insightsOpen?: boolean;
+    alertsOpen?: boolean;
+    alertSeverityFilter?: AlertSeverityFilter;
+    pollMs?: number;
+    layout?: LayoutPreset;
+    [key: string]: any;
   } = $props();
 </script>
 

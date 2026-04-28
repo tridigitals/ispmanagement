@@ -347,6 +347,9 @@ pub fn run() {
                                     subscribe_push,
                                     unsubscribe_push,
                                     send_test,
+                                    // WhatsApp gateway
+                                    list_whatsapp_events,
+                                    send_test_whatsapp,
                                     // Email Outbox (Admin)
                                     list_email_outbox,
                                     get_email_outbox_stats,

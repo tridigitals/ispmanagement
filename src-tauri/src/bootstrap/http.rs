@@ -29,7 +29,7 @@ use crate::http::{
     announcements, audit, auth, backup, customers, email_outbox, install, isp_packages, middleware,
     mikrotik, mixradius_import, network_mapping, notifications, payment, plans, pppoe, public,
     roles, settings, storage, superadmin, support, system, team, tenant, users, websocket,
-    work_orders, AppState, SecurityRuntimeConfig, WsHub,
+    whatsapp, work_orders, AppState, SecurityRuntimeConfig, WsHub,
 };
 
 type IpBlockMap = HashMap<String, chrono::DateTime<chrono::Utc>>;
@@ -167,6 +167,10 @@ pub async fn start_server_impl(
     let state = AppState {
         auth_service: Arc::new(auth_service),
         user_service: Arc::new(user_service),
+        whatsapp_gateway_service: Arc::new(crate::services::WhatsappGatewayService::new(
+            pool.clone(),
+            settings_service.clone(),
+        )),
         settings_service: Arc::new(settings_service),
         email_service: Arc::new(email_service),
         team_service: Arc::new(team_service),
@@ -473,6 +477,9 @@ pub async fn start_server_impl(
         .nest("/api/payment", payment::router())
         // Notification Routes
         .nest("/api/notifications", notifications::router())
+        // WhatsApp gateway settings/test delivery
+        .route("/api/whatsapp/events", get(whatsapp::list_events))
+        .route("/api/whatsapp/test-send", post(whatsapp::test_send))
         // Email Outbox (admin monitor)
         .nest("/api/email-outbox", email_outbox::router())
         // MikroTik routers (tenant admin)

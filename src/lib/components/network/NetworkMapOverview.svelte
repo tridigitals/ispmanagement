@@ -1,14 +1,5 @@
 <script lang="ts">
-  import type {
-    NetworkMapSearchResultItem,
-  } from '$lib/components/network/networkMapInsights';
-  import {
-    buildNetworkMapOverviewSearchGroups,
-    countNetworkMapSearchResults,
-  } from '$lib/components/network/networkMapOverviewModel';
-  import type { NMLink, NMNode, NMRouter, NMZone } from '$lib/components/network/networkMapUtils';
   import Icon from '$lib/components/ui/Icon.svelte';
-  import NetworkMapSearchBar from '$lib/components/network/NetworkMapSearchBar.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
 
   let {
@@ -20,22 +11,10 @@
     syncingAssetNodes,
     refreshing,
     loading,
-    workspaceSearchQuery,
-    quickMode,
-    nodeRows,
-    linkRows,
-    zoneRows,
-    routerRows,
-    customerRows,
-    serviceRows,
     title,
     subtitle,
     labels,
-    onWorkspaceSearchChange,
-    onWorkspaceSearchSelect,
     onSyncAssets,
-    formatSearchIdleSummary,
-    formatSearchResultsSummary,
   }: {
     compactMode: boolean;
     fromInstallation: boolean;
@@ -45,50 +24,11 @@
     syncingAssetNodes: boolean;
     refreshing: boolean;
     loading: boolean;
-    workspaceSearchQuery: string;
-    quickMode: 'all' | 'issues' | 'customers' | 'services' | 'topology' | 'field';
-    nodeRows: NMNode[];
-    linkRows: NMLink[];
-    zoneRows: NMZone[];
-    routerRows: NMRouter[];
-    customerRows: NMNode[];
-    serviceRows: NMNode[];
     title: string;
     subtitle: string;
     labels: Record<string, string>;
-    onWorkspaceSearchChange: (value: string) => void;
-    onWorkspaceSearchSelect: (item: NetworkMapSearchResultItem) => void;
     onSyncAssets: () => void;
-    formatSearchIdleSummary: (total: number) => string;
-    formatSearchResultsSummary: (count: number, groups: number) => string;
   } = $props();
-
-  const searchGroups = $derived.by(() =>
-    buildNetworkMapOverviewSearchGroups({
-      query: workspaceSearchQuery,
-      quickMode,
-      nodes: nodeRows,
-      links: linkRows,
-      zones: zoneRows,
-      routers: routerRows,
-      customerRows,
-      serviceRows,
-    }),
-  );
-
-  const searchSummary = $derived.by(() => {
-    const query = workspaceSearchQuery.trim();
-    if (!query) {
-      return formatSearchIdleSummary(
-        nodeRows.length + linkRows.length + zoneRows.length + routerRows.length,
-      );
-    }
-
-    return formatSearchResultsSummary(
-      countNetworkMapSearchResults(searchGroups),
-      searchGroups.length,
-    );
-  });
 </script>
 
 {#if !compactMode}
@@ -118,89 +58,13 @@
         {/if}
       {/snippet}
     </NetworkPageHeader>
-
-    <div class="workspace-composer">
-      <div class="search-section">
-        <div class="section-head compact-head">
-          <div class="section-heading">
-            <div class="section-kicker">{labels.searchKicker}</div>
-            <div class="section-title">{labels.searchTitle}</div>
-          </div>
-        </div>
-
-        <NetworkMapSearchBar
-          query={workspaceSearchQuery}
-          groups={searchGroups}
-          summary={searchSummary}
-          placeholder={labels.searchPlaceholder}
-          emptyTitle={labels.searchEmptyTitle}
-          emptyHint={labels.searchEmptyHint}
-          onQueryChange={onWorkspaceSearchChange}
-          onSelect={onWorkspaceSearchSelect}
-        />
-      </div>
-    </div>
   </div>
 {/if}
 
 <style>
   .overview-shell {
     display: grid;
-    gap: 12px;
-  }
-
-  .workspace-composer {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-    align-items: start;
-    padding: 14px 16px;
-    border-radius: 20px;
-    border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
-    background:
-      radial-gradient(circle at top right, rgba(23, 37, 84, 0.28), transparent 34%),
-      linear-gradient(180deg, color-mix(in srgb, var(--bg-card) 94%, #050d18 6%), var(--bg-card));
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.04),
-      0 30px 60px rgba(2, 6, 23, 0.12);
-  }
-
-  .section-kicker {
-    font-size: 0.68rem;
-    font-weight: 900;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
-    color: color-mix(in srgb, var(--color-primary) 72%, white 28%);
-  }
-
-  .section-title {
-    margin: 0;
-    font-size: 0.95rem;
-    font-weight: 900;
-    color: var(--text-primary);
-  }
-
-  .section-heading {
-    display: grid;
-    gap: 3px;
-  }
-
-  .search-section {
-    display: grid;
-    gap: 10px;
-    min-width: 0;
-  }
-
-  .section-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .compact-head {
-    min-height: 0;
+    gap: 8px;
   }
 
   .btn {
@@ -242,20 +106,6 @@
   }
 
   @media (max-width: 768px) {
-    .workspace-composer {
-      grid-template-columns: 1fr;
-      padding: 12px;
-      border-radius: 18px;
-    }
-
-    .section-head {
-      align-items: start;
-    }
-
-    .section-title {
-      font-size: 0.9rem;
-    }
-
     .btn {
       width: 100%;
       justify-content: center;

@@ -16,6 +16,7 @@ const sentinels = vi.hoisted(() => ({
     disconnectWebSocket: vi.fn(),
   },
   notificationsModule: {
+    loadNotifications: vi.fn(),
     refreshUnreadCount: vi.fn(),
     resetNotificationsState: vi.fn(),
   },
@@ -55,6 +56,7 @@ describe('root runtime modules', () => {
 
     expect(first.connectWebSocket).toBe(sentinels.websocketModule.connectWebSocket);
     expect(first.disconnectWebSocket).toBe(sentinels.websocketModule.disconnectWebSocket);
+    expect(first.loadNotifications).toBe(sentinels.notificationsModule.loadNotifications);
     expect(first.refreshUnreadCount).toBe(sentinels.notificationsModule.refreshUnreadCount);
     expect(first.resetNotificationsState).toBe(sentinels.notificationsModule.resetNotificationsState);
     expect(second).toBe(first);

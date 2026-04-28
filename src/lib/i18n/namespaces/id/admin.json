@@ -2221,7 +2221,17 @@
       "email": "Email",
       "branding": "Branding & Domain",
       "billing_plan": "Billing & Plan",
+      "whatsapp": "WhatsApp Gateway",
+      "event_notifications": "Notifikasi Event",
       "payment": "Pembayaran"
+    },
+    "whatsapp": {
+      "title": "WhatsApp Gateway",
+      "description": "Atur gateway WhatsApp tenant ini."
+    },
+    "event_notifications": {
+      "title": "Notifikasi Event",
+      "description": "Pilih channel notifikasi untuk setiap event tenant."
     },
     "billing_plan": {
       "eyebrow": "Billing tenant",

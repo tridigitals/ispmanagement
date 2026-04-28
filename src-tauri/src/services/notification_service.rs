@@ -6,6 +6,7 @@ use crate::models::{
     PushSubscription, UpdatePreferenceRequest,
 };
 use crate::services::EmailOutboxService;
+use crate::services::WhatsappGatewayService;
 use axum::http::Uri;
 use chrono::Utc;
 use std::sync::Arc;
@@ -22,6 +23,7 @@ pub struct NotificationService {
     pool: DbPool,
     ws_hub: Arc<WsHub>,
     email_outbox: EmailOutboxService,
+    whatsapp_gateway: Option<WhatsappGatewayService>,
 }
 
 impl NotificationService {
@@ -30,6 +32,21 @@ impl NotificationService {
             pool,
             ws_hub,
             email_outbox,
+            whatsapp_gateway: None,
+        }
+    }
+
+    pub fn new_with_whatsapp(
+        pool: DbPool,
+        ws_hub: Arc<WsHub>,
+        email_outbox: EmailOutboxService,
+        whatsapp_gateway: WhatsappGatewayService,
+    ) -> Self {
+        Self {
+            pool,
+            ws_hub,
+            email_outbox,
+            whatsapp_gateway: Some(whatsapp_gateway),
         }
     }
 
@@ -631,6 +648,90 @@ impl NotificationService {
             let _ = self.send_push_notification(notif, &notif.user_id).await;
         }
 
+        // 4. WhatsApp
+        if should_send("whatsapp", &notif.category) {
+            let _ = self.deliver_whatsapp_notification(notif).await;
+        }
+
         Ok(())
+    }
+
+    async fn deliver_whatsapp_notification(&self, notif: &Notification) -> AppResult<()> {
+        let Some(whatsapp_gateway) = &self.whatsapp_gateway else {
+            return Ok(());
+        };
+        let event_code = whatsapp_event_code_for_category(&notif.category);
+        if !whatsapp_gateway
+            .is_event_whatsapp_enabled(notif.tenant_id.as_deref(), event_code)
+            .await?
+        {
+            return Ok(());
+        }
+
+        let phone = self.lookup_whatsapp_phone(notif).await?;
+        let Some(phone) = phone.filter(|value| !value.trim().is_empty()) else {
+            return Ok(());
+        };
+
+        whatsapp_gateway
+            .send_text(
+                notif.tenant_id.as_deref(),
+                event_code,
+                Some(&notif.user_id),
+                &phone,
+                &format!("{}\n\n{}", notif.title, notif.message),
+            )
+            .await
+    }
+
+    async fn lookup_whatsapp_phone(&self, notif: &Notification) -> AppResult<Option<String>> {
+        if let Some(tenant_id) = &notif.tenant_id {
+            let customer_phone: Option<String> = sqlx::query_scalar(
+                r#"
+                SELECT c.phone
+                FROM customer_users cu
+                JOIN customers c ON c.id = cu.customer_id
+                WHERE cu.tenant_id = $1 AND cu.user_id = $2
+                LIMIT 1
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(&notif.user_id)
+            .fetch_optional(&self.pool)
+            .await?;
+            if customer_phone
+                .as_deref()
+                .map(str::trim)
+                .filter(|v| !v.is_empty())
+                .is_some()
+            {
+                return Ok(customer_phone);
+            }
+        }
+
+        let address_phone: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT phone
+            FROM user_addresses
+            WHERE user_id = $1 AND phone IS NOT NULL AND phone != ''
+            ORDER BY is_default_billing DESC, is_default_shipping DESC, created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(&notif.user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(address_phone)
+    }
+}
+
+fn whatsapp_event_code_for_category(category: &str) -> &'static str {
+    match category {
+        "billing" | "payment" => "customer_invoice_due",
+        "support" => "support_ticket_replied",
+        "network" => "network_router_down",
+        "operations" => "installation_scheduled",
+        _ => "system_alert",
     }
 }

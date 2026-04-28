@@ -737,7 +737,7 @@ export interface BackupRecord {
 export interface NotificationPreference {
   id: string;
   user_id: string;
-  channel: 'in_app' | 'email' | 'push';
+  channel: 'in_app' | 'email' | 'push' | 'whatsapp';
   category: 'system' | 'team' | 'payment' | 'security' | 'support' | 'announcement' | string;
   enabled: boolean;
   updated_at: string;
@@ -835,4 +835,63 @@ export interface InvoiceReminderLogView {
   created_at: string;
   invoice_number: string | null;
   customer_name: string | null;
+}
+
+export type WhatsAppGatewayProvider = 'disabled' | 'fonnte' | 'custom_http';
+
+export interface WhatsAppGatewayConfig {
+  enabled: boolean;
+  provider: WhatsAppGatewayProvider;
+  fonnte_token?: string | null;
+  fonnte_base_url?: string | null;
+  fonnte_sender?: string | null;
+  custom_url?: string | null;
+  custom_method?: string | null;
+  custom_headers?: string | null;
+  custom_body_template?: string | null;
+  custom_success_statuses?: string | null;
+}
+
+export interface WhatsAppGatewayFormState {
+  enabled: boolean;
+  provider: WhatsAppGatewayProvider;
+  fonnteToken: string;
+  fonnteBaseUrl: string;
+  fonnteSender: string;
+  customUrl: string;
+  customMethod: string;
+  customHeaders: string;
+  customBodyTemplate: string;
+  customSuccessStatuses: string;
+}
+
+export type WhatsAppGatewaySettingsMap = Record<string, string | null | undefined>;
+
+export type WhatsAppEventScope = 'platform' | 'tenant';
+
+export interface WhatsAppEventDefinition {
+  code: string;
+  label: string;
+  scope: WhatsAppEventScope;
+  description?: string | null;
+}
+
+export interface WhatsAppEventPreference {
+  whatsapp: boolean;
+  email: boolean;
+  in_app: boolean;
+}
+
+export interface WhatsAppTestSendRequest {
+  phone: string;
+  message: string;
+  eventCode?: string;
+}
+
+export interface WhatsAppTestSendResponse {
+  ok: boolean;
+  provider: WhatsAppGatewayProvider | string;
+  message_id?: string | null;
+  status?: number | null;
+  error?: string | null;
 }

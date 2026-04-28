@@ -324,7 +324,17 @@
       "email": "Email",
       "branding": "Branding & Domain",
       "billing_plan": "Billing & Plan",
+      "whatsapp": "WhatsApp Gateway",
+      "event_notifications": "Event Notifications",
       "payment": "Payments"
+    },
+    "whatsapp": {
+      "title": "WhatsApp Gateway",
+      "description": "Configure this tenant WhatsApp gateway."
+    },
+    "event_notifications": {
+      "title": "Event Notifications",
+      "description": "Choose notification channels for each tenant event."
     },
     "billing_plan": {
       "eyebrow": "Tenant billing",

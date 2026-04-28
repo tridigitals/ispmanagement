@@ -99,6 +99,10 @@
   } from '$lib/components/network/networkMapWorkspaceState';
   import { type NetworkMapSearchResultItem } from '$lib/components/network/networkMapInsights';
   import {
+    buildNetworkMapOverviewSearchGroups,
+    countNetworkMapSearchResults,
+  } from '$lib/components/network/networkMapOverviewModel';
+  import {
     loadNetworkMapChromeModules,
     loadNetworkMapDialogModules,
     loadNetworkMapInteractionModule,
@@ -109,6 +113,7 @@
   } from '$lib/components/network/networkMapUiModules';
   import Icon from '$lib/components/ui/Icon.svelte';
   import MapCanvasShell from '$lib/components/network/MapCanvasShell.svelte';
+  import NetworkMapSearchBar from '$lib/components/network/NetworkMapSearchBar.svelte';
   import { canAccessNetworkMap } from '$lib/utils/adminNetworkAccess';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import 'maplibre-gl/dist/maplibre-gl.css';
@@ -156,6 +161,7 @@
 
   let q = $state('');
   let workspaceSearchQuery = $state('');
+  let workspaceSearchOpen = $state(false);
   let status = $state('');
   let kind = $state('');
   let quickMode = $state<NetworkMapQuickMode>('all');
@@ -321,6 +327,35 @@
       $t('admin.network.map.workspace.subtitle') ||
       'Visualize nodes, links, service zones, and operational context from the current viewport.';
     return `${base} ${workspaceStatusNotes[0] || ''}`.trim();
+  });
+  const workspaceSearchGroups = $derived.by(() =>
+    buildNetworkMapOverviewSearchGroups({
+      query: workspaceSearchQuery,
+      quickMode,
+      nodes: nodeRows,
+      links: linkRows,
+      zones: zoneRows,
+      routers: routerRows,
+      customerRows,
+      serviceRows,
+    }),
+  );
+  const workspaceSearchSummary = $derived.by(() => {
+    const query = workspaceSearchQuery.trim();
+    if (!query) {
+      const total = nodeRows.length + linkRows.length + zoneRows.length + routerRows.length;
+      return (
+        $t('admin.network.map.search.summary_idle', {
+          values: { count: total },
+        }) || `${total} assets loaded in this workspace`
+      );
+    }
+    const count = countNetworkMapSearchResults(workspaceSearchGroups);
+    return (
+      $t('admin.network.map.search.summary_results', {
+        values: { count, groups: workspaceSearchGroups.length },
+      }) || `${count} matching results across ${workspaceSearchGroups.length} sections`
+    );
   });
   const linkFieldConfig = $derived.by(() => getLinkFieldConfig(linkForm.link_type));
 
@@ -554,6 +589,7 @@
 
   function handleWorkspaceSearchSelect(item: NetworkMapSearchResultItem) {
     workspaceSearchQuery = item.label;
+    workspaceSearchOpen = false;
 
     if (item.kind === 'customer' || item.kind === 'service' || item.kind === 'node') {
       const row = nodeRows.find((candidate) => candidate.id === item.id);
@@ -1547,50 +1583,14 @@
       {syncingAssetNodes}
       {refreshing}
       {loading}
-      {workspaceSearchQuery}
-      {quickMode}
-      {nodeRows}
-      {linkRows}
-      {zoneRows}
-      {routerRows}
-      {customerRows}
-      {serviceRows}
       title={$t('admin.network.map.title') || 'Network Topology Map'}
       subtitle={workspaceSubtitle}
       labels={{
         backToInstallation: $t('admin.network.map.back_to_installation') || 'Back to Installation',
         backToNoc: $t('admin.network.map.back_to_noc') || 'Back to NOC',
-        searchKicker: $t('admin.network.map.search.kicker') || 'Unified search',
-        searchTitle:
-          $t('admin.network.map.search.title') || 'Jump to any mapped asset, service, or customer',
-        searchHint:
-          $t('admin.network.map.search.hint') ||
-          'Search across infrastructure, customer endpoints, services, zones, and router inventory.',
-        searchPlaceholder:
-          $t('admin.network.map.search.placeholder') ||
-          'Search customer, service, node, link, zone, or router...',
-        searchEmptyTitle: $t('admin.network.map.search.empty_title') || 'No matching results',
-        searchEmptyHint:
-          $t('admin.network.map.search.empty_hint') ||
-          'Try another keyword to widen the result scope.',
         syncing: 'Syncing...',
         sync: 'Sync',
-        nodes: $t('admin.network.map.stats.nodes') || 'Nodes',
-        links: $t('admin.network.map.stats.links') || 'Links',
-        zones: $t('admin.network.map.stats.zones') || 'Zones',
-        routers: $t('admin.network.map.layers.routers') || 'Routers',
-        customers: $t('admin.network.map.layers.customers') || 'Customers',
       }}
-      formatSearchIdleSummary={(total: number) =>
-        $t('admin.network.map.search.summary_idle', {
-          values: { count: total },
-        }) || `${total} assets loaded in this workspace`}
-      formatSearchResultsSummary={(count: number, groups: number) =>
-        $t('admin.network.map.search.summary_results', {
-          values: { count, groups },
-        }) || `${count} matching results across ${groups} sections`}
-      onWorkspaceSearchChange={(value: string) => (workspaceSearchQuery = value)}
-      onWorkspaceSearchSelect={handleWorkspaceSearchSelect}
       onSyncAssets={async () => {
         if (await syncTopologyAssets(true)) {
           invalidateMapDataCache();
@@ -1610,9 +1610,38 @@
     {mapErrorMessage}
     mapUnavailableTitle="Map preview unavailable on this device"
     mapUnavailableSubtitle="WebGL context failed. Data is still loaded and counts are visible."
-    height={compactMode ? 'min(76vh, 760px)' : 'min(62vh, 700px)'}
+    height={compactMode ? 'min(82vh, 820px)' : 'calc(100vh - 150px)'}
   >
     <svelte:fragment slot="overlay">
+      <div class="map-workspace-search">
+        <button
+          class="map-workspace-search-toggle"
+          class:active={workspaceSearchOpen}
+          type="button"
+          aria-label="Search map assets"
+          title="Search map assets"
+          onclick={() => (workspaceSearchOpen = !workspaceSearchOpen)}
+        >
+          <Icon name="search" size={18} />
+        </button>
+        {#if workspaceSearchOpen}
+          <div class="map-workspace-search-panel">
+            <NetworkMapSearchBar
+              query={workspaceSearchQuery}
+              groups={workspaceSearchGroups}
+              summary=""
+              placeholder={$t('admin.network.map.search.placeholder') ||
+                'Search customer, service, node, link, zone, or router...'}
+              emptyTitle={$t('admin.network.map.search.empty_title') || 'No matching results'}
+              emptyHint={$t('admin.network.map.search.empty_hint') ||
+                'Try another keyword to widen the result scope.'}
+              onQueryChange={(value: string) => (workspaceSearchQuery = value)}
+              onSelect={handleWorkspaceSearchSelect}
+            />
+          </div>
+        {/if}
+      </div>
+
       {#if FloatingControlsComponent}
         <FloatingControlsComponent
           labels={{
@@ -1743,8 +1772,8 @@
 
 <style>
   .page-content {
-    padding: 28px;
-    max-width: 1460px;
+    padding: 14px 16px 18px;
+    max-width: 100%;
     margin: 0 auto;
   }
 
@@ -1786,6 +1815,149 @@
   .btn.danger {
     color: #fca5a5;
     border-color: color-mix(in srgb, #ef4444 55%, var(--border-color));
+  }
+
+  .map-workspace-search {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 9;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .map-workspace-search-toggle {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(15, 23, 42, 0.22);
+    border-radius: 12px;
+    background: #ffffff;
+    color: #0f172a;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+  }
+
+  .map-workspace-search-toggle.active {
+    border-color: color-mix(in srgb, var(--color-primary) 54%, rgba(15, 23, 42, 0.22));
+    color: var(--color-primary);
+  }
+
+  .map-workspace-search-panel {
+    width: min(540px, calc(100vw - 92px));
+    padding: 8px;
+    border: 1px solid rgba(15, 23, 42, 0.18);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.14);
+  }
+
+  .map-workspace-search-panel :global(.search-input-wrap) {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.2);
+    box-shadow: none;
+  }
+
+  .map-workspace-search-panel :global(.search-input) {
+    color: #0f172a;
+  }
+
+  .map-workspace-search-panel :global(.search-summary) {
+    display: none;
+  }
+
+  .map-workspace-search-panel :global(.search-summary),
+  .map-workspace-search-panel :global(.search-input::placeholder) {
+    color: #64748b;
+  }
+
+  .map-workspace-search :global(.search-results) {
+    z-index: 20;
+    gap: 6px;
+    max-height: min(50vh, 380px);
+    padding: 8px;
+    border-radius: 12px;
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.16);
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
+    backdrop-filter: none;
+  }
+
+  .map-workspace-search :global(.search-group) {
+    gap: 6px;
+  }
+
+  .map-workspace-search :global(.search-group-label) {
+    padding: 0 4px;
+    color: #64748b;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+  }
+
+  .map-workspace-search :global(.search-group-items) {
+    gap: 5px;
+  }
+
+  .map-workspace-search :global(.search-item) {
+    gap: 3px;
+    min-height: 56px;
+    padding: 9px 11px;
+    border-color: rgba(15, 23, 42, 0.12);
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #0f172a;
+    box-shadow: inset 3px 0 0 #94a3b8;
+  }
+
+  .map-workspace-search :global(.search-item:hover),
+  .map-workspace-search :global(.search-item.active) {
+    border-color: color-mix(in srgb, var(--color-primary) 42%, rgba(15, 23, 42, 0.12));
+    background: color-mix(in srgb, var(--color-primary) 8%, #ffffff);
+    box-shadow:
+      inset 3px 0 0 var(--color-primary),
+      0 8px 18px rgba(15, 23, 42, 0.08);
+  }
+
+  .map-workspace-search :global(.search-item-label) {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.88rem;
+    font-weight: 850;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .map-workspace-search :global(.search-item-kind) {
+    flex: 0 0 auto;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 0.62rem;
+    letter-spacing: 0;
+    text-transform: capitalize;
+  }
+
+  .map-workspace-search :global(.search-item-subtitle) {
+    overflow: hidden;
+    color: #64748b;
+    font-size: 0.78rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .map-workspace-search :global(.tone-ok) {
+    box-shadow: inset 3px 0 0 #10b981;
+  }
+
+  .map-workspace-search :global(.tone-warn) {
+    box-shadow: inset 3px 0 0 #f59e0b;
+  }
+
+  .map-workspace-search :global(.tone-muted) {
+    box-shadow: inset 3px 0 0 #64748b;
   }
 
   .map-link-draw-controls {
@@ -2364,7 +2536,16 @@
 
   @media (max-width: 900px) {
     .page-content {
-      padding: 18px;
+      padding: 12px;
+    }
+
+    .map-workspace-search {
+      top: 12px;
+      right: 12px;
+    }
+
+    .map-workspace-search-panel {
+      width: calc(100vw - 82px);
     }
 
     .page-content :global(.network-page-title) {
@@ -2398,6 +2579,10 @@
   }
 
   @media (max-width: 560px) {
+    .page-content {
+      padding: 8px;
+    }
+
     .page-content :global(.network-page-actions) {
       grid-template-columns: 1fr;
     }

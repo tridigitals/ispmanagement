@@ -37,3 +37,23 @@ export const loadAdminSettingsPaymentTab = createCachedLoader(async () => {
     SettingsPaymentTabComponent,
   };
 });
+
+export const loadAdminSettingsWhatsAppTab = createCachedLoader(async () => {
+  const { default: SettingsWhatsAppTabComponent } = await import(
+    '$lib/components/settings/WhatsAppGatewayTab.svelte'
+  );
+
+  return {
+    SettingsWhatsAppTabComponent,
+  };
+});
+
+export const loadAdminSettingsNotificationEventsTab = createCachedLoader(async () => {
+  const { default: SettingsNotificationEventsTabComponent } = await import(
+    '$lib/components/settings/NotificationEventsTab.svelte'
+  );
+
+  return {
+    SettingsNotificationEventsTabComponent,
+  };
+});

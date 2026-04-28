@@ -105,7 +105,7 @@
         </div>
 
         <div class="pref-channels">
-          {#each ['in_app', 'email', 'push'] as channel}
+          {#each ['in_app', 'email', 'push', 'whatsapp'] as channel}
             {@const pref = preferences.find(
               (p: any) => p.category === category.id && p.channel === channel,
             )}
@@ -122,7 +122,9 @@
                     ? $t('profile.notifications.channels.in_app') || 'In-App'
                     : channel === 'email'
                       ? $t('profile.notifications.channels.email') || 'Email'
-                      : $t('profile.notifications.channels.push') || 'Push'}
+                      : channel === 'push'
+                        ? $t('profile.notifications.channels.push') || 'Push'
+                        : $t('profile.notifications.channels.whatsapp') || 'WhatsApp'}
                 </span>
                 {#if isDisabled}
                   <span class="channel-note"

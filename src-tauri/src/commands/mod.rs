@@ -23,6 +23,7 @@ pub mod system;
 pub mod team;
 pub mod tenant;
 pub mod users;
+pub mod whatsapp;
 
 #[tauri::command]
 pub fn get_app_version() -> String {
@@ -50,3 +51,4 @@ pub use system::*;
 pub use team::*;
 pub use tenant::*;
 pub use users::*;
+pub use whatsapp::*;

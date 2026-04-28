@@ -834,7 +834,17 @@
       "storage": "Storage Configuration",
       "payment": "Payment Gateway",
       "alerting": "Error Alerting",
+      "whatsapp": "WhatsApp Gateway",
+      "event_notifications": "Event Notifications",
       "backup": "Backups"
+    },
+    "whatsapp": {
+      "title": "WhatsApp Gateway",
+      "description": "Configure the global WhatsApp gateway."
+    },
+    "event_notifications": {
+      "title": "Event Notifications",
+      "description": "Choose notification channels for each platform event."
     },
     "backups": {
       "schedule_desc": "Use cron format (min hour * * *) or HH:MM. Example: 0 2 * * *",

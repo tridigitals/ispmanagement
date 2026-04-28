@@ -19,9 +19,12 @@
   import { getAdminBillingNavigation } from '$lib/utils/adminBillingNavigation';
   import {
     loadAdminSettingsEmailTab,
+    loadAdminSettingsNotificationEventsTab,
     loadAdminSettingsPaymentTab,
+    loadAdminSettingsWhatsAppTab,
     loadTenantBillingPlanPanel,
   } from './adminSettingsPageModules';
+  import { WHATSAPP_GATEWAY_SETTING_KEYS } from '$lib/utils/whatsappGateway';
 
   type DeferredComponent = Component<any>;
 
@@ -40,9 +43,13 @@
   let billingPlanPanelLoading = $state(false);
   let emailTabLoading = $state(false);
   let paymentTabLoading = $state(false);
+  let whatsappTabLoading = $state(false);
+  let notificationEventsTabLoading = $state(false);
   let TenantBillingPlanPanelComponent = $state<DeferredComponent | null>(null);
   let SettingsEmailTabComponent = $state<DeferredComponent | null>(null);
   let SettingsPaymentTabComponent = $state<DeferredComponent | null>(null);
+  let SettingsWhatsAppTabComponent = $state<DeferredComponent | null>(null);
+  let SettingsNotificationEventsTabComponent = $state<DeferredComponent | null>(null);
 
   // Tenant specific state
   let tenantInfo = $state<any>(null);
@@ -168,6 +175,16 @@
         'customer_invoice_last_run_at',
       ],
     },
+    whatsapp: {
+      label: $t('admin.settings.categories.whatsapp') || 'WhatsApp Gateway',
+      icon: 'message-circle',
+      keys: [...WHATSAPP_GATEWAY_SETTING_KEYS],
+    },
+    event_notifications: {
+      label: $t('admin.settings.categories.event_notifications') || 'Event Notifications',
+      icon: 'bell',
+      keys: ['wa_events_tenant'],
+    },
   }));
 
   let mobileMenuItems = $derived(
@@ -268,6 +285,36 @@
     }
   }
 
+  async function ensureWhatsAppTabLoaded() {
+    if (SettingsWhatsAppTabComponent || whatsappTabLoading) return;
+
+    whatsappTabLoading = true;
+    try {
+      const { SettingsWhatsAppTabComponent: WhatsAppTabComponent } =
+        await loadAdminSettingsWhatsAppTab();
+      SettingsWhatsAppTabComponent = WhatsAppTabComponent;
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to load WhatsApp settings tab');
+    } finally {
+      whatsappTabLoading = false;
+    }
+  }
+
+  async function ensureNotificationEventsTabLoaded() {
+    if (SettingsNotificationEventsTabComponent || notificationEventsTabLoading) return;
+
+    notificationEventsTabLoading = true;
+    try {
+      const { SettingsNotificationEventsTabComponent: NotificationEventsTabComponent } =
+        await loadAdminSettingsNotificationEventsTab();
+      SettingsNotificationEventsTabComponent = NotificationEventsTabComponent;
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to load event notifications tab');
+    } finally {
+      notificationEventsTabLoading = false;
+    }
+  }
+
   let activeCategory = $derived(categories[activeTab as keyof typeof categories]);
 
   $effect(() => {
@@ -281,6 +328,14 @@
   $effect(() => {
     if (activeTab !== 'payment') return;
     void ensurePaymentTabLoaded();
+  });
+  $effect(() => {
+    if (activeTab !== 'whatsapp') return;
+    void ensureWhatsAppTabLoaded();
+  });
+  $effect(() => {
+    if (activeTab !== 'event_notifications') return;
+    void ensureNotificationEventsTabLoaded();
   });
   let slaWarnPreview = $derived.by(() => {
     const raw = localSettings['mikrotik_incident_sla_warn_minutes'] || '30';
@@ -338,6 +393,11 @@
         if (key === 'pppoe_auto_apply_on_save_enabled' && !val) val = 'false';
         if (key === 'auth_require_email_verification' && !val) val = 'false';
         if (key === 'customer_self_registration_enabled' && !val) val = 'false';
+        if (key === 'wa_gateway_enabled' && !val) val = 'false';
+        if (key === 'wa_gateway_provider' && !val) val = 'disabled';
+        if (key === 'wa_gateway_custom_method' && !val) val = 'POST';
+        if (key === 'wa_gateway_custom_success_statuses' && !val) val = '200,201,202';
+        if (key === 'wa_events_tenant' && !val) val = '{}';
         localSettings[key] = val;
       });
     });
@@ -1284,6 +1344,41 @@
                 />
               {:else}
                 <div class="inline-tab-loading">
+                  <div class="spinner"></div>
+                </div>
+              {/if}
+            {:else if activeTab === 'whatsapp'}
+              {#if SettingsWhatsAppTabComponent}
+                {@const WhatsAppTab = SettingsWhatsAppTabComponent}
+                <WhatsAppTab
+                  {localSettings}
+                  {handleChange}
+                  eventScope="tenant"
+                  title={$t('admin.settings.whatsapp.title') || 'WhatsApp Gateway'}
+                  description={$t('admin.settings.whatsapp.description') ||
+                    'Configure this tenant WhatsApp gateway.'}
+                />
+              {:else}
+                <div class="inline-tab-loading" aria-busy={whatsappTabLoading}>
+                  <div class="spinner"></div>
+                </div>
+              {/if}
+            {:else if activeTab === 'event_notifications'}
+              {#if SettingsNotificationEventsTabComponent}
+                {@const NotificationEventsTab = SettingsNotificationEventsTabComponent}
+                <NotificationEventsTab
+                  {localSettings}
+                  {handleChange}
+                  eventSettingsKey="wa_events_tenant"
+                  eventScope="tenant"
+                  emailReady={emailVerificationReadiness.ready}
+                  emailReadinessReason={emailVerificationReadiness.reason}
+                  title={$t('admin.settings.event_notifications.title') || 'Event Notifications'}
+                  description={$t('admin.settings.event_notifications.description') ||
+                    'Choose notification channels for each tenant event.'}
+                />
+              {:else}
+                <div class="inline-tab-loading" aria-busy={notificationEventsTabLoading}>
                   <div class="spinner"></div>
                 </div>
               {/if}

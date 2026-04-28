@@ -834,7 +834,17 @@
       "storage": "Konfigurasi Storage",
       "payment": "Payment Gateway",
       "alerting": "Peringatan Error",
+      "whatsapp": "WhatsApp Gateway",
+      "event_notifications": "Notifikasi Event",
       "backup": "Cadangan"
+    },
+    "whatsapp": {
+      "title": "WhatsApp Gateway",
+      "description": "Atur gateway WhatsApp global."
+    },
+    "event_notifications": {
+      "title": "Notifikasi Event",
+      "description": "Pilih channel notifikasi untuk setiap event platform."
     },
     "backups": {
       "schedule_desc": "Gunakan format cron (menit jam * * *) atau HH:MM. Contoh: 0 2 * * *",
