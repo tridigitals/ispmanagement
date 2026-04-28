@@ -276,10 +276,6 @@
   }
 </script>
 
-<svelte:head>
-  <title>{$t('superadmin.plans.page_title') || 'Plans | Superadmin'}</title>
-</svelte:head>
-
 <div class="superadmin-content fade-in">
   <div class="stats-row" aria-label={$t('superadmin.plans.aria.stats') || 'Plan stats'}>
     <button

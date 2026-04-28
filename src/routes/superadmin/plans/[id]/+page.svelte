@@ -160,12 +160,6 @@
   const baseLocale = $derived.by(() => String($appSettings?.default_locale || 'en-US'));
 </script>
 
-<svelte:head>
-  <title
-    >{isNew ? $t('superadmin.plans.editor.head.new') || 'New Plan' : planData.name} | Superadmin</title
-  >
-</svelte:head>
-
 <div class="plan-detail-page">
   <div class="page-header">
     <div class="header-content">

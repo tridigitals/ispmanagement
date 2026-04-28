@@ -10,7 +10,7 @@
   import { createRootRealtimeController } from '$lib/bootstrap/rootRealtimeController';
   import { ensureBootLocale, ensureFullLocale } from '$lib/i18n';
   import { t } from 'svelte-i18n';
-  import { checkAuth, isAuthenticated, isSuperAdmin, logout } from '$lib/stores/auth';
+  import { can, checkAuth, isAuthenticated, isSuperAdmin, logout, tenant } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { appLogo } from '$lib/stores/logo';
   import { onMount, onDestroy } from 'svelte';
@@ -20,6 +20,7 @@
   import { browser } from '$app/environment';
   import { getApiBaseUrl } from '$lib/utils/apiUrl';
   import { normalizeLegacyBasePath, shouldLookupCustomDomain } from '$lib/utils/appBoot';
+  import { formatDocumentTitle, isTenantScopedPath, resolvePageTitle } from '$lib/utils/pageTitle';
   import type { Component } from 'svelte';
 
   let loading = true;
@@ -29,7 +30,20 @@
   let lastUserActivityAt = Date.now();
   let ToasterComponent: Component | null = null;
   let GlobalUploadsComponent: Component | null = null;
+  let documentTitle = 'ISP Management';
   const realtimeController = createRootRealtimeController(loadRealtimeRuntime);
+
+  function resolveDocumentAppName(pathname: string) {
+    const settingsAppName = String(($appSettings as any)?.app_name || '').trim();
+    const tenantName = String($tenant?.name || '').trim();
+    const tenantPath = isTenantScopedPath(pathname);
+
+    if (tenantPath && !$can('read', 'settings') && tenantName) {
+      return tenantName;
+    }
+
+    return settingsAppName || tenantName || 'ISP Management';
+  }
 
   function markUserActivity() {
     lastUserActivityAt = Date.now();
@@ -143,12 +157,11 @@
       if (!res.ok) return;
       const tenant = await res.json();
       if (tenant && tenant.slug) {
-        debugLog('domain-lookup-success-reload', {
+        debugLog('domain-lookup-success-cache', {
           hostname,
           slug: tenant.slug,
         });
         await import('$lib/utils/domain').then((m) => m.cacheDomainMapping(hostname, tenant.slug));
-        window.location.reload();
       }
     } catch (error) {
       console.warn('[Domain] Failed to lookup custom domain:', error);
@@ -303,9 +316,15 @@
   } else if (browser && !$isAuthenticated) {
     void disconnectRealtimeConnections();
   }
+
+  $: documentTitle = formatDocumentTitle(
+    resolvePageTitle($page.url.pathname),
+    resolveDocumentAppName($page.url.pathname),
+  );
 </script>
 
 <svelte:head>
+  <title>{documentTitle}</title>
   {#if $appLogo}
     <link rel="icon" type="image/png" href={$appLogo} />
   {/if}

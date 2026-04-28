@@ -29,7 +29,7 @@ export interface AppSettings {
 
 // Default values jika database kosong
 const defaults: AppSettings = {
-  app_name: import.meta.env.VITE_APP_NAME || 'SaaS Boilerplate',
+  app_name: import.meta.env.VITE_APP_NAME || 'ISP Management',
   app_version: '1.0.0',
   app_description: 'The ultimate foundation for your next big idea.',
   organization_name: 'My Company Inc.',
@@ -161,12 +161,10 @@ function createSettingsStore() {
 async function updateWindowTitle(title: string) {
   if (typeof window === 'undefined') return;
 
-  // Skip if not running in Tauri
+  // Browser document titles are owned by the root layout so page titles can include route context.
+  // This only updates the native Tauri window title.
   // @ts-ignore
-  if (!window.__TAURI_INTERNALS__) {
-    document.title = title;
-    return;
-  }
+  if (!window.__TAURI_INTERNALS__) return;
 
   try {
     await getCurrentWindow().setTitle(title);
