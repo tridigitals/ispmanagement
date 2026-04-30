@@ -35,30 +35,13 @@ export function getSlugFromDomain(hostname: string): string | null {
     hostname.includes('127.0.0.1') ||
     hostname.includes('tauri')
   ) {
-    return null; // Don't rewrite localhost
+    return getStoredTenantSlug();
   }
 
   // Main SaaS/platform domain:
   // keep public URL clean, but allow internal tenant reroute when user already logged in.
   if (isPlatformDomain(hostname)) {
-    try {
-      const rawUser =
-        localStorage.getItem('auth_user') || sessionStorage.getItem('auth_user') || 'null';
-      const rawTenant =
-        localStorage.getItem('auth_tenant') || sessionStorage.getItem('auth_tenant') || 'null';
-      const rawActiveSlug =
-        localStorage.getItem('active_tenant_slug') ||
-        sessionStorage.getItem('active_tenant_slug') ||
-        '';
-      const authUser = JSON.parse(rawUser);
-      const authTenant = JSON.parse(rawTenant);
-      const tenantSlug = String(
-        authUser?.tenant_slug || authTenant?.slug || rawActiveSlug || '',
-      ).trim();
-      return tenantSlug || null;
-    } catch {
-      return null;
-    }
+    return getStoredTenantSlug();
   }
 
   // TEST ONLY: Force localhost -> tridigitals
@@ -90,6 +73,24 @@ export function getSlugFromDomain(hostname: string): string | null {
   }
 
   return domainMapFromFallback(hostname);
+}
+
+function getStoredTenantSlug(): string | null {
+  try {
+    const rawUser = localStorage.getItem('auth_user') || sessionStorage.getItem('auth_user') || 'null';
+    const rawTenant =
+      localStorage.getItem('auth_tenant') || sessionStorage.getItem('auth_tenant') || 'null';
+    const rawActiveSlug =
+      localStorage.getItem('active_tenant_slug') ||
+      sessionStorage.getItem('active_tenant_slug') ||
+      '';
+    const authUser = JSON.parse(rawUser);
+    const authTenant = JSON.parse(rawTenant);
+    const tenantSlug = String(authUser?.tenant_slug || authTenant?.slug || rawActiveSlug || '').trim();
+    return tenantSlug || null;
+  } catch {
+    return null;
+  }
 }
 
 function domainMapFromFallback(hostname: string): string | null {

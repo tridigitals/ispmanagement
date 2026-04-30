@@ -408,7 +408,7 @@
       100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)
     ); /* Prevent body scrolling caused by global safe-area padding */
     width: 100%;
-    background: var(--bg-app); /* Background dasar aplikasi */
+    background: linear-gradient(180deg, rgba(17, 20, 28, 0.92), rgba(8, 9, 13, 1)), var(--bg-app);
     overflow: hidden;
   }
 
@@ -416,20 +416,20 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: clamp(6px, 1vw, 12px);
+    padding: clamp(8px, 1vw, 14px);
     padding-left: 0; /* Sidebar occupies the left edge */
     min-height: 0; /* allow .scroll-area to be the scroller */
   }
 
   .content-surface {
     flex: 1;
-    background: var(--bg-surface);
+    background: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg); /* Sudut membulat modern */
+    border-radius: var(--radius-lg);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-md);
     position: relative;
     min-height: 0; /* allow .scroll-area to be the scroller */
   }

@@ -3,15 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { getAdminCustomerNavigation } from './adminCustomerNavigation';
 
 describe('admin customer navigation helpers', () => {
-  it('builds tenant-prefixed customer routes on platform hosts', () => {
+  it('builds clean customer routes by default', () => {
     expect(
       getAdminCustomerNavigation({
         hostname: 'localhost',
         tenantSlug: 'demo',
       }),
     ).toEqual({
-      tenantPrefix: '/demo',
-      customersPath: '/demo/admin/customers',
+      tenantPrefix: '',
+      customersPath: '/admin/customers',
     });
   });
 

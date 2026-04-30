@@ -56,7 +56,12 @@
   let portalInvoiceIds = $state<string[]>([]);
 
   let recent = $derived(
-    getDashboardRecentNotifications($notifications, hasInternalAppAccess($user), 6, portalInvoiceIds),
+    getDashboardRecentNotifications(
+      $notifications,
+      hasInternalAppAccess($user),
+      6,
+      portalInvoiceIds,
+    ),
   );
 
   let annLoading = $state(false);
@@ -475,7 +480,7 @@
           class="action-item"
           onclick={() => goto(`${tenantPrefix}/profile?tab=notifications`)}
         >
-          <Icon name="help-circle" size={18} />
+          <Icon name="message-circle" size={18} />
           {$t('dashboard.quick_actions.contact_support')}
         </button>
       </div>
@@ -485,12 +490,12 @@
 
 <style>
   .dashboard-content {
-    padding: 2rem;
-    max-width: 1200px;
+    padding: clamp(1rem, 2.2vw, 2rem);
+    max-width: 1260px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1.5rem;
   }
 
   @media (max-width: 640px) {
@@ -515,8 +520,8 @@
   }
 
   .welcome-text h1 {
-    font-size: 1.85rem;
-    font-weight: 700;
+    font-size: clamp(1.55rem, 2vw, 1.95rem);
+    font-weight: 760;
     color: var(--text-primary);
     margin: 0 0 0.5rem 0;
   }
@@ -529,8 +534,9 @@
 
   /* Admin Banner */
   .admin-banner {
-    background: var(--color-primary);
-    color: white;
+    background: linear-gradient(135deg, rgba(139, 156, 255, 0.16), rgba(18, 22, 32, 0.92));
+    color: var(--text-primary);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 26%, var(--border-color));
     border-radius: var(--radius-lg);
     padding: 1.25rem 1.5rem;
     display: flex;
@@ -540,12 +546,12 @@
     transition:
       transform 0.2s,
       box-shadow 0.2s;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+    box-shadow: var(--shadow-sm);
   }
 
   .admin-banner:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
+    box-shadow: var(--shadow-md);
   }
 
   .banner-content {
@@ -555,10 +561,11 @@
   }
 
   .banner-icon {
-    background: rgba(255, 255, 255, 0.2);
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
+    background: color-mix(in srgb, var(--color-primary) 16%, var(--bg-tertiary));
+    color: var(--color-primary);
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -579,8 +586,8 @@
   /* Stats Grid */
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
   }
 
   @media (max-width: 640px) {
@@ -591,10 +598,10 @@
   }
 
   .stat-card {
-    background: var(--bg-surface);
+    background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    padding: 1.5rem;
+    padding: 1.15rem;
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
@@ -602,7 +609,7 @@
   }
 
   .stat-card:hover {
-    border-color: var(--color-primary);
+    border-color: color-mix(in srgb, var(--color-primary) 34%, var(--border-color));
   }
 
   .stat-header {
@@ -612,25 +619,25 @@
   }
 
   .icon-wrapper {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
   .icon-wrapper.primary {
-    background: rgba(99, 102, 241, 0.1);
+    background: rgba(139, 156, 255, 0.11);
     color: var(--color-primary);
   }
   .icon-wrapper.success {
-    background: rgba(34, 197, 94, 0.1);
-    color: #22c55e;
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--color-success);
   }
   .icon-wrapper.info {
-    background: rgba(59, 130, 246, 0.1);
-    color: #3b82f6;
+    background: rgba(148, 163, 184, 0.1);
+    color: var(--text-secondary);
   }
 
   .stat-body {
@@ -639,7 +646,7 @@
   }
 
   .stat-value {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-primary);
     text-transform: capitalize;
@@ -655,7 +662,7 @@
   .main-grid {
     display: grid;
     grid-template-columns: 2fr 1fr;
-    gap: 2rem;
+    gap: 1.25rem;
   }
 
   @media (max-width: 900px) {
@@ -689,7 +696,7 @@
 
   /* Activity Card */
   .activity-card {
-    background: var(--bg-surface);
+    background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     min-height: 300px;
@@ -701,7 +708,7 @@
   }
 
   .ann-card {
-    background: var(--bg-surface);
+    background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     overflow: hidden;
@@ -811,7 +818,7 @@
   .ann-go {
     width: 34px;
     height: 34px;
-    border-radius: 10px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -820,11 +827,6 @@
     color: var(--text-secondary);
     flex-shrink: 0;
     margin-top: 2px;
-  }
-
-  :global([data-theme='light']) .ann-go {
-    border-color: rgba(0, 0, 0, 0.1);
-    background: rgba(0, 0, 0, 0.03);
   }
 
   .empty-state {
@@ -838,7 +840,7 @@
     width: 64px;
     height: 64px;
     background: var(--bg-tertiary);
-    border-radius: 50%;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -911,7 +913,7 @@
   .activity-icon {
     width: 34px;
     height: 34px;
-    border-radius: 10px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -985,7 +987,7 @@
   }
 
   .action-item {
-    background: var(--bg-surface);
+    background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     padding: 1rem;
@@ -1001,13 +1003,13 @@
   }
 
   .action-item:hover {
-    border-color: var(--color-primary);
+    border-color: color-mix(in srgb, var(--color-primary) 34%, var(--border-color));
     background: var(--bg-hover);
-    transform: translateX(4px);
+    transform: translateX(2px);
   }
 
   .portal-summary-card {
-    background: var(--bg-surface);
+    background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: 1rem;

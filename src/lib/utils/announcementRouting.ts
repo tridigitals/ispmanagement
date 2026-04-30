@@ -1,14 +1,16 @@
+import { canonicalTenantPath } from './tenantRouting';
+
 export function getAnnouncementDetailPath(
   id: string,
-  opts: { tenantPrefix: string; internal: boolean },
+  opts: { tenantPrefix?: string; internal: boolean },
 ): string {
   const base = opts.internal ? '/admin/announcements' : '/announcements';
-  return `${opts.tenantPrefix}${base}/${id}`;
+  return canonicalTenantPath(`${base}/${id}`);
 }
 
 export function resolveAnnouncementActionUrl(
   actionUrl: string,
-  opts: { tenantPrefix: string; internal: boolean },
+  opts: { tenantPrefix?: string; internal: boolean },
 ): string {
   if (!actionUrl) return actionUrl;
 
@@ -34,7 +36,7 @@ export function resolveAnnouncementActionUrl(
     normalizedPath.startsWith('/profile') ||
     normalizedPath.startsWith('/notifications')
   ) {
-    return `${tenantPrefix}${normalizedPath}`;
+    return canonicalTenantPath(normalizedPath);
   }
 
   return actionUrl;

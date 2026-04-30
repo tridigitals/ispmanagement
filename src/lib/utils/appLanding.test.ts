@@ -22,7 +22,7 @@ describe('app landing helpers', () => {
     });
 
     expect(hasInternalAppAccess(user)).toBe(false);
-    expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/tenant-a/dashboard');
+    expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/dashboard');
   });
 
   it('treats admin access permission as internal landing access', () => {
@@ -31,7 +31,7 @@ describe('app landing helpers', () => {
     });
 
     expect(hasInternalAppAccess(user)).toBe(true);
-    expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/tenant-a/admin');
+    expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/admin');
   });
 
   it('treats granular internal permissions like technician access as admin landing access', () => {
@@ -40,7 +40,7 @@ describe('app landing helpers', () => {
     });
 
     expect(hasInternalAppAccess(user)).toBe(true);
-    expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/tenant-a/admin');
+    expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/admin');
   });
 
   it('keeps superadmins on superadmin landing when there is no tenant prefix', () => {

@@ -1,4 +1,5 @@
 import type { SupportTicketStats, TenantSubscriptionDetails } from '$lib/api/types';
+import { canonicalTenantPath } from './tenantRouting';
 
 export type AdminDashboardAudience = 'admin' | 'operations' | 'support' | 'noc' | 'hybrid';
 
@@ -308,7 +309,7 @@ type BuildDashboardInput = {
 };
 
 export function buildAdminDashboardModel({
-  tenantPrefix,
+  tenantPrefix: _tenantPrefix,
   capabilities,
   summary,
 }: BuildDashboardInput): {
@@ -320,21 +321,21 @@ export function buildAdminDashboardModel({
 } {
   const audience = getAdminDashboardAudience(capabilities);
   const routes = {
-    team: `${tenantPrefix}/admin/team`,
-    roles: `${tenantPrefix}/admin/roles`,
-    settings: `${tenantPrefix}/admin/settings`,
-    customers: `${tenantPrefix}/admin/customers`,
-    invoices: `${tenantPrefix}/admin/invoices`,
-    subscription: `${tenantPrefix}/admin/subscription`,
-    installations: `${tenantPrefix}/admin/network/installations`,
-    pppoe: `${tenantPrefix}/admin/network/pppoe`,
-    noc: `${tenantPrefix}/admin/network/noc`,
-    alerts: `${tenantPrefix}/admin/network/alerts`,
-    incidents: `${tenantPrefix}/admin/network/incidents`,
-    routers: `${tenantPrefix}/admin/network/routers`,
-    support: `${tenantPrefix}/admin/support`,
-    audit: `${tenantPrefix}/admin/audit-logs`,
-    emailOutbox: `${tenantPrefix}/admin/email-outbox`,
+    team: canonicalTenantPath('/admin/team'),
+    roles: canonicalTenantPath('/admin/roles'),
+    settings: canonicalTenantPath('/admin/settings'),
+    customers: canonicalTenantPath('/admin/customers'),
+    invoices: canonicalTenantPath('/admin/invoices'),
+    subscription: canonicalTenantPath('/admin/subscription'),
+    installations: canonicalTenantPath('/admin/network/installations'),
+    pppoe: canonicalTenantPath('/admin/network/pppoe'),
+    noc: canonicalTenantPath('/admin/network/noc'),
+    alerts: canonicalTenantPath('/admin/network/alerts'),
+    incidents: canonicalTenantPath('/admin/network/incidents'),
+    routers: canonicalTenantPath('/admin/network/routers'),
+    support: canonicalTenantPath('/admin/support'),
+    audit: canonicalTenantPath('/admin/audit-logs'),
+    emailOutbox: canonicalTenantPath('/admin/email-outbox'),
   };
 
   const registry: Record<string, AdminDashboardCard> = {

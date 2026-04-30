@@ -2,7 +2,6 @@
   import { page } from '$app/stores';
   import { user } from '$lib/stores/auth';
   import { isSidebarCollapsed } from '$lib/stores/ui';
-  import { theme } from '$lib/stores/theme';
   import { t } from 'svelte-i18n';
   import Icon from '../ui/Icon.svelte';
   import NotificationDropdown from './NotificationDropdown.svelte';
@@ -62,19 +61,6 @@
       ? $t('sidebar.expand') || 'Expand sidebar'
       : $t('sidebar.collapse') || 'Collapse sidebar',
   );
-
-  // Theme toggle
-  function toggleTheme() {
-    theme.toggle();
-  }
-
-  let themeLabel = $derived(
-    $theme === 'light'
-      ? $t('topbar.toggle_dark') || 'Switch to dark mode'
-      : $t('topbar.toggle_light') || 'Switch to light mode',
-  );
-
-  let themeIcon = $derived($theme === 'light' ? 'moon' : 'sun');
 </script>
 
 <header class="topbar">
@@ -101,27 +87,18 @@
     <!-- Actions -->
     <!-- Notification Dropdown -->
     <NotificationDropdown />
-
-    <button
-      class="icon-btn"
-      aria-label={themeLabel}
-      data-tooltip={themeLabel}
-      onclick={toggleTheme}
-    >
-      <Icon name={themeIcon} size={18} />
-    </button>
   </div>
 </header>
 
 <style>
   .topbar {
-    height: 64px;
-    background: var(--bg-primary);
+    height: 62px;
+    background: color-mix(in srgb, var(--bg-primary) 92%, #ffffff 2%);
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 clamp(12px, 4vw, 32px);
+    padding: 0 clamp(14px, 3vw, 28px);
     flex-shrink: 0;
     z-index: 40;
   }
@@ -133,8 +110,8 @@
   }
 
   .page-title {
-    font-size: 1.1rem;
-    font-weight: 700;
+    font-size: 1rem;
+    font-weight: 750;
     color: var(--text-primary);
     margin: 0;
   }
@@ -142,7 +119,7 @@
   .right-section {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
   /* Search Bar */
@@ -151,21 +128,21 @@
     align-items: center;
     gap: 0.5rem;
     background: var(--bg-tertiary);
-    border: 1px solid transparent;
+    border: 1px solid var(--border-subtle);
     padding: 0.4rem 0.8rem;
     border-radius: 6px;
     transition: all 0.2s;
-    margin-right: 1rem;
+    margin-right: 0.25rem;
   }
 
   .search-bar:focus-within {
-    border-color: var(--color-primary);
-    background: var(--bg-primary);
+    border-color: color-mix(in srgb, var(--color-primary) 46%, transparent);
+    background: var(--bg-secondary);
   }
 
   .search-bar input {
     background: transparent;
-    border: none;
+    border: 1px solid transparent;
     outline: none;
     color: var(--text-primary);
     font-size: 0.9rem;
@@ -177,8 +154,8 @@
     background: transparent;
     border: none;
     color: var(--text-secondary);
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -190,6 +167,7 @@
 
   .icon-btn:hover {
     background: var(--bg-tertiary);
+    border-color: var(--border-subtle);
     color: var(--text-primary);
   }
 

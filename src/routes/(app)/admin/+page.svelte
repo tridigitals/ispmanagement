@@ -522,19 +522,19 @@
 
 <style>
   .admin-dashboard {
-    --emerald: #22c55e;
+    --emerald: #10b981;
     --emerald-soft: rgba(34, 197, 94, 0.14);
     --amber: #f59e0b;
     --amber-soft: rgba(245, 158, 11, 0.14);
-    --cyan: #06b6d4;
-    --cyan-soft: rgba(6, 182, 212, 0.14);
-    --indigo: #6366f1;
-    --indigo-soft: rgba(99, 102, 241, 0.14);
+    --cyan: #38bdf8;
+    --cyan-soft: rgba(56, 189, 248, 0.11);
+    --indigo: var(--color-primary);
+    --indigo-soft: rgba(139, 156, 255, 0.12);
     --rose: #f43f5e;
     --rose-soft: rgba(244, 63, 94, 0.14);
     --slate: #94a3b8;
     --slate-soft: rgba(148, 163, 184, 0.12);
-    padding: 2rem;
+    padding: clamp(1rem, 2.2vw, 2rem);
     max-width: 1440px;
     margin: 0 auto;
   }
@@ -544,7 +544,7 @@
     justify-content: space-between;
     gap: 1.5rem;
     align-items: flex-start;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
   }
 
   .masthead-copy {
@@ -555,15 +555,15 @@
   .section-kicker {
     color: var(--color-primary);
     text-transform: uppercase;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.08em;
     font-size: 0.72rem;
     font-weight: 700;
   }
 
   .masthead h1 {
     margin: 0.45rem 0 0.65rem;
-    font-size: clamp(2rem, 3vw, 3rem);
-    line-height: 1.02;
+    font-size: clamp(1.65rem, 2.3vw, 2.35rem);
+    line-height: 1.12;
   }
 
   .masthead p {
@@ -587,9 +587,9 @@
     align-items: center;
     gap: 0.55rem;
     padding: 0.7rem 0.95rem;
-    border-radius: 999px;
+    border-radius: var(--radius-md);
     border: 1px solid rgba(148, 163, 184, 0.15);
-    background: rgba(15, 23, 42, 0.5);
+    background: var(--bg-secondary);
     color: var(--text-secondary);
     font-size: 0.88rem;
   }
@@ -598,11 +598,11 @@
     display: inline-flex;
     align-items: center;
     gap: 0.65rem;
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(15, 23, 42, 0.92));
+    border: 1px solid color-mix(in srgb, var(--color-primary) 24%, var(--border-color));
+    background: color-mix(in srgb, var(--color-primary) 13%, var(--bg-secondary));
     color: var(--text-primary);
     padding: 0.8rem 1rem;
-    border-radius: 999px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-weight: 600;
   }
@@ -615,12 +615,10 @@
   .loading-panel,
   .empty-panel,
   .section-block {
-    background:
-      radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 32%),
-      linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 0.92));
-    border: 1px solid rgba(148, 163, 184, 0.12);
-    border-radius: 24px;
-    box-shadow: 0 18px 48px rgba(2, 6, 23, 0.32);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
   }
 
   .loading-panel,
@@ -688,9 +686,9 @@
   .trend-card {
     width: 100%;
     border: 1px solid rgba(148, 163, 184, 0.12);
-    background: rgba(15, 23, 42, 0.56);
+    background: color-mix(in srgb, var(--bg-tertiary) 82%, transparent);
     color: var(--text-primary);
-    border-radius: 20px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     text-align: left;
     transition:
@@ -703,8 +701,8 @@
   .focus-card:hover,
   .action-row:hover,
   .trend-card:hover {
-    transform: translateY(-2px);
-    border-color: rgba(99, 102, 241, 0.35);
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--color-primary) 34%, var(--border-color));
   }
 
   .metric-card {
@@ -722,7 +720,7 @@
   .action-icon {
     width: 2.2rem;
     height: 2.2rem;
-    border-radius: 14px;
+    border-radius: 8px;
     display: grid;
     place-items: center;
   }

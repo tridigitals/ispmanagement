@@ -5,7 +5,6 @@
   import { writable } from 'svelte/store';
   import { api } from '$lib/api/client';
   import { token, user } from '$lib/stores/auth';
-  import { theme } from '$lib/stores/theme';
   import { appSettings } from '$lib/stores/settings';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
@@ -523,12 +522,7 @@
           <span>{$t('common.loading') || 'Loading...'}</span>
         </div>
       {:else if activeTab === 'general' && GeneralTabComponent}
-        <GeneralTabComponent
-          bind:profileData
-          {loading}
-          {initials}
-          onSave={saveProfile}
-        />
+        <GeneralTabComponent bind:profileData {loading} {initials} onSave={saveProfile} />
       {:else if activeTab === 'security' && SecurityTabComponent}
         <SecurityTabComponent
           user={$user}
@@ -552,10 +546,7 @@
       {:else if activeTab === 'addresses' && AddressesTabComponent}
         <AddressesTabComponent {loading} />
       {:else if activeTab === 'preferences' && PreferencesTabComponent}
-        <PreferencesTabComponent
-          theme={$theme}
-          onToggleTheme={() => theme.toggle()}
-        />
+        <PreferencesTabComponent />
       {:else if activeTab === 'notifications' && NotificationsTabComponent}
         <NotificationsTabComponent
           {notificationCategories}

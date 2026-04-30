@@ -96,6 +96,11 @@ describe('admin dashboard helpers', () => {
       'pppoe',
       'customers',
     ]);
+    expect(model.quickActions.map((item) => item.href)).toEqual([
+      '/admin/network/installations',
+      '/admin/network/pppoe',
+      '/admin/customers',
+    ]);
   });
 
   it('gives admin users a broad business snapshot and billing trend', () => {
@@ -137,6 +142,7 @@ describe('admin dashboard helpers', () => {
       'subscription_plan',
     ]);
     expect(model.quickActions.map((item) => item.id)).toContain('roles');
+    expect(model.quickActions.find((item) => item.id === 'roles')?.href).toBe('/admin/roles');
     expect(model.trendCards.map((item) => item.id)).toContain('invoice_status');
   });
 
@@ -174,6 +180,12 @@ describe('admin dashboard helpers', () => {
       'alerts',
       'incidents',
       'routers',
+    ]);
+    expect(model.quickActions.map((item) => item.href)).toEqual([
+      '/admin/network/noc',
+      '/admin/network/alerts',
+      '/admin/network/incidents',
+      '/admin/network/routers',
     ]);
     expect(model.trendCards.map((item) => item.id)).toEqual([
       'incident_severity',

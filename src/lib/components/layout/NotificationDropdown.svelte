@@ -16,8 +16,7 @@
   } from '$lib/stores/notifications';
   import { timeAgo } from '$lib/utils/date';
   import { goto } from '$app/navigation';
-  import { user, tenant } from '$lib/stores/auth';
-  import { resolveTenantContext } from '$lib/utils/tenantRouting';
+  import { user } from '$lib/stores/auth';
   import { hasInternalAppAccess } from '$lib/utils/appLanding';
   import { resolveAnnouncementActionUrl } from '$lib/utils/announcementRouting';
   import { getVisiblePortalNotifications } from '$lib/utils/dashboardNotifications';
@@ -28,15 +27,7 @@
   let lastOpenRefreshAt = 0;
   let portalInvoiceIds = $state<string[]>([]);
 
-  let tenantCtx = $derived.by(() =>
-    resolveTenantContext({
-      hostname: $page.url.hostname,
-      userTenantSlug: $user?.tenant_slug,
-      tenantSlug: $tenant?.slug,
-      routeTenantSlug: $page.params.tenant,
-    }),
-  );
-  let tenantPrefix = $derived(tenantCtx.tenantPrefix);
+  const tenantPrefix = '';
   let isSuperadminUrl = $derived($page.url.pathname.startsWith('/superadmin'));
   let visibleNotifications = $derived(
     getVisiblePortalNotifications($notifications, hasInternalAppAccess($user), portalInvoiceIds),

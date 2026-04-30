@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { user, tenant, isAdmin, isSuperAdmin, logout, can, authVersion } from '$lib/stores/auth';
+  import { user, isAdmin, isSuperAdmin, logout, can, authVersion } from '$lib/stores/auth';
   import { appName } from '$lib/stores/settings';
   import { appLogo } from '$lib/stores/logo';
   import { isSidebarCollapsed } from '$lib/stores/ui';
@@ -8,21 +8,12 @@
   import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import { canAccessNetworkMap } from '$lib/utils/adminNetworkAccess';
-  import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { api, type Invoice } from '$lib/api/client';
   import Icon from '../ui/Icon.svelte';
 
   let { isMobileOpen = $bindable(false) } = $props();
 
-  let tenantCtx = $derived.by(() =>
-    resolveTenantContext({
-      hostname: $page.url.hostname,
-      userTenantSlug: $user?.tenant_slug,
-      tenantSlug: $tenant?.slug,
-      routeTenantSlug: $page.params.tenant,
-    }),
-  );
-  let tenantPrefix = $derived(tenantCtx.tenantPrefix);
+  const tenantPrefix = '';
 
   type NavItem = {
     label: string;
@@ -318,7 +309,7 @@
           },
           {
             label: $t('sidebar.installations') || 'Installations',
-            icon: 'settings',
+            icon: 'clipboard-list',
             href: `${tenantPrefix}/admin/network/installations`,
             show: $can('read', 'work_orders') || $can('manage', 'work_orders'),
           },
@@ -432,7 +423,7 @@
           },
           {
             label: $t('sidebar.collections') || 'Collections',
-            icon: 'activity',
+            icon: 'receipt',
             href: `${tenantPrefix}/admin/invoices/collection`,
             show: $can('read', 'billing') || $can('manage', 'billing'),
           },
@@ -556,8 +547,7 @@
   });
 
   // When inside `/superadmin`, we still want a quick jump back to the tenant admin panel.
-  // If we're on a custom domain, tenantPrefix is empty and `/admin` is the correct route.
-  let adminPanelHref = $derived(tenantPrefix ? `${tenantPrefix}/admin` : '/admin');
+  const adminPanelHref = '/admin';
 
   function handleLogout() {
     logout();
@@ -819,9 +809,7 @@
     transition:
       transform 0.3s ease,
       width 0.3s ease;
-    background:
-      linear-gradient(180deg, color-mix(in srgb, var(--bg-app) 94%, #020617 6%), var(--bg-app)),
-      var(--bg-app);
+    background: var(--bg-app);
     border-right: 1px solid color-mix(in srgb, var(--border-color) 86%, transparent);
     height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     overflow: hidden;
@@ -909,11 +897,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--color-primary);
-    color: white;
-    border-radius: 10px;
+    background: color-mix(in srgb, var(--color-primary) 16%, var(--bg-tertiary));
+    color: var(--color-primary);
+    border-radius: 8px;
     flex-shrink: 0;
-    box-shadow: 0 10px 20px color-mix(in srgb, var(--color-primary) 22%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 26%, transparent);
   }
 
   .app-name {
@@ -964,12 +952,12 @@
     min-height: 38px;
     width: 100%;
     padding: 8px 10px;
-    border-radius: 10px;
+    border-radius: 8px;
     border: 1px solid transparent;
     background: transparent;
     color: var(--text-secondary);
     font-size: 0.88rem;
-    font-weight: 720;
+    font-weight: 650;
     cursor: pointer;
     transition:
       background 0.15s ease,

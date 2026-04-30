@@ -1,4 +1,4 @@
-import { resolveTenantContext } from './tenantRouting';
+import { canonicalTenantPath } from './tenantRouting';
 
 type AdminBillingNavigationInput = {
   hostname: string;
@@ -8,14 +8,13 @@ type AdminBillingNavigationInput = {
 };
 
 export function getAdminBillingNavigation(input: AdminBillingNavigationInput) {
-  const tenantCtx = resolveTenantContext(input);
-  const { tenantPrefix } = tenantCtx;
+  void input;
 
   return {
-    tenantPrefix,
-    billingPath: `${tenantPrefix}/admin/invoices`,
-    collectionsPath: `${tenantPrefix}/admin/invoices/collection`,
-    billingPlanSettingsPath: `${tenantPrefix}/admin/settings?tab=billing_plan`,
-    subscriptionPath: `${tenantPrefix}/admin/subscription`,
+    tenantPrefix: '',
+    billingPath: canonicalTenantPath('/admin/invoices'),
+    collectionsPath: canonicalTenantPath('/admin/invoices/collection'),
+    billingPlanSettingsPath: canonicalTenantPath('/admin/settings?tab=billing_plan'),
+    subscriptionPath: canonicalTenantPath('/admin/subscription'),
   };
 }

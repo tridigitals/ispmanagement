@@ -45,7 +45,7 @@ export function hasInternalAppAccess(user: LandingUserLike | null | undefined): 
 
 export function getDefaultTenantLandingPath(
   user: LandingUserLike | null | undefined,
-  tenantPrefix: string,
+  _tenantPrefix: string,
 ): string {
-  return hasInternalAppAccess(user) ? `${tenantPrefix}/admin` : `${tenantPrefix}/dashboard`;
+  return hasInternalAppAccess(user) ? '/admin' : '/dashboard';
 }

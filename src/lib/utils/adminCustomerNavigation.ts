@@ -1,4 +1,4 @@
-import { resolveTenantContext } from './tenantRouting';
+import { canonicalTenantPath } from './tenantRouting';
 
 type AdminCustomerNavigationInput = {
   hostname: string;
@@ -8,11 +8,10 @@ type AdminCustomerNavigationInput = {
 };
 
 export function getAdminCustomerNavigation(input: AdminCustomerNavigationInput) {
-  const tenantCtx = resolveTenantContext(input);
-  const { tenantPrefix } = tenantCtx;
+  void input;
 
   return {
-    tenantPrefix,
-    customersPath: `${tenantPrefix}/admin/customers`,
+    tenantPrefix: '',
+    customersPath: canonicalTenantPath('/admin/customers'),
   };
 }

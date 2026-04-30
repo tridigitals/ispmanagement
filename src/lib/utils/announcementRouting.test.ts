@@ -5,13 +5,13 @@ import { getAnnouncementDetailPath, resolveAnnouncementActionUrl } from './annou
 describe('announcement routing helpers', () => {
   it('builds admin announcement detail paths for internal roles', () => {
     expect(getAnnouncementDetailPath('ann-1', { tenantPrefix: '/demo', internal: true })).toBe(
-      '/demo/admin/announcements/ann-1',
+      '/admin/announcements/ann-1',
     );
   });
 
   it('builds customer announcement detail paths for portal users', () => {
     expect(getAnnouncementDetailPath('ann-1', { tenantPrefix: '/demo', internal: false })).toBe(
-      '/demo/announcements/ann-1',
+      '/announcements/ann-1',
     );
   });
 
@@ -21,7 +21,7 @@ describe('announcement routing helpers', () => {
         tenantPrefix: '/demo',
         internal: true,
       }),
-    ).toBe('/demo/admin/announcements/ann-1');
+    ).toBe('/admin/announcements/ann-1');
   });
 
   it('keeps generic announcement action urls in portal space for customer roles', () => {
@@ -30,16 +30,16 @@ describe('announcement routing helpers', () => {
         tenantPrefix: '/demo',
         internal: false,
       }),
-    ).toBe('/demo/announcements/ann-1');
+    ).toBe('/announcements/ann-1');
   });
 
-  it('prefixes non-announcement app urls without changing their section', () => {
+  it('keeps non-announcement app urls clean without changing their section', () => {
     expect(
       resolveAnnouncementActionUrl('/notifications', {
         tenantPrefix: '/demo',
         internal: true,
       }),
-    ).toBe('/demo/notifications');
+    ).toBe('/notifications');
   });
 
   it('rewrites legacy dashboard packages links to services', () => {
@@ -48,7 +48,7 @@ describe('announcement routing helpers', () => {
         tenantPrefix: '/demo',
         internal: false,
       }),
-    ).toBe('/demo/dashboard/services');
+    ).toBe('/dashboard/services');
   });
 
   it('rewrites announcement action urls for internal roles on custom domains without tenant prefixes', () => {

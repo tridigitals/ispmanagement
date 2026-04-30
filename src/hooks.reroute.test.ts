@@ -48,8 +48,10 @@ describe('hooks reroute', () => {
     vi.unstubAllGlobals();
   });
 
-  it('leaves legacy platform path unresolved in SSR when no tenant slug is available', () => {
-    expect(run('billing.tridigitals.com', '/isp-management/admin/network/noc')).toBeUndefined();
+  it('rewrites legacy platform base path to clean root app path', () => {
+    expect(run('billing.tridigitals.com', '/isp-management/admin/network/noc')).toBe(
+      '/admin/network/noc',
+    );
   });
 
   it('does not rewrite clean platform admin path', () => {
@@ -73,23 +75,41 @@ describe('hooks reroute', () => {
     expect(run('billing.tridigitals.com', '/foo/admin/settings')).toBeUndefined();
   });
 
-  it('rewrites custom domain app path to tenant slug', () => {
-    expect(run('dashboard.tridigitals.com', '/admin')).toBe('/tridigitals/admin');
+  it('does not rewrite clean custom domain app paths once root app routes exist', () => {
+    expect(run('dashboard.tridigitals.com', '/admin')).toBeUndefined();
   });
 
   it('does not rewrite custom domain public path', () => {
     expect(run('dashboard.tridigitals.com', '/login')).toBeUndefined();
   });
 
-  it('rewrites clean platform admin storage path to active tenant route in browser context', () => {
+  it('does not rewrite clean platform admin storage path in browser context', () => {
     installBrowserTenantSlug('xtrabit');
-    expect(run('billing.tridigitals.com', '/admin/storage')).toBe('/xtrabit/admin/storage');
+    expect(run('billing.tridigitals.com', '/admin/storage')).toBeUndefined();
   });
 
-  it('rewrites legacy platform storage path to active tenant route in browser context', () => {
+  it('does not rewrite clean localhost app paths in browser context', () => {
+    installBrowserTenantSlug('demo');
+    expect(run('localhost', '/admin/settings')).toBeUndefined();
+  });
+
+  it('does not rewrite clean platform admin settings path in browser context', () => {
+    installBrowserTenantSlug('demo');
+    expect(run('billing.tridigitals.com', '/admin/settings')).toBeUndefined();
+  });
+
+  it('keeps platform login clean even when tenant slug exists', () => {
+    installBrowserTenantSlug('demo');
+    expect(run('billing.tridigitals.com', '/login')).toBeUndefined();
+  });
+
+  it('does not rewrite legacy slug-prefixed platform app paths in browser context', () => {
+    installBrowserTenantSlug('demo');
+    expect(run('billing.tridigitals.com', '/oldslug/admin/settings')).toBeUndefined();
+  });
+
+  it('rewrites legacy base path to clean root app path in browser context', () => {
     installBrowserTenantSlug('xtrabit');
-    expect(run('billing.tridigitals.com', '/isp-management/admin/storage')).toBe(
-      '/xtrabit/admin/storage',
-    );
+    expect(run('billing.tridigitals.com', '/isp-management/admin/storage')).toBe('/admin/storage');
   });
 });
