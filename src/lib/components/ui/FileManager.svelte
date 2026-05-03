@@ -968,7 +968,7 @@
   .btn-load-more:hover:not(:disabled) {
     border-color: var(--color-primary);
     color: var(--color-primary);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-sm);
     transform: translateY(-1px);
   }
 
@@ -994,9 +994,9 @@
   }
 
   .filter-card {
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 18px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
     padding: 1rem 1.1rem;
     display: flex;
     align-items: center;
@@ -1011,15 +1011,13 @@
 
   .filter-card:hover {
     transform: translateY(-1px);
-    border-color: rgba(99, 102, 241, 0.28);
-    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.25);
+    border-color: color-mix(in srgb, var(--color-primary) 28%, var(--border-color));
+    box-shadow: var(--shadow-md);
   }
 
   .filter-card.active {
-    border-color: rgba(99, 102, 241, 0.45);
-    box-shadow:
-      0 14px 36px rgba(0, 0, 0, 0.28),
-      0 0 0 1px rgba(99, 102, 241, 0.2) inset;
+    border-color: color-mix(in srgb, var(--color-primary) 45%, var(--border-color));
+    box-shadow: 0 0 0 1px var(--color-primary-subtle) inset;
   }
 
   .fc-icon {
@@ -1029,8 +1027,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
     color: var(--text-primary);
     flex-shrink: 0;
   }
@@ -1060,43 +1058,35 @@
   }
 
   :global([data-theme='light']) .filter-card {
-    background: linear-gradient(135deg, #ffffff, #f7f7fb);
-    border-color: rgba(0, 0, 0, 0.06);
-    box-shadow:
-      0 10px 28px rgba(0, 0, 0, 0.06),
-      0 0 0 1px rgba(255, 255, 255, 0.8);
+    background: var(--bg-surface);
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-sm);
   }
 
   :global([data-theme='light']) .filter-card:hover {
-    box-shadow:
-      0 14px 36px rgba(0, 0, 0, 0.08),
-      0 0 0 1px rgba(255, 255, 255, 0.8);
+    box-shadow: var(--shadow-md);
   }
 
   :global([data-theme='light']) .filter-card.active {
-    border-color: rgba(99, 102, 241, 0.3);
-    box-shadow:
-      0 14px 36px rgba(0, 0, 0, 0.08),
-      0 0 0 1px rgba(99, 102, 241, 0.16) inset;
+    border-color: color-mix(in srgb, var(--color-primary) 30%, var(--border-color));
+    box-shadow: 0 0 0 1px var(--color-primary-subtle) inset;
   }
 
   /* Main glass container */
   .glass-card {
-    background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
     display: flex;
     flex-direction: column;
     min-height: 520px; /* Restored min-height */
   }
 
   :global([data-theme='light']) .glass-card {
-    background: linear-gradient(135deg, #ffffff, #f7f7fb);
-    border-color: rgba(0, 0, 0, 0.06);
-    box-shadow:
-      0 12px 32px rgba(0, 0, 0, 0.08),
-      0 0 0 1px rgba(255, 255, 255, 0.8);
+    background: var(--bg-surface);
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-sm);
   }
 
   .fm-main {
@@ -1162,9 +1152,9 @@
   }
 
   .btn-danger-sm {
-    background: #fee2e2;
-    color: #ef4444;
-    border: 1px solid #fecaca;
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    color: var(--color-danger);
+    border: 1px solid color-mix(in srgb, var(--color-danger) 28%, var(--border-color));
     padding: 0.4rem 0.8rem;
     border-radius: 6px;
     font-size: 0.85rem;
@@ -1177,9 +1167,9 @@
   }
 
   .btn-danger-sm:hover {
-    background: #ef4444;
-    color: white;
-    border-color: #ef4444;
+    background: var(--color-danger);
+    color: var(--bg-app);
+    border-color: var(--color-danger);
   }
 
   @keyframes fade-in {
@@ -1196,7 +1186,7 @@
   /* Toolbar */
   .toolbar {
     padding: 1rem 1.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1204,7 +1194,7 @@
   }
 
   :global([data-theme='light']) .toolbar {
-    border-bottom-color: rgba(0, 0, 0, 0.06);
+    border-bottom-color: var(--border-color);
   }
 
   .search-box {
@@ -1277,7 +1267,7 @@
   .toggle-btn.active {
     background: var(--bg-surface);
     color: var(--color-primary);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-sm);
   }
 
   /* Browser Area */
@@ -1402,8 +1392,8 @@
   }
 
   .action-btn.delete:hover {
-    background: #fee2e2;
-    color: #ef4444;
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    color: var(--color-danger);
   }
 
   /* List View */
@@ -1502,28 +1492,28 @@
 
   /* Icon Colors */
   .icon-purple {
-    background: rgba(168, 85, 247, 0.1);
-    color: #a855f7;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
   }
   .icon-pink {
-    background: rgba(236, 72, 153, 0.1);
-    color: #ec4899;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
   }
   .icon-cyan {
-    background: rgba(6, 182, 212, 0.1);
-    color: #06b6d4;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
   }
   .icon-red {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    color: var(--color-danger);
   }
   .icon-orange {
-    background: rgba(249, 115, 22, 0.1);
-    color: #f97316;
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+    color: var(--color-warning);
   }
   .icon-blue {
-    background: rgba(59, 130, 246, 0.1);
-    color: #3b82f6;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
   }
 
   /* States */
@@ -1592,7 +1582,7 @@
 
     .filter-card {
       padding: 0.85rem 0.95rem;
-      border-radius: 16px;
+      border-radius: var(--radius-lg);
     }
 
     .fc-icon {

@@ -327,7 +327,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
     border: 1px solid var(--border-color);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 14px;
     background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
   }

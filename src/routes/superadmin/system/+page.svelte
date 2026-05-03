@@ -294,7 +294,7 @@
     padding: 0.35rem;
     border-radius: 12px;
     border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-tertiary);
   }
 
   .view-toggle button {
@@ -311,12 +311,12 @@
 
   .view-toggle button:hover {
     color: var(--text-primary);
-    border-color: rgba(99, 102, 241, 0.25);
+    border-color: color-mix(in srgb, var(--color-primary) 25%, var(--border-color));
   }
 
   .view-toggle button.active {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.35);
+    background: var(--color-primary-subtle);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
     color: var(--text-primary);
   }
 
@@ -389,8 +389,8 @@
     flex-direction: column;
     align-items: center;
     padding: 2rem;
-    background: rgba(239, 68, 68, 0.05);
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    background: color-mix(in srgb, var(--color-danger) 6%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-danger) 20%, var(--border-color));
     border-radius: var(--radius-lg);
     color: var(--color-danger);
     text-align: center;

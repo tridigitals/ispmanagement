@@ -446,17 +446,7 @@
   }
 
   .native-select {
-    appearance: none;
-    background-image:
-      linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%),
-      linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);
-    background-position:
-      calc(100% - 18px) calc(1em + 2px),
-      calc(100% - 13px) calc(1em + 2px);
-    background-size:
-      5px 5px,
-      5px 5px;
-    background-repeat: no-repeat;
+    appearance: auto;
     padding-right: 2.25rem;
   }
 
@@ -523,7 +513,7 @@
     bottom: 0;
     background-color: var(--bg-tertiary);
     transition: 0.3s;
-    border-radius: 28px;
+    border-radius: var(--radius-lg);
   }
 
   .slider:before {

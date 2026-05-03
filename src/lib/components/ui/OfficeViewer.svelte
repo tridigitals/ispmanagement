@@ -150,8 +150,8 @@
     height: 80vh;
     border-radius: 12px;
     overflow: hidden;
-    background: white;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
     display: grid;
     grid-template-rows: auto 1fr;
   }
@@ -162,8 +162,8 @@
     justify-content: space-between;
     gap: 0.75rem;
     padding: 0.75rem 0.85rem;
-    background: #0b1220;
-    color: rgba(255, 255, 255, 0.9);
+    background: var(--bg-surface);
+    color: var(--text-primary);
   }
 
   .left {
@@ -189,23 +189,24 @@
     align-items: center;
     gap: 0.45rem;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.08);
-    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
     padding: 0.4rem 0.6rem;
     cursor: pointer;
     font-weight: 800;
   }
 
   .btn.primary {
-    background: rgba(99, 102, 241, 0.25);
-    border-color: rgba(99, 102, 241, 0.4);
+    background: var(--color-primary-subtle);
+    border-color: color-mix(in srgb, var(--color-primary) 40%, var(--border-color));
   }
 
   .office-view {
     overflow: auto;
     padding: 1rem;
-    color: #111827;
+    color: var(--text-primary);
+    background: var(--bg-app);
   }
 
   .center {
@@ -213,8 +214,8 @@
     place-items: center;
     gap: 0.65rem;
     padding: 2.5rem 1rem;
-    background: #0b1220;
-    color: rgba(255, 255, 255, 0.9);
+    background: var(--bg-surface);
+    color: var(--text-primary);
     text-align: center;
   }
 
@@ -223,15 +224,15 @@
   }
 
   .muted {
-    color: rgba(255, 255, 255, 0.65);
+    color: var(--text-secondary);
     font-weight: 700;
   }
 
   .spinner {
     width: 30px;
     height: 30px;
-    border: 3px solid rgba(255, 255, 255, 0.16);
-    border-top-color: rgba(99, 102, 241, 0.9);
+    border: 3px solid var(--border-color);
+    border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }
@@ -251,12 +252,12 @@
 
   :global(#sheet td),
   :global(#sheet th) {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border-color);
     padding: 0.35rem 0.5rem;
   }
 
   :global(#sheet th) {
-    background: #f3f4f6;
+    background: var(--bg-tertiary);
     font-weight: 800;
   }
 

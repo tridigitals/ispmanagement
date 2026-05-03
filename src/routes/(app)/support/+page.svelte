@@ -417,10 +417,7 @@
     padding: 1rem;
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
-    background:
-      radial-gradient(1200px 220px at 20% 0%, rgba(99, 102, 241, 0.22), transparent 55%),
-      radial-gradient(800px 180px at 85% 0%, rgba(16, 185, 129, 0.12), transparent 45%),
-      var(--bg-surface);
+    background: var(--bg-surface);
     box-shadow: var(--shadow-md);
   }
 
@@ -574,9 +571,7 @@
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
-    background:
-      radial-gradient(700px 150px at 30% 0%, rgba(255, 255, 255, 0.05), transparent 55%),
-      var(--bg-surface);
+    background: var(--bg-surface);
     padding: 0.9rem;
     cursor: pointer;
     transition:

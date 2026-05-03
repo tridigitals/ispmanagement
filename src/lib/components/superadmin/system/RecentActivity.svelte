@@ -127,10 +127,10 @@
     background: var(--color-success);
   }
   .activity-dot.warning {
-    background: #f59e0b;
+    background: var(--color-warning);
   }
   .activity-dot.info {
-    background: #3b82f6;
+    background: var(--color-primary);
   }
   .activity-dot.muted {
     background: var(--text-muted);

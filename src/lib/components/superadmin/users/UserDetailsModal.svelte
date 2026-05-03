@@ -181,15 +181,15 @@
   }
 
   .detail-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
     border-radius: 14px;
     padding: 1rem;
   }
 
   :global([data-theme='light']) .detail-card {
-    background: rgba(0, 0, 0, 0.02);
-    border-color: rgba(0, 0, 0, 0.06);
+    background: var(--bg-surface);
+    border-color: var(--border-color);
   }
 
   .detail-title {
@@ -204,11 +204,11 @@
     align-items: flex-start;
     gap: 1rem;
     padding: 0.5rem 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--border-color);
   }
 
   :global([data-theme='light']) .detail-row {
-    border-top-color: rgba(0, 0, 0, 0.06);
+    border-top-color: var(--border-color);
   }
 
   .detail-row:first-of-type {
@@ -223,26 +223,26 @@
 
   .role-pill {
     padding: 0.3rem 0.8rem;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     font-size: 0.8rem;
     font-weight: 600;
     text-transform: capitalize;
   }
 
   .role-pill.admin {
-    background: rgba(99, 102, 241, 0.2);
-    color: #818cf8;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
   }
 
   .role-pill.superadmin {
-    background: rgba(139, 92, 246, 0.2);
-    color: #a78bfa;
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 30%, var(--border-color));
   }
 
   .role-pill.user {
-    background: rgba(16, 185, 129, 0.2);
-    color: #34d399;
+    background: var(--bg-success);
+    color: var(--text-success);
   }
 
   .status-pill {
@@ -250,21 +250,21 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.35rem 0.8rem;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     font-size: 0.8rem;
     font-weight: 600;
   }
 
   .status-pill.active {
-    background: rgba(16, 185, 129, 0.15);
+    background: var(--bg-success);
     color: var(--color-success);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    border: 1px solid color-mix(in srgb, var(--color-success) 24%, var(--border-color));
   }
 
   .status-pill.inactive {
-    background: rgba(239, 68, 68, 0.15);
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
     color: var(--color-danger);
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    border: 1px solid color-mix(in srgb, var(--color-danger) 24%, var(--border-color));
   }
 
   .dot {

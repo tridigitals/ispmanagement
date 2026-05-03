@@ -577,7 +577,7 @@
   .wizard-main {
     border: 1px solid var(--border-color, rgba(148, 163, 184, 0.22));
     background: var(--bg-card, rgba(15, 23, 42, 0.72));
-    border-radius: 24px;
+    border-radius: var(--radius-lg);
   }
 
   .wizard-rail {
@@ -596,7 +596,7 @@
     display: flex;
     gap: 12px;
     padding: 12px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     color: var(--text-secondary);
   }
 
@@ -660,7 +660,7 @@
   .history-empty {
     border: 1px solid rgba(148, 163, 184, 0.18);
     background: rgba(15, 23, 42, 0.3);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 12px;
   }
 

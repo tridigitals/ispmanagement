@@ -500,9 +500,9 @@
   }
 
   .stat-card {
-    background: var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 14px 14px 12px;
   }
 
@@ -543,7 +543,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    background: var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: 14px;
     padding: 10px 12px;
@@ -570,9 +570,9 @@
   }
 
   .table-wrap {
-    background: var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
   }
 
@@ -681,6 +681,11 @@
     .search {
       min-width: 0;
       width: 100%;
+    }
+  }
+  @media (max-width: 640px) {
+    .stats {
+      grid-template-columns: 1fr;
     }
   }
 </style>

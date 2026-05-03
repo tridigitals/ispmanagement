@@ -107,15 +107,10 @@
   .line {
     height: 12px;
     border-radius: 999px;
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.04),
-      rgba(255, 255, 255, 0.12),
-      rgba(255, 255, 255, 0.04)
-    );
+    background: var(--bg-surface);
     background-size: 220% 100%;
     animation: shimmer 1.2s ease-in-out infinite;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-color);
   }
 
   @keyframes shimmer {
@@ -130,9 +125,7 @@
   .banner {
     border: 1px solid var(--border-color);
     border-radius: 14px;
-    background:
-      radial-gradient(900px 160px at 15% 0%, rgba(255, 255, 255, 0.06), transparent 55%),
-      rgba(255, 255, 255, 0.03);
+    background: var(--bg-surface);
     display: grid;
     grid-template-columns: auto 1fr auto auto;
     gap: 0.75rem;
@@ -142,31 +135,23 @@
   }
 
   .banner.info {
-    border-color: rgba(59, 130, 246, 0.22);
-    background:
-      radial-gradient(900px 160px at 15% 0%, rgba(59, 130, 246, 0.22), transparent 55%),
-      rgba(59, 130, 246, 0.05);
+    border-color: color-mix(in srgb, var(--color-primary) 22%, var(--border-color));
+    background: var(--bg-surface);
   }
 
   .banner.success {
-    border-color: rgba(34, 197, 94, 0.22);
-    background:
-      radial-gradient(900px 160px at 15% 0%, rgba(34, 197, 94, 0.22), transparent 55%),
-      rgba(34, 197, 94, 0.05);
+    border-color: color-mix(in srgb, var(--color-success) 22%, var(--border-color));
+    background: var(--bg-surface);
   }
 
   .banner.warning {
-    border-color: rgba(245, 158, 11, 0.22);
-    background:
-      radial-gradient(900px 160px at 15% 0%, rgba(245, 158, 11, 0.22), transparent 55%),
-      rgba(245, 158, 11, 0.05);
+    border-color: color-mix(in srgb, var(--color-warning) 22%, var(--border-color));
+    background: var(--bg-surface);
   }
 
   .banner.error {
-    border-color: rgba(239, 68, 68, 0.22);
-    background:
-      radial-gradient(900px 160px at 15% 0%, rgba(239, 68, 68, 0.22), transparent 55%),
-      rgba(239, 68, 68, 0.05);
+    border-color: color-mix(in srgb, var(--color-danger) 22%, var(--border-color));
+    background: var(--bg-surface);
   }
 
   .icon {
@@ -175,9 +160,9 @@
     border-radius: 999px;
     display: grid;
     place-items: center;
-    background: rgba(0, 0, 0, 0.18);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: rgba(255, 255, 255, 0.9);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
   }
 
   .content {
@@ -205,9 +190,9 @@
   }
 
   .close {
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
     border-radius: 10px;
     width: 34px;
     height: 34px;
@@ -217,13 +202,13 @@
   }
 
   .close:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--bg-hover);
   }
 
   .read {
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
     border-radius: 10px;
     width: 34px;
     height: 34px;
@@ -233,7 +218,7 @@
   }
 
   .read:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--bg-hover);
   }
 
   .more {

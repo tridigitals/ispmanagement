@@ -289,7 +289,7 @@
     grid-template-columns: minmax(0, 1fr) 340px;
     gap: 0;
     border: 1px solid var(--border-color);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
     background: #070b15;
   }
@@ -303,7 +303,7 @@
     height: var(--map-shell-height);
     min-height: 360px;
     border: 1px solid var(--border-color);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
     background: #070b15;
   }
@@ -372,7 +372,7 @@
     height: 18px;
     border: 1px solid rgba(0, 0, 0, 0.2);
     border-radius: 3px;
-    background: #ffffff;
+    background: var(--bg-surface);
     color: #1f2937;
     display: grid;
     place-items: center;
@@ -397,7 +397,7 @@
     min-width: 92px;
     border: 1px solid rgba(0, 0, 0, 0.2);
     border-radius: 3px;
-    background: #ffffff;
+    background: var(--bg-surface);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
     overflow: hidden;
   }
@@ -456,7 +456,7 @@
 
   .map-search {
     width: min(240px, calc(100vw - 120px));
-    background: #ffffff;
+    background: var(--bg-surface);
     border: 1px solid rgba(0, 0, 0, 0.2);
     border-radius: 3px;
     padding: 5px;
@@ -475,7 +475,7 @@
     height: 20px;
     border-radius: 4px;
     border: 1px solid var(--border-color);
-    background: #ffffff;
+    background: var(--bg-surface);
     color: #111827;
     padding: 0 6px;
     outline: none;
@@ -492,7 +492,7 @@
     padding: 0 6px;
     border-radius: 4px;
     border: 1px solid var(--border-color);
-    background: #ffffff;
+    background: var(--bg-surface);
     color: #111827;
     font-weight: 700;
     cursor: pointer;
@@ -508,7 +508,7 @@
     overflow: auto;
     border-radius: 4px;
     border: 1px solid var(--border-color);
-    background: #ffffff;
+    background: var(--bg-surface);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
     z-index: 14;
   }

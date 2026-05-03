@@ -248,11 +248,8 @@
     .tenant-logo-placeholder {
         width: 64px;
         height: 64px;
-        background: linear-gradient(
-            135deg,
-            var(--color-primary),
-            var(--color-secondary)
-        );
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
         border-radius: 12px;
         display: flex;
         align-items: center;

@@ -248,19 +248,19 @@
     padding: 0.4rem 0.45rem;
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-tertiary);
   }
 
   :global([data-theme='light']) .toolbar {
-    background: rgba(0, 0, 0, 0.01);
+    background: var(--bg-tertiary);
   }
 
   .tool {
     width: 34px;
     height: 34px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
     color: var(--text-primary);
     display: grid;
     place-items: center;
@@ -268,28 +268,28 @@
   }
 
   :global([data-theme='light']) .tool {
-    border-color: rgba(0, 0, 0, 0.12);
-    background: rgba(0, 0, 0, 0.03);
+    border-color: var(--border-color);
+    background: var(--bg-surface);
   }
 
   .tool:hover {
-    border-color: rgba(99, 102, 241, 0.45);
+    border-color: color-mix(in srgb, var(--color-primary) 45%, var(--border-color));
   }
 
   .tool.active {
-    border-color: rgba(99, 102, 241, 0.65);
-    background: rgba(99, 102, 241, 0.16);
+    border-color: color-mix(in srgb, var(--color-primary) 65%, var(--border-color));
+    background: var(--color-primary-subtle);
   }
 
   .sep {
     width: 1px;
     height: 22px;
-    background: rgba(255, 255, 255, 0.12);
+    background: var(--border-color);
     margin: 0 0.2rem;
   }
 
   :global([data-theme='light']) .sep {
-    background: rgba(0, 0, 0, 0.12);
+    background: var(--border-color);
   }
 
   .editor-shell {
@@ -348,8 +348,8 @@
   .editor :global(.ProseMirror blockquote) {
     margin: 0.85rem 0;
     padding: 0.65rem 0.8rem;
-    border-left: 3px solid rgba(99, 102, 241, 0.55);
-    background: rgba(99, 102, 241, 0.08);
+    border-left: 3px solid color-mix(in srgb, var(--color-primary) 55%, var(--border-color));
+    background: var(--color-primary-subtle);
     border-radius: 12px;
   }
 
@@ -357,8 +357,8 @@
     margin: 0.85rem 0;
     padding: 0.85rem 0.95rem;
     border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
     overflow: auto;
     font-family:
       ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
@@ -366,21 +366,21 @@
   }
 
   :global([data-theme='light']) .editor :global(.ProseMirror pre) {
-    border-color: rgba(0, 0, 0, 0.1);
-    background: rgba(0, 0, 0, 0.06);
+    border-color: var(--border-color);
+    background: var(--bg-tertiary);
   }
 
   /* Placeholder */
   .editor :global(.ProseMirror .is-editor-empty:first-child::before) {
     content: attr(data-placeholder);
     float: left;
-    color: rgba(255, 255, 255, 0.45);
+    color: var(--text-muted);
     pointer-events: none;
     height: 0;
   }
 
   :global([data-theme='light']) .editor :global(.ProseMirror .is-editor-empty:first-child::before) {
-    color: rgba(0, 0, 0, 0.38);
+    color: var(--text-muted);
   }
 
   .help {

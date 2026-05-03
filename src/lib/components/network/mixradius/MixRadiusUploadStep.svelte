@@ -90,7 +90,7 @@
     gap: 14px;
     border: 1px solid var(--border-color, rgba(148, 163, 184, 0.22));
     background: var(--bg-card, rgba(15, 23, 42, 0.72));
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     padding: 18px;
   }
 
@@ -119,7 +119,7 @@
     height: 54px;
     display: grid;
     place-items: center;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     background: rgba(14, 165, 233, 0.14);
     color: #38bdf8;
   }

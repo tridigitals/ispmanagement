@@ -632,7 +632,7 @@
 
   .stat-card {
     border: 1px solid var(--border-color);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+    background: var(--bg-surface);
     border-radius: var(--radius-lg);
     padding: 0.9rem 1rem;
     text-align: left;

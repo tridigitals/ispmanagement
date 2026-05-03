@@ -288,13 +288,7 @@
     margin-bottom: 18px;
     border: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
     border-radius: 14px;
-    background:
-      linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--color-primary) 8%, transparent),
-        transparent 58%
-      ),
-      color-mix(in srgb, var(--bg-app) 70%, var(--bg-surface));
+    background: var(--bg-surface);
   }
 
   .workflow-main,
@@ -519,17 +513,7 @@
   }
 
   .select-input {
-    appearance: none;
-    background-image:
-      linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%),
-      linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);
-    background-position:
-      calc(100% - 16px) 17px,
-      calc(100% - 11px) 17px;
-    background-size:
-      5px 5px,
-      5px 5px;
-    background-repeat: no-repeat;
+    appearance: auto;
     padding-right: 32px;
   }
 

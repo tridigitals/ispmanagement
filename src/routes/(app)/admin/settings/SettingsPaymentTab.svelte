@@ -568,7 +568,7 @@
     bottom: 0;
     background-color: rgba(255, 255, 255, 0.1);
     transition: 0.3s;
-    border-radius: 24px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--glass-border);
   }
 
@@ -601,7 +601,7 @@
   .method-card {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--glass-border);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
   }
 
@@ -632,13 +632,13 @@
   }
 
   .m-icon.midtrans {
-    background: linear-gradient(135deg, #002c5f, #0b1b39);
+    background: var(--bg-surface);
     border-color: rgba(0, 44, 95, 0.45);
     color: white;
   }
 
   .m-icon.duitku {
-    background: linear-gradient(135deg, #0f766e, #0b4f6c);
+    background: var(--bg-surface);
     border-color: rgba(15, 118, 110, 0.45);
     color: white;
     font-weight: 800;
@@ -748,7 +748,7 @@
     display: grid;
     gap: 0.75rem;
     padding: 1rem;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--glass-border);
     background: rgba(255, 255, 255, 0.02);
     margin-bottom: 1rem;
@@ -778,7 +778,7 @@
   .bank-card-item {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--glass-border);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 1.1rem 1.15rem;
     display: flex;
     flex-direction: column;
@@ -875,7 +875,7 @@
   .add-bank-card {
     border: 2px dashed var(--glass-border);
     background: rgba(255, 255, 255, 0.01);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -945,7 +945,7 @@
     align-items: center;
     padding: 2rem;
     background: rgba(255, 255, 255, 0.02);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--glass-border);
     color: var(--text-secondary);
   }

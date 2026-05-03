@@ -1872,7 +1872,7 @@
 
   .empty {
     border: 1px solid var(--border-color);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 20px;
     display: flex;
     align-items: center;
@@ -1911,12 +1911,8 @@
 
   .tile {
     border: 1px solid var(--border-color);
-    border-radius: 18px;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-surface) 72%, transparent),
-      color-mix(in srgb, var(--bg-surface) 92%, transparent)
-    );
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
     overflow: hidden;
     min-height: 0;
   }
@@ -1937,7 +1933,7 @@
   .plus {
     width: 64px;
     height: 64px;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     display: inline-flex;
     align-items: center;
     justify-content: center;

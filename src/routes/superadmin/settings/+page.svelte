@@ -1354,27 +1354,7 @@
   .tab-loading-bar,
   .tab-loading-body {
     border-radius: 14px;
-    background:
-      linear-gradient(
-        90deg,
-        rgba(255, 255, 255, 0.05) 0%,
-        rgba(255, 255, 255, 0.12) 50%,
-        rgba(255, 255, 255, 0.05) 100%
-      );
-    background-size: 200% 100%;
-    animation: settings-tab-loading 1.2s ease-in-out infinite;
-  }
-
-  :global([data-theme='light']) .tab-loading-bar,
-  :global([data-theme='light']) .tab-loading-body {
-    background:
-      linear-gradient(
-        90deg,
-        rgba(0, 0, 0, 0.05) 0%,
-        rgba(0, 0, 0, 0.1) 50%,
-        rgba(0, 0, 0, 0.05) 100%
-      );
-    background-size: 200% 100%;
+    background: color-mix(in srgb, var(--bg-hover) 72%, var(--bg-surface));
   }
 
   .tab-loading-bar {
@@ -1385,16 +1365,6 @@
   .tab-loading-body {
     min-height: 18rem;
   }
-
-  @keyframes settings-tab-loading {
-    0% {
-      background-position: 200% 0;
-    }
-    100% {
-      background-position: -200% 0;
-    }
-  }
-
   @keyframes spin {
     to {
       transform: rotate(360deg);

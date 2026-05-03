@@ -43,7 +43,7 @@
     justify-content: center;
     padding: 2rem;
     text-align: center;
-    background: var(--bg-primary);
+    background: var(--bg-surface);
   }
 
   .content {
@@ -54,10 +54,7 @@
     font-size: 8rem;
     font-weight: 900;
     line-height: 1;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--color-primary);
     margin-bottom: 1rem;
     opacity: 0.5;
   }

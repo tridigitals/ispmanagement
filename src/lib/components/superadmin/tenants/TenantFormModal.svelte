@@ -195,8 +195,8 @@
   .spinner-sm {
     width: 16px;
     height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: white;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--bg-app);
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }

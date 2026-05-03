@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { auth } from '$lib/api/client';
+  import Icon from '$lib/components/ui/Icon.svelte';
   import { t } from 'svelte-i18n';
 
   let email = '';
@@ -28,7 +29,9 @@
   <div class="auth-card fade-in">
     {#if !submitted}
       <div class="auth-header">
-        <div class="icon">🔑</div>
+        <div class="status-mark">
+          <Icon name="key" size={28} />
+        </div>
         <h1>{$t('auth.forgot_password.title') || 'Reset Password'}</h1>
         <p>
           {$t('auth.forgot_password.subtitle') ||
@@ -37,10 +40,7 @@
       </div>
 
       {#if error}
-        <div
-          class="alert alert-error"
-          style="color: #ef4444; background: rgba(239, 68, 68, 0.1); padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1.5rem; text-align: center;"
-        >
+        <div class="alert alert-error">
           {error}
         </div>
       {/if}
@@ -71,7 +71,9 @@
       </form>
     {:else}
       <div class="success-state fade-in">
-        <div class="icon">📩</div>
+        <div class="status-mark success">
+          <Icon name="mail-check" size={28} />
+        </div>
         <h1>
           {$t('auth.forgot_password.check_email_title') || 'Check your email'}
         </h1>
@@ -99,24 +101,37 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 2rem;
+    padding: clamp(1rem, 4vw, 2rem);
     background: var(--bg-primary);
   }
 
   .auth-card {
-    background: var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 3rem;
+    border-radius: var(--radius-lg);
+    padding: clamp(1.5rem, 5vw, 2.5rem);
     width: 100%;
     max-width: 420px;
-    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-sm);
   }
 
-  .icon {
-    font-size: 3rem;
-    margin-bottom: 1.5rem;
-    text-align: center;
+  .status-mark {
+    width: 56px;
+    height: 56px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+    border-radius: var(--radius-lg);
+    color: var(--color-primary);
+    background: var(--color-primary-subtle);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 24%, var(--border-color));
+  }
+
+  .status-mark.success {
+    color: var(--text-success);
+    background: var(--bg-success);
+    border-color: color-mix(in srgb, var(--color-success) 28%, var(--border-color));
   }
 
   .auth-header {
@@ -150,6 +165,52 @@
   .auth-footer {
     text-align: center;
     margin-top: 2rem;
+  }
+
+  .alert {
+    padding: 0.75rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+
+  .alert-error {
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+
+  .form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 1rem;
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
+  }
+
+  .w-full {
+    width: 100%;
   }
 
   .back-link {

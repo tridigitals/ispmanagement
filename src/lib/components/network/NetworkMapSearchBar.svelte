@@ -173,11 +173,7 @@
     border-radius: 14px;
     border: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
     padding: 0 12px;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-card) 92%, #05101a 8%),
-      var(--bg-card)
-    );
+    background: var(--bg-surface);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
@@ -211,13 +207,12 @@
     gap: 10px;
     max-height: min(48vh, 460px);
     overflow: auto;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
     padding: 14px;
     background: color-mix(in srgb, var(--bg-card) 95%, #06101b 5%);
     box-shadow: 0 28px 50px rgba(2, 6, 23, 0.26);
-    backdrop-filter: blur(14px);
-  }
+      }
 
   .search-group {
     display: grid;

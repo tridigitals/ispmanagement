@@ -328,13 +328,12 @@
   }
 
   .glass-card {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--bg-surface);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--radius-lg);
     overflow: hidden;
     box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(12px);
-  }
+      }
 
   .card-header {
     padding: 1.25rem;

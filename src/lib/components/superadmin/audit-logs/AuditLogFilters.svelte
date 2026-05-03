@@ -174,7 +174,7 @@
   .field-input:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
   }
 
   .quick-row {
@@ -187,8 +187,8 @@
   }
 
   .chip {
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
     padding: 0.45rem 0.7rem;
     border-radius: 999px;
@@ -200,19 +200,19 @@
   }
 
   :global([data-theme='light']) .chip {
-    border-color: rgba(0, 0, 0, 0.06);
-    background: rgba(0, 0, 0, 0.02);
+    border-color: var(--border-color);
+    background: var(--bg-tertiary);
   }
 
   .chip:hover {
-    background: rgba(99, 102, 241, 0.12);
+    background: var(--color-primary-subtle);
     color: var(--text-primary);
-    border-color: rgba(99, 102, 241, 0.35);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
   }
 
   .chip.danger:hover {
-    background: rgba(239, 68, 68, 0.12);
-    border-color: rgba(239, 68, 68, 0.28);
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-danger) 28%, var(--border-color));
   }
 
   .view-toggle {
@@ -221,13 +221,13 @@
     gap: 0.25rem;
     padding: 0.25rem;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
   }
 
   :global([data-theme='light']) .view-toggle {
-    border-color: rgba(0, 0, 0, 0.06);
-    background: rgba(0, 0, 0, 0.02);
+    border-color: var(--border-color);
+    background: var(--bg-tertiary);
   }
 
   .view-btn {
@@ -246,17 +246,17 @@
   }
 
   .view-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-hover);
     color: var(--text-primary);
   }
 
   :global([data-theme='light']) .view-btn:hover {
-    background: rgba(0, 0, 0, 0.04);
+    background: var(--bg-hover);
   }
 
   .view-btn.active {
-    background: rgba(99, 102, 241, 0.18);
-    border: 1px solid rgba(99, 102, 241, 0.25);
+    background: var(--color-primary-subtle);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 25%, var(--border-color));
     color: var(--text-primary);
   }
 </style>

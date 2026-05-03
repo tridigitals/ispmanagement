@@ -887,11 +887,11 @@
   }
 
   .table-wrap {
-    background: var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-sm);
   }
 
   .modal-loading-shell {
@@ -904,7 +904,6 @@
     background: rgba(2, 6, 23, 0.56);
     color: var(--text-primary);
     font-weight: 800;
-    backdrop-filter: blur(8px);
   }
 
   .table-top {
@@ -913,7 +912,7 @@
     justify-content: flex-end;
     padding: 10px 12px;
     border-bottom: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-card) 82%, transparent);
+    background: color-mix(in srgb, var(--bg-surface) 82%, transparent);
   }
 
   .stack {

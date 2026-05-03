@@ -854,7 +854,13 @@
     }
 
     .content-card {
-      border-radius: 16px;
+      border-radius: var(--radius-lg);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
     }
   }
 </style>

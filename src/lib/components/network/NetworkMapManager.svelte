@@ -379,7 +379,7 @@
   .manager-wrap {
     margin-top: 14px;
     border: 1px solid var(--border-color);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     background: var(--bg-card);
     overflow: hidden;
   }
@@ -389,11 +389,7 @@
     display: grid;
     gap: 12px;
     border-bottom: 1px solid var(--border-color);
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-card) 88%, #09111f 12%),
-      color-mix(in srgb, var(--bg-card) 96%, #09111f 4%)
-    );
+    background: var(--bg-surface);
   }
 
   .manager-heading {
@@ -449,11 +445,7 @@
   .manager-tabs button.active {
     color: var(--text-primary);
     border-color: color-mix(in srgb, var(--color-primary) 50%, var(--border-color));
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-primary) 22%, #0b1225 78%) 0%,
-      color-mix(in srgb, var(--color-primary) 14%, #0b1225 86%) 100%
-    );
+    background: var(--bg-surface);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
       0 4px 16px rgba(56, 96, 255, 0.2);

@@ -306,14 +306,14 @@
     font-size: 0.75rem;
     color: var(--text-secondary);
     font-weight: 600;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-tertiary);
     padding: 0.1rem 0.4rem;
     border-radius: 4px;
     display: inline-block;
   }
 
   :global([data-theme='light']) .tenant-label {
-    background: rgba(0, 0, 0, 0.03);
+    background: var(--bg-tertiary);
   }
 
   .resource-info {
@@ -335,45 +335,45 @@
   }
 
   .action-pill.auth {
-    background: rgba(245, 158, 11, 0.15);
-    color: #fbbf24;
+    background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+    color: var(--color-warning);
   }
   .action-pill.user {
-    background: rgba(59, 130, 246, 0.15);
-    color: #60a5fa;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
   }
   .action-pill.tenant {
-    background: rgba(16, 185, 129, 0.15);
-    color: #34d399;
+    background: var(--bg-success);
+    color: var(--text-success);
   }
   .action-pill.settings {
-    background: rgba(139, 92, 246, 0.15);
-    color: #a78bfa;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
   }
   .action-pill.other {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
   }
 
   :global([data-theme='light']) .action-pill.auth {
-    background: rgba(245, 158, 11, 0.12);
-    color: #d97706;
+    background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+    color: var(--color-warning);
   }
   :global([data-theme='light']) .action-pill.user {
-    background: rgba(59, 130, 246, 0.12);
-    color: #2563eb;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
   }
   :global([data-theme='light']) .action-pill.tenant {
-    background: rgba(16, 185, 129, 0.12);
-    color: #059669;
+    background: var(--bg-success);
+    color: var(--text-success);
   }
   :global([data-theme='light']) .action-pill.settings {
-    background: rgba(139, 92, 246, 0.12);
-    color: #7c3aed;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
   }
   :global([data-theme='light']) .action-pill.other {
-    background: rgba(0, 0, 0, 0.06);
-    color: #4b5563;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
   }
 
   .details-cell {
@@ -398,8 +398,8 @@
 
   .badge-global {
     font-size: 0.7rem;
-    background: rgba(99, 102, 241, 0.15);
-    color: #818cf8;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
     padding: 0.1rem 0.4rem;
     border-radius: 4px;
     text-transform: uppercase;
@@ -408,8 +408,8 @@
   }
 
   :global([data-theme='light']) .badge-global {
-    color: #4f46e5;
-    background: rgba(99, 102, 241, 0.1);
+    color: var(--color-primary);
+    background: var(--color-primary-subtle);
   }
 
   .text-secondary {
@@ -463,8 +463,8 @@
     width: 32px;
     height: 32px;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
     cursor: pointer;
     padding: 0;
@@ -474,8 +474,8 @@
   }
 
   :global([data-theme='light']) .btn-icon {
-    border-color: rgba(0, 0, 0, 0.06);
-    background: rgba(0, 0, 0, 0.02);
+    border-color: var(--border-color);
+    background: var(--bg-tertiary);
   }
 
   .log-grid {

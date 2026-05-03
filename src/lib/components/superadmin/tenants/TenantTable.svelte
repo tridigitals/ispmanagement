@@ -190,19 +190,17 @@
   }
 
   .tenant-card {
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 18px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
     padding: 1rem;
-    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--shadow-sm);
   }
 
   :global([data-theme='light']) .tenant-card {
-    background: linear-gradient(135deg, #ffffff, #f7f7fb);
-    border-color: rgba(0, 0, 0, 0.06);
-    box-shadow:
-      0 12px 28px rgba(0, 0, 0, 0.06),
-      0 0 0 1px rgba(255, 255, 255, 0.85);
+    background: var(--bg-surface);
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-sm);
   }
 
   .tenant-top {
@@ -233,8 +231,8 @@
   .tenant-slug {
     padding: 0.15rem 0.5rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
   }
 
   .dot {
@@ -251,12 +249,12 @@
     justify-content: space-between;
     align-items: center;
     padding-top: 0.75rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--border-color);
     color: var(--text-secondary);
   }
 
   :global([data-theme='light']) .tenant-meta {
-    border-top-color: rgba(0, 0, 0, 0.06);
+    border-top-color: var(--border-color);
   }
 
   .meta-label {
@@ -280,7 +278,7 @@
 
   .status-badge {
     padding: 0.25rem 0.75rem;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -288,13 +286,13 @@
   }
 
   .status-badge.success {
-    background: rgba(16, 185, 129, 0.1);
-    color: #10b981;
+    background: var(--bg-success);
+    color: var(--color-success);
   }
 
   .status-badge.error {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    color: var(--color-danger);
   }
 
   .domain-badge {
@@ -318,29 +316,29 @@
   }
 
   :global(.btn-icon.danger:hover:not(:disabled)) {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.35);
-    color: #ef4444;
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    border-color: color-mix(in srgb, var(--color-danger) 35%, var(--border-color));
+    color: var(--color-danger);
   }
 
   :global(.btn-icon.warn:hover:not(:disabled)) {
-    background: rgba(245, 158, 11, 0.12);
-    border-color: rgba(245, 158, 11, 0.35);
-    color: #f59e0b;
+    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-warning) 35%, var(--border-color));
+    color: var(--color-warning);
   }
 
   :global(.btn-icon.success:hover:not(:disabled)) {
-    background: rgba(16, 185, 129, 0.12);
-    border-color: rgba(16, 185, 129, 0.35);
-    color: #10b981;
+    background: var(--bg-success);
+    border-color: color-mix(in srgb, var(--color-success) 35%, var(--border-color));
+    color: var(--color-success);
   }
 
   .btn-icon {
     width: 36px;
     height: 36px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
     cursor: pointer;
     padding: 0;
@@ -351,8 +349,8 @@
   }
 
   :global([data-theme='light']) .btn-icon {
-    border-color: rgba(0, 0, 0, 0.06);
-    background: rgba(0, 0, 0, 0.02);
+    border-color: var(--border-color);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
   }
 

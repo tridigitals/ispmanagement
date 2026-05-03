@@ -127,8 +127,8 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 0.35rem;
     flex-wrap: wrap;
@@ -136,8 +136,8 @@
 
   :global([data-theme='light']) .status-filter,
   :global([data-theme='light']) .role-filter {
-    background: rgba(0, 0, 0, 0.02);
-    border-color: rgba(0, 0, 0, 0.06);
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
   }
 
   .filter-chip {
@@ -155,16 +155,16 @@
 
   .filter-chip:hover {
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-hover);
   }
 
   :global([data-theme='light']) .filter-chip:hover {
-    background: rgba(0, 0, 0, 0.04);
+    background: var(--bg-hover);
   }
 
   .filter-chip.active {
-    background: rgba(99, 102, 241, 0.18);
-    border: 1px solid rgba(99, 102, 241, 0.25);
+    background: var(--color-primary-subtle);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 25%, var(--border-color));
     color: var(--text-primary);
   }
 
@@ -174,13 +174,13 @@
     gap: 0.25rem;
     padding: 0.25rem;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
   }
 
   :global([data-theme='light']) .view-toggle {
-    border-color: rgba(0, 0, 0, 0.06);
-    background: rgba(0, 0, 0, 0.02);
+    border-color: var(--border-color);
+    background: var(--bg-tertiary);
   }
 
   .view-btn {
@@ -199,17 +199,17 @@
   }
 
   .view-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-hover);
     color: var(--text-primary);
   }
 
   :global([data-theme='light']) .view-btn:hover {
-    background: rgba(0, 0, 0, 0.04);
+    background: var(--bg-hover);
   }
 
   .view-btn.active {
-    background: rgba(99, 102, 241, 0.18);
-    border: 1px solid rgba(99, 102, 241, 0.25);
+    background: var(--color-primary-subtle);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 25%, var(--border-color));
     color: var(--text-primary);
   }
 </style>

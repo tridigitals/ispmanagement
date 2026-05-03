@@ -432,15 +432,15 @@
   }
 
   .glass-card {
-    background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
-    border-radius: 16px;
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
     border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 2rem;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
   }
 
   :global([data-theme='light']) .glass-card {
-    background: linear-gradient(135deg, #ffffff, #f7f7fb);
+    background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.06);
     box-shadow:
       0 12px 32px rgba(0, 0, 0, 0.08),
@@ -673,7 +673,7 @@
     bottom: 0;
     background-color: #ccc;
     transition: 0.4s;
-    border-radius: 34px;
+    border-radius: var(--radius-lg);
   }
   .slider:before {
     position: absolute;

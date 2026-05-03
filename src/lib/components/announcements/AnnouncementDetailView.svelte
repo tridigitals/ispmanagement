@@ -198,18 +198,18 @@
     width: 4px;
     height: 4px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.22);
+    background: var(--border-color);
     flex: none;
   }
 
   :global([data-theme='light']) .crumb .sep {
-    background: rgba(0, 0, 0, 0.18);
+    background: var(--border-color);
   }
 
   .hero {
     position: relative;
     border: 1px solid var(--border-color);
-    border-radius: 24px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
     box-shadow: var(--shadow-md);
     margin-bottom: 1rem;
@@ -232,9 +232,7 @@
   .hero-shade {
     position: absolute;
     inset: 0;
-    background:
-      linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.55)),
-      linear-gradient(135deg, rgba(59, 130, 246, 0.15), transparent 35%);
+    background: var(--bg-surface);
   }
 
   .hero-inner {
@@ -249,23 +247,19 @@
   }
 
   .hero.info {
-    background:
-      linear-gradient(180deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.06)), var(--bg-surface);
+    background: var(--bg-surface);
   }
 
   .hero.success {
-    background:
-      linear-gradient(180deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.06)), var(--bg-surface);
+    background: var(--bg-surface);
   }
 
   .hero.warning {
-    background:
-      linear-gradient(180deg, rgba(245, 158, 11, 0.13), rgba(245, 158, 11, 0.06)), var(--bg-surface);
+    background: var(--bg-surface);
   }
 
   .hero.error {
-    background:
-      linear-gradient(180deg, rgba(239, 68, 68, 0.14), rgba(239, 68, 68, 0.06)), var(--bg-surface);
+    background: var(--bg-surface);
   }
 
   .meta {
@@ -273,7 +267,7 @@
     align-items: center;
     gap: 0.55rem;
     flex-wrap: wrap;
-    color: rgba(255, 255, 255, 0.92);
+    color: var(--text-primary);
     font-weight: 700;
   }
 
@@ -283,21 +277,20 @@
     gap: 0.45rem;
     padding: 0.4rem 0.65rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(8px);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
   }
 
   .dot {
     width: 4px;
     height: 4px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.55);
+    background: var(--border-color);
   }
 
   .title {
     margin: 0;
-    color: white;
+    color: var(--text-primary);
     font-size: clamp(1.6rem, 2.8vw, 2.5rem);
     line-height: 1.1;
     font-weight: 900;
@@ -305,7 +298,7 @@
   }
 
   .subtitle {
-    color: rgba(255, 255, 255, 0.88);
+    color: var(--text-secondary);
     max-width: 72ch;
     font-weight: 600;
   }
@@ -318,7 +311,7 @@
 
   .post {
     border: 1px solid var(--border-color);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     background: var(--bg-surface);
     box-shadow: var(--shadow-sm);
     padding: 1rem 1rem 1.1rem;
@@ -343,7 +336,7 @@
 
   .card {
     border: 1px solid var(--border-color);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     background: var(--bg-surface);
     box-shadow: var(--shadow-sm);
     padding: 0.95rem;
@@ -407,7 +400,7 @@
     width: 24px;
     height: 24px;
     border-radius: 999px;
-    border: 2px solid rgba(255, 255, 255, 0.15);
+    border: 2px solid var(--border-color);
     border-top-color: var(--color-primary);
     animation: spin 0.9s linear infinite;
   }

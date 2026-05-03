@@ -505,7 +505,7 @@
 
   .input-group.focus .field input {
     border-color: var(--color-primary);
-    background: rgba(99, 102, 241, 0.05);
+    background: var(--color-primary-subtle);
   }
 
   .input-group.focus .field .icon {
@@ -522,7 +522,7 @@
     width: 100%;
     padding: 0.75rem;
     background: var(--color-primary);
-    color: white;
+    color: #08090d;
     border: none;
     border-radius: 8px;
     font-size: 1rem;

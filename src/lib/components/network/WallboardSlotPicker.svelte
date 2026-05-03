@@ -196,7 +196,7 @@
     width: min(860px, calc(100vw - 24px));
     max-height: min(740px, calc(100vh - 24px));
     overflow: auto;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
     background: var(--bg-surface);
     box-shadow: var(--shadow-lg);
@@ -259,7 +259,7 @@
   }
   .picker-col {
     border: 1px solid var(--border-color);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 10px;
     background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
     min-height: 380px;
@@ -316,7 +316,7 @@
     align-items: center;
     gap: 10px;
     padding: 12px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
     background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
     cursor: pointer;

@@ -236,9 +236,9 @@
   }
 
   .stat-card {
-    background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
+    background: var(--bg-surface);
     border: 1px solid var(--glass-border);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 1.35rem;
     display: flex;
     align-items: center;
@@ -285,26 +285,22 @@
   }
 
   .stat-card.emerald {
-    background:
-      radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.18), transparent 55%), #0c1411;
+    background: color-mix(in srgb, var(--accent-emerald) 10%, var(--bg-surface));
     border-color: rgba(16, 185, 129, 0.25);
   }
 
   .stat-card.cyan {
-    background:
-      radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.18), transparent 55%), #081216;
+    background: color-mix(in srgb, var(--accent-cyan) 10%, var(--bg-surface));
     border-color: rgba(34, 211, 238, 0.25);
   }
 
   .stat-card.indigo {
-    background:
-      radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.18), transparent 55%), #0b0c17;
+    background: color-mix(in srgb, var(--accent-indigo) 10%, var(--bg-surface));
     border-color: rgba(99, 102, 241, 0.25);
   }
 
   .stat-card.amber {
-    background:
-      radial-gradient(circle at 20% 20%, rgba(245, 158, 11, 0.18), transparent 55%), #141009;
+    background: color-mix(in srgb, var(--accent-amber) 10%, var(--bg-surface));
     border-color: rgba(245, 158, 11, 0.25);
   }
 
@@ -330,9 +326,9 @@
   }
 
   .action-card {
-    background: var(--glass);
+    background: var(--bg-surface);
     border: 1px solid var(--glass-border);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 1.25rem;
     text-align: left;
     cursor: pointer;
@@ -403,7 +399,7 @@
   }
 
   :global([data-theme='light']) .stat-card {
-    background: linear-gradient(135deg, #ffffff, #f7f7fb);
+    background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.06);
   }
 
@@ -413,7 +409,7 @@
   }
 
   :global([data-theme='light']) .action-card {
-    background: #ffffff;
+    background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.06);
   }
 

@@ -104,9 +104,9 @@
   }
 
   .status.soon {
-    border-color: color-mix(in srgb, #f59e0b 50%, var(--border-color));
-    color: #fbbf24;
-    background: color-mix(in srgb, #f59e0b 14%, transparent);
+    border-color: color-mix(in srgb, var(--color-warning) 50%, var(--border-color));
+    color: var(--color-warning);
+    background: color-mix(in srgb, var(--color-warning) 14%, transparent);
   }
 
   .hero-actions {

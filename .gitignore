@@ -11,6 +11,7 @@ vite.config.ts.timestamp-*
 _tmp_*
 static/pdfjs/
 .codex/
+.superpowers/
 .specify/
 src-tauri/target/
 .worktrees/

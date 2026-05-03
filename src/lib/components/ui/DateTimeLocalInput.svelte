@@ -107,22 +107,22 @@
     width: 34px;
     height: 34px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
     display: grid;
     place-items: center;
     cursor: pointer;
   }
 
   :global([data-theme='light']) .icon-btn {
-    border-color: rgba(0, 0, 0, 0.12);
-    background: rgba(0, 0, 0, 0.03);
-    color: rgba(0, 0, 0, 0.75);
+    border-color: var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
   }
 
   .icon-btn:hover:not(:disabled) {
-    border-color: rgba(99, 102, 241, 0.45);
+    border-color: color-mix(in srgb, var(--color-primary) 45%, var(--border-color));
   }
 
   .icon-btn:disabled {

@@ -1349,12 +1349,9 @@
   }
 
   .hero {
-    background:
-      radial-gradient(1200px 700px at 0% 0%, rgba(99, 102, 241, 0.18), transparent 55%),
-      radial-gradient(1000px 600px at 100% 0%, rgba(34, 197, 94, 0.12), transparent 55%),
-      var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: 22px;
+    border-radius: var(--radius-lg);
     padding: 18px 18px 16px;
     display: grid;
     grid-template-columns: 1.4fr 0.6fr;
@@ -1466,7 +1463,7 @@
     padding: 6px 10px;
     border-radius: 999px;
     border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-card), transparent 10%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 10%);
   }
 
   .spin {
@@ -1513,9 +1510,9 @@
   }
 
   .kv-item {
-    background: color-mix(in srgb, var(--bg-card), transparent 8%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 8%);
     border: 1px solid var(--border-color);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 10px 12px;
   }
 
@@ -1563,7 +1560,7 @@
     padding: 10px 12px;
     border-radius: 14px;
     border: 1px solid var(--border-color);
-    background: var(--bg-card);
+    background: var(--bg-surface);
     color: var(--text-secondary);
     font-weight: 900;
     cursor: pointer;
@@ -1593,7 +1590,7 @@
     padding: 0 8px;
     border-radius: 999px;
     border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-card), transparent 8%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 8%);
     color: var(--text-secondary);
     font-size: 0.78rem;
     font-weight: 900;
@@ -1629,9 +1626,9 @@
   }
 
   .card {
-    background: var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     padding: 14px;
   }
 
@@ -1667,13 +1664,13 @@
     border-radius: 14px;
     border: 1px solid var(--border-color);
     padding: 10px;
-    background: color-mix(in srgb, var(--bg-card), transparent 8%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 8%);
     overflow: hidden;
   }
 
   .bar {
     width: 100%;
-    background: linear-gradient(180deg, rgba(99, 102, 241, 0.8), rgba(34, 197, 94, 0.45));
+    background: rgba(99, 102, 241, 0.72);
     border-radius: 6px 6px 2px 2px;
     opacity: 0.95;
   }
@@ -1690,13 +1687,13 @@
     padding: 10px 12px;
     border-radius: 14px;
     border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-card), transparent 8%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 8%);
   }
 
   .skeleton {
-    background: var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     padding: 14px;
   }
 
@@ -1712,9 +1709,9 @@
     align-items: center;
     gap: 10px;
     padding: 14px 16px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
-    background: var(--bg-card);
+    background: var(--bg-surface);
     color: var(--text-secondary);
   }
 
@@ -1722,7 +1719,7 @@
     overflow: auto;
     border-radius: 14px;
     border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-card), transparent 8%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 8%);
   }
 
   .pill {

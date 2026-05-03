@@ -405,8 +405,8 @@
     height: 80vh;
     border-radius: 12px;
     overflow: hidden;
-    background: #0b1220;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
     display: grid;
     grid-template-rows: auto 1fr;
   }
@@ -417,8 +417,7 @@
     justify-content: space-between;
     gap: 0.75rem;
     padding: 0.75rem 0.85rem;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.05));
-    backdrop-filter: blur(6px);
+    background: var(--bg-surface);
   }
 
   .pdf-toolbar.hidden {
@@ -428,14 +427,13 @@
     overflow: hidden;
     border: 0;
     background: transparent;
-    backdrop-filter: none;
   }
 
   .left {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--text-primary);
     font-weight: 800;
     letter-spacing: 0.02em;
   }
@@ -447,13 +445,13 @@
   .sep {
     width: 1px;
     height: 16px;
-    background: rgba(255, 255, 255, 0.18);
+    background: var(--border-color);
     margin: 0 0.25rem;
   }
 
   .zoom {
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--text-secondary);
   }
 
   .right {
@@ -469,21 +467,21 @@
     align-items: center;
     gap: 0.45rem;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.08);
-    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
     padding: 0.4rem 0.6rem;
     cursor: pointer;
     font-weight: 800;
   }
 
   .btn:hover {
-    background: rgba(255, 255, 255, 0.12);
+    background: var(--bg-hover);
   }
 
   .btn.primary {
-    background: rgba(99, 102, 241, 0.25);
-    border-color: rgba(99, 102, 241, 0.4);
+    background: var(--color-primary-subtle);
+    border-color: color-mix(in srgb, var(--color-primary) 40%, var(--border-color));
   }
 
   .pdf-pages {
@@ -509,14 +507,13 @@
     place-items: center;
     gap: 0.65rem;
     padding: 2.5rem 1rem;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--text-primary);
     text-align: center;
-    background: rgba(11, 18, 32, 0.55);
-    backdrop-filter: blur(4px);
+    background: color-mix(in srgb, var(--bg-surface) 82%, transparent);
   }
 
   .overlay.error {
-    background: rgba(11, 18, 32, 0.75);
+    background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
   }
 
   .blank-banner {
@@ -529,16 +526,15 @@
     gap: 0.6rem;
     padding: 0.55rem 0.65rem;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(11, 18, 32, 0.82);
-    color: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(6px);
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-primary);
     max-width: min(720px, calc(100% - 1.7rem));
   }
 
   .blank-banner .text {
     font-weight: 800;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -555,7 +551,7 @@
     height: auto;
     border-radius: 8px;
     background: white;
-    box-shadow: 0 18px 55px rgba(0, 0, 0, 0.55);
+    box-shadow: var(--shadow-md);
   }
 
   .hint {
@@ -563,15 +559,15 @@
   }
 
   .muted {
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--text-secondary);
     font-weight: 700;
   }
 
   .spinner {
     width: 30px;
     height: 30px;
-    border: 3px solid rgba(255, 255, 255, 0.16);
-    border-top-color: rgba(99, 102, 241, 0.9);
+    border: 3px solid var(--border-color);
+    border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }

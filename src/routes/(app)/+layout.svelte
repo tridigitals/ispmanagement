@@ -380,7 +380,7 @@
     <!-- Sidebar sits on the base layer -->
     <Sidebar bind:isMobileOpen={mobileOpen} />
 
-    <!-- Main Area is a floating card -->
+    <!-- Main area -->
     <div class="main-viewport">
       <div class="content-surface">
         <Topbar onMobileMenuClick={() => (mobileOpen = !mobileOpen)} />
@@ -408,7 +408,7 @@
       100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)
     ); /* Prevent body scrolling caused by global safe-area padding */
     width: 100%;
-    background: linear-gradient(180deg, rgba(17, 20, 28, 0.92), rgba(8, 9, 13, 1)), var(--bg-app);
+    background: var(--bg-app);
     overflow: hidden;
   }
 
@@ -416,7 +416,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: clamp(8px, 1vw, 14px);
+    padding: clamp(6px, 0.9vw, 12px);
     padding-left: 0; /* Sidebar occupies the left edge */
     min-height: 0; /* allow .scroll-area to be the scroller */
   }
@@ -429,7 +429,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-sm);
     position: relative;
     min-height: 0; /* allow .scroll-area to be the scroller */
   }
@@ -445,13 +445,13 @@
 
   @media (max-width: 900px) {
     .main-viewport {
-      padding: clamp(4px, 2vw, 10px);
+      padding: 0;
     }
 
     .content-surface {
-      border-radius: var(--radius-md);
-      border-left: none;
-      border-right: none;
+      border-radius: 0;
+      border: 0;
+      box-shadow: none;
     }
   }
 </style>

@@ -874,12 +874,7 @@
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 0.8rem;
-    background:
-      linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--accent-primary) 6%, transparent) 0%,
-        color-mix(in srgb, var(--bg-secondary) 82%, transparent) 48%
-      );
+    background: var(--bg-surface);
     transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   }
 
@@ -945,11 +940,7 @@
     border: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-color));
     border-radius: 12px;
     padding: 0.85rem;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--accent-primary) 10%, transparent),
-      color-mix(in srgb, var(--bg-surface) 86%, transparent)
-    );
+    background: var(--bg-surface);
     display: grid;
     gap: 0.72rem;
     position: sticky;

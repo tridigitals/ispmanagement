@@ -189,14 +189,14 @@
   .details-block {
     margin-top: 1rem;
     padding: 0.75rem;
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--bg-primary);
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
   }
 
   :global([data-theme='light']) .details-block {
-    background: rgba(0, 0, 0, 0.03);
-    border-color: rgba(0, 0, 0, 0.05);
+    background: var(--bg-primary);
+    border-color: var(--border-color);
   }
 
   .details-title {
@@ -261,26 +261,26 @@
     align-items: center;
     padding: 0.15rem 0.45rem;
     border-radius: 999px;
-    background: rgba(99, 102, 241, 0.2);
-    border: 1px solid rgba(99, 102, 241, 0.35);
+    background: var(--color-primary-subtle);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
     color: var(--text-primary);
     font-weight: 700;
     font-size: 0.75rem;
   }
 
   :global([data-theme='light']) .pill {
-    background: rgba(99, 102, 241, 0.12);
-    border-color: rgba(99, 102, 241, 0.25);
+    background: var(--color-primary-subtle);
+    border-color: color-mix(in srgb, var(--color-primary) 25%, var(--border-color));
   }
 
   .sub-block {
     margin-top: 0.85rem;
     padding-top: 0.75rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--border-color);
   }
 
   :global([data-theme='light']) .sub-block {
-    border-top-color: rgba(0, 0, 0, 0.06);
+    border-top-color: var(--border-color);
   }
 
   .sub-title {
@@ -303,15 +303,15 @@
     align-items: center;
     padding: 0.15rem 0.5rem;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
     color: var(--text-primary);
     font-size: 0.78rem;
     font-family: var(--font-mono);
   }
 
   :global([data-theme='light']) .chip {
-    background: rgba(0, 0, 0, 0.04);
-    border-color: rgba(0, 0, 0, 0.06);
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
   }
 </style>

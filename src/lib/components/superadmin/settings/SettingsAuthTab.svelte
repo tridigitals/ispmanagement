@@ -265,7 +265,7 @@
     bottom: 0;
     background-color: var(--bg-tertiary);
     transition: 0.3s;
-    border-radius: 28px;
+    border-radius: var(--radius-lg);
   }
 
   .slider:before {

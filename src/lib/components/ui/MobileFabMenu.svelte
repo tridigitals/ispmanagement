@@ -117,8 +117,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    z-index: 90;
+        z-index: 90;
     display: flex;
     align-items: flex-end;
     justify-content: center;

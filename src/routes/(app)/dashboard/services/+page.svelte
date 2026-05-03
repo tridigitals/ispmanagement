@@ -887,8 +887,8 @@
 
   .page-head {
     border: 1px solid var(--border-color);
-    border-radius: 16px;
-    background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
     padding: 1.25rem;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1016,29 +1016,29 @@
   }
 
   .stat-card.indigo {
-    background: radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.2), transparent 55%), #0c1020;
+    background: var(--bg-surface);
     border-color: rgba(99, 102, 241, 0.32);
   }
 
   .stat-card.emerald {
-    background: radial-gradient(circle at 15% 20%, rgba(16, 185, 129, 0.18), transparent 55%), #0c1411;
+    background: var(--bg-surface);
     border-color: rgba(16, 185, 129, 0.3);
   }
 
   .stat-card.amber {
-    background: radial-gradient(circle at 15% 20%, rgba(245, 158, 11, 0.18), transparent 55%), #1a1308;
+    background: var(--bg-surface);
     border-color: rgba(245, 158, 11, 0.3);
   }
 
   .stat-card.rose {
-    background: radial-gradient(circle at 15% 20%, rgba(244, 63, 94, 0.18), transparent 55%), #1b0c11;
+    background: var(--bg-surface);
     border-color: rgba(244, 63, 94, 0.3);
   }
 
   .list-panel {
     border: 1px solid var(--border-color);
-    border-radius: 16px;
-    background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
     padding: 1rem;
     display: grid;
     gap: 0.95rem;

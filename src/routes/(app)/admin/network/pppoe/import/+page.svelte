@@ -467,7 +467,7 @@
     gap: 10px;
     border-radius: 12px;
     border: 1px solid var(--border-color);
-    background: var(--bg-card);
+    background: var(--bg-surface);
     color: var(--text-primary);
     padding: 10px 12px;
     cursor: pointer;
@@ -527,7 +527,7 @@
     padding: 8px 12px;
     font-weight: 850;
     color: var(--text-secondary);
-    background: color-mix(in srgb, var(--bg-card), transparent 6%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 6%);
   }
 
   .step.active {
@@ -537,9 +537,9 @@
   }
 
   .card {
-    background: var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     padding: 14px;
   }
 
@@ -585,7 +585,7 @@
     padding: 10px 12px;
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    background: color-mix(in srgb, var(--bg-card), transparent 6%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 6%);
   }
 
   .divider {
@@ -608,7 +608,7 @@
     overflow: auto;
     border-radius: 14px;
     border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-card), transparent 8%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 8%);
   }
 
   .preview-head {
@@ -698,9 +698,9 @@
 
   .stat {
     border: 1px solid var(--border-color);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 12px;
-    background: color-mix(in srgb, var(--bg-card), transparent 6%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 6%);
   }
 
   .stat .k {
@@ -719,7 +719,7 @@
   .error-box {
     border: 1px solid rgba(239, 68, 68, 0.35);
     background: rgba(239, 68, 68, 0.08);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 12px;
   }
 

@@ -14,6 +14,10 @@ describe('icon module registry', () => {
     expect(hasLucideIconModule('circle-off')).toBe(true);
     expect(hasLucideIconModule('circle')).toBe(true);
     expect(hasLucideIconModule('webhook')).toBe(true);
+    expect(hasLucideIconModule('key-round')).toBe(true);
+    expect(hasLucideIconModule('layers-3')).toBe(true);
+    expect(hasLucideIconModule('mail-check')).toBe(true);
+    expect(hasLucideIconModule('trending-down')).toBe(true);
     expect(typeof getLucideIconModuleLoader('mail')).toBe('function');
     expect(typeof getLucideIconModuleLoader('sun')).toBe('function');
     expect(typeof getLucideIconModuleLoader('moon')).toBe('function');

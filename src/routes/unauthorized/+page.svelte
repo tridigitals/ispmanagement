@@ -1,12 +1,15 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { user } from '$lib/stores/auth';
+  import Icon from '$lib/components/ui/Icon.svelte';
   import { t } from 'svelte-i18n';
 </script>
 
 <div class="unauthorized-page fade-in">
   <div class="content">
-    <div class="lock-icon">🛡️</div>
+    <div class="lock-icon">
+      <Icon name="shield-alert" size={32} />
+    </div>
     <div class="error-code">403</div>
     <h1>{$t('pages.unauthorized.title') || 'Access Denied'}</h1>
     <p class="message">
@@ -30,23 +33,31 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 2rem;
+    padding: clamp(1rem, 4vw, 2rem);
     text-align: center;
     background: var(--bg-primary);
   }
 
   .content {
     max-width: 500px;
-    padding: 3rem;
-    background: var(--bg-card);
+    padding: clamp(1.5rem, 5vw, 2.5rem);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    backdrop-filter: blur(10px);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
   }
 
   .lock-icon {
-    font-size: 4rem;
+    width: 64px;
+    height: 64px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: 1rem;
+    border-radius: var(--radius-lg);
+    color: var(--color-danger);
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-danger) 22%, var(--border-color));
   }
 
   .error-code {
@@ -54,7 +65,7 @@
     font-weight: 700;
     color: var(--color-danger);
     margin-bottom: 0.5rem;
-    letter-spacing: 2px;
+    letter-spacing: 0;
   }
 
   h1 {
@@ -78,6 +89,10 @@
     display: flex;
     gap: 1rem;
     justify-content: center;
+  }
+
+  .btn-primary {
+    color: var(--bg-app);
   }
 
   @keyframes fadeIn {

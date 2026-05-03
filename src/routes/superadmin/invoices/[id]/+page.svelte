@@ -359,7 +359,7 @@
 
   .status-pill {
     padding: 0.25rem 0.75rem;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     font-weight: 600;
     text-transform: uppercase;
     font-size: 0.85rem;

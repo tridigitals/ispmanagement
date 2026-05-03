@@ -75,7 +75,7 @@
 
   .status-banner.disconnected {
     border-left: 4px solid var(--color-danger);
-    background: rgba(239, 68, 68, 0.05);
+    background: color-mix(in srgb, var(--color-danger) 6%, var(--bg-surface));
   }
 
   .status-icon {
@@ -88,12 +88,12 @@
   }
 
   .connected .status-icon {
-    background: rgba(16, 185, 129, 0.1);
+    background: var(--bg-success);
     color: var(--color-success);
   }
 
   .disconnected .status-icon {
-    background: rgba(239, 68, 68, 0.1);
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
     color: var(--color-danger);
   }
 
@@ -125,7 +125,7 @@
     background: var(--color-primary);
     color: white;
     padding: 0.25rem 0.75rem;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     font-size: 0.75rem;
     font-weight: 600;
   }

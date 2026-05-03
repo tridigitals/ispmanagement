@@ -77,8 +77,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.9rem 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.015);
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-surface);
     border-bottom-left-radius: var(--radius-md, 12px);
     border-bottom-right-radius: var(--radius-md, 12px);
     color: var(--text-secondary);
@@ -88,8 +88,8 @@
   }
 
   :global([data-theme='light']) .pagination-container {
-    border-top-color: rgba(0, 0, 0, 0.06);
-    background: rgba(0, 0, 0, 0.015);
+    border-top-color: var(--border-color);
+    background: var(--bg-surface);
   }
 
   .rows-per-page {
@@ -126,12 +126,12 @@
   .icon-btn {
     width: 36px;
     height: 36px;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
     color: var(--text-secondary);
     cursor: pointer;
     padding: 0;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -139,9 +139,9 @@
   }
 
   .icon-btn:hover:not(:disabled) {
-    background: rgba(99, 102, 241, 0.12);
+    background: var(--color-primary-subtle);
     color: var(--text-primary);
-    border-color: rgba(99, 102, 241, 0.35);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
   }
 
   .icon-btn:disabled {

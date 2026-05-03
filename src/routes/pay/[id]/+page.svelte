@@ -776,18 +776,7 @@
 <style>
   .checkout-page {
     min-height: 100vh;
-    background:
-      radial-gradient(
-        1200px 600px at 10% -10%,
-        color-mix(in srgb, var(--accent-primary) 14%, transparent),
-        transparent
-      ),
-      radial-gradient(
-        900px 500px at 110% 110%,
-        color-mix(in srgb, var(--accent-primary) 10%, transparent),
-        transparent
-      ),
-      var(--bg-app);
+    background: var(--bg-surface);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -798,12 +787,8 @@
     width: 100%;
     max-width: 820px;
     border: 1px solid color-mix(in srgb, var(--border-color) 88%, #ffffff12);
-    border-radius: 22px;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-surface) 95%, #131827 5%) 0%,
-      color-mix(in srgb, var(--bg-surface) 92%, #0f1320 8%) 100%
-    );
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
     box-shadow:
       0 26px 70px rgba(0, 0, 0, 0.45),
       inset 0 1px 0 rgba(255, 255, 255, 0.03);
@@ -815,13 +800,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background:
-      radial-gradient(
-        600px 220px at 85% -15%,
-        color-mix(in srgb, var(--accent-primary) 14%, transparent),
-        transparent
-      ),
-      linear-gradient(transparent, transparent);
+    background: var(--bg-surface);
     pointer-events: none;
   }
 
@@ -832,11 +811,7 @@
     gap: 1rem;
     padding: 1.15rem 1.2rem;
     border-bottom: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-tertiary) 88%, transparent),
-      color-mix(in srgb, var(--bg-tertiary) 70%, transparent)
-    );
+    background: var(--bg-surface);
     position: relative;
     z-index: 1;
   }
@@ -907,11 +882,7 @@
     border: 1px dashed color-mix(in srgb, var(--border-color) 88%, #ffffff12);
     border-radius: 12px;
     padding: 0.7rem 0.8rem;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-secondary) 58%, transparent),
-      color-mix(in srgb, var(--bg-secondary) 44%, transparent)
-    );
+    background: var(--bg-surface);
   }
 
   .party-k {
@@ -981,11 +952,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: color-mix(in srgb, #ffffff 88%, var(--text-secondary));
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--accent-primary) 78%, #22d3ee 22%),
-      color-mix(in srgb, var(--accent-primary) 55%, #0891b2 45%)
-    );
+    background: var(--bg-surface);
     padding: 0.72rem 0.75rem;
   }
 
@@ -1014,11 +981,7 @@
     min-width: min(100%, 340px);
     border: 1px solid color-mix(in srgb, var(--border-color) 80%, #ffffff12);
     border-radius: 12px;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-secondary) 58%, transparent),
-      color-mix(in srgb, var(--bg-secondary) 45%, transparent)
-    );
+    background: var(--bg-surface);
     padding: 0.72rem 0.8rem;
     display: grid;
     gap: 0.5rem;
@@ -1101,11 +1064,7 @@
     gap: 0.85rem;
     border: 1px solid color-mix(in srgb, var(--border-color) 80%, #ffffff0f);
     border-radius: 14px;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-secondary) 68%, transparent),
-      color-mix(in srgb, var(--bg-secondary) 58%, transparent)
-    );
+    background: var(--bg-surface);
     padding: 0.95rem;
   }
 
@@ -1290,11 +1249,7 @@
   }
 
   .btn-primary {
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--color-primary) 85%, #22d3ee 15%),
-      var(--color-primary)
-    );
+    background: var(--bg-surface);
     color: #fff;
   }
 
@@ -1317,11 +1272,7 @@
   .state-card {
     border: 1px solid color-mix(in srgb, var(--border-color) 82%, #ffffff10);
     border-radius: 14px;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-secondary) 62%, transparent),
-      color-mix(in srgb, var(--bg-secondary) 50%, transparent)
-    );
+    background: var(--bg-surface);
     padding: 1.4rem;
     display: grid;
     justify-items: center;

@@ -38,14 +38,14 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--bg-tertiary);
     transition: 0.3s;
-    border-radius: 24px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--glass-border);
   }
 
   :global([data-theme='light']) .slider {
-    background-color: rgba(0, 0, 0, 0.06);
+    background-color: var(--bg-tertiary);
   }
 
   .slider:before {
@@ -55,15 +55,15 @@
     width: 18px;
     left: 3px;
     bottom: 3px;
-    background-color: white;
+    background-color: var(--text-primary);
     transition: 0.3s;
     border-radius: 50%;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-sm);
   }
 
   input:checked + .slider {
     background-color: var(--color-primary);
-    border-color: rgba(99, 102, 241, 0.4);
+    border-color: color-mix(in srgb, var(--color-primary) 40%, var(--border-color));
   }
 
   input:checked + .slider:before {

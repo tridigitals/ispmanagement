@@ -234,7 +234,7 @@
     margin-bottom: 1rem;
     padding: 1rem;
     border: 1px solid color-mix(in srgb, var(--border-color), transparent 20%);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     background: color-mix(in srgb, var(--bg-surface), transparent 8%);
   }
 

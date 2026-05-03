@@ -217,7 +217,7 @@
     align-items: center;
     justify-content: center;
     color: var(--color-primary);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-sm);
   }
 
   .push-text h4 {
@@ -235,11 +235,11 @@
 
   .push-banner.active {
     border-left-color: var(--color-success);
-    background: rgba(16, 185, 129, 0.05);
+    background: var(--bg-success);
   }
 
   .push-icon.success {
-    background: rgba(16, 185, 129, 0.1);
+    background: var(--bg-success);
     color: var(--color-success);
   }
 
@@ -277,16 +277,16 @@
   }
 
   .cat-icon.system {
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    background: var(--bg-surface);
   }
   .cat-icon.team {
-    background: linear-gradient(135deg, #10b981, #059669);
+    background: var(--bg-surface);
   }
   .cat-icon.payment {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
+    background: var(--bg-surface);
   }
   .cat-icon.security {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
+    background: var(--bg-surface);
   }
 
   .cat-info h3 {
@@ -342,8 +342,8 @@
     font-weight: 800;
     padding: 0.15rem 0.5rem;
     border-radius: 999px;
-    border: 1px solid rgba(99, 102, 241, 0.35);
-    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
+    background: var(--color-primary-subtle);
     color: var(--text-primary);
     white-space: nowrap;
   }
@@ -381,9 +381,9 @@
     width: 14px;
     left: 2px;
     bottom: 2px;
-    background-color: white;
+    background-color: var(--text-primary);
     transition: 0.3s;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-sm);
   }
 
   input:checked + .slider {
@@ -396,7 +396,7 @@
   }
 
   .slider.round {
-    border-radius: 34px;
+    border-radius: var(--radius-lg);
   }
 
   .slider.round:before {

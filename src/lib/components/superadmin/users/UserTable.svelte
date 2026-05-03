@@ -365,7 +365,7 @@
   .avatar {
     width: 42px;
     height: 42px;
-    background: linear-gradient(135deg, #475569, #334155);
+    background: var(--bg-surface);
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -409,26 +409,26 @@
 
   .role-pill {
     padding: 0.3rem 0.8rem;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     font-size: 0.8rem;
     font-weight: 600;
     text-transform: capitalize;
   }
 
   .role-pill.admin {
-    background: rgba(99, 102, 241, 0.2);
-    color: #818cf8;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
   }
 
   .role-pill.superadmin {
-    background: rgba(139, 92, 246, 0.2);
-    color: #a78bfa;
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 30%, var(--border-color));
   }
 
   .role-pill.user {
-    background: rgba(16, 185, 129, 0.2);
-    color: #34d399;
+    background: var(--bg-success);
+    color: var(--text-success);
   }
 
   .status-pill {
@@ -436,21 +436,21 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.35rem 0.8rem;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     font-size: 0.8rem;
     font-weight: 600;
   }
 
   .status-pill.active {
-    background: rgba(16, 185, 129, 0.15);
+    background: var(--bg-success);
     color: var(--color-success);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    border: 1px solid color-mix(in srgb, var(--color-success) 24%, var(--border-color));
   }
 
   .status-pill.inactive {
-    background: rgba(239, 68, 68, 0.15);
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
     color: var(--color-danger);
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    border: 1px solid color-mix(in srgb, var(--color-danger) 24%, var(--border-color));
   }
 
   .dot {
@@ -478,8 +478,8 @@
     width: 36px;
     height: 36px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
     cursor: pointer;
     padding: 0;
@@ -490,24 +490,24 @@
   }
 
   :global([data-theme='light']) .btn-icon {
-    border-color: rgba(0, 0, 0, 0.06);
-    background: rgba(0, 0, 0, 0.02);
+    border-color: var(--border-color);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
   }
 
   .btn-icon.warning:hover {
-    background: rgba(245, 158, 11, 0.15);
-    color: #f59e0b;
+    background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+    color: var(--color-warning);
   }
 
   .btn-icon.danger:hover {
-    background: rgba(239, 68, 68, 0.12);
-    color: #ef4444;
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+    color: var(--color-danger);
   }
 
   .btn-icon.success:hover {
-    background: rgba(16, 185, 129, 0.12);
-    color: #10b981;
+    background: var(--bg-success);
+    color: var(--color-success);
   }
 
   .actions {
@@ -527,19 +527,17 @@
   }
 
   .user-card {
-    background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+    box-shadow: var(--shadow-sm);
   }
 
   :global([data-theme='light']) .user-card {
-    background: linear-gradient(135deg, #ffffff, #f7f7fb);
-    border-color: rgba(0, 0, 0, 0.06);
-    box-shadow:
-      0 12px 32px rgba(0, 0, 0, 0.08),
-      0 0 0 1px rgba(255, 255, 255, 0.8);
+    background: var(--bg-surface);
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-sm);
   }
 
   .card-top {
@@ -548,13 +546,13 @@
     gap: 0.75rem;
     align-items: flex-start;
     padding: 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(255, 255, 255, 0.015);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-surface);
   }
 
   :global([data-theme='light']) .card-top {
-    border-bottom-color: rgba(0, 0, 0, 0.06);
-    background: rgba(0, 0, 0, 0.01);
+    border-bottom-color: var(--border-color);
+    background: var(--bg-surface);
   }
 
   .user-meta {

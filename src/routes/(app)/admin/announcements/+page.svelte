@@ -592,9 +592,7 @@
     padding: 0.8rem;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    background:
-      radial-gradient(900px 220px at 20% 0%, rgba(255, 255, 255, 0.05), transparent 55%),
-      var(--bg-surface);
+    background: var(--bg-surface);
     box-shadow: var(--shadow-sm);
     position: sticky;
     top: 1rem;
@@ -623,34 +621,34 @@
   }
 
   .nav-item:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-hover);
     color: var(--text-primary);
   }
 
   :global([data-theme='light']) .nav-item:hover {
-    background: rgba(0, 0, 0, 0.03);
+    background: var(--bg-hover);
   }
 
   .nav-item.active {
     color: var(--text-primary);
-    border-color: rgba(99, 102, 241, 0.35);
-    background: rgba(99, 102, 241, 0.12);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
+    background: var(--color-primary-subtle);
   }
 
   .icon {
     width: 34px;
     height: 34px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
     display: grid;
     place-items: center;
     color: var(--text-primary);
   }
 
   :global([data-theme='light']) .icon {
-    border-color: rgba(0, 0, 0, 0.12);
-    background: rgba(0, 0, 0, 0.03);
+    border-color: var(--border-color);
+    background: var(--bg-tertiary);
   }
 
   .content {
@@ -659,9 +657,7 @@
 
   .panel {
     border: 1px solid var(--border-color);
-    background:
-      radial-gradient(800px 170px at 20% 0%, rgba(255, 255, 255, 0.05), transparent 55%),
-      var(--bg-surface);
+    background: var(--bg-surface);
     border-radius: var(--radius-lg);
     padding: 1rem;
     display: grid;
@@ -685,14 +681,14 @@
     align-items: center;
     gap: 0.55rem;
     border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-tertiary);
     padding: 0.55rem 0.7rem;
     border-radius: 14px;
     color: var(--text-secondary);
   }
 
   :global([data-theme='light']) .search {
-    background: rgba(0, 0, 0, 0.01);
+    background: var(--bg-tertiary);
   }
 
   .search-input {
@@ -759,11 +755,11 @@
     padding: 0.75rem 0.85rem;
     border-radius: 14px;
     border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-tertiary);
   }
 
   :global([data-theme='light']) .delivery-item {
-    background: rgba(0, 0, 0, 0.01);
+    background: var(--bg-tertiary);
   }
 
   .delivery-text {
@@ -789,7 +785,7 @@
     border-radius: 14px;
     overflow: hidden;
     border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-tertiary);
   }
 
   .cover-preview img {
@@ -855,36 +851,24 @@
     padding: 0.7rem;
     border: 1px solid var(--border-color);
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-tertiary);
   }
 
   :global([data-theme='light']) .editor-placeholder-shell {
-    background: rgba(0, 0, 0, 0.01);
+    background: var(--bg-tertiary);
   }
 
   .editor-placeholder-toolbar,
   .editor-placeholder-body {
     border-radius: 10px;
-    background:
-      linear-gradient(
-        90deg,
-        rgba(255, 255, 255, 0.05) 0%,
-        rgba(255, 255, 255, 0.11) 50%,
-        rgba(255, 255, 255, 0.05) 100%
-      );
+    background: var(--bg-surface);
     background-size: 200% 100%;
     animation: announcement-editor-placeholder 1.2s ease-in-out infinite;
   }
 
   :global([data-theme='light']) .editor-placeholder-toolbar,
   :global([data-theme='light']) .editor-placeholder-body {
-    background:
-      linear-gradient(
-        90deg,
-        rgba(0, 0, 0, 0.05) 0%,
-        rgba(0, 0, 0, 0.1) 50%,
-        rgba(0, 0, 0, 0.05) 100%
-      );
+    background: var(--bg-surface);
     background-size: 200% 100%;
   }
 
@@ -919,7 +903,7 @@
   }
 
   .btn.danger {
-    border-color: rgba(239, 68, 68, 0.25);
+    border-color: color-mix(in srgb, var(--color-danger) 25%, var(--border-color));
   }
 
   .btn-primary {
@@ -985,7 +969,7 @@
     display: flex;
     justify-content: space-between;
     gap: 1rem;
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-tertiary);
   }
 
   .left {
@@ -1024,9 +1008,9 @@
   }
 
   .pill {
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.04);
-    color: rgba(255, 255, 255, 0.85);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
     border-radius: 999px;
     padding: 0.12rem 0.5rem;
     font-weight: 900;
@@ -1036,51 +1020,51 @@
   }
 
   .pill.sev.info {
-    border-color: rgba(59, 130, 246, 0.35);
-    color: rgba(59, 130, 246, 0.95);
-    background: rgba(59, 130, 246, 0.08);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
+    color: var(--color-primary);
+    background: var(--color-primary-subtle);
   }
   .pill.sev.success {
-    border-color: rgba(34, 197, 94, 0.35);
-    color: rgba(34, 197, 94, 0.95);
-    background: rgba(34, 197, 94, 0.08);
+    border-color: color-mix(in srgb, var(--color-success) 35%, var(--border-color));
+    color: var(--color-success);
+    background: var(--bg-success);
   }
   .pill.sev.warning {
-    border-color: rgba(245, 158, 11, 0.35);
-    color: rgba(245, 158, 11, 0.95);
-    background: rgba(245, 158, 11, 0.08);
+    border-color: color-mix(in srgb, var(--color-warning) 35%, var(--border-color));
+    color: var(--color-warning);
+    background: color-mix(in srgb, var(--color-warning) 8%, transparent);
   }
   .pill.sev.error {
-    border-color: rgba(239, 68, 68, 0.35);
-    color: rgba(239, 68, 68, 0.95);
-    background: rgba(239, 68, 68, 0.08);
+    border-color: color-mix(in srgb, var(--color-danger) 35%, var(--border-color));
+    color: var(--color-danger);
+    background: color-mix(in srgb, var(--color-danger) 8%, transparent);
   }
 
   .pill.st.active {
-    border-color: rgba(34, 197, 94, 0.25);
-    color: rgba(34, 197, 94, 0.9);
-    background: rgba(34, 197, 94, 0.06);
+    border-color: color-mix(in srgb, var(--color-success) 25%, var(--border-color));
+    color: var(--color-success);
+    background: var(--bg-success);
   }
   .pill.st.scheduled {
-    border-color: rgba(245, 158, 11, 0.25);
-    color: rgba(245, 158, 11, 0.92);
-    background: rgba(245, 158, 11, 0.06);
+    border-color: color-mix(in srgb, var(--color-warning) 25%, var(--border-color));
+    color: var(--color-warning);
+    background: color-mix(in srgb, var(--color-warning) 7%, transparent);
   }
   .pill.st.expired {
-    border-color: rgba(148, 163, 184, 0.22);
-    color: rgba(148, 163, 184, 0.95);
-    background: rgba(148, 163, 184, 0.08);
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
   }
 
   .pill.scope.global {
-    border-color: rgba(236, 72, 153, 0.25);
-    color: rgba(236, 72, 153, 0.95);
-    background: rgba(236, 72, 153, 0.07);
+    border-color: color-mix(in srgb, var(--color-primary) 25%, var(--border-color));
+    color: var(--color-primary);
+    background: var(--color-primary-subtle);
   }
 
   .pill.aud.admins {
-    border-color: rgba(99, 102, 241, 0.25);
-    color: rgba(99, 102, 241, 0.95);
-    background: rgba(99, 102, 241, 0.07);
+    border-color: color-mix(in srgb, var(--color-primary) 25%, var(--border-color));
+    color: var(--color-primary);
+    background: var(--color-primary-subtle);
   }
 </style>

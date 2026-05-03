@@ -426,8 +426,6 @@
     max-width: 1400px;
     margin: 0 auto;
     color: var(--text-primary);
-    --glass: rgba(255, 255, 255, 0.04);
-    --glass-border: rgba(255, 255, 255, 0.08);
   }
 
   .stats-row {
@@ -443,7 +441,7 @@
     background: transparent;
     cursor: pointer;
     text-align: left;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     transition: transform 0.15s ease;
   }
 
@@ -452,25 +450,22 @@
   }
 
   .stat-btn.active :global(.stats-card) {
-    border-color: rgba(99, 102, 241, 0.35);
-    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
+    box-shadow: 0 0 0 1px var(--color-primary-subtle);
   }
 
   .glass-card {
-    background: var(--glass);
-    border: 1px solid var(--glass-border);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(12px);
-  }
+    box-shadow: var(--shadow-sm);
+      }
 
   :global([data-theme='light']) .glass-card {
-    background: rgba(255, 255, 255, 0.75);
-    border-color: rgba(0, 0, 0, 0.06);
-    box-shadow:
-      0 12px 28px rgba(0, 0, 0, 0.06),
-      0 0 0 1px rgba(255, 255, 255, 0.85);
+    background: var(--bg-surface);
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-sm);
   }
 
   .card-header {
@@ -479,11 +474,11 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--border-color);
   }
 
   :global([data-theme='light']) .card-header {
-    border-bottom-color: rgba(0, 0, 0, 0.06);
+    border-bottom-color: var(--border-color);
   }
 
   .card-header h3 {
@@ -502,8 +497,8 @@
   }
 
   .count-badge {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
     color: var(--text-primary);
     padding: 0.35rem 0.75rem;
     border-radius: 999px;
@@ -514,8 +509,8 @@
   }
 
   :global([data-theme='light']) .count-badge {
-    background: rgba(0, 0, 0, 0.03);
-    border-color: rgba(0, 0, 0, 0.06);
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
   }
 
   .toolbar-wrapper {

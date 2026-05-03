@@ -326,7 +326,7 @@
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-md);
     z-index: 1000;
     display: flex;
     flex-direction: column;
@@ -578,9 +578,8 @@
 
   @media (max-width: 520px) {
     .backdrop {
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(2px);
-    }
+      background: color-mix(in srgb, var(--bg-app) 58%, transparent);
+          }
 
     .dropdown-panel {
       position: fixed;

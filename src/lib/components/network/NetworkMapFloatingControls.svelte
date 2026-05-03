@@ -174,8 +174,7 @@
     border: 1px solid rgba(148, 163, 184, 0.24);
     padding: var(--nm-controls-padding);
     background: rgba(255, 255, 255, 0.94);
-    backdrop-filter: blur(4px);
-    box-shadow:
+        box-shadow:
       0 10px 24px rgba(15, 23, 42, 0.08),
       inset 0 1px 0 rgba(255, 255, 255, 0.65);
     max-height: min(68vh, 560px);
@@ -198,8 +197,7 @@
     color: #f8fafc;
     font-size: 0.82rem;
     font-weight: 800;
-    backdrop-filter: blur(14px);
-    box-shadow: 0 14px 28px rgba(2, 6, 23, 0.24);
+        box-shadow: 0 14px 28px rgba(2, 6, 23, 0.24);
     cursor: pointer;
   }
 

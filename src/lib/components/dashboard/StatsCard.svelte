@@ -6,13 +6,13 @@
   function getColorVar(c: string) {
     switch (c) {
       case 'success':
-        return 'var(--color-success, #10b981)';
+        return 'var(--color-success)';
       case 'warning':
-        return 'var(--color-warning, #f59e0b)';
+        return 'var(--color-warning)';
       case 'danger':
-        return 'var(--color-danger, #ef4444)';
+        return 'var(--color-danger)';
       default:
-        return 'var(--color-primary, #6366f1)';
+        return 'var(--color-primary)';
     }
   }
 </script>
@@ -42,27 +42,27 @@
 
 <style>
   .stats-card {
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 18px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
     padding: 1.25rem 1.25rem;
     display: flex;
     align-items: flex-start;
     gap: 1rem;
     transition:
-      transform 0.2s,
-      box-shadow 0.2s;
+      background 0.2s,
+      border-color 0.2s;
   }
 
   .stats-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.25);
+    background: var(--bg-secondary);
+    border-color: color-mix(in srgb, var(--color-primary) 24%, var(--border-color));
   }
 
   .icon-wrapper {
     width: 48px;
     height: 48px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -73,13 +73,13 @@
   }
 
   .title {
-    color: var(--text-secondary, #94a3b8);
+    color: var(--text-secondary);
     font-size: 0.9rem;
     margin-bottom: 0.25rem;
   }
 
   .value {
-    color: var(--text-primary, #fff);
+    color: var(--text-primary);
     font-size: 1.5rem;
     font-weight: 700;
     line-height: 1.2;
@@ -95,27 +95,13 @@
   }
 
   .trend.up {
-    color: var(--color-success, #10b981);
+    color: var(--color-success);
   }
   .trend.down {
-    color: var(--color-danger, #ef4444);
+    color: var(--color-danger);
   }
   .trend.neutral {
-    color: var(--text-secondary, #94a3b8);
+    color: var(--text-secondary);
   }
 
-  /* Light theme */
-  :global([data-theme='light']) .stats-card {
-    background: linear-gradient(135deg, #ffffff, #f7f7fb);
-    border-color: rgba(0, 0, 0, 0.06);
-    box-shadow:
-      0 10px 28px rgba(0, 0, 0, 0.06),
-      0 0 0 1px rgba(255, 255, 255, 0.8);
-  }
-
-  :global([data-theme='light']) .stats-card:hover {
-    box-shadow:
-      0 14px 36px rgba(0, 0, 0, 0.08),
-      0 0 0 1px rgba(255, 255, 255, 0.8);
-  }
 </style>

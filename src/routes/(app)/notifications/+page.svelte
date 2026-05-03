@@ -398,20 +398,20 @@
   }
 
   .glass-card {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
   }
 
   .count-badge {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
     padding: 0.35rem 0.75rem;
     border-radius: 12px;
     font-size: 0.8rem;
     font-weight: 800;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-color);
   }
 
   .toolbar {
@@ -475,7 +475,7 @@
 
   .chip {
     border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-surface);
     color: var(--text-secondary);
     border-radius: 12px;
     padding: 0.55rem 0.75rem;
@@ -520,12 +520,12 @@
     justify-content: space-between;
     gap: 0.75rem;
     padding: 0.2rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--border-subtle);
     transition: background 0.15s;
   }
 
   .item:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-hover);
   }
 
   .item.unread {
@@ -568,10 +568,10 @@
     flex-shrink: 0;
     display: grid;
     place-items: center;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
     color: var(--color-info);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+    box-shadow: none;
   }
 
   .type-icon.success {
@@ -635,8 +635,8 @@
     width: 34px;
     height: 34px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
     color: var(--text-secondary);
     display: inline-flex;
     align-items: center;
@@ -646,7 +646,7 @@
   }
 
   .icon-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--bg-hover);
     color: var(--text-primary);
   }
 
@@ -671,8 +671,8 @@
     width: 48px;
     height: 48px;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -707,7 +707,7 @@
 
   .footer {
     padding: 0.8rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--border-subtle);
   }
 
   :global(.w-full) {
@@ -742,7 +742,7 @@
 
   /* Light theme tweaks */
   :global([data-theme='light']) .glass-card {
-    background: #ffffff;
+    background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.06);
     box-shadow:
       0 12px 32px rgba(0, 0, 0, 0.08),

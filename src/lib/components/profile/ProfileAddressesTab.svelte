@@ -411,7 +411,7 @@
     border-radius: 14px;
     display: grid;
     place-items: center;
-    background: rgba(99, 102, 241, 0.12);
+    background: var(--color-primary-subtle);
     color: var(--color-primary);
     flex: 0 0 auto;
   }
@@ -488,15 +488,15 @@
   }
 
   .badge-blue {
-    background: rgba(59, 130, 246, 0.12);
-    border-color: rgba(59, 130, 246, 0.35);
-    color: #93c5fd;
+    background: var(--color-primary-subtle);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
+    color: var(--color-primary);
   }
 
   .badge-purple {
-    background: rgba(168, 85, 247, 0.12);
-    border-color: rgba(168, 85, 247, 0.35);
-    color: #e9d5ff;
+    background: var(--color-primary-subtle);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
+    color: var(--color-primary);
   }
 
   .address-actions {
@@ -524,8 +524,8 @@
   }
 
   .icon-btn.danger:hover {
-    border-color: rgba(239, 68, 68, 0.6);
-    color: rgba(239, 68, 68, 1);
+    border-color: color-mix(in srgb, var(--color-danger) 60%, var(--border-color));
+    color: var(--color-danger);
   }
 
   .address-body {
@@ -595,7 +595,7 @@
 
   .form-input:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
   }
 
   .toggle-row {

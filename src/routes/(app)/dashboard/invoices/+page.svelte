@@ -245,7 +245,7 @@
     }
 
     .content-card {
-      border-radius: 16px;
+      border-radius: var(--radius-lg);
     }
   }
 </style>

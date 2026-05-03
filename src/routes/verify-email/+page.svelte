@@ -4,6 +4,7 @@
   import { auth } from '$lib/api/client';
   import { goto } from '$app/navigation';
   import { token as authToken, user } from '$lib/stores/auth';
+  import Icon from '$lib/components/ui/Icon.svelte';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
 
@@ -47,9 +48,9 @@
       {#if status === 'verifying'}
         <div class="spinner"></div>
       {:else if status === 'success'}
-        ✓
+        <Icon name="check" size={28} />
       {:else}
-        ✕
+        <Icon name="x" size={28} />
       {/if}
     </div>
     <h1>{$t('auth.verify_email.title') || 'Email Verification'}</h1>
@@ -76,22 +77,24 @@
     justify-content: center;
     min-height: 100vh;
     padding: 2rem;
+    background: var(--bg-primary);
   }
 
   .card {
-    background: var(--bg-card);
-    padding: 2.5rem;
+    background: var(--bg-surface);
+    padding: clamp(1.5rem, 5vw, 2.5rem);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
     text-align: center;
     max-width: 400px;
     width: 100%;
+    box-shadow: var(--shadow-sm);
   }
 
   .status-icon {
     width: 64px;
     height: 64px;
-    border-radius: 50%;
+    border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -104,15 +107,15 @@
   }
 
   .status-icon.success {
-    background: rgba(34, 197, 94, 0.1);
-    color: #22c55e;
-    border: 1px solid rgba(34, 197, 94, 0.2);
+    background: var(--bg-success);
+    color: var(--text-success);
+    border: 1px solid color-mix(in srgb, var(--color-success) 28%, var(--border-color));
   }
 
   .status-icon.error {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    color: var(--color-danger);
+    border: 1px solid color-mix(in srgb, var(--color-danger) 22%, var(--border-color));
   }
 
   h1 {
@@ -156,6 +159,6 @@
 
   .btn-primary {
     background: var(--color-primary);
-    color: white;
+    color: var(--bg-app);
   }
 </style>

@@ -237,6 +237,6 @@
 
   .dropdown-menu::-webkit-scrollbar-thumb {
     background-color: var(--border-color);
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
   }
 </style>

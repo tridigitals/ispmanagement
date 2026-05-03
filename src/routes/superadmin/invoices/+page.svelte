@@ -616,7 +616,7 @@
   .empty-icon {
     width: 92px;
     height: 92px;
-    border-radius: 22px;
+    border-radius: var(--radius-lg);
     display: grid;
     place-items: center;
     background: rgba(99, 102, 241, 0.1);
@@ -698,9 +698,9 @@
     gap: 1rem;
   }
   .invoice-card {
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+    background: var(--bg-surface);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     padding: 1rem;
     display: flex;
     flex-direction: column;
@@ -803,7 +803,7 @@
   }
 
   :global([data-theme='light']) .stat-btn {
-    background: linear-gradient(135deg, #ffffff, #f7f7fb);
+    background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.06);
     box-shadow:
       0 10px 28px rgba(0, 0, 0, 0.06),
@@ -811,12 +811,12 @@
   }
   :global([data-theme='light']) .filter-chip,
   :global([data-theme='light']) .btn-icon {
-    background: #ffffff;
+    background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.08);
     color: var(--text-secondary);
   }
   :global([data-theme='light']) .invoice-card {
-    background: linear-gradient(135deg, #ffffff, #f7f7fb);
+    background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.06);
     box-shadow:
       0 10px 28px rgba(0, 0, 0, 0.06),

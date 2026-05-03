@@ -295,7 +295,7 @@
     padding: 1.1rem 1.15rem;
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--glass-border);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     text-align: left;
     cursor: pointer;
     transition: all 0.2s;
@@ -310,11 +310,7 @@
 
   .provider-card.selected {
     border-color: rgba(99, 102, 241, 0.42);
-    background: radial-gradient(
-      circle at 20% 20%,
-      rgba(99, 102, 241, 0.18),
-      rgba(255, 255, 255, 0.03)
-    );
+    background: var(--bg-surface);
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
   }
 
@@ -327,11 +323,7 @@
   }
 
   :global([data-theme='light']) .provider-card.selected {
-    background: radial-gradient(
-      circle at 20% 20%,
-      rgba(99, 102, 241, 0.12),
-      rgba(255, 255, 255, 0.75)
-    );
+    background: var(--bg-surface);
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.08);
   }
 
@@ -389,7 +381,7 @@
   .config-panel {
     background: rgba(255, 255, 255, 0.02);
     padding: 1.25rem;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--glass-border);
   }
 
@@ -479,7 +471,7 @@
     bottom: 0;
     background-color: rgba(255, 255, 255, 0.1);
     transition: 0.3s;
-    border-radius: 24px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--glass-border);
   }
 
@@ -512,7 +504,7 @@
   .test-email-card {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--glass-border);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 1.1rem 1.25rem;
   }
 

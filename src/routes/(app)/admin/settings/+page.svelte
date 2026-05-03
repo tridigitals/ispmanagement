@@ -1486,16 +1486,10 @@
     padding: clamp(1rem, 3vw, 1.5rem);
     max-width: 1400px;
     margin: 0 auto;
-    --glass: rgba(255, 255, 255, 0.04);
-    --glass-2: rgba(255, 255, 255, 0.02);
-    --glass-border: rgba(255, 255, 255, 0.08);
     --code-bg: rgba(255, 255, 255, 0.06);
   }
 
   :global([data-theme='light']) .page-container {
-    --glass: rgba(0, 0, 0, 0.02);
-    --glass-2: rgba(0, 0, 0, 0.015);
-    --glass-border: rgba(0, 0, 0, 0.06);
     --code-bg: rgba(0, 0, 0, 0.05);
   }
   .layout-grid {
@@ -1506,21 +1500,18 @@
   }
 
   .sidebar {
-    background: linear-gradient(145deg, var(--glass), var(--glass-2));
-    border: 1px solid var(--glass-border);
-    border-radius: 16px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
     padding: 0.75rem;
     position: sticky;
     top: 1.5rem;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
-    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-sm);
   }
 
   :global([data-theme='light']) .sidebar {
-    background: linear-gradient(135deg, #ffffff, #f7f7fb);
-    box-shadow:
-      0 12px 32px rgba(0, 0, 0, 0.08),
-      0 0 0 1px rgba(255, 255, 255, 0.8);
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-sm);
   }
   .nav-item {
     display: flex;
@@ -1542,34 +1533,31 @@
     color: var(--text-primary);
   }
   .nav-item.active {
-    background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.18), transparent 60%);
+    background: rgba(99, 102, 241, 0.14);
     border-color: rgba(99, 102, 241, 0.35);
     color: var(--text-primary);
   }
 
   :global([data-theme='light']) .nav-item.active {
-    background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.12), transparent 60%);
+    background: rgba(99, 102, 241, 0.1);
     border-color: rgba(99, 102, 241, 0.25);
   }
 
   .card {
-    background: linear-gradient(145deg, var(--glass), var(--glass-2));
-    border: 1px solid var(--glass-border);
-    border-radius: 18px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
-    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-sm);
   }
 
   :global([data-theme='light']) .card {
-    background: linear-gradient(135deg, #ffffff, #f7f7fb);
-    box-shadow:
-      0 12px 32px rgba(0, 0, 0, 0.08),
-      0 0 0 1px rgba(255, 255, 255, 0.8);
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-sm);
   }
   .card-header {
     padding: 1.25rem 1.75rem;
-    border-bottom: 1px solid var(--glass-border);
+    border-bottom: 1px solid var(--border-color);
     background: rgba(255, 255, 255, 0.015);
   }
   .card-title {
@@ -1600,8 +1588,8 @@
 
   .settings-list .setting-item {
     padding: 1rem;
-    border-radius: 16px;
-    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
     background: rgba(255, 255, 255, 0.02);
     transition: border-color 0.2s ease;
   }
@@ -1620,8 +1608,8 @@
     align-items: center;
     gap: 1rem;
     padding: 1rem;
-    border-radius: 16px;
-    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
     background: rgba(255, 255, 255, 0.02);
   }
 
@@ -1670,7 +1658,7 @@
   }
   code {
     background: var(--code-bg);
-    border: 1px solid var(--glass-border);
+    border: 1px solid var(--border-color);
     padding: 0.12rem 0.35rem;
     border-radius: 8px;
     font-family:
@@ -1691,9 +1679,9 @@
   }
 
   .upgrade-banner {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(236, 72, 153, 0.1));
+    background: rgba(99, 102, 241, 0.08);
     border: 1px solid var(--color-primary-subtle);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 1rem;
     display: flex;
     align-items: center;
@@ -1730,7 +1718,7 @@
   .card-footer {
     padding: 1.25rem 1.5rem;
     background: rgba(255, 255, 255, 0.015);
-    border-top: 1px solid var(--glass-border);
+    border-top: 1px solid var(--border-color);
     display: flex;
     justify-content: flex-end;
     gap: 0.75rem;
@@ -1741,7 +1729,7 @@
     height: 44px;
     object-fit: contain;
     border-radius: 12px;
-    border: 1px solid var(--glass-border);
+    border: 1px solid var(--border-color);
     background: rgba(255, 255, 255, 0.02);
   }
   .loading-state {
@@ -1816,8 +1804,8 @@
     bottom: 0;
     background-color: rgba(255, 255, 255, 0.1);
     transition: 0.3s;
-    border-radius: 24px;
-    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
   }
 
   :global([data-theme='light']) .slider {
@@ -1867,8 +1855,8 @@
     gap: 1rem;
     padding: 1.1rem 1.15rem;
     background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--glass-border);
-    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
     text-align: left;
     cursor: pointer;
     transition: all 0.2s;
@@ -1881,12 +1869,8 @@
   }
   .provider-card.selected {
     border-color: rgba(99, 102, 241, 0.42);
-    background: radial-gradient(
-      circle at 20% 20%,
-      rgba(99, 102, 241, 0.18),
-      rgba(255, 255, 255, 0.03)
-    );
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+    background: rgba(99, 102, 241, 0.12);
+    box-shadow: var(--shadow-sm);
   }
 
   :global([data-theme='light']) .provider-card {
@@ -1898,12 +1882,8 @@
   }
 
   :global([data-theme='light']) .provider-card.selected {
-    background: radial-gradient(
-      circle at 20% 20%,
-      rgba(99, 102, 241, 0.12),
-      rgba(255, 255, 255, 0.75)
-    );
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.08);
+    background: rgba(99, 102, 241, 0.1);
+    box-shadow: var(--shadow-sm);
   }
 
   .p-icon {
@@ -1916,7 +1896,7 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    border: 1px solid var(--glass-border);
+    border: 1px solid var(--border-color);
   }
   .selected .p-icon {
     background: rgba(99, 102, 241, 0.16);
@@ -1957,8 +1937,8 @@
   .config-panel {
     background: rgba(255, 255, 255, 0.02);
     padding: 1.25rem;
-    border-radius: 16px;
-    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
   }
 
   :global([data-theme='light']) .config-panel {

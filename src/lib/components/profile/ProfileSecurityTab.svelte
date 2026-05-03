@@ -455,7 +455,7 @@
   .card-header {
     padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--border-color);
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--bg-surface);
   }
 
   .card-header h3 {
@@ -645,14 +645,14 @@
   }
 
   .btn-danger {
-    background: rgba(239, 68, 68, 0.1);
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
     color: var(--color-danger);
     border-color: transparent;
   }
 
   .btn-danger:hover {
     background: var(--color-danger);
-    color: white;
+    color: var(--bg-app);
   }
 
   .btn-sm {
@@ -680,8 +680,8 @@
   }
 
   .status-row.success {
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    background: var(--bg-success);
+    border: 1px solid color-mix(in srgb, var(--color-success) 22%, var(--border-color));
   }
 
   .status-icon {
@@ -744,7 +744,7 @@
   }
 
   .badge.success {
-    background: rgba(16, 185, 129, 0.15);
+    background: var(--bg-success);
     color: var(--color-success);
   }
 
@@ -819,8 +819,8 @@
   .recovery-box {
     margin-top: 1.5rem;
     padding: 1.5rem;
-    background: rgba(245, 158, 11, 0.1);
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-warning) 30%, var(--border-color));
     border-radius: var(--radius-md);
     text-align: center;
   }
@@ -890,7 +890,7 @@
     padding: 1rem;
     border-radius: var(--radius-md);
     display: inline-block;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-sm);
   }
 
   .qr-img {

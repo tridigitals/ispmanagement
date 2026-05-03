@@ -342,8 +342,8 @@
   .tile {
     position: relative;
     border: 1px solid var(--border-color);
-    border-radius: 18px;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 72%, transparent), color-mix(in srgb, var(--bg-surface) 92%, transparent));
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
     overflow: hidden;
     min-height: 0;
   }
@@ -482,12 +482,12 @@
     border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 26px 6px 6px;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 72%, transparent), color-mix(in srgb, var(--bg-surface) 92%, transparent));
+    background: var(--bg-surface);
     overflow: hidden;
   }
   .bars.warn {
     border-color: color-mix(in srgb, var(--color-danger) 45%, var(--border-color));
-    background: linear-gradient(180deg, color-mix(in srgb, var(--color-danger) 8%, transparent), color-mix(in srgb, var(--bg-surface) 90%, transparent));
+    background: var(--bg-surface);
   }
   .bar { border-radius: 6px 6px 0 0; min-height: 2px; transition: height 160ms linear; }
   .bar.rx { background: color-mix(in srgb, #22d3ee 65%, #2563eb 35%); }

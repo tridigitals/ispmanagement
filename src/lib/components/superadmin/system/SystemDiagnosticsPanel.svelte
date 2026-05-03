@@ -336,20 +336,20 @@
     padding: 0.25rem 0.5rem;
     border-radius: 999px;
     border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
   }
 
   .ok {
-    border-color: rgba(34, 197, 94, 0.35);
-    color: rgba(34, 197, 94, 0.95);
-    background: rgba(34, 197, 94, 0.08);
+    border-color: color-mix(in srgb, var(--color-success) 35%, var(--border-color));
+    color: var(--color-success);
+    background: var(--bg-success);
   }
 
   .bad {
-    border-color: rgba(239, 68, 68, 0.35);
-    color: rgba(239, 68, 68, 0.95);
-    background: rgba(239, 68, 68, 0.08);
+    border-color: color-mix(in srgb, var(--color-danger) 35%, var(--border-color));
+    color: var(--color-danger);
+    background: color-mix(in srgb, var(--color-danger) 8%, transparent);
   }
 
   .kv {
@@ -416,7 +416,7 @@
 
   .pill {
     border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
     padding: 0.25rem 0.55rem;
     border-radius: 999px;
@@ -434,15 +434,15 @@
   }
 
   .banner.danger {
-    border-color: rgba(239, 68, 68, 0.3);
-    background: rgba(239, 68, 68, 0.08);
-    color: rgba(239, 68, 68, 0.95);
+    border-color: color-mix(in srgb, var(--color-danger) 30%, var(--border-color));
+    background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+    color: var(--color-danger);
   }
 
   .banner.warn {
-    border-color: rgba(245, 158, 11, 0.3);
-    background: rgba(245, 158, 11, 0.08);
-    color: rgba(245, 158, 11, 0.95);
+    border-color: color-mix(in srgb, var(--color-warning) 30%, var(--border-color));
+    background: color-mix(in srgb, var(--color-warning) 8%, transparent);
+    color: var(--color-warning);
   }
 
   .b-title {
@@ -492,7 +492,7 @@
   th {
     color: var(--text-secondary);
     font-weight: 700;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-tertiary);
     position: sticky;
     top: 0;
     z-index: 1;
@@ -511,20 +511,20 @@
   }
 
   .tag.ok {
-    border-color: rgba(34, 197, 94, 0.35);
-    color: rgba(34, 197, 94, 0.95);
-    background: rgba(34, 197, 94, 0.08);
+    border-color: color-mix(in srgb, var(--color-success) 35%, var(--border-color));
+    color: var(--color-success);
+    background: var(--bg-success);
   }
 
   .tag.bad {
-    border-color: rgba(239, 68, 68, 0.35);
-    color: rgba(239, 68, 68, 0.95);
-    background: rgba(239, 68, 68, 0.08);
+    border-color: color-mix(in srgb, var(--color-danger) 35%, var(--border-color));
+    color: var(--color-danger);
+    background: color-mix(in srgb, var(--color-danger) 8%, transparent);
   }
 
   .tag.muted {
     color: var(--text-secondary);
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-tertiary);
   }
 
   .divider {

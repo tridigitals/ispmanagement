@@ -1158,9 +1158,9 @@
 
   .table-wrap {
     border: 1px solid var(--border-color);
-    border-radius: 18px;
-    background: var(--bg-card);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-sm);
     overflow: hidden;
   }
 
@@ -1170,7 +1170,7 @@
     justify-content: flex-end;
     padding: 10px 12px;
     border-bottom: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-card) 82%, transparent);
+    background: color-mix(in srgb, var(--bg-surface) 82%, transparent);
   }
 
   .stats {
@@ -1181,9 +1181,9 @@
   }
 
   .stat-card {
-    background: var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 14px 14px 12px;
   }
 
@@ -1375,6 +1375,12 @@
 
     .error-line {
       max-width: 100%;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .stats {
+      grid-template-columns: 1fr;
     }
   }
 

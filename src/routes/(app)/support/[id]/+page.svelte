@@ -340,10 +340,7 @@
 
   .ticket-card {
     border: 1px solid var(--border-color);
-    background:
-      radial-gradient(900px 180px at 18% 0%, rgba(99, 102, 241, 0.18), transparent 55%),
-      radial-gradient(700px 160px at 85% 0%, rgba(16, 185, 129, 0.1), transparent 45%),
-      var(--bg-surface);
+    background: var(--bg-surface);
     border-radius: var(--radius-lg);
     padding: 1rem;
     box-shadow: var(--shadow-md);
@@ -462,10 +459,7 @@
 
   .thread-card {
     border: 1px solid var(--border-color);
-    background:
-      radial-gradient(900px 180px at 18% 0%, rgba(59, 130, 246, 0.12), transparent 55%),
-      radial-gradient(700px 160px at 85% 0%, rgba(236, 72, 153, 0.08), transparent 45%),
-      var(--bg-surface);
+    background: var(--bg-surface);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
     overflow: hidden;
@@ -541,10 +535,8 @@
 
   .bubble {
     border: 1px solid var(--border-color);
-    background:
-      radial-gradient(650px 140px at 20% 0%, rgba(255, 255, 255, 0.06), transparent 55%),
-      rgba(255, 255, 255, 0.02);
-    border-radius: 16px;
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
     padding: 0.85rem 0.95rem;
     box-shadow: var(--shadow-sm);
     max-width: min(720px, 100%);
@@ -552,9 +544,7 @@
 
   .bubble.mine {
     border-color: rgba(99, 102, 241, 0.28);
-    background:
-      radial-gradient(650px 140px at 20% 0%, rgba(99, 102, 241, 0.18), transparent 55%),
-      rgba(99, 102, 241, 0.07);
+    background: var(--bg-surface);
   }
 
   .msg-body {
@@ -597,9 +587,7 @@
 
   .reply {
     border: 1px solid var(--border-color);
-    background:
-      radial-gradient(900px 180px at 20% 0%, rgba(99, 102, 241, 0.14), transparent 55%),
-      var(--bg-surface);
+    background: var(--bg-surface);
     border-radius: var(--radius-lg);
     padding: 1rem;
     display: grid;

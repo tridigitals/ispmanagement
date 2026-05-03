@@ -406,7 +406,7 @@
     width: min(1100px, calc(100vw - 24px));
     max-height: min(860px, calc(100vh - 24px));
     overflow: auto;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
     background: var(--bg-surface);
     box-shadow: var(--shadow-lg);
@@ -448,13 +448,8 @@
     top: -2px;
     z-index: 6;
     padding: 2px 0 8px;
-    background: linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--bg-surface) 96%, transparent),
-      color-mix(in srgb, var(--bg-surface) 88%, transparent)
-    );
-    backdrop-filter: blur(4px);
-  }
+    background: var(--bg-surface);
+      }
   .full-summary-grid {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -634,7 +629,7 @@
   }
   .stat-big {
     border: 1px solid var(--border-color);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 12px;
     background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
   }
@@ -679,32 +674,22 @@
     border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 26px 6px 6px;
-    background:
-      linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--bg-surface) 85%, transparent),
-        color-mix(in srgb, var(--bg-surface) 92%, transparent)
-      );
+    background: var(--bg-surface);
     overflow: hidden;
   }
   .bars.warn {
     border-color: color-mix(in srgb, var(--color-danger) 55%, var(--border-color));
-    background:
-      linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--color-danger) 12%, transparent),
-        color-mix(in srgb, var(--bg-surface) 92%, transparent)
-      );
+    background: var(--bg-surface);
   }
   .bar {
     border-radius: 2px 2px 0 0;
     min-height: 2px;
   }
   .bar.rx {
-    background: linear-gradient(180deg, #4fc3f7, #2196f3);
+    background: var(--bg-surface);
   }
   .bar.tx {
-    background: linear-gradient(180deg, #ff8a80, #ef5350);
+    background: var(--bg-surface);
   }
   .bar.active {
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);

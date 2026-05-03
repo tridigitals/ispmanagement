@@ -363,8 +363,8 @@
     width: 8px;
     height: 8px;
     border-radius: 999px;
-    background: rgba(99, 102, 241, 0.9);
-    box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.12);
+    background: var(--color-primary);
+    box-shadow: 0 0 0 6px var(--color-primary-subtle);
   }
 
   .subtitle {
@@ -417,9 +417,9 @@
   }
 
   .btn-primary {
-    background: rgba(99, 102, 241, 0.95);
-    border-color: rgba(99, 102, 241, 0.55);
-    color: white;
+    background: var(--color-primary);
+    border-color: color-mix(in srgb, var(--color-primary) 55%, var(--border-color));
+    color: var(--bg-app);
   }
 
   .btn-secondary {
@@ -440,8 +440,8 @@
     align-items: center;
     padding: 0.75rem 0.9rem;
     border-radius: 12px;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid color-mix(in srgb, var(--color-danger) 30%, var(--border-color));
+    background: color-mix(in srgb, var(--color-danger) 8%, transparent);
     color: var(--text-primary);
     margin-bottom: 0.75rem;
   }
@@ -462,9 +462,7 @@
     content: '';
     position: absolute;
     inset: -1px;
-    background:
-      radial-gradient(800px 240px at 0% 0%, rgba(99, 102, 241, 0.18), transparent 55%),
-      radial-gradient(900px 260px at 100% 0%, rgba(34, 197, 94, 0.12), transparent 58%);
+    background: var(--bg-surface);
     pointer-events: none;
   }
 
@@ -494,8 +492,8 @@
   }
 
   .btn-icon.danger {
-    border-color: rgba(239, 68, 68, 0.35);
-    color: rgb(239, 68, 68);
+    border-color: color-mix(in srgb, var(--color-danger) 35%, var(--border-color));
+    color: var(--color-danger);
   }
 
   .badge,
@@ -505,16 +503,16 @@
     gap: 0.5rem;
     padding: 0.35rem 0.6rem;
     border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
     color: var(--text-primary);
     font-size: 0.85rem;
     font-weight: 650;
   }
 
   .coord-chip.missing {
-    border-color: rgba(245, 158, 11, 0.4);
-    background: rgba(245, 158, 11, 0.12);
+    border-color: color-mix(in srgb, var(--color-warning) 40%, var(--border-color));
+    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
   }
 
   .name,
@@ -576,8 +574,8 @@
     width: 26px;
     height: 26px;
     border-radius: 999px;
-    border: 3px solid rgba(148, 163, 184, 0.3);
-    border-top-color: rgba(99, 102, 241, 0.9);
+    border: 3px solid var(--border-color);
+    border-top-color: var(--color-primary);
     animation: spin 0.9s linear infinite;
   }
 

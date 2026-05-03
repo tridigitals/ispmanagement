@@ -90,7 +90,7 @@
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-md);
     z-index: 10000;
     overflow: hidden;
     font-family: var(--font-family);

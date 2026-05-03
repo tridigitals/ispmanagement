@@ -149,9 +149,7 @@
   .smart-inspector {
     height: 100%;
     border-left: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
-    background:
-      linear-gradient(180deg, color-mix(in srgb, var(--bg-card) 95%, #07111d 5%), var(--bg-card)),
-      var(--bg-card);
+    background: var(--bg-surface);
     display: grid;
     grid-template-rows: auto 1fr;
     min-width: 0;
@@ -243,7 +241,7 @@
   }
 
   .hero-card {
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     padding: 14px;
     border: 1px solid color-mix(in srgb, var(--border-color) 76%, transparent);
     background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
@@ -294,7 +292,7 @@
   }
 
   .info-section {
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     border: 1px solid color-mix(in srgb, var(--border-color) 76%, transparent);
     padding: 12px;
     background: color-mix(in srgb, var(--bg-surface) 68%, transparent);

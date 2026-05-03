@@ -138,7 +138,7 @@
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+    background: var(--bg-surface);
     color: white;
     display: flex;
     align-items: center;
@@ -267,14 +267,14 @@
 
   .btn-primary {
     background: var(--color-primary);
-    color: white;
-    box-shadow: 0 2px 4px rgba(var(--color-primary-rgb), 0.2);
+    color: var(--bg-app);
+    box-shadow: var(--shadow-sm);
   }
 
   .btn-primary:hover:not(:disabled) {
     background: var(--color-primary-hover);
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(var(--color-primary-rgb), 0.3);
+    box-shadow: var(--shadow-md);
   }
 
   .btn-primary:disabled {
@@ -287,9 +287,9 @@
   .spinner {
     width: 1rem;
     height: 1rem;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    border: 2px solid var(--border-color);
     border-radius: 50%;
-    border-top-color: white;
+    border-top-color: var(--bg-app);
     animation: spin 0.8s linear infinite;
     display: inline-block;
   }

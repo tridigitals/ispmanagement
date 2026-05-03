@@ -736,7 +736,7 @@
     width: 100%;
     padding: 0.75rem;
     background: var(--color-primary);
-    color: white;
+    color: #08090d;
     border: none;
     border-radius: 8px;
     font-size: 1rem;

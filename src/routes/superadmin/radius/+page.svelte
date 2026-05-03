@@ -1198,7 +1198,7 @@
   .state-card {
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     padding: 1rem;
     box-shadow: var(--shadow-sm);
   }

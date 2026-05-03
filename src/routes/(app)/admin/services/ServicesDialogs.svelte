@@ -553,7 +553,7 @@
   .type-card {
     text-align: left;
     border: 1px solid var(--border-color);
-    background: linear-gradient(165deg, rgba(99, 102, 241, 0.1), rgba(15, 23, 42, 0.45));
+    background: var(--bg-surface);
     border-radius: 14px;
     padding: 0.95rem;
     color: var(--text-primary);
@@ -565,7 +565,7 @@
   .type-card:hover {
     border-color: rgba(99, 102, 241, 0.45);
     transform: translateY(-2px);
-    background: linear-gradient(165deg, rgba(99, 102, 241, 0.16), rgba(15, 23, 42, 0.6));
+    background: var(--bg-surface);
   }
   .type-card-head {
     display: flex;

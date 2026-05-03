@@ -69,13 +69,7 @@
 
   .quick-mode.active {
     border-color: color-mix(in srgb, var(--color-primary) 60%, var(--border-color));
-    background:
-      linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--color-primary) 14%, var(--bg-card)),
-        var(--bg-card)
-      ),
-      var(--bg-card);
+    background: var(--bg-surface);
     box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
   }
 

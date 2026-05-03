@@ -494,9 +494,9 @@
   }
 
   .stat-card {
-    background: var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 14px 14px 12px;
   }
 
@@ -535,11 +535,11 @@
   }
 
   .table-wrap {
-    background: var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-sm);
   }
 
   .link {
@@ -660,6 +660,11 @@
 
     .stats {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 640px) {
+    .stats {
+      grid-template-columns: 1fr;
     }
   }
 </style>

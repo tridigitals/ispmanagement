@@ -268,12 +268,11 @@
     position: fixed;
     inset: 0;
     z-index: 9999;
-    background-color: rgba(0, 0, 0, 0.9);
-    backdrop-filter: blur(5px);
+    background-color: color-mix(in srgb, var(--bg-app) 92%, black);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
+    color: var(--text-primary);
   }
 
   .top-bar {
@@ -286,11 +285,11 @@
     justify-content: space-between;
     align-items: center;
     z-index: 20;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
+    background: var(--bg-surface);
   }
 
   .file-counter {
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-secondary);
     font-size: 0.9rem;
     font-weight: 500;
   }
@@ -302,9 +301,9 @@
   }
 
   .action-btn {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--bg-tertiary);
     border: none;
-    color: white;
+    color: var(--text-primary);
     cursor: pointer;
     padding: 0.5rem;
     border-radius: 50%;
@@ -316,7 +315,7 @@
   }
 
   .action-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--bg-hover);
     transform: scale(1.05);
   }
 
@@ -324,9 +323,9 @@
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--bg-tertiary);
     border: none;
-    color: white;
+    color: var(--text-primary);
     cursor: pointer;
     padding: 1rem;
     z-index: 40;
@@ -335,7 +334,7 @@
   }
 
   .nav-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--bg-hover);
   }
 
   .nav-btn.prev {
@@ -368,7 +367,7 @@
     max-height: 80vh;
     object-fit: contain;
     border-radius: 4px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-md);
   }
 
   .audio-player {
@@ -376,17 +375,17 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(30, 41, 59, 0.8);
+    background: var(--bg-surface);
     padding: 3rem;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     min-width: 300px;
     width: 100%;
     max-width: 500px;
   }
 
   .text-viewer {
-    background: white;
-    color: #1e293b;
+    background: var(--bg-surface);
+    color: var(--text-primary);
     padding: 2rem;
     border-radius: 8px;
     width: 80vw;
@@ -401,8 +400,8 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
-    background: var(--color-primary, #6366f1);
-    color: white;
+    background: var(--color-primary);
+    color: var(--bg-app);
     text-decoration: none;
     border-radius: 8px;
     font-weight: 600;
@@ -416,8 +415,8 @@
   .spinner {
     width: 32px;
     height: 32px;
-    border: 3px solid rgba(0, 0, 0, 0.1);
-    border-top-color: var(--color-primary, #6366f1);
+    border: 3px solid var(--border-color);
+    border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: auto;
@@ -432,17 +431,17 @@
   .audio-visual {
     width: 120px;
     height: 120px;
-    background: linear-gradient(135deg, #06b6d4, #3b82f6);
+    background: var(--bg-surface);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 10px 30px rgba(6, 182, 212, 0.3);
+    box-shadow: var(--shadow-sm);
     margin-bottom: 1.5rem;
   }
 
   .generic-file {
-    background: #1e293b;
+    background: var(--bg-surface);
     padding: 4rem;
     border-radius: 1rem;
     text-align: center;
@@ -462,6 +461,6 @@
   .caption p {
     margin: 0.25rem 0 0 0;
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--text-secondary);
   }
 </style>

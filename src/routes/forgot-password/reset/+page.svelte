@@ -140,17 +140,18 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 2rem;
+    padding: clamp(1rem, 4vw, 2rem);
+    background: var(--bg-primary);
   }
 
   .auth-card {
-    background: var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    padding: 2.5rem;
+    padding: clamp(1.5rem, 5vw, 2.5rem);
     width: 100%;
     max-width: 420px;
-    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-sm);
   }
 
   .auth-header {
@@ -192,7 +193,7 @@
   .form-input:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
   }
 
   .input-wrapper {
@@ -225,7 +226,7 @@
 
   .btn-primary {
     background: var(--color-primary);
-    color: white;
+    color: #08090d;
   }
 
   .btn-primary:hover:not(:disabled) {
@@ -251,8 +252,8 @@
   }
 
   .alert-success {
-    background: rgba(34, 197, 94, 0.1);
-    border: 1px solid rgba(34, 197, 94, 0.2);
-    color: #22c55e;
+    background: var(--bg-success);
+    border: 1px solid color-mix(in srgb, var(--color-success) 28%, var(--border-color));
+    color: var(--text-success);
   }
 </style>

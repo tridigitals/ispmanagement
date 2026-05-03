@@ -534,7 +534,7 @@
 
   /* Admin Banner */
   .admin-banner {
-    background: linear-gradient(135deg, rgba(139, 156, 255, 0.16), rgba(18, 22, 32, 0.92));
+    background: var(--bg-surface);
     color: var(--text-primary);
     border: 1px solid color-mix(in srgb, var(--color-primary) 26%, var(--border-color));
     border-radius: var(--radius-lg);
@@ -544,14 +544,13 @@
     align-items: center;
     cursor: pointer;
     transition:
-      transform 0.2s,
-      box-shadow 0.2s;
-    box-shadow: var(--shadow-sm);
+      background 0.2s,
+      border-color 0.2s;
   }
 
   .admin-banner:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    background: var(--bg-secondary);
+    border-color: color-mix(in srgb, var(--color-primary) 34%, var(--border-color));
   }
 
   .banner-content {
@@ -822,8 +821,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
     color: var(--text-secondary);
     flex-shrink: 0;
     margin-top: 2px;
@@ -917,8 +916,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
     color: var(--text-secondary);
     flex-shrink: 0;
     margin-top: 2px;

@@ -46,12 +46,10 @@
     position: relative;
     overflow: hidden;
     min-height: 120px;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     padding: 14px 15px;
     border: 1px solid color-mix(in srgb, var(--border-color) 84%, transparent);
-    background:
-      radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 32%),
-      linear-gradient(180deg, color-mix(in srgb, var(--bg-card) 92%, #0b1220 8%), var(--bg-card));
+    background: var(--bg-surface);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
       0 18px 38px rgba(2, 6, 23, 0.18);
@@ -66,15 +64,15 @@
   }
 
   .tone-ok::after {
-    background: linear-gradient(90deg, #34d399, #10b981);
+    background: var(--bg-surface);
   }
 
   .tone-warn::after {
-    background: linear-gradient(90deg, #fbbf24, #f97316);
+    background: var(--bg-surface);
   }
 
   .tone-muted::after {
-    background: linear-gradient(90deg, #94a3b8, #64748b);
+    background: var(--bg-surface);
   }
 
   .insight-meta {
@@ -121,7 +119,7 @@
 
   .insight-empty {
     border: 1px dashed color-mix(in srgb, var(--border-color) 76%, transparent);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     padding: 18px;
     color: var(--text-secondary);
     background: color-mix(in srgb, var(--bg-card) 96%, transparent);

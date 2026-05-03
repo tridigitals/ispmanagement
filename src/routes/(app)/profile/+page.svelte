@@ -661,7 +661,7 @@
     width: 42px;
     height: 42px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+    background: var(--bg-surface);
     color: white;
     display: flex;
     align-items: center;

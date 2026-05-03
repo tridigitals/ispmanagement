@@ -632,11 +632,9 @@
     gap: 1rem;
     margin-bottom: 1rem;
     padding: 1.15rem 1.2rem;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--glass-border);
-    background:
-      radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.14), transparent 45%),
-      linear-gradient(145deg, var(--bg-surface), #0b0c10);
+    background: var(--bg-surface);
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
   }
 
@@ -683,7 +681,7 @@
     padding: 0.4rem;
     border-radius: 14px;
     border: 1px solid var(--glass-border);
-    background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
+    background: var(--bg-surface);
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
     flex-wrap: wrap;
   }
@@ -704,17 +702,15 @@
   }
   .tab-btn.active {
     color: var(--text-primary);
-    background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.16), transparent 60%);
+    background: var(--bg-surface);
     border-color: rgba(99, 102, 241, 0.35);
   }
 
   /* Plan Detail Card */
   .plan-detail-card {
-    background:
-      radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.14), transparent 60%),
-      linear-gradient(145deg, var(--bg-surface), #0b0c10);
+    background: var(--bg-surface);
     border: 1px solid var(--glass-border);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
   }
@@ -736,9 +732,7 @@
   .icon-box {
     width: 48px;
     height: 48px;
-    background:
-      radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.22), transparent 60%),
-      rgba(255, 255, 255, 0.04);
+    background: var(--bg-surface);
     color: var(--accent-indigo);
     border-radius: 12px;
     display: flex;
@@ -923,9 +917,9 @@
     gap: 1.5rem;
   }
   .plan-option {
-    background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
+    background: var(--bg-surface);
     border: 1px solid var(--glass-border);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
@@ -939,9 +933,7 @@
   }
   .plan-option.active {
     border-color: rgba(99, 102, 241, 0.35);
-    background:
-      radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.14), transparent 60%),
-      linear-gradient(145deg, var(--bg-surface), #0b0c10);
+    background: var(--bg-surface);
   }
   .option-header {
     display: flex;
@@ -1017,7 +1009,7 @@
     padding: 4rem;
     background: var(--glass);
     border: 1px solid var(--glass-border);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
   }
   .spinner {
     width: 32px;
@@ -1092,7 +1084,7 @@
 
   /* Light theme adjustments */
   :global([data-theme='light']) .tabs {
-    background: linear-gradient(135deg, #ffffff, #f7f7fb);
+    background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.06);
     box-shadow:
       0 10px 28px rgba(0, 0, 0, 0.08),
@@ -1107,9 +1099,7 @@
     color: #111827;
   }
   :global([data-theme='light']) .plan-detail-card {
-    background:
-      radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.08), transparent 60%),
-      linear-gradient(135deg, #ffffff, #f7f7fb);
+    background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.06);
     box-shadow:
       0 12px 32px rgba(0, 0, 0, 0.08),
@@ -1128,7 +1118,7 @@
     background: rgba(0, 0, 0, 0.06);
   }
   :global([data-theme='light']) .plan-option {
-    background: linear-gradient(135deg, #ffffff, #f7f7fb);
+    background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.06);
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
   }

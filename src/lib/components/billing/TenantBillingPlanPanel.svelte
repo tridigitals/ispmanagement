@@ -88,14 +88,8 @@
     gap: 1rem;
     padding: 1.25rem;
     border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    background:
-      linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--color-primary) 12%, transparent),
-        transparent 58%
-      ),
-      rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
   }
 
   .billing-plan-hero h3 {
@@ -123,7 +117,7 @@
     display: flex;
     gap: 0.9rem;
     padding: 1rem 1.05rem;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--glass-border);
     background: rgba(255, 255, 255, 0.02);
   }

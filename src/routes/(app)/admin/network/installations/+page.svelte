@@ -1570,8 +1570,8 @@
   }
   .stat-card {
     border: 1px solid var(--border-color);
-    border-radius: 16px;
-    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
     padding: 14px;
   }
   .stat-card.warning {
@@ -1622,7 +1622,7 @@
     padding: 0 10px;
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    background: var(--bg-card);
+    background: var(--bg-surface);
     color: var(--text-secondary);
     margin-bottom: 0;
   }
@@ -1632,7 +1632,7 @@
     min-height: 40px;
     border-radius: 12px;
     border: 1px solid var(--border-color);
-    background: var(--bg-card);
+    background: var(--bg-surface);
     color: var(--text-primary);
     padding: 8px 10px;
   }
@@ -1646,8 +1646,8 @@
   }
   .card {
     border: 1px solid var(--border-color);
-    border-radius: 16px;
-    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
     padding: 16px;
   }
   .muted {
@@ -1656,9 +1656,9 @@
   .table-wrap {
     overflow: auto;
     border: 1px solid var(--border-color);
-    border-radius: 18px;
-    background: var(--bg-card);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-sm);
   }
   table {
     width: 100%;
@@ -1780,6 +1780,11 @@
     }
     .stats-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 640px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
     }
   }
 </style>

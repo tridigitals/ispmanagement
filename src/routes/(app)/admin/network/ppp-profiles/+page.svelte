@@ -565,11 +565,11 @@
   }
 
   .table-wrap {
-    background: var(--bg-card);
+    background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-sm);
   }
 
   .pill {
@@ -601,9 +601,9 @@
     align-items: center;
     gap: 10px;
     padding: 14px 16px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
-    background: var(--bg-card);
+    background: var(--bg-surface);
     color: var(--text-secondary);
   }
 

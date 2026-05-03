@@ -547,8 +547,6 @@
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
-    --glass: rgba(255, 255, 255, 0.04);
-    --glass-border: rgba(255, 255, 255, 0.08);
     --accent-emerald: #10b981;
     --accent-amber: #f59e0b;
     --accent-cyan: #22d3ee;
@@ -567,7 +565,7 @@
     padding: 0;
     cursor: pointer;
     text-align: left;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     transition: transform 0.2s ease;
   }
 
@@ -577,29 +575,25 @@
 
   .stat-btn.active :global(.stats-card) {
     border-color: rgba(99, 102, 241, 0.45);
-    box-shadow:
-      0 14px 36px rgba(0, 0, 0, 0.3),
-      0 0 0 1px rgba(99, 102, 241, 0.25) inset;
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25) inset;
   }
 
   :global([data-theme='light']) .stat-btn.active :global(.stats-card) {
     border-color: rgba(99, 102, 241, 0.3);
-    box-shadow:
-      0 14px 36px rgba(0, 0, 0, 0.08),
-      0 0 0 1px rgba(99, 102, 241, 0.18) inset;
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.18) inset;
   }
 
   .glass-card {
-    background: linear-gradient(145deg, var(--bg-surface, #0f172a), #0b0c10);
-    border-radius: 16px;
-    border: 1px solid var(--glass-border);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
     overflow: hidden;
   }
 
   .card-header {
     padding: 1.25rem 1.75rem;
-    border-bottom: 1px solid var(--glass-border);
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -621,18 +615,18 @@
   }
 
   .count-badge {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--bg-hover);
     color: var(--text-secondary);
     padding: 0.35rem 0.75rem;
     border-radius: 12px;
     font-size: 0.8rem;
     font-weight: 800;
-    border: 1px solid var(--glass-border);
+    border: 1px solid var(--border-color);
   }
 
   .toolbar-wrapper {
     padding: 1rem 1.75rem 0.5rem;
-    border-bottom: 1px solid var(--glass-border);
+    border-bottom: 1px solid var(--border-color);
   }
 
   .status-filter {
@@ -641,8 +635,8 @@
     gap: 0.4rem;
     padding: 0.25rem;
     border-radius: 12px;
-    border: 1px solid var(--glass-border);
-    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
     flex-wrap: wrap;
   }
 
@@ -699,18 +693,16 @@
   .avatar {
     width: 42px;
     height: 42px;
-    background:
-      radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.35), transparent 60%),
-      linear-gradient(135deg, var(--color-primary, #6366f1), var(--color-primary-dark, #4f46e5));
+    background: rgba(99, 102, 241, 0.16);
     border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    color: white;
+    color: var(--text-primary);
     font-size: 0.9rem;
-    border: 1px solid var(--glass-border);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    box-shadow: none;
   }
 
   .member-name {
@@ -730,21 +722,21 @@
 
   .role-pill {
     padding: 0.3rem 0.8rem;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     font-size: 0.8rem;
     font-weight: 600;
     text-transform: capitalize;
-    border: 1px solid var(--glass-border);
+    border: 1px solid var(--border-color);
     background: rgba(255, 255, 255, 0.04);
   }
 
   .role-pill.admin {
-    background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.14), transparent 60%);
+    background: rgba(99, 102, 241, 0.12);
     color: #818cf8;
   }
 
   .role-pill.user {
-    background: radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.14), transparent 60%);
+    background: rgba(16, 185, 129, 0.12);
     color: #34d399;
   }
 
@@ -753,7 +745,7 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.35rem 0.8rem;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     font-size: 0.8rem;
     font-weight: 600;
   }
@@ -814,7 +806,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--glass-border);
+    border: 1px solid var(--border-color);
     background: rgba(255, 255, 255, 0.04);
     color: var(--text-secondary, #cbd5e1);
     cursor: pointer;
@@ -867,8 +859,8 @@
     text-align: center;
     padding: 4rem 2rem;
     color: var(--text-secondary, #94a3b8);
-    background: var(--glass);
-    border: 1px solid var(--glass-border);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
   }
 
@@ -930,7 +922,7 @@
   .btn-ghost:hover {
     color: var(--text-primary);
     background: rgba(255, 255, 255, 0.06);
-    border-color: var(--glass-border);
+    border-color: var(--border-color);
   }
 
   /* Forms */
@@ -989,11 +981,9 @@
 
   /* Light theme adjustments */
   :global([data-theme='light']) .glass-card {
-    background: linear-gradient(135deg, #ffffff, #f7f7fb);
+    background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.06);
-    box-shadow:
-      0 12px 32px rgba(0, 0, 0, 0.08),
-      0 0 0 1px rgba(255, 255, 255, 0.8);
+    box-shadow: var(--shadow-sm);
   }
 
   :global([data-theme='light']) .btn-icon {
@@ -1024,15 +1014,21 @@
   }
 
   :global([data-theme='light']) .empty-state-container {
-    background: #ffffff;
+    background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.06);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
   }
 
   :global([data-theme='light']) .form-group input,
   :global([data-theme='light']) .form-group select {
-    background: #ffffff;
+    background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.08);
     color: #0f172a;
+  }
+
+  @media (max-width: 640px) {
+    .stats-row {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

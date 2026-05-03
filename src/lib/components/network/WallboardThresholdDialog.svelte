@@ -148,7 +148,7 @@
     width: min(860px, calc(100vw - 24px));
     max-height: min(740px, calc(100vh - 24px));
     overflow: auto;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
     background: var(--bg-surface);
     box-shadow: var(--shadow-lg);
@@ -241,14 +241,9 @@
   }
   .tile-settings {
     border: 1px solid var(--border-color);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 12px;
-    background:
-      linear-gradient(
-        to bottom,
-        color-mix(in srgb, var(--bg-surface) 82%, transparent),
-        color-mix(in srgb, var(--bg-surface) 68%, transparent)
-      );
+    background: var(--bg-surface);
   }
   .settings-grid {
     display: grid;

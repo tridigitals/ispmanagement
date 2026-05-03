@@ -489,7 +489,7 @@
   }
   .logs-shell {
     border: 1px solid var(--border-color);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     background: var(--bg-surface);
     box-shadow: var(--shadow-md);
     padding: 1rem 1rem 0.8rem;

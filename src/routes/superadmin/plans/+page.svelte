@@ -680,7 +680,7 @@
     background: transparent;
     cursor: pointer;
     text-align: left;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     transition: transform 0.15s ease;
   }
 
@@ -699,16 +699,15 @@
   }
 
   .glass-card {
-    background: var(--glass);
+    background: var(--bg-surface);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
     overflow: hidden;
     box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(12px);
-  }
+      }
 
   :global([data-theme='light']) .glass-card {
-    background: rgba(255, 255, 255, 0.75);
+    background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.06);
     box-shadow:
       0 12px 28px rgba(0, 0, 0, 0.06),
@@ -867,7 +866,7 @@
   }
 
   .plan-card {
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.03);
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
@@ -1108,7 +1107,7 @@
 
   .empty-grid {
     grid-column: 1 / -1;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     border: 1px dashed rgba(255, 255, 255, 0.18);
     background: rgba(255, 255, 255, 0.02);
     padding: 2rem 1.25rem;

@@ -393,7 +393,7 @@
   .code-block {
     margin: 12px 0 0;
     padding: 14px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
     background: #0f172a;
     color: #e2e8f0;
@@ -411,7 +411,7 @@
     padding: 10px 12px;
     border-radius: 14px;
     border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-card), transparent 8%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 8%);
   }
 
   .traffic-grid {
@@ -429,13 +429,13 @@
     padding: 10px 12px;
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    background: color-mix(in srgb, var(--bg-card), transparent 12%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 12%);
   }
 
   .traffic-card {
     border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-card), transparent 8%);
-    border-radius: 18px;
+    background: color-mix(in srgb, var(--bg-surface), transparent 8%);
+    border-radius: var(--radius-lg);
     padding: 12px;
   }
 
@@ -458,7 +458,7 @@
     border-radius: 14px;
     border: 1px solid var(--border-color);
     padding: 10px;
-    background: color-mix(in srgb, var(--bg-card), transparent 8%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 8%);
     overflow: hidden;
   }
 
@@ -468,17 +468,17 @@
 
   .bar {
     width: 100%;
-    background: linear-gradient(180deg, rgba(99, 102, 241, 0.8), rgba(34, 197, 94, 0.45));
+    background: rgba(99, 102, 241, 0.72);
     border-radius: 6px 6px 2px 2px;
     opacity: 0.95;
   }
 
   .bar.rx {
-    background: linear-gradient(180deg, rgba(34, 197, 94, 0.9), rgba(34, 197, 94, 0.25));
+    background: rgba(34, 197, 94, 0.72);
   }
 
   .bar.tx {
-    background: linear-gradient(180deg, rgba(99, 102, 241, 0.9), rgba(99, 102, 241, 0.25));
+    background: rgba(99, 102, 241, 0.72);
   }
 
   @media (max-width: 900px) {

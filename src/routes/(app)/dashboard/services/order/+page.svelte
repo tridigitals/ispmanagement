@@ -224,13 +224,7 @@
 
   .service-card.live {
     border-color: color-mix(in srgb, var(--accent-primary) 46%, var(--border-color));
-    background:
-      linear-gradient(
-        150deg,
-        color-mix(in srgb, var(--accent-primary) 12%, transparent) 0%,
-        transparent 62%
-      ),
-      color-mix(in srgb, var(--bg-secondary) 78%, transparent);
+    background: var(--bg-surface);
   }
 
   .service-head {

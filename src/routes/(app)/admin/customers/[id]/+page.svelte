@@ -1787,9 +1787,7 @@
     font-weight: 800;
     letter-spacing: 0.4px;
     color: #e0e7ff;
-    background:
-      linear-gradient(145deg, rgba(79, 70, 229, 0.95), rgba(99, 102, 241, 0.6)),
-      rgba(79, 70, 229, 0.5);
+    background: var(--bg-surface);
     border: 1px solid rgba(129, 140, 248, 0.45);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
   }
@@ -2032,7 +2030,7 @@
     margin-bottom: 1rem;
     padding: 1rem;
     border: 1px solid color-mix(in srgb, var(--border-color), transparent 20%);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     background: color-mix(in srgb, var(--bg-surface), transparent 8%);
   }
 

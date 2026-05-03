@@ -468,8 +468,8 @@
   }
 
   .glass-card {
-    background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
-    border-radius: 16px;
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
     border: 1px solid var(--glass-border);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
     overflow: hidden;
@@ -542,12 +542,12 @@
     border: 1px solid var(--glass-border);
   }
   .badge.system {
-    background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.18), transparent 60%);
+    background: var(--bg-surface);
     color: var(--color-primary);
     border-color: rgba(99, 102, 241, 0.35);
   }
   .badge.custom {
-    background: radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.18), transparent 60%);
+    background: var(--bg-surface);
     color: var(--color-success);
     border-color: rgba(16, 185, 129, 0.35);
   }
@@ -623,14 +623,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(4px);
-  }
+      }
   .modal-card {
     background: var(--bg-surface);
     width: 100%;
     max-width: 500px;
     max-height: 90vh;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     display: flex;
     flex-direction: column;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
@@ -806,7 +805,7 @@
     cursor: pointer;
     user-select: none;
     padding: 0.4rem 0.8rem 0.4rem 0.4rem;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     background: var(--bg-active);
     border: 1px solid transparent;
     transition: all 0.2s;
@@ -830,7 +829,7 @@
     width: 36px;
     height: 20px;
     background: var(--bg-primary);
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     position: relative;
     transition: background 0.2s;
     border: 1px solid var(--border-color);
@@ -942,7 +941,7 @@
 
   /* Light theme adjustments */
   :global([data-theme='light']) .glass-card {
-    background: linear-gradient(135deg, #ffffff, #f7f7fb);
+    background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.06);
     box-shadow:
       0 12px 32px rgba(0, 0, 0, 0.08),

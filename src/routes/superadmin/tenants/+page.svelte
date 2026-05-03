@@ -571,7 +571,7 @@
 
     {#if error}
       <div class="error-state">
-        <Icon name="alert-circle" size={48} color="#ef4444" />
+        <Icon name="alert-circle" size={48} class="error-icon" />
         <p>{error}</p>
         <button class="btn btn-secondary" onclick={() => loadData()}>
           {$t('common.retry') || 'Retry'}
@@ -642,8 +642,6 @@
     max-width: 1400px;
     margin: 0 auto;
     color: var(--text-primary);
-    --glass: rgba(255, 255, 255, 0.04);
-    --glass-border: rgba(255, 255, 255, 0.08);
   }
 
   .stats-row {
@@ -659,7 +657,7 @@
     background: transparent;
     cursor: pointer;
     text-align: left;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     transition: transform 0.15s ease;
   }
 
@@ -668,25 +666,22 @@
   }
 
   .stat-btn.active :global(.stats-card) {
-    border-color: rgba(99, 102, 241, 0.35);
-    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
+    box-shadow: 0 0 0 1px var(--color-primary-subtle);
   }
 
   .glass-card {
-    background: var(--glass);
-    border: 1px solid var(--glass-border);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-sm);
   }
 
   :global([data-theme='light']) .glass-card {
-    background: rgba(255, 255, 255, 0.75);
-    border-color: rgba(0, 0, 0, 0.06);
-    box-shadow:
-      0 12px 28px rgba(0, 0, 0, 0.06),
-      0 0 0 1px rgba(255, 255, 255, 0.85);
+    background: var(--bg-surface);
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-sm);
   }
 
   .card-header {
@@ -695,7 +690,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--border-color);
   }
 
   .header-actions {
@@ -712,8 +707,8 @@
     gap: 0.5rem;
     padding: 0.5rem 0.75rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
     font-weight: 750;
     font-size: 0.85rem;
@@ -724,13 +719,13 @@
     width: 14px;
     height: 14px;
     border-radius: 999px;
-    border: 2px solid rgba(255, 255, 255, 0.14);
-    border-top-color: rgba(99, 102, 241, 0.95);
+    border: 2px solid var(--border-color);
+    border-top-color: var(--color-primary);
     animation: spin 0.9s linear infinite;
   }
 
   :global([data-theme='light']) .card-header {
-    border-bottom-color: rgba(0, 0, 0, 0.06);
+    border-bottom-color: var(--border-color);
   }
 
   .card-header h3 {
@@ -749,8 +744,8 @@
   }
 
   .count-badge {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
     color: var(--text-primary);
     padding: 0.35rem 0.75rem;
     border-radius: 999px;
@@ -761,8 +756,8 @@
   }
 
   :global([data-theme='light']) .count-badge {
-    background: rgba(0, 0, 0, 0.03);
-    border-color: rgba(0, 0, 0, 0.06);
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
   }
 
   .toolbar-wrapper {
@@ -773,15 +768,15 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 0.35rem;
   }
 
   :global([data-theme='light']) .status-filter {
-    background: rgba(0, 0, 0, 0.02);
-    border-color: rgba(0, 0, 0, 0.06);
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
   }
 
   .filter-chip {
@@ -798,22 +793,22 @@
 
   .filter-chip:hover {
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-hover);
   }
 
   :global([data-theme='light']) .filter-chip:hover {
-    background: rgba(0, 0, 0, 0.04);
+    background: var(--bg-hover);
   }
 
   .filter-chip.active {
-    background: rgba(99, 102, 241, 0.18);
-    border: 1px solid rgba(99, 102, 241, 0.25);
+    background: var(--color-primary-subtle);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 25%, var(--border-color));
     color: var(--text-primary);
   }
 
   :global(.btn-icon.view-btn.active) {
-    background: rgba(99, 102, 241, 0.14);
-    border-color: rgba(99, 102, 241, 0.35);
+    background: var(--color-primary-subtle);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
     color: var(--text-primary);
   }
 
@@ -825,6 +820,10 @@
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
+  }
+
+  :global(.error-icon) {
+    color: var(--color-danger);
   }
 
   .btn {
@@ -842,7 +841,7 @@
 
   .btn-primary {
     background: var(--color-primary);
-    color: white;
+    color: var(--bg-app);
   }
 
   .btn-primary:hover {
@@ -862,8 +861,8 @@
     width: 36px;
     height: 36px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
     cursor: pointer;
     padding: 0;
@@ -874,8 +873,8 @@
   }
 
   :global([data-theme='light']) .btn-icon {
-    border-color: rgba(0, 0, 0, 0.06);
-    background: rgba(0, 0, 0, 0.02);
+    border-color: var(--border-color);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
   }
 

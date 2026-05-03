@@ -357,7 +357,7 @@
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
       background: var(--bg-surface);
-      box-shadow: var(--shadow-sm);
+      box-shadow: none;
       overflow: hidden;
     }
 
@@ -375,7 +375,7 @@
     .responsive-table.mobile-card td:last-child {
       border-bottom: none;
       justify-content: flex-end; /* Usually actions */
-      background: var(--bg-active); /* Slight highlight for action row */
+      background: color-mix(in srgb, var(--bg-active) 72%, transparent);
     }
 
     /* Label Pseudo-element */

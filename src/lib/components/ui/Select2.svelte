@@ -264,7 +264,7 @@
 
   .select-trigger.open {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
   }
 
   .selected-text {
@@ -299,9 +299,7 @@
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    box-shadow:
-      0 10px 15px -3px rgba(0, 0, 0, 0.1),
-      0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-md);
     z-index: 60;
     max-height: 280px;
     overflow-y: auto;
@@ -361,11 +359,11 @@
   }
 
   .dropdown-item.active {
-    background: rgba(99, 102, 241, 0.08);
+    background: var(--color-primary-subtle);
   }
 
   .dropdown-item.selected {
-    background: rgba(99, 102, 241, 0.12);
+    background: var(--color-primary-subtle);
     color: var(--color-primary);
     font-weight: 500;
   }
@@ -392,6 +390,6 @@
 
   .dropdown-menu::-webkit-scrollbar-thumb {
     background-color: var(--border-color);
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
   }
 </style>

@@ -2,6 +2,7 @@
   import { install } from '$lib/api/install';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
+  import Icon from '$lib/components/ui/Icon.svelte';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
 
@@ -81,20 +82,7 @@
     {#if step === 1}
       <div class="step-content">
         <div class="icon-wrapper">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="48"
-            height="48"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path
-              d="M2 12l10 5 10-5"
-            /></svg
-          >
+          <Icon name="layers" size={36} />
         </div>
         <h1>
           {$t('install.welcome.title', { values: { app: appName } }) || 'Welcome to SaaS App'}
@@ -211,41 +199,9 @@
                 type="button"
                 class="eye-btn"
                 on:click={() => (showPassword = !showPassword)}
-                tabindex="-1"
+              tabindex="-1"
               >
-                {#if showPassword}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    ><path
-                      d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-                    /><line x1="1" y1="1" x2="23" y2="23" /></svg
-                  >
-                {:else}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    ><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
-                      cx="12"
-                      cy="12"
-                      r="3"
-                    /></svg
-                  >
-                {/if}
+                <Icon name={showPassword ? 'eye-off' : 'eye'} size={18} />
               </button>
             </div>
           </div>
@@ -266,41 +222,9 @@
                 type="button"
                 class="eye-btn"
                 on:click={() => (showConfirmPassword = !showConfirmPassword)}
-                tabindex="-1"
+              tabindex="-1"
               >
-                {#if showConfirmPassword}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    ><path
-                      d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-                    /><line x1="1" y1="1" x2="23" y2="23" /></svg
-                  >
-                {:else}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    ><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
-                      cx="12"
-                      cy="12"
-                      r="3"
-                    /></svg
-                  >
-                {/if}
+                <Icon name={showConfirmPassword ? 'eye-off' : 'eye'} size={18} />
               </button>
             </div>
           </div>
@@ -325,20 +249,7 @@
     {:else if step === 4}
       <div class="step-content success">
         <div class="success-icon">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="48"
-            height="48"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline
-              points="22 4 12 14.01 9 11.01"
-            /></svg
-          >
+          <Icon name="check-circle" size={44} />
         </div>
         <h2>
           {$t('install.success.title') || 'Installation Complete!'}
@@ -362,13 +273,13 @@
   }
 
   .card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
-    border-radius: 1rem;
-    padding: 2.5rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: clamp(1.5rem, 5vw, 2.5rem);
     width: 100%;
     max-width: 480px;
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-sm);
   }
 
   .step-content {
@@ -382,7 +293,7 @@
     width: 80px;
     height: 80px;
     background: var(--bg-tertiary);
-    border-radius: 50%;
+    border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -435,8 +346,8 @@
 
   input {
     padding: 0.75rem;
-    border-radius: 0.5rem;
-    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
     background: var(--bg-tertiary);
     color: var(--text-primary);
     font-size: 1rem;
@@ -446,7 +357,7 @@
   input:focus {
     border-color: var(--color-primary);
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-primary-transparent);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
   }
 
   .actions {
@@ -458,7 +369,7 @@
   button {
     flex: 1;
     padding: 0.75rem;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-md);
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
@@ -467,7 +378,7 @@
 
   .btn-primary {
     background: var(--color-primary);
-    color: white;
+    color: var(--bg-app);
   }
 
   .btn-primary:hover:not(:disabled) {
@@ -480,7 +391,7 @@
   }
 
   .btn-secondary:hover:not(:disabled) {
-    background: var(--border-primary);
+    background: var(--bg-hover);
   }
 
   button:disabled {
@@ -489,11 +400,11 @@
   }
 
   .error-alert {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    color: #ef4444;
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-danger) 22%, var(--border-color));
+    color: var(--color-danger);
     padding: 0.75rem;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-md);
     font-size: 0.9rem;
   }
 
@@ -502,7 +413,7 @@
   }
 
   .success-icon {
-    color: #10b981;
+    color: var(--text-success);
     margin-bottom: 1rem;
   }
 

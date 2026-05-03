@@ -343,9 +343,7 @@
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
-    background:
-      radial-gradient(700px 150px at 30% 0%, rgba(255, 255, 255, 0.05), transparent 55%),
-      var(--bg-surface);
+    background: var(--bg-surface);
     padding: 0.9rem;
     cursor: pointer;
     transition:
@@ -607,6 +605,12 @@
   @media (max-width: 900px) {
     .stats {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 640px) {
+    .stats {
+      grid-template-columns: 1fr;
     }
   }
 </style>

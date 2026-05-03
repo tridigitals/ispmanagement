@@ -95,8 +95,8 @@
   .import-overview,
   .source-section {
     border: 1px solid var(--border-color, rgba(148, 163, 184, 0.22));
-    background: var(--bg-card, rgba(15, 23, 42, 0.72));
-    border-radius: 20px;
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
     box-shadow: var(--card-shadow, 0 18px 40px rgba(15, 23, 42, 0.16));
   }
 
@@ -146,7 +146,7 @@
 
   .overview-metrics div {
     border: 1px solid var(--border-color, rgba(148, 163, 184, 0.2));
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 14px;
     min-width: 120px;
   }
@@ -191,8 +191,8 @@
     align-items: center;
     width: 100%;
     border: 1px solid var(--border-color, rgba(148, 163, 184, 0.18));
-    background: color-mix(in srgb, var(--bg-card, #0f172a) 84%, transparent);
-    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg-surface) 84%, transparent);
+    border-radius: var(--radius-lg);
     color: inherit;
     cursor: pointer;
     padding: 16px;
@@ -205,7 +205,7 @@
 
   .source-row:hover {
     border-color: rgba(14, 165, 233, 0.42);
-    background: color-mix(in srgb, var(--bg-card, #0f172a) 92%, #0ea5e9 8%);
+    background: color-mix(in srgb, var(--bg-surface) 92%, #0ea5e9 8%);
     transform: translateY(-1px);
   }
 

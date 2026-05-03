@@ -72,8 +72,7 @@
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(4px);
-    display: flex;
+        display: flex;
     align-items: center;
     justify-content: center;
     z-index: 100;
@@ -83,25 +82,25 @@
   .modal-card {
     background: var(--bg-surface, #1e293b);
     width: 100%;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
     display: flex;
     flex-direction: column;
     max-height: 90vh;
   }
 
   .modal-header {
-    padding: 1.5rem 1.5rem 1rem 1.5rem;
+    padding: 1.25rem 1.25rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .modal-header h3 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     color: var(--text-primary, white);
     font-weight: 600;
   }
@@ -125,25 +124,26 @@
   }
 
   .modal-body {
-    padding: 1.5rem;
+    padding: 1.25rem;
     overflow-y: auto;
   }
 
   .modal-footer {
-    padding: 1rem 1.5rem 1.5rem 1.5rem;
+    padding: 1rem 1.25rem 1.25rem;
     display: flex;
     justify-content: flex-end;
     gap: 1rem;
     border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
     background: transparent; /* Explicitly transparent */
-    border-bottom-left-radius: 16px;
-    border-bottom-right-radius: 16px;
+    border-bottom-left-radius: var(--radius-lg);
+    border-bottom-right-radius: var(--radius-lg);
   }
 
   @media (max-width: 640px) {
     .modal-card {
       max-width: 100% !important;
-      margin: 1rem;
+      margin: 0;
+      max-height: calc(100dvh - 2rem);
     }
 
     .modal-backdrop {

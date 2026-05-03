@@ -410,7 +410,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    background: rgba(148, 163, 184, 0.06);
+    background: var(--bg-tertiary);
   }
 
   .map-picked-title {
@@ -454,9 +454,9 @@
   }
 
   .btn-primary {
-    background: rgba(99, 102, 241, 0.95);
-    border-color: rgba(99, 102, 241, 0.55);
-    color: white;
+    background: var(--color-primary);
+    border-color: color-mix(in srgb, var(--color-primary) 55%, var(--border-color));
+    color: var(--bg-app);
   }
 
   .btn-secondary {

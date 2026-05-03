@@ -92,13 +92,13 @@
 
 <style>
   .topbar {
-    height: 62px;
-    background: color-mix(in srgb, var(--bg-primary) 92%, #ffffff 2%);
+    height: var(--header-height);
+    background: var(--bg-primary);
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 clamp(14px, 3vw, 28px);
+    padding: 0 clamp(12px, 2.4vw, 24px);
     flex-shrink: 0;
     z-index: 40;
   }
@@ -106,7 +106,7 @@
   .left-section {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
   .page-title {
@@ -152,14 +152,14 @@
   /* Icon Buttons */
   .icon-btn {
     background: transparent;
-    border: none;
+    border: 1px solid transparent;
     color: var(--text-secondary);
     width: 34px;
     height: 34px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     position: relative;
     transition: all 0.2s;
@@ -197,7 +197,7 @@
 
   @media (max-width: 900px) {
     .topbar {
-      padding: 0 clamp(12px, 5vw, 20px);
+      padding: 0 clamp(12px, 4vw, 18px);
     }
 
     .search-bar {

@@ -134,33 +134,33 @@
   }
 
   .metric-icon.requests {
-    background: rgba(59, 130, 246, 0.15);
-    color: #3b82f6;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
   }
 
   .metric-icon.response-time {
-    background: rgba(16, 185, 129, 0.15);
-    color: #10b981;
+    background: var(--bg-success);
+    color: var(--color-success);
   }
 
   .metric-icon.p95 {
-    background: rgba(139, 92, 246, 0.15);
-    color: #8b5cf6;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
   }
 
   .metric-icon.total {
-    background: rgba(99, 102, 241, 0.15);
-    color: #6366f1;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
   }
 
   .metric-icon.errors {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
+    background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+    color: var(--color-danger);
   }
 
   .metric-icon.rate-limited {
-    background: rgba(245, 158, 11, 0.15);
-    color: #f59e0b;
+    background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+    color: var(--color-warning);
   }
 
   .metric-content {

@@ -1834,8 +1834,8 @@
     place-items: center;
     border: 1px solid rgba(15, 23, 42, 0.22);
     border-radius: 12px;
-    background: #ffffff;
-    color: #0f172a;
+    background: var(--bg-surface);
+    color: var(--text-primary);
     cursor: pointer;
     box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
   }
@@ -1850,18 +1850,18 @@
     padding: 8px;
     border: 1px solid rgba(15, 23, 42, 0.18);
     border-radius: 12px;
-    background: #ffffff;
+    background: var(--bg-surface);
     box-shadow: 0 12px 26px rgba(15, 23, 42, 0.14);
   }
 
   .map-workspace-search-panel :global(.search-input-wrap) {
-    background: #ffffff;
+    background: var(--bg-surface);
     border-color: rgba(15, 23, 42, 0.2);
     box-shadow: none;
   }
 
   .map-workspace-search-panel :global(.search-input) {
-    color: #0f172a;
+    color: var(--text-primary);
   }
 
   .map-workspace-search-panel :global(.search-summary) {
@@ -1870,7 +1870,7 @@
 
   .map-workspace-search-panel :global(.search-summary),
   .map-workspace-search-panel :global(.search-input::placeholder) {
-    color: #64748b;
+    color: var(--text-secondary);
   }
 
   .map-workspace-search :global(.search-results) {
@@ -1879,10 +1879,10 @@
     max-height: min(50vh, 380px);
     padding: 8px;
     border-radius: 12px;
-    background: #ffffff;
+    background: var(--bg-surface);
     border-color: rgba(15, 23, 42, 0.16);
     box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
-    backdrop-filter: none;
+    
   }
 
   .map-workspace-search :global(.search-group) {
@@ -1891,7 +1891,7 @@
 
   .map-workspace-search :global(.search-group-label) {
     padding: 0 4px;
-    color: #64748b;
+    color: var(--text-secondary);
     font-size: 0.68rem;
     letter-spacing: 0.06em;
   }
@@ -1906,15 +1906,15 @@
     padding: 9px 11px;
     border-color: rgba(15, 23, 42, 0.12);
     border-radius: 10px;
-    background: #f8fafc;
-    color: #0f172a;
+    background: var(--bg-surface);
+    color: var(--text-primary);
     box-shadow: inset 3px 0 0 #94a3b8;
   }
 
   .map-workspace-search :global(.search-item:hover),
   .map-workspace-search :global(.search-item.active) {
     border-color: color-mix(in srgb, var(--color-primary) 42%, rgba(15, 23, 42, 0.12));
-    background: color-mix(in srgb, var(--color-primary) 8%, #ffffff);
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-surface));
     box-shadow:
       inset 3px 0 0 var(--color-primary),
       0 8px 18px rgba(15, 23, 42, 0.08);
@@ -1942,7 +1942,7 @@
 
   .map-workspace-search :global(.search-item-subtitle) {
     overflow: hidden;
-    color: #64748b;
+    color: var(--text-secondary);
     font-size: 0.78rem;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -2498,13 +2498,7 @@
       position: sticky;
       bottom: 0;
       z-index: 2;
-      background: linear-gradient(
-        180deg,
-        rgba(15, 23, 42, 0.05) 0%,
-        rgba(15, 23, 42, 0.92) 22%,
-        rgba(15, 23, 42, 0.98) 100%
-      );
-      backdrop-filter: blur(8px);
+      background: color-mix(in srgb, var(--bg-surface) 96%, transparent);
     }
 
     :global(.nm-popup-actions-workflow .action-connect) {

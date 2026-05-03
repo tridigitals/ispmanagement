@@ -110,22 +110,22 @@
   }
 
   .icon-wrapper.danger {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    color: var(--color-danger);
   }
 
   .icon-wrapper.warning {
-    background: rgba(245, 158, 11, 0.1);
-    color: #f59e0b;
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+    color: var(--color-warning);
   }
 
   .icon-wrapper.info {
-    background: rgba(59, 130, 246, 0.1);
-    color: #3b82f6;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
   }
 
   .message {
-    color: var(--text-secondary, #94a3b8);
+    color: var(--text-secondary);
     line-height: 1.5;
     margin: 0;
   }
@@ -152,9 +152,9 @@
   .confirm-input {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-    background: var(--bg-primary, rgba(0, 0, 0, 0.2));
-    color: var(--text-primary, white);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
     border-radius: 6px;
     text-align: center;
     font-size: 1rem;
@@ -162,7 +162,7 @@
 
   .confirm-input:focus {
     outline: none;
-    border-color: var(--color-primary, #6366f1);
+    border-color: var(--color-primary);
   }
 
   .actions {
@@ -186,37 +186,37 @@
 
   .btn-ghost {
     background: transparent;
-    color: var(--text-secondary, #94a3b8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
   }
 
   .btn-ghost:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-primary, #fff);
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .btn-danger {
-    background: #ef4444;
-    color: white;
+    background: var(--color-danger);
+    color: var(--bg-app);
   }
   .btn-danger:hover {
-    background: #dc2626;
+    filter: brightness(0.95);
   }
 
   .btn-warning {
-    background: #f59e0b;
-    color: white;
+    background: var(--color-warning);
+    color: var(--bg-app);
   }
   .btn-warning:hover {
-    background: #d97706;
+    filter: brightness(0.95);
   }
 
   .btn-info {
-    background: #3b82f6;
-    color: white;
+    background: var(--color-primary);
+    color: var(--bg-app);
   }
   .btn-info:hover {
-    background: #2563eb;
+    filter: brightness(0.95);
   }
 
   .btn:disabled {
@@ -228,8 +228,8 @@
   .spinner {
     width: 16px;
     height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: white;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--bg-app);
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }
