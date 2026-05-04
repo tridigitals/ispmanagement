@@ -781,7 +781,7 @@
   }
 
   function openNetworkSettings() {
-    goto(`${tenantPrefix}/admin/settings?tab=network`);
+    goto(`${tenantPrefix}/admin/settings#network`);
   }
 
   function formatBps(bps?: number | null) {

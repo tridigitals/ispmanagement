@@ -13,7 +13,7 @@ describe('admin billing navigation helpers', () => {
       tenantPrefix: '',
       billingPath: '/admin/invoices',
       collectionsPath: '/admin/invoices/collection',
-      billingPlanSettingsPath: '/admin/settings?tab=billing_plan',
+      billingPlanSettingsPath: '/admin/settings#billing_plan',
       subscriptionPath: '/admin/subscription',
     });
   });
@@ -28,7 +28,7 @@ describe('admin billing navigation helpers', () => {
       tenantPrefix: '',
       billingPath: '/admin/invoices',
       collectionsPath: '/admin/invoices/collection',
-      billingPlanSettingsPath: '/admin/settings?tab=billing_plan',
+      billingPlanSettingsPath: '/admin/settings#billing_plan',
       subscriptionPath: '/admin/subscription',
     });
   });

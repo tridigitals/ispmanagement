@@ -195,6 +195,48 @@
     })),
   );
 
+  function isSettingsTab(tab: string | null): tab is keyof typeof categories {
+    return Boolean(tab && Object.prototype.hasOwnProperty.call(categories, tab));
+  }
+
+  function resolveSettingsTabFromUrl() {
+    if (typeof window === 'undefined') return null;
+
+    const hashTab = decodeURIComponent(window.location.hash.replace(/^#/, '')).trim();
+    if (isSettingsTab(hashTab)) return hashTab;
+
+    const queryTab = new URLSearchParams(window.location.search).get('tab');
+    if (isSettingsTab(queryTab)) return queryTab;
+
+    return null;
+  }
+
+  function syncSettingsTabHash(tab: string, replace = false) {
+    if (typeof window === 'undefined' || !isSettingsTab(tab)) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete('tab');
+    url.hash = tab;
+
+    if (replace) {
+      window.history.replaceState(window.history.state, '', url);
+    } else {
+      window.history.pushState(window.history.state, '', url);
+    }
+  }
+
+  function selectSettingsTab(tab: string, options: { discard?: boolean; replace?: boolean } = {}) {
+    if (!isSettingsTab(tab)) return;
+
+    activeTab = tab;
+    syncSettingsTabHash(tab, options.replace);
+    if (options.discard) discardChanges();
+  }
+
+  function applySettingsTabFromUrl() {
+    activeTab = resolveSettingsTabFromUrl() || 'general';
+  }
+
   onMount(async () => {
     if (!$isAdmin || !$can('read', 'settings')) {
       goto('/unauthorized');
@@ -202,10 +244,11 @@
     }
 
     if (typeof window !== 'undefined') {
-      const tab = new URLSearchParams(window.location.search).get('tab');
-      if (tab && Object.prototype.hasOwnProperty.call(categories, tab)) {
-        activeTab = tab;
-      }
+      const tab = resolveSettingsTabFromUrl();
+      if (tab) selectSettingsTab(tab, { replace: true });
+
+      window.addEventListener('hashchange', applySettingsTabFromUrl);
+      window.addEventListener('popstate', applySettingsTabFromUrl);
     }
 
     if (typeof window !== 'undefined') {
@@ -782,8 +825,7 @@
           <button
             class="nav-item {activeTab === id ? 'active' : ''}"
             onclick={() => {
-              activeTab = id;
-              discardChanges();
+              selectSettingsTab(id, { discard: true });
             }}
           >
             <span class="icon"><Icon name={cat.icon} size={18} /></span>
@@ -1475,7 +1517,7 @@
     {activeTab}
     title={$t('topbar.titles.settings') || 'Settings'}
     on:change={(e) => {
-      activeTab = e.detail;
+      selectSettingsTab(e.detail);
       // Keep unsaved edits when switching tabs (avoid refetch/reset).
     }}
   />

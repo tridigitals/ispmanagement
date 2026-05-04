@@ -39,4 +39,21 @@ describe('admin operational UI cleanup', () => {
       expect(source, file).toMatch(/@media \(max-width: 640px\)[\s\S]*grid-template-columns: 1fr/);
     }
   });
+
+  it('persists admin settings tabs in the URL hash', () => {
+    const source = readSource('src/routes/(app)/admin/settings/+page.svelte');
+
+    expect(source).toContain('window.location.hash');
+    expect(source).toContain('hashchange');
+    expect(source).toContain('popstate');
+    expect(source).toContain('selectSettingsTab');
+    expect(source).toContain("new URLSearchParams(window.location.search).get('tab')");
+  });
+
+  it('uses hash links for internal admin settings tab navigation', () => {
+    const source = readSource('src/routes/(app)/admin/network/incidents/+page.svelte');
+
+    expect(source).toContain('/admin/settings#network');
+    expect(source).not.toContain('/admin/settings?tab=network');
+  });
 });
