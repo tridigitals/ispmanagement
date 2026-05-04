@@ -608,7 +608,7 @@
     border-radius: 14px;
     background: var(--bg-surface);
     padding: 1rem 1.05rem;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-sm);
   }
   .workspace-card--primary {
     display: flex;
@@ -704,13 +704,13 @@
     font-variant-numeric: tabular-nums;
   }
   .tone-paid {
-    color: var(--color-success, #10b981);
+    color: var(--color-success);
   }
   .tone-pending {
-    color: var(--color-warning, #f59e0b);
+    color: var(--color-warning);
   }
   .tone-overdue {
-    color: var(--color-danger, #ef4444);
+    color: var(--color-danger);
   }
   .select-input {
     min-height: 40px;
@@ -751,29 +751,29 @@
     border: 1px solid transparent;
   }
   .status-pill.pending {
-    background: rgba(245, 158, 11, 0.14);
-    color: var(--color-warning, #f59e0b);
-    border-color: rgba(245, 158, 11, 0.22);
+    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+    color: var(--color-warning);
+    border-color: color-mix(in srgb, var(--color-warning) 24%, var(--border-color));
   }
   .status-pill.verification_pending {
-    background: rgba(245, 158, 11, 0.14);
-    color: var(--color-warning, #f59e0b);
-    border-color: rgba(245, 158, 11, 0.22);
+    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+    color: var(--color-warning);
+    border-color: color-mix(in srgb, var(--color-warning) 24%, var(--border-color));
   }
   .status-pill.paid {
-    background: rgba(16, 185, 129, 0.14);
-    color: var(--color-success, #10b981);
-    border-color: rgba(16, 185, 129, 0.22);
+    background: var(--bg-success);
+    color: var(--color-success);
+    border-color: color-mix(in srgb, var(--color-success) 24%, var(--border-color));
   }
   .status-pill.failed {
-    background: rgba(239, 68, 68, 0.14);
-    color: var(--color-danger, #ef4444);
-    border-color: rgba(239, 68, 68, 0.22);
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+    color: var(--color-danger);
+    border-color: color-mix(in srgb, var(--color-danger) 24%, var(--border-color));
   }
   .status-pill.expired {
-    background: rgba(148, 163, 184, 0.12);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
-    border-color: rgba(148, 163, 184, 0.18);
+    border-color: var(--border-color);
   }
 
   .actions {
