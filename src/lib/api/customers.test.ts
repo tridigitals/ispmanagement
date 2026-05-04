@@ -33,12 +33,12 @@ describe('customers api wrapper', () => {
   });
 
   it('loads aggregate customer summary separately from the paginated list', async () => {
-    safeInvoke.mockResolvedValue({ total: 125, active: 118, inactive: 7 });
+    safeInvoke.mockResolvedValue({ total: 125, active: 118, inactive: 7, pending_installation: 9 });
 
     const { customers } = await import('./customers');
     const summary = await customers.summary();
 
-    expect(summary).toEqual({ total: 125, active: 118, inactive: 7 });
+    expect(summary).toEqual({ total: 125, active: 118, inactive: 7, pending_installation: 9 });
     expect(safeInvoke).toHaveBeenCalledWith('get_customer_summary', {
       token: 'token-123',
     });
@@ -54,6 +54,7 @@ describe('customers api wrapper', () => {
       perPage: 25,
       status: 'active',
       service: 'none',
+      installation: 'pending',
     });
 
     expect(safeInvoke).toHaveBeenCalledWith('list_customers', {
@@ -63,6 +64,7 @@ describe('customers api wrapper', () => {
       per_page: 25,
       status: 'active',
       service: 'none',
+      installation: 'pending',
     });
   });
 

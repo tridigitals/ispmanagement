@@ -151,6 +151,7 @@ struct ListQuery {
     q: Option<String>,
     status: Option<String>,
     service: Option<String>,
+    installation: Option<String>,
     page: Option<u32>,
     per_page: Option<u32>,
 }
@@ -221,6 +222,7 @@ async fn list_customers(
             q.q,
             q.status,
             q.service,
+            q.installation,
             q.page.unwrap_or(1),
             q.per_page.unwrap_or(25),
         )

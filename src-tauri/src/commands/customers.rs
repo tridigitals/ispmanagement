@@ -52,6 +52,7 @@ pub async fn list_customers(
     q: Option<String>,
     status: Option<String>,
     service: Option<String>,
+    installation: Option<String>,
     page: Option<u32>,
     per_page: Option<u32>,
     auth: State<'_, AuthService>,
@@ -74,6 +75,7 @@ pub async fn list_customers(
             q,
             status,
             service,
+            installation,
             page.unwrap_or(1),
             per_page.unwrap_or(25),
         )

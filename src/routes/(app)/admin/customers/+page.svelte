@@ -38,16 +38,23 @@
 
   type CustomerStatusFilter = 'all' | 'active' | 'inactive';
   type CustomerServiceFilter = 'all' | 'active' | 'inactive' | 'none';
+  type CustomerInstallationFilter = 'all' | 'pending';
 
   let customers = $state<CustomerListItem[]>([]);
   let total = $state(0);
-  let customerSummary = $state<CustomerSummary>({ total: 0, active: 0, inactive: 0 });
+  let customerSummary = $state<CustomerSummary>({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    pending_installation: 0,
+  });
   let loading = $state(true);
   let error = $state('');
 
   let q = $state('');
   let statusFilter = $state<CustomerStatusFilter>('all');
   let serviceFilter = $state<CustomerServiceFilter>('all');
+  let installationFilter = $state<CustomerInstallationFilter>('all');
   let page = $state(0); // Table is 0-based
   let perPage = $state(10);
 
@@ -88,6 +95,7 @@
     total: customerSummary.total,
     active: customerSummary.active,
     inactive: customerSummary.inactive,
+    pendingInstallation: customerSummary.pending_installation,
   });
   let totalPages = $derived(Math.max(1, Math.ceil(total / perPage)));
 
@@ -112,15 +120,21 @@
     return value === 'all' || value === 'active' || value === 'inactive' || value === 'none';
   }
 
+  function isCustomerInstallationFilter(value: string | null): value is CustomerInstallationFilter {
+    return value === 'all' || value === 'pending';
+  }
+
   function hydrateUrlState() {
     if (typeof window === 'undefined') return;
 
     const params = new URLSearchParams(window.location.search);
     const nextStatus = params.get('status');
     const nextService = params.get('service');
+    const nextInstallation = params.get('installation');
     q = params.get('q') || '';
     statusFilter = isCustomerStatusFilter(nextStatus) ? nextStatus : 'all';
     serviceFilter = isCustomerServiceFilter(nextService) ? nextService : 'all';
+    installationFilter = isCustomerInstallationFilter(nextInstallation) ? nextInstallation : 'all';
     page = Math.max(0, Number(params.get('page') || '1') - 1);
     perPage = Math.max(1, Number(params.get('per_page') || perPage));
   }
@@ -137,6 +151,9 @@
 
     if (serviceFilter !== 'all') url.searchParams.set('service', serviceFilter);
     else url.searchParams.delete('service');
+
+    if (installationFilter !== 'all') url.searchParams.set('installation', installationFilter);
+    else url.searchParams.delete('installation');
 
     if (page > 0) url.searchParams.set('page', String(page + 1));
     else url.searchParams.delete('page');
@@ -166,6 +183,13 @@
     await refreshCustomers();
   }
 
+  async function setInstallationFilter(next: CustomerInstallationFilter) {
+    if (installationFilter === next) return;
+    installationFilter = next;
+    page = 0;
+    await refreshCustomers();
+  }
+
   async function load() {
     loading = true;
     error = '';
@@ -174,6 +198,7 @@
         q,
         status: statusFilter,
         service: serviceFilter,
+        installation: installationFilter,
         page: page + 1,
         perPage,
       });
@@ -205,6 +230,7 @@
   }
 
   function serviceStatusLabel(c: CustomerListItem) {
+    if (c.pending_installations > 0) return `${c.pending_installations} pending install`;
     if (c.service_status === 'active') return `${c.active_subscriptions} active`;
     if (c.service_status === 'inactive') return `${c.subscription_count} inactive`;
     return 'No service';
@@ -212,6 +238,7 @@
 
   function customerHealthLabel(c: CustomerListItem) {
     if (!c.is_active) return 'Inactive';
+    if (c.pending_installations > 0) return 'Pending installation';
     if (c.service_status === 'none') return 'No service';
     if (c.service_status === 'inactive') return 'Service inactive';
     return 'Healthy';
@@ -219,7 +246,9 @@
 
   function customerHealthTone(c: CustomerListItem) {
     if (!c.is_active) return 'muted';
-    if (c.service_status === 'none' || c.service_status === 'inactive') return 'warning';
+    if (c.pending_installations > 0 || c.service_status === 'none' || c.service_status === 'inactive') {
+      return 'warning';
+    }
     return 'healthy';
   }
 
@@ -513,8 +542,17 @@
     </div>
   </div>
 
-  <div class="stats-grid">
-    <button class="stat-filter" class:active={statusFilter === 'all'} onclick={() => setStatusFilter('all')}>
+  <div class="stats-grid customer-stats-grid">
+    <button
+      class="stat-filter"
+      class:active={statusFilter === 'all' && installationFilter === 'all'}
+      onclick={async () => {
+        statusFilter = 'all';
+        installationFilter = 'all';
+        page = 0;
+        await refreshCustomers();
+      }}
+    >
       <StatsCard
         title={$t('admin.customers.stats.total') || 'Total'}
         value={stats.total}
@@ -524,7 +562,7 @@
     </button>
     <button
       class="stat-filter"
-      class:active={statusFilter === 'active'}
+      class:active={statusFilter === 'active' && installationFilter === 'all'}
       onclick={() => setStatusFilter('active')}
     >
       <StatsCard
@@ -536,13 +574,25 @@
     </button>
     <button
       class="stat-filter"
-      class:active={statusFilter === 'inactive'}
+      class:active={statusFilter === 'inactive' && installationFilter === 'all'}
       onclick={() => setStatusFilter('inactive')}
     >
       <StatsCard
         title={$t('admin.customers.stats.inactive') || 'Inactive'}
         value={stats.inactive}
         icon="x-circle"
+        color="orange"
+      />
+    </button>
+    <button
+      class="stat-filter"
+      class:active={installationFilter === 'pending'}
+      onclick={() => setInstallationFilter('pending')}
+    >
+      <StatsCard
+        title="Pending installation"
+        value={stats.pendingInstallation}
+        icon="wrench"
         color="orange"
       />
     </button>
@@ -586,6 +636,21 @@
               <option value="active">Active service</option>
               <option value="inactive">Inactive service</option>
               <option value="none">No service</option>
+            </select>
+          </label>
+          <label class="customer-filter-field">
+            <span>Installation</span>
+            <select
+              class="customer-filter-select"
+              aria-label="Customer installation filter"
+              value={installationFilter}
+              onchange={(event) =>
+                setInstallationFilter(
+                  (event.currentTarget as HTMLSelectElement).value as CustomerInstallationFilter,
+                )}
+            >
+              <option value="all">All installations</option>
+              <option value="pending">Pending installation</option>
             </select>
           </label>
         </div>
@@ -745,6 +810,7 @@
               <span
                 class="pill"
                 class:pill-green={c.service_status === 'active'}
+                class:pill-warning={c.pending_installations > 0}
                 class:pill-gray={c.service_status === 'none'}
               >
                 {serviceStatusLabel(c)}
@@ -1120,6 +1186,10 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1rem;
     margin-bottom: 1rem;
+  }
+
+  .customer-stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .stat-filter {

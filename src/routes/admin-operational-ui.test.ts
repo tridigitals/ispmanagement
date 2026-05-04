@@ -73,6 +73,10 @@ describe('admin operational UI cleanup', () => {
     expect(source).toContain('setStatusFilter');
     expect(source).toContain("let serviceFilter = $state<CustomerServiceFilter>('all')");
     expect(source).toContain('setServiceFilter');
+    expect(source).toContain("let installationFilter = $state<CustomerInstallationFilter>('all')");
+    expect(source).toContain('setInstallationFilter');
+    expect(source).toContain('pending_installation');
+    expect(source).toContain('Pending installation');
     expect(source).toContain('customer-filter-select');
     expect(source).not.toContain('filter-segment');
     expect(source).toContain("key: 'service'");

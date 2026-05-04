@@ -28,6 +28,7 @@ pub struct CustomerListItem {
     pub updated_at: DateTime<Utc>,
     pub subscription_count: i64,
     pub active_subscriptions: i64,
+    pub pending_installations: i64,
     pub service_status: String,
 }
 
@@ -36,6 +37,7 @@ pub struct CustomerSummary {
     pub total: i64,
     pub active: i64,
     pub inactive: i64,
+    pub pending_installation: i64,
 }
 
 impl Customer {

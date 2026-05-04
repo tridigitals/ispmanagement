@@ -46,6 +46,7 @@ impl CustomerService {
         q: Option<String>,
         status: Option<String>,
         service: Option<String>,
+        installation: Option<String>,
         page: u32,
         per_page: u32,
     ) -> AppResult<PaginatedResponse<CustomerListItem>> {
@@ -65,6 +66,10 @@ impl CustomerService {
             "none" => "none".to_string(),
             _ => String::new(),
         };
+        let installation = match installation.unwrap_or_default().trim() {
+            "pending" => "pending".to_string(),
+            _ => String::new(),
+        };
         let offset = (page.saturating_sub(1)) * per_page;
 
         #[cfg(feature = "postgres")]
@@ -73,6 +78,7 @@ impl CustomerService {
                 c.*,
                 COALESCE(svc.subscription_count, 0) AS subscription_count,
                 COALESCE(svc.active_subscriptions, 0) AS active_subscriptions,
+                COALESCE(svc.pending_installations, 0) AS pending_installations,
                 CASE
                     WHEN COALESCE(svc.active_subscriptions, 0) > 0 THEN 'active'
                     WHEN COALESCE(svc.subscription_count, 0) > 0 THEN 'inactive'
@@ -83,7 +89,8 @@ impl CustomerService {
             LEFT JOIN LATERAL (
                 SELECT
                     COUNT(*)::bigint AS subscription_count,
-                    COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)::bigint AS active_subscriptions
+                    COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)::bigint AS active_subscriptions,
+                    COALESCE(SUM(CASE WHEN cs.status = 'pending_installation' THEN 1 ELSE 0 END), 0)::bigint AS pending_installations
                 FROM customer_subscriptions cs
                 WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
             ) svc ON TRUE
@@ -96,8 +103,9 @@ impl CustomerService {
                   OR ($4 = 'inactive' AND COALESCE(svc.subscription_count, 0) > 0 AND COALESCE(svc.active_subscriptions, 0) = 0)
                   OR ($4 = 'none' AND COALESCE(svc.subscription_count, 0) = 0)
               )
+              AND ($5 = '' OR ($5 = 'pending' AND COALESCE(svc.pending_installations, 0) > 0))
             ORDER BY c.created_at DESC
-            LIMIT $5 OFFSET $6
+            LIMIT $6 OFFSET $7
         "#;
 
         #[cfg(feature = "sqlite")]
@@ -114,6 +122,11 @@ impl CustomerService {
                     FROM customer_subscriptions cs
                     WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
                 ) AS active_subscriptions,
+                (
+                    SELECT COALESCE(SUM(CASE WHEN cs.status = 'pending_installation' THEN 1 ELSE 0 END), 0)
+                    FROM customer_subscriptions cs
+                    WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
+                ) AS pending_installations,
                 CASE
                     WHEN (
                         SELECT COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)
@@ -155,6 +168,11 @@ impl CustomerService {
                               WHERE cs.tenant_id = cc.tenant_id AND cs.customer_id = cc.id
                           ) = 0)
                       )
+                      AND (? = '' OR (? = 'pending' AND (
+                          SELECT COALESCE(SUM(CASE WHEN cs.status = 'pending_installation' THEN 1 ELSE 0 END), 0)
+                          FROM customer_subscriptions cs
+                          WHERE cs.tenant_id = cc.tenant_id AND cs.customer_id = cc.id
+                      ) > 0))
                 ) AS total_count
             FROM customers c
             WHERE c.tenant_id = ?
@@ -182,6 +200,11 @@ impl CustomerService {
                       WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
                   ) = 0)
               )
+              AND (? = '' OR (? = 'pending' AND (
+                  SELECT COALESCE(SUM(CASE WHEN cs.status = 'pending_installation' THEN 1 ELSE 0 END), 0)
+                  FROM customer_subscriptions cs
+                  WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
+              ) > 0))
             ORDER BY c.created_at DESC
             LIMIT ? OFFSET ?
         "#;
@@ -199,6 +222,7 @@ impl CustomerService {
             .bind(&q)
             .bind(&status)
             .bind(&service)
+            .bind(&installation)
             .bind(per_page as i64)
             .bind(offset as i64)
             .fetch_all(&self.pool)
@@ -217,6 +241,8 @@ impl CustomerService {
             .bind(&service)
             .bind(&service)
             .bind(&service)
+            .bind(&installation)
+            .bind(&installation)
             .bind(tenant_id)
             .bind(&q)
             .bind(&q)
@@ -228,6 +254,8 @@ impl CustomerService {
             .bind(&service)
             .bind(&service)
             .bind(&service)
+            .bind(&installation)
+            .bind(&installation)
             .bind(per_page as i64)
             .bind(offset as i64)
             .fetch_all(&self.pool)
@@ -255,11 +283,14 @@ impl CustomerService {
         let row = sqlx::query_as::<_, CustomerSummary>(
             r#"
             SELECT
-                COUNT(*)::bigint AS total,
-                COALESCE(SUM(CASE WHEN is_active THEN 1 ELSE 0 END), 0)::bigint AS active,
-                COALESCE(SUM(CASE WHEN is_active THEN 0 ELSE 1 END), 0)::bigint AS inactive
-            FROM customers
-            WHERE tenant_id = $1
+                COUNT(DISTINCT c.id)::bigint AS total,
+                COUNT(DISTINCT CASE WHEN c.is_active THEN c.id END)::bigint AS active,
+                COUNT(DISTINCT CASE WHEN NOT c.is_active THEN c.id END)::bigint AS inactive,
+                COUNT(DISTINCT CASE WHEN cs.status = 'pending_installation' THEN c.id END)::bigint AS pending_installation
+            FROM customers c
+            LEFT JOIN customer_subscriptions cs
+              ON cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
+            WHERE c.tenant_id = $1
             "#,
         )
         .bind(tenant_id)
@@ -272,11 +303,19 @@ impl CustomerService {
             SELECT
                 COUNT(*) AS total,
                 COALESCE(SUM(CASE WHEN is_active THEN 1 ELSE 0 END), 0) AS active,
-                COALESCE(SUM(CASE WHEN is_active THEN 0 ELSE 1 END), 0) AS inactive
+                COALESCE(SUM(CASE WHEN is_active THEN 0 ELSE 1 END), 0) AS inactive,
+                (
+                    SELECT COUNT(DISTINCT cc.id)
+                    FROM customers cc
+                    JOIN customer_subscriptions cs
+                      ON cs.tenant_id = cc.tenant_id AND cs.customer_id = cc.id
+                    WHERE cc.tenant_id = ? AND cs.status = 'pending_installation'
+                ) AS pending_installation
             FROM customers
             WHERE tenant_id = ?
             "#,
         )
+        .bind(tenant_id)
         .bind(tenant_id)
         .fetch_one(&self.pool)
         .await?;

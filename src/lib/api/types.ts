@@ -326,6 +326,7 @@ export interface Customer {
 export interface CustomerListItem extends Customer {
   subscription_count: number;
   active_subscriptions: number;
+  pending_installations: number;
   service_status: 'active' | 'inactive' | 'none' | string;
 }
 
@@ -333,6 +334,7 @@ export interface CustomerSummary {
   total: number;
   active: number;
   inactive: number;
+  pending_installation: number;
 }
 
 export interface CustomerLocation {
