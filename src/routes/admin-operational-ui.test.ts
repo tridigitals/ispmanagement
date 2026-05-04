@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 function readSource(path: string) {
@@ -87,5 +87,20 @@ describe('admin operational UI cleanup', () => {
     expect(source).toContain('openAddService');
     expect(source).toContain('openCreateInvoice');
     expect(source).toContain('openWhatsApp');
+  });
+
+  it('keeps customer backend service filters set-based', () => {
+    const source = readSource('src-tauri/src/services/customer_service/core.rs');
+    const migrationPath =
+      'src-tauri/migrations/20260504113000_add_customer_subscription_filter_indexes.up.sql';
+
+    expect(source).toContain('WITH subscription_rollup AS');
+    expect(source).not.toContain('LEFT JOIN LATERAL');
+    expect(source).toContain('LEFT JOIN subscription_rollup svc');
+    expect(existsSync(resolve(process.cwd(), migrationPath))).toBe(true);
+
+    const migration = readSource(migrationPath);
+    expect(migration).toContain('idx_customer_subscriptions_tenant_status_customer');
+    expect(migration).toContain('ON public.customer_subscriptions(tenant_id, status, customer_id)');
   });
 });

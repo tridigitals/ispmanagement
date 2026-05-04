@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS public.idx_customer_subscriptions_tenant_status_customer;

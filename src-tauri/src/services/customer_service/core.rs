@@ -74,6 +74,17 @@ impl CustomerService {
 
         #[cfg(feature = "postgres")]
         let query = r#"
+            WITH subscription_rollup AS (
+                SELECT
+                    cs.tenant_id,
+                    cs.customer_id,
+                    COUNT(*)::bigint AS subscription_count,
+                    COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)::bigint AS active_subscriptions,
+                    COALESCE(SUM(CASE WHEN cs.status = 'pending_installation' THEN 1 ELSE 0 END), 0)::bigint AS pending_installations
+                FROM customer_subscriptions cs
+                WHERE cs.tenant_id = $1
+                GROUP BY cs.tenant_id, cs.customer_id
+            )
             SELECT
                 c.*,
                 COALESCE(svc.subscription_count, 0) AS subscription_count,
@@ -86,14 +97,8 @@ impl CustomerService {
                 END AS service_status,
                 COUNT(*) OVER() AS total_count
             FROM customers c
-            LEFT JOIN LATERAL (
-                SELECT
-                    COUNT(*)::bigint AS subscription_count,
-                    COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)::bigint AS active_subscriptions,
-                    COALESCE(SUM(CASE WHEN cs.status = 'pending_installation' THEN 1 ELSE 0 END), 0)::bigint AS pending_installations
-                FROM customer_subscriptions cs
-                WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
-            ) svc ON TRUE
+            LEFT JOIN subscription_rollup svc
+              ON svc.tenant_id = c.tenant_id AND svc.customer_id = c.id
             WHERE c.tenant_id = $1
               AND ($2 = '' OR c.name ILIKE '%' || $2 || '%' OR c.email ILIKE '%' || $2 || '%')
               AND ($3 = '' OR ($3 = 'active' AND c.is_active) OR ($3 = 'inactive' AND NOT c.is_active))
@@ -110,101 +115,41 @@ impl CustomerService {
 
         #[cfg(feature = "sqlite")]
         let query = r#"
+            WITH subscription_rollup AS (
+                SELECT
+                    cs.tenant_id,
+                    cs.customer_id,
+                    COUNT(*) AS subscription_count,
+                    COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0) AS active_subscriptions,
+                    COALESCE(SUM(CASE WHEN cs.status = 'pending_installation' THEN 1 ELSE 0 END), 0) AS pending_installations
+                FROM customer_subscriptions cs
+                WHERE cs.tenant_id = ?
+                GROUP BY cs.tenant_id, cs.customer_id
+            )
             SELECT
                 c.*,
-                (
-                    SELECT COUNT(*)
-                    FROM customer_subscriptions cs
-                    WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
-                ) AS subscription_count,
-                (
-                    SELECT COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)
-                    FROM customer_subscriptions cs
-                    WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
-                ) AS active_subscriptions,
-                (
-                    SELECT COALESCE(SUM(CASE WHEN cs.status = 'pending_installation' THEN 1 ELSE 0 END), 0)
-                    FROM customer_subscriptions cs
-                    WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
-                ) AS pending_installations,
+                COALESCE(svc.subscription_count, 0) AS subscription_count,
+                COALESCE(svc.active_subscriptions, 0) AS active_subscriptions,
+                COALESCE(svc.pending_installations, 0) AS pending_installations,
                 CASE
-                    WHEN (
-                        SELECT COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)
-                        FROM customer_subscriptions cs
-                        WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
-                    ) > 0 THEN 'active'
-                    WHEN (
-                        SELECT COUNT(*)
-                        FROM customer_subscriptions cs
-                        WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
-                    ) > 0 THEN 'inactive'
+                    WHEN COALESCE(svc.active_subscriptions, 0) > 0 THEN 'active'
+                    WHEN COALESCE(svc.subscription_count, 0) > 0 THEN 'inactive'
                     ELSE 'none'
                 END AS service_status,
-                (
-                    SELECT COUNT(*)
-                    FROM customers cc
-                    WHERE cc.tenant_id = ?
-                      AND (? = '' OR cc.name LIKE '%' || ? || '%' OR cc.email LIKE '%' || ? || '%')
-                      AND (? = '' OR (? = 'active' AND cc.is_active = 1) OR (? = 'inactive' AND cc.is_active = 0))
-                      AND (
-                          ? = ''
-                          OR (? = 'active' AND (
-                              SELECT COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)
-                              FROM customer_subscriptions cs
-                              WHERE cs.tenant_id = cc.tenant_id AND cs.customer_id = cc.id
-                          ) > 0)
-                          OR (? = 'inactive' AND (
-                              SELECT COUNT(*)
-                              FROM customer_subscriptions cs
-                              WHERE cs.tenant_id = cc.tenant_id AND cs.customer_id = cc.id
-                          ) > 0 AND (
-                              SELECT COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)
-                              FROM customer_subscriptions cs
-                              WHERE cs.tenant_id = cc.tenant_id AND cs.customer_id = cc.id
-                          ) = 0)
-                          OR (? = 'none' AND (
-                              SELECT COUNT(*)
-                              FROM customer_subscriptions cs
-                              WHERE cs.tenant_id = cc.tenant_id AND cs.customer_id = cc.id
-                          ) = 0)
-                      )
-                      AND (? = '' OR (? = 'pending' AND (
-                          SELECT COALESCE(SUM(CASE WHEN cs.status = 'pending_installation' THEN 1 ELSE 0 END), 0)
-                          FROM customer_subscriptions cs
-                          WHERE cs.tenant_id = cc.tenant_id AND cs.customer_id = cc.id
-                      ) > 0))
-                ) AS total_count
+                COUNT(*) OVER() AS total_count
             FROM customers c
+            LEFT JOIN subscription_rollup svc
+              ON svc.tenant_id = c.tenant_id AND svc.customer_id = c.id
             WHERE c.tenant_id = ?
               AND (? = '' OR c.name LIKE '%' || ? || '%' OR c.email LIKE '%' || ? || '%')
               AND (? = '' OR (? = 'active' AND c.is_active = 1) OR (? = 'inactive' AND c.is_active = 0))
               AND (
                   ? = ''
-                  OR (? = 'active' AND (
-                      SELECT COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)
-                      FROM customer_subscriptions cs
-                      WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
-                  ) > 0)
-                  OR (? = 'inactive' AND (
-                      SELECT COUNT(*)
-                      FROM customer_subscriptions cs
-                      WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
-                  ) > 0 AND (
-                      SELECT COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)
-                      FROM customer_subscriptions cs
-                      WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
-                  ) = 0)
-                  OR (? = 'none' AND (
-                      SELECT COUNT(*)
-                      FROM customer_subscriptions cs
-                      WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
-                  ) = 0)
+                  OR (? = 'active' AND COALESCE(svc.active_subscriptions, 0) > 0)
+                  OR (? = 'inactive' AND COALESCE(svc.subscription_count, 0) > 0 AND COALESCE(svc.active_subscriptions, 0) = 0)
+                  OR (? = 'none' AND COALESCE(svc.subscription_count, 0) = 0)
               )
-              AND (? = '' OR (? = 'pending' AND (
-                  SELECT COALESCE(SUM(CASE WHEN cs.status = 'pending_installation' THEN 1 ELSE 0 END), 0)
-                  FROM customer_subscriptions cs
-                  WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
-              ) > 0))
+              AND (? = '' OR (? = 'pending' AND COALESCE(svc.pending_installations, 0) > 0))
             ORDER BY c.created_at DESC
             LIMIT ? OFFSET ?
         "#;
@@ -231,18 +176,6 @@ impl CustomerService {
         #[cfg(feature = "sqlite")]
         let rows: Vec<Row> = sqlx::query_as(query)
             .bind(tenant_id)
-            .bind(&q)
-            .bind(&q)
-            .bind(&q)
-            .bind(&status)
-            .bind(&status)
-            .bind(&status)
-            .bind(&service)
-            .bind(&service)
-            .bind(&service)
-            .bind(&service)
-            .bind(&installation)
-            .bind(&installation)
             .bind(tenant_id)
             .bind(&q)
             .bind(&q)
