@@ -382,8 +382,20 @@
     };
   }
 
+  function currentTenantName() {
+    const pageData = get(pageStore).data as { tenant?: { name?: string } } | undefined;
+    if (pageData?.tenant?.name) return pageData.tenant.name;
+    if (typeof localStorage === 'undefined') return '';
+    try {
+      return JSON.parse(localStorage.getItem('auth_tenant') || '{}')?.name || '';
+    } catch {
+      return '';
+    }
+  }
+
   function renderCustomerTemplate(body: string, c: CustomerListItem) {
     const values: Record<string, string> = {
+      'tenant.name': currentTenantName(),
       'customer.id': c.id,
       'customer.name': c.name,
       'customer.email': c.email || '',

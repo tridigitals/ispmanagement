@@ -91,6 +91,24 @@ impl MessageTemplateService {
         })
     }
 
+    pub async fn tenant_name(&self, tenant_id: &str) -> AppResult<Option<String>> {
+        #[cfg(feature = "postgres")]
+        let name: Option<String> =
+            sqlx::query_scalar("SELECT name FROM tenants WHERE id = $1")
+                .bind(tenant_id)
+                .fetch_optional(&self.pool)
+                .await?;
+
+        #[cfg(feature = "sqlite")]
+        let name: Option<String> =
+            sqlx::query_scalar("SELECT name FROM tenants WHERE id = ?")
+                .bind(tenant_id)
+                .fetch_optional(&self.pool)
+                .await?;
+
+        Ok(name)
+    }
+
     pub fn collect_payload_variables(payload: &MessageTemplatePayload) -> Vec<String> {
         let mut variables = Vec::new();
         for body in [

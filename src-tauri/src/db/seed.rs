@@ -79,6 +79,24 @@ pub async fn run_seed(pool: &DbPool, opts: SeedOptions) -> Result<()> {
     f.ensure_tenant_member(&tenant_id, &user_id, "owner")
         .await?;
     f.ensure_tenant_subscription_default(&tenant_id).await?;
+    f.ensure_default_message_templates(&tenant_id).await?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn dev_seed_bootstraps_default_message_templates_for_new_tenant() {
+        let source = include_str!("seed.rs");
+        let production_source = source
+            .split("#[cfg(test)]")
+            .next()
+            .expect("seed source should contain production section");
+
+        assert!(
+            production_source.contains("f.ensure_default_message_templates(&tenant_id).await?"),
+            "dev seed must create default communication templates for tenants created after SQL migrations"
+        );
+    }
 }

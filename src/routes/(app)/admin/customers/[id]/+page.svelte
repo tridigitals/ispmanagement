@@ -628,9 +628,20 @@
     }
   }
 
+  function currentTenantName() {
+    if ($page.data?.tenant?.name) return $page.data.tenant.name;
+    if (typeof localStorage === 'undefined') return '';
+    try {
+      return JSON.parse(localStorage.getItem('auth_tenant') || '{}')?.name || '';
+    } catch {
+      return '';
+    }
+  }
+
   function renderCustomerTemplate(body: string) {
     if (!customer) return body;
     const values: Record<string, string> = {
+      'tenant.name': currentTenantName(),
       'customer.id': customer.id,
       'customer.name': customer.name,
       'customer.email': customer.email || '',

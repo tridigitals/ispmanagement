@@ -51,9 +51,13 @@ pub async fn send_customer_email(
         .map(str::trim)
         .filter(|value| !value.is_empty())
     {
+        let tenant_name = state
+            .message_template_service
+            .tenant_name(&tenant_id)
+            .await?;
         let rendered = state
             .message_template_service
-            .render_customer_email(&tenant_id, template_id, &customer, None)
+            .render_customer_email(&tenant_id, template_id, &customer, tenant_name.as_deref())
             .await?;
         (rendered.subject, rendered.body)
     } else {

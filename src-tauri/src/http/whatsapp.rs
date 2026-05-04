@@ -139,9 +139,13 @@ pub async fn customer_send(
         .map(str::trim)
         .filter(|value| !value.is_empty())
     {
+        let tenant_name = state
+            .message_template_service
+            .tenant_name(&tenant_id)
+            .await?;
         state
             .message_template_service
-            .render_customer_whatsapp(&tenant_id, template_id, &customer, None)
+            .render_customer_whatsapp(&tenant_id, template_id, &customer, tenant_name.as_deref())
             .await?
     } else {
         let message = payload.message.trim();
