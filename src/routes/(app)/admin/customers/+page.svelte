@@ -559,43 +559,35 @@
     >
       {#snippet filters()}
         <div class="toolbar-filters">
-          <div class="filter-segment" aria-label="Customer status filter">
-            <button class:active={statusFilter === 'all'} onclick={() => setStatusFilter('all')}>
-              All
-            </button>
-            <button
-              class:active={statusFilter === 'active'}
-              onclick={() => setStatusFilter('active')}
+          <label class="customer-filter-field">
+            <span>Status</span>
+            <select
+              class="customer-filter-select"
+              aria-label="Customer status filter"
+              value={statusFilter}
+              onchange={(event) =>
+                setStatusFilter((event.currentTarget as HTMLSelectElement).value as CustomerStatusFilter)}
             >
-              Active
-            </button>
-            <button
-              class:active={statusFilter === 'inactive'}
-              onclick={() => setStatusFilter('inactive')}
+              <option value="all">All customers</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </label>
+          <label class="customer-filter-field">
+            <span>Service</span>
+            <select
+              class="customer-filter-select"
+              aria-label="Customer service filter"
+              value={serviceFilter}
+              onchange={(event) =>
+                setServiceFilter((event.currentTarget as HTMLSelectElement).value as CustomerServiceFilter)}
             >
-              Inactive
-            </button>
-          </div>
-          <div class="filter-segment" aria-label="Customer service filter">
-            <button class:active={serviceFilter === 'all'} onclick={() => setServiceFilter('all')}>
-              All services
-            </button>
-            <button
-              class:active={serviceFilter === 'active'}
-              onclick={() => setServiceFilter('active')}
-            >
-              Active service
-            </button>
-            <button
-              class:active={serviceFilter === 'inactive'}
-              onclick={() => setServiceFilter('inactive')}
-            >
-              Inactive service
-            </button>
-            <button class:active={serviceFilter === 'none'} onclick={() => setServiceFilter('none')}>
-              No service
-            </button>
-          </div>
+              <option value="all">All services</option>
+              <option value="active">Active service</option>
+              <option value="inactive">Inactive service</option>
+              <option value="none">No service</option>
+            </select>
+          </label>
         </div>
       {/snippet}
       {#snippet actions()}
@@ -1158,29 +1150,43 @@
     flex-wrap: wrap;
   }
 
-  .filter-segment {
-    display: inline-flex;
-    align-items: center;
+  .customer-filter-field {
+    display: grid;
     gap: 0.25rem;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    background: var(--bg-surface);
-    padding: 0.25rem;
+    min-width: 150px;
   }
 
-  .filter-segment button {
-    border: 0;
-    background: transparent;
+  .customer-filter-field span {
     color: var(--text-secondary);
-    border-radius: 9px;
-    padding: 0.45rem 0.7rem;
-    font-size: 0.84rem;
+    font-size: 0.72rem;
     font-weight: 700;
+    line-height: 1;
+  }
+
+  .customer-filter-select {
+    min-height: 38px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    padding: 0.45rem 2rem 0.45rem 0.7rem;
+    font-size: 0.86rem;
+    font-weight: 700;
+    outline: none;
     cursor: pointer;
   }
 
-  .filter-segment button.active {
+  .customer-filter-select:focus {
+    border-color: color-mix(in srgb, var(--color-primary) 58%, var(--border-color));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
+  }
+
+  .customer-filter-select:hover {
     background: var(--bg-hover);
+  }
+
+  .customer-filter-select option {
+    background: var(--bg-surface);
     color: var(--text-primary);
   }
 
@@ -1516,11 +1522,12 @@
     .toolbar-filters {
       width: 100%;
     }
-    .filter-segment {
-      width: 100%;
+    .customer-filter-field {
+      flex: 1 1 180px;
+      min-width: 0;
     }
-    .filter-segment button {
-      flex: 1;
+    .customer-filter-select {
+      width: 100%;
     }
     .grid2 {
       grid-template-columns: 1fr;
