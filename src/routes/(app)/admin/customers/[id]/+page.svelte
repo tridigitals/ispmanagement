@@ -1776,6 +1776,7 @@
     display: flex;
     align-items: center;
     gap: 0.95rem;
+    min-width: 0;
   }
 
   .avatar {
@@ -1786,16 +1787,17 @@
     place-items: center;
     font-weight: 800;
     letter-spacing: 0.4px;
-    color: #e0e7ff;
+    color: var(--color-primary);
     background: var(--bg-surface);
-    border: 1px solid rgba(129, 140, 248, 0.45);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 34%, var(--border-color));
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 10%, transparent);
   }
 
   .meta h1 {
     margin: 0;
     font-size: 1.65rem;
     letter-spacing: -0.02em;
+    overflow-wrap: anywhere;
   }
 
   .hero-badges {
@@ -1820,15 +1822,15 @@
   }
 
   .status-pill.is-active {
-    border-color: rgba(16, 185, 129, 0.35);
-    color: rgb(52, 211, 153);
-    background: rgba(16, 185, 129, 0.1);
+    border-color: color-mix(in srgb, var(--color-success) 30%, var(--border-color));
+    color: var(--color-success);
+    background: var(--bg-success);
   }
 
   .status-pill.is-inactive {
-    border-color: rgba(251, 191, 36, 0.35);
-    color: rgb(252, 211, 77);
-    background: rgba(234, 179, 8, 0.1);
+    border-color: color-mix(in srgb, var(--color-warning) 30%, var(--border-color));
+    color: var(--color-warning);
+    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
   }
 
   .dot {
@@ -1898,13 +1900,13 @@
   }
 
   .btn-primary {
-    background: rgba(99, 102, 241, 0.95);
-    border-color: rgba(99, 102, 241, 0.55);
+    background: var(--color-primary);
+    border-color: color-mix(in srgb, var(--color-primary) 58%, var(--border-color));
     color: white;
   }
 
   .btn-primary:hover {
-    background: rgba(99, 102, 241, 1);
+    background: var(--color-primary-hover);
   }
 
   .btn-secondary {
@@ -1912,23 +1914,23 @@
   }
 
   .btn-danger {
-    border-color: rgba(239, 68, 68, 0.35);
-    background: rgba(239, 68, 68, 0.1);
-    color: rgb(239, 68, 68);
+    border-color: color-mix(in srgb, var(--color-danger) 30%, var(--border-color));
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+    color: var(--color-danger);
   }
 
   .btn-danger:hover {
-    background: rgba(239, 68, 68, 0.14);
+    background: color-mix(in srgb, var(--color-danger) 16%, transparent);
   }
 
   .btn-warning {
-    border-color: rgba(245, 158, 11, 0.35);
-    background: rgba(245, 158, 11, 0.14);
-    color: rgb(251, 191, 36);
+    border-color: color-mix(in srgb, var(--color-warning) 30%, var(--border-color));
+    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+    color: var(--color-warning);
   }
 
   .btn-warning:hover {
-    background: rgba(245, 158, 11, 0.2);
+    background: color-mix(in srgb, var(--color-warning) 16%, transparent);
   }
 
   .tabs {
@@ -1950,8 +1952,8 @@
   }
 
   .tabs button.active {
-    border-color: rgba(99, 102, 241, 0.55);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    border-color: color-mix(in srgb, var(--color-primary) 52%, var(--border-color));
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
   }
 
   .section {
@@ -1994,8 +1996,8 @@
   }
 
   .pppoe-search:focus-within {
-    border-color: rgba(99, 102, 241, 0.55);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    border-color: color-mix(in srgb, var(--color-primary) 52%, var(--border-color));
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
     background: color-mix(in srgb, var(--bg-surface), transparent 1%);
   }
 
@@ -2056,8 +2058,8 @@
   }
 
   .metric-tile.emphasis {
-    border-color: rgba(245, 158, 11, 0.35);
-    background: rgba(245, 158, 11, 0.08);
+    border-color: color-mix(in srgb, var(--color-warning) 30%, var(--border-color));
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
   }
 
   .metric-label {
@@ -2222,9 +2224,9 @@
   }
 
   .btn-quick.active {
-    border-color: rgba(99, 102, 241, 0.5);
-    background: rgba(99, 102, 241, 0.14);
-    color: #e0e7ff;
+    border-color: color-mix(in srgb, var(--color-primary) 50%, var(--border-color));
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
   }
 
   .inline-filter span {
@@ -2280,14 +2282,14 @@
   }
 
   .btn-icon.danger {
-    border-color: rgba(239, 68, 68, 0.35);
-    color: rgb(239, 68, 68);
+    border-color: color-mix(in srgb, var(--color-danger) 30%, var(--border-color));
+    color: var(--color-danger);
   }
 
   .badge.danger {
-    border-color: rgba(239, 68, 68, 0.35);
-    color: rgb(239, 68, 68);
-    background: rgba(239, 68, 68, 0.1);
+    border-color: color-mix(in srgb, var(--color-danger) 30%, var(--border-color));
+    color: var(--color-danger);
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
   }
 
   .name {
@@ -2326,8 +2328,8 @@
     width: 26px;
     height: 26px;
     border-radius: 999px;
-    border: 3px solid rgba(148, 163, 184, 0.3);
-    border-top-color: rgba(99, 102, 241, 0.9);
+    border: 3px solid var(--border-color);
+    border-top-color: var(--color-primary);
     animation: spin 0.9s linear infinite;
   }
 
@@ -2336,9 +2338,9 @@
     gap: 0.6rem;
     align-items: flex-start;
     padding: 0.75rem 0.9rem;
-    border: 1px solid rgba(148, 163, 184, 0.35);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
-    background: rgba(148, 163, 184, 0.08);
+    background: var(--bg-tertiary);
     color: var(--text-primary);
   }
 
@@ -2393,6 +2395,10 @@
     .header-actions {
       justify-content: stretch;
     }
+    .header-actions .btn {
+      flex: 1 1 11rem;
+      min-width: 0;
+    }
     .section-head {
       flex-direction: column;
       align-items: stretch;
@@ -2417,6 +2423,10 @@
     .quick-ranges {
       width: 100%;
       justify-content: flex-start;
+      flex-wrap: wrap;
+    }
+    .actions {
+      justify-content: stretch;
       flex-wrap: wrap;
     }
   }
