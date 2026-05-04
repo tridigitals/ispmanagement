@@ -375,6 +375,7 @@ pub fn run() {
                                     update_support_ticket,
                                     // Customers (tenant scoped)
                                     list_customers,
+                                    get_customer_summary,
                                     get_customer,
                                     create_customer,
                                     create_customer_with_portal,

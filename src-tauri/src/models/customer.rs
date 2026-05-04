@@ -15,6 +15,13 @@ pub struct Customer {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct CustomerSummary {
+    pub total: i64,
+    pub active: i64,
+    pub inactive: i64,
+}
+
 impl Customer {
     pub fn new(
         tenant_id: String,

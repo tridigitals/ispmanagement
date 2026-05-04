@@ -83,6 +83,7 @@ const commandMap: Record<string, { method: string; path: string }> = {
   reply_support_ticket: { method: 'POST', path: '/support/tickets/:id/messages' },
   update_support_ticket: { method: 'PUT', path: '/support/tickets/:id' },
   list_customers: { method: 'GET', path: '/customers' },
+  get_customer_summary: { method: 'GET', path: '/customers/summary' },
   get_customer: { method: 'GET', path: '/customers/:customerId' },
   create_customer: { method: 'POST', path: '/customers' },
   create_customer_with_portal: { method: 'POST', path: '/customers/with-portal' },

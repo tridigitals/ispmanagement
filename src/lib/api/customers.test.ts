@@ -32,6 +32,18 @@ describe('customers api wrapper', () => {
     });
   });
 
+  it('loads aggregate customer summary separately from the paginated list', async () => {
+    safeInvoke.mockResolvedValue({ total: 125, active: 118, inactive: 7 });
+
+    const { customers } = await import('./customers');
+    const summary = await customers.summary();
+
+    expect(summary).toEqual({ total: 125, active: 118, inactive: 7 });
+    expect(safeInvoke).toHaveBeenCalledWith('get_customer_summary', {
+      token: 'token-123',
+    });
+  });
+
   it('accepts installation_done_awaiting_payment in the lifecycle contract', async () => {
     safeInvoke.mockResolvedValue({
       generated_at: '2026-03-18T11:00:00Z',

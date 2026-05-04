@@ -6,8 +6,8 @@ use crate::models::{
     CustomerPortalSubscriptionStats, CustomerPortalUser, CustomerRegistrationInviteCreateResponse,
     CustomerRegistrationInvitePolicy, CustomerRegistrationInviteSummary,
     CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionOption,
-    CustomerSubscriptionView, InstallationWorkOrder, InstallationWorkOrderView, Invoice,
-    IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest, TeamMemberWithUser,
+    CustomerSubscriptionView, CustomerSummary, InstallationWorkOrder, InstallationWorkOrderView,
+    Invoice, IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest, TeamMemberWithUser,
     UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
     UpdateCustomerRequest, UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
 };
@@ -72,6 +72,28 @@ pub async fn list_customers(
             page.unwrap_or(1),
             per_page.unwrap_or(25),
         )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_customer_summary(
+    token: String,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<CustomerSummary, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "read").await?;
+
+    customers
+        .get_customer_summary(&claims.sub, &tenant_id)
         .await
         .map_err(|e| e.to_string())
 }

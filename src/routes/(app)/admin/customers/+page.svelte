@@ -12,6 +12,7 @@
     type CustomerRegistrationInvitePolicy,
     type CustomerRegistrationInviteSummary,
     type CustomerRegistrationInviteView,
+    type CustomerSummary,
     type PaginatedResponse,
   } from '$lib/api/client';
 
@@ -34,6 +35,7 @@
 
   let customers = $state<Customer[]>([]);
   let total = $state(0);
+  let customerSummary = $state<CustomerSummary>({ total: 0, active: 0, inactive: 0 });
   let loading = $state(true);
   let error = $state('');
 
@@ -75,9 +77,9 @@
   const canManageCustomers = $derived($can('manage', 'customers'));
 
   let stats = $derived({
-    total,
-    active: customers.filter((c) => c.is_active).length,
-    inactive: customers.filter((c) => !c.is_active).length,
+    total: customerSummary.total,
+    active: customerSummary.active,
+    inactive: customerSummary.inactive,
   });
 
   onMount(async () => {
@@ -85,8 +87,16 @@
       goto('/unauthorized');
       return;
     }
-    await Promise.all([canManageCustomers ? loadInvites() : Promise.resolve(), load()]);
+    await Promise.all([
+      canManageCustomers ? loadInvites() : Promise.resolve(),
+      load(),
+      loadCustomerSummary(),
+    ]);
   });
+
+  async function refreshCustomers() {
+    await Promise.all([load(), loadCustomerSummary()]);
+  }
 
   async function load() {
     loading = true;
@@ -104,6 +114,14 @@
       toast.error(get(t)('admin.customers.toasts.load_failed') || 'Failed to load customers');
     } finally {
       loading = false;
+    }
+  }
+
+  async function loadCustomerSummary() {
+    try {
+      customerSummary = await api.customers.summary();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to load customer summary');
     }
   }
 
@@ -159,7 +177,7 @@
       createPortalPassword = '';
       createPortalPasswordConfirm = '';
       page = 0;
-      await load();
+      await refreshCustomers();
       toast.success(get(t)('admin.customers.toasts.created') || 'Customer created');
     } catch (e: any) {
       toast.error(
@@ -184,7 +202,7 @@
       await api.customers.delete(c.id);
       showDelete = false;
       deleteTarget = null;
-      await load();
+      await refreshCustomers();
       toast.success(get(t)('admin.customers.toasts.deleted') || 'Customer deleted');
     } catch (e: any) {
       toast.error(
@@ -362,7 +380,7 @@
       </p>
     </div>
     <div class="header-actions">
-      <button class="btn btn-secondary" onclick={load} disabled={loading}>
+      <button class="btn btn-secondary" onclick={refreshCustomers} disabled={loading}>
         <Icon name="refresh-cw" size={16} />
         {$t('common.refresh') || 'Refresh'}
       </button>

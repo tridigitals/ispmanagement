@@ -9,8 +9,8 @@ use crate::models::{
     CustomerPortalSubscriptionStats, CustomerPortalUser, CustomerRegistrationInviteCreateResponse,
     CustomerRegistrationInvitePolicy, CustomerRegistrationInviteSummary,
     CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionOption,
-    CustomerSubscriptionView, InstallationWorkOrder, InstallationWorkOrderView, Invoice,
-    IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest,
+    CustomerSubscriptionView, CustomerSummary, InstallationWorkOrder, InstallationWorkOrderView,
+    Invoice, IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest,
     UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
     UpdateCustomerRequest, UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
 };
@@ -28,6 +28,7 @@ pub fn router() -> Router<AppState> {
         // Admin
         .route("/", get(list_customers).post(create_customer))
         .route("/with-portal", post(create_customer_with_portal))
+        .route("/summary", get(get_customer_summary))
         .route(
             "/invites",
             get(list_customer_registration_invites).post(create_customer_registration_invite),
@@ -220,6 +221,20 @@ async fn list_customers(
         )
         .await?;
     Ok(Json(resp))
+}
+
+// GET /api/customers/summary
+async fn get_customer_summary(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> AppResult<Json<CustomerSummary>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "read").await?;
+    let summary = state
+        .customer_service
+        .get_customer_summary(&claims.sub, &tenant_id)
+        .await?;
+    Ok(Json(summary))
 }
 
 // GET /api/customers/observability/lifecycle?customer_id=...

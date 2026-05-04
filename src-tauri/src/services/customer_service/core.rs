@@ -118,6 +118,48 @@ impl CustomerService {
         })
     }
 
+    pub async fn get_customer_summary(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+    ) -> AppResult<CustomerSummary> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "customers", "read")
+            .await?;
+
+        #[cfg(feature = "postgres")]
+        let row = sqlx::query_as::<_, CustomerSummary>(
+            r#"
+            SELECT
+                COUNT(*)::bigint AS total,
+                COALESCE(SUM(CASE WHEN is_active THEN 1 ELSE 0 END), 0)::bigint AS active,
+                COALESCE(SUM(CASE WHEN is_active THEN 0 ELSE 1 END), 0)::bigint AS inactive
+            FROM customers
+            WHERE tenant_id = $1
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let row = sqlx::query_as::<_, CustomerSummary>(
+            r#"
+            SELECT
+                COUNT(*) AS total,
+                COALESCE(SUM(CASE WHEN is_active THEN 1 ELSE 0 END), 0) AS active,
+                COALESCE(SUM(CASE WHEN is_active THEN 0 ELSE 1 END), 0) AS inactive
+            FROM customers
+            WHERE tenant_id = ?
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row)
+    }
+
     pub async fn get_customer(
         &self,
         actor_id: &str,

@@ -12,6 +12,7 @@ import type {
   CustomerRegistrationInvitePolicy,
   CustomerRegistrationInviteSummary,
   CustomerRegistrationInviteView,
+  CustomerSummary,
   CustomerSubscriptionOption,
   CustomerSubscription,
   CustomerSubscriptionView,
@@ -30,6 +31,11 @@ export const customers = {
       q: params?.q,
       page: params?.page,
       per_page: params?.perPage,
+    }),
+
+  summary: (): Promise<CustomerSummary> =>
+    safeInvoke('get_customer_summary', {
+      token: getTokenOrThrow(),
     }),
 
   get: (customerId: string): Promise<Customer> =>

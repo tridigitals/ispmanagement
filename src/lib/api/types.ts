@@ -323,6 +323,12 @@ export interface Customer {
   updated_at: string;
 }
 
+export interface CustomerSummary {
+  total: number;
+  active: number;
+  inactive: number;
+}
+
 export interface CustomerLocation {
   id: string;
   tenant_id: string;

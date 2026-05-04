@@ -56,4 +56,12 @@ describe('admin operational UI cleanup', () => {
     expect(source).toContain('/admin/settings#network');
     expect(source).not.toContain('/admin/settings?tab=network');
   });
+
+  it('uses aggregate customer summary for customer index stats', () => {
+    const source = readSource('src/routes/(app)/admin/customers/+page.svelte');
+
+    expect(source).toContain('api.customers.summary()');
+    expect(source).not.toContain('active: customers.filter((c) => c.is_active).length');
+    expect(source).not.toContain('inactive: customers.filter((c) => !c.is_active).length');
+  });
 });
