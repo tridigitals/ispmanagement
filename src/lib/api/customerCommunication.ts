@@ -6,5 +6,9 @@ export const customerCommunication = {
     safeInvoke('send_customer_email', {
       token: getTokenOrThrow(),
       payload,
+      customerId: payload.customerId,
+      subject: payload.subject,
+      body: payload.body,
+      templateId: payload.templateId,
     }),
 };

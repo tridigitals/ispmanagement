@@ -31,6 +31,10 @@ describe('customer communication api wrapper', () => {
         subject: 'Subject',
         body: 'Body',
       },
+      customerId: 'cust-1',
+      templateId: 'tpl-1',
+      subject: 'Subject',
+      body: 'Body',
     });
   });
 });
