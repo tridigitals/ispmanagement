@@ -2,8 +2,9 @@ use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
     CreateCustomerRegistrationInviteRequest, CreateCustomerRequest,
     CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
-    CreateMyCustomerLocationRequest, Customer, CustomerLifecycleObservability, CustomerLocation,
-    CustomerPortalSubscriptionStats, CustomerPortalUser, CustomerRegistrationInviteCreateResponse,
+    CreateMyCustomerLocationRequest, Customer, CustomerLifecycleObservability, CustomerListItem,
+    CustomerLocation, CustomerPortalSubscriptionStats, CustomerPortalUser,
+    CustomerRegistrationInviteCreateResponse,
     CustomerRegistrationInvitePolicy, CustomerRegistrationInviteSummary,
     CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionOption,
     CustomerSubscriptionView, CustomerSummary, InstallationWorkOrder, InstallationWorkOrderView,
@@ -49,11 +50,12 @@ pub struct PortalInstallationTrackerResponse {
 pub async fn list_customers(
     token: String,
     q: Option<String>,
+    status: Option<String>,
     page: Option<u32>,
     per_page: Option<u32>,
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
-) -> Result<PaginatedResponse<Customer>, String> {
+) -> Result<PaginatedResponse<CustomerListItem>, String> {
     let claims = auth
         .validate_token(&token)
         .await
@@ -69,6 +71,7 @@ pub async fn list_customers(
             &claims.sub,
             &tenant_id,
             q,
+            status,
             page.unwrap_or(1),
             per_page.unwrap_or(25),
         )

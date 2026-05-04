@@ -9,6 +9,7 @@
   import {
     api,
     type Customer,
+    type CustomerListItem,
     type CustomerRegistrationInvitePolicy,
     type CustomerRegistrationInviteSummary,
     type CustomerRegistrationInviteView,
@@ -29,17 +30,21 @@
     { key: 'name', label: $t('admin.customers.columns.customer') || 'Customer' },
     { key: 'contact', label: $t('admin.customers.columns.contact') || 'Contact' },
     { key: 'status', label: $t('admin.customers.columns.status') || 'Status' },
+    { key: 'service', label: 'Service' },
     { key: 'updated_at', label: $t('admin.customers.columns.updated') || 'Updated' },
     { key: 'actions', label: '', align: 'right' as const },
   ]);
 
-  let customers = $state<Customer[]>([]);
+  type CustomerStatusFilter = 'all' | 'active' | 'inactive';
+
+  let customers = $state<CustomerListItem[]>([]);
   let total = $state(0);
   let customerSummary = $state<CustomerSummary>({ total: 0, active: 0, inactive: 0 });
   let loading = $state(true);
   let error = $state('');
 
   let q = $state('');
+  let statusFilter = $state<CustomerStatusFilter>('all');
   let page = $state(0); // Table is 0-based
   let perPage = $state(10);
 
@@ -87,6 +92,7 @@
       goto('/unauthorized');
       return;
     }
+    hydrateUrlState();
     await Promise.all([
       canManageCustomers ? loadInvites() : Promise.resolve(),
       load(),
@@ -94,16 +100,59 @@
     ]);
   });
 
-  async function refreshCustomers() {
+  function isCustomerStatusFilter(value: string | null): value is CustomerStatusFilter {
+    return value === 'all' || value === 'active' || value === 'inactive';
+  }
+
+  function hydrateUrlState() {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const nextStatus = params.get('status');
+    q = params.get('q') || '';
+    statusFilter = isCustomerStatusFilter(nextStatus) ? nextStatus : 'all';
+    page = Math.max(0, Number(params.get('page') || '1') - 1);
+    perPage = Math.max(1, Number(params.get('per_page') || perPage));
+  }
+
+  function syncUrlState() {
+    if (typeof window === 'undefined') return;
+
+    const url = new URL(window.location.href);
+    if (q.trim()) url.searchParams.set('q', q.trim());
+    else url.searchParams.delete('q');
+
+    if (statusFilter !== 'all') url.searchParams.set('status', statusFilter);
+    else url.searchParams.delete('status');
+
+    if (page > 0) url.searchParams.set('page', String(page + 1));
+    else url.searchParams.delete('page');
+
+    if (perPage !== 10) url.searchParams.set('per_page', String(perPage));
+    else url.searchParams.delete('per_page');
+
+    window.history.replaceState(window.history.state, '', url);
+  }
+
+  async function refreshCustomers(options: { sync?: boolean } = {}) {
+    if (options.sync !== false) syncUrlState();
     await Promise.all([load(), loadCustomerSummary()]);
+  }
+
+  async function setStatusFilter(next: CustomerStatusFilter) {
+    if (statusFilter === next) return;
+    statusFilter = next;
+    page = 0;
+    await refreshCustomers();
   }
 
   async function load() {
     loading = true;
     error = '';
     try {
-      const res: PaginatedResponse<Customer> = await api.customers.list({
+      const res: PaginatedResponse<CustomerListItem> = await api.customers.list({
         q,
+        status: statusFilter,
         page: page + 1,
         perPage,
       });
@@ -132,6 +181,34 @@
   function openCustomer(c: Customer) {
     const base = $pageStore.url.pathname.replace(/\/$/, '');
     goto(`${base}/${c.id}`);
+  }
+
+  function serviceStatusLabel(c: CustomerListItem) {
+    if (c.service_status === 'active') return `${c.active_subscriptions} active`;
+    if (c.service_status === 'inactive') return `${c.subscription_count} inactive`;
+    return 'No service';
+  }
+
+  function adminBasePath() {
+    return $pageStore.url.pathname.replace(/\/admin\/customers\/?$/, '/admin');
+  }
+
+  function openAddService(c: CustomerListItem) {
+    const base = $pageStore.url.pathname.replace(/\/$/, '');
+    goto(`${base}/${c.id}#subscriptions`);
+  }
+
+  function openCreateInvoice(c: CustomerListItem) {
+    goto(`${adminBasePath()}/invoices?customer_id=${encodeURIComponent(c.id)}`);
+  }
+
+  function openWhatsApp(c: CustomerListItem) {
+    if (!c.phone) {
+      toast.error('Customer phone is not set');
+      return;
+    }
+    const digits = c.phone.replace(/[^\d+]/g, '');
+    window.open(`https://wa.me/${digits.replace(/^\+/, '')}`, '_blank', 'noopener,noreferrer');
   }
 
   async function createCustomer() {
@@ -380,7 +457,7 @@
       </p>
     </div>
     <div class="header-actions">
-      <button class="btn btn-secondary" onclick={refreshCustomers} disabled={loading}>
+      <button class="btn btn-secondary" onclick={() => refreshCustomers()} disabled={loading}>
         <Icon name="refresh-cw" size={16} />
         {$t('common.refresh') || 'Refresh'}
       </button>
@@ -398,24 +475,38 @@
   </div>
 
   <div class="stats-grid">
-    <StatsCard
-      title={$t('admin.customers.stats.total') || 'Total'}
-      value={stats.total}
-      icon="users"
-      color="blue"
-    />
-    <StatsCard
-      title={$t('admin.customers.stats.active') || 'Active'}
-      value={stats.active}
-      icon="check-circle"
-      color="green"
-    />
-    <StatsCard
-      title={$t('admin.customers.stats.inactive') || 'Inactive'}
-      value={stats.inactive}
-      icon="x-circle"
-      color="orange"
-    />
+    <button class="stat-filter" class:active={statusFilter === 'all'} onclick={() => setStatusFilter('all')}>
+      <StatsCard
+        title={$t('admin.customers.stats.total') || 'Total'}
+        value={stats.total}
+        icon="users"
+        color="blue"
+      />
+    </button>
+    <button
+      class="stat-filter"
+      class:active={statusFilter === 'active'}
+      onclick={() => setStatusFilter('active')}
+    >
+      <StatsCard
+        title={$t('admin.customers.stats.active') || 'Active'}
+        value={stats.active}
+        icon="check-circle"
+        color="green"
+      />
+    </button>
+    <button
+      class="stat-filter"
+      class:active={statusFilter === 'inactive'}
+      onclick={() => setStatusFilter('inactive')}
+    >
+      <StatsCard
+        title={$t('admin.customers.stats.inactive') || 'Inactive'}
+        value={stats.inactive}
+        icon="x-circle"
+        color="orange"
+      />
+    </button>
   </div>
 
   <div class="card table-card">
@@ -424,9 +515,25 @@
       placeholder={$t('admin.customers.search') || 'Search customers...'}
       onsearch={() => {
         page = 0;
-        load();
+        refreshCustomers();
       }}
     >
+      {#snippet filters()}
+        <div class="filter-segment" aria-label="Customer status filter">
+          <button class:active={statusFilter === 'all'} onclick={() => setStatusFilter('all')}>
+            All
+          </button>
+          <button class:active={statusFilter === 'active'} onclick={() => setStatusFilter('active')}>
+            Active
+          </button>
+          <button
+            class:active={statusFilter === 'inactive'}
+            onclick={() => setStatusFilter('inactive')}
+          >
+            Inactive
+          </button>
+        </div>
+      {/snippet}
       {#snippet actions()}
         <span class="muted">
           {total}
@@ -454,16 +561,16 @@
       count={total}
       onchange={(p) => {
         page = p;
-        load();
+        refreshCustomers();
       }}
       onpageSizeChange={(s) => {
         perPage = s;
         page = 0;
-        load();
+        refreshCustomers();
       }}
     >
       {#snippet cell({ item, key })}
-        {@const c = item as Customer}
+        {@const c = item as CustomerListItem}
         {#if key === 'name'}
           {#if isSystemImportPlaceholder(c)}
             <div>
@@ -489,6 +596,19 @@
           {:else}
             <span class="pill pill-gray">{$t('common.inactive') || 'Inactive'}</span>
           {/if}
+        {:else if key === 'service'}
+          <div>
+            <span
+              class="pill"
+              class:pill-green={c.service_status === 'active'}
+              class:pill-gray={c.service_status === 'none'}
+            >
+              {serviceStatusLabel(c)}
+            </span>
+            {#if c.subscription_count > 0 && c.active_subscriptions !== c.subscription_count}
+              <div class="sub">{c.subscription_count} total services</div>
+            {/if}
+          </div>
         {:else if key === 'updated_at'}
           <span class="mono">{new Date(c.updated_at).toLocaleString()}</span>
         {:else if key === 'actions'}
@@ -503,6 +623,28 @@
               </button>
             {/if}
             {#if canManageCustomers && !isSystemImportPlaceholder(c)}
+              <button
+                class="btn-icon"
+                title="Add service"
+                onclick={() => openAddService(c)}
+              >
+                <Icon name="wifi" size={16} />
+              </button>
+              <button
+                class="btn-icon"
+                title="Create invoice"
+                onclick={() => openCreateInvoice(c)}
+              >
+                <Icon name="receipt" size={16} />
+              </button>
+              <button
+                class="btn-icon"
+                title="Send WhatsApp"
+                disabled={!c.phone}
+                onclick={() => openWhatsApp(c)}
+              >
+                <Icon name="message-circle" size={16} />
+              </button>
               <button
                 class="btn-icon danger"
                 title={$t('common.delete') || 'Delete'}
@@ -843,8 +985,51 @@
     margin-bottom: 1rem;
   }
 
+  .stat-filter {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    border-radius: var(--radius-lg);
+  }
+
+  .stat-filter.active {
+    outline: 2px solid color-mix(in srgb, var(--color-primary) 42%, transparent);
+    outline-offset: 2px;
+  }
+
   .table-card {
     padding: 1.25rem;
+  }
+
+  .filter-segment {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-surface);
+    padding: 0.25rem;
+  }
+
+  .filter-segment button {
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 9px;
+    padding: 0.45rem 0.7rem;
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .filter-segment button.active {
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .error-banner {
@@ -890,6 +1075,7 @@
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
+    flex-wrap: wrap;
   }
 
   .btn-icon {
@@ -903,6 +1089,11 @@
 
   .btn-icon:hover {
     background: var(--bg-hover);
+  }
+
+  .btn-icon:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
   }
 
   .btn-icon.danger {
@@ -1100,6 +1291,12 @@
     }
     .header-actions {
       justify-content: stretch;
+    }
+    .filter-segment {
+      width: 100%;
+    }
+    .filter-segment button {
+      flex: 1;
     }
     .grid2 {
       grid-template-columns: 1fr;

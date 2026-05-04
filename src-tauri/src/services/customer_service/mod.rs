@@ -20,7 +20,7 @@ use crate::models::{
     CreateCustomerRegistrationInviteRequest, CreateCustomerRequest,
     CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
     CreateMyCustomerLocationRequest, Customer, CustomerLifecycleAgingBucket,
-    CustomerLifecycleObservability, CustomerLifecycleStageMetric, CustomerLocation,
+    CustomerLifecycleObservability, CustomerLifecycleStageMetric, CustomerListItem, CustomerLocation,
     CustomerPortalSubscriptionStats, CustomerPortalUser, CustomerRegistrationInviteCreateResponse,
     CustomerRegistrationInvitePolicy, CustomerRegistrationInviteSummary,
     CustomerRegistrationInviteValidationView, CustomerRegistrationInviteView, CustomerSubscription,

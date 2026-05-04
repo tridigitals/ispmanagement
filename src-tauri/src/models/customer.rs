@@ -16,6 +16,22 @@ pub struct Customer {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct CustomerListItem {
+    pub id: String,
+    pub tenant_id: String,
+    pub name: String,
+    pub email: Option<String>,
+    pub phone: Option<String>,
+    pub notes: Option<String>,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub subscription_count: i64,
+    pub active_subscriptions: i64,
+    pub service_status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct CustomerSummary {
     pub total: i64,
     pub active: i64,

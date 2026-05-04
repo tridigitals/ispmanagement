@@ -5,8 +5,9 @@ use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
     CreateCustomerRegistrationInviteRequest, CreateCustomerRequest,
     CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
-    CreateMyCustomerLocationRequest, Customer, CustomerLifecycleObservability, CustomerLocation,
-    CustomerPortalSubscriptionStats, CustomerPortalUser, CustomerRegistrationInviteCreateResponse,
+    CreateMyCustomerLocationRequest, Customer, CustomerLifecycleObservability, CustomerListItem,
+    CustomerLocation, CustomerPortalSubscriptionStats, CustomerPortalUser,
+    CustomerRegistrationInviteCreateResponse,
     CustomerRegistrationInvitePolicy, CustomerRegistrationInviteSummary,
     CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionOption,
     CustomerSubscriptionView, CustomerSummary, InstallationWorkOrder, InstallationWorkOrderView,
@@ -148,6 +149,7 @@ async fn require_permission(
 #[derive(Debug, Deserialize)]
 struct ListQuery {
     q: Option<String>,
+    status: Option<String>,
     page: Option<u32>,
     per_page: Option<u32>,
 }
@@ -207,7 +209,7 @@ async fn list_customers(
     State(state): State<AppState>,
     headers: HeaderMap,
     Query(q): Query<ListQuery>,
-) -> AppResult<Json<PaginatedResponse<Customer>>> {
+) -> AppResult<Json<PaginatedResponse<CustomerListItem>>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     require_permission(&state, &claims, &tenant_id, "customers", "read").await?;
     let resp = state
@@ -216,6 +218,7 @@ async fn list_customers(
             &claims.sub,
             &tenant_id,
             q.q,
+            q.status,
             q.page.unwrap_or(1),
             q.per_page.unwrap_or(25),
         )

@@ -323,6 +323,12 @@ export interface Customer {
   updated_at: string;
 }
 
+export interface CustomerListItem extends Customer {
+  subscription_count: number;
+  active_subscriptions: number;
+  service_status: 'active' | 'inactive' | 'none' | string;
+}
+
 export interface CustomerSummary {
   total: number;
   active: number;

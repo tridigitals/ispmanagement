@@ -44,36 +44,87 @@ impl CustomerService {
         actor_id: &str,
         tenant_id: &str,
         q: Option<String>,
+        status: Option<String>,
         page: u32,
         per_page: u32,
-    ) -> AppResult<PaginatedResponse<Customer>> {
+    ) -> AppResult<PaginatedResponse<CustomerListItem>> {
         self.auth_service
             .check_permission(actor_id, tenant_id, "customers", "read")
             .await?;
 
         let q = q.unwrap_or_default().trim().to_string();
+        let status = match status.unwrap_or_default().trim() {
+            "active" => "active".to_string(),
+            "inactive" => "inactive".to_string(),
+            _ => String::new(),
+        };
         let offset = (page.saturating_sub(1)) * per_page;
 
         #[cfg(feature = "postgres")]
         let query = r#"
             SELECT
                 c.*,
+                COALESCE(svc.subscription_count, 0) AS subscription_count,
+                COALESCE(svc.active_subscriptions, 0) AS active_subscriptions,
+                CASE
+                    WHEN COALESCE(svc.active_subscriptions, 0) > 0 THEN 'active'
+                    WHEN COALESCE(svc.subscription_count, 0) > 0 THEN 'inactive'
+                    ELSE 'none'
+                END AS service_status,
                 COUNT(*) OVER() AS total_count
             FROM customers c
+            LEFT JOIN LATERAL (
+                SELECT
+                    COUNT(*)::bigint AS subscription_count,
+                    COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)::bigint AS active_subscriptions
+                FROM customer_subscriptions cs
+                WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
+            ) svc ON TRUE
             WHERE c.tenant_id = $1
               AND ($2 = '' OR c.name ILIKE '%' || $2 || '%' OR c.email ILIKE '%' || $2 || '%')
+              AND ($3 = '' OR ($3 = 'active' AND c.is_active) OR ($3 = 'inactive' AND NOT c.is_active))
             ORDER BY c.created_at DESC
-            LIMIT $3 OFFSET $4
+            LIMIT $4 OFFSET $5
         "#;
 
         #[cfg(feature = "sqlite")]
         let query = r#"
             SELECT
                 c.*,
-                (SELECT COUNT(*) FROM customers cc WHERE cc.tenant_id = ? AND (? = '' OR cc.name LIKE '%' || ? || '%' OR cc.email LIKE '%' || ? || '%')) AS total_count
+                (
+                    SELECT COUNT(*)
+                    FROM customer_subscriptions cs
+                    WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
+                ) AS subscription_count,
+                (
+                    SELECT COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)
+                    FROM customer_subscriptions cs
+                    WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
+                ) AS active_subscriptions,
+                CASE
+                    WHEN (
+                        SELECT COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)
+                        FROM customer_subscriptions cs
+                        WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
+                    ) > 0 THEN 'active'
+                    WHEN (
+                        SELECT COUNT(*)
+                        FROM customer_subscriptions cs
+                        WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
+                    ) > 0 THEN 'inactive'
+                    ELSE 'none'
+                END AS service_status,
+                (
+                    SELECT COUNT(*)
+                    FROM customers cc
+                    WHERE cc.tenant_id = ?
+                      AND (? = '' OR cc.name LIKE '%' || ? || '%' OR cc.email LIKE '%' || ? || '%')
+                      AND (? = '' OR (? = 'active' AND cc.is_active = 1) OR (? = 'inactive' AND cc.is_active = 0))
+                ) AS total_count
             FROM customers c
             WHERE c.tenant_id = ?
               AND (? = '' OR c.name LIKE '%' || ? || '%' OR c.email LIKE '%' || ? || '%')
+              AND (? = '' OR (? = 'active' AND c.is_active = 1) OR (? = 'inactive' AND c.is_active = 0))
             ORDER BY c.created_at DESC
             LIMIT ? OFFSET ?
         "#;
@@ -81,7 +132,7 @@ impl CustomerService {
         #[derive(sqlx::FromRow)]
         struct Row {
             #[sqlx(flatten)]
-            customer: Customer,
+            customer: CustomerListItem,
             total_count: i64,
         }
 
@@ -89,6 +140,7 @@ impl CustomerService {
         let rows: Vec<Row> = sqlx::query_as(query)
             .bind(tenant_id)
             .bind(&q)
+            .bind(&status)
             .bind(per_page as i64)
             .bind(offset as i64)
             .fetch_all(&self.pool)
@@ -100,10 +152,16 @@ impl CustomerService {
             .bind(&q)
             .bind(&q)
             .bind(&q)
+            .bind(&status)
+            .bind(&status)
+            .bind(&status)
             .bind(tenant_id)
             .bind(&q)
             .bind(&q)
             .bind(&q)
+            .bind(&status)
+            .bind(&status)
+            .bind(&status)
             .bind(per_page as i64)
             .bind(offset as i64)
             .fetch_all(&self.pool)

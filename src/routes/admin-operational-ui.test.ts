@@ -64,4 +64,17 @@ describe('admin operational UI cleanup', () => {
     expect(source).not.toContain('active: customers.filter((c) => c.is_active).length');
     expect(source).not.toContain('inactive: customers.filter((c) => !c.is_active).length');
   });
+
+  it('keeps customer index filters, stats, service context, and quick actions operational', () => {
+    const source = readSource('src/routes/(app)/admin/customers/+page.svelte');
+
+    expect(source).toContain("let statusFilter = $state<CustomerStatusFilter>('all')");
+    expect(source).toContain('syncUrlState');
+    expect(source).toContain('setStatusFilter');
+    expect(source).toContain("key: 'service'");
+    expect(source).toContain('serviceStatusLabel');
+    expect(source).toContain('openAddService');
+    expect(source).toContain('openCreateInvoice');
+    expect(source).toContain('openWhatsApp');
+  });
 });

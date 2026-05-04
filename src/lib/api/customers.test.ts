@@ -44,6 +44,21 @@ describe('customers api wrapper', () => {
     });
   });
 
+  it('passes customer status filters through to the paginated list', async () => {
+    safeInvoke.mockResolvedValue({ data: [], total: 0, page: 1, per_page: 10 });
+
+    const { customers } = await import('./customers');
+    await customers.list({ q: 'andi', page: 2, perPage: 25, status: 'active' });
+
+    expect(safeInvoke).toHaveBeenCalledWith('list_customers', {
+      token: 'token-123',
+      q: 'andi',
+      page: 2,
+      per_page: 25,
+      status: 'active',
+    });
+  });
+
   it('accepts installation_done_awaiting_payment in the lifecycle contract', async () => {
     safeInvoke.mockResolvedValue({
       generated_at: '2026-03-18T11:00:00Z',

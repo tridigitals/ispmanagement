@@ -1,6 +1,7 @@
 import { getTokenOrThrow, safeInvoke } from './core';
 import type {
   Customer,
+  CustomerListItem,
   CustomerLifecycleObservability,
   CustomerLocation,
   CustomerPortalCheckoutResponse,
@@ -25,12 +26,14 @@ export const customers = {
     q?: string;
     page?: number;
     perPage?: number;
-  }): Promise<PaginatedResponse<Customer>> =>
+    status?: 'all' | 'active' | 'inactive';
+  }): Promise<PaginatedResponse<CustomerListItem>> =>
     safeInvoke('list_customers', {
       token: getTokenOrThrow(),
       q: params?.q,
       page: params?.page,
       per_page: params?.perPage,
+      status: params?.status,
     }),
 
   summary: (): Promise<CustomerSummary> =>
