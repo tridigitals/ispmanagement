@@ -204,6 +204,17 @@ impl RoleService {
             ("email_outbox", "read", "View email outbox"),
             ("email_outbox", "retry", "Retry outbox items"),
             ("email_outbox", "delete", "Delete outbox items"),
+            // Communication templates
+            (
+                "communication_templates",
+                "read",
+                "View WhatsApp and email message templates",
+            ),
+            (
+                "communication_templates",
+                "manage",
+                "Manage WhatsApp and email message templates",
+            ),
         ]
     }
 
@@ -281,6 +292,8 @@ impl RoleService {
                     "email_outbox:read",
                     "email_outbox:retry",
                     "email_outbox:delete",
+                    "communication_templates:read",
+                    "communication_templates:manage",
                 ],
             ),
             (
@@ -350,6 +363,8 @@ impl RoleService {
                     "email_outbox:read",
                     "email_outbox:retry",
                     "email_outbox:delete",
+                    "communication_templates:read",
+                    "communication_templates:manage",
                 ],
             ),
             (
@@ -431,6 +446,8 @@ impl RoleService {
                     "support:assign",
                     "support:internal",
                     "announcements:read",
+                    "communication_templates:read",
+                    "communication_templates:manage",
                 ],
             ),
             (

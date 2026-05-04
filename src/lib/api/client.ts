@@ -3,9 +3,11 @@ import { audit } from './audit';
 import { auth } from './auth';
 import { backup } from './backup';
 import { customers } from './customers';
+import { customerCommunication } from './customerCommunication';
 import { emailOutbox } from './emailOutbox';
 import { install } from './install';
 import { ispPackages } from './ispPackages';
+import { messageTemplates } from './messageTemplates';
 import { mikrotik } from './mikrotik';
 import { mixradiusImport } from './mixradiusImport';
 import { networkMapping } from './networkMapping';
@@ -29,9 +31,11 @@ export { audit } from './audit';
 export { auth } from './auth';
 export { backup } from './backup';
 export { customers } from './customers';
+export { customerCommunication } from './customerCommunication';
 export { emailOutbox } from './emailOutbox';
 export { install } from './install';
 export { ispPackages } from './ispPackages';
+export { messageTemplates } from './messageTemplates';
 export { mikrotik } from './mikrotik';
 export { mixradiusImport } from './mixradiusImport';
 export { networkMapping } from './networkMapping';
@@ -58,10 +62,12 @@ export const api = {
   roles,
   team,
   customers,
+  customerCommunication,
   whatsapp,
   workOrders,
   pppoe,
   ispPackages,
+  messageTemplates,
   networkMapping,
   superadmin,
   audit,

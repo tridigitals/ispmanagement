@@ -192,6 +192,87 @@
       }
     }
   },
+  "message_templates": {
+    "subtitle": "Build granular WhatsApp and email templates for manual and automated communication.",
+    "search": "Search templates...",
+    "loading": "Loading templates...",
+    "empty": "No message templates yet.",
+    "confirm_delete": "Delete template \"{name}\"?",
+    "actions": {
+      "new": "New Template",
+      "refresh": "Refresh",
+      "preview": "Preview",
+      "previewing": "Previewing...",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving..."
+    },
+    "filters": {
+      "all_use_cases": "All use cases",
+      "all_channels": "All channels",
+      "all_statuses": "All statuses"
+    },
+    "use_cases": {
+      "billing": "Billing",
+      "installation": "Installation",
+      "support": "Support",
+      "outage": "Outage",
+      "lifecycle": "Lifecycle",
+      "custom": "Custom"
+    },
+    "channels": {
+      "both": "Both"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "active": "Active",
+      "archived": "Archived"
+    },
+    "triggers": {
+      "manual": "Manual",
+      "automatic": "Automatic",
+      "both": "Both"
+    },
+    "fields": {
+      "key": "Key",
+      "name": "Name",
+      "description": "Description",
+      "use_case": "Use Case",
+      "channel": "Channel",
+      "status": "Status",
+      "trigger": "Trigger",
+      "event_key": "Event Key",
+      "whatsapp_body": "WhatsApp Body",
+      "email_subject": "Email Subject",
+      "email_body": "Email Body"
+    },
+    "editor": {
+      "new_title": "New Template",
+      "edit_title": "Edit Template",
+      "content_title": "Template content",
+      "content_hint": "Use variables for customer-specific messages. Keep WhatsApp concise and email more complete.",
+      "draft_badge": "Draft"
+    },
+    "variables": {
+      "title": "Variable Picker",
+      "hint": "Click a token to insert it into the active channel body.",
+      "tenant": "Tenant",
+      "customer": "Customer"
+    },
+    "preview": {
+      "title": "Preview",
+      "variables": "Variables"
+    },
+    "toasts": {
+      "load_failed": "Failed to load message templates",
+      "required": "Template key and name are required",
+      "saved": "Message template saved",
+      "save_failed": "Failed to save message template",
+      "deleted": "Message template deleted",
+      "delete_failed": "Failed to delete message template",
+      "preview_failed": "Template preview failed"
+    }
+  },
   "settings": {
     "title": "Global Settings",
     "subtitle": "Manage application configuration, security, and integrations.",
@@ -444,6 +525,42 @@
     "read_only_hint": "This role can review customer records, but customer management actions are disabled.",
     "actions": {
       "new": "New customer"
+    },
+    "communication": {
+      "actions": {
+        "open_whatsapp_app": "Open WhatsApp App",
+        "send": "Send",
+        "send_email": "Send Email",
+        "send_whatsapp": "Send WhatsApp",
+        "sending": "Sending..."
+      },
+      "body": "Body",
+      "characters": "characters",
+      "custom_email": "Custom email",
+      "custom_message": "Custom message",
+      "email_body_required": "Email body is required",
+      "email_outbox": "Email outbox",
+      "email_queued": "Email queued",
+      "email_send_failed": "Failed to send email",
+      "email_subject_required": "Email subject is required",
+      "fallback_email_body": "Hello {name},\n\nWe would like to contact you about your internet service.\n\nThank you.",
+      "fallback_email_subject": "Service information for {name}",
+      "fallback_whatsapp": "Hello {name}, Tri Digitals would like to contact you about your internet service.",
+      "gateway_not_ready": "Gateway not ready",
+      "gateway_ready": "ready",
+      "load_templates_failed": "Failed to load message templates",
+      "message": "Message",
+      "phone_not_set": "Customer phone is not set",
+      "email_not_set": "Customer email is not set",
+      "queued_through_outbox": "Queued through email outbox",
+      "subject": "Subject",
+      "template": "Template",
+      "title_email": "Send Email",
+      "title_whatsapp": "Send WhatsApp",
+      "whatsapp_body_required": "WhatsApp message is required",
+      "whatsapp_failed": "WhatsApp gateway failed to send message",
+      "whatsapp_send_failed": "Failed to send WhatsApp message",
+      "whatsapp_sent": "WhatsApp message sent"
     },
     "search": "Search customers...",
     "results": "results",

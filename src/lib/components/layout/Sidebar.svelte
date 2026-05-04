@@ -263,6 +263,8 @@
               $can('read', 'settings') ||
               $can('read', 'audit_logs') ||
               $can('read_all', 'support') ||
+              $can('read', 'communication_templates') ||
+              $can('manage', 'communication_templates') ||
               $can('read', 'email_outbox'),
           },
           {
@@ -396,6 +398,14 @@
             icon: 'folder',
             href: `${tenantPrefix}/admin/storage`,
             show: $can('read', 'storage_console'),
+          },
+          {
+            label: $t('sidebar.message_templates') || 'Message Templates',
+            icon: 'message-square',
+            href: `${tenantPrefix}/admin/message-templates`,
+            show:
+              $can('read', 'communication_templates') ||
+              $can('manage', 'communication_templates'),
           },
           {
             label: $t('sidebar.email_outbox') || 'Email Outbox',

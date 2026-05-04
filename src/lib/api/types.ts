@@ -901,3 +901,93 @@ export interface WhatsAppTestSendResponse {
   status?: number | null;
   error?: string | null;
 }
+
+export interface WhatsAppGatewayReadiness {
+  ready: boolean;
+  provider: WhatsAppGatewayProvider | string;
+  reason?: string | null;
+}
+
+export interface WhatsAppCustomerSendRequest {
+  customerId: string;
+  message: string;
+  template?: string;
+  templateId?: string | null;
+}
+
+export interface CustomerEmailSendRequest {
+  customerId: string;
+  subject: string;
+  body: string;
+  templateId?: string | null;
+}
+
+export interface CustomerEmailSendResponse {
+  ok: boolean;
+  queued: boolean;
+}
+
+export type MessageTemplateChannel = 'whatsapp' | 'email' | 'both';
+export type MessageTemplateStatus = 'draft' | 'active' | 'archived';
+export type MessageTemplateTriggerMode = 'manual' | 'automatic' | 'both';
+
+export interface MessageTemplate {
+  id: string;
+  tenant_id: string;
+  key: string;
+  name: string;
+  description?: string | null;
+  use_case: string;
+  target: string;
+  trigger_mode: MessageTemplateTriggerMode | string;
+  event_key?: string | null;
+  channel: MessageTemplateChannel | string;
+  locale: string;
+  status: MessageTemplateStatus | string;
+  whatsapp_body?: string | null;
+  email_subject?: string | null;
+  email_body?: string | null;
+  variables: string[];
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MessageTemplateListFilters {
+  q?: string;
+  useCase?: string;
+  channel?: MessageTemplateChannel | 'all';
+  status?: MessageTemplateStatus | 'all';
+  target?: string;
+  triggerMode?: MessageTemplateTriggerMode | 'all';
+}
+
+export interface MessageTemplatePayload {
+  key: string;
+  name: string;
+  description?: string | null;
+  useCase: string;
+  target: string;
+  triggerMode: MessageTemplateTriggerMode | string;
+  eventKey?: string | null;
+  channel: MessageTemplateChannel | string;
+  locale?: string | null;
+  status: MessageTemplateStatus | string;
+  whatsappBody?: string | null;
+  emailSubject?: string | null;
+  emailBody?: string | null;
+}
+
+export interface MessageTemplatePreviewRequest {
+  whatsappBody?: string | null;
+  emailSubject?: string | null;
+  emailBody?: string | null;
+  context: Record<string, any>;
+}
+
+export interface MessageTemplatePreviewResponse {
+  whatsappBody?: string | null;
+  emailSubject?: string | null;
+  emailBody?: string | null;
+  variables: string[];
+}

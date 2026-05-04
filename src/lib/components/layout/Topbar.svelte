@@ -27,6 +27,7 @@
       ['/admin/audit-logs', $t('topbar.titles.audit_logs') || 'Audit Logs'],
       ['/admin/team', $t('topbar.titles.team') || 'Team'],
       ['/admin/roles', $t('topbar.titles.roles') || 'Roles'],
+      ['/admin/message-templates', $t('topbar.titles.message_templates') || 'Message Templates'],
       ['/admin/settings', $t('topbar.titles.global_settings') || 'Settings'],
       ['/admin/storage', $t('topbar.titles.storage') || 'Storage'],
       ['/admin/subscription', $t('topbar.titles.subscription') || 'Subscription'],

@@ -348,8 +348,17 @@ pub fn run() {
                                     unsubscribe_push,
                                     send_test,
                                     // WhatsApp gateway
+                                    get_whatsapp_gateway_readiness,
                                     list_whatsapp_events,
+                                    send_customer_whatsapp,
                                     send_test_whatsapp,
+                                    send_customer_email,
+                                    // Communication templates
+                                    list_message_templates,
+                                    create_message_template,
+                                    update_message_template,
+                                    delete_message_template,
+                                    preview_message_template,
                                     // Email Outbox (Admin)
                                     list_email_outbox,
                                     get_email_outbox_stats,

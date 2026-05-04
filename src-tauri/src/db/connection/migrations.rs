@@ -711,6 +711,234 @@ pub(super) async fn run_migrations_sqlite(pool: &DbPool) -> Result<(), sqlx::Err
     .await
     .ok();
 
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS message_templates (
+            id TEXT PRIMARY KEY NOT NULL,
+            tenant_id TEXT NOT NULL,
+            key TEXT NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            use_case TEXT NOT NULL DEFAULT 'custom',
+            target TEXT NOT NULL DEFAULT 'customer',
+            trigger_mode TEXT NOT NULL DEFAULT 'manual',
+            event_key TEXT,
+            channel TEXT NOT NULL DEFAULT 'whatsapp',
+            locale TEXT NOT NULL DEFAULT 'id-ID',
+            status TEXT NOT NULL DEFAULT 'draft',
+            whatsapp_body TEXT,
+            email_subject TEXT,
+            email_body TEXT,
+            variables TEXT NOT NULL DEFAULT '[]',
+            version INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(tenant_id, key),
+            FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_message_templates_tenant_updated ON message_templates(tenant_id, updated_at DESC)",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_message_templates_tenant_filters ON message_templates(tenant_id, status, channel, target, trigger_mode)",
+    )
+    .execute(pool)
+    .await
+    .ok();
+
+    sqlx::query(
+        r#"
+        WITH default_templates AS (
+            SELECT
+                'billing_payment_reminder' AS key,
+                'Billing - Friendly Payment Reminder' AS name,
+                'A polite manual reminder for customers who need a payment follow-up.' AS description,
+                'billing' AS use_case,
+                'manual' AS trigger_mode,
+                'billing.payment_reminder' AS event_key,
+                'both' AS channel,
+                'active' AS status,
+                'Halo {{customer.name}}, kami dari {{tenant.name}} ingin mengingatkan tagihan layanan internet Anda.
+
+Jika sudah melakukan pembayaran, abaikan pesan ini. Jika membutuhkan bantuan, balas pesan ini agar tim kami bisa membantu.' AS whatsapp_body,
+                'Pengingat pembayaran layanan {{tenant.name}}' AS email_subject,
+                'Halo {{customer.name}},
+
+Kami dari {{tenant.name}} ingin mengingatkan tagihan layanan internet Anda.
+
+Jika pembayaran sudah dilakukan, email ini dapat diabaikan. Jika ada kendala pembayaran atau membutuhkan bantuan, silakan hubungi tim kami melalui channel resmi.
+
+Terima kasih,
+{{tenant.name}}' AS email_body,
+                '["tenant.name","customer.name"]' AS variables
+            UNION ALL SELECT
+                'billing_overdue_followup',
+                'Billing - Overdue Follow-up',
+                'A firmer follow-up for overdue billing without sounding aggressive.',
+                'billing',
+                'manual',
+                'billing.overdue_followup',
+                'both',
+                'active',
+                'Halo {{customer.name}}, kami dari {{tenant.name}} mencatat pembayaran layanan Anda masih perlu ditindaklanjuti.
+
+Mohon lakukan pembayaran atau hubungi kami jika ada kendala, agar layanan tetap berjalan dengan baik.',
+                'Tindak lanjut pembayaran layanan {{tenant.name}}',
+                'Halo {{customer.name}},
+
+Kami mencatat pembayaran layanan Anda masih perlu ditindaklanjuti.
+
+Mohon lakukan pembayaran melalui metode yang tersedia. Jika ada kendala, balas email ini atau hubungi tim kami agar kami dapat membantu pengecekan.
+
+Terima kasih,
+{{tenant.name}}',
+                '["tenant.name","customer.name"]'
+            UNION ALL SELECT
+                'installation_schedule_confirmation',
+                'Installation - Schedule Confirmation',
+                'Confirm installation readiness and keep the customer informed before field work.',
+                'installation',
+                'manual',
+                'installation.schedule_confirmation',
+                'both',
+                'active',
+                'Halo {{customer.name}}, tim {{tenant.name}} akan menindaklanjuti jadwal instalasi layanan Anda.
+
+Mohon pastikan lokasi dapat diakses dan nomor ini aktif untuk koordinasi teknisi. Jika ada perubahan jadwal, balas pesan ini.',
+                'Konfirmasi jadwal instalasi {{tenant.name}}',
+                'Halo {{customer.name}},
+
+Tim {{tenant.name}} akan menindaklanjuti jadwal instalasi layanan Anda.
+
+Mohon pastikan lokasi dapat diakses, ada PIC yang dapat ditemui, dan nomor kontak tetap aktif untuk koordinasi teknisi. Jika ada perubahan jadwal atau akses lokasi, silakan balas email ini agar tim kami dapat menyesuaikan kunjungan.
+
+Terima kasih,
+{{tenant.name}}',
+                '["tenant.name","customer.name"]'
+            UNION ALL SELECT
+                'installation_completed',
+                'Installation - Completed Handoff',
+                'Send after installation is completed to guide the customer on the next step.',
+                'installation',
+                'manual',
+                'installation.completed',
+                'both',
+                'active',
+                'Halo {{customer.name}}, instalasi layanan {{tenant.name}} sudah selesai.
+
+Silakan coba koneksi internet Anda. Jika ada kendala, balas pesan ini agar tim kami dapat membantu pengecekan.',
+                'Instalasi layanan {{tenant.name}} selesai',
+                'Halo {{customer.name}},
+
+Instalasi layanan {{tenant.name}} sudah selesai.
+
+Silakan coba koneksi internet Anda. Jika ada kendala setelah instalasi, hubungi tim kami dengan menjelaskan gejala yang dialami agar pengecekan dapat dilakukan lebih cepat.
+
+Terima kasih,
+{{tenant.name}}',
+                '["tenant.name","customer.name"]'
+            UNION ALL SELECT
+                'outage_customer_notice',
+                'Outage - Customer Notice',
+                'Notify customers about an incident while keeping the message calm and concise.',
+                'outage',
+                'manual',
+                'network.outage_notice',
+                'both',
+                'active',
+                'Halo {{customer.name}}, saat ini tim {{tenant.name}} sedang menangani gangguan layanan di beberapa area.
+
+Kami akan menginformasikan pembaruan berikutnya setelah pengecekan selesai. Terima kasih atas kesabarannya.',
+                'Informasi gangguan layanan {{tenant.name}}',
+                'Halo {{customer.name}},
+
+Saat ini tim {{tenant.name}} sedang menangani gangguan layanan di beberapa area.
+
+Tim teknis sedang melakukan pengecekan dan kami akan menginformasikan pembaruan berikutnya setelah ada perkembangan. Terima kasih atas pengertian dan kesabarannya.
+
+Hormat kami,
+{{tenant.name}}',
+                '["tenant.name","customer.name"]'
+            UNION ALL SELECT
+                'support_followup',
+                'Support - Follow-up Check',
+                'A clean follow-up message after a support case is handled.',
+                'support',
+                'manual',
+                'support.followup',
+                'both',
+                'active',
+                'Halo {{customer.name}}, kami dari {{tenant.name}} ingin memastikan kendala Anda sudah terbantu.
+
+Jika masih ada masalah, balas pesan ini agar tim support dapat melanjutkan pengecekan.',
+                'Follow-up bantuan dari {{tenant.name}}',
+                'Halo {{customer.name}},
+
+Kami ingin memastikan kendala Anda sudah terbantu oleh tim {{tenant.name}}.
+
+Jika masih ada masalah atau membutuhkan bantuan lanjutan, silakan balas email ini dengan detail kendala yang dialami.
+
+Terima kasih,
+{{tenant.name}}',
+                '["tenant.name","customer.name"]'
+        )
+        INSERT OR IGNORE INTO message_templates (
+            id,
+            tenant_id,
+            key,
+            name,
+            description,
+            use_case,
+            target,
+            trigger_mode,
+            event_key,
+            channel,
+            locale,
+            status,
+            whatsapp_body,
+            email_subject,
+            email_body,
+            variables,
+            version,
+            created_at,
+            updated_at
+        )
+        SELECT
+            'seed_tpl_' || replace(t.id, '-', '') || '_' || d.key,
+            t.id,
+            d.key,
+            d.name,
+            d.description,
+            d.use_case,
+            'customer',
+            d.trigger_mode,
+            d.event_key,
+            d.channel,
+            'id-ID',
+            d.status,
+            d.whatsapp_body,
+            d.email_subject,
+            d.email_body,
+            d.variables,
+            1,
+            datetime('now'),
+            datetime('now')
+        FROM tenants t
+        CROSS JOIN default_templates d
+        "#,
+    )
+    .execute(pool)
+    .await
+    .ok();
+
     seed_defaults(pool).await?;
     seed_roles(pool).await?;
 

@@ -1,8 +1,8 @@
 use crate::services::{
     AuditService, AuthService, CustomerService, EmailService, IspPackageService,
-    ManagedRadiusService, MikrotikService, MixradiusImportService, NetworkMappingService,
-    NotificationService, PaymentService, PlanService, PppoeService, RoleService, SettingsService,
-    StorageService, SystemService, TeamService, UserService,
+    ManagedRadiusService, MessageTemplateService, MikrotikService, MixradiusImportService,
+    NetworkMappingService, NotificationService, PaymentService, PlanService, PppoeService,
+    RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
 };
 use axum::{
     extract::DefaultBodyLimit,
@@ -26,10 +26,11 @@ use std::path::PathBuf;
 use std::{collections::HashMap, time::Instant};
 
 use crate::http::{
-    announcements, audit, auth, backup, customers, email_outbox, install, isp_packages, middleware,
-    mikrotik, mixradius_import, network_mapping, notifications, payment, plans, pppoe, public,
-    roles, settings, storage, superadmin, support, system, team, tenant, users, websocket,
-    whatsapp, work_orders, AppState, SecurityRuntimeConfig, WsHub,
+    announcements, audit, auth, backup, customer_communication, customers, email_outbox, install,
+    isp_packages, message_templates, middleware, mikrotik, mixradius_import, network_mapping,
+    notifications, payment, plans, pppoe, public, roles, settings, storage, superadmin, support,
+    system, team, tenant, users, websocket, whatsapp, work_orders, AppState, SecurityRuntimeConfig,
+    WsHub,
 };
 
 type IpBlockMap = HashMap<String, chrono::DateTime<chrono::Utc>>;
@@ -182,6 +183,7 @@ pub async fn start_server_impl(
         payment_service: Arc::new(payment_service.clone()),
         notification_service: Arc::new(notification_service),
         mikrotik_service: Arc::new(mikrotik_service),
+        message_template_service: Arc::new(MessageTemplateService::new(pool.clone())),
         managed_radius_service: Arc::new(ManagedRadiusService::new(pool.clone())),
         mixradius_import_service: Arc::new(MixradiusImportService::new(pool.clone())),
         customer_service: Arc::new(customer_service),
@@ -479,7 +481,15 @@ pub async fn start_server_impl(
         .nest("/api/notifications", notifications::router())
         // WhatsApp gateway settings/test delivery
         .route("/api/whatsapp/events", get(whatsapp::list_events))
+        .route("/api/whatsapp/readiness", get(whatsapp::readiness))
+        .route("/api/whatsapp/customer-send", post(whatsapp::customer_send))
         .route("/api/whatsapp/test-send", post(whatsapp::test_send))
+        .route(
+            "/api/customer-communication/email-send",
+            post(customer_communication::send_customer_email),
+        )
+        // Communication templates
+        .nest("/api/message-templates", message_templates::router())
         // Email Outbox (admin monitor)
         .nest("/api/email-outbox", email_outbox::router())
         // MikroTik routers (tenant admin)

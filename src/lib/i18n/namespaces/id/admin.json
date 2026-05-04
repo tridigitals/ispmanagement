@@ -192,12 +192,129 @@
       }
     }
   },
+  "message_templates": {
+    "subtitle": "Bangun template WhatsApp dan email yang granular untuk komunikasi manual maupun otomatis.",
+    "search": "Cari template...",
+    "loading": "Memuat template...",
+    "empty": "Belum ada template pesan.",
+    "confirm_delete": "Hapus template \"{name}\"?",
+    "actions": {
+      "new": "Template baru",
+      "refresh": "Refresh",
+      "preview": "Preview",
+      "previewing": "Membuat preview...",
+      "cancel": "Batal",
+      "save": "Simpan",
+      "saving": "Menyimpan..."
+    },
+    "filters": {
+      "all_use_cases": "Semua use case",
+      "all_channels": "Semua channel",
+      "all_statuses": "Semua status"
+    },
+    "use_cases": {
+      "billing": "Billing",
+      "installation": "Instalasi",
+      "support": "Support",
+      "outage": "Gangguan",
+      "lifecycle": "Lifecycle",
+      "custom": "Custom"
+    },
+    "channels": {
+      "both": "Keduanya"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "active": "Aktif",
+      "archived": "Diarsipkan"
+    },
+    "triggers": {
+      "manual": "Manual",
+      "automatic": "Otomatis",
+      "both": "Keduanya"
+    },
+    "fields": {
+      "key": "Key",
+      "name": "Nama",
+      "description": "Deskripsi",
+      "use_case": "Use Case",
+      "channel": "Channel",
+      "status": "Status",
+      "trigger": "Trigger",
+      "event_key": "Event Key",
+      "whatsapp_body": "Isi WhatsApp",
+      "email_subject": "Subject Email",
+      "email_body": "Isi Email"
+    },
+    "editor": {
+      "new_title": "Template Baru",
+      "edit_title": "Edit Template",
+      "content_title": "Konten template",
+      "content_hint": "Gunakan variable agar pesan mengikuti data pelanggan. WhatsApp dibuat ringkas, email bisa lebih lengkap.",
+      "draft_badge": "Draft"
+    },
+    "variables": {
+      "title": "Variable Picker",
+      "hint": "Klik token untuk memasukkannya ke body channel aktif.",
+      "tenant": "Tenant",
+      "customer": "Pelanggan"
+    },
+    "preview": {
+      "title": "Preview",
+      "variables": "Variable"
+    },
+    "toasts": {
+      "load_failed": "Gagal memuat template pesan",
+      "required": "Key dan nama template wajib diisi",
+      "saved": "Template pesan disimpan",
+      "save_failed": "Gagal menyimpan template pesan",
+      "deleted": "Template pesan dihapus",
+      "delete_failed": "Gagal menghapus template pesan",
+      "preview_failed": "Preview template gagal"
+    }
+  },
   "customers": {
     "title": "Pelanggan",
     "subtitle": "Kelola data pelanggan dan lokasi layanan.",
     "read_only_hint": "Role ini bisa meninjau data pelanggan, tetapi aksi pengelolaan pelanggan dinonaktifkan.",
     "actions": {
       "new": "Pelanggan baru"
+    },
+    "communication": {
+      "actions": {
+        "open_whatsapp_app": "Buka WhatsApp App",
+        "send": "Kirim",
+        "send_email": "Kirim Email",
+        "send_whatsapp": "Kirim WhatsApp",
+        "sending": "Mengirim..."
+      },
+      "body": "Isi pesan",
+      "characters": "karakter",
+      "custom_email": "Email custom",
+      "custom_message": "Pesan custom",
+      "email_body_required": "Isi email wajib diisi",
+      "email_outbox": "Outbox email",
+      "email_queued": "Email masuk antrian",
+      "email_send_failed": "Gagal mengirim email",
+      "email_subject_required": "Subjek email wajib diisi",
+      "fallback_email_body": "Halo {name},\n\nKami ingin menghubungi Anda terkait layanan internet Anda.\n\nTerima kasih.",
+      "fallback_email_subject": "Informasi layanan {name}",
+      "fallback_whatsapp": "Halo {name}, kami dari Tri Digitals ingin menghubungi Anda terkait layanan internet.",
+      "gateway_not_ready": "Gateway belum siap",
+      "gateway_ready": "siap",
+      "load_templates_failed": "Gagal memuat template pesan",
+      "message": "Pesan",
+      "phone_not_set": "Nomor telepon pelanggan belum diisi",
+      "email_not_set": "Email pelanggan belum diisi",
+      "queued_through_outbox": "Dikirim lewat outbox email",
+      "subject": "Subjek",
+      "template": "Template",
+      "title_email": "Kirim Email",
+      "title_whatsapp": "Kirim WhatsApp",
+      "whatsapp_body_required": "Pesan WhatsApp wajib diisi",
+      "whatsapp_failed": "Gateway WhatsApp gagal mengirim pesan",
+      "whatsapp_send_failed": "Gagal mengirim pesan WhatsApp",
+      "whatsapp_sent": "Pesan WhatsApp terkirim"
     },
     "search": "Cari pelanggan...",
     "results": "hasil",

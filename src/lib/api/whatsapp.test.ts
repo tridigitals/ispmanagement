@@ -44,4 +44,34 @@ describe('whatsapp api wrapper', () => {
       token: 'token-123',
     });
   });
+
+  it('checks gateway readiness with the auth token', async () => {
+    safeInvoke.mockResolvedValue({ ready: true, provider: 'fonnte', reason: null });
+    const { whatsapp } = await import('./whatsapp');
+
+    await whatsapp.readiness();
+
+    expect(safeInvoke).toHaveBeenCalledWith('get_whatsapp_gateway_readiness', {
+      token: 'token-123',
+    });
+  });
+
+  it('sends customer WhatsApp messages through the gateway', async () => {
+    safeInvoke.mockResolvedValue({ ok: true, provider: 'fonnte', status: 200 });
+    const { whatsapp } = await import('./whatsapp');
+
+    await whatsapp.sendCustomer({
+      customerId: 'cust-1',
+      message: 'Halo Andi',
+      template: 'custom',
+    });
+
+    expect(safeInvoke).toHaveBeenCalledWith('send_customer_whatsapp', {
+      token: 'token-123',
+      customer_id: 'cust-1',
+      customerId: 'cust-1',
+      message: 'Halo Andi',
+      template: 'custom',
+    });
+  });
 });

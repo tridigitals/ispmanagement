@@ -13,6 +13,8 @@ const iconAliases: Record<string, string> = {
   layers: 'layers-3',
   link: 'link-2',
   logout: 'log-out',
+  'message-square': 'message-circle',
+  pencil: 'square-pen',
   profile: 'user',
   'sidebar-toggle': 'panel-left',
   trash: 'trash-2',

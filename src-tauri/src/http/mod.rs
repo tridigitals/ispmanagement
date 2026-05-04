@@ -1,8 +1,9 @@
 use crate::services::{
     AuditService, AuthService, CustomerService, EmailService, IspPackageService,
-    ManagedRadiusService, MikrotikService, MixradiusImportService, NetworkMappingService,
-    NotificationService, PaymentService, PlanService, PppoeService, RoleService, SettingsService,
-    StorageService, SystemService, TeamService, UserService, WhatsappGatewayService,
+    ManagedRadiusService, MessageTemplateService, MikrotikService, MixradiusImportService,
+    NetworkMappingService, NotificationService, PaymentService, PlanService, PppoeService,
+    RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
+    WhatsappGatewayService,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -14,10 +15,12 @@ pub mod announcements_support_common;
 pub mod audit;
 pub mod auth;
 pub mod backup;
+pub mod customer_communication;
 pub mod customers;
 pub mod email_outbox;
 pub mod install;
 pub mod isp_packages;
+pub mod message_templates;
 pub mod middleware;
 pub mod mikrotik;
 pub mod mixradius_import;
@@ -71,6 +74,7 @@ pub struct AppState {
     pub payment_service: Arc<PaymentService>,
     pub notification_service: Arc<NotificationService>,
     pub whatsapp_gateway_service: Arc<WhatsappGatewayService>,
+    pub message_template_service: Arc<MessageTemplateService>,
     pub mikrotik_service: Arc<MikrotikService>,
     pub managed_radius_service: Arc<ManagedRadiusService>,
     pub mixradius_import_service: Arc<MixradiusImportService>,

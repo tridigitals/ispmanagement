@@ -133,6 +133,11 @@
     if (path.startsWith('/admin/customers')) {
       return $can('read', 'customers') || $can('manage', 'customers');
     }
+    if (path.startsWith('/admin/message-templates')) {
+      return (
+        $can('read', 'communication_templates') || $can('manage', 'communication_templates')
+      );
+    }
     if (path.startsWith('/admin/invoices')) {
       return $can('read', 'billing') || $can('manage', 'billing');
     }

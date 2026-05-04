@@ -33,6 +33,7 @@
     "audit_logs": "Audit Logs",
     "system": "System",
     "support": "Support",
+    "message_templates": "Message Templates",
     "default": "Workspace"
   }
 }

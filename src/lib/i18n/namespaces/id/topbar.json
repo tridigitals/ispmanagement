@@ -33,6 +33,7 @@
     "audit_logs": "Log Audit",
     "system": "Sistem",
     "support": "Dukungan",
+    "message_templates": "Template Pesan",
     "default": "Ruang Kerja"
   }
 }

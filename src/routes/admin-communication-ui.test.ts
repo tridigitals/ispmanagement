@@ -26,4 +26,17 @@ describe('admin communication UI cleanup', () => {
       expect(source, file).toContain('var(--bg-surface)');
     }
   });
+
+  it('exposes a restrained responsive message template builder with RBAC guard', () => {
+    const source = readSource('src/routes/(app)/admin/message-templates/+page.svelte');
+
+    expect(source).toContain("canManageTemplates");
+    expect(source).toContain("communication_templates");
+    expect(source).toContain("messageTemplates.list");
+    expect(source).toContain("messageTemplates.preview");
+    expect(source).toContain("Variable");
+    expect(source).toContain("@media (max-width: 720px)");
+    expect(source).not.toMatch(/(?:linear|radial)-gradient/);
+    expect(source).not.toContain('backdrop-filter');
+  });
 });

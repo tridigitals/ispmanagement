@@ -121,6 +121,7 @@ pub async fn initialize_backend<R: tauri::Runtime>(
 
     let whatsapp_gateway_service =
         crate::services::WhatsappGatewayService::new(pool.clone(), settings_service.clone());
+    let message_template_service = crate::services::MessageTemplateService::new(pool.clone());
     let notification_service = NotificationService::new_with_whatsapp(
         pool.clone(),
         ws_hub.clone(),
@@ -186,6 +187,7 @@ pub async fn initialize_backend<R: tauri::Runtime>(
     app_handle.manage(payment_service.clone());
     app_handle.manage(notification_service.clone());
     app_handle.manage(whatsapp_gateway_service.clone());
+    app_handle.manage(message_template_service.clone());
     app_handle.manage(email_outbox_service.clone());
     app_handle.manage(mikrotik_service.clone());
     app_handle.manage(managed_radius_service.clone());

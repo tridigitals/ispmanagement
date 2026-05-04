@@ -63,6 +63,23 @@ pub struct WhatsappTestSendResponse {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WhatsappGatewayReadiness {
+    pub ready: bool,
+    pub provider: String,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WhatsappCustomerSendRequest {
+    pub customer_id: String,
+    pub message: String,
+    pub template: Option<String>,
+    pub template_id: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct WhatsappDeliveryLog {

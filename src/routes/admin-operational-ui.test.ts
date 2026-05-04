@@ -86,7 +86,12 @@ describe('admin operational UI cleanup', () => {
     expect(source).toContain('mobile-customer-list');
     expect(source).toContain('openAddService');
     expect(source).toContain('openCreateInvoice');
-    expect(source).toContain('openWhatsApp');
+    expect(source).toContain('openWhatsAppCompose');
+    expect(source).toContain('sendCustomerWhatsApp');
+    expect(source).toContain('whatsappGatewayReady');
+    expect(source).toContain('whatsapp.sendCustomer');
+    expect(source).toContain('messageTemplates.list');
+    expect(source).toContain('selectedMessageTemplateId');
   });
 
   it('keeps customer backend service filters set-based', () => {

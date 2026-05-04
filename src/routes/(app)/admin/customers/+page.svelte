@@ -14,6 +14,7 @@
     type CustomerRegistrationInviteSummary,
     type CustomerRegistrationInviteView,
     type CustomerSummary,
+    type MessageTemplate,
     type PaginatedResponse,
   } from '$lib/api/client';
 
@@ -88,6 +89,23 @@
   let invitePolicyExpiresInHours = $state(24);
   let invitePolicyMaxUses = $state(1);
   let inviteSummary = $state<CustomerRegistrationInviteSummary | null>(null);
+  let whatsappGatewayReady = $state(false);
+  let whatsappGatewayReason = $state('WhatsApp gateway is not configured');
+  let whatsappGatewayProvider = $state('');
+  let whatsappSending = $state(false);
+  let showWhatsAppCompose = $state(false);
+  let whatsappTarget = $state<CustomerListItem | null>(null);
+  let whatsappTemplate = $state('greeting');
+  let whatsappMessage = $state('');
+  let messageTemplateOptions = $state<MessageTemplate[]>([]);
+  let emailTemplateOptions = $state<MessageTemplate[]>([]);
+  let selectedMessageTemplateId = $state('custom');
+  let emailSending = $state(false);
+  let showEmailCompose = $state(false);
+  let emailTarget = $state<CustomerListItem | null>(null);
+  let selectedEmailTemplateId = $state('custom');
+  let emailSubject = $state('');
+  let emailBody = $state('');
   const canReadCustomers = $derived($can('read', 'customers') || $can('manage', 'customers'));
   const canManageCustomers = $derived($can('manage', 'customers'));
 
@@ -107,6 +125,8 @@
     hydrateUrlState();
     await Promise.all([
       canManageCustomers ? loadInvites() : Promise.resolve(),
+      canManageCustomers ? loadWhatsAppReadiness() : Promise.resolve(),
+      canManageCustomers ? loadMessageTemplates() : Promise.resolve(),
       load(),
       loadCustomerSummary(),
     ]);
@@ -270,13 +290,213 @@
     goto(`${adminBasePath()}/invoices?customer_id=${encodeURIComponent(c.id)}`);
   }
 
-  function openWhatsApp(c: CustomerListItem) {
+  async function loadWhatsAppReadiness() {
+    try {
+      const readiness = await api.whatsapp.readiness();
+      whatsappGatewayReady = readiness.ready;
+      whatsappGatewayReason = readiness.reason || '';
+      whatsappGatewayProvider = readiness.provider || '';
+    } catch (e: any) {
+      whatsappGatewayReady = false;
+      whatsappGatewayReason = e?.message || 'Failed to check WhatsApp gateway';
+      whatsappGatewayProvider = '';
+    }
+  }
+
+  async function loadMessageTemplates() {
+    try {
+      messageTemplateOptions = await api.messageTemplates.list({
+        channel: 'whatsapp',
+        status: 'active',
+        target: 'customer',
+        triggerMode: 'manual',
+      });
+      emailTemplateOptions = await api.messageTemplates.list({
+        channel: 'email',
+        status: 'active',
+        target: 'customer',
+        triggerMode: 'manual',
+      });
+    } catch (e: any) {
+      messageTemplateOptions = [];
+      emailTemplateOptions = [];
+      toast.error(e?.message || $t('admin.customers.communication.load_templates_failed'));
+    }
+  }
+
+  function openWhatsAppApp(c: CustomerListItem) {
     if (!c.phone) {
-      toast.error('Customer phone is not set');
+      toast.error($t('admin.customers.communication.phone_not_set'));
       return;
     }
     const digits = c.phone.replace(/[^\d+]/g, '');
     window.open(`https://wa.me/${digits.replace(/^\+/, '')}`, '_blank', 'noopener,noreferrer');
+  }
+
+  function whatsappActionTitle(c: CustomerListItem) {
+    if (!c.phone) return $t('admin.customers.communication.phone_not_set');
+    if (!whatsappGatewayReady)
+      return whatsappGatewayReason || $t('admin.customers.communication.gateway_not_ready');
+    return $t('admin.customers.communication.actions.send_whatsapp');
+  }
+
+  function emailActionTitle(c: CustomerListItem) {
+    if (!c.email) return $t('admin.customers.communication.email_not_set');
+    return $t('admin.customers.communication.actions.send_email');
+  }
+
+  function buildWhatsAppTemplate(c: CustomerListItem, template: string) {
+    const savedTemplate = messageTemplateOptions.find((item) => item.id === template);
+    if (savedTemplate?.whatsapp_body) {
+      return renderCustomerTemplate(savedTemplate.whatsapp_body, c);
+    }
+    if (template === 'payment_reminder') {
+      return `Halo ${c.name}, kami ingin mengingatkan tagihan layanan internet Anda. Jika sudah melakukan pembayaran, mohon abaikan pesan ini. Terima kasih.`;
+    }
+    if (template === 'installation_followup') {
+      return `Halo ${c.name}, kami ingin konfirmasi jadwal instalasi layanan internet Anda. Mohon balas pesan ini jika ada perubahan jadwal.`;
+    }
+    if (template === 'service_check') {
+      return `Halo ${c.name}, kami ingin memastikan layanan internet Anda berjalan normal. Jika ada kendala, silakan balas pesan ini.`;
+    }
+    if (template === 'custom') {
+      return whatsappMessage;
+    }
+    return `Halo ${c.name}, kami dari Tri Digitals ingin menghubungi Anda terkait layanan internet.`;
+  }
+
+  function buildEmailTemplate(c: CustomerListItem, templateId: string) {
+    const savedTemplate = emailTemplateOptions.find((item) => item.id === templateId);
+    if (savedTemplate) {
+      return {
+        subject: renderCustomerTemplate(savedTemplate.email_subject || '', c),
+        body: renderCustomerTemplate(savedTemplate.email_body || '', c),
+      };
+    }
+    if (templateId === 'custom') {
+      return { subject: emailSubject, body: emailBody };
+    }
+    return {
+      subject: ($t('admin.customers.communication.fallback_email_subject') || '').replace('{name}', c.name),
+      body: ($t('admin.customers.communication.fallback_email_body') || '').replace('{name}', c.name),
+    };
+  }
+
+  function renderCustomerTemplate(body: string, c: CustomerListItem) {
+    const values: Record<string, string> = {
+      'customer.id': c.id,
+      'customer.name': c.name,
+      'customer.email': c.email || '',
+      'customer.phone': c.phone || '',
+      'customer.status': c.is_active ? 'active' : 'inactive',
+      'customer.notes': c.notes || '',
+    };
+    return body.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, key) => values[key] ?? '');
+  }
+
+  function applyWhatsAppTemplate(template = whatsappTemplate) {
+    if (!whatsappTarget) return;
+    whatsappTemplate = template;
+    selectedMessageTemplateId = template;
+    whatsappMessage = buildWhatsAppTemplate(whatsappTarget, template);
+  }
+
+  function openWhatsAppCompose(c: CustomerListItem) {
+    if (!c.phone) {
+      toast.error($t('admin.customers.communication.phone_not_set'));
+      return;
+    }
+    if (!whatsappGatewayReady) {
+      toast.error(whatsappGatewayReason || $t('admin.customers.communication.gateway_not_ready'));
+      return;
+    }
+
+    whatsappTarget = c;
+    showWhatsAppCompose = true;
+    applyWhatsAppTemplate(messageTemplateOptions[0]?.id || 'custom');
+  }
+
+  function applyEmailTemplate(templateId = selectedEmailTemplateId) {
+    if (!emailTarget) return;
+    selectedEmailTemplateId = templateId;
+    const next = buildEmailTemplate(emailTarget, templateId);
+    emailSubject = next.subject;
+    emailBody = next.body;
+  }
+
+  function openEmailCompose(c: CustomerListItem) {
+    if (!c.email) {
+      toast.error($t('admin.customers.communication.email_not_set'));
+      return;
+    }
+    emailTarget = c;
+    showEmailCompose = true;
+    applyEmailTemplate(emailTemplateOptions[0]?.id || 'custom');
+  }
+
+  async function sendCustomerEmail() {
+    if (!emailTarget || emailSending) return;
+    const subject = emailSubject.trim();
+    const body = emailBody.trim();
+    if (!subject) {
+      toast.error($t('admin.customers.communication.email_subject_required'));
+      return;
+    }
+    if (!body) {
+      toast.error($t('admin.customers.communication.email_body_required'));
+      return;
+    }
+
+    emailSending = true;
+    try {
+      await api.customerCommunication.sendEmail({
+        customerId: emailTarget.id,
+        templateId: selectedEmailTemplateId === 'custom' ? null : selectedEmailTemplateId,
+        subject,
+        body,
+      });
+      toast.success($t('admin.customers.communication.email_queued'));
+      showEmailCompose = false;
+      emailTarget = null;
+      emailSubject = '';
+      emailBody = '';
+    } catch (e: any) {
+      toast.error(e?.message || $t('admin.customers.communication.email_send_failed'));
+    } finally {
+      emailSending = false;
+    }
+  }
+
+  async function sendCustomerWhatsApp() {
+    if (!whatsappTarget || whatsappSending) return;
+    const message = whatsappMessage.trim();
+    if (!message) {
+      toast.error($t('admin.customers.communication.whatsapp_body_required'));
+      return;
+    }
+
+    whatsappSending = true;
+    try {
+      const result = await api.whatsapp.sendCustomer({
+        customerId: whatsappTarget.id,
+        message,
+        template: whatsappTemplate,
+        templateId: selectedMessageTemplateId === 'custom' ? null : selectedMessageTemplateId,
+      });
+      if (!result.ok) {
+        toast.error(result.error || $t('admin.customers.communication.whatsapp_failed'));
+        return;
+      }
+      toast.success($t('admin.customers.communication.whatsapp_sent'));
+      showWhatsAppCompose = false;
+      whatsappTarget = null;
+      whatsappMessage = '';
+    } catch (e: any) {
+      toast.error(e?.message || $t('admin.customers.communication.whatsapp_send_failed'));
+    } finally {
+      whatsappSending = false;
+      await loadWhatsAppReadiness();
+    }
   }
 
   async function createCustomer() {
@@ -713,11 +933,19 @@
                 </button>
                 <button
                   class="btn-icon"
-                  title="Send WhatsApp"
-                  disabled={!c.phone}
-                  onclick={() => openWhatsApp(c)}
+                  title={whatsappActionTitle(c)}
+                  disabled={!c.phone || !whatsappGatewayReady}
+                  onclick={() => openWhatsAppCompose(c)}
                 >
                   <Icon name="message-circle" size={16} />
+                </button>
+                <button
+                  class="btn-icon"
+                  title={emailActionTitle(c)}
+                  disabled={!c.email}
+                  onclick={() => openEmailCompose(c)}
+                >
+                  <Icon name="mail" size={16} />
                 </button>
                 <button
                   class="btn-icon danger"
@@ -841,11 +1069,19 @@
                 </button>
                 <button
                   class="btn-icon"
-                  title="Send WhatsApp"
-                  disabled={!c.phone}
-                  onclick={() => openWhatsApp(c)}
+                  title={whatsappActionTitle(c)}
+                  disabled={!c.phone || !whatsappGatewayReady}
+                  onclick={() => openWhatsAppCompose(c)}
                 >
                   <Icon name="message-circle" size={16} />
+                </button>
+                <button
+                  class="btn-icon"
+                  title={emailActionTitle(c)}
+                  disabled={!c.email}
+                  onclick={() => openEmailCompose(c)}
+                >
+                  <Icon name="mail" size={16} />
                 </button>
                 <button
                   class="btn-icon danger"
@@ -1092,6 +1328,137 @@
             {/if}
           </div>
         {/each}
+      </div>
+    {/if}
+  </div>
+</Modal>
+
+<Modal
+  show={showWhatsAppCompose}
+  title={$t('admin.customers.communication.title_whatsapp') || 'Send WhatsApp'}
+  onclose={() => {
+    showWhatsAppCompose = false;
+    whatsappTarget = null;
+  }}
+>
+  <div class="form">
+    {#if whatsappTarget}
+      <div class="compose-target">
+        <div>
+          <strong>{whatsappTarget.name}</strong>
+          <span>{whatsappTarget.phone}</span>
+        </div>
+        <span class="pill" class:pill-green={whatsappGatewayReady}>
+          {whatsappGatewayReady
+            ? `${whatsappGatewayProvider || 'gateway'} ${$t('admin.customers.communication.gateway_ready') || 'ready'}`
+            : whatsappGatewayReason || $t('admin.customers.communication.gateway_not_ready') || 'Gateway not ready'}
+        </span>
+      </div>
+      <label>
+        <span>{$t('admin.customers.communication.template') || 'Template'}</span>
+        <select
+          class="input"
+          bind:value={selectedMessageTemplateId}
+          onchange={(event) => applyWhatsAppTemplate(event.currentTarget.value)}
+        >
+          {#each messageTemplateOptions as template}
+            <option value={template.id}>{template.name}</option>
+          {/each}
+          <option value="custom">{$t('admin.customers.communication.custom_message') || 'Custom message'}</option>
+        </select>
+      </label>
+      <label>
+        <span>{$t('admin.customers.communication.message') || 'Message'}</span>
+        <textarea class="input" rows="7" bind:value={whatsappMessage}></textarea>
+      </label>
+      <div class="compose-footnote">
+        <span>{whatsappMessage.trim().length} {$t('admin.customers.communication.characters') || 'characters'}</span>
+        {#if !whatsappGatewayReady}
+          <span>{whatsappGatewayReason}</span>
+        {/if}
+      </div>
+      <div class="actions">
+        <button class="btn btn-secondary" onclick={() => whatsappTarget && openWhatsAppApp(whatsappTarget)}>
+          <Icon name="external-link" size={16} />
+          {$t('admin.customers.communication.actions.open_whatsapp_app') || 'Open WhatsApp App'}
+        </button>
+        <button
+          class="btn btn-primary"
+          onclick={sendCustomerWhatsApp}
+          disabled={!whatsappGatewayReady || whatsappSending || !whatsappMessage.trim()}
+        >
+          <Icon name="send" size={16} />
+          {whatsappSending
+            ? $t('admin.customers.communication.actions.sending') || 'Sending...'
+            : $t('admin.customers.communication.actions.send') || 'Send'}
+        </button>
+      </div>
+    {/if}
+  </div>
+</Modal>
+
+<Modal
+  show={showEmailCompose}
+  title={$t('admin.customers.communication.title_email') || 'Send Email'}
+  onclose={() => {
+    showEmailCompose = false;
+    emailTarget = null;
+  }}
+>
+  <div class="form">
+    {#if emailTarget}
+      <div class="compose-target">
+        <div>
+          <strong>{emailTarget.name}</strong>
+          <span>{emailTarget.email}</span>
+        </div>
+        <span class="pill pill-green">{$t('admin.customers.communication.email_outbox') || 'Email outbox'}</span>
+      </div>
+      <label>
+        <span>{$t('admin.customers.communication.template') || 'Template'}</span>
+        <select
+          class="input"
+          bind:value={selectedEmailTemplateId}
+          onchange={(event) => applyEmailTemplate(event.currentTarget.value)}
+        >
+          {#each emailTemplateOptions as template}
+            <option value={template.id}>{template.name}</option>
+          {/each}
+          <option value="custom">{$t('admin.customers.communication.custom_email') || 'Custom email'}</option>
+        </select>
+      </label>
+      <label>
+        <span>{$t('admin.customers.communication.subject') || 'Subject'}</span>
+        <input class="input" bind:value={emailSubject} />
+      </label>
+      <label>
+        <span>{$t('admin.customers.communication.body') || 'Body'}</span>
+        <textarea class="input" rows="9" bind:value={emailBody}></textarea>
+      </label>
+      <div class="compose-footnote">
+        <span>{emailBody.trim().length} {$t('admin.customers.communication.characters') || 'characters'}</span>
+        <span>{$t('admin.customers.communication.queued_through_outbox') || 'Queued through email outbox'}</span>
+      </div>
+      <div class="actions">
+        <button
+          class="btn btn-secondary"
+          onclick={() => {
+            showEmailCompose = false;
+            emailTarget = null;
+          }}
+        >
+          {$t('common.cancel') || 'Cancel'}
+        </button>
+        <button
+          class="btn btn-primary"
+          onclick={sendCustomerEmail}
+          disabled={emailSending || !emailSubject.trim() || !emailBody.trim()}
+        >
+          <Icon name="send" size={16} />
+          {emailSending
+            ? $t('admin.customers.communication.actions.sending') || 'Sending...'
+            : $t('admin.customers.communication.actions.send_email') || 'Send Email'}
+        </button>
       </div>
     {/if}
   </div>
@@ -1450,6 +1817,40 @@
     gap: 0.75rem;
   }
 
+  .compose-target {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-surface);
+    padding: 0.8rem;
+  }
+
+  .compose-target div {
+    min-width: 0;
+  }
+
+  .compose-target strong,
+  .compose-target div span {
+    display: block;
+  }
+
+  .compose-target div span {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    overflow-wrap: anywhere;
+  }
+
+  .compose-footnote {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+  }
+
   .actions {
     display: flex;
     justify-content: flex-end;
@@ -1601,6 +2002,12 @@
     }
     .grid2 {
       grid-template-columns: 1fr;
+    }
+    .compose-target,
+    .compose-footnote,
+    .actions {
+      flex-direction: column;
+      align-items: stretch;
     }
     .invite-summary-grid {
       grid-template-columns: 1fr 1fr;

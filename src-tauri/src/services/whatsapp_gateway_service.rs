@@ -1,7 +1,7 @@
 use crate::error::{AppError, AppResult};
 use crate::models::whatsapp::{
-    WhatsappEventDefinition, WhatsappEventScope, WhatsappGatewayConfig, WhatsappHttpMethod,
-    WhatsappProvider, WhatsappTestSendResponse,
+    WhatsappEventDefinition, WhatsappEventScope, WhatsappGatewayConfig, WhatsappGatewayReadiness,
+    WhatsappHttpMethod, WhatsappProvider, WhatsappTestSendResponse,
 };
 use crate::services::SettingsService;
 use std::collections::HashMap;
@@ -9,6 +9,14 @@ use uuid::Uuid;
 
 const FONNTE_DEFAULT_BASE_URL: &str = "https://api.fonnte.com/send";
 const TRIWAX_SEND_URL: &str = "https://api.triwax.com/api/external/v1/send";
+
+async fn setting_value(
+    svc: &SettingsService,
+    tenant_id: Option<&str>,
+    key: &str,
+) -> AppResult<String> {
+    Ok(svc.get_value(tenant_id, key).await?.unwrap_or_default())
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WhatsappGatewayRequest {
@@ -298,27 +306,21 @@ impl WhatsappGatewayService {
     }
 
     pub async fn load_config(&self, tenant_id: Option<&str>) -> AppResult<WhatsappGatewayConfig> {
-        async fn setting(
-            svc: &SettingsService,
-            tenant_id: Option<&str>,
-            key: &str,
-        ) -> AppResult<String> {
-            Ok(svc.get_value(tenant_id, key).await?.unwrap_or_default())
-        }
-
-        let provider = match setting(&self.settings_service, tenant_id, "wa_gateway_provider")
+        let enabled =
+            setting_value(&self.settings_service, tenant_id, "wa_gateway_enabled").await? == "true";
+        let provider = match setting_value(&self.settings_service, tenant_id, "wa_gateway_provider")
             .await?
             .as_str()
         {
-            "fonnte" => WhatsappProvider::Fonnte,
-            "triwax" => WhatsappProvider::Triwax,
+            "fonnte" if enabled => WhatsappProvider::Fonnte,
+            "triwax" if enabled => WhatsappProvider::Triwax,
             _ => WhatsappProvider::Disabled,
         };
 
         Ok(WhatsappGatewayConfig {
             provider,
             fonnte_base_url: Some(
-                setting(
+                setting_value(
                     &self.settings_service,
                     tenant_id,
                     "wa_gateway_fonnte_base_url",
@@ -326,10 +328,10 @@ impl WhatsappGatewayService {
                 .await?,
             ),
             fonnte_token: Some(
-                setting(&self.settings_service, tenant_id, "wa_gateway_fonnte_token").await?,
+                setting_value(&self.settings_service, tenant_id, "wa_gateway_fonnte_token").await?,
             ),
             fonnte_sender: Some(
-                setting(
+                setting_value(
                     &self.settings_service,
                     tenant_id,
                     "wa_gateway_fonnte_sender",
@@ -337,13 +339,65 @@ impl WhatsappGatewayService {
                 .await?,
             ),
             triwax_api_key: Some(
-                setting(
+                setting_value(
                     &self.settings_service,
                     tenant_id,
                     "wa_gateway_triwax_api_key",
                 )
                 .await?,
             ),
+        })
+    }
+
+    pub async fn readiness(&self, tenant_id: Option<&str>) -> AppResult<WhatsappGatewayReadiness> {
+        let enabled =
+            setting_value(&self.settings_service, tenant_id, "wa_gateway_enabled").await? == "true";
+        let configured_provider =
+            setting_value(&self.settings_service, tenant_id, "wa_gateway_provider").await?;
+        let provider = match configured_provider.as_str() {
+            "fonnte" => WhatsappProvider::Fonnte,
+            "triwax" => WhatsappProvider::Triwax,
+            _ => WhatsappProvider::Disabled,
+        };
+        let provider_label = provider_name(provider).to_string();
+
+        if !enabled {
+            return Ok(WhatsappGatewayReadiness {
+                ready: false,
+                provider: provider_label,
+                reason: Some("WhatsApp gateway is disabled".to_string()),
+            });
+        }
+
+        let reason = match provider {
+            WhatsappProvider::Disabled => Some("WhatsApp gateway provider is not selected"),
+            WhatsappProvider::Fonnte => {
+                let token =
+                    setting_value(&self.settings_service, tenant_id, "wa_gateway_fonnte_token")
+                        .await?;
+                token
+                    .trim()
+                    .is_empty()
+                    .then_some("Fonnte token is not configured")
+            }
+            WhatsappProvider::Triwax => {
+                let api_key = setting_value(
+                    &self.settings_service,
+                    tenant_id,
+                    "wa_gateway_triwax_api_key",
+                )
+                .await?;
+                api_key
+                    .trim()
+                    .is_empty()
+                    .then_some("Triwax API key is not configured")
+            }
+        };
+
+        Ok(WhatsappGatewayReadiness {
+            ready: reason.is_none(),
+            provider: provider_label,
+            reason: reason.map(str::to_string),
         })
     }
 
@@ -417,6 +471,19 @@ impl WhatsappGatewayService {
         phone: &str,
         message: &str,
     ) -> AppResult<()> {
+        self.send_text_response(tenant_id, event_code, recipient_user_id, phone, message)
+            .await
+            .map(|_| ())
+    }
+
+    pub async fn send_text_response(
+        &self,
+        tenant_id: Option<&str>,
+        event_code: &str,
+        recipient_user_id: Option<&str>,
+        phone: &str,
+        message: &str,
+    ) -> AppResult<WhatsappTestSendResponse> {
         let config = self.load_config(tenant_id).await?;
         let request = build_gateway_request(&config, phone, message)?;
         let provider = provider_name(config.provider);
@@ -438,16 +505,16 @@ impl WhatsappGatewayService {
         }
 
         let result = req.send().await;
-        let (status, error) = match result {
+        let (delivery_status, http_status, error) = match result {
             Ok(response) => {
                 let status = response.status().as_u16();
                 if request.success_statuses.contains(&status) {
-                    ("sent", None)
+                    ("sent", Some(status), None)
                 } else {
-                    ("failed", Some(format!("HTTP {status}")))
+                    ("failed", Some(status), Some(format!("HTTP {status}")))
                 }
             }
-            Err(err) => ("failed", Some(err.to_string())),
+            Err(err) => ("failed", None, Some(err.to_string())),
         };
 
         self.log_delivery(
@@ -461,10 +528,17 @@ impl WhatsappGatewayService {
             provider,
             recipient_user_id,
             &normalize_phone(phone),
-            status,
-            error,
+            delivery_status,
+            error.clone(),
         )
-        .await
+        .await?;
+
+        Ok(WhatsappTestSendResponse {
+            ok: delivery_status == "sent",
+            provider: provider.to_string(),
+            status: http_status,
+            error,
+        })
     }
 
     pub async fn is_event_whatsapp_enabled(
