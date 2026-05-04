@@ -193,12 +193,8 @@ impl SettingsService {
             }
 
             if k.starts_with("wa_gateway_") {
-                return matches!(
-                    k,
-                    "wa_gateway_fonnte_token"
-                        | "wa_gateway_custom_headers"
-                        | "wa_gateway_custom_body_template"
-                ) || k.contains("token")
+                return matches!(k, "wa_gateway_fonnte_token" | "wa_gateway_triwax_api_key")
+                    || k.contains("token")
                     || k.contains("secret")
                     || k.contains("password");
             }

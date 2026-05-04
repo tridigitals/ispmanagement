@@ -12,11 +12,7 @@ export const WHATSAPP_GATEWAY_SETTING_KEYS = [
   'wa_gateway_fonnte_token',
   'wa_gateway_fonnte_base_url',
   'wa_gateway_fonnte_sender',
-  'wa_gateway_custom_url',
-  'wa_gateway_custom_method',
-  'wa_gateway_custom_headers',
-  'wa_gateway_custom_body_template',
-  'wa_gateway_custom_success_statuses',
+  'wa_gateway_triwax_api_key',
 ] as const;
 
 export const DEFAULT_WHATSAPP_GATEWAY_FORM: WhatsAppGatewayFormState = {
@@ -25,11 +21,7 @@ export const DEFAULT_WHATSAPP_GATEWAY_FORM: WhatsAppGatewayFormState = {
   fonnteToken: '',
   fonnteBaseUrl: '',
   fonnteSender: '',
-  customUrl: '',
-  customMethod: 'POST',
-  customHeaders: '',
-  customBodyTemplate: '',
-  customSuccessStatuses: '200,201,202',
+  triwaxApiKey: '',
 };
 
 export type NotificationChannelReadiness = {
@@ -48,7 +40,7 @@ function readBoolean(settings: WhatsAppGatewaySettingsMap, key: string): boolean
 
 function readProvider(settings: WhatsAppGatewaySettingsMap): WhatsAppGatewayProvider {
   const provider = readString(settings, 'wa_gateway_provider');
-  if (provider === 'fonnte' || provider === 'custom_http') return provider;
+  if (provider === 'fonnte' || provider === 'triwax') return provider;
   return 'disabled';
 }
 
@@ -64,12 +56,7 @@ export function settingsToWhatsAppGatewayForm(
     fonnteToken: readString(settings, 'wa_gateway_fonnte_token'),
     fonnteBaseUrl: readString(settings, 'wa_gateway_fonnte_base_url'),
     fonnteSender: readString(settings, 'wa_gateway_fonnte_sender'),
-    customUrl: readString(settings, 'wa_gateway_custom_url'),
-    customMethod: readString(settings, 'wa_gateway_custom_method') || 'POST',
-    customHeaders: readString(settings, 'wa_gateway_custom_headers'),
-    customBodyTemplate: readString(settings, 'wa_gateway_custom_body_template'),
-    customSuccessStatuses:
-      readString(settings, 'wa_gateway_custom_success_statuses') || '200,201,202',
+    triwaxApiKey: readString(settings, 'wa_gateway_triwax_api_key'),
   };
 }
 
@@ -82,11 +69,7 @@ export function whatsappGatewayFormToSettings(
     wa_gateway_fonnte_token: form.fonnteToken,
     wa_gateway_fonnte_base_url: form.fonnteBaseUrl,
     wa_gateway_fonnte_sender: form.fonnteSender,
-    wa_gateway_custom_url: form.customUrl,
-    wa_gateway_custom_method: form.customMethod,
-    wa_gateway_custom_headers: form.customHeaders,
-    wa_gateway_custom_body_template: form.customBodyTemplate,
-    wa_gateway_custom_success_statuses: form.customSuccessStatuses,
+    wa_gateway_triwax_api_key: form.triwaxApiKey,
   };
 }
 
@@ -142,8 +125,8 @@ function getWhatsAppReadiness(settings: WhatsAppGatewaySettingsMap) {
   if (provider === 'fonnte' && !hasValue(settings, 'wa_gateway_fonnte_token')) {
     return { ready: false, reason: 'Add a Fonnte API token first.' };
   }
-  if (provider === 'custom_http' && !hasValue(settings, 'wa_gateway_custom_url')) {
-    return { ready: false, reason: 'Add a custom WhatsApp endpoint URL first.' };
+  if (provider === 'triwax' && !hasValue(settings, 'wa_gateway_triwax_api_key')) {
+    return { ready: false, reason: 'Add a Triwax API key first.' };
   }
 
   return { ready: true, reason: null };

@@ -379,10 +379,6 @@
     }
     nextWhatsAppSettings['wa_gateway_enabled'] = settingsMap['wa_gateway_enabled'] || 'false';
     nextWhatsAppSettings['wa_gateway_provider'] = settingsMap['wa_gateway_provider'] || 'disabled';
-    nextWhatsAppSettings['wa_gateway_custom_method'] =
-      settingsMap['wa_gateway_custom_method'] || 'POST';
-    nextWhatsAppSettings['wa_gateway_custom_success_statuses'] =
-      settingsMap['wa_gateway_custom_success_statuses'] || '200,201,202';
     nextWhatsAppSettings['wa_events_platform'] = settingsMap['wa_events_platform'] || '{}';
     whatsappSettings = nextWhatsAppSettings;
   }

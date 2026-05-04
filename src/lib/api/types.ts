@@ -851,7 +851,7 @@ export interface InvoiceReminderLogView {
   customer_name: string | null;
 }
 
-export type WhatsAppGatewayProvider = 'disabled' | 'fonnte' | 'custom_http';
+export type WhatsAppGatewayProvider = 'disabled' | 'fonnte' | 'triwax';
 
 export interface WhatsAppGatewayConfig {
   enabled: boolean;
@@ -859,11 +859,7 @@ export interface WhatsAppGatewayConfig {
   fonnte_token?: string | null;
   fonnte_base_url?: string | null;
   fonnte_sender?: string | null;
-  custom_url?: string | null;
-  custom_method?: string | null;
-  custom_headers?: string | null;
-  custom_body_template?: string | null;
-  custom_success_statuses?: string | null;
+  triwax_api_key?: string | null;
 }
 
 export interface WhatsAppGatewayFormState {
@@ -872,11 +868,7 @@ export interface WhatsAppGatewayFormState {
   fonnteToken: string;
   fonnteBaseUrl: string;
   fonnteSender: string;
-  customUrl: string;
-  customMethod: string;
-  customHeaders: string;
-  customBodyTemplate: string;
-  customSuccessStatuses: string;
+  triwaxApiKey: string;
 }
 
 export type WhatsAppGatewaySettingsMap = Record<string, string | null | undefined>;

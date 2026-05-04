@@ -19,7 +19,7 @@ describe('whatsapp gateway settings helpers', () => {
       enabled: false,
       provider: 'disabled',
       fonnteToken: '',
-      customUrl: '',
+      triwaxApiKey: '',
     });
   });
 
@@ -41,53 +41,37 @@ describe('whatsapp gateway settings helpers', () => {
     });
   });
 
-  it('converts custom HTTP settings to form state', () => {
+  it('converts Triwax settings to form state', () => {
     expect(
       settingsToWhatsAppGatewayForm({
         wa_gateway_enabled: 'true',
-        wa_gateway_provider: 'custom_http',
-        wa_gateway_custom_url: 'https://wa.example/send',
-        wa_gateway_custom_method: 'PUT',
-        wa_gateway_custom_headers: '{"Authorization":"Bearer token"}',
-        wa_gateway_custom_body_template: '{"to":"{{phone}}","text":"{{message}}"}',
-        wa_gateway_custom_success_statuses: '200,201,202',
+        wa_gateway_provider: 'triwax',
+        wa_gateway_triwax_api_key: 'triwax-key',
       }),
     ).toMatchObject({
       enabled: true,
-      provider: 'custom_http',
-      customUrl: 'https://wa.example/send',
-      customMethod: 'PUT',
-      customHeaders: '{"Authorization":"Bearer token"}',
-      customBodyTemplate: '{"to":"{{phone}}","text":"{{message}}"}',
-      customSuccessStatuses: '200,201,202',
+      provider: 'triwax',
+      triwaxApiKey: 'triwax-key',
     });
   });
 
   it('serializes form state to the WhatsApp setting keys', () => {
     const form: WhatsAppGatewayFormState = {
       enabled: true,
-      provider: 'custom_http',
+      provider: 'triwax',
       fonnteToken: 'secret-token',
       fonnteBaseUrl: 'https://api.fonnte.com',
       fonnteSender: '62810000000',
-      customUrl: 'https://wa.example/send',
-      customMethod: 'POST',
-      customHeaders: '{"X-Api-Key":"secret"}',
-      customBodyTemplate: '{"target":"{{phone}}","message":"{{message}}"}',
-      customSuccessStatuses: '200,201',
+      triwaxApiKey: 'triwax-key',
     };
 
     expect(whatsappGatewayFormToSettings(form)).toEqual({
       wa_gateway_enabled: 'true',
-      wa_gateway_provider: 'custom_http',
+      wa_gateway_provider: 'triwax',
       wa_gateway_fonnte_token: 'secret-token',
       wa_gateway_fonnte_base_url: 'https://api.fonnte.com',
       wa_gateway_fonnte_sender: '62810000000',
-      wa_gateway_custom_url: 'https://wa.example/send',
-      wa_gateway_custom_method: 'POST',
-      wa_gateway_custom_headers: '{"X-Api-Key":"secret"}',
-      wa_gateway_custom_body_template: '{"target":"{{phone}}","message":"{{message}}"}',
-      wa_gateway_custom_success_statuses: '200,201',
+      wa_gateway_triwax_api_key: 'triwax-key',
     });
   });
 
@@ -138,8 +122,8 @@ describe('whatsapp gateway settings helpers', () => {
     expect(
       getNotificationChannelReadiness({
         wa_gateway_enabled: 'true',
-        wa_gateway_provider: 'custom_http',
-        wa_gateway_custom_url: 'https://wa.example/send',
+        wa_gateway_provider: 'triwax',
+        wa_gateway_triwax_api_key: 'triwax-key',
       }).whatsapp.ready,
     ).toBe(true);
   });

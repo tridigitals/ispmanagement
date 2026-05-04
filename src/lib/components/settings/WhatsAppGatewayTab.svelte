@@ -3,7 +3,6 @@
   import { api } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Input from '$lib/components/ui/Input.svelte';
-  import Select from '$lib/components/ui/Select.svelte';
   import { DEFAULT_WHATSAPP_GATEWAY_FORM } from '$lib/utils/whatsappGateway';
   import type {
     WhatsAppEventDefinition,
@@ -44,20 +43,12 @@
       desc: 'Use Fonnte API token delivery.',
     },
     {
-      value: 'custom_http',
-      label: 'Custom HTTP',
-      icon: 'webhook',
-      desc: 'POST to your own WhatsApp gateway endpoint.',
+      value: 'triwax',
+      label: 'Triwax',
+      icon: 'send',
+      desc: 'Use Triwax API with a simple API key configuration.',
     },
   ];
-
-  const methodOptions = [
-    { value: 'POST', label: 'POST' },
-    { value: 'PUT', label: 'PUT' },
-    { value: 'PATCH', label: 'PATCH' },
-  ];
-  const customHeadersPlaceholder = '{"Authorization":"Bearer YOUR_TOKEN"}';
-  const customBodyPlaceholder = '{"phone":"{{phone}}","message":"{{message}}"}';
 
   let events = $state<WhatsAppEventDefinition[]>([]);
   let testPhone = $state('');
@@ -202,64 +193,21 @@
         </div>
       </div>
     </div>
-  {:else if provider === 'custom_http'}
+  {:else if provider === 'triwax'}
     <div class="config-panel fade-in mt-6">
-      <h3>Custom HTTP Configuration</h3>
+      <h3>Triwax Configuration</h3>
       <div class="config-grid">
-        <div class="setting-item">
-          <label for="wa-custom-method">Method</label>
-          <Select
-            id="wa-custom-method"
-            options={methodOptions}
-            value={localSettings['wa_gateway_custom_method'] || 'POST'}
-            onchange={(event: any) => handleChange('wa_gateway_custom_method', event.detail)}
-          />
-        </div>
-        <div class="setting-item">
-          <label for="wa-custom-statuses">Success Statuses</label>
+        <div class="setting-item full-width">
+          <label for="wa-triwax-api-key">API Key</label>
           <Input
-            id="wa-custom-statuses"
-            value={localSettings['wa_gateway_custom_success_statuses'] || '200,201,202'}
+            id="wa-triwax-api-key"
+            type="password"
+            value={localSettings['wa_gateway_triwax_api_key'] || ''}
+            showPasswordToggle={true}
             oninput={(event: any) =>
-              handleChange('wa_gateway_custom_success_statuses', event.target.value)}
+              handleChange('wa_gateway_triwax_api_key', event.target.value)}
+            placeholder="Triwax API key"
           />
-        </div>
-        <div class="setting-item full-width">
-          <label for="wa-custom-url">Endpoint URL</label>
-          <Input
-            id="wa-custom-url"
-            value={localSettings['wa_gateway_custom_url'] || ''}
-            oninput={(event: any) => handleChange('wa_gateway_custom_url', event.target.value)}
-            placeholder="https://gateway.example.com/send"
-          />
-        </div>
-        <div class="setting-item full-width">
-          <label for="wa-custom-headers">Headers JSON</label>
-          <textarea
-            id="wa-custom-headers"
-            class="form-textarea code"
-            rows="4"
-            value={localSettings['wa_gateway_custom_headers'] || ''}
-            oninput={(event) =>
-              handleChange('wa_gateway_custom_headers', event.currentTarget.value)}
-            placeholder={customHeadersPlaceholder}
-          ></textarea>
-        </div>
-        <div class="setting-item full-width">
-          <label for="wa-custom-body">Body Template JSON</label>
-          <textarea
-            id="wa-custom-body"
-            class="form-textarea code"
-            rows="7"
-            value={localSettings['wa_gateway_custom_body_template'] || ''}
-            oninput={(event) =>
-              handleChange('wa_gateway_custom_body_template', event.currentTarget.value)}
-            placeholder={customBodyPlaceholder}
-          ></textarea>
-          <p class="help-text">
-            Common placeholders: <code>{'{{phone}}'}</code>, <code>{'{{message}}'}</code>,
-            <code>{'{{event_code}}'}</code>.
-          </p>
         </div>
       </div>
     </div>
@@ -455,11 +403,6 @@
     min-height: 92px;
     resize: vertical;
     font-family: inherit;
-  }
-
-  .form-textarea.code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
-    font-size: 0.85rem;
   }
 
   .form-input:focus,

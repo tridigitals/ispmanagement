@@ -438,8 +438,6 @@
         if (key === 'customer_self_registration_enabled' && !val) val = 'false';
         if (key === 'wa_gateway_enabled' && !val) val = 'false';
         if (key === 'wa_gateway_provider' && !val) val = 'disabled';
-        if (key === 'wa_gateway_custom_method' && !val) val = 'POST';
-        if (key === 'wa_gateway_custom_success_statuses' && !val) val = '200,201,202';
         if (key === 'wa_events_tenant' && !val) val = '{}';
         localSettings[key] = val;
       });

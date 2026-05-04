@@ -7,7 +7,7 @@ use sqlx::FromRow;
 pub enum WhatsappProvider {
     Disabled,
     Fonnte,
-    CustomHttp,
+    Triwax,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -27,17 +27,7 @@ pub struct WhatsappGatewayConfig {
     pub fonnte_base_url: Option<String>,
     pub fonnte_token: Option<String>,
     pub fonnte_sender: Option<String>,
-    pub custom_http: Option<WhatsappCustomHttpConfig>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WhatsappCustomHttpConfig {
-    pub url: String,
-    pub method: WhatsappHttpMethod,
-    pub headers_json: Option<String>,
-    pub body_template: Option<String>,
-    pub success_statuses: Vec<u16>,
+    pub triwax_api_key: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
