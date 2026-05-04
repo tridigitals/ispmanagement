@@ -627,15 +627,15 @@
   }
 
   .icon-wrapper.primary {
-    background: rgba(139, 156, 255, 0.11);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
     color: var(--color-primary);
   }
   .icon-wrapper.success {
-    background: rgba(16, 185, 129, 0.1);
+    background: var(--bg-success);
     color: var(--color-success);
   }
   .icon-wrapper.info {
-    background: rgba(148, 163, 184, 0.1);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
   }
 
@@ -757,25 +757,25 @@
     height: 10px;
     border-radius: 999px;
     margin-top: 0.35rem;
-    background: rgba(148, 163, 184, 0.7);
-    box-shadow: 0 0 0 6px rgba(148, 163, 184, 0.1);
+    background: var(--text-tertiary);
+    box-shadow: 0 0 0 6px var(--bg-tertiary);
   }
 
   .ann-dot.info {
-    background: rgba(59, 130, 246, 0.95);
-    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.12);
+    background: var(--color-primary);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-primary) 12%, transparent);
   }
   .ann-dot.success {
-    background: rgba(34, 197, 94, 0.95);
-    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.12);
+    background: var(--color-success);
+    box-shadow: 0 0 0 6px var(--bg-success);
   }
   .ann-dot.warning {
-    background: rgba(245, 158, 11, 0.95);
-    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.12);
+    background: var(--color-warning);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-warning) 12%, transparent);
   }
   .ann-dot.error {
-    background: rgba(239, 68, 68, 0.95);
-    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.12);
+    background: var(--color-danger);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-danger) 12%, transparent);
   }
 
   .ann-text {
@@ -826,6 +826,40 @@
     color: var(--text-secondary);
     flex-shrink: 0;
     margin-top: 2px;
+  }
+
+  @media (max-width: 560px) {
+    .section-header {
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .ann-item {
+      grid-template-columns: auto minmax(0, 1fr);
+      padding: 0.9rem;
+    }
+
+    .ann-go {
+      display: none;
+    }
+
+    .ann-row,
+    .activity-row,
+    .summary-health-row {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .ann-title,
+    .activity-title {
+      white-space: normal;
+    }
+
+    .ann-time,
+    .activity-time {
+      flex-shrink: 1;
+    }
   }
 
   .empty-state {
@@ -925,20 +959,20 @@
 
   .activity-icon.success {
     color: var(--color-success);
-    background: rgba(16, 185, 129, 0.12);
-    border-color: rgba(16, 185, 129, 0.25);
+    background: var(--bg-success);
+    border-color: color-mix(in srgb, var(--color-success) 24%, var(--border-color));
   }
 
   .activity-icon.warning {
     color: var(--color-warning);
-    background: rgba(245, 158, 11, 0.12);
-    border-color: rgba(245, 158, 11, 0.25);
+    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-warning) 24%, var(--border-color));
   }
 
   .activity-icon.error {
     color: var(--color-danger);
-    background: rgba(239, 68, 68, 0.12);
-    border-color: rgba(239, 68, 68, 0.25);
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-danger) 24%, var(--border-color));
   }
 
   .activity-text {
@@ -1061,21 +1095,21 @@
   }
 
   .summary-health.normal {
-    color: #16a34a;
-    background: rgba(22, 163, 74, 0.12);
-    border-color: rgba(22, 163, 74, 0.3);
+    color: var(--color-success);
+    background: var(--bg-success);
+    border-color: color-mix(in srgb, var(--color-success) 30%, var(--border-color));
   }
 
   .summary-health.pending {
-    color: #d97706;
-    background: rgba(217, 119, 6, 0.12);
-    border-color: rgba(217, 119, 6, 0.3);
+    color: var(--color-warning);
+    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-warning) 30%, var(--border-color));
   }
 
   .summary-health.overdue {
-    color: #dc2626;
-    background: rgba(220, 38, 38, 0.12);
-    border-color: rgba(220, 38, 38, 0.3);
+    color: var(--color-danger);
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-danger) 30%, var(--border-color));
   }
 
   .summary-k {
