@@ -1,11 +1,4 @@
 use super::AppState;
-use crate::commands::superadmin::{
-    SuperadminManagedRadiusAssignment, SuperadminManagedRadiusAssignmentListResponse,
-    SuperadminManagedRadiusMapping, SuperadminManagedRadiusMappingListResponse,
-    SuperadminManagedRadiusSecretValue, SuperadminManagedRadiusServer,
-    SuperadminManagedRadiusServerListResponse, SuperadminManagedRadiusUser,
-    SuperadminManagedRadiusUserListResponse,
-};
 use crate::http::auth::extract_ip;
 use crate::models::Tenant;
 use axum::{
@@ -20,6 +13,106 @@ use std::net::SocketAddr;
 
 const DEFAULT_RADIUS_AUTH_PORT: i32 = 1812;
 const DEFAULT_RADIUS_ACCT_PORT: i32 = 1813;
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct SuperadminManagedRadiusServer {
+    pub id: String,
+    pub name: String,
+    pub host: String,
+    pub auth_port: i32,
+    pub acct_port: i32,
+    pub db_host: String,
+    pub db_port: i32,
+    pub db_name: String,
+    pub is_active: bool,
+    pub is_default: bool,
+    pub notes: Option<String>,
+    pub tenant_count: i64,
+    pub router_count: i64,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct SuperadminManagedRadiusAssignment {
+    pub id: String,
+    pub tenant_id: String,
+    pub tenant_name: String,
+    pub radius_server_id: String,
+    pub server_name: String,
+    pub radius_host: String,
+    pub auth_port: i32,
+    pub acct_port: i32,
+    pub is_active: bool,
+    pub router_count: i64,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct SuperadminManagedRadiusUser {
+    pub id: String,
+    pub tenant_id: String,
+    pub tenant_name: String,
+    pub router_id: String,
+    pub router_name: Option<String>,
+    pub username: String,
+    pub radius_identity: Option<String>,
+    pub account_source: String,
+    pub radius_present: bool,
+    pub radius_last_sync_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub radius_last_error: Option<String>,
+    pub router_profile_name: Option<String>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Serialize)]
+pub struct SuperadminManagedRadiusServerListResponse {
+    pub data: Vec<SuperadminManagedRadiusServer>,
+    pub total: i64,
+}
+
+#[derive(Serialize)]
+pub struct SuperadminManagedRadiusAssignmentListResponse {
+    pub data: Vec<SuperadminManagedRadiusAssignment>,
+    pub total: i64,
+}
+
+#[derive(Serialize)]
+pub struct SuperadminManagedRadiusUserListResponse {
+    pub data: Vec<SuperadminManagedRadiusUser>,
+    pub total: i64,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct SuperadminManagedRadiusMapping {
+    pub id: String,
+    pub tenant_id: String,
+    pub tenant_name: String,
+    pub radius_server_id: String,
+    pub server_name: String,
+    pub radius_host: String,
+    pub auth_port: i32,
+    pub acct_port: i32,
+    pub router_id: String,
+    pub router_name: Option<String>,
+    pub nas_name: String,
+    pub nas_ip_or_cidr: String,
+    pub shortname: Option<String>,
+    pub shared_secret_masked: String,
+    pub is_active: bool,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Serialize)]
+pub struct SuperadminManagedRadiusMappingListResponse {
+    pub data: Vec<SuperadminManagedRadiusMapping>,
+    pub total: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuperadminManagedRadiusSecretValue {
+    pub shared_secret: String,
+    pub shared_secret_masked: String,
+}
 
 #[derive(Serialize)]
 pub struct TenantListResponse {

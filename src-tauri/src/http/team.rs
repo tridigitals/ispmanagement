@@ -1,7 +1,6 @@
 //! Team management HTTP handlers
 
 use super::{websocket::WsEvent, AppState};
-use crate::commands::team::enforce_member_role_change_permissions;
 use crate::http::auth::extract_ip;
 use crate::models::TeamMemberWithUser;
 use axum::{
@@ -11,6 +10,26 @@ use axum::{
 };
 use serde::Deserialize;
 use std::net::SocketAddr;
+
+fn enforce_member_role_change_permissions(
+    requester_level: i32,
+    target_level: i32,
+    new_role_level: i32,
+) -> Result<(), String> {
+    if requester_level <= target_level {
+        return Err(
+            "Insufficient permissions: Cannot edit member with equal or higher role".to_string(),
+        );
+    }
+
+    if requester_level < new_role_level {
+        return Err(
+            "Insufficient permissions: Cannot assign role higher than your own".to_string(),
+        );
+    }
+
+    Ok(())
+}
 
 fn map_team_service_error(msg: String) -> crate::error::AppError {
     if msg.to_lowercase().contains("not found") {

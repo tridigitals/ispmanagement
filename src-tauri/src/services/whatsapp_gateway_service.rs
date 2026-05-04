@@ -15,7 +15,10 @@ async fn setting_value(
     tenant_id: Option<&str>,
     key: &str,
 ) -> AppResult<String> {
-    Ok(svc.get_value(tenant_id, key).await?.unwrap_or_default())
+    Ok(svc
+        .get_value_fallback(tenant_id, key)
+        .await?
+        .unwrap_or_default())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -673,6 +676,14 @@ mod tests {
     fn normalize_phone_converts_local_and_plus_sixty_two_numbers() {
         assert_eq!(normalize_phone("08123456789"), "628123456789");
         assert_eq!(normalize_phone("+628123456789"), "628123456789");
+    }
+
+    #[test]
+    fn whatsapp_gateway_uses_settings_fallback_for_tenant_config() {
+        let source = include_str!("whatsapp_gateway_service.rs");
+        let production_source = source.split("#[cfg(test)]").next().unwrap();
+
+        assert!(production_source.contains("get_value_fallback(tenant_id, key)"));
     }
 
     #[test]
