@@ -10,6 +10,7 @@ describe('network and shell component UI cleanup', () => {
   it('keeps network, wallboard, shell, and superadmin setting components on clean tokens', () => {
     const files = [
       'src/lib/components/layout/NotificationDropdown.svelte',
+      'src/lib/components/layout/Topbar.svelte',
       'src/lib/components/layout/Sidebar.svelte',
       'src/lib/components/superadmin/settings/SettingsGeneralTab.svelte',
       'src/lib/components/superadmin/settings/SettingsPaymentTab.svelte',
@@ -46,5 +47,25 @@ describe('network and shell component UI cleanup', () => {
       expect(source, file).not.toMatch(/background:\s*#(?:fff|ffffff)\b/i);
       expect(source, file).not.toMatch(/border-radius:\s*(?:1[6-9]|2[0-9]|3[0-9])px/);
     }
+  });
+
+  it('keeps the mobile app shell and topbar constrained to the viewport', () => {
+    const topbar = readSource('src/lib/components/layout/Topbar.svelte');
+    const layout = readSource('src/routes/(app)/+layout.svelte');
+    const notifications = readSource('src/lib/components/layout/NotificationDropdown.svelte');
+
+    expect(topbar).toContain('.topbar');
+    expect(topbar).toMatch(/\.topbar\s*\{[\s\S]*min-width:\s*0/);
+    expect(topbar).toMatch(/\.topbar\s*\{[\s\S]*overflow:\s*hidden/);
+    expect(topbar).toMatch(/\.left-section\s*\{[\s\S]*min-width:\s*0/);
+    expect(topbar).toMatch(/\.page-title\s*\{[\s\S]*text-overflow:\s*ellipsis/);
+    expect(topbar).toMatch(/\.page-title\s*\{[\s\S]*white-space:\s*nowrap/);
+
+    expect(layout).toMatch(/\.main-viewport\s*\{[\s\S]*min-width:\s*0/);
+    expect(layout).toMatch(/\.content-surface\s*\{[\s\S]*min-width:\s*0/);
+    expect(layout).toMatch(/\.scroll-area\s*\{[\s\S]*min-width:\s*0/);
+
+    expect(notifications).toMatch(/@media \(max-width:\s*520px\)[\s\S]*max-width:\s*calc\(100dvw - 24px\)/);
+    expect(notifications).toMatch(/@media \(max-width:\s*520px\)[\s\S]*box-sizing:\s*border-box/);
   });
 });

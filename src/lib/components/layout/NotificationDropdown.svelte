@@ -266,6 +266,7 @@
 <style>
   .notification-dropdown {
     position: relative;
+    flex: 0 0 auto;
   }
 
   .icon-btn {
@@ -579,7 +580,7 @@
   @media (max-width: 520px) {
     .backdrop {
       background: color-mix(in srgb, var(--bg-app) 58%, transparent);
-          }
+    }
 
     .dropdown-panel {
       position: fixed;
@@ -587,6 +588,8 @@
       left: 12px;
       right: 12px;
       width: auto;
+      max-width: calc(100dvw - 24px);
+      box-sizing: border-box;
       margin-top: 0;
       max-height: calc(100vh - 88px);
     }

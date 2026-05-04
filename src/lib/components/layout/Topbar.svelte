@@ -93,20 +93,28 @@
 <style>
   .topbar {
     height: var(--header-height);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     background: var(--bg-primary);
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 0.75rem;
     padding: 0 clamp(12px, 2.4vw, 24px);
     flex-shrink: 0;
     z-index: 40;
+    overflow: hidden;
   }
 
   .left-section {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .page-title {
@@ -114,12 +122,18 @@
     font-weight: 750;
     color: var(--text-primary);
     margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .right-section {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    flex: 0 0 auto;
+    min-width: 0;
   }
 
   /* Search Bar */
@@ -197,7 +211,21 @@
 
   @media (max-width: 900px) {
     .topbar {
-      padding: 0 clamp(12px, 4vw, 18px);
+      gap: 0.5rem;
+      padding: 0 clamp(10px, 3.5vw, 16px);
+    }
+
+    .left-section {
+      gap: 0.5rem;
+    }
+
+    .page-title {
+      font-size: 0.95rem;
+      max-width: 100%;
+    }
+
+    .right-section {
+      gap: 0.45rem;
     }
 
     .search-bar {

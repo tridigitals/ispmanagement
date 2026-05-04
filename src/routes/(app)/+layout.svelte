@@ -418,6 +418,8 @@
     flex-direction: column;
     padding: clamp(6px, 0.9vw, 12px);
     padding-left: 0; /* Sidebar occupies the left edge */
+    width: 100%;
+    min-width: 0;
     min-height: 0; /* allow .scroll-area to be the scroller */
   }
 
@@ -431,6 +433,7 @@
     overflow: hidden;
     box-shadow: var(--shadow-sm);
     position: relative;
+    min-width: 0;
     min-height: 0; /* allow .scroll-area to be the scroller */
   }
 
@@ -439,6 +442,7 @@
     overflow-y: auto;
     position: relative;
     padding-bottom: env(safe-area-inset-bottom);
+    min-width: 0;
     min-height: 0;
     overscroll-behavior: contain;
   }
