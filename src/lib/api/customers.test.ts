@@ -44,11 +44,17 @@ describe('customers api wrapper', () => {
     });
   });
 
-  it('passes customer status filters through to the paginated list', async () => {
+  it('passes customer status and service filters through to the paginated list', async () => {
     safeInvoke.mockResolvedValue({ data: [], total: 0, page: 1, per_page: 10 });
 
     const { customers } = await import('./customers');
-    await customers.list({ q: 'andi', page: 2, perPage: 25, status: 'active' });
+    await customers.list({
+      q: 'andi',
+      page: 2,
+      perPage: 25,
+      status: 'active',
+      service: 'none',
+    });
 
     expect(safeInvoke).toHaveBeenCalledWith('list_customers', {
       token: 'token-123',
@@ -56,6 +62,7 @@ describe('customers api wrapper', () => {
       page: 2,
       per_page: 25,
       status: 'active',
+      service: 'none',
     });
   });
 

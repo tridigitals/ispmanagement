@@ -30,12 +30,14 @@
     { key: 'name', label: $t('admin.customers.columns.customer') || 'Customer' },
     { key: 'contact', label: $t('admin.customers.columns.contact') || 'Contact' },
     { key: 'status', label: $t('admin.customers.columns.status') || 'Status' },
+    { key: 'health', label: 'Health' },
     { key: 'service', label: 'Service' },
     { key: 'updated_at', label: $t('admin.customers.columns.updated') || 'Updated' },
     { key: 'actions', label: '', align: 'right' as const },
   ]);
 
   type CustomerStatusFilter = 'all' | 'active' | 'inactive';
+  type CustomerServiceFilter = 'all' | 'active' | 'inactive' | 'none';
 
   let customers = $state<CustomerListItem[]>([]);
   let total = $state(0);
@@ -45,6 +47,7 @@
 
   let q = $state('');
   let statusFilter = $state<CustomerStatusFilter>('all');
+  let serviceFilter = $state<CustomerServiceFilter>('all');
   let page = $state(0); // Table is 0-based
   let perPage = $state(10);
 
@@ -86,6 +89,7 @@
     active: customerSummary.active,
     inactive: customerSummary.inactive,
   });
+  let totalPages = $derived(Math.max(1, Math.ceil(total / perPage)));
 
   onMount(async () => {
     if (!canReadCustomers) {
@@ -104,13 +108,19 @@
     return value === 'all' || value === 'active' || value === 'inactive';
   }
 
+  function isCustomerServiceFilter(value: string | null): value is CustomerServiceFilter {
+    return value === 'all' || value === 'active' || value === 'inactive' || value === 'none';
+  }
+
   function hydrateUrlState() {
     if (typeof window === 'undefined') return;
 
     const params = new URLSearchParams(window.location.search);
     const nextStatus = params.get('status');
+    const nextService = params.get('service');
     q = params.get('q') || '';
     statusFilter = isCustomerStatusFilter(nextStatus) ? nextStatus : 'all';
+    serviceFilter = isCustomerServiceFilter(nextService) ? nextService : 'all';
     page = Math.max(0, Number(params.get('page') || '1') - 1);
     perPage = Math.max(1, Number(params.get('per_page') || perPage));
   }
@@ -124,6 +134,9 @@
 
     if (statusFilter !== 'all') url.searchParams.set('status', statusFilter);
     else url.searchParams.delete('status');
+
+    if (serviceFilter !== 'all') url.searchParams.set('service', serviceFilter);
+    else url.searchParams.delete('service');
 
     if (page > 0) url.searchParams.set('page', String(page + 1));
     else url.searchParams.delete('page');
@@ -146,6 +159,13 @@
     await refreshCustomers();
   }
 
+  async function setServiceFilter(next: CustomerServiceFilter) {
+    if (serviceFilter === next) return;
+    serviceFilter = next;
+    page = 0;
+    await refreshCustomers();
+  }
+
   async function load() {
     loading = true;
     error = '';
@@ -153,6 +173,7 @@
       const res: PaginatedResponse<CustomerListItem> = await api.customers.list({
         q,
         status: statusFilter,
+        service: serviceFilter,
         page: page + 1,
         perPage,
       });
@@ -187,6 +208,24 @@
     if (c.service_status === 'active') return `${c.active_subscriptions} active`;
     if (c.service_status === 'inactive') return `${c.subscription_count} inactive`;
     return 'No service';
+  }
+
+  function customerHealthLabel(c: CustomerListItem) {
+    if (!c.is_active) return 'Inactive';
+    if (c.service_status === 'none') return 'No service';
+    if (c.service_status === 'inactive') return 'Service inactive';
+    return 'Healthy';
+  }
+
+  function customerHealthTone(c: CustomerListItem) {
+    if (!c.is_active) return 'muted';
+    if (c.service_status === 'none' || c.service_status === 'inactive') return 'warning';
+    return 'healthy';
+  }
+
+  async function goToMobilePage(nextPage: number) {
+    page = Math.min(totalPages - 1, Math.max(0, nextPage));
+    await refreshCustomers();
   }
 
   function adminBasePath() {
@@ -519,19 +558,44 @@
       }}
     >
       {#snippet filters()}
-        <div class="filter-segment" aria-label="Customer status filter">
-          <button class:active={statusFilter === 'all'} onclick={() => setStatusFilter('all')}>
-            All
-          </button>
-          <button class:active={statusFilter === 'active'} onclick={() => setStatusFilter('active')}>
-            Active
-          </button>
-          <button
-            class:active={statusFilter === 'inactive'}
-            onclick={() => setStatusFilter('inactive')}
-          >
-            Inactive
-          </button>
+        <div class="toolbar-filters">
+          <div class="filter-segment" aria-label="Customer status filter">
+            <button class:active={statusFilter === 'all'} onclick={() => setStatusFilter('all')}>
+              All
+            </button>
+            <button
+              class:active={statusFilter === 'active'}
+              onclick={() => setStatusFilter('active')}
+            >
+              Active
+            </button>
+            <button
+              class:active={statusFilter === 'inactive'}
+              onclick={() => setStatusFilter('inactive')}
+            >
+              Inactive
+            </button>
+          </div>
+          <div class="filter-segment" aria-label="Customer service filter">
+            <button class:active={serviceFilter === 'all'} onclick={() => setServiceFilter('all')}>
+              All services
+            </button>
+            <button
+              class:active={serviceFilter === 'active'}
+              onclick={() => setServiceFilter('active')}
+            >
+              Active service
+            </button>
+            <button
+              class:active={serviceFilter === 'inactive'}
+              onclick={() => setServiceFilter('inactive')}
+            >
+              Inactive service
+            </button>
+            <button class:active={serviceFilter === 'none'} onclick={() => setServiceFilter('none')}>
+              No service
+            </button>
+          </div>
         </div>
       {/snippet}
       {#snippet actions()}
@@ -549,118 +613,199 @@
       </div>
     {/if}
 
-    <Table
-      {columns}
-      data={customers}
-      keyField="id"
-      {loading}
-      emptyText={$t('admin.customers.empty') || 'No customers yet.'}
-      pagination
-      serverSide
-      pageSize={perPage}
-      count={total}
-      onchange={(p) => {
-        page = p;
-        refreshCustomers();
-      }}
-      onpageSizeChange={(s) => {
-        perPage = s;
-        page = 0;
-        refreshCustomers();
-      }}
-    >
-      {#snippet cell({ item, key })}
-        {@const c = item as CustomerListItem}
-        {#if key === 'name'}
-          {#if isSystemImportPlaceholder(c)}
-            <div>
-              <div class="name">{c.name}</div>
-              <div class="sub">
-                {$t('admin.network.pppoe.import.fields.unassigned') || 'Unassigned'}
-              </div>
+    <div class="mobile-customer-list">
+      {#if loading}
+        <div class="mobile-empty">{$t('common.loading') || 'Loading...'}</div>
+      {:else if customers.length === 0}
+        <div class="mobile-empty">{$t('admin.customers.empty') || 'No customers yet.'}</div>
+      {:else}
+        {#each customers as c (c.id)}
+          <article class="mobile-customer-card">
+            <div class="mobile-customer-head">
+              <button class="linkish" onclick={() => openCustomer(c)} disabled={isSystemImportPlaceholder(c)}>
+                <div class="name">{c.name}</div>
+                <div class="sub">{c.email || c.phone || 'No contact'}</div>
+              </button>
+              <span
+                class="pill"
+                class:pill-green={customerHealthTone(c) === 'healthy'}
+                class:pill-warning={customerHealthTone(c) === 'warning'}
+                class:pill-gray={customerHealthTone(c) === 'muted'}
+              >
+                {customerHealthLabel(c)}
+              </span>
             </div>
-          {:else}
-            <button class="linkish" onclick={() => openCustomer(c)}>
-              <div class="name">{c.name}</div>
-              <div class="sub">{c.email || c.phone || ''}</div>
-            </button>
-          {/if}
-        {:else if key === 'contact'}
-          <div class="contact">
-            <div>{c.email || '—'}</div>
-            <div class="sub">{c.phone || '—'}</div>
-          </div>
-        {:else if key === 'status'}
-          {#if c.is_active}
-            <span class="pill pill-green">{$t('common.active') || 'Active'}</span>
-          {:else}
-            <span class="pill pill-gray">{$t('common.inactive') || 'Inactive'}</span>
-          {/if}
-        {:else if key === 'service'}
-          <div>
+            <div class="mobile-customer-meta">
+              <span>{c.email || '—'}</span>
+              <span>{c.phone || '—'}</span>
+              <span>{serviceStatusLabel(c)}</span>
+            </div>
+            <div class="mobile-customer-actions">
+              {#if !isSystemImportPlaceholder(c)}
+                <button class="btn btn-secondary" onclick={() => openCustomer(c)}>
+                  <Icon name="arrow-right" size={15} />
+                  Open
+                </button>
+              {/if}
+              {#if canManageCustomers && !isSystemImportPlaceholder(c)}
+                <button class="btn-icon" title="Add service" onclick={() => openAddService(c)}>
+                  <Icon name="wifi" size={16} />
+                </button>
+                <button class="btn-icon" title="Create invoice" onclick={() => openCreateInvoice(c)}>
+                  <Icon name="receipt" size={16} />
+                </button>
+                <button
+                  class="btn-icon"
+                  title="Send WhatsApp"
+                  disabled={!c.phone}
+                  onclick={() => openWhatsApp(c)}
+                >
+                  <Icon name="message-circle" size={16} />
+                </button>
+                <button
+                  class="btn-icon danger"
+                  title={$t('common.delete') || 'Delete'}
+                  onclick={() => confirmDelete(c)}
+                >
+                  <Icon name="trash-2" size={16} />
+                </button>
+              {/if}
+            </div>
+          </article>
+        {/each}
+        <div class="mobile-pager">
+          <button class="btn btn-secondary" disabled={page === 0} onclick={() => goToMobilePage(page - 1)}>
+            <Icon name="chevron-left" size={16} />
+            Prev
+          </button>
+          <span class="mono">{page + 1} / {totalPages}</span>
+          <button
+            class="btn btn-secondary"
+            disabled={page + 1 >= totalPages}
+            onclick={() => goToMobilePage(page + 1)}
+          >
+            Next
+            <Icon name="chevron-right" size={16} />
+          </button>
+        </div>
+      {/if}
+    </div>
+
+    <div class="desktop-customer-table">
+      <Table
+        {columns}
+        data={customers}
+        keyField="id"
+        {loading}
+        emptyText={$t('admin.customers.empty') || 'No customers yet.'}
+        pagination
+        serverSide
+        pageSize={perPage}
+        count={total}
+        onchange={(p) => {
+          page = p;
+          refreshCustomers();
+        }}
+        onpageSizeChange={(s) => {
+          perPage = s;
+          page = 0;
+          refreshCustomers();
+        }}
+      >
+        {#snippet cell({ item, key })}
+          {@const c = item as CustomerListItem}
+          {#if key === 'name'}
+            {#if isSystemImportPlaceholder(c)}
+              <div>
+                <div class="name">{c.name}</div>
+                <div class="sub">
+                  {$t('admin.network.pppoe.import.fields.unassigned') || 'Unassigned'}
+                </div>
+              </div>
+            {:else}
+              <button class="linkish" onclick={() => openCustomer(c)}>
+                <div class="name">{c.name}</div>
+                <div class="sub">{c.email || c.phone || ''}</div>
+              </button>
+            {/if}
+          {:else if key === 'contact'}
+            <div class="contact">
+              <div>{c.email || '—'}</div>
+              <div class="sub">{c.phone || '—'}</div>
+            </div>
+          {:else if key === 'status'}
+            {#if c.is_active}
+              <span class="pill pill-green">{$t('common.active') || 'Active'}</span>
+            {:else}
+              <span class="pill pill-gray">{$t('common.inactive') || 'Inactive'}</span>
+            {/if}
+          {:else if key === 'health'}
             <span
               class="pill"
-              class:pill-green={c.service_status === 'active'}
-              class:pill-gray={c.service_status === 'none'}
+              class:pill-green={customerHealthTone(c) === 'healthy'}
+              class:pill-warning={customerHealthTone(c) === 'warning'}
+              class:pill-gray={customerHealthTone(c) === 'muted'}
             >
-              {serviceStatusLabel(c)}
+              {customerHealthLabel(c)}
             </span>
-            {#if c.subscription_count > 0 && c.active_subscriptions !== c.subscription_count}
-              <div class="sub">{c.subscription_count} total services</div>
-            {/if}
-          </div>
-        {:else if key === 'updated_at'}
-          <span class="mono">{new Date(c.updated_at).toLocaleString()}</span>
-        {:else if key === 'actions'}
-          <div class="row-actions">
-            {#if !isSystemImportPlaceholder(c)}
-              <button
-                class="btn-icon"
-                title={$t('common.open') || 'Open'}
-                onclick={() => openCustomer(c)}
+          {:else if key === 'service'}
+            <div>
+              <span
+                class="pill"
+                class:pill-green={c.service_status === 'active'}
+                class:pill-gray={c.service_status === 'none'}
               >
-                <Icon name="arrow-right" size={16} />
-              </button>
-            {/if}
-            {#if canManageCustomers && !isSystemImportPlaceholder(c)}
-              <button
-                class="btn-icon"
-                title="Add service"
-                onclick={() => openAddService(c)}
-              >
-                <Icon name="wifi" size={16} />
-              </button>
-              <button
-                class="btn-icon"
-                title="Create invoice"
-                onclick={() => openCreateInvoice(c)}
-              >
-                <Icon name="receipt" size={16} />
-              </button>
-              <button
-                class="btn-icon"
-                title="Send WhatsApp"
-                disabled={!c.phone}
-                onclick={() => openWhatsApp(c)}
-              >
-                <Icon name="message-circle" size={16} />
-              </button>
-              <button
-                class="btn-icon danger"
-                title={$t('common.delete') || 'Delete'}
-                onclick={() => confirmDelete(c)}
-              >
-                <Icon name="trash-2" size={16} />
-              </button>
-            {:else if isSystemImportPlaceholder(c)}
-              <span class="mono">—</span>
-            {/if}
-          </div>
-        {:else}
-          {item[key] ?? ''}
-        {/if}
-      {/snippet}
-    </Table>
+                {serviceStatusLabel(c)}
+              </span>
+              {#if c.subscription_count > 0 && c.active_subscriptions !== c.subscription_count}
+                <div class="sub">{c.subscription_count} total services</div>
+              {/if}
+            </div>
+          {:else if key === 'updated_at'}
+            <span class="mono">{new Date(c.updated_at).toLocaleString()}</span>
+          {:else if key === 'actions'}
+            <div class="row-actions">
+              {#if !isSystemImportPlaceholder(c)}
+                <button
+                  class="btn-icon"
+                  title={$t('common.open') || 'Open'}
+                  onclick={() => openCustomer(c)}
+                >
+                  <Icon name="arrow-right" size={16} />
+                </button>
+              {/if}
+              {#if canManageCustomers && !isSystemImportPlaceholder(c)}
+                <button class="btn-icon" title="Add service" onclick={() => openAddService(c)}>
+                  <Icon name="wifi" size={16} />
+                </button>
+                <button class="btn-icon" title="Create invoice" onclick={() => openCreateInvoice(c)}>
+                  <Icon name="receipt" size={16} />
+                </button>
+                <button
+                  class="btn-icon"
+                  title="Send WhatsApp"
+                  disabled={!c.phone}
+                  onclick={() => openWhatsApp(c)}
+                >
+                  <Icon name="message-circle" size={16} />
+                </button>
+                <button
+                  class="btn-icon danger"
+                  title={$t('common.delete') || 'Delete'}
+                  onclick={() => confirmDelete(c)}
+                >
+                  <Icon name="trash-2" size={16} />
+                </button>
+              {:else if isSystemImportPlaceholder(c)}
+                <span class="mono">—</span>
+              {/if}
+            </div>
+          {:else}
+            {item[key] ?? ''}
+          {/if}
+        {/snippet}
+      </Table>
+    </div>
   </div>
 </div>
 
@@ -1006,6 +1151,13 @@
     padding: 1.25rem;
   }
 
+  .toolbar-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
   .filter-segment {
     display: inline-flex;
     align-items: center;
@@ -1051,6 +1203,10 @@
     text-align: left;
     cursor: pointer;
     padding: 0;
+  }
+
+  .linkish:disabled {
+    cursor: default;
   }
 
   .name {
@@ -1123,6 +1279,67 @@
     border-color: rgba(148, 163, 184, 0.35);
     background: rgba(148, 163, 184, 0.12);
     color: rgba(148, 163, 184, 1);
+  }
+
+  .pill-warning {
+    border-color: rgba(245, 158, 11, 0.34);
+    background: rgba(245, 158, 11, 0.1);
+    color: rgb(245, 158, 11);
+  }
+
+  .mobile-customer-list {
+    display: none;
+  }
+
+  .mobile-customer-card {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-surface);
+    padding: 0.85rem;
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .mobile-customer-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .mobile-customer-meta {
+    display: grid;
+    gap: 0.3rem;
+    color: var(--text-secondary);
+    font-size: 0.86rem;
+    min-width: 0;
+  }
+
+  .mobile-customer-meta span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-customer-actions,
+  .mobile-pager {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .mobile-pager {
+    justify-content: space-between;
+    padding-top: 0.15rem;
+  }
+
+  .mobile-empty {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    padding: 1rem;
+    text-align: center;
   }
 
   .form {
@@ -1292,6 +1509,13 @@
     .header-actions {
       justify-content: stretch;
     }
+    .header-actions .btn {
+      flex: 1 1 100%;
+      min-width: 0;
+    }
+    .toolbar-filters {
+      width: 100%;
+    }
     .filter-segment {
       width: 100%;
     }
@@ -1310,6 +1534,26 @@
     .invite-item {
       flex-direction: column;
       align-items: stretch;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .table-card {
+      padding: 0.9rem;
+    }
+    .desktop-customer-table {
+      display: none;
+    }
+    .mobile-customer-list {
+      display: grid;
+      gap: 0.75rem;
+    }
+    .mobile-customer-head {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .mobile-customer-actions .btn {
+      flex: 1 1 auto;
     }
   }
 </style>

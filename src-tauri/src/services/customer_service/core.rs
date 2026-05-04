@@ -45,6 +45,7 @@ impl CustomerService {
         tenant_id: &str,
         q: Option<String>,
         status: Option<String>,
+        service: Option<String>,
         page: u32,
         per_page: u32,
     ) -> AppResult<PaginatedResponse<CustomerListItem>> {
@@ -56,6 +57,12 @@ impl CustomerService {
         let status = match status.unwrap_or_default().trim() {
             "active" => "active".to_string(),
             "inactive" => "inactive".to_string(),
+            _ => String::new(),
+        };
+        let service = match service.unwrap_or_default().trim() {
+            "active" => "active".to_string(),
+            "inactive" => "inactive".to_string(),
+            "none" => "none".to_string(),
             _ => String::new(),
         };
         let offset = (page.saturating_sub(1)) * per_page;
@@ -83,8 +90,14 @@ impl CustomerService {
             WHERE c.tenant_id = $1
               AND ($2 = '' OR c.name ILIKE '%' || $2 || '%' OR c.email ILIKE '%' || $2 || '%')
               AND ($3 = '' OR ($3 = 'active' AND c.is_active) OR ($3 = 'inactive' AND NOT c.is_active))
+              AND (
+                  $4 = ''
+                  OR ($4 = 'active' AND COALESCE(svc.active_subscriptions, 0) > 0)
+                  OR ($4 = 'inactive' AND COALESCE(svc.subscription_count, 0) > 0 AND COALESCE(svc.active_subscriptions, 0) = 0)
+                  OR ($4 = 'none' AND COALESCE(svc.subscription_count, 0) = 0)
+              )
             ORDER BY c.created_at DESC
-            LIMIT $4 OFFSET $5
+            LIMIT $5 OFFSET $6
         "#;
 
         #[cfg(feature = "sqlite")]
@@ -120,11 +133,55 @@ impl CustomerService {
                     WHERE cc.tenant_id = ?
                       AND (? = '' OR cc.name LIKE '%' || ? || '%' OR cc.email LIKE '%' || ? || '%')
                       AND (? = '' OR (? = 'active' AND cc.is_active = 1) OR (? = 'inactive' AND cc.is_active = 0))
+                      AND (
+                          ? = ''
+                          OR (? = 'active' AND (
+                              SELECT COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)
+                              FROM customer_subscriptions cs
+                              WHERE cs.tenant_id = cc.tenant_id AND cs.customer_id = cc.id
+                          ) > 0)
+                          OR (? = 'inactive' AND (
+                              SELECT COUNT(*)
+                              FROM customer_subscriptions cs
+                              WHERE cs.tenant_id = cc.tenant_id AND cs.customer_id = cc.id
+                          ) > 0 AND (
+                              SELECT COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)
+                              FROM customer_subscriptions cs
+                              WHERE cs.tenant_id = cc.tenant_id AND cs.customer_id = cc.id
+                          ) = 0)
+                          OR (? = 'none' AND (
+                              SELECT COUNT(*)
+                              FROM customer_subscriptions cs
+                              WHERE cs.tenant_id = cc.tenant_id AND cs.customer_id = cc.id
+                          ) = 0)
+                      )
                 ) AS total_count
             FROM customers c
             WHERE c.tenant_id = ?
               AND (? = '' OR c.name LIKE '%' || ? || '%' OR c.email LIKE '%' || ? || '%')
               AND (? = '' OR (? = 'active' AND c.is_active = 1) OR (? = 'inactive' AND c.is_active = 0))
+              AND (
+                  ? = ''
+                  OR (? = 'active' AND (
+                      SELECT COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)
+                      FROM customer_subscriptions cs
+                      WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
+                  ) > 0)
+                  OR (? = 'inactive' AND (
+                      SELECT COUNT(*)
+                      FROM customer_subscriptions cs
+                      WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
+                  ) > 0 AND (
+                      SELECT COALESCE(SUM(CASE WHEN cs.status IN ('active', 'grace_active') THEN 1 ELSE 0 END), 0)
+                      FROM customer_subscriptions cs
+                      WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
+                  ) = 0)
+                  OR (? = 'none' AND (
+                      SELECT COUNT(*)
+                      FROM customer_subscriptions cs
+                      WHERE cs.tenant_id = c.tenant_id AND cs.customer_id = c.id
+                  ) = 0)
+              )
             ORDER BY c.created_at DESC
             LIMIT ? OFFSET ?
         "#;
@@ -141,6 +198,7 @@ impl CustomerService {
             .bind(tenant_id)
             .bind(&q)
             .bind(&status)
+            .bind(&service)
             .bind(per_page as i64)
             .bind(offset as i64)
             .fetch_all(&self.pool)
@@ -155,6 +213,10 @@ impl CustomerService {
             .bind(&status)
             .bind(&status)
             .bind(&status)
+            .bind(&service)
+            .bind(&service)
+            .bind(&service)
+            .bind(&service)
             .bind(tenant_id)
             .bind(&q)
             .bind(&q)
@@ -162,6 +224,10 @@ impl CustomerService {
             .bind(&status)
             .bind(&status)
             .bind(&status)
+            .bind(&service)
+            .bind(&service)
+            .bind(&service)
+            .bind(&service)
             .bind(per_page as i64)
             .bind(offset as i64)
             .fetch_all(&self.pool)

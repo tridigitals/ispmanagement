@@ -27,6 +27,7 @@ export const customers = {
     page?: number;
     perPage?: number;
     status?: 'all' | 'active' | 'inactive';
+    service?: 'all' | 'active' | 'inactive' | 'none';
   }): Promise<PaginatedResponse<CustomerListItem>> =>
     safeInvoke('list_customers', {
       token: getTokenOrThrow(),
@@ -34,6 +35,7 @@ export const customers = {
       page: params?.page,
       per_page: params?.perPage,
       status: params?.status,
+      service: params?.service,
     }),
 
   summary: (): Promise<CustomerSummary> =>
