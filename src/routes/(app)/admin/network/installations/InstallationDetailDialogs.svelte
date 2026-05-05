@@ -2,6 +2,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import Select2 from '$lib/components/ui/Select2.svelte';
   import InstallationCableMap from '$lib/components/network/InstallationCableMap.svelte';
+  import { formatDhcpStaticMacAddressInput } from '$lib/utils/dhcpStaticValidation';
 
   let {
     tr,
@@ -59,19 +60,36 @@
     removeInstallationPhoto,
     getStorageContentUrl,
     loadingInstallationPppoe,
+    loadingInstallationDhcp,
     installationSubscription,
     installationPppoeUsername = $bindable(),
     installationPppoePassword = $bindable(),
     installationPppoeComment = $bindable(),
     installationPppoeTarget = $bindable(),
+    installationDhcpServerName = $bindable(),
+    installationDhcpServerNameError = $bindable(),
+    installationDhcpRouterError = $bindable(),
+    installationDhcpMacAddress = $bindable(),
+    installationDhcpMacAddressError = $bindable(),
+    installationDhcpIpAddress = $bindable(),
+    installationDhcpIpAddressError = $bindable(),
+    installationDhcpComment = $bindable(),
+    installationDhcpQueueMode = $bindable(),
+    installationDhcpQueueRateLimit = $bindable(),
+    installationDhcpQueueRateLimitError = $bindable(),
+    installationDhcpQueueRateLimitPresets = [],
     installationPppoeTargetOptions,
     installationManagedRadiusHint,
     installationManagedRadiusLoadError,
     installationManagedRadiusSetup,
     installationPppoeAccount,
+    installationDhcpService,
     savingInstallationPppoe,
+    savingInstallationDhcp,
     saveInstallationPppoe,
     applyInstallationPppoe,
+    saveInstallationDhcp,
+    applyInstallationDhcp,
     installationPppoeMapping,
     getOnsiteTaskChecked,
     setOnsiteTaskChecked,
@@ -307,17 +325,157 @@
                 <div class="pppoe-install-head">
                   <div>
                     <strong>{tr('admin.network.installations.internet_test_title', 'Internet Test')}</strong>
-                    <p>{tr('admin.network.installations.internet_test_help', 'Technician only enters username and password. Router, profile, and pool follow the active internet package mapping.')}</p>
+                    <p>
+                      {activeRow?.package_provisioning_type === 'dhcp_static'
+                        ? tr(
+                            'admin.network.installations.internet_test_help_dhcp',
+                            'Technician enters DHCP server, MAC address, and static IP for the customer device.',
+                          )
+                        : tr(
+                            'admin.network.installations.internet_test_help',
+                            'Technician only enters username and password. Router, profile, and pool follow the active internet package mapping.',
+                          )}
+                    </p>
                   </div>
-                  {#if installationPppoeAccount}
+                  {#if activeRow?.package_provisioning_type === 'dhcp_static' ? installationDhcpService : installationPppoeAccount}
                     <span class="status progress">{tr('admin.network.installations.internet_test_configured', 'Configured')}</span>
                   {/if}
                 </div>
 
-                {#if loadingInstallationPppoe}
+                {#if activeRow?.package_provisioning_type === 'dhcp_static' ? loadingInstallationDhcp : loadingInstallationPppoe}
                   <p class="helper-text">{tr('common.loading', 'Loading...')}</p>
-                {:else if !installationSubscription && !activeRow?.package_id && !installationPppoeAccount?.package_id}
+                {:else if !installationSubscription && !activeRow?.package_id && !(activeRow?.package_provisioning_type === 'dhcp_static' ? installationDhcpService?.package_id : installationPppoeAccount?.package_id)}
                   <p class="helper-text">Subscription internet untuk work order ini belum ditemukan.</p>
+                {:else if activeRow?.package_provisioning_type === 'dhcp_static'}
+                  <div class="form-grid two-col compact">
+                    <label class="summary-field">
+                      Router
+                      <input
+                        class:error={!!installationDhcpRouterError}
+                        class="input"
+                        value={activeRow?.router_name || installationSubscription?.router_name || '-'}
+                        disabled
+                      />
+                      {#if installationDhcpRouterError}
+                        <span class="field-error">{installationDhcpRouterError}</span>
+                      {/if}
+                    </label>
+                    <label class="summary-field">
+                      DHCP Server
+                      <input
+                        class:error={!!installationDhcpServerNameError}
+                        class="input"
+                        bind:value={installationDhcpServerName}
+                        placeholder="dhcp server name"
+                      />
+                      {#if installationDhcpServerNameError}
+                        <span class="field-error">{installationDhcpServerNameError}</span>
+                      {/if}
+                    </label>
+                    <label class="summary-field">
+                      MAC Address
+                      <input
+                        class:error={!!installationDhcpMacAddressError}
+                        class="input"
+                        value={installationDhcpMacAddress}
+                        oninput={(event) =>
+                          (installationDhcpMacAddress = formatDhcpStaticMacAddressInput(
+                            (event.currentTarget as HTMLInputElement).value,
+                          ))}
+                        placeholder="AA:BB:CC:DD:EE:FF"
+                      />
+                      {#if installationDhcpMacAddressError}
+                        <span class="field-error">{installationDhcpMacAddressError}</span>
+                      {/if}
+                    </label>
+                    <label class="summary-field">
+                      IP Address
+                      <input class:error={!!installationDhcpIpAddressError} class="input" bind:value={installationDhcpIpAddress} placeholder="192.168.1.10" />
+                      {#if installationDhcpIpAddressError}
+                        <span class="field-error">{installationDhcpIpAddressError}</span>
+                      {/if}
+                    </label>
+                    <label class="summary-field">
+                      Queue Mode
+                      <select class="input" bind:value={installationDhcpQueueMode}>
+                        <option value="none">No queue</option>
+                        <option value="simple_queue">Simple queue</option>
+                      </select>
+                    </label>
+                  </div>
+                  {#if installationDhcpQueueMode === 'simple_queue'}
+                    <label class="summary-field">
+                      Queue Rate Limit
+                      <input class:error={!!installationDhcpQueueRateLimitError} class="input" bind:value={installationDhcpQueueRateLimit} placeholder="20M/20M" />
+                      <span class="helper-text">
+                        {tr(
+                          'admin.network.dhcp_static.fields.queue_rate_limit_hint',
+                          'Use format like 20M/20M for download/upload.',
+                        )}
+                      </span>
+                      <div class="preset-group">
+                        <span class="preset-label">
+                          {tr('admin.network.dhcp_static.fields.queue_presets', 'Quick presets')}
+                        </span>
+                        <div class="preset-chips">
+                          {#each installationDhcpQueueRateLimitPresets as preset}
+                            <button
+                              type="button"
+                              class="preset-chip"
+                              onclick={() => (installationDhcpQueueRateLimit = preset)}
+                            >
+                              {preset}
+                            </button>
+                          {/each}
+                        </div>
+                      </div>
+                      {#if installationDhcpQueueRateLimitError}
+                        <span class="field-error">{installationDhcpQueueRateLimitError}</span>
+                      {/if}
+                    </label>
+                  {/if}
+                  <label class="notes">
+                    Comment
+                    <input class="input" bind:value={installationDhcpComment} placeholder="Optional DHCP lease comment" />
+                  </label>
+                  {#if installationDhcpService}
+                    <div class="pppoe-existing">
+                      <span>Existing DHCP:</span>
+                      <strong>{installationDhcpService.mac_address}</strong>
+                      <span>{installationDhcpService.ip_address}</span>
+                    </div>
+                  {/if}
+                  <div class="test-outcome">
+                    <span class:ok={!!installationDhcpService} class="test-state">
+                      {installationDhcpService
+                        ? 'DHCP static lease is ready for live testing.'
+                        : 'Create the static lease first, then verify connectivity from the customer side.'}
+                    </span>
+                  </div>
+                  <div class="modal-actions">
+                    {#if !installationDhcpService}
+                      <button
+                        class="btn ghost"
+                        type="button"
+                        onclick={saveInstallationDhcp}
+                        disabled={savingInstallationDhcp || !installationDhcpServerName.trim() || !installationDhcpMacAddress.trim() || !installationDhcpIpAddress.trim()}
+                      >
+                        {savingInstallationDhcp ? tr('common.loading', 'Loading...') : 'Create & Apply Lease'}
+                      </button>
+                    {:else}
+                      <button
+                        class="btn ghost"
+                        type="button"
+                        onclick={saveInstallationDhcp}
+                        disabled={savingInstallationDhcp || !installationDhcpServerName.trim() || !installationDhcpMacAddress.trim() || !installationDhcpIpAddress.trim()}
+                      >
+                        {savingInstallationDhcp ? tr('common.loading', 'Loading...') : 'Save & Re-apply Lease'}
+                      </button>
+                      <button class="btn ghost" type="button" onclick={applyInstallationDhcp} disabled={savingInstallationDhcp}>
+                        {savingInstallationDhcp ? tr('common.loading', 'Loading...') : 'Apply Existing Lease'}
+                      </button>
+                    {/if}
+                  </div>
                 {:else}
                   <div class="form-grid two-col compact">
                     <label class="summary-field">
@@ -769,6 +927,9 @@
   input[type='datetime-local'], textarea, .input {
     background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px;
   }
+  .input.error {
+    border-color: var(--color-danger-500, #ef4444);
+  }
   .checklist { border: 1px solid var(--border-color); border-radius: 10px; padding: 10px; display: grid; gap: 8px; }
   .checklist.single-step { padding: 12px; }
   .progress-inline { margin-left: 8px; font-size: 0.78rem; color: var(--color-primary); font-weight: 700; }
@@ -808,6 +969,19 @@
   .photo-meta span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; color: var(--text-secondary); }
   .notes textarea { resize: vertical; min-height: 110px; }
   .helper-text { margin: 0; color: var(--text-secondary); font-size: 0.85rem; }
+  .field-error { margin: 0; color: var(--color-danger-700, #b91c1c); font-size: 0.82rem; }
+  .preset-group { display: grid; gap: 6px; }
+  .preset-label { font-size: 0.78rem; color: var(--text-secondary); }
+  .preset-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .preset-chip {
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
   .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
   .stage-actions { position: sticky; bottom: -16px; z-index: 4; margin: 6px -16px -16px; padding: 14px 16px 16px; background: var(--bg-surface); border-top: 1px solid var(--border-color); }
   .history { border-top: 1px dashed var(--border-color); padding-top: 10px; }

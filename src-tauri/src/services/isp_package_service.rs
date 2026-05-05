@@ -84,6 +84,23 @@ impl IspPackageService {
         }
     }
 
+    fn normalize_provisioning_type(service_type: &str, input: Option<String>) -> AppResult<String> {
+        if service_type != "internet_pppoe" {
+            return Ok("pppoe".to_string());
+        }
+
+        let value = input
+            .unwrap_or_else(|| "pppoe".to_string())
+            .trim()
+            .to_lowercase();
+        match value.as_str() {
+            "pppoe" | "dhcp_static" => Ok(value),
+            _ => Err(AppError::Validation(
+                "provisioning_type must be one of: pppoe, dhcp_static".into(),
+            )),
+        }
+    }
+
     fn normalize_router_mapping_fields(
         router_profile_name: &str,
         address_pool: Option<String>,
@@ -192,6 +209,7 @@ impl IspPackageService {
               id,
               tenant_id,
               service_type,
+              provisioning_type,
               name,
               description,
               features,
@@ -255,10 +273,13 @@ impl IspPackageService {
 
         let normalized_features = Self::normalize_features(dto.features);
         let service_type = Self::normalize_service_type(dto.service_type)?;
+        let provisioning_type =
+            Self::normalize_provisioning_type(&service_type, dto.provisioning_type)?;
 
         let pkg = IspPackage::new(
             tenant_id.to_string(),
             Some(service_type),
+            Some(provisioning_type),
             name,
             dto.description.and_then(|v| {
                 let x = v.trim().to_string();
@@ -276,13 +297,14 @@ impl IspPackageService {
 
         sqlx::query(
             r#"
-            INSERT INTO isp_packages (id, tenant_id, service_type, name, description, features, is_active, price_monthly, price_yearly, created_at, updated_at)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+            INSERT INTO isp_packages (id, tenant_id, service_type, provisioning_type, name, description, features, is_active, price_monthly, price_yearly, created_at, updated_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
             "#,
         )
         .bind(&pkg.id)
         .bind(&pkg.tenant_id)
         .bind(&pkg.service_type)
+        .bind(&pkg.provisioning_type)
         .bind(&pkg.name)
         .bind(&pkg.description)
         .bind(&pkg.features)
@@ -312,9 +334,10 @@ impl IspPackageService {
                 "isp_packages",
                 Some(&pkg.id),
                 Some(&format!(
-                    "Created ISP package {} (type={}, monthly={}, yearly={}, features={})",
+                    "Created ISP package {} (type={}, provisioning={}, monthly={}, yearly={}, features={})",
                     pkg.name,
                     pkg.service_type,
+                    pkg.provisioning_type,
                     pkg.price_monthly,
                     pkg.price_yearly,
                     pkg.features.join(" | ")
@@ -344,6 +367,7 @@ impl IspPackageService {
               id,
               tenant_id,
               service_type,
+              provisioning_type,
               name,
               description,
               features,
@@ -370,6 +394,7 @@ impl IspPackageService {
         let old_description = pkg.description.clone();
         let old_active = pkg.is_active;
         let old_service_type = pkg.service_type.clone();
+        let old_provisioning_type = pkg.provisioning_type.clone();
 
         if let Some(v) = dto.name {
             let vv = v.trim().to_string();
@@ -379,6 +404,10 @@ impl IspPackageService {
         }
         if dto.service_type.is_some() {
             pkg.service_type = Self::normalize_service_type(dto.service_type)?;
+        }
+        if dto.provisioning_type.is_some() || old_service_type != pkg.service_type {
+            pkg.provisioning_type =
+                Self::normalize_provisioning_type(&pkg.service_type, dto.provisioning_type)?;
         }
         if let Some(v) = dto.description {
             let vv = v.trim().to_string();
@@ -418,17 +447,19 @@ impl IspPackageService {
             r#"
             UPDATE isp_packages SET
               service_type = $1,
-              name = $2,
-              description = $3,
-              features = $4,
-              is_active = $5,
-              price_monthly = $6,
-              price_yearly = $7,
-              updated_at = $8
-            WHERE tenant_id = $9 AND id = $10
+              provisioning_type = $2,
+              name = $3,
+              description = $4,
+              features = $5,
+              is_active = $6,
+              price_monthly = $7,
+              price_yearly = $8,
+              updated_at = $9
+            WHERE tenant_id = $10 AND id = $11
             "#,
         )
         .bind(&pkg.service_type)
+        .bind(&pkg.provisioning_type)
         .bind(&pkg.name)
         .bind(&pkg.description)
         .bind(&pkg.features)
@@ -460,6 +491,12 @@ impl IspPackageService {
                 changes.push(format!(
                     "service_type: '{}' -> '{}'",
                     old_service_type, pkg.service_type
+                ));
+            }
+            if old_provisioning_type != pkg.provisioning_type {
+                changes.push(format!(
+                    "provisioning_type: '{}' -> '{}'",
+                    old_provisioning_type, pkg.provisioning_type
                 ));
             }
             if old_description != pkg.description {
@@ -618,17 +655,17 @@ impl IspPackageService {
         self.ensure_package_access(tenant_id, &dto.package_id)
             .await?;
 
-        let package_type: Option<String> = sqlx::query_scalar(
-            "SELECT service_type FROM isp_packages WHERE tenant_id = $1 AND id = $2",
+        let package_provisioning_type: Option<String> = sqlx::query_scalar(
+            "SELECT provisioning_type FROM isp_packages WHERE tenant_id = $1 AND id = $2",
         )
         .bind(tenant_id)
         .bind(&dto.package_id)
         .fetch_optional(&self.pool)
         .await
         .map_err(AppError::Database)?;
-        if package_type.as_deref() != Some("internet_pppoe") {
+        if package_provisioning_type.as_deref() != Some("pppoe") {
             return Err(AppError::Validation(
-                "Router mapping is only available for service type internet_pppoe".into(),
+                "Router mapping is only available for PPPoE provisioning".into(),
             ));
         }
 
@@ -813,5 +850,57 @@ mod tests {
             .expect("valid references should pass");
         IspPackageService::validate_router_mapping_references(true, Some("pool-a"), true)
             .expect("valid references with pool should pass");
+    }
+
+    #[test]
+    fn normalize_service_type_defaults_to_internet_pppoe() {
+        let value = IspPackageService::normalize_service_type(None)
+            .expect("default service type should work");
+
+        assert_eq!(value, "internet_pppoe");
+    }
+
+    #[test]
+    fn normalize_service_type_rejects_unknown_values() {
+        let err = IspPackageService::normalize_service_type(Some("dhcp_static".into()))
+            .expect_err("unknown service type should fail");
+
+        match err {
+            AppError::Validation(message) => {
+                assert_eq!(
+                    message,
+                    "service_type must be one of: internet_pppoe, hotspot, vpn"
+                );
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn normalize_provisioning_type_defaults_to_pppoe_for_internet_packages() {
+        let value = IspPackageService::normalize_provisioning_type("internet_pppoe", None)
+            .expect("default provisioning type should work");
+
+        assert_eq!(value, "pppoe");
+    }
+
+    #[test]
+    fn normalize_provisioning_type_accepts_dhcp_static_for_internet_packages() {
+        let value = IspPackageService::normalize_provisioning_type(
+            "internet_pppoe",
+            Some("dhcp_static".into()),
+        )
+        .expect("dhcp static provisioning should be valid for internet packages");
+
+        assert_eq!(value, "dhcp_static");
+    }
+
+    #[test]
+    fn normalize_provisioning_type_forces_pppoe_for_non_internet_packages() {
+        let value =
+            IspPackageService::normalize_provisioning_type("hotspot", Some("dhcp_static".into()))
+                .expect("non-internet packages should normalize to pppoe");
+
+        assert_eq!(value, "pppoe");
     }
 }

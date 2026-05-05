@@ -14,6 +14,7 @@ export const ispPackages = {
 
     create: (dto: {
       service_type?: string;
+      provisioning_type?: 'pppoe' | 'dhcp_static' | string;
       name: string;
       description?: string | null;
       features?: string[];
@@ -24,6 +25,7 @@ export const ispPackages = {
       safeInvoke('create_isp_package', {
         token: getTokenOrThrow(),
         service_type: dto.service_type ?? 'internet_pppoe',
+        provisioning_type: dto.provisioning_type ?? 'pppoe',
         name: dto.name,
         description: dto.description ?? null,
         features: dto.features ?? [],
@@ -36,6 +38,7 @@ export const ispPackages = {
       id: string,
       dto: {
         service_type?: string;
+        provisioning_type?: 'pppoe' | 'dhcp_static' | string;
         name?: string;
         description?: string | null;
         features?: string[];
@@ -48,6 +51,7 @@ export const ispPackages = {
         token: getTokenOrThrow(),
         id,
         service_type: dto.service_type ?? undefined,
+        provisioning_type: dto.provisioning_type ?? undefined,
         name: dto.name,
         description: dto.description ?? undefined,
         features: dto.features,

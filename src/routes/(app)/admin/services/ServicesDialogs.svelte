@@ -17,6 +17,8 @@
     pkgFeatures = $bindable([]),
     serviceTypeLabel,
     pkgServiceType,
+    pkgProvisioningType = $bindable('pppoe'),
+    provisioningTypeLabel,
     pkgName = $bindable(''),
     pkgDesc = $bindable(''),
     tenantCurrencyCode,
@@ -27,6 +29,7 @@
     formatDisplayPrice,
     pkgActive = $bindable(true),
     isInternetType,
+    isPppoeProvisioning,
     pkgMapEnabled = $bindable(false),
     routerOptions,
     pkgMapRouterId = $bindable(''),
@@ -126,7 +129,7 @@
       <div class="selected-type-banner">
         <div class="selected-type-main">
           <span class="selected-type-label">{$t('admin.services.fields.service_type') || 'Service type'}</span>
-          <span class="badge neutral">{serviceTypeLabel(pkgServiceType)}</span>
+          <span class="badge neutral">{serviceTypeLabel(pkgServiceType, pkgProvisioningType)}</span>
         </div>
         {#if !editingPkg}
           <button
@@ -166,6 +169,20 @@
         <span>{$t('admin.network.packages.fields.description') || 'Description'}</span>
         <input class="input" bind:value={pkgDesc} />
       </label>
+
+      {#if isInternetType(pkgServiceType)}
+        <label>
+          <span>{$t('admin.services.fields.provisioning_type') || 'Provisioning type'}</span>
+          <select class="input" bind:value={pkgProvisioningType}>
+            <option value="pppoe">{provisioningTypeLabel('pppoe')}</option>
+            <option value="dhcp_static">{provisioningTypeLabel('dhcp_static')}</option>
+          </select>
+          <div class="field-hint">
+            {$t('admin.services.fields.provisioning_type_hint') ||
+              'Choose how this internet package will be activated during installation.'}
+          </div>
+        </label>
+      {/if}
 
       <label>
         <span>{$t('admin.network.packages.fields.price_monthly') || 'Monthly price'} ({tenantCurrencyCode})</span>
@@ -226,7 +243,7 @@
         <Toggle bind:checked={pkgActive} ariaLabel={$t('admin.network.packages.fields.active') || 'Active'} />
       </div>
 
-      {#if isInternetType(pkgServiceType)}
+      {#if isInternetType(pkgServiceType) && isPppoeProvisioning(pkgProvisioningType)}
         <div class="toggle-row">
           <div class="toggle-text">
             <div class="toggle-title">{$t('admin.network.packages.mapping.inline_title') || 'Map to router now'}</div>
@@ -236,13 +253,18 @@
           </div>
           <Toggle bind:checked={pkgMapEnabled} ariaLabel={$t('admin.network.packages.mapping.inline_title') || 'Map to router now'} />
         </div>
-      {:else}
+      {:else if !isInternetType(pkgServiceType)}
         <div class="field-hint">
           {$t('admin.services.mapping.not_required') || 'Router PPP profile mapping is not required for this service type.'}
         </div>
+      {:else}
+        <div class="field-hint">
+          {$t('admin.services.mapping.not_required_dhcp') ||
+            'PPP profile mapping is skipped for DHCP static provisioning.'}
+        </div>
       {/if}
 
-      {#if isInternetType(pkgServiceType) && pkgMapEnabled}
+      {#if isInternetType(pkgServiceType) && isPppoeProvisioning(pkgProvisioningType) && pkgMapEnabled}
         <div class="grid2">
           <label>
             <span>{$t('admin.network.packages.mapping.router') || 'Router'}</span>

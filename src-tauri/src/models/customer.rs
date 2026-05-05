@@ -374,6 +374,7 @@ pub struct InstallationWorkOrderView {
     pub customer_name: Option<String>,
     pub location_label: Option<String>,
     pub package_name: Option<String>,
+    pub package_provisioning_type: Option<String>,
     pub router_name: Option<String>,
     pub assigned_to_name: Option<String>,
     pub assigned_to_email: Option<String>,

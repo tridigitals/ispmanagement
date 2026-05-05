@@ -417,9 +417,12 @@ pub fn run() {
                                     get_customer_lifecycle_observability,
                                     list_customer_subscription_options,
                                     list_customer_subscriptions,
+                                    get_customer_subscription,
                                     create_customer_subscription,
                                     update_customer_subscription,
                                     delete_customer_subscription,
+                                    create_my_customer_subscription_order_request,
+                                    reopen_my_customer_subscription_order_request,
                                     list_installation_work_orders,
                                     list_installation_assignees,
                                     assign_installation_work_order,
@@ -428,6 +431,38 @@ pub fn run() {
                                     start_installation_work_order,
                                     complete_installation_work_order,
                                     cancel_installation_work_order,
+                                    // Network mapping
+                                    list_network_nodes,
+                                    create_network_node,
+                                    update_network_node,
+                                    delete_network_node,
+                                    list_network_links,
+                                    create_network_link,
+                                    connect_network_node_to_link,
+                                    update_network_link,
+                                    delete_network_link,
+                                    compute_network_path,
+                                    sync_network_mapping_assets,
+                                    rank_candidate_network_nodes,
+                                    list_service_zones,
+                                    create_service_zone,
+                                    update_service_zone,
+                                    delete_service_zone,
+                                    resolve_service_zone,
+                                    check_network_coverage,
+                                    list_zone_offers,
+                                    create_zone_offer,
+                                    update_zone_offer,
+                                    delete_zone_offer,
+                                    list_zone_node_bindings,
+                                    create_zone_node_binding,
+                                    delete_zone_node_binding,
+                                    list_network_impacted_customers,
+                                    // Work orders
+                                    reopen_installation_work_order,
+                                    get_pending_work_order_reschedule_request,
+                                    approve_work_order_reschedule_request,
+                                    reject_work_order_reschedule_request,
                                     // PPPoE (tenant scoped)
                                     list_pppoe_accounts,
                                     get_pppoe_account,
@@ -438,6 +473,14 @@ pub fn run() {
                                     reconcile_pppoe_router,
                                     preview_pppoe_import_from_router,
                                     import_pppoe_from_router,
+                                    // DHCP Static (tenant scoped)
+                                    list_dhcp_static_services,
+                                    get_dhcp_static_service,
+                                    create_dhcp_static_service,
+                                    update_dhcp_static_service,
+                                    delete_dhcp_static_service,
+                                    apply_dhcp_static_service,
+                                    reconcile_dhcp_static_router,
                                     // ISP Packages (tenant scoped)
                                     list_isp_packages,
                                     create_isp_package,
@@ -479,6 +522,7 @@ pub fn run() {
                                     get_mikrotik_ppp_profile_dependencies,
                                     sync_mikrotik_ppp_profiles,
                                     list_mikrotik_ip_pools,
+                                    list_mikrotik_dhcp_servers,
                                     create_mikrotik_ip_pool,
                                     update_mikrotik_ip_pool,
                                     delete_mikrotik_ip_pool,
@@ -487,6 +531,14 @@ pub fn run() {
                                     sync_mikrotik_logs,
                                     update_mikrotik_log_retention,
                                     clear_mikrotik_logs,
+                                    // MixRadius import
+                                    upload_mixradius_import,
+                                    list_mixradius_import_batches,
+                                    get_mixradius_import_batch,
+                                    preview_mixradius_import,
+                                    execute_mixradius_import,
+                                    cancel_mixradius_import,
+                                    delete_mixradius_import_batch,
                                     // Announcements
                                     list_active_announcements,
                                     list_recent_announcements,
@@ -496,6 +548,12 @@ pub fn run() {
                                     create_announcement_admin,
                                     update_announcement_admin,
                                     delete_announcement_admin,
+                                    // Public
+                                    get_tenant_by_slug,
+                                    get_tenant_by_domain,
+                                    get_customer_registration_status_by_domain,
+                                    validate_customer_registration_invite_by_domain,
+                                    register_customer_by_domain,
                                 ])
                                 .run(tauri::generate_context!())
                                 .expect("error while running tauri application");
@@ -515,6 +573,20 @@ fn show_error_dialog(message: &str) {
 #[cfg(test)]
 fn run_source() -> &'static str {
     include_str!("lib.rs")
+}
+
+#[cfg(test)]
+fn generate_handler_source() -> &'static str {
+    let source = run_source();
+    let start = source
+        .find(".invoke_handler(tauri::generate_handler![")
+        .expect("run() must register a tauri generate_handler");
+    let tail = &source[start..];
+    let end = tail
+        .find("])")
+        .expect("generate_handler invocation must terminate");
+
+    &tail[..end]
 }
 
 #[cfg(test)]
@@ -540,6 +612,46 @@ mod tests {
         assert!(
             bootstrap.contains("crate::bootstrap::app::initialize_backend(app_handle.clone(), app_data_dir.clone())"),
             "run() bootstrap block must delegate to bootstrap::app::initialize_backend"
+        );
+    }
+
+    #[test]
+    fn run_registers_network_mapping_commands() {
+        let handler = super::generate_handler_source();
+
+        assert!(
+            handler.contains("list_network_nodes"),
+            "desktop generate_handler must register network mapping list commands"
+        );
+        assert!(
+            handler.contains("sync_network_mapping_assets"),
+            "desktop generate_handler must register network mapping sync commands"
+        );
+        assert!(
+            handler.contains("check_network_coverage"),
+            "desktop generate_handler must register network mapping coverage commands"
+        );
+    }
+
+    #[test]
+    fn run_registers_remaining_frontend_commands() {
+        let handler = super::generate_handler_source();
+
+        assert!(
+            handler.contains("get_tenant_by_slug"),
+            "desktop generate_handler must register public tenant lookup commands"
+        );
+        assert!(
+            handler.contains("upload_mixradius_import"),
+            "desktop generate_handler must register MixRadius import commands"
+        );
+        assert!(
+            handler.contains("reopen_installation_work_order"),
+            "desktop generate_handler must register work order reopen commands"
+        );
+        assert!(
+            handler.contains("get_customer_subscription"),
+            "desktop generate_handler must register customer subscription lookup commands"
         );
     }
 }

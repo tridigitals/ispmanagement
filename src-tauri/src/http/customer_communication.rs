@@ -64,7 +64,9 @@ pub async fn send_customer_email(
         let subject = payload.subject.trim();
         let body = payload.body.trim();
         if subject.is_empty() {
-            return Err(AppError::Validation("Email subject is required".to_string()));
+            return Err(AppError::Validation(
+                "Email subject is required".to_string(),
+            ));
         }
         if body.is_empty() {
             return Err(AppError::Validation("Email body is required".to_string()));

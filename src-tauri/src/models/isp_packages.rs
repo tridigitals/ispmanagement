@@ -7,6 +7,7 @@ pub struct IspPackage {
     pub id: String,
     pub tenant_id: String,
     pub service_type: String,
+    pub provisioning_type: String,
     pub name: String,
     pub description: Option<String>,
     pub features: Vec<String>,
@@ -23,6 +24,7 @@ impl IspPackage {
     pub fn new(
         tenant_id: String,
         service_type: Option<String>,
+        provisioning_type: Option<String>,
         name: String,
         description: Option<String>,
         features: Option<Vec<String>>,
@@ -36,6 +38,10 @@ impl IspPackage {
             tenant_id,
             service_type: service_type
                 .unwrap_or_else(|| "internet_pppoe".to_string())
+                .trim()
+                .to_string(),
+            provisioning_type: provisioning_type
+                .unwrap_or_else(|| "pppoe".to_string())
                 .trim()
                 .to_string(),
             name,
@@ -53,6 +59,7 @@ impl IspPackage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateIspPackageRequest {
     pub service_type: Option<String>,
+    pub provisioning_type: Option<String>,
     pub name: String,
     pub description: Option<String>,
     pub features: Option<Vec<String>>,
@@ -64,6 +71,7 @@ pub struct CreateIspPackageRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateIspPackageRequest {
     pub service_type: Option<String>,
+    pub provisioning_type: Option<String>,
     pub name: Option<String>,
     pub description: Option<String>,
     pub features: Option<Vec<String>>,

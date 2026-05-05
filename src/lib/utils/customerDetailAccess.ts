@@ -5,6 +5,7 @@ export const customerDetailTabs = [
   'billing',
   'timeline',
   'pppoe',
+  'dhcp_static',
 ] as const;
 
 export type CustomerDetailTab = (typeof customerDetailTabs)[number];
@@ -13,6 +14,7 @@ export type CustomerDetailAccessState = {
   canReadCustomerLocations: boolean;
   canReadBilling: boolean;
   canReadPppoe: boolean;
+  canReadDhcpStatic: boolean;
   canReadAudit: boolean;
 };
 
@@ -31,6 +33,10 @@ export function getVisibleCustomerDetailTabs(
 
   if (access.canReadPppoe) {
     tabs.push('pppoe');
+  }
+
+  if (access.canReadDhcpStatic) {
+    tabs.push('dhcp_static');
   }
 
   if (access.canReadAudit) {
@@ -64,7 +70,13 @@ export function shouldAutoLoadCustomerDetailTab(
 ): boolean {
   const visibleTabs = getVisibleCustomerDetailTabs(access);
   if (!visibleTabs.includes(tab)) return false;
-  return tab === 'subscriptions' || tab === 'billing' || tab === 'timeline' || tab === 'pppoe';
+  return (
+    tab === 'subscriptions' ||
+    tab === 'billing' ||
+    tab === 'timeline' ||
+    tab === 'pppoe' ||
+    tab === 'dhcp_static'
+  );
 }
 
 export function getCustomerDetailAutoLoadKey(

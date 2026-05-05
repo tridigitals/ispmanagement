@@ -88,6 +88,8 @@
         $can('read', 'ip_pools') ||
         $can('read', 'pppoe') ||
         $can('manage', 'pppoe') ||
+        $can('read', 'dhcp_static') ||
+        $can('manage', 'dhcp_static') ||
         $can('read', 'isp_packages') ||
         $can('manage', 'isp_packages') ||
         $can('read', 'work_orders') ||
@@ -96,6 +98,9 @@
     }
     if (path.startsWith('/admin/network/pppoe')) {
       return $can('read', 'pppoe') || $can('manage', 'pppoe');
+    }
+    if (path.startsWith('/admin/network/dhcp-static')) {
+      return $can('read', 'dhcp_static') || $can('manage', 'dhcp_static');
     }
     if (path.startsWith('/admin/network/import')) {
       return $can('manage', 'pppoe');

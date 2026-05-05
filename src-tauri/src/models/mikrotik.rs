@@ -476,6 +476,15 @@ pub struct MikrotikIpPoolDeleteResult {
     pub warnings: Vec<MikrotikIpPoolDependencyItem>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikDhcpServer {
+    pub name: String,
+    pub interface: Option<String>,
+    pub address_pool: Option<String>,
+    pub lease_time: Option<String>,
+    pub disabled: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct MikrotikAlert {
     pub id: String,

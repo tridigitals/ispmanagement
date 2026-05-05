@@ -352,6 +352,12 @@
             show: $can('read', 'pppoe') || $can('manage', 'pppoe'),
           },
           {
+            label: $t('sidebar.dhcp_static') || 'DHCP Static',
+            icon: 'wifi',
+            href: `${tenantPrefix}/admin/network/dhcp-static`,
+            show: $can('read', 'dhcp_static') || $can('manage', 'dhcp_static'),
+          },
+          {
             label: $t('sidebar.imports') || 'Imports',
             icon: 'download',
             href: `${tenantPrefix}/admin/network/import`,
@@ -508,9 +514,9 @@
 
   function toggleSection(id: string, e?: MouseEvent) {
     e?.stopPropagation();
-    // Accordion behavior: keep only one section open at a time.
-    // We intentionally do not "close" the active section to avoid an empty sidebar state.
-    openSectionId = id;
+    // Accordion behavior: keep only one section open at a time,
+    // but allow closing the currently open section.
+    openSectionId = openSectionId === id ? null : id;
   }
 
   $effect(() => {

@@ -13,6 +13,7 @@ const technicianAccess: CustomerDetailAccessState = {
   canReadCustomerLocations: true,
   canReadBilling: false,
   canReadPppoe: true,
+  canReadDhcpStatic: true,
   canReadAudit: false,
 };
 
@@ -22,6 +23,7 @@ describe('customer detail access helpers', () => {
       'overview',
       'locations',
       'pppoe',
+      'dhcp_static',
     ]);
   });
 
@@ -31,15 +33,25 @@ describe('customer detail access helpers', () => {
         canReadCustomerLocations: true,
         canReadBilling: true,
         canReadPppoe: true,
+        canReadDhcpStatic: true,
         canReadAudit: true,
       }),
-    ).toEqual(['overview', 'locations', 'subscriptions', 'billing', 'pppoe', 'timeline']);
+    ).toEqual([
+      'overview',
+      'locations',
+      'subscriptions',
+      'billing',
+      'pppoe',
+      'dhcp_static',
+      'timeline',
+    ]);
   });
 
   it('normalizes forbidden tabs back to overview', () => {
     expect(normalizeCustomerDetailTab('subscriptions', technicianAccess)).toBe('overview');
     expect(normalizeCustomerDetailTab('billing', technicianAccess)).toBe('overview');
     expect(normalizeCustomerDetailTab('pppoe', technicianAccess)).toBe('pppoe');
+    expect(normalizeCustomerDetailTab('dhcp_static', technicianAccess)).toBe('dhcp_static');
   });
 
   it('does not override local state when the url has no tab value', () => {
@@ -50,6 +62,7 @@ describe('customer detail access helpers', () => {
 
   it('marks pppoe as an auto-loading tab when access is available', () => {
     expect(shouldAutoLoadCustomerDetailTab('pppoe', technicianAccess)).toBe(true);
+    expect(shouldAutoLoadCustomerDetailTab('dhcp_static', technicianAccess)).toBe(true);
     expect(shouldAutoLoadCustomerDetailTab('timeline', technicianAccess)).toBe(false);
   });
 
@@ -61,6 +74,9 @@ describe('customer detail access helpers', () => {
   it('builds a stable auto-load key from tab and customer only when allowed', () => {
     expect(getCustomerDetailAutoLoadKey('pppoe', 'customer-1', technicianAccess)).toBe(
       'pppoe:customer-1',
+    );
+    expect(getCustomerDetailAutoLoadKey('dhcp_static', 'customer-1', technicianAccess)).toBe(
+      'dhcp_static:customer-1',
     );
     expect(getCustomerDetailAutoLoadKey('billing', 'customer-1', technicianAccess)).toBeNull();
     expect(getCustomerDetailAutoLoadKey('pppoe', '', technicianAccess)).toBeNull();

@@ -20,6 +20,7 @@
   type ProfileSuggestion = { id: string; name: string };
   type PoolSuggestion = { id: string; name: string };
   type ServiceType = 'internet_pppoe' | 'hotspot' | 'vpn';
+  type ProvisioningType = 'pppoe' | 'dhcp_static';
   type PackageSortBy = 'name' | 'type' | 'price' | 'status' | 'mappings';
   const tenantCtx = $derived.by(() =>
     resolveTenantContext({
@@ -59,6 +60,7 @@
   let showPkgModal = $state(false);
   let editingPkg = $state<IspPackage | null>(null);
   let pkgServiceType = $state<ServiceType>('internet_pppoe');
+  let pkgProvisioningType = $state<ProvisioningType>('pppoe');
   let pkgName = $state('');
   let pkgDesc = $state('');
   let pkgFeatures = $state<string[]>([]);
@@ -180,11 +182,22 @@
     return 'internet_pppoe';
   };
   const isInternetType = (value?: string | null) => normalizeServiceType(value) === 'internet_pppoe';
-  const serviceTypeLabel = (value?: string | null) => {
+  const normalizeProvisioningType = (value?: string | null): ProvisioningType => {
+    return String(value || 'pppoe').toLowerCase() === 'dhcp_static' ? 'dhcp_static' : 'pppoe';
+  };
+  const isPppoeProvisioning = (value?: string | null) =>
+    normalizeProvisioningType(value) === 'pppoe';
+  const provisioningTypeLabel = (value?: string | null) =>
+    normalizeProvisioningType(value) === 'dhcp_static'
+      ? ($t('admin.services.provisioning.dhcp_static') || 'DHCP Static')
+      : ($t('admin.services.provisioning.pppoe') || 'PPPoE');
+  const serviceTypeLabel = (value?: string | null, provisioningType?: string | null) => {
     const key = String(value || 'internet_pppoe').toLowerCase();
     if (key === 'hotspot') return $t('admin.services.types.hotspot') || 'Hotspot';
     if (key === 'vpn') return $t('admin.services.types.vpn') || 'VPN';
-    return $t('admin.services.types.internet_pppoe') || 'Internet / PPPoE';
+    return normalizeProvisioningType(provisioningType) === 'dhcp_static'
+      ? ($t('admin.services.types.internet_dhcp_static') || 'Internet / DHCP Static')
+      : ($t('admin.services.types.internet_pppoe') || 'Internet / PPPoE');
   };
   const serviceTypeCards = $derived.by(() => [
     {
@@ -254,6 +267,7 @@
 
   function resetCreateForm(type: ServiceType) {
     pkgServiceType = type;
+    pkgProvisioningType = 'pppoe';
     pkgName = '';
     pkgDesc = '';
     pkgFeatures = [];
@@ -357,6 +371,7 @@
     showServiceTypePicker = false;
     editingPkg = p;
     pkgServiceType = normalizeServiceType(p.service_type);
+    pkgProvisioningType = normalizeProvisioningType(p.provisioning_type);
     pkgName = p.name;
     pkgDesc = p.description || '';
     pkgFeatures = Array.isArray(p.features) ? [...p.features] : [];
@@ -369,7 +384,7 @@
     pkgPoolSuggestions = [];
 
     const existing = firstMappingFor(p.id);
-    if (isInternetType(pkgServiceType) && existing) {
+    if (isInternetType(pkgServiceType) && isPppoeProvisioning(pkgProvisioningType) && existing) {
       pkgMapEnabled = true;
       pkgMapRouterId = existing.router_id || '';
       pkgMapProfile = existing.router_profile_name || '';
@@ -406,7 +421,7 @@
     try {
       const wasCreate = !editingPkg;
       let pkg = editingPkg;
-      if (!isInternetType(pkgServiceType)) {
+      if (!isInternetType(pkgServiceType) || !isPppoeProvisioning(pkgProvisioningType)) {
         pkgMapEnabled = false;
         pkgMapRouterId = '';
         pkgMapProfile = '';
@@ -414,6 +429,7 @@
       }
       const payload = {
         service_type: pkgServiceType,
+        provisioning_type: isInternetType(pkgServiceType) ? pkgProvisioningType : 'pppoe',
         name: pkgName.trim(),
         description: pkgDesc.trim() || null,
         features: pkgFeatures,
@@ -430,7 +446,13 @@
         editingPkg = pkg;
       }
 
-      if (isInternetType(pkgServiceType) && pkgMapEnabled && pkgMapRouterId && pkgMapProfile.trim()) {
+      if (
+        isInternetType(pkgServiceType) &&
+        isPppoeProvisioning(pkgProvisioningType) &&
+        pkgMapEnabled &&
+        pkgMapRouterId &&
+        pkgMapProfile.trim()
+      ) {
         const mappingReferenceError = getPackageRouterMappingReferenceError({
           routerId: pkgMapRouterId,
           profileName: pkgMapProfile,
@@ -480,8 +502,11 @@
   async function openMapping(p: IspPackage) {
     if (!$can('manage', 'isp_packages')) return;
     await ensureServicesDialogsLoaded();
-    if (!isInternetType(p.service_type)) {
-      toast.error($t('admin.services.mapping.only_internet') || 'Router mapping is only available for Internet / PPPoE services.');
+    if (!isInternetType(p.service_type) || !isPppoeProvisioning(p.provisioning_type)) {
+      toast.error(
+        $t('admin.services.mapping.only_pppoe') ||
+          'Router mapping is only available for Internet / PPPoE services.',
+      );
       return;
     }
     mapPkg = p;
@@ -705,7 +730,12 @@
             {/if}
           </div>
         {:else if key === 'type'}
-          <span class="badge neutral">{serviceTypeLabel(row.service_type)}</span>
+          <div class="stack compact">
+            <span class="badge neutral">{serviceTypeLabel(row.service_type, row.provisioning_type)}</span>
+            {#if isInternetType(row.service_type)}
+              <span class="meta">{provisioningTypeLabel(row.provisioning_type)}</span>
+            {/if}
+          </div>
         {:else if key === 'price'}
           <div class="stack">
             <div class="mono">{formatDisplayPrice(Number(row.price_monthly || 0))}<span class="unit">/mo</span></div>
@@ -766,6 +796,8 @@
       bind:pkgFeatures
       {serviceTypeLabel}
       {pkgServiceType}
+      bind:pkgProvisioningType
+      {provisioningTypeLabel}
       bind:pkgName
       bind:pkgDesc
       {tenantCurrencyCode}
@@ -776,6 +808,7 @@
       {formatDisplayPrice}
       bind:pkgActive
       {isInternetType}
+      {isPppoeProvisioning}
       bind:pkgMapEnabled
       {routerOptions}
       bind:pkgMapRouterId

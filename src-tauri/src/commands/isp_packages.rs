@@ -54,6 +54,7 @@ pub async fn list_isp_packages(
 pub async fn create_isp_package(
     token: String,
     service_type: Option<String>,
+    provisioning_type: Option<String>,
     name: String,
     description: Option<String>,
     features: Option<Vec<String>>,
@@ -75,6 +76,7 @@ pub async fn create_isp_package(
 
     let dto = CreateIspPackageRequest {
         service_type,
+        provisioning_type,
         name,
         description,
         features,
@@ -92,6 +94,7 @@ pub async fn update_isp_package(
     token: String,
     id: String,
     service_type: Option<String>,
+    provisioning_type: Option<String>,
     name: Option<String>,
     description: Option<String>,
     features: Option<Vec<String>>,
@@ -113,6 +116,7 @@ pub async fn update_isp_package(
 
     let dto = UpdateIspPackageRequest {
         service_type,
+        provisioning_type,
         name,
         description,
         features,

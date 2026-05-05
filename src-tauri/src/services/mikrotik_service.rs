@@ -13,10 +13,11 @@ use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     CreateMikrotikIpPoolRequest, CreateMikrotikPppProfileRequest, CreateMikrotikRouterRequest,
-    MikrotikAlert, MikrotikHealthSnapshot, MikrotikIncident, MikrotikInterfaceCounter,
-    MikrotikInterfaceMetric, MikrotikInterfaceSnapshot, MikrotikIpAddressSnapshot, MikrotikIpPool,
-    MikrotikIpPoolDeleteResult, MikrotikIpPoolDependencyItem, MikrotikIpPoolDependencyStatus,
-    MikrotikLogClearResult, MikrotikLogEntry, MikrotikLogRetentionSettings, MikrotikLogSyncResult,
+    MikrotikAlert, MikrotikDhcpServer, MikrotikHealthSnapshot, MikrotikIncident,
+    MikrotikInterfaceCounter, MikrotikInterfaceMetric, MikrotikInterfaceSnapshot,
+    MikrotikIpAddressSnapshot, MikrotikIpPool, MikrotikIpPoolDeleteResult,
+    MikrotikIpPoolDependencyItem, MikrotikIpPoolDependencyStatus, MikrotikLogClearResult,
+    MikrotikLogEntry, MikrotikLogRetentionSettings, MikrotikLogSyncResult,
     MikrotikPppActiveSession, MikrotikPppProfile, MikrotikPppProfileDeleteResult,
     MikrotikPppProfileDependencyItem, MikrotikPppProfileDependencyStatus, MikrotikRouter,
     MikrotikRouterMetric, MikrotikRouterNocRow, MikrotikRouterSnapshot, MikrotikTestResult,
@@ -4573,6 +4574,62 @@ impl MikrotikService {
         .fetch_all(&self.pool)
         .await
         .map_err(AppError::Database)?;
+        Ok(rows)
+    }
+
+    pub async fn list_dhcp_servers(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+    ) -> AppResult<Vec<MikrotikDhcpServer>> {
+        let router = self
+            .get_router(tenant_id, router_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Router not found".into()))?;
+
+        let dev = self
+            .connect_device(&router)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let cmd = CommandBuilder::new()
+            .command("/ip/dhcp-server/print")
+            .attribute("detail", Some(""))
+            .build();
+        let mut rx = dev
+            .send_command(cmd)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let mut rows = Vec::new();
+        while let Some(res) = rx.recv().await {
+            let response = res.map_err(|e| AppError::Internal(e.to_string()))?;
+            if let CommandResponse::Reply(reply) = response {
+                let name = reply
+                    .attributes
+                    .get("name")
+                    .and_then(|v| v.clone())
+                    .unwrap_or_default()
+                    .trim()
+                    .to_string();
+                if name.is_empty() {
+                    continue;
+                }
+
+                rows.push(MikrotikDhcpServer {
+                    name,
+                    interface: reply.attributes.get("interface").and_then(|v| v.clone()),
+                    address_pool: reply.attributes.get("address-pool").and_then(|v| v.clone()),
+                    lease_time: reply.attributes.get("lease-time").and_then(|v| v.clone()),
+                    disabled: Self::parse_bool_opt(
+                        reply.attributes.get("disabled").and_then(|v| v.as_ref()),
+                    )
+                    .unwrap_or(false),
+                });
+            }
+        }
+
+        rows.sort_by(|a, b| a.name.cmp(&b.name));
         Ok(rows)
     }
 

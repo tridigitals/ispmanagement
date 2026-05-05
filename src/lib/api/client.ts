@@ -4,6 +4,7 @@ import { auth } from './auth';
 import { backup } from './backup';
 import { customers } from './customers';
 import { customerCommunication } from './customerCommunication';
+import { dhcpStatic } from './dhcpStatic';
 import { emailOutbox } from './emailOutbox';
 import { install } from './install';
 import { ispPackages } from './ispPackages';
@@ -32,6 +33,7 @@ export { auth } from './auth';
 export { backup } from './backup';
 export { customers } from './customers';
 export { customerCommunication } from './customerCommunication';
+export { dhcpStatic } from './dhcpStatic';
 export { emailOutbox } from './emailOutbox';
 export { install } from './install';
 export { ispPackages } from './ispPackages';
@@ -66,6 +68,7 @@ export const api = {
   whatsapp,
   workOrders,
   pppoe,
+  dhcpStatic,
   ispPackages,
   messageTemplates,
   networkMapping,

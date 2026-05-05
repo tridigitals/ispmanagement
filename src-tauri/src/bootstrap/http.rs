@@ -1,8 +1,9 @@
 use crate::services::{
-    AuditService, AuthService, CustomerService, EmailService, IspPackageService,
-    ManagedRadiusService, MessageTemplateService, MikrotikService, MixradiusImportService,
-    NetworkMappingService, NotificationService, PaymentService, PlanService, PppoeService,
-    RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
+    AuditService, AuthService, CustomerService, DhcpStaticServiceManager, EmailService,
+    IspPackageService, ManagedRadiusService, MessageTemplateService, MikrotikService,
+    MixradiusImportService, NetworkMappingService, NotificationService, PaymentService,
+    PlanService, PppoeService, RoleService, SettingsService, StorageService, SystemService,
+    TeamService, UserService,
 };
 use axum::{
     extract::DefaultBodyLimit,
@@ -26,11 +27,11 @@ use std::path::PathBuf;
 use std::{collections::HashMap, time::Instant};
 
 use crate::http::{
-    announcements, audit, auth, backup, customer_communication, customers, email_outbox, install,
-    isp_packages, message_templates, middleware, mikrotik, mixradius_import, network_mapping,
-    notifications, payment, plans, pppoe, public, roles, settings, storage, superadmin, support,
-    system, team, tenant, users, websocket, whatsapp, work_orders, AppState, SecurityRuntimeConfig,
-    WsHub,
+    announcements, audit, auth, backup, customer_communication, customers, dhcp_static,
+    email_outbox, install, isp_packages, message_templates, middleware, mikrotik, mixradius_import,
+    network_mapping, notifications, payment, plans, pppoe, public, roles, settings, storage,
+    superadmin, support, system, team, tenant, users, websocket, whatsapp, work_orders, AppState,
+    SecurityRuntimeConfig, WsHub,
 };
 
 type IpBlockMap = HashMap<String, chrono::DateTime<chrono::Utc>>;
@@ -53,6 +54,7 @@ pub async fn start_server_impl(
     mikrotik_service: MikrotikService,
     customer_service: CustomerService,
     pppoe_service: PppoeService,
+    dhcp_static_service: DhcpStaticServiceManager,
     isp_package_service: IspPackageService,
     network_mapping_service: NetworkMappingService,
     backup_service: crate::services::BackupService,
@@ -188,6 +190,7 @@ pub async fn start_server_impl(
         mixradius_import_service: Arc::new(MixradiusImportService::new(pool.clone())),
         customer_service: Arc::new(customer_service),
         pppoe_service: Arc::new(pppoe_service),
+        dhcp_static_service: Arc::new(dhcp_static_service),
         isp_package_service: Arc::new(isp_package_service),
         network_mapping_service: Arc::new(network_mapping_service),
         backup_service: Arc::new(backup_service),
@@ -502,6 +505,8 @@ pub async fn start_server_impl(
         .nest("/api/admin/work-orders", work_orders::router())
         // PPPoE accounts (tenant scoped)
         .nest("/api/admin/pppoe", pppoe::router())
+        // DHCP static services (tenant scoped)
+        .nest("/api/admin/dhcp-static", dhcp_static::router())
         // MixRadius import wizard (tenant scoped)
         .nest("/api/admin/pppoe/mixradius", mixradius_import::router())
         // ISP packages + router mapping (tenant scoped)
@@ -682,6 +687,7 @@ pub fn spawn_http_server(
     mikrotik_service: crate::services::MikrotikService,
     customer_service: crate::services::CustomerService,
     pppoe_service: crate::services::PppoeService,
+    dhcp_static_service: crate::services::DhcpStaticServiceManager,
     isp_package_service: crate::services::IspPackageService,
     network_mapping_service: crate::services::NetworkMappingService,
     backup_service: crate::services::BackupService,
@@ -708,6 +714,7 @@ pub fn spawn_http_server(
             mikrotik_service,
             customer_service,
             pppoe_service,
+            dhcp_static_service,
             isp_package_service,
             network_mapping_service,
             backup_service,

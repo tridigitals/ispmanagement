@@ -12,6 +12,7 @@
     type AuditLog,
     type Customer,
     type CustomerLifecycleObservability,
+    type DhcpStaticServicePublic,
     type CustomerLocation,
     type CustomerSubscriptionView,
     type Invoice,
@@ -117,6 +118,7 @@
 
   // PPPoE
   let pppoeAccounts = $state<PppoeAccountPublic[]>([]);
+  let dhcpStaticServices = $state<DhcpStaticServicePublic[]>([]);
   let loadingPppoe = $state(false);
   let pppoeQuery = $state('');
   let pppoeRouters = $state<any[]>([]);
@@ -223,6 +225,7 @@
   }>();
   const billingResourceLoader = createCustomerDetailResourceLoader<Invoice[]>();
   const pppoeResourceLoader = createCustomerDetailResourceLoader<PppoeAccountPublic[]>();
+  const dhcpStaticResourceLoader = createCustomerDetailResourceLoader<DhcpStaticServicePublic[]>();
   const timelineResourceLoader = createCustomerDetailResourceLoader<AuditLog[]>();
 
   const locColumns = $derived.by(() => [
@@ -293,6 +296,7 @@
   const canReadBilling = $derived($can('read', 'billing') || $can('manage', 'billing'));
   const canReadAudit = $derived($can('read', 'audit_logs'));
   const canReadPppoe = $derived($can('read', 'pppoe') || $can('manage', 'pppoe'));
+  const canReadDhcpStatic = $derived($can('read', 'dhcp_static') || $can('manage', 'dhcp_static'));
   const pppoeToolbar = $derived(
     pppoeHelperModule?.pppoeToolbar ?? {
       showSearch: true,
@@ -306,6 +310,7 @@
       canReadCustomerLocations,
       canReadBilling,
       canReadPppoe,
+      canReadDhcpStatic,
       canReadAudit,
     }),
   );
@@ -313,6 +318,7 @@
     canReadCustomerLocations,
     canReadBilling,
     canReadPppoe,
+    canReadDhcpStatic,
     canReadAudit,
   }));
   const timelineFilteredLogs = $derived.by(() => {
@@ -463,6 +469,7 @@
       activeTab === 'subscriptions' ||
       activeTab === 'billing' ||
       activeTab === 'pppoe' ||
+      activeTab === 'dhcp_static' ||
       activeTab === 'timeline'
     ) {
       untrack(() => {
@@ -510,6 +517,16 @@
     untrack(() => {
       void loadSubscriptions();
       void loadBillingInvoices();
+    });
+  });
+
+  $effect(() => {
+    const autoLoadKey = getCustomerDetailAutoLoadKey(activeTab, customerId, customerDetailAccess);
+    if (!autoLoadKey) return;
+    if (activeTab !== 'dhcp_static') return;
+    if (!canReadDhcpStatic) return;
+    untrack(() => {
+      void loadDhcpStaticServices();
     });
   });
 
@@ -873,6 +890,7 @@
       canReadCustomerLocations,
       canReadBilling,
       canReadPppoe,
+      canReadDhcpStatic,
       canReadAudit,
     });
   }
@@ -1207,6 +1225,30 @@
       );
     } finally {
       loadingPppoe = false;
+    }
+  }
+
+  async function loadDhcpStaticServices(options: { force?: boolean } = {}) {
+    const key = `${customerId}:${activeTab}:dhcp_static`;
+    if (!options.force && dhcpStaticResourceLoader.hasLoaded(key)) return;
+    try {
+      const result = await dhcpStaticResourceLoader.load(
+        key,
+        async () => {
+          const res = await api.dhcpStatic.services.list({
+            customer_id: customerId,
+            page: 1,
+            per_page: 200,
+          });
+          return res.data || [];
+        },
+        options,
+      );
+      if (result.status === 'loaded') {
+        dhcpStaticServices = result.value;
+      }
+    } catch (e: any) {
+      toast.error(`Failed to load DHCP static services: ${e?.message || e}`);
     }
   }
 
@@ -1645,6 +1687,11 @@
         {$t('admin.customers.tabs.pppoe') || 'PPPoE'}
       </button>
     {/if}
+    {#if visibleTabs.includes('dhcp_static')}
+      <button class:active={activeTab === 'dhcp_static'} onclick={() => (activeTab = 'dhcp_static')}>
+        {$t('admin.customers.tabs.dhcp_static') || 'DHCP Static'}
+      </button>
+    {/if}
     {#if visibleTabs.includes('timeline')}
       <button class:active={activeTab === 'timeline'} onclick={() => (activeTab = 'timeline')}>
         Timeline
@@ -1880,6 +1927,63 @@
           <p>{$t('common.loading') || 'Loading...'}</p>
         </div>
       {/if}
+    {:else if activeTab === 'dhcp_static'}
+      <div class="card section-card">
+        <div class="section-head">
+          <div>
+            <h3>{$t('admin.customers.tabs.dhcp_static') || 'DHCP Static'}</h3>
+            <p class="muted">
+              {$t('admin.customers.dhcp_static.subtitle') ||
+                'Static lease and queue status for this customer.'}
+            </p>
+          </div>
+          <button class="btn ghost" onclick={() => loadDhcpStaticServices({ force: true })}>
+            {$t('common.refresh') || 'Refresh'}
+          </button>
+        </div>
+        {#if dhcpStaticServices.length === 0}
+          <p class="muted">
+            {$t('admin.customers.dhcp_static.empty') || 'No DHCP static services.'}
+          </p>
+        {:else}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{$t('admin.customers.dhcp_static.columns.server') || 'Server'}</th>
+                  <th>{$t('admin.customers.dhcp_static.columns.mac') || 'MAC'}</th>
+                  <th>{$t('admin.customers.dhcp_static.columns.ip') || 'IP'}</th>
+                  <th>{$t('admin.customers.dhcp_static.columns.lease') || 'Lease'}</th>
+                  <th>{$t('admin.customers.dhcp_static.columns.queue') || 'Queue'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each dhcpStaticServices as row}
+                  <tr>
+                    <td>{row.dhcp_server_name}</td>
+                    <td>{row.mac_address}</td>
+                    <td>{row.ip_address}</td>
+                    <td>
+                      {row.lease_present
+                        ? $t('admin.customers.dhcp_static.sync.present') || 'Present'
+                        : row.lease_last_error ||
+                          ($t('admin.customers.dhcp_static.sync.missing') || 'Missing')}
+                    </td>
+                    <td>
+                      {row.queue_mode === 'none'
+                        ? $t('admin.customers.dhcp_static.sync.none') || 'None'
+                        : row.queue_present
+                          ? $t('admin.customers.dhcp_static.sync.present') || 'Present'
+                          : row.queue_last_error ||
+                            ($t('admin.customers.dhcp_static.sync.missing') || 'Missing')}
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+      </div>
     {:else if activeTab === 'timeline'}
       {#if TimelineTabComponent && timelineHelperModule}
         <TimelineTabComponent

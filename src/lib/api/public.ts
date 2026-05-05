@@ -1,6 +1,9 @@
 import { safeInvoke } from './core';
 import type { AuthResponse, CustomerRegistrationInviteValidation } from './types';
 
+const currentDomain = () =>
+  typeof window !== 'undefined' ? window.location.host || window.location.hostname : undefined;
+
 export const publicApi = {
   getTenant: (slug: string): Promise<any> => safeInvoke('get_tenant_by_slug', { slug }),
   getTenantByDomain: (domain: string): Promise<any> =>
@@ -15,7 +18,10 @@ export const publicApi = {
   validateCustomerRegistrationInviteByDomain: (
     token: string,
   ): Promise<CustomerRegistrationInviteValidation> =>
-    safeInvoke('validate_customer_registration_invite_by_domain', { token }),
+    safeInvoke('validate_customer_registration_invite_by_domain', {
+      token,
+      domain: currentDomain(),
+    }),
   registerCustomerByDomain: (
     email: string,
     password: string,
@@ -28,5 +34,6 @@ export const publicApi = {
       name,
       inviteToken: inviteToken ?? undefined,
       invite_token: inviteToken ?? undefined,
+      domain: currentDomain(),
     }),
 };

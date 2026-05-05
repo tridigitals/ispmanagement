@@ -76,6 +76,7 @@ const ROUTE_TITLES: Array<[RegExp, string]> = [
   [/^\/admin\/network\/routers\/?$/, 'Routers'],
   [/^\/admin\/network\/ppp-profiles\/?$/, 'PPP Profiles'],
   [/^\/admin\/network\/ip-pools\/?$/, 'IP Pools'],
+  [/^\/admin\/network\/dhcp-static\/?$/, 'DHCP Static'],
   [/^\/admin\/network\/pppoe\/import\/?$/, 'Import PPPoE'],
   [/^\/admin\/network\/pppoe\/?$/, 'PPPoE'],
   [/^\/admin\/network\/packages\/?$/, 'Packages'],

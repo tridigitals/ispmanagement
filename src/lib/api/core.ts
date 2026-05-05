@@ -409,6 +409,10 @@ const commandMap: Record<string, { method: string; path: string }> = {
     method: 'POST',
     path: '/admin/mikrotik/routers/:routerId/ppp-profiles/sync',
   },
+  list_mikrotik_dhcp_servers: {
+    method: 'GET',
+    path: '/admin/mikrotik/routers/:routerId/dhcp-servers',
+  },
   list_mikrotik_ip_pools: { method: 'GET', path: '/admin/mikrotik/routers/:routerId/ip-pools' },
   create_mikrotik_ip_pool: { method: 'POST', path: '/admin/mikrotik/routers/:routerId/ip-pools' },
   update_mikrotik_ip_pool: {
@@ -429,6 +433,16 @@ const commandMap: Record<string, { method: string; path: string }> = {
   },
   sync_mikrotik_logs: { method: 'POST', path: '/admin/mikrotik/routers/:routerId/logs/sync' },
   list_pppoe_accounts: { method: 'GET', path: '/admin/pppoe/accounts' },
+  list_dhcp_static_services: { method: 'GET', path: '/admin/dhcp-static/services' },
+  get_dhcp_static_service: { method: 'GET', path: '/admin/dhcp-static/services/:id' },
+  create_dhcp_static_service: { method: 'POST', path: '/admin/dhcp-static/services' },
+  update_dhcp_static_service: { method: 'PUT', path: '/admin/dhcp-static/services/:id' },
+  delete_dhcp_static_service: { method: 'DELETE', path: '/admin/dhcp-static/services/:id' },
+  apply_dhcp_static_service: { method: 'POST', path: '/admin/dhcp-static/services/:id/apply' },
+  reconcile_dhcp_static_router: {
+    method: 'POST',
+    path: '/admin/dhcp-static/routers/:routerId/reconcile',
+  },
   get_pppoe_account: { method: 'GET', path: '/admin/pppoe/accounts/:id' },
   create_pppoe_account: { method: 'POST', path: '/admin/pppoe/accounts' },
   update_pppoe_account: { method: 'PUT', path: '/admin/pppoe/accounts/:id' },

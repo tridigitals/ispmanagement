@@ -9,6 +9,7 @@ function createPackage(id: string, name: string): IspPackage {
     id,
     tenant_id: 'tenant-1',
     service_type: 'internet',
+    provisioning_type: 'pppoe',
     name,
     description: null,
     features: [],
@@ -26,6 +27,18 @@ describe('internet order package helpers', () => {
       createPackage('pkg-1', 'Starter'),
       createPackage('pkg-2', 'Pro'),
       createPackage('pkg-3', 'Business'),
+    ];
+
+    expect(getVisibleInternetOrderPackages(packages)).toEqual(packages);
+  });
+
+  it('keeps dhcp static internet packages visible in the order catalog', () => {
+    const packages = [
+      createPackage('pkg-1', 'Starter PPPoE'),
+      {
+        ...createPackage('pkg-2', 'Starter DHCP'),
+        provisioning_type: 'dhcp_static',
+      },
     ];
 
     expect(getVisibleInternetOrderPackages(packages)).toEqual(packages);

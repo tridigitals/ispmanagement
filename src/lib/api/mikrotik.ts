@@ -1,6 +1,14 @@
 import { getTokenOrThrow, safeInvoke } from './core';
 import type { ManagedRadiusRouterSetup, PaginatedResponse } from './types';
 
+export interface MikrotikDhcpServerOption {
+  name: string;
+  interface: string | null;
+  address_pool: string | null;
+  lease_time: string | null;
+  disabled: boolean;
+}
+
 export const mikrotik = {
   routers: {
     noc: (): Promise<any[]> => safeInvoke('list_mikrotik_noc', { token: getTokenOrThrow() }),
@@ -204,6 +212,12 @@ export const mikrotik = {
       }),
     ipPools: (routerId: string): Promise<any[]> =>
       safeInvoke('list_mikrotik_ip_pools', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+      }),
+    dhcpServers: (routerId: string): Promise<MikrotikDhcpServerOption[]> =>
+      safeInvoke('list_mikrotik_dhcp_servers', {
         token: getTokenOrThrow(),
         routerId,
         router_id: routerId,

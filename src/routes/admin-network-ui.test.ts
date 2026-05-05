@@ -12,6 +12,7 @@ describe('admin network UI cleanup', () => {
       'src/routes/(app)/admin/network/alerts/+page.svelte',
       'src/routes/(app)/admin/network/incidents/+page.svelte',
       'src/routes/(app)/admin/network/installations/+page.svelte',
+      'src/routes/(app)/admin/network/dhcp-static/+page.svelte',
       'src/routes/(app)/admin/network/ip-pools/+page.svelte',
       'src/routes/(app)/admin/network/noc/+page.svelte',
       'src/routes/(app)/admin/network/ppp-profiles/+page.svelte',
@@ -34,6 +35,7 @@ describe('admin network UI cleanup', () => {
     const files = [
       'src/routes/(app)/admin/network/alerts/+page.svelte',
       'src/routes/(app)/admin/network/installations/+page.svelte',
+      'src/routes/(app)/admin/network/dhcp-static/+page.svelte',
       'src/routes/(app)/admin/network/noc/+page.svelte',
       'src/routes/(app)/admin/network/pppoe/+page.svelte',
       'src/routes/(app)/admin/network/routers/+page.svelte',
@@ -44,5 +46,37 @@ describe('admin network UI cleanup', () => {
 
       expect(source, file).toMatch(/@media \(max-width: 640px\)[\s\S]*grid-template-columns: 1fr/);
     }
+  });
+
+  it('keeps DHCP static admin page capable of direct create and edit flows', () => {
+    const source = readSource('src/routes/(app)/admin/network/dhcp-static/+page.svelte');
+
+    expect(source).toContain('Create DHCP Static');
+    expect(source).toContain('Edit DHCP Static');
+    expect(source).toContain('submitCreate');
+    expect(source).toContain('submitEdit');
+    expect(source).toContain('api.dhcpStatic.services.create');
+    expect(source).toContain('api.dhcpStatic.services.update');
+  });
+
+  it('reuses DHCP static validation helpers in admin and installation flows', () => {
+    const adminSource = readSource('src/routes/(app)/admin/network/dhcp-static/+page.svelte');
+    const installationSource = readSource('src/routes/(app)/admin/network/installations/+page.svelte');
+
+    for (const source of [adminSource, installationSource]) {
+      expect(source).toContain('normalizeDhcpStaticMacAddress');
+      expect(source).toContain('validateDhcpStaticIpv4Address');
+      expect(source).toContain('validateDhcpStaticQueueRateLimit');
+    }
+  });
+
+  it('derives DHCP static queue presets from package context', () => {
+    const adminSource = readSource('src/routes/(app)/admin/network/dhcp-static/+page.svelte');
+    const installationSource = readSource('src/routes/(app)/admin/network/installations/+page.svelte');
+
+    expect(adminSource).toContain('buildDhcpStaticQueueRateLimitPresets');
+    expect(installationSource).toContain('buildDhcpStaticQueueRateLimitPresets');
+    expect(adminSource).toContain('queueRateLimitPresets[0]');
+    expect(installationSource).toContain('installationDhcpQueueRateLimitPresets[0]');
   });
 });

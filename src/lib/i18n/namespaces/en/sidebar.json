@@ -29,6 +29,7 @@
   "installations": "Installations",
   "logs": "Logs",
   "pppoe": "PPPoE",
+  "dhcp_static": "DHCP Static",
   "imports": "Imports",
   "ppp_profiles": "PPP Profiles",
   "ip_pools": "IP Pools",

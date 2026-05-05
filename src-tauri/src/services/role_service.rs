@@ -165,6 +165,9 @@ impl RoleService {
             // PPPoE (tenant scoped)
             ("pppoe", "read", "View PPPoE accounts"),
             ("pppoe", "manage", "Manage PPPoE accounts"),
+            // DHCP Static (tenant scoped)
+            ("dhcp_static", "read", "View DHCP static services"),
+            ("dhcp_static", "manage", "Manage DHCP static services"),
             // ISP Packages (tenant scoped)
             ("isp_packages", "read", "View ISP packages"),
             ("isp_packages", "manage", "Manage ISP packages"),

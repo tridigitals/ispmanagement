@@ -492,6 +492,7 @@ export interface InstallationWorkOrderView {
   customer_name: string | null;
   location_label: string | null;
   package_name: string | null;
+  package_provisioning_type: 'pppoe' | 'dhcp_static' | string | null;
   router_name: string | null;
   assigned_to_name: string | null;
   assigned_to_email: string | null;
@@ -599,6 +600,34 @@ export interface PppoeAccountPublic {
   updated_at: string;
 }
 
+export interface DhcpStaticServicePublic {
+  id: string;
+  tenant_id: string;
+  subscription_id: string;
+  router_id: string;
+  customer_id: string;
+  location_id: string;
+  package_id: string;
+  dhcp_server_name: string;
+  mac_address: string;
+  ip_address: string;
+  comment: string | null;
+  disabled: boolean;
+  lease_present: boolean;
+  lease_router_ref: string | null;
+  lease_last_sync_at: string | null;
+  lease_last_error: string | null;
+  queue_mode: 'none' | 'simple_queue' | string;
+  queue_name: string | null;
+  queue_target: string | null;
+  queue_rate_limit: string | null;
+  queue_present: boolean;
+  queue_last_sync_at: string | null;
+  queue_last_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ManagedRadiusRouterSetup {
   configured: boolean;
   router_id: string;
@@ -625,6 +654,7 @@ export interface IspPackage {
   id: string;
   tenant_id: string;
   service_type: string;
+  provisioning_type: 'pppoe' | 'dhcp_static' | string;
   name: string;
   description: string | null;
   features: string[];

@@ -757,6 +757,29 @@ pub async fn get_my_customer_subscription_installation_tracker(
 }
 
 #[tauri::command]
+pub async fn get_customer_subscription(
+    token: String,
+    subscription_id: String,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<CustomerSubscriptionView, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "billing", "read").await?;
+
+    customers
+        .get_customer_subscription(&claims.sub, &tenant_id, &subscription_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn request_my_customer_subscription_reschedule(
     token: String,
     subscription_id: String,
@@ -781,6 +804,78 @@ pub async fn request_my_customer_subscription_reschedule(
             &subscription_id,
             scheduled_at,
             reason,
+            Some("127.0.0.1"),
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(PortalOrderRequestResponse {
+        subscription,
+        work_order,
+    })
+}
+
+#[tauri::command]
+pub async fn create_my_customer_subscription_order_request(
+    token: String,
+    location_id: String,
+    package_id: String,
+    billing_cycle: String,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<PortalOrderRequestResponse, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    let (subscription, work_order) = customers
+        .create_my_subscription_order_request(
+            &claims.sub,
+            &tenant_id,
+            PortalCheckoutSubscriptionRequest {
+                location_id,
+                package_id,
+                billing_cycle,
+            },
+            Some("127.0.0.1"),
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(PortalOrderRequestResponse {
+        subscription,
+        work_order,
+    })
+}
+
+#[tauri::command]
+pub async fn reopen_my_customer_subscription_order_request(
+    token: String,
+    subscription_id: String,
+    notes: Option<String>,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<PortalOrderRequestResponse, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    let (subscription, work_order) = customers
+        .reopen_my_subscription_order_request(
+            &claims.sub,
+            &tenant_id,
+            &subscription_id,
+            notes,
             Some("127.0.0.1"),
         )
         .await

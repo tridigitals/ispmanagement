@@ -371,7 +371,8 @@
       "portal": "User portal",
       "subscriptions": "Langganan",
       "billing": "Billing",
-      "pppoe": "PPPoE"
+      "pppoe": "PPPoE",
+      "dhcp_static": "DHCP Static"
     },
     "overview": {
       "title": "Profil pelanggan"
@@ -567,6 +568,23 @@
         "delete_failed": "Gagal menghapus akun PPPoE: {message}"
       }
     },
+    "dhcp_static": {
+      "title": "DHCP Static",
+      "subtitle": "Status static lease dan queue untuk pelanggan ini.",
+      "empty": "Belum ada layanan DHCP static.",
+      "columns": {
+        "server": "Server",
+        "mac": "MAC",
+        "ip": "IP",
+        "lease": "Lease",
+        "queue": "Queue"
+      },
+      "sync": {
+        "present": "Ada",
+        "missing": "Tidak ada",
+        "none": "Tidak ada"
+      }
+    },
     "toasts": {
       "load_failed": "Gagal memuat pelanggan",
       "created": "Pelanggan dibuat",
@@ -591,7 +609,9 @@
       "price": "Harga"
     },
     "fields": {
-      "service_type": "Tipe layanan"
+      "service_type": "Tipe layanan",
+      "provisioning_type": "Tipe provisioning",
+      "provisioning_type_hint": "Pilih bagaimana paket internet ini akan diaktifkan saat instalasi."
     },
     "actions": {
       "add": "Tambah layanan",
@@ -615,8 +635,13 @@
     },
     "types": {
       "internet_pppoe": "Internet / PPPoE",
+      "internet_dhcp_static": "Internet / DHCP Static",
       "hotspot": "Hotspot",
       "vpn": "VPN"
+    },
+    "provisioning": {
+      "pppoe": "PPPoE",
+      "dhcp_static": "DHCP Static"
     },
     "mapping": {
       "only_internet": "Mapping router hanya tersedia untuk layanan Internet / PPPoE.",
@@ -841,6 +866,111 @@
         "retry_batch_fail": "{count} akun gagal diterapkan",
         "reconciled": "Berhasil sinkron dengan router",
         "reconcile_failed": "Gagal sinkron dengan router: {message}"
+      }
+    },
+    "dhcp_static": {
+      "title": "DHCP Static",
+      "subtitle": "Pantau dan terapkan ulang static DHCP lease beserta simple queue opsional.",
+      "empty": "Belum ada layanan DHCP static.",
+      "confirm_delete": "Hapus layanan DHCP static ini?",
+      "stats": {
+        "total": "Total",
+        "lease_ready": "Lease Siap",
+        "queue_issues": "Masalah Queue",
+        "disabled": "Nonaktif"
+      },
+      "filters": {
+        "search_placeholder": "MAC, IP, server, catatan",
+        "router": "Router",
+        "all_routers": "Semua router"
+      },
+      "columns": {
+        "server": "Server",
+        "mac": "MAC",
+        "ip": "IP",
+        "lease": "Lease",
+        "queue": "Queue",
+        "actions": "Aksi"
+      },
+      "sync": {
+        "present": "Ada",
+        "missing": "Tidak ada",
+        "none": "Tidak ada"
+      },
+      "actions": {
+        "reconcile": "Sinkronkan Router",
+        "create": "Buat DHCP Static",
+        "update": "Perbarui DHCP Static",
+        "create_via_installation": "Buat via Instalasi",
+        "install": "Instalasi",
+        "apply": "Terapkan"
+      },
+      "fields": {
+        "subscription": "Langganan",
+        "select_customer": "Pilih pelanggan",
+        "select_location": "Pilih lokasi",
+        "select_subscription": "Pilih langganan DHCP static",
+        "select_router": "Pilih router",
+        "select_dhcp_server": "Pilih server DHCP",
+        "selected_router": "Terpilih",
+        "dhcp_server_name": "Nama Server DHCP",
+        "mac_address": "Alamat MAC",
+        "ip_address": "Alamat IP",
+        "comment_placeholder": "Catatan opsional untuk static lease",
+        "queue_mode": "Mode Queue",
+        "queue_rate_limit": "Limit Rate Queue",
+        "queue_rate_limit_hint": "Gunakan format seperti 20M/20M untuk download/upload.",
+        "queue_presets": "Preset cepat",
+        "disabled": "Nonaktif di router",
+        "subscription_context": "Konteks langganan",
+        "simple_queue": "Simple Queue",
+        "no_subscription_for_location": "Belum ada langganan DHCP static untuk lokasi ini.",
+        "existing_services_title": "DHCP Static yang Sudah Ada",
+        "existing_services_count": "{count} item",
+        "choose_customer_for_existing_services": "Pilih pelanggan terlebih dahulu untuk melihat layanan DHCP static yang sudah ada.",
+        "choose_location_for_existing_services": "Pilih lokasi untuk mempersempit layanan DHCP static yang sudah ada.",
+        "no_existing_service_for_location": "Belum ada layanan DHCP static pada lokasi ini.",
+        "loading_dhcp_servers": "Sedang memuat server DHCP dari router...",
+        "pick_router_first": "Pilih router terlebih dahulu untuk memuat nama server DHCP.",
+        "current_dhcp_server_unavailable": "nilai saat ini",
+        "selected_dhcp_server_with_interface": "Interface: {interface}",
+        "selected_dhcp_server_detected": "Terdeteksi dari router",
+        "detected_dhcp_servers": "{count} server DHCP terdeteksi dari router",
+        "no_dhcp_servers_available": "Tidak ada server DHCP yang tersedia dari router yang dipilih."
+      },
+      "modal": {
+        "create_title": "Buat DHCP Static",
+        "edit_title": "Edit DHCP Static",
+        "context_help": "Pilih pelanggan dan langganan terlebih dahulu, lalu lanjutkan ke provisioning lease.",
+        "lease_title": "Provisioning Lease",
+        "lease_help": "Isi router, server DHCP, MAC pelanggan, dan assignment IP statis.",
+        "traffic_title": "Kontrol Trafik",
+        "traffic_help": "Pengaturan queue opsional untuk pembatasan bandwidth di router."
+      },
+      "validation": {
+        "select_router": "Pilih router terlebih dahulu",
+        "required_fields": "Lengkapi semua field DHCP static yang wajib diisi terlebih dahulu",
+        "required_router": "Pilih router",
+        "required_dhcp_server_name": "Masukkan nama server DHCP",
+        "invalid_mac": "Masukkan alamat MAC yang valid",
+        "invalid_ip": "Masukkan alamat IPv4 yang valid",
+        "invalid_queue_rate": "Format limit rate queue harus seperti 20M/20M",
+        "queue_rate_required": "Limit rate queue wajib diisi saat Simple Queue aktif"
+      },
+      "toasts": {
+        "load_failed": "Gagal memuat layanan DHCP static",
+        "load_customer_scope_failed": "Gagal memuat opsi DHCP pelanggan",
+        "load_router_dhcp_servers_failed": "Gagal memuat server DHCP dari router",
+        "applied": "Static lease DHCP berhasil diterapkan",
+        "apply_failed": "Gagal menerapkan static lease DHCP",
+        "reconciled": "Layanan DHCP static berhasil disinkronkan",
+        "reconcile_failed": "Gagal menyinkronkan layanan DHCP static",
+        "created": "Layanan DHCP static berhasil dibuat",
+        "create_failed": "Gagal membuat layanan DHCP static",
+        "updated": "Layanan DHCP static berhasil diperbarui",
+        "update_failed": "Gagal memperbarui layanan DHCP static",
+        "deleted": "Berhasil dihapus",
+        "delete_failed": "Gagal menghapus layanan DHCP static"
       }
     },
     "routers": {

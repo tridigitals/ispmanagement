@@ -8,6 +8,7 @@
     api,
     type AuditLog,
     type CustomerSubscriptionView,
+    type DhcpStaticServicePublic,
     type FileRecord,
     type IspPackageRouterMappingView,
     type InstallationWorkOrderView,
@@ -27,6 +28,12 @@
     type InstallationInternetTestTarget,
   } from '$lib/utils/installationInternetTest';
   import { shouldAllowInstallationInvoiceCreation } from '$lib/utils/installationInvoice';
+  import {
+    normalizeDhcpStaticMacAddress,
+    validateDhcpStaticIpv4Address,
+    validateDhcpStaticQueueRateLimit,
+  } from '$lib/utils/dhcpStaticValidation';
+  import { buildDhcpStaticQueueRateLimitPresets } from '$lib/utils/dhcpStaticQueuePresets';
   import Icon from '$lib/components/ui/Icon.svelte';
   import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
@@ -60,6 +67,7 @@
   let uploadingPhotos = $state(false);
   let installationSubscription = $state<CustomerSubscriptionView | null>(null);
   let installationPppoeAccount = $state<PppoeAccountPublic | null>(null);
+  let installationDhcpService = $state<DhcpStaticServicePublic | null>(null);
   let installationPppoeMappings = $state<IspPackageRouterMappingView[]>([]);
   let installationManagedRadiusSetup = $state<ManagedRadiusRouterSetup | null>(null);
   let installationManagedRadiusLoadError = $state('');
@@ -69,6 +77,19 @@
   let installationPppoePassword = $state('');
   let installationPppoeComment = $state('');
   let installationPppoeTarget = $state<InstallationInternetTestTarget>('router');
+  let loadingInstallationDhcp = $state(false);
+  let savingInstallationDhcp = $state(false);
+  let installationDhcpServerName = $state('');
+  let installationDhcpMacAddress = $state('');
+  let installationDhcpIpAddress = $state('');
+  let installationDhcpComment = $state('');
+  let installationDhcpQueueMode = $state<'none' | 'simple_queue'>('none');
+  let installationDhcpQueueRateLimit = $state('');
+  let installationDhcpServerNameError = $state<string | null>(null);
+  let installationDhcpRouterError = $state<string | null>(null);
+  let installationDhcpMacAddressError = $state<string | null>(null);
+  let installationDhcpIpAddressError = $state<string | null>(null);
+  let installationDhcpQueueRateLimitError = $state<string | null>(null);
   let onsiteFocusIndex = $state<number | null>(null);
   let canManageWorkOrders = $derived($can('manage', 'work_orders'));
   let canReadAuditLogs = $derived($can('read', 'audit_logs'));
@@ -94,6 +115,13 @@
   });
   let canReviewReschedule = $derived.by(
     () => !!activeRow && canManageWorkOrders && (isAdminOwner || isAssignedToCurrentUser(activeRow)),
+  );
+  const installationDhcpQueueRateLimitPresets = $derived.by(() =>
+    buildDhcpStaticQueueRateLimitPresets({
+      name: installationSubscription?.package_name || activeRow?.package_name || null,
+      description: null,
+      features: [],
+    }),
   );
   const CANCEL_REASON_MIN = 10;
   const INSTALLATION_REFRESH_SIGNAL_KEY = 'nm_installation_work_order_refresh';
@@ -464,6 +492,7 @@
     showCableMapDrawer = false;
     installationSubscription = null;
     installationPppoeAccount = null;
+    installationDhcpService = null;
     installationPppoeMappings = [];
     installationManagedRadiusSetup = null;
     installationManagedRadiusLoadError = '';
@@ -473,6 +502,19 @@
     installationPppoePassword = '';
     installationPppoeComment = '';
     installationPppoeTarget = 'router';
+    loadingInstallationDhcp = false;
+    savingInstallationDhcp = false;
+    installationDhcpServerName = '';
+    installationDhcpMacAddress = '';
+    installationDhcpIpAddress = '';
+    installationDhcpComment = '';
+    installationDhcpQueueMode = 'none';
+    installationDhcpQueueRateLimit = '';
+    installationDhcpServerNameError = null;
+    installationDhcpRouterError = null;
+    installationDhcpMacAddressError = null;
+    installationDhcpIpAddressError = null;
+    installationDhcpQueueRateLimitError = null;
     onsiteFocusIndex = null;
   }
 
@@ -571,18 +613,31 @@
 
   async function loadInstallationPppoeContext(row: InstallationWorkOrderView) {
     loadingInstallationPppoe = true;
+    loadingInstallationDhcp = true;
     installationSubscription = null;
     installationPppoeAccount = null;
+    installationDhcpService = null;
     installationPppoeMappings = [];
     installationManagedRadiusSetup = null;
     installationManagedRadiusLoadError = '';
     installationPppoeUsername = '';
     installationPppoePassword = '';
     installationPppoeComment = '';
+    installationDhcpServerName = '';
+    installationDhcpMacAddress = '';
+    installationDhcpIpAddress = '';
+    installationDhcpComment = '';
+    installationDhcpQueueMode = 'none';
+    installationDhcpQueueRateLimit = '';
+    installationDhcpServerNameError = null;
+    installationDhcpRouterError = null;
+    installationDhcpMacAddressError = null;
+    installationDhcpIpAddressError = null;
+    installationDhcpQueueRateLimitError = null;
     try {
       const fallbackSubscription = buildInstallationSubscriptionFallback(row) as CustomerSubscriptionView | null;
       installationSubscription = fallbackSubscription;
-      const [subRes, pppoeRes] = await Promise.all([
+      const [subRes, pppoeRes, dhcpRes] = await Promise.all([
         api.customers.subscriptions
           .list(row.customer_id, { page: 1, per_page: 200 })
           .catch(() => ({ data: [] as CustomerSubscriptionView[] })),
@@ -594,6 +649,14 @@
             per_page: 50,
           })
           .catch(() => ({ data: [] as PppoeAccountPublic[] })),
+        api.dhcpStatic.services
+          .list({
+            customer_id: row.customer_id,
+            location_id: row.location_id,
+            page: 1,
+            per_page: 50,
+          })
+          .catch(() => ({ data: [] as DhcpStaticServicePublic[] })),
       ]);
       const subscription =
         ((subRes?.data || []) as CustomerSubscriptionView[]).find((item) => item.id === row.subscription_id) ||
@@ -602,6 +665,10 @@
       installationPppoeAccount =
         (((pppoeRes?.data || []) as PppoeAccountPublic[]).find(
           (item) => item.location_id === row.location_id,
+        ) || null);
+      installationDhcpService =
+        (((dhcpRes?.data || []) as DhcpStaticServicePublic[]).find(
+          (item) => item.subscription_id === row.subscription_id || item.location_id === row.location_id,
         ) || null);
 
       const explicitRouterId =
@@ -638,6 +705,20 @@
         installationPppoeUsername = installationPppoeAccount.username || '';
         installationPppoeComment = installationPppoeAccount.comment || '';
       }
+      if (installationDhcpService) {
+        installationDhcpServerName = installationDhcpService.dhcp_server_name || '';
+        installationDhcpMacAddress = installationDhcpService.mac_address || '';
+        installationDhcpIpAddress = installationDhcpService.ip_address || '';
+        installationDhcpComment = installationDhcpService.comment || '';
+        installationDhcpQueueMode =
+          installationDhcpService.queue_mode === 'simple_queue' ? 'simple_queue' : 'none';
+        installationDhcpQueueRateLimit = installationDhcpService.queue_rate_limit || '';
+        installationDhcpServerNameError = null;
+        installationDhcpRouterError = null;
+        installationDhcpMacAddressError = null;
+        installationDhcpIpAddressError = null;
+        installationDhcpQueueRateLimitError = null;
+      }
 
       const nextTargetOptions = getInstallationInternetTestTargetOptions({
         routerId,
@@ -651,6 +732,7 @@
       toast.error(e?.message || 'Failed to prepare PPPoE installation form');
     } finally {
       loadingInstallationPppoe = false;
+      loadingInstallationDhcp = false;
     }
   }
 
@@ -869,6 +951,198 @@
       savingInstallationPppoe = false;
     }
   }
+
+  async function saveInstallationDhcp() {
+    const row = activeRow;
+    const subscription = installationSubscription;
+    const routerId =
+      subscription?.router_id || row?.router_id || installationDhcpService?.router_id || '';
+    const packageId =
+      subscription?.package_id || row?.package_id || installationDhcpService?.package_id || '';
+    if (!row || !subscription) {
+      toast.error('Work order context is not ready yet');
+      return;
+    }
+    if (!routerId) {
+      installationDhcpRouterError = tr(
+        'admin.network.dhcp_static.validation.required_router',
+        'Select router',
+      );
+      return;
+    }
+    installationDhcpRouterError = null;
+    if (!installationDhcpServerName.trim()) {
+      installationDhcpServerNameError = tr(
+        'admin.network.dhcp_static.validation.required_dhcp_server_name',
+        'Enter DHCP server name',
+      );
+      return;
+    }
+    installationDhcpServerNameError = null;
+    if (!installationDhcpMacAddress.trim() || !installationDhcpIpAddress.trim()) {
+      toast.error('DHCP server, MAC address, and IP address are required');
+      return;
+    }
+
+    const normalizedMac = normalizeDhcpStaticMacAddress(installationDhcpMacAddress);
+    if (normalizedMac.error || !normalizedMac.value) {
+      installationDhcpMacAddressError = tr(
+        'admin.network.dhcp_static.validation.invalid_mac',
+        'Enter a valid MAC address',
+      );
+      return;
+    }
+    installationDhcpMacAddressError = null;
+    if (validateDhcpStaticIpv4Address(installationDhcpIpAddress)) {
+      installationDhcpIpAddressError = tr(
+        'admin.network.dhcp_static.validation.invalid_ip',
+        'Enter a valid IPv4 address',
+      );
+      return;
+    }
+    installationDhcpIpAddressError = null;
+
+    let validatedQueueRateLimit: string | null = null;
+    if (installationDhcpQueueMode === 'simple_queue') {
+      validatedQueueRateLimit = installationDhcpQueueRateLimit.trim();
+      if (!validatedQueueRateLimit) {
+        installationDhcpQueueRateLimitError = tr(
+          'admin.network.dhcp_static.validation.queue_rate_required',
+          'Queue rate limit is required when Simple Queue is enabled',
+        );
+        return;
+      }
+      if (validateDhcpStaticQueueRateLimit(validatedQueueRateLimit)) {
+        installationDhcpQueueRateLimitError = tr(
+          'admin.network.dhcp_static.validation.invalid_queue_rate',
+          'Queue rate limit must use format like 20M/20M',
+        );
+        return;
+      }
+      installationDhcpQueueRateLimitError = null;
+    }
+    if (installationDhcpQueueMode !== 'simple_queue') {
+      installationDhcpQueueRateLimitError = null;
+    }
+
+    installationDhcpMacAddress = normalizedMac.value;
+    installationDhcpIpAddress = installationDhcpIpAddress.trim();
+    installationDhcpQueueRateLimit = validatedQueueRateLimit || '';
+
+    savingInstallationDhcp = true;
+    try {
+      let service = installationDhcpService;
+      const payload = {
+        subscription_id: row.subscription_id,
+        router_id: routerId,
+        customer_id: row.customer_id,
+        location_id: row.location_id,
+        package_id: packageId || '',
+        dhcp_server_name: installationDhcpServerName.trim(),
+        mac_address: normalizedMac.value,
+        ip_address: installationDhcpIpAddress,
+        comment: installationDhcpComment.trim() || null,
+        queue_mode: installationDhcpQueueMode,
+        queue_rate_limit: validatedQueueRateLimit,
+        work_order_id: row.id,
+      };
+      if (!service) {
+        service = await api.dhcpStatic.services.create(payload);
+        toast.success('DHCP static service created');
+      } else {
+        service = await api.dhcpStatic.services.update(service.id, {
+          router_id: payload.router_id,
+          package_id: payload.package_id,
+          dhcp_server_name: payload.dhcp_server_name,
+          mac_address: payload.mac_address,
+          ip_address: payload.ip_address,
+          comment: payload.comment,
+          queue_mode: payload.queue_mode,
+          queue_rate_limit: payload.queue_rate_limit,
+          work_order_id: row.id,
+        });
+        toast.success('DHCP static service updated');
+      }
+      installationDhcpService = service;
+      const applied = await api.dhcpStatic.services.apply(service.id, { work_order_id: row.id });
+      installationDhcpService = applied;
+      checkPppoe = true;
+      await savePlan();
+      toast.success('DHCP static lease applied to router');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to save DHCP static service');
+    } finally {
+      savingInstallationDhcp = false;
+    }
+  }
+
+  async function applyInstallationDhcp() {
+    if (!installationDhcpService || !activeRow) return;
+    savingInstallationDhcp = true;
+    try {
+      const applied = await api.dhcpStatic.services.apply(installationDhcpService.id, {
+        work_order_id: activeRow.id,
+      });
+      installationDhcpService = applied;
+      checkPppoe = true;
+      await savePlan();
+      toast.success('DHCP static lease applied to router');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to apply DHCP static lease');
+    } finally {
+      savingInstallationDhcp = false;
+    }
+  }
+
+  $effect(() => {
+    if (installationDhcpServerNameError && installationDhcpServerName.trim()) {
+      installationDhcpServerNameError = null;
+    }
+  });
+
+  $effect(() => {
+    if (installationDhcpRouterError && (installationSubscription?.router_id || activeRow?.router_id || installationDhcpService?.router_id)) {
+      installationDhcpRouterError = null;
+    }
+  });
+
+  $effect(() => {
+    if (
+      installationDhcpMacAddressError &&
+      normalizeDhcpStaticMacAddress(installationDhcpMacAddress).value
+    ) {
+      installationDhcpMacAddressError = null;
+    }
+  });
+
+  $effect(() => {
+    if (
+      installationDhcpIpAddressError &&
+      !validateDhcpStaticIpv4Address(installationDhcpIpAddress)
+    ) {
+      installationDhcpIpAddressError = null;
+    }
+  });
+
+  $effect(() => {
+    if (installationDhcpQueueMode !== 'simple_queue') {
+      installationDhcpQueueRateLimitError = null;
+      return;
+    }
+    if (
+      !installationDhcpQueueRateLimit.trim() &&
+      installationDhcpQueueRateLimitPresets[0]
+    ) {
+      installationDhcpQueueRateLimit = installationDhcpQueueRateLimitPresets[0];
+    }
+    if (
+      installationDhcpQueueRateLimitError &&
+      installationDhcpQueueRateLimit.trim() &&
+      !validateDhcpStaticQueueRateLimit(installationDhcpQueueRateLimit)
+    ) {
+      installationDhcpQueueRateLimitError = null;
+    }
+  });
 
   function parsePhotoIdsFromNotes(notes: string | null | undefined): string[] {
     if (!notes) return [];
@@ -1502,19 +1776,36 @@
       {removeInstallationPhoto}
       {getStorageContentUrl}
       {loadingInstallationPppoe}
+      {loadingInstallationDhcp}
       {installationSubscription}
       bind:installationPppoeUsername
       bind:installationPppoePassword
       bind:installationPppoeComment
       bind:installationPppoeTarget
+      bind:installationDhcpServerName
+      bind:installationDhcpServerNameError
+      bind:installationDhcpRouterError
+      bind:installationDhcpMacAddress
+      bind:installationDhcpIpAddress
+      bind:installationDhcpComment
+      bind:installationDhcpQueueMode
+      bind:installationDhcpQueueRateLimit
+      bind:installationDhcpMacAddressError
+      bind:installationDhcpIpAddressError
+      bind:installationDhcpQueueRateLimitError
+      {installationDhcpQueueRateLimitPresets}
       {installationPppoeTargetOptions}
       {installationManagedRadiusHint}
       {installationManagedRadiusLoadError}
       {installationManagedRadiusSetup}
       {installationPppoeAccount}
+      {installationDhcpService}
       {savingInstallationPppoe}
+      {savingInstallationDhcp}
       {saveInstallationPppoe}
       {applyInstallationPppoe}
+      {saveInstallationDhcp}
+      {applyInstallationDhcp}
       {installationPppoeMapping}
       {getOnsiteTaskChecked}
       {setOnsiteTaskChecked}

@@ -616,7 +616,8 @@
       "portal": "Portal users",
       "subscriptions": "Subscriptions",
       "billing": "Billing",
-      "pppoe": "PPPoE"
+      "pppoe": "PPPoE",
+      "dhcp_static": "DHCP Static"
     },
     "overview": {
       "title": "Customer profile"
@@ -812,6 +813,23 @@
         "delete_failed": "Failed to delete PPPoE account: {message}"
       }
     },
+    "dhcp_static": {
+      "title": "DHCP Static",
+      "subtitle": "Static lease and queue status for this customer.",
+      "empty": "No DHCP static services.",
+      "columns": {
+        "server": "Server",
+        "mac": "MAC",
+        "ip": "IP",
+        "lease": "Lease",
+        "queue": "Queue"
+      },
+      "sync": {
+        "present": "Present",
+        "missing": "Missing",
+        "none": "None"
+      }
+    },
     "toasts": {
       "load_failed": "Failed to load customers",
       "created": "Customer created",
@@ -836,7 +854,9 @@
       "price": "Price"
     },
     "fields": {
-      "service_type": "Service type"
+      "service_type": "Service type",
+      "provisioning_type": "Provisioning type",
+      "provisioning_type_hint": "Choose how this internet package will be activated during installation."
     },
     "actions": {
       "add": "Add service",
@@ -860,8 +880,13 @@
     },
     "types": {
       "internet_pppoe": "Internet / PPPoE",
+      "internet_dhcp_static": "Internet / DHCP Static",
       "hotspot": "Hotspot",
       "vpn": "VPN"
+    },
+    "provisioning": {
+      "pppoe": "PPPoE",
+      "dhcp_static": "DHCP Static"
     },
     "mapping": {
       "only_internet": "Router mapping is only available for Internet / PPPoE services.",
@@ -1086,6 +1111,111 @@
         "retry_batch_fail": "{count} account(s) failed to apply",
         "reconciled": "Reconciled router state",
         "reconcile_failed": "Failed to reconcile router state: {message}"
+      }
+    },
+    "dhcp_static": {
+      "title": "DHCP Static",
+      "subtitle": "Monitor and re-apply static DHCP leases and optional simple queues.",
+      "empty": "No DHCP static services.",
+      "confirm_delete": "Delete this DHCP static service?",
+      "stats": {
+        "total": "Total",
+        "lease_ready": "Lease Ready",
+        "queue_issues": "Queue Issues",
+        "disabled": "Disabled"
+      },
+      "filters": {
+        "search_placeholder": "MAC, IP, server, comment",
+        "router": "Router",
+        "all_routers": "All routers"
+      },
+      "columns": {
+        "server": "Server",
+        "mac": "MAC",
+        "ip": "IP",
+        "lease": "Lease",
+        "queue": "Queue",
+        "actions": "Actions"
+      },
+      "sync": {
+        "present": "Present",
+        "missing": "Missing",
+        "none": "None"
+      },
+      "actions": {
+        "reconcile": "Reconcile Router",
+        "create": "Create DHCP Static",
+        "update": "Update DHCP Static",
+        "create_via_installation": "Create via Installation",
+        "install": "Install",
+        "apply": "Apply"
+      },
+      "fields": {
+        "subscription": "Subscription",
+        "select_customer": "Select customer",
+        "select_location": "Select location",
+        "select_subscription": "Select DHCP static subscription",
+        "select_router": "Select router",
+        "select_dhcp_server": "Select DHCP server",
+        "selected_router": "Selected",
+        "dhcp_server_name": "DHCP Server Name",
+        "mac_address": "MAC Address",
+        "ip_address": "IP Address",
+        "comment_placeholder": "Optional note for static lease",
+        "queue_mode": "Queue Mode",
+        "queue_rate_limit": "Queue Rate Limit",
+        "queue_rate_limit_hint": "Use format like 20M/20M for download/upload.",
+        "queue_presets": "Quick presets",
+        "disabled": "Disabled on router",
+        "subscription_context": "Subscription context",
+        "simple_queue": "Simple Queue",
+        "no_subscription_for_location": "No DHCP static subscription is available for this location yet.",
+        "existing_services_title": "Existing DHCP Static",
+        "existing_services_count": "{count} item(s)",
+        "choose_customer_for_existing_services": "Choose customer first to inspect existing DHCP static services.",
+        "choose_location_for_existing_services": "Choose location to narrow existing DHCP static services.",
+        "no_existing_service_for_location": "No existing DHCP static service for this location.",
+        "loading_dhcp_servers": "Loading DHCP servers from router...",
+        "pick_router_first": "Choose router first to load DHCP server names.",
+        "current_dhcp_server_unavailable": "current value",
+        "selected_dhcp_server_with_interface": "Interface: {interface}",
+        "selected_dhcp_server_detected": "Detected from router",
+        "detected_dhcp_servers": "{count} DHCP server(s) detected from router",
+        "no_dhcp_servers_available": "No DHCP server available from the selected router."
+      },
+      "modal": {
+        "create_title": "Create DHCP Static",
+        "edit_title": "Edit DHCP Static",
+        "context_help": "Choose the customer and subscription first, then continue with lease provisioning.",
+        "lease_title": "Lease Provisioning",
+        "lease_help": "Fill router, DHCP server, customer MAC, and static IP assignment.",
+        "traffic_title": "Traffic Control",
+        "traffic_help": "Optional queue settings for bandwidth shaping on the router."
+      },
+      "validation": {
+        "select_router": "Select a router first",
+        "required_fields": "Complete all required DHCP static fields first",
+        "required_router": "Select router",
+        "required_dhcp_server_name": "Enter DHCP server name",
+        "invalid_mac": "Enter a valid MAC address",
+        "invalid_ip": "Enter a valid IPv4 address",
+        "invalid_queue_rate": "Queue rate limit must use format like 20M/20M",
+        "queue_rate_required": "Queue rate limit is required when Simple Queue is enabled"
+      },
+      "toasts": {
+        "load_failed": "Failed to load DHCP static services",
+        "load_customer_scope_failed": "Failed to load customer DHCP options",
+        "load_router_dhcp_servers_failed": "Failed to load DHCP servers from router",
+        "applied": "DHCP static lease applied",
+        "apply_failed": "Failed to apply DHCP static lease",
+        "reconciled": "DHCP static services reconciled",
+        "reconcile_failed": "Failed to reconcile DHCP static services",
+        "created": "DHCP static service created",
+        "create_failed": "Failed to create DHCP static service",
+        "updated": "DHCP static service updated",
+        "update_failed": "Failed to update DHCP static service",
+        "deleted": "Deleted",
+        "delete_failed": "Failed to delete DHCP static service"
       }
     },
     "routers": {

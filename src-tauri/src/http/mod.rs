@@ -1,9 +1,9 @@
 use crate::services::{
-    AuditService, AuthService, CustomerService, EmailService, IspPackageService,
-    ManagedRadiusService, MessageTemplateService, MikrotikService, MixradiusImportService,
-    NetworkMappingService, NotificationService, PaymentService, PlanService, PppoeService,
-    RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
-    WhatsappGatewayService,
+    AuditService, AuthService, CustomerService, DhcpStaticServiceManager, EmailService,
+    IspPackageService, ManagedRadiusService, MessageTemplateService, MikrotikService,
+    MixradiusImportService, NetworkMappingService, NotificationService, PaymentService,
+    PlanService, PppoeService, RoleService, SettingsService, StorageService, SystemService,
+    TeamService, UserService, WhatsappGatewayService,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -17,6 +17,7 @@ pub mod auth;
 pub mod backup;
 pub mod customer_communication;
 pub mod customers;
+pub mod dhcp_static;
 pub mod email_outbox;
 pub mod install;
 pub mod isp_packages;
@@ -80,6 +81,7 @@ pub struct AppState {
     pub mixradius_import_service: Arc<MixradiusImportService>,
     pub customer_service: Arc<CustomerService>,
     pub pppoe_service: Arc<PppoeService>,
+    pub dhcp_static_service: Arc<DhcpStaticServiceManager>,
     pub isp_package_service: Arc<IspPackageService>,
     pub network_mapping_service: Arc<NetworkMappingService>,
     pub backup_service: Arc<crate::services::BackupService>,
@@ -109,6 +111,7 @@ pub async fn start_server(
     mikrotik_service: MikrotikService,
     customer_service: CustomerService,
     pppoe_service: PppoeService,
+    dhcp_static_service: DhcpStaticServiceManager,
     isp_package_service: IspPackageService,
     network_mapping_service: NetworkMappingService,
     backup_service: crate::services::BackupService,
@@ -134,6 +137,7 @@ pub async fn start_server(
         mikrotik_service,
         customer_service,
         pppoe_service,
+        dhcp_static_service,
         isp_package_service,
         network_mapping_service,
         backup_service,

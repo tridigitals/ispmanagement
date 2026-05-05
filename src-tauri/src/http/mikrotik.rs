@@ -2,8 +2,8 @@ use crate::error::{AppError, AppResult};
 use crate::http::AppState;
 use crate::models::{
     CreateMikrotikIpPoolRequest, CreateMikrotikPppProfileRequest, CreateMikrotikRouterRequest,
-    ManagedRadiusRouterSetup, MikrotikAlert, MikrotikIncident, MikrotikInterfaceCounter,
-    MikrotikInterfaceMetric, MikrotikIpPool, MikrotikIpPoolDeleteResult,
+    ManagedRadiusRouterSetup, MikrotikAlert, MikrotikDhcpServer, MikrotikIncident,
+    MikrotikInterfaceCounter, MikrotikInterfaceMetric, MikrotikIpPool, MikrotikIpPoolDeleteResult,
     MikrotikIpPoolDependencyStatus, MikrotikLogClearResult, MikrotikLogEntry,
     MikrotikLogRetentionSettings, MikrotikLogSyncResult, MikrotikPppProfile,
     MikrotikPppProfileDeleteResult, MikrotikPppProfileDependencyStatus, MikrotikRouter,
@@ -66,6 +66,7 @@ pub fn router() -> Router<AppState> {
             "/routers/{id}/ip-pools",
             get(list_ip_pools).post(create_ip_pool),
         )
+        .route("/routers/{id}/dhcp-servers", get(list_dhcp_servers))
         .route(
             "/routers/{id}/ip-pools/{pool_id}",
             put(update_ip_pool).delete(delete_ip_pool),
@@ -639,6 +640,25 @@ async fn list_ip_pools(
     let rows = state
         .mikrotik_service
         .list_ip_pools(&tenant_id, &id)
+        .await?;
+    Ok(Json(rows))
+}
+
+// GET /api/admin/mikrotik/routers/{id}/dhcp-servers
+async fn list_dhcp_servers(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<Vec<MikrotikDhcpServer>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
+        .await?;
+
+    let rows = state
+        .mikrotik_service
+        .list_dhcp_servers(&tenant_id, &id)
         .await?;
     Ok(Json(rows))
 }
