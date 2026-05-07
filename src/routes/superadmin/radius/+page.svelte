@@ -42,13 +42,13 @@
 
   const DEFAULT_ASSIGNMENT_FORM = (): ManagedRadiusAssignmentPayload => ({
     tenant_id: '',
-    radius_server_id: '',
+    radius_endpoint_id: '',
     is_active: true,
   });
 
   const DEFAULT_MAPPING_FORM = (): ManagedRadiusMappingPayload => ({
     tenant_id: '',
-    radius_server_id: '',
+    radius_endpoint_id: '',
     router_id: '',
     nas_name: '',
     nas_ip_or_cidr: '',
@@ -220,8 +220,8 @@
 
   function openCreateAssignmentModal() {
     resetAssignmentForm();
-    if (!assignmentForm.radius_server_id) {
-      assignmentForm.radius_server_id =
+    if (!assignmentForm.radius_endpoint_id) {
+      assignmentForm.radius_endpoint_id =
         servers.find((server) => server.is_default)?.id || servers[0]?.id || '';
     }
     showAssignmentModal = true;
@@ -231,14 +231,14 @@
     editingAssignmentId = assignment.id;
     assignmentForm = {
       tenant_id: assignment.tenant_id,
-      radius_server_id: assignment.radius_server_id,
+      radius_endpoint_id: assignment.radius_endpoint_id,
       is_active: assignment.is_active,
     };
     showAssignmentModal = true;
   }
 
   async function submitAssignmentForm() {
-    if (!assignmentForm.tenant_id || !assignmentForm.radius_server_id) {
+    if (!assignmentForm.tenant_id || !assignmentForm.radius_endpoint_id) {
       toast.error(
         $t('superadmin.radius.toasts.assignment_validation') || 'Complete the assignment form first',
       );
@@ -296,7 +296,7 @@
     editingMappingId = mapping.id;
     mappingForm = {
       tenant_id: mapping.tenant_id,
-      radius_server_id: mapping.radius_server_id,
+      radius_endpoint_id: mapping.radius_endpoint_id,
       router_id: mapping.router_id,
       nas_name: mapping.nas_name,
       nas_ip_or_cidr: mapping.nas_ip_or_cidr,
@@ -310,7 +310,7 @@
   async function submitMappingForm() {
     if (
       !mappingForm.tenant_id ||
-      !mappingForm.radius_server_id ||
+      !mappingForm.radius_endpoint_id ||
       !mappingForm.router_id ||
       !mappingForm.nas_name ||
       !mappingForm.nas_ip_or_cidr
@@ -497,7 +497,7 @@
           : assignments.some(
               (assignment) =>
                 assignment.tenant_id === mappingTenantFilter &&
-                assignment.radius_server_id === server.id,
+                assignment.radius_endpoint_id === server.id,
             ),
       )
       .map((server) => ({ id: server.id, name: server.name })),
@@ -509,7 +509,7 @@
       const matchesSearch =
         !q ||
         normalized(assignment.tenant_name).includes(q) ||
-        normalized(assignment.server_name).includes(q) ||
+        normalized(assignment.endpoint_name).includes(q) ||
         normalized(assignment.radius_host).includes(q);
 
       const matchesTenant =
@@ -756,7 +756,7 @@
                 {#if key === 'tenant'}
                   {item.tenant_name}
                 {:else if key === 'server'}
-                  <div class="primary">{item.server_name}</div>
+                  <div class="primary">{item.endpoint_name}</div>
                   <div class="muted">{item.radius_host}:{item.auth_port}/{item.acct_port}</div>
                 {:else if key === 'status'}
                   <span class="badge" class:good={item.is_active} class:muted={!item.is_active}>
@@ -824,7 +824,7 @@
                 {#if key === 'tenant'}
                   {item.tenant_name}
                 {:else if key === 'server'}
-                  <div class="primary">{item.server_name}</div>
+                  <div class="primary">{item.endpoint_name}</div>
                   <div class="muted">{item.radius_host}:{item.auth_port}/{item.acct_port}</div>
                 {:else if key === 'router'}
                   {item.router_name || ($t('superadmin.radius.labels.unknown_router') || 'Unknown router')}
@@ -1039,7 +1039,7 @@
     loading={secretDialogLoading}
     mode={secretDialogMode}
     mappingLabel={secretDialogMapping
-      ? `${secretDialogMapping.server_name} / ${secretDialogMapping.router_name || secretDialogMapping.nas_name}`
+      ? `${secretDialogMapping.endpoint_name} / ${secretDialogMapping.router_name || secretDialogMapping.nas_name}`
       : ''}
     maskedSecret={secretDialogMapping?.shared_secret_masked || ''}
     revealedSecret={secretDialogRevealed}

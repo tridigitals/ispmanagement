@@ -815,8 +815,8 @@
   const installationPppoeTargetSummary = $derived.by(() => {
     if (installationPppoeTarget === 'managed_radius') {
       return (
-        installationManagedRadiusSetup?.server_name ||
-        installationManagedRadiusSetup?.assignment_server_name ||
+        installationManagedRadiusSetup?.endpoint_name ||
+        installationManagedRadiusSetup?.assignment_endpoint_name ||
         installationManagedRadiusSetup?.radius_host ||
         tr('admin.network.installations.target_managed_radius', 'Managed RADIUS')
       );

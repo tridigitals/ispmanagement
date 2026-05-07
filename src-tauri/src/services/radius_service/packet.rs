@@ -367,9 +367,9 @@ fn finalize_response_with_message_authenticator(
     request: &Packet,
     response: &Packet,
 ) -> AppResult<Vec<u8>> {
-    let mut encoded = response
-        .encode()
-        .map_err(|error| AppError::Validation(format!("failed to encode access response: {error}")))?;
+    let mut encoded = response.encode().map_err(|error| {
+        AppError::Validation(format!("failed to encode access response: {error}"))
+    })?;
     let Some(offset) = locate_message_authenticator(&encoded) else {
         return Err(AppError::Validation(
             "response message-authenticator attribute is missing".to_string(),

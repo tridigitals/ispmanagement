@@ -60,7 +60,7 @@
       <Select
         label={$t('superadmin.radius.form.server') || 'Endpoint'}
         options={serverOptions}
-        bind:value={assignment.radius_server_id}
+        bind:value={assignment.radius_endpoint_id}
         placeholder={$t('superadmin.radius.form.select_server') || 'Select an endpoint'}
         disabled={loading}
       />

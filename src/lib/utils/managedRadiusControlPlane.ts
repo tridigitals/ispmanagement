@@ -45,12 +45,12 @@ export function filterManagedRadiusMappings(
 
   return mappings.filter((mapping) => {
     const matchesTenant = !filters.tenantId || mapping.tenant_id === filters.tenantId;
-    const matchesServer = !filters.serverId || mapping.radius_server_id === filters.serverId;
+    const matchesServer = !filters.serverId || mapping.radius_endpoint_id === filters.serverId;
     const matchesSearch =
       !query ||
       [
         mapping.tenant_name,
-        mapping.server_name,
+        mapping.endpoint_name,
         mapping.router_name,
         mapping.nas_name,
         mapping.nas_ip_or_cidr,

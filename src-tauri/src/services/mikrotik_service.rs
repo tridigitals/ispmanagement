@@ -13,8 +13,8 @@ use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     CreateMikrotikIpPoolRequest, CreateMikrotikPppProfileRequest, CreateMikrotikRouterRequest,
-    ManagedRadiusRouterSetup, MikrotikAlert, MikrotikDhcpServer, MikrotikHealthSnapshot, MikrotikIncident,
-    MikrotikInterfaceCounter, MikrotikInterfaceMetric, MikrotikInterfaceSnapshot,
+    ManagedRadiusRouterSetup, MikrotikAlert, MikrotikDhcpServer, MikrotikHealthSnapshot,
+    MikrotikIncident, MikrotikInterfaceCounter, MikrotikInterfaceMetric, MikrotikInterfaceSnapshot,
     MikrotikIpAddressSnapshot, MikrotikIpPool, MikrotikIpPoolDeleteResult,
     MikrotikIpPoolDependencyItem, MikrotikIpPoolDependencyStatus, MikrotikLogClearResult,
     MikrotikLogEntry, MikrotikLogRetentionSettings, MikrotikLogSyncResult,
@@ -114,7 +114,8 @@ fn build_managed_radius_apply_plan(
     desired: &ManagedRadiusDesiredConfig,
     entries: &[RouterRadiusEntry],
 ) -> ManagedRadiusApplyPlan {
-    let ppp_entries: Vec<&RouterRadiusEntry> = entries.iter().filter(|entry| entry.service_ppp).collect();
+    let ppp_entries: Vec<&RouterRadiusEntry> =
+        entries.iter().filter(|entry| entry.service_ppp).collect();
     let target = ppp_entries
         .iter()
         .copied()
@@ -4240,7 +4241,10 @@ impl MikrotikService {
                     entries.push(RouterRadiusEntry {
                         id,
                         service_ppp: Self::radius_services_include_ppp(
-                            reply.attributes.get("service").and_then(|value| value.as_deref()),
+                            reply
+                                .attributes
+                                .get("service")
+                                .and_then(|value| value.as_deref()),
                         ),
                         host: reply
                             .attributes
@@ -4987,7 +4991,8 @@ impl MikrotikService {
             &existing_entries,
         );
 
-        self.apply_router_radius_update(&dev, &plan.radius_entry).await?;
+        self.apply_router_radius_update(&dev, &plan.radius_entry)
+            .await?;
         self.apply_router_ppp_aaa(&dev, &plan.ppp_aaa).await?;
         Ok(())
     }

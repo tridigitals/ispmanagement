@@ -843,7 +843,7 @@ async fn assign_managed_radius_default(
 
     let assigned = state
         .managed_radius_service
-        .auto_assign_default_server_for_tenant(&tenant_id)
+        .auto_assign_default_endpoint_for_tenant(&tenant_id)
         .await?;
 
     if assigned.is_none() {

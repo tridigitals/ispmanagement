@@ -210,7 +210,7 @@ impl NetworkMappingService {
         .await
         .map_err(AppError::Database)?;
 
-        let data: Vec<NetworkNode> = sqlx::query_as(
+        let mut data: Vec<NetworkNode> = sqlx::query_as(
             r#"
             SELECT
               n.id::text AS id,
@@ -252,6 +252,9 @@ impl NetworkMappingService {
         .fetch_all(&self.pool)
         .await
         .map_err(AppError::Database)?;
+
+        self.overlay_live_customer_location_metadata(tenant_id, &mut data)
+            .await?;
 
         Ok(PaginatedResponse {
             data,

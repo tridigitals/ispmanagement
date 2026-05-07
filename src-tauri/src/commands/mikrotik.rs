@@ -642,7 +642,7 @@ pub async fn assign_mikrotik_router_managed_radius_default(
     }
 
     let assigned = managed_radius
-        .auto_assign_default_server_for_tenant(&tenant_id)
+        .auto_assign_default_endpoint_for_tenant(&tenant_id)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -818,7 +818,10 @@ pub async fn apply_mikrotik_router_managed_radius(
             "MIKROTIK_ROUTER_MANAGED_RADIUS_APPLIED",
             "mikrotik_router",
             Some(&router.id),
-            Some(&format!("Applied Managed RADIUS setup to router {}", router.name)),
+            Some(&format!(
+                "Applied Managed RADIUS setup to router {}",
+                router.name
+            )),
             None,
         )
         .await;

@@ -166,8 +166,10 @@ pub struct ManagedRadiusRouterSetup {
     pub default_server_available: bool,
     pub can_assign_default: bool,
     pub can_create_mapping: bool,
-    pub assignment_server_name: Option<String>,
-    pub server_name: Option<String>,
+    #[serde(alias = "assignment_server_name")]
+    pub assignment_endpoint_name: Option<String>,
+    #[serde(alias = "server_name")]
+    pub endpoint_name: Option<String>,
     pub radius_host: Option<String>,
     pub auth_port: i32,
     pub acct_port: i32,

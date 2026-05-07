@@ -52,18 +52,18 @@ export function getManagedRadiusSummary(
   setup: (ManagedRadiusPlanGateShape &
     ManagedRadiusAssignDefaultShape & {
       configured?: boolean | null;
-      assignment_server_name?: string | null;
-      server_name?: string | null;
+      assignment_endpoint_name?: string | null;
+      endpoint_name?: string | null;
       default_server_available?: boolean | null;
     }) | null | undefined,
 ): string {
   if (!setup) return 'Managed RADIUS';
   if (setup.plan_upgrade_required) return 'Upgrade required';
-  if (setup.configured) return setup.server_name || 'Managed RADIUS configured';
+  if (setup.configured) return setup.endpoint_name || 'Managed RADIUS configured';
   if (setup.tenant_has_active_assignment) {
-    return setup.assignment_server_name || 'Assignment active';
+    return setup.assignment_endpoint_name || 'Assignment active';
   }
-  if (setup.default_server_available) return 'Ready to assign default server';
+  if (setup.default_server_available) return 'Ready to assign default endpoint';
   return 'Not configured';
 }
 

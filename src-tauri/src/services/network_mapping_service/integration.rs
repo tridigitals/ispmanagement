@@ -1,8 +1,10 @@
 use super::dto::{SyncCustomerLocationRow, SyncRouterRow, UuidTextRow};
 use super::NetworkMappingService;
 use crate::error::{AppError, AppResult};
-use crate::models::{NetworkImpactCustomer, NetworkImpactResponse, SyncTopologyAssetsResponse};
-use std::collections::HashSet;
+use crate::models::{
+    NetworkImpactCustomer, NetworkImpactResponse, NetworkNode, SyncTopologyAssetsResponse,
+};
+use std::collections::{HashMap, HashSet};
 
 impl NetworkMappingService {
     pub(super) fn build_customer_location_metadata(
@@ -168,34 +170,52 @@ impl NetworkMappingService {
         metadata
     }
 
-    pub(super) async fn sync_topology_asset_nodes_flow(
+    pub(super) fn merge_customer_location_metadata(
+        metadata: &mut serde_json::Value,
+        row: &SyncCustomerLocationRow,
+    ) {
+        let next = serde_json::Value::Object(Self::build_customer_location_metadata(row));
+        let Some(current) = metadata.as_object_mut() else {
+            *metadata = next;
+            return;
+        };
+        let Some(next_object) = next.as_object() else {
+            return;
+        };
+
+        for (key, value) in next_object {
+            current.insert(key.clone(), value.clone());
+        }
+    }
+
+    pub(super) async fn overlay_live_customer_location_metadata(
         &self,
-        actor_id: &str,
         tenant_id: &str,
-    ) -> AppResult<SyncTopologyAssetsResponse> {
-        self.require_installation_manage(actor_id, tenant_id)
-            .await?;
+        nodes: &mut [NetworkNode],
+    ) -> AppResult<()> {
+        let location_ids: Vec<String> = nodes
+            .iter()
+            .filter_map(|node| {
+                let metadata = node.metadata.as_object()?;
+                if metadata.get("asset_type").and_then(|value| value.as_str())
+                    != Some("customer_location")
+                {
+                    return None;
+                }
+                metadata
+                    .get("asset_id")
+                    .and_then(|value| value.as_str())
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(str::to_string)
+            })
+            .collect();
 
-        let routers: Vec<SyncRouterRow> = sqlx::query_as(
-            r#"
-            SELECT
-              id::text AS id,
-              name,
-              enabled,
-              latitude::float8 AS latitude,
-              longitude::float8 AS longitude
-            FROM mikrotik_routers
-            WHERE tenant_id = $1::text
-              AND latitude IS NOT NULL
-              AND longitude IS NOT NULL
-            "#,
-        )
-        .bind(tenant_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
+        if location_ids.is_empty() {
+            return Ok(());
+        }
 
-        let customer_locations: Vec<SyncCustomerLocationRow> = sqlx::query_as(
+        let rows: Vec<SyncCustomerLocationRow> = sqlx::query_as(
             r#"
             SELECT
               cl.id::text AS location_id,
@@ -212,7 +232,7 @@ impl NetworkMappingService {
               (sess.username IS NOT NULL) AS pppoe_session_active,
               acct.account_source AS pppoe_account_source,
               acct.router_profile_name AS pppoe_router_profile_name,
-              COALESCE(svc.router_id, acct.router_id) AS router_id,
+              COALESCE(acct.router_id, svc.router_id) AS router_id,
               cl.latitude::float8 AS latitude,
               cl.longitude::float8 AS longitude
             FROM customer_locations cl
@@ -273,7 +293,156 @@ impl NetworkMappingService {
             ) acct ON TRUE
             LEFT JOIN mikrotik_ppp_active_sessions sess
               ON sess.tenant_id = cl.tenant_id
-             AND sess.router_id = COALESCE(svc.router_id, acct.router_id)
+             AND sess.router_id = COALESCE(acct.router_id, svc.router_id)
+             AND sess.username = acct.username
+            WHERE cl.tenant_id = $1::text
+              AND cl.id::text = ANY($2)
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&location_ids)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let rows_by_location_id: HashMap<String, SyncCustomerLocationRow> = rows
+            .into_iter()
+            .map(|row| (row.location_id.clone(), row))
+            .collect();
+
+        for node in nodes.iter_mut() {
+            let asset_type = node
+                .metadata
+                .get("asset_type")
+                .and_then(|value| value.as_str())
+                .unwrap_or_default();
+            if asset_type != "customer_location" {
+                continue;
+            }
+            let Some(location_id) = node
+                .metadata
+                .get("asset_id")
+                .and_then(|value| value.as_str())
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+            else {
+                continue;
+            };
+            let Some(row) = rows_by_location_id.get(location_id) else {
+                continue;
+            };
+            Self::merge_customer_location_metadata(&mut node.metadata, row);
+        }
+
+        Ok(())
+    }
+
+    pub(super) async fn sync_topology_asset_nodes_flow(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+    ) -> AppResult<SyncTopologyAssetsResponse> {
+        self.require_installation_manage(actor_id, tenant_id)
+            .await?;
+
+        let routers: Vec<SyncRouterRow> = sqlx::query_as(
+            r#"
+            SELECT
+              id::text AS id,
+              name,
+              enabled,
+              latitude::float8 AS latitude,
+              longitude::float8 AS longitude
+            FROM mikrotik_routers
+            WHERE tenant_id = $1::text
+              AND latitude IS NOT NULL
+              AND longitude IS NOT NULL
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let customer_locations: Vec<SyncCustomerLocationRow> = sqlx::query_as(
+            r#"
+            SELECT
+              cl.id::text AS location_id,
+              cl.customer_id::text AS customer_id,
+              c.name AS customer_name,
+              c.is_active AS customer_is_active,
+              COALESCE(NULLIF(BTRIM(cl.label), ''), c.name || ' Location') AS label,
+              svc.subscription_id AS subscription_id,
+              svc.subscription_status AS subscription_status,
+              p.name AS package_name,
+              p.service_type AS package_service_type,
+              acct.username AS pppoe_username,
+              acct.disabled AS pppoe_disabled,
+              (sess.username IS NOT NULL) AS pppoe_session_active,
+              acct.account_source AS pppoe_account_source,
+              acct.router_profile_name AS pppoe_router_profile_name,
+              COALESCE(acct.router_id, svc.router_id) AS router_id,
+              cl.latitude::float8 AS latitude,
+              cl.longitude::float8 AS longitude
+            FROM customer_locations cl
+            INNER JOIN customers c
+              ON c.tenant_id::text = cl.tenant_id::text
+             AND c.id::text = cl.customer_id::text
+            INNER JOIN LATERAL (
+              SELECT
+                cs.id::text AS subscription_id,
+                cs.status AS subscription_status,
+                cs.package_id,
+                cs.router_id
+              FROM customer_subscriptions cs
+              WHERE cs.tenant_id = cl.tenant_id
+                AND cs.location_id = cl.id
+                AND cs.status IN (
+                  'active',
+                  'grace_active',
+                  'pending_installation',
+                  'installation_done_awaiting_payment',
+                  'suspended'
+                )
+              ORDER BY
+                CASE cs.status
+                  WHEN 'active' THEN 0
+                  WHEN 'grace_active' THEN 1
+                  WHEN 'pending_installation' THEN 2
+                  WHEN 'installation_done_awaiting_payment' THEN 3
+                  WHEN 'suspended' THEN 4
+                  ELSE 5
+                END,
+                cs.updated_at DESC,
+                cs.created_at DESC
+              LIMIT 1
+            ) svc ON TRUE
+            LEFT JOIN isp_packages p
+              ON p.tenant_id = cl.tenant_id
+             AND p.id = svc.package_id
+            LEFT JOIN LATERAL (
+              SELECT
+                pa.username,
+                pa.disabled,
+                pa.router_present,
+                pa.account_source,
+                pa.router_profile_name,
+                pa.router_id
+              FROM pppoe_accounts pa
+              WHERE pa.tenant_id = cl.tenant_id
+                AND pa.location_id = cl.id
+              ORDER BY
+                CASE
+                  WHEN pa.account_source = 'managed_radius' THEN 0
+                  ELSE 1
+                END,
+                pa.updated_at DESC,
+                pa.created_at DESC
+              LIMIT 1
+            ) acct ON TRUE
+            LEFT JOIN mikrotik_ppp_active_sessions sess
+              ON sess.tenant_id = cl.tenant_id
+             AND sess.router_id = COALESCE(acct.router_id, svc.router_id)
              AND sess.username = acct.username
             WHERE cl.tenant_id = $1::text
               AND cl.latitude IS NOT NULL
@@ -533,5 +702,57 @@ impl NetworkMappingService {
             link_ids: link_vec,
             customers: rows,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn merge_customer_location_metadata_overrides_stale_pppoe_state() {
+        let row = SyncCustomerLocationRow {
+            location_id: "loc-1".into(),
+            customer_id: "cust-1".into(),
+            customer_name: "User 1".into(),
+            customer_is_active: true,
+            label: "Rumah".into(),
+            subscription_id: "sub-1".into(),
+            subscription_status: "active".into(),
+            package_name: Some("Paket".into()),
+            package_service_type: Some("internet_pppoe".into()),
+            pppoe_username: Some("test".into()),
+            pppoe_disabled: Some(false),
+            pppoe_session_active: Some(true),
+            pppoe_account_source: Some("managed_radius".into()),
+            pppoe_router_profile_name: Some("PPPOE".into()),
+            router_id: Some("router-1".into()),
+            latitude: -7.0,
+            longitude: 110.0,
+        };
+        let mut metadata = serde_json::json!({
+            "asset_type": "customer_location",
+            "asset_id": "loc-1",
+            "customer_name": "User 1",
+            "pppoe_username": "test",
+            "pppoe_visual_state": "disconnected",
+            "pppoe_session_active": false,
+            "router_id": "router-1"
+        });
+
+        NetworkMappingService::merge_customer_location_metadata(&mut metadata, &row);
+
+        assert_eq!(
+            metadata
+                .get("pppoe_visual_state")
+                .and_then(|value| value.as_str()),
+            Some("connected")
+        );
+        assert_eq!(
+            metadata
+                .get("pppoe_session_active")
+                .and_then(|value| value.as_bool()),
+            Some(true)
+        );
     }
 }

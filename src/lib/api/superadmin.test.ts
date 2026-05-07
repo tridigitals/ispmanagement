@@ -65,7 +65,7 @@ describe('superadmin api wrapper', () => {
     const { superadmin } = await import('./superadmin');
     await superadmin.createManagedRadiusAssignment({
       tenant_id: 'tenant-1',
-      radius_server_id: 'server-1',
+      radius_endpoint_id: 'endpoint-1',
       is_active: true,
     });
 
@@ -73,8 +73,10 @@ describe('superadmin api wrapper', () => {
       token: 'token-123',
       tenantId: 'tenant-1',
       tenant_id: 'tenant-1',
-      radiusServerId: 'server-1',
-      radius_server_id: 'server-1',
+      radiusEndpointId: 'endpoint-1',
+      radius_endpoint_id: 'endpoint-1',
+      radiusServerId: 'endpoint-1',
+      radius_server_id: 'endpoint-1',
       isActive: true,
       is_active: true,
     });

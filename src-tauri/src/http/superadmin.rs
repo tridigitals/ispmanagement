@@ -34,8 +34,8 @@ pub struct SuperadminManagedRadiusAssignment {
     pub id: String,
     pub tenant_id: String,
     pub tenant_name: String,
-    pub radius_server_id: String,
-    pub server_name: String,
+    pub radius_endpoint_id: String,
+    pub endpoint_name: String,
     pub radius_host: String,
     pub auth_port: i32,
     pub acct_port: i32,
@@ -112,8 +112,8 @@ pub struct SuperadminManagedRadiusMapping {
     pub id: String,
     pub tenant_id: String,
     pub tenant_name: String,
-    pub radius_server_id: String,
-    pub server_name: String,
+    pub radius_endpoint_id: String,
+    pub endpoint_name: String,
     pub radius_host: String,
     pub auth_port: i32,
     pub acct_port: i32,
@@ -199,7 +199,8 @@ pub struct ManagedRadiusServerActiveRequest {
 #[serde(deny_unknown_fields)]
 pub struct ManagedRadiusAssignmentRequest {
     pub tenant_id: String,
-    pub radius_server_id: String,
+    #[serde(alias = "radius_server_id")]
+    pub radius_endpoint_id: String,
     pub is_active: bool,
 }
 
@@ -216,7 +217,8 @@ pub struct ManagedRadiusAssignmentActiveRequest {
 #[serde(deny_unknown_fields)]
 pub struct ManagedRadiusMappingRequest {
     pub tenant_id: String,
-    pub radius_server_id: String,
+    #[serde(alias = "radius_server_id")]
+    pub radius_endpoint_id: String,
     pub router_id: String,
     pub nas_name: String,
     pub nas_ip_or_cidr: String,
@@ -389,8 +391,8 @@ pub async fn list_managed_radius_assignments(
           a.id,
           a.tenant_id,
           t.name AS tenant_name,
-          a.radius_server_id,
-          s.name AS server_name,
+          a.radius_server_id AS radius_endpoint_id,
+          s.name AS endpoint_name,
           s.db_host AS radius_host,
           $1::integer AS auth_port,
           $2::integer AS acct_port,
@@ -564,8 +566,8 @@ pub async fn list_managed_radius_mappings(
           n.id,
           n.tenant_id,
           t.name AS tenant_name,
-          n.radius_server_id,
-          s.name AS server_name,
+          n.radius_server_id AS radius_endpoint_id,
+          s.name AS endpoint_name,
           s.db_host AS radius_host,
           $1::integer AS auth_port,
           $2::integer AS acct_port,
@@ -605,8 +607,8 @@ pub async fn list_managed_radius_mappings(
             id: row.0,
             tenant_id: row.1,
             tenant_name: row.2,
-            radius_server_id: row.3,
-            server_name: row.4,
+            radius_endpoint_id: row.3,
+            endpoint_name: row.4,
             radius_host: row.5,
             auth_port: row.6,
             acct_port: row.7,
@@ -642,8 +644,8 @@ pub async fn create_managed_radius_server(
 
     let server = state
         .managed_radius_service
-        .create_server(
-            crate::services::managed_radius_service::ManagedRadiusServerUpsert {
+        .create_endpoint(
+            crate::services::managed_radius_service::ManagedRadiusEndpointUpsert {
                 name: payload.name,
                 endpoint_host: payload.endpoint_host,
                 endpoint_port: payload.endpoint_port,
@@ -684,9 +686,9 @@ pub async fn update_managed_radius_server(
 
     state
         .managed_radius_service
-        .update_server(
+        .update_endpoint(
             &id,
-            crate::services::managed_radius_service::ManagedRadiusServerUpsert {
+            crate::services::managed_radius_service::ManagedRadiusEndpointUpsert {
                 name: payload.name,
                 endpoint_host: payload.endpoint_host,
                 endpoint_port: payload.endpoint_port,
@@ -727,7 +729,7 @@ pub async fn set_managed_radius_server_active(
 
     state
         .managed_radius_service
-        .set_server_active(&id, payload.is_active)
+        .set_endpoint_active(&id, payload.is_active)
         .await?;
 
     state
@@ -759,7 +761,10 @@ pub async fn set_managed_radius_server_default(
     let claims = check_super_admin(&state, &headers).await?;
     let ip = extract_ip(&headers, addr);
 
-    let server = state.managed_radius_service.set_server_default(&id).await?;
+    let server = state
+        .managed_radius_service
+        .set_endpoint_default(&id)
+        .await?;
 
     state
         .audit_service
@@ -794,7 +799,7 @@ pub async fn create_managed_radius_assignment(
         .create_assignment(
             crate::services::managed_radius_service::TenantRadiusAssignmentUpsert {
                 tenant_id: payload.tenant_id.clone(),
-                radius_server_id: payload.radius_server_id,
+                radius_endpoint_id: payload.radius_endpoint_id,
                 is_active: payload.is_active,
             },
         )
@@ -832,7 +837,7 @@ pub async fn update_managed_radius_assignment(
             &id,
             crate::services::managed_radius_service::TenantRadiusAssignmentUpsert {
                 tenant_id: payload.tenant_id.clone(),
-                radius_server_id: payload.radius_server_id,
+                radius_endpoint_id: payload.radius_endpoint_id,
                 is_active: payload.is_active,
             },
         )
@@ -903,7 +908,7 @@ pub async fn create_managed_radius_mapping(
         .create_mapping(
             crate::services::managed_radius_service::ManagedRadiusNasUpsert {
                 tenant_id: payload.tenant_id.clone(),
-                radius_server_id: payload.radius_server_id,
+                radius_endpoint_id: payload.radius_endpoint_id,
                 router_id: payload.router_id,
                 nas_name: payload.nas_name,
                 nas_ip_or_cidr: payload.nas_ip_or_cidr,
@@ -946,7 +951,7 @@ pub async fn update_managed_radius_mapping(
             &id,
             crate::services::managed_radius_service::ManagedRadiusNasUpsert {
                 tenant_id: payload.tenant_id.clone(),
-                radius_server_id: payload.radius_server_id,
+                radius_endpoint_id: payload.radius_endpoint_id,
                 router_id: payload.router_id,
                 nas_name: payload.nas_name,
                 nas_ip_or_cidr: payload.nas_ip_or_cidr,
@@ -1223,7 +1228,7 @@ pub async fn create_tenant(
                 Ok(access) if access.has_access => {
                     if let Err(err) = state
                         .managed_radius_service
-                        .auto_assign_default_server_for_tenant(&tenant.id)
+                        .auto_assign_default_endpoint_for_tenant(&tenant.id)
                         .await
                     {
                         tracing::error!(

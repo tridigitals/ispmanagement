@@ -89,7 +89,7 @@ describe('managed radius setup helpers', () => {
     expect(
       getManagedRadiusSummary({
         configured: true,
-        server_name: 'Primary Radius',
+        endpoint_name: 'Primary Radius',
       }),
     ).toBe('Primary Radius');
     expect(

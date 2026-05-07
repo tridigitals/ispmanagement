@@ -176,7 +176,7 @@
         <span class="muted">
           {$t('admin.network.routers.managed_radius.labels.server') || 'Server'}
         </span>
-        <span class="mono">{managedRadiusSetup.server_name || 'Managed RADIUS'}</span>
+        <span class="mono">{managedRadiusSetup.endpoint_name || 'Managed RADIUS'}</span>
       </div>
       <div class="row">
         <span class="muted">
@@ -228,7 +228,7 @@
         <span class="muted">
           {$t('admin.network.routers.managed_radius.labels.server') || 'Server'}
         </span>
-        <span class="mono">{managedRadiusSetup.assignment_server_name || 'Managed RADIUS'}</span>
+        <span class="mono">{managedRadiusSetup.assignment_endpoint_name || 'Managed RADIUS'}</span>
       </div>
       <div class="muted">
         {$t('admin.network.routers.managed_radius.assignment_only') ||

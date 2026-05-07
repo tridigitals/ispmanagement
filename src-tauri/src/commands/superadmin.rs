@@ -31,8 +31,8 @@ pub struct SuperadminManagedRadiusAssignment {
     pub id: String,
     pub tenant_id: String,
     pub tenant_name: String,
-    pub radius_server_id: String,
-    pub server_name: String,
+    pub radius_endpoint_id: String,
+    pub endpoint_name: String,
     pub radius_host: String,
     pub auth_port: i32,
     pub acct_port: i32,
@@ -109,8 +109,8 @@ pub struct SuperadminManagedRadiusMapping {
     pub id: String,
     pub tenant_id: String,
     pub tenant_name: String,
-    pub radius_server_id: String,
-    pub server_name: String,
+    pub radius_endpoint_id: String,
+    pub endpoint_name: String,
     pub radius_host: String,
     pub auth_port: i32,
     pub acct_port: i32,
@@ -238,8 +238,8 @@ pub async fn list_managed_radius_assignments(
           a.id,
           a.tenant_id,
           t.name AS tenant_name,
-          a.radius_server_id,
-          s.name AS server_name,
+          a.radius_server_id AS radius_endpoint_id,
+          s.name AS endpoint_name,
           s.db_host AS radius_host,
           $1::integer AS auth_port,
           $2::integer AS acct_port,
@@ -420,8 +420,8 @@ pub async fn list_managed_radius_mappings(
           n.id,
           n.tenant_id,
           t.name AS tenant_name,
-          n.radius_server_id,
-          s.name AS server_name,
+          n.radius_server_id AS radius_endpoint_id,
+          s.name AS endpoint_name,
           s.db_host AS radius_host,
           $1::integer AS auth_port,
           $2::integer AS acct_port,
@@ -460,8 +460,8 @@ pub async fn list_managed_radius_mappings(
             id: row.0,
             tenant_id: row.1,
             tenant_name: row.2,
-            radius_server_id: row.3,
-            server_name: row.4,
+            radius_endpoint_id: row.3,
+            endpoint_name: row.4,
             radius_host: row.5,
             auth_port: row.6,
             acct_port: row.7,
@@ -507,8 +507,8 @@ pub async fn create_managed_radius_server(
     }
 
     let server = managed_radius_service
-        .create_server(
-            crate::services::managed_radius_service::ManagedRadiusServerUpsert {
+        .create_endpoint(
+            crate::services::managed_radius_service::ManagedRadiusEndpointUpsert {
                 name,
                 endpoint_host,
                 endpoint_port,
@@ -563,9 +563,9 @@ pub async fn update_managed_radius_server(
     }
 
     managed_radius_service
-        .update_server(
+        .update_endpoint(
             &id,
-            crate::services::managed_radius_service::ManagedRadiusServerUpsert {
+            crate::services::managed_radius_service::ManagedRadiusEndpointUpsert {
                 name,
                 endpoint_host,
                 endpoint_port,
@@ -612,7 +612,7 @@ pub async fn set_managed_radius_server_active(
     }
 
     managed_radius_service
-        .set_server_active(&id, is_active)
+        .set_endpoint_active(&id, is_active)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -652,7 +652,7 @@ pub async fn set_managed_radius_server_default(
     }
 
     let server = managed_radius_service
-        .set_server_default(&id)
+        .set_endpoint_default(&id)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -678,7 +678,7 @@ pub async fn set_managed_radius_server_default(
 pub async fn create_managed_radius_assignment(
     token: String,
     tenant_id: String,
-    radius_server_id: String,
+    radius_endpoint_id: String,
     is_active: bool,
     auth_service: State<'_, AuthService>,
     managed_radius_service: State<'_, ManagedRadiusService>,
@@ -696,7 +696,7 @@ pub async fn create_managed_radius_assignment(
         .create_assignment(
             crate::services::managed_radius_service::TenantRadiusAssignmentUpsert {
                 tenant_id: tenant_id.clone(),
-                radius_server_id,
+                radius_endpoint_id,
                 is_active,
             },
         )
@@ -723,7 +723,7 @@ pub async fn update_managed_radius_assignment(
     token: String,
     id: String,
     tenant_id: String,
-    radius_server_id: String,
+    radius_endpoint_id: String,
     is_active: bool,
     auth_service: State<'_, AuthService>,
     managed_radius_service: State<'_, ManagedRadiusService>,
@@ -742,7 +742,7 @@ pub async fn update_managed_radius_assignment(
             &id,
             crate::services::managed_radius_service::TenantRadiusAssignmentUpsert {
                 tenant_id: tenant_id.clone(),
-                radius_server_id,
+                radius_endpoint_id,
                 is_active,
             },
         )
@@ -811,7 +811,7 @@ pub async fn set_managed_radius_assignment_active(
 pub async fn create_managed_radius_mapping(
     token: String,
     tenant_id: String,
-    radius_server_id: String,
+    radius_endpoint_id: String,
     router_id: String,
     nas_name: String,
     nas_ip_or_cidr: String,
@@ -834,7 +834,7 @@ pub async fn create_managed_radius_mapping(
         .create_mapping(
             crate::services::managed_radius_service::ManagedRadiusNasUpsert {
                 tenant_id: tenant_id.clone(),
-                radius_server_id,
+                radius_endpoint_id,
                 router_id,
                 nas_name,
                 nas_ip_or_cidr,
@@ -867,7 +867,7 @@ pub async fn update_managed_radius_mapping(
     token: String,
     id: String,
     tenant_id: String,
-    radius_server_id: String,
+    radius_endpoint_id: String,
     router_id: String,
     nas_name: String,
     nas_ip_or_cidr: String,
@@ -891,7 +891,7 @@ pub async fn update_managed_radius_mapping(
             &id,
             crate::services::managed_radius_service::ManagedRadiusNasUpsert {
                 tenant_id: tenant_id.clone(),
-                radius_server_id,
+                radius_endpoint_id,
                 router_id,
                 nas_name,
                 nas_ip_or_cidr,
@@ -1262,7 +1262,7 @@ pub async fn create_tenant(
             {
                 Ok(access) if access.has_access => {
                     if let Err(e) = managed_radius_service
-                        .auto_assign_default_server_for_tenant(&tenant.id)
+                        .auto_assign_default_endpoint_for_tenant(&tenant.id)
                         .await
                     {
                         tracing::error!(
@@ -1383,4 +1383,54 @@ pub async fn update_tenant(
         .await;
 
     Ok(tenant)
+}
+
+#[cfg(test)]
+fn superadmin_commands_source() -> &'static str {
+    include_str!("superadmin.rs")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::superadmin_commands_source;
+
+    #[test]
+    fn managed_radius_commands_use_endpoint_param_names() {
+        let source = superadmin_commands_source();
+        let legacy_assignment_param = [
+            "create_managed_radius_assignment(\n",
+            "    token: String,\n",
+            "    tenant_id: String,\n",
+            "    radius_server_id: String,",
+        ]
+        .concat();
+        let legacy_update_assignment_param = [
+            "update_managed_radius_assignment(\n",
+            "    token: String,\n",
+            "    id: String,\n",
+            "    tenant_id: String,\n",
+            "    radius_server_id: String,",
+        ]
+        .concat();
+        let legacy_mapping_param = [
+            "create_managed_radius_mapping(\n",
+            "    token: String,\n",
+            "    tenant_id: String,\n",
+            "    radius_server_id: String,",
+        ]
+        .concat();
+        let legacy_update_mapping_param = [
+            "update_managed_radius_mapping(\n",
+            "    token: String,\n",
+            "    id: String,\n",
+            "    tenant_id: String,\n",
+            "    radius_server_id: String,",
+        ]
+        .concat();
+
+        assert!(!source.contains(&legacy_assignment_param));
+        assert!(!source.contains(&legacy_update_assignment_param));
+        assert!(!source.contains(&legacy_mapping_param));
+        assert!(!source.contains(&legacy_update_mapping_param));
+    }
 }

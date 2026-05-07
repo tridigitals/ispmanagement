@@ -87,8 +87,8 @@ export interface SuperadminManagedRadiusAssignment {
   id: string;
   tenant_id: string;
   tenant_name: string;
-  radius_server_id: string;
-  server_name: string;
+  radius_endpoint_id: string;
+  endpoint_name: string;
   radius_host: string;
   auth_port: number;
   acct_port: number;
@@ -101,8 +101,8 @@ export interface SuperadminManagedRadiusMapping {
   id: string;
   tenant_id: string;
   tenant_name: string;
-  radius_server_id: string;
-  server_name: string;
+  radius_endpoint_id: string;
+  endpoint_name: string;
   radius_host: string;
   auth_port: number;
   acct_port: number;
@@ -166,13 +166,13 @@ export interface ManagedRadiusServerPayload {
 
 export interface ManagedRadiusAssignmentPayload {
   tenant_id: string;
-  radius_server_id: string;
+  radius_endpoint_id: string;
   is_active: boolean;
 }
 
 export interface ManagedRadiusMappingPayload {
   tenant_id: string;
-  radius_server_id: string;
+  radius_endpoint_id: string;
   router_id: string;
   nas_name: string;
   nas_ip_or_cidr: string;
@@ -666,8 +666,8 @@ export interface ManagedRadiusRouterSetup {
   default_server_available: boolean;
   can_assign_default: boolean;
   can_create_mapping: boolean;
-  assignment_server_name: string | null;
-  server_name: string | null;
+  assignment_endpoint_name: string | null;
+  endpoint_name: string | null;
   radius_host: string | null;
   auth_port: number;
   acct_port: number;

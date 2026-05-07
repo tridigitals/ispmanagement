@@ -264,7 +264,7 @@ pub struct PppoeImportResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct ManagedRadiusServer {
+pub struct ManagedRadiusEndpoint {
     pub id: String,
     pub name: String,
     pub db_host: String,
@@ -284,6 +284,7 @@ pub struct ManagedRadiusServer {
 pub struct TenantRadiusAssignment {
     pub id: String,
     pub tenant_id: String,
+    #[serde(alias = "radius_endpoint_id")]
     pub radius_server_id: String,
     pub is_active: bool,
     pub assigned_at: DateTime<Utc>,
@@ -296,6 +297,7 @@ pub struct ManagedRadiusNas {
     pub id: String,
     pub tenant_id: String,
     pub router_id: String,
+    #[serde(alias = "radius_endpoint_id")]
     pub radius_server_id: String,
     pub nas_name: String,
     pub nas_ip_or_cidr: String,

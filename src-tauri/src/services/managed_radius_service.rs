@@ -1,8 +1,8 @@
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    ManagedRadiusNas, ManagedRadiusRouterSetup, ManagedRadiusServer, MikrotikRouter, PppoeAccount,
-    TenantRadiusAssignment,
+    ManagedRadiusEndpoint, ManagedRadiusNas, ManagedRadiusRouterSetup, MikrotikRouter,
+    PppoeAccount, TenantRadiusAssignment,
 };
 use crate::security::secret::{decrypt_secret_opt_for, encrypt_secret_for};
 use chrono::Utc;
@@ -61,7 +61,7 @@ pub struct ManagedRadiusApplyResult {
 }
 
 #[derive(Debug, Clone)]
-pub struct ManagedRadiusServerUpsert {
+pub struct ManagedRadiusEndpointUpsert {
     pub name: String,
     pub endpoint_host: String,
     pub endpoint_port: Option<i32>,
@@ -75,14 +75,14 @@ pub struct ManagedRadiusServerUpsert {
 #[derive(Debug, Clone)]
 pub struct TenantRadiusAssignmentUpsert {
     pub tenant_id: String,
-    pub radius_server_id: String,
+    pub radius_endpoint_id: String,
     pub is_active: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct ManagedRadiusNasUpsert {
     pub tenant_id: String,
-    pub radius_server_id: String,
+    pub radius_endpoint_id: String,
     pub router_id: String,
     pub nas_name: String,
     pub nas_ip_or_cidr: String,
@@ -105,8 +105,8 @@ impl ManagedRadiusService {
         &self,
         tenant_id: &str,
         router_id: &str,
-    ) -> AppResult<(ManagedRadiusServer, ManagedRadiusNas)> {
-        let server = sqlx::query_as::<_, ManagedRadiusServer>(
+    ) -> AppResult<(ManagedRadiusEndpoint, ManagedRadiusNas)> {
+        let endpoint = sqlx::query_as::<_, ManagedRadiusEndpoint>(
             r#"
             SELECT s.*
             FROM radius_servers s
@@ -147,7 +147,7 @@ impl ManagedRadiusService {
         )
         .bind(tenant_id)
         .bind(router_id)
-        .bind(&server.id)
+        .bind(&endpoint.id)
         .fetch_optional(&self.pool)
         .await
         .map_err(AppError::Database)?
@@ -155,7 +155,7 @@ impl ManagedRadiusService {
             AppError::Configuration("Managed RADIUS NAS entry is missing for router".into())
         })?;
 
-        Ok((server, nas))
+        Ok((endpoint, nas))
     }
 
     async fn get_active_assignment_for_tenant(
@@ -263,10 +263,10 @@ impl ManagedRadiusService {
         generate_managed_radius_shared_secret()
     }
 
-    pub async fn create_server(
+    pub async fn create_endpoint(
         &self,
-        input: ManagedRadiusServerUpsert,
-    ) -> AppResult<ManagedRadiusServer> {
+        input: ManagedRadiusEndpointUpsert,
+    ) -> AppResult<ManagedRadiusEndpoint> {
         let name = required_trimmed("name", &input.name)?;
         let endpoint_host = required_trimmed("endpoint_host", &input.endpoint_host)?;
         let runtime_label = normalize_optional_secret_input(input.runtime_label.as_deref())
@@ -281,7 +281,7 @@ impl ManagedRadiusService {
         let now = Utc::now();
         let id = Uuid::new_v4().to_string();
 
-        let server = sqlx::query_as::<_, ManagedRadiusServer>(
+        let endpoint = sqlx::query_as::<_, ManagedRadiusEndpoint>(
             r#"
             INSERT INTO radius_servers (
               id, name, db_host, db_port, db_name, db_user, db_password_enc, is_active, is_default, notes, created_at, updated_at
@@ -303,24 +303,25 @@ impl ManagedRadiusService {
         .fetch_one(&self.pool)
         .await
         .map_err(AppError::Database)?;
-        Ok(server)
+        Ok(endpoint)
     }
 
-    pub async fn update_server(
+    pub async fn update_endpoint(
         &self,
-        server_id: &str,
-        input: ManagedRadiusServerUpsert,
-    ) -> AppResult<ManagedRadiusServer> {
+        endpoint_id: &str,
+        input: ManagedRadiusEndpointUpsert,
+    ) -> AppResult<ManagedRadiusEndpoint> {
         let name = required_trimmed("name", &input.name)?;
         let endpoint_host = required_trimmed("endpoint_host", &input.endpoint_host)?;
 
-        let existing =
-            sqlx::query_as::<_, ManagedRadiusServer>("SELECT * FROM radius_servers WHERE id = $1")
-                .bind(server_id)
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(AppError::Database)?
-                .ok_or_else(|| AppError::NotFound("Native RADIUS endpoint not found".into()))?;
+        let existing = sqlx::query_as::<_, ManagedRadiusEndpoint>(
+            "SELECT * FROM radius_servers WHERE id = $1",
+        )
+        .bind(endpoint_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound("Native RADIUS endpoint not found".into()))?;
 
         let endpoint_port = input
             .endpoint_port
@@ -331,15 +332,16 @@ impl ManagedRadiusService {
         let runtime_user = normalize_optional_secret_input(input.runtime_user.as_deref())
             .unwrap_or_else(|| existing.db_user.clone());
 
-        let runtime_secret_enc = match normalize_optional_secret_input(input.runtime_secret.as_deref()) {
-            Some(secret) => Self::encrypt_runtime_secret(&secret)?,
-            None => existing.db_password_enc,
-        };
+        let runtime_secret_enc =
+            match normalize_optional_secret_input(input.runtime_secret.as_deref()) {
+                Some(secret) => Self::encrypt_runtime_secret(&secret)?,
+                None => existing.db_password_enc,
+            };
         let notes = normalize_optional_secret_input(input.notes.as_deref());
 
         let now = Utc::now();
 
-        let server = sqlx::query_as::<_, ManagedRadiusServer>(
+        let endpoint = sqlx::query_as::<_, ManagedRadiusEndpoint>(
             r#"
             UPDATE radius_servers
             SET name = $1,
@@ -364,25 +366,26 @@ impl ManagedRadiusService {
         .bind(input.is_active)
         .bind(notes)
         .bind(now)
-        .bind(server_id)
+        .bind(endpoint_id)
         .fetch_one(&self.pool)
         .await
         .map_err(AppError::Database)?;
-        Ok(server)
+        Ok(endpoint)
     }
 
-    pub async fn set_server_active(
+    pub async fn set_endpoint_active(
         &self,
-        server_id: &str,
+        endpoint_id: &str,
         is_active: bool,
-    ) -> AppResult<ManagedRadiusServer> {
-        let existing =
-            sqlx::query_as::<_, ManagedRadiusServer>("SELECT * FROM radius_servers WHERE id = $1")
-                .bind(server_id)
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(AppError::Database)?
-                .ok_or_else(|| AppError::NotFound("Native RADIUS endpoint not found".into()))?;
+    ) -> AppResult<ManagedRadiusEndpoint> {
+        let existing = sqlx::query_as::<_, ManagedRadiusEndpoint>(
+            "SELECT * FROM radius_servers WHERE id = $1",
+        )
+        .bind(endpoint_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound("Native RADIUS endpoint not found".into()))?;
 
         if !is_active && existing.is_default {
             return Err(AppError::Validation(
@@ -392,21 +395,21 @@ impl ManagedRadiusService {
         }
 
         let now = Utc::now();
-        let server = sqlx::query_as::<_, ManagedRadiusServer>(
+        let endpoint = sqlx::query_as::<_, ManagedRadiusEndpoint>(
             "UPDATE radius_servers SET is_active = $1, updated_at = $2 WHERE id = $3 RETURNING *",
         )
         .bind(is_active)
         .bind(now)
-        .bind(server_id)
+        .bind(endpoint_id)
         .fetch_optional(&self.pool)
         .await
         .map_err(AppError::Database)?
         .ok_or_else(|| AppError::NotFound("Native RADIUS endpoint not found".into()))?;
-        Ok(server)
+        Ok(endpoint)
     }
 
-    pub async fn get_default_server(&self) -> AppResult<Option<ManagedRadiusServer>> {
-        sqlx::query_as::<_, ManagedRadiusServer>(
+    pub async fn get_default_endpoint(&self) -> AppResult<Option<ManagedRadiusEndpoint>> {
+        sqlx::query_as::<_, ManagedRadiusEndpoint>(
             r#"
             SELECT *
             FROM radius_servers
@@ -419,14 +422,18 @@ impl ManagedRadiusService {
         .map_err(AppError::Database)
     }
 
-    pub async fn set_server_default(&self, server_id: &str) -> AppResult<ManagedRadiusServer> {
-        let existing =
-            sqlx::query_as::<_, ManagedRadiusServer>("SELECT * FROM radius_servers WHERE id = $1")
-                .bind(server_id)
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(AppError::Database)?
-                .ok_or_else(|| AppError::NotFound("Native RADIUS endpoint not found".into()))?;
+    pub async fn set_endpoint_default(
+        &self,
+        endpoint_id: &str,
+    ) -> AppResult<ManagedRadiusEndpoint> {
+        let existing = sqlx::query_as::<_, ManagedRadiusEndpoint>(
+            "SELECT * FROM radius_servers WHERE id = $1",
+        )
+        .bind(endpoint_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound("Native RADIUS endpoint not found".into()))?;
 
         if !existing.is_active {
             return Err(AppError::Validation(
@@ -445,31 +452,31 @@ impl ManagedRadiusService {
         .await
         .map_err(AppError::Database)?;
 
-        let server = sqlx::query_as::<_, ManagedRadiusServer>(
+        let endpoint = sqlx::query_as::<_, ManagedRadiusEndpoint>(
             "UPDATE radius_servers SET is_default = true, updated_at = $1 WHERE id = $2 RETURNING *",
         )
         .bind(now)
-        .bind(server_id)
+        .bind(endpoint_id)
         .fetch_one(&mut *tx)
         .await
         .map_err(AppError::Database)?;
 
         tx.commit().await.map_err(AppError::Database)?;
-        Ok(server)
+        Ok(endpoint)
     }
 
-    pub async fn auto_assign_default_server_for_tenant(
+    pub async fn auto_assign_default_endpoint_for_tenant(
         &self,
         tenant_id: &str,
     ) -> AppResult<Option<TenantRadiusAssignment>> {
-        let Some(server) = self.get_default_server().await? else {
+        let Some(endpoint) = self.get_default_endpoint().await? else {
             return Ok(None);
         };
 
         let assignment = self
             .create_assignment(TenantRadiusAssignmentUpsert {
                 tenant_id: tenant_id.to_string(),
-                radius_server_id: server.id,
+                radius_endpoint_id: endpoint.id,
                 is_active: true,
             })
             .await?;
@@ -482,9 +489,9 @@ impl ManagedRadiusService {
         input: TenantRadiusAssignmentUpsert,
     ) -> AppResult<TenantRadiusAssignment> {
         let tenant_id = required_trimmed("tenant_id", &input.tenant_id)?;
-        let radius_server_id = required_trimmed("radius_server_id", &input.radius_server_id)?;
+        let radius_endpoint_id = required_trimmed("radius_endpoint_id", &input.radius_endpoint_id)?;
         self.ensure_tenant_exists(tenant_id).await?;
-        self.ensure_server_exists(radius_server_id).await?;
+        self.ensure_endpoint_exists(radius_endpoint_id).await?;
         let now = Utc::now();
         let mut tx = self.pool.begin().await.map_err(AppError::Database)?;
 
@@ -509,7 +516,7 @@ impl ManagedRadiusService {
         )
         .bind(Uuid::new_v4().to_string())
         .bind(tenant_id)
-        .bind(radius_server_id)
+        .bind(radius_endpoint_id)
         .bind(input.is_active)
         .bind(now)
         .bind(now)
@@ -528,9 +535,9 @@ impl ManagedRadiusService {
         input: TenantRadiusAssignmentUpsert,
     ) -> AppResult<TenantRadiusAssignment> {
         let tenant_id = required_trimmed("tenant_id", &input.tenant_id)?;
-        let radius_server_id = required_trimmed("radius_server_id", &input.radius_server_id)?;
+        let radius_endpoint_id = required_trimmed("radius_endpoint_id", &input.radius_endpoint_id)?;
         self.ensure_tenant_exists(tenant_id).await?;
-        self.ensure_server_exists(radius_server_id).await?;
+        self.ensure_endpoint_exists(radius_endpoint_id).await?;
         let now = Utc::now();
         let mut tx = self.pool.begin().await.map_err(AppError::Database)?;
 
@@ -559,7 +566,7 @@ impl ManagedRadiusService {
             "#,
         )
         .bind(tenant_id)
-        .bind(radius_server_id)
+        .bind(radius_endpoint_id)
         .bind(input.is_active)
         .bind(now)
         .bind(now)
@@ -622,12 +629,12 @@ impl ManagedRadiusService {
         input: ManagedRadiusNasUpsert,
     ) -> AppResult<ManagedRadiusNas> {
         let tenant_id = required_trimmed("tenant_id", &input.tenant_id)?;
-        let radius_server_id = required_trimmed("radius_server_id", &input.radius_server_id)?;
+        let radius_endpoint_id = required_trimmed("radius_endpoint_id", &input.radius_endpoint_id)?;
         let router_id = required_trimmed("router_id", &input.router_id)?;
         let nas_name = required_trimmed("nas_name", &input.nas_name)?;
         let nas_ip_or_cidr = required_trimmed("nas_ip_or_cidr", &input.nas_ip_or_cidr)?;
         let shortname = normalize_optional_secret_input(input.shortname.as_deref());
-        self.ensure_server_and_router_belong_to_tenant(tenant_id, radius_server_id, router_id)
+        self.ensure_endpoint_and_router_belong_to_tenant(tenant_id, radius_endpoint_id, router_id)
             .await?;
 
         let shared_secret = normalize_optional_secret_input(input.shared_secret.as_deref())
@@ -646,7 +653,7 @@ impl ManagedRadiusService {
         .bind(Uuid::new_v4().to_string())
         .bind(tenant_id)
         .bind(router_id)
-        .bind(radius_server_id)
+        .bind(radius_endpoint_id)
         .bind(nas_name)
         .bind(nas_ip_or_cidr)
         .bind(shared_secret_enc)
@@ -694,7 +701,7 @@ impl ManagedRadiusService {
 
         self.create_mapping(ManagedRadiusNasUpsert {
             tenant_id: tenant_id.to_string(),
-            radius_server_id: assignment.radius_server_id,
+            radius_endpoint_id: assignment.radius_server_id,
             router_id: router.id.clone(),
             nas_name,
             nas_ip_or_cidr: router.host.clone(),
@@ -711,12 +718,12 @@ impl ManagedRadiusService {
         input: ManagedRadiusNasUpsert,
     ) -> AppResult<ManagedRadiusNas> {
         let tenant_id = required_trimmed("tenant_id", &input.tenant_id)?;
-        let radius_server_id = required_trimmed("radius_server_id", &input.radius_server_id)?;
+        let radius_endpoint_id = required_trimmed("radius_endpoint_id", &input.radius_endpoint_id)?;
         let router_id = required_trimmed("router_id", &input.router_id)?;
         let nas_name = required_trimmed("nas_name", &input.nas_name)?;
         let nas_ip_or_cidr = required_trimmed("nas_ip_or_cidr", &input.nas_ip_or_cidr)?;
         let shortname = normalize_optional_secret_input(input.shortname.as_deref());
-        self.ensure_server_and_router_belong_to_tenant(tenant_id, radius_server_id, router_id)
+        self.ensure_endpoint_and_router_belong_to_tenant(tenant_id, radius_endpoint_id, router_id)
             .await?;
 
         let existing = sqlx::query_as::<_, ManagedRadiusNas>(
@@ -752,7 +759,7 @@ impl ManagedRadiusService {
             "#,
         )
         .bind(router_id)
-        .bind(radius_server_id)
+        .bind(radius_endpoint_id)
         .bind(nas_name)
         .bind(nas_ip_or_cidr)
         .bind(shared_secret_enc)
@@ -841,15 +848,15 @@ impl ManagedRadiusService {
             .ok_or_else(|| AppError::Configuration("Managed RADIUS secret is unavailable".into()))
     }
 
-    async fn ensure_server_and_router_belong_to_tenant(
+    async fn ensure_endpoint_and_router_belong_to_tenant(
         &self,
         tenant_id: &str,
-        radius_server_id: &str,
+        radius_endpoint_id: &str,
         router_id: &str,
     ) -> AppResult<()> {
-        self.ensure_server_exists(radius_server_id).await?;
+        self.ensure_endpoint_exists(radius_endpoint_id).await?;
         let assignment = self.get_active_assignment_for_tenant(tenant_id).await?;
-        if assignment.radius_server_id != radius_server_id {
+        if assignment.radius_server_id != radius_endpoint_id {
             return Err(AppError::Validation(
                 "Native RADIUS endpoint must match the tenant's active assignment".into(),
             ));
@@ -873,15 +880,15 @@ impl ManagedRadiusService {
         Ok(())
     }
 
-    async fn ensure_server_exists(&self, radius_server_id: &str) -> AppResult<()> {
-        let server_exists =
+    async fn ensure_endpoint_exists(&self, radius_endpoint_id: &str) -> AppResult<()> {
+        let endpoint_exists =
             sqlx::query_scalar::<_, bool>("SELECT count(*) > 0 FROM radius_servers WHERE id = $1")
-                .bind(radius_server_id)
+                .bind(radius_endpoint_id)
                 .fetch_one(&self.pool)
                 .await
                 .map_err(AppError::Database)?;
 
-        if !server_exists {
+        if !endpoint_exists {
             return Err(AppError::Validation(
                 "Native RADIUS endpoint does not exist".into(),
             ));
@@ -922,8 +929,8 @@ impl ManagedRadiusService {
                 default_server_available: false,
                 can_assign_default: false,
                 can_create_mapping: false,
-                assignment_server_name: None,
-                server_name: None,
+                assignment_endpoint_name: None,
+                endpoint_name: None,
                 radius_host: None,
                 auth_port: resolve_radius_port(
                     "MANAGED_RADIUS_AUTH_PORT",
@@ -946,9 +953,9 @@ impl ManagedRadiusService {
         let active_assignment = self
             .get_active_assignment_for_tenant_optional(tenant_id)
             .await?;
-        let default_server = self.get_default_server().await?;
+        let default_endpoint = self.get_default_endpoint().await?;
 
-        let assignment_server_name = if let Some(assignment) = active_assignment.as_ref() {
+        let assignment_endpoint_name = if let Some(assignment) = active_assignment.as_ref() {
             sqlx::query_scalar::<_, String>("SELECT name FROM radius_servers WHERE id = $1")
                 .bind(&assignment.radius_server_id)
                 .fetch_optional(&self.pool)
@@ -989,11 +996,11 @@ impl ManagedRadiusService {
                 plan_upgrade_required: false,
                 upgrade_path: None,
                 tenant_has_active_assignment: active_assignment.is_some(),
-                default_server_available: default_server.is_some(),
-                can_assign_default: active_assignment.is_none() && default_server.is_some(),
+                default_server_available: default_endpoint.is_some(),
+                can_assign_default: active_assignment.is_none() && default_endpoint.is_some(),
                 can_create_mapping: active_assignment.is_some(),
-                assignment_server_name,
-                server_name: None,
+                assignment_endpoint_name,
+                endpoint_name: None,
                 radius_host: None,
                 auth_port: resolve_radius_port(
                     "MANAGED_RADIUS_AUTH_PORT",
@@ -1013,7 +1020,7 @@ impl ManagedRadiusService {
             });
         };
 
-        let server = sqlx::query_as::<_, ManagedRadiusServer>(
+        let endpoint = sqlx::query_as::<_, ManagedRadiusEndpoint>(
             r#"
             SELECT *
             FROM radius_servers
@@ -1040,7 +1047,7 @@ impl ManagedRadiusService {
             "RADIUS_ACCT_PORT",
             DEFAULT_RADIUS_ACCT_PORT,
         );
-        let (radius_host, host_warning) = resolve_radius_host(&server.db_host);
+        let (radius_host, host_warning) = resolve_radius_host(&endpoint.db_host);
         let warnings = host_warning.into_iter().collect::<Vec<_>>();
         let cli_script = build_routeros_cli(&radius_host, &shared_secret, auth_port, acct_port);
 
@@ -1051,11 +1058,11 @@ impl ManagedRadiusService {
             plan_upgrade_required: false,
             upgrade_path: None,
             tenant_has_active_assignment: true,
-            default_server_available: default_server.is_some(),
+            default_server_available: default_endpoint.is_some(),
             can_assign_default: false,
             can_create_mapping: false,
-            assignment_server_name: Some(server.name.clone()),
-            server_name: Some(server.name),
+            assignment_endpoint_name: Some(endpoint.name.clone()),
+            endpoint_name: Some(endpoint.name),
             radius_host: Some(radius_host),
             auth_port,
             acct_port,
@@ -1300,6 +1307,20 @@ mod tests {
         assert!(!source.contains(&connect_fn));
         assert!(!source.contains(&schema_fn));
         assert!(!source.contains(&runtime_table));
+    }
+
+    #[test]
+    fn managed_radius_service_uses_endpoint_terms_internally() {
+        let source = managed_radius_service_source();
+        let legacy_type = ["ManagedRadius", "ServerUpsert"].concat();
+        let legacy_model = ["ManagedRadius", "Server"].concat();
+        let legacy_default_getter = ["get_default", "_server"].concat();
+        let legacy_server_guard = ["ensure_server", "_exists"].concat();
+
+        assert!(!source.contains(&legacy_type));
+        assert!(!source.contains(&legacy_model));
+        assert!(!source.contains(&legacy_default_getter));
+        assert!(!source.contains(&legacy_server_guard));
     }
 
     #[test]

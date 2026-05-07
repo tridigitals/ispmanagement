@@ -46,15 +46,15 @@
     })),
   );
 
-  let serverOptions = $derived(
+  let endpointOptions = $derived(
     assignments
       .filter(
         (assignment: SuperadminManagedRadiusAssignment) =>
           !mapping.tenant_id || assignment.tenant_id === mapping.tenant_id,
       )
       .map((assignment: SuperadminManagedRadiusAssignment) => ({
-        label: `${assignment.server_name} (${assignment.radius_host})`,
-        value: assignment.radius_server_id,
+        label: `${assignment.endpoint_name} (${assignment.radius_host})`,
+        value: assignment.radius_endpoint_id,
       })),
   );
 
@@ -74,14 +74,14 @@
       (assignment: SuperadminManagedRadiusAssignment) => assignment.tenant_id === mapping.tenant_id,
     );
     if (activeAssignment) {
-      mapping.radius_server_id = activeAssignment.radius_server_id;
+      mapping.radius_endpoint_id = activeAssignment.radius_endpoint_id;
     }
 
     if (
-      mapping.radius_server_id &&
-      !serverOptions.some((option: { label: string; value: string }) => option.value === mapping.radius_server_id)
+      mapping.radius_endpoint_id &&
+      !endpointOptions.some((option: { label: string; value: string }) => option.value === mapping.radius_endpoint_id)
     ) {
-      mapping.radius_server_id = '';
+      mapping.radius_endpoint_id = '';
     }
 
     if (
@@ -111,8 +111,8 @@
       />
       <Select
         label={$t('superadmin.radius.form.server') || 'Server'}
-        options={serverOptions}
-        bind:value={mapping.radius_server_id}
+        options={endpointOptions}
+        bind:value={mapping.radius_endpoint_id}
         placeholder={$t('superadmin.radius.form.select_server') || 'Active tenant assignment required'}
         disabled
       />
