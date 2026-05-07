@@ -1630,6 +1630,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "des"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffdd80ce8ce993de27e9f063a444a4d53ce8e8db4c1f00cc03af5ad5a9867a1e"
+dependencies = [
+ "cipher 0.4.4",
+]
+
+[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3567,6 +3576,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "md4"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7da5ac363534dce5fabf69949225e174fbf111a498bf0ff794c8ea1fba9f3dda"
+dependencies = [
+ "digest",
+]
+
+[[package]]
 name = "md5"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4827,6 +4845,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69cdb34c158ceb288df11e18b4bd39de994f6657d83847bdffdbd7f346754b0f"
 
 [[package]]
+name = "radius"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2af0d3b0046e63ec5122b007d1c7f7ae50071dde71d2665a965e91a030561d46"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "log",
+ "md5",
+ "num_enum",
+ "rand 0.8.5",
+ "thiserror 1.0.69",
+ "tokio",
+]
+
+[[package]]
 name = "rand"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5294,19 +5328,23 @@ dependencies = [
  "base64ct",
  "chrono",
  "chrono-tz",
+ "des",
  "dotenvy",
  "flate2",
  "futures",
  "jsonwebtoken",
  "lettre",
+ "md4",
  "md5",
  "mikrotik-rs",
  "once_cell",
+ "radius",
  "rand 0.8.5",
  "rand_core 0.6.4",
  "reqwest",
  "serde",
  "serde_json",
+ "sha1",
  "sha2",
  "sqlx",
  "sysinfo",

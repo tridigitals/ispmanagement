@@ -18,12 +18,9 @@ const DEFAULT_RADIUS_ACCT_PORT: i32 = 1813;
 pub struct SuperadminManagedRadiusServer {
     pub id: String,
     pub name: String,
-    pub host: String,
+    pub endpoint_host: String,
     pub auth_port: i32,
     pub acct_port: i32,
-    pub db_host: String,
-    pub db_port: i32,
-    pub db_name: String,
     pub is_active: bool,
     pub is_default: bool,
     pub notes: Option<String>,
@@ -57,10 +54,32 @@ pub struct SuperadminManagedRadiusUser {
     pub username: String,
     pub radius_identity: Option<String>,
     pub account_source: String,
-    pub radius_present: bool,
-    pub radius_last_sync_at: Option<chrono::DateTime<chrono::Utc>>,
-    pub radius_last_error: Option<String>,
+    pub is_provisioned: bool,
+    pub provisioned_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub provisioning_error: Option<String>,
     pub router_profile_name: Option<String>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct SuperadminManagedRadiusSession {
+    pub id: String,
+    pub tenant_id: String,
+    pub tenant_name: String,
+    pub router_id: String,
+    pub router_name: Option<String>,
+    pub username: String,
+    pub radius_identity: Option<String>,
+    pub acct_session_id: String,
+    pub status_type: String,
+    pub framed_ip_address: Option<String>,
+    pub calling_station_id: Option<String>,
+    pub session_time_seconds: Option<i64>,
+    pub input_octets: Option<i64>,
+    pub output_octets: Option<i64>,
+    pub started_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub last_update_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub ended_at: Option<chrono::DateTime<chrono::Utc>>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -79,6 +98,12 @@ pub struct SuperadminManagedRadiusAssignmentListResponse {
 #[derive(Serialize)]
 pub struct SuperadminManagedRadiusUserListResponse {
     pub data: Vec<SuperadminManagedRadiusUser>,
+    pub total: i64,
+}
+
+#[derive(Serialize)]
+pub struct SuperadminManagedRadiusSessionListResponse {
+    pub data: Vec<SuperadminManagedRadiusSession>,
     pub total: i64,
 }
 
@@ -114,6 +139,17 @@ pub struct SuperadminManagedRadiusSecretValue {
     pub shared_secret_masked: String,
 }
 
+#[derive(Debug, Serialize)]
+pub struct SuperadminManagedRadiusRuntimeStatus {
+    pub enabled: bool,
+    pub running: bool,
+    pub bind_addr: String,
+    pub auth_port: i32,
+    pub acct_port: i32,
+    pub advertised_host: String,
+    pub require_message_authenticator: bool,
+}
+
 #[derive(Serialize)]
 pub struct TenantListResponse {
     pub data: Vec<Tenant>,
@@ -137,11 +173,16 @@ pub struct CreateTenantRequest {
 #[serde(deny_unknown_fields)]
 pub struct ManagedRadiusServerRequest {
     pub name: String,
-    pub db_host: String,
-    pub db_port: Option<i32>,
-    pub db_name: String,
-    pub db_user: String,
-    pub db_password: Option<String>,
+    #[serde(alias = "db_host")]
+    pub endpoint_host: String,
+    #[serde(default, alias = "db_port")]
+    pub endpoint_port: Option<i32>,
+    #[serde(default, alias = "db_name")]
+    pub runtime_label: Option<String>,
+    #[serde(default, alias = "db_user")]
+    pub runtime_user: Option<String>,
+    #[serde(default, alias = "db_password")]
+    pub runtime_secret: Option<String>,
     pub is_active: bool,
     pub notes: Option<String>,
 }
@@ -253,6 +294,33 @@ pub async fn list_tenants(
     }))
 }
 
+pub async fn get_managed_radius_runtime_status(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<SuperadminManagedRadiusRuntimeStatus>, crate::error::AppError> {
+    check_super_admin(&state, &headers).await?;
+
+    let advertised_host = std::env::var("MANAGED_RADIUS_HOST")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| {
+            std::env::var("RADIUS_PUBLIC_HOST")
+                .ok()
+                .filter(|value| !value.trim().is_empty())
+        });
+    let status = state.radius_service.status(advertised_host.as_deref());
+
+    Ok(Json(SuperadminManagedRadiusRuntimeStatus {
+        enabled: status.enabled,
+        running: status.running,
+        bind_addr: status.bind_addr,
+        auth_port: i32::from(status.auth_port),
+        acct_port: i32::from(status.acct_port),
+        advertised_host: status.advertised_host,
+        require_message_authenticator: status.require_message_authenticator,
+    }))
+}
+
 pub async fn list_managed_radius_servers(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -269,12 +337,9 @@ pub async fn list_managed_radius_servers(
         SELECT
           s.id,
           s.name,
-          s.db_host AS host,
+          s.db_host AS endpoint_host,
           $1::integer AS auth_port,
           $2::integer AS acct_port,
-          s.db_host,
-          s.db_port,
-          s.db_name,
           s.is_active,
           s.is_default,
           s.notes,
@@ -289,7 +354,7 @@ pub async fn list_managed_radius_servers(
           ON n.radius_server_id = s.id
          AND n.is_active = true
         GROUP BY
-          s.id, s.name, s.db_host, s.db_port, s.db_name, s.is_active, s.is_default, s.notes, s.updated_at
+          s.id, s.name, s.db_host, s.is_active, s.is_default, s.notes, s.updated_at
         ORDER BY s.is_default DESC, s.updated_at DESC, s.name ASC
         "#,
     )
@@ -382,9 +447,9 @@ pub async fn list_managed_radius_users(
           p.username,
           p.radius_identity,
           p.account_source,
-          p.radius_present,
-          p.radius_last_sync_at,
-          p.radius_last_error,
+          p.is_provisioned,
+          p.provisioned_at,
+          p.provisioning_error,
           p.router_profile_name,
           p.updated_at
         FROM pppoe_accounts p
@@ -405,6 +470,59 @@ pub async fn list_managed_radius_users(
 
     Ok(Json(SuperadminManagedRadiusUserListResponse {
         data: users,
+        total,
+    }))
+}
+
+pub async fn list_managed_radius_sessions(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<SuperadminManagedRadiusSessionListResponse>, crate::error::AppError> {
+    let claims = check_super_admin(&state, &headers).await?;
+    let mut tx = state.auth_service.pool.begin().await?;
+    state
+        .auth_service
+        .apply_rls_context_tx(&mut tx, &claims)
+        .await?;
+
+    let sessions: Vec<SuperadminManagedRadiusSession> = sqlx::query_as(
+        r#"
+        SELECT
+          s.id,
+          s.tenant_id,
+          t.name AS tenant_name,
+          s.router_id,
+          r.name AS router_name,
+          s.username,
+          s.radius_identity,
+          s.acct_session_id,
+          s.status_type::text AS status_type,
+          s.framed_ip_address,
+          s.calling_station_id,
+          s.session_time_seconds,
+          s.input_octets,
+          s.output_octets,
+          s.started_at,
+          s.last_update_at,
+          s.ended_at,
+          s.updated_at
+        FROM radius_accounting_sessions s
+        INNER JOIN tenants t
+          ON t.id = s.tenant_id
+        LEFT JOIN mikrotik_routers r
+          ON r.id = s.router_id
+        ORDER BY COALESCE(s.last_update_at, s.updated_at) DESC
+        LIMIT 200
+        "#,
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+
+    let total = sessions.len() as i64;
+    tx.commit().await?;
+
+    Ok(Json(SuperadminManagedRadiusSessionListResponse {
+        data: sessions,
         total,
     }))
 }
@@ -527,11 +645,11 @@ pub async fn create_managed_radius_server(
         .create_server(
             crate::services::managed_radius_service::ManagedRadiusServerUpsert {
                 name: payload.name,
-                db_host: payload.db_host,
-                db_port: payload.db_port,
-                db_name: payload.db_name,
-                db_user: payload.db_user,
-                db_password: payload.db_password,
+                endpoint_host: payload.endpoint_host,
+                endpoint_port: payload.endpoint_port,
+                runtime_label: payload.runtime_label,
+                runtime_user: payload.runtime_user,
+                runtime_secret: payload.runtime_secret,
                 is_active: payload.is_active,
                 notes: payload.notes,
             },
@@ -546,7 +664,7 @@ pub async fn create_managed_radius_server(
             "MANAGED_RADIUS_SERVER_CREATED",
             "managed_radius_server",
             Some(&server.id),
-            Some("Managed RADIUS server created by Superadmin"),
+            Some("Native RADIUS endpoint created by Superadmin"),
             Some(&ip),
         )
         .await;
@@ -570,11 +688,11 @@ pub async fn update_managed_radius_server(
             &id,
             crate::services::managed_radius_service::ManagedRadiusServerUpsert {
                 name: payload.name,
-                db_host: payload.db_host,
-                db_port: payload.db_port,
-                db_name: payload.db_name,
-                db_user: payload.db_user,
-                db_password: payload.db_password,
+                endpoint_host: payload.endpoint_host,
+                endpoint_port: payload.endpoint_port,
+                runtime_label: payload.runtime_label,
+                runtime_user: payload.runtime_user,
+                runtime_secret: payload.runtime_secret,
                 is_active: payload.is_active,
                 notes: payload.notes,
             },
@@ -589,7 +707,7 @@ pub async fn update_managed_radius_server(
             "MANAGED_RADIUS_SERVER_UPDATED",
             "managed_radius_server",
             Some(&id),
-            Some("Managed RADIUS server updated by Superadmin"),
+            Some("Native RADIUS endpoint updated by Superadmin"),
             Some(&ip),
         )
         .await;
@@ -624,7 +742,7 @@ pub async fn set_managed_radius_server_active(
             },
             "managed_radius_server",
             Some(&id),
-            Some("Managed RADIUS server active state changed by Superadmin"),
+            Some("Native RADIUS endpoint active state changed by Superadmin"),
             Some(&ip),
         )
         .await;
@@ -652,7 +770,7 @@ pub async fn set_managed_radius_server_default(
             "managed_radius_server",
             Some(&server.id),
             Some(&format!(
-                "Set managed RADIUS server {} as default",
+                "Set native RADIUS endpoint {} as default",
                 server.name
             )),
             Some(&ip),
@@ -1109,7 +1227,7 @@ pub async fn create_tenant(
                         .await
                     {
                         tracing::error!(
-                            "Failed to auto-assign default Managed RADIUS server for tenant {} via HTTP flow: {}",
+                            "Failed to auto-assign default native RADIUS endpoint for tenant {} via HTTP flow: {}",
                             tenant.id,
                             err
                         );

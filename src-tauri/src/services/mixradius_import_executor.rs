@@ -1330,10 +1330,10 @@ impl MixradiusImportExecutor {
                         router_secret_id = NULL,
                         last_sync_at = NULL,
                         last_error = NULL,
-                        radius_present = false,
+                        is_provisioned = false,
                         radius_identity = $4,
-                        radius_last_sync_at = NULL,
-                        radius_last_error = NULL,
+                        provisioned_at = NULL,
+                        provisioning_error = NULL,
                         updated_at = $10
                     WHERE tenant_id = $11 AND id = $12
                     "#,
@@ -1393,10 +1393,10 @@ impl MixradiusImportExecutor {
                     router_secret_id,
                     last_sync_at,
                     last_error,
-                    radius_present,
+                    is_provisioned,
                     radius_identity,
-                    radius_last_sync_at,
-                    radius_last_error,
+                    provisioned_at,
+                    provisioning_error,
                     created_at,
                     updated_at
                 )
@@ -1495,10 +1495,10 @@ impl MixradiusImportExecutor {
                         router_secret_id = NULL,
                         last_sync_at = $1,
                         last_error = NULL,
-                        radius_present = true,
+                        is_provisioned = true,
                         radius_identity = $2,
-                        radius_last_sync_at = $3,
-                        radius_last_error = NULL,
+                        provisioned_at = $3,
+                        provisioning_error = NULL,
                         updated_at = $4
                     WHERE tenant_id = $5 AND id = $6
                     "#,
@@ -1519,9 +1519,9 @@ impl MixradiusImportExecutor {
                 sqlx::query(
                     r#"
                     UPDATE public.pppoe_accounts
-                    SET radius_present = false,
-                        radius_last_sync_at = $1,
-                        radius_last_error = $2,
+                    SET is_provisioned = false,
+                        provisioned_at = $1,
+                        provisioning_error = $2,
                         last_sync_at = $1,
                         last_error = $2,
                         updated_at = $1

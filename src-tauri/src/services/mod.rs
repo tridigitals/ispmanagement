@@ -15,6 +15,7 @@ pub mod mixradius_import_mapper;
 pub mod mixradius_import_service;
 pub mod mixradius_sql_parser;
 pub mod network_mapping_service;
+pub mod radius_service;
 pub mod rate_limiter;
 pub mod role_service;
 pub mod settings_service;
@@ -60,6 +61,7 @@ pub use payment_service::{
 };
 pub use plan_service::PlanService;
 pub use pppoe_service::PppoeService;
+pub use radius_service::{RadiusRuntimeConfig, RadiusService};
 pub use role_service::RoleService;
 pub use settings_service::SettingsService;
 pub use storage_service::StorageService;

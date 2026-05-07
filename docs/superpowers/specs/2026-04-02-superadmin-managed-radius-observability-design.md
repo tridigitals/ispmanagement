@@ -19,7 +19,7 @@
 - No tenant-crossing user edits from superadmin in phase one.
 - No password reset, delete, disable, or apply actions from the superadmin page in phase one.
 - No direct record editing inside the managed RADIUS PostgreSQL database from the UI.
-- No per-tenant dedicated FreeRADIUS orchestration workflow in this phase.
+- No per-tenant dedicated external RADIUS runtime orchestration workflow in this phase.
 
 ## Product Decision
 The first superadmin RADIUS module should be an observability surface, not a control surface.
@@ -179,7 +179,7 @@ Use billing-side joins:
 Filter:
 - `pppoe_accounts.account_source = 'managed_radius'`
 
-This allows the page to stay fast and avoids cross-database fanout into the FreeRADIUS PostgreSQL instance.
+This allows the page to stay fast and avoids cross-database fanout into a separate legacy runtime database.
 
 ## UX Behavior
 - Follow existing superadmin page patterns: stats, toolbar filters, responsive table/cards where already standard.

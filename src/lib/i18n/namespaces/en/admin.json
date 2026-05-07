@@ -1074,8 +1074,8 @@
       "sync": {
         "present": "On router",
         "missing": "Missing",
-        "present_radius": "On RADIUS",
-        "missing_radius": "Missing on RADIUS"
+        "present_radius": "Provisioned",
+        "missing_radius": "Not provisioned"
       },
       "actions": {
         "reconcile": "Reconcile",
@@ -1093,7 +1093,7 @@
         "assignment_hint": "PPP profile and addressing follow the selected package for this router.",
         "package_mapping_missing": "This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.",
         "disabled_hint": "Disable this PPPoE account (will be applied to router when you click Apply).",
-        "source_radius_hint": "This account will be provisioned to managed RADIUS and expects a managed RADIUS server plus NAS mapping for the selected router.",
+        "source_radius_hint": "This account will be provisioned to managed RADIUS and expects a native RADIUS endpoint plus NAS mapping for the selected router.",
         "source_router_hint": "This account will be provisioned to the router-local PPP secret table.",
         "disabled_hint_radius": "For managed RADIUS, this disables centralized authentication for the account.",
         "disabled_hint_radius_apply": "Disable this PPPoE account in managed RADIUS when you click Apply to RADIUS."
@@ -1251,14 +1251,14 @@
           "label": "Managed RADIUS"
         },
         "labels": {
-          "server": "Server",
+          "server": "Endpoint",
           "host": "RADIUS host",
           "ports": "Ports",
           "nas_source": "NAS source",
           "shared_secret": "Shared secret"
         },
         "actions": {
-          "assign_default": "Assign Default RADIUS",
+          "assign_default": "Assign Default Endpoint",
           "create_mapping": "Create NAS Mapping",
           "show_secret": "Show secret",
           "hide_secret": "Hide secret",
@@ -1271,7 +1271,7 @@
           "default_assigned": "Default Managed RADIUS assigned",
           "mapping_created": "Managed RADIUS NAS mapping created"
         },
-        "default_ready": "A default Managed RADIUS server is available. Assign it to this tenant to continue with router onboarding.",
+        "default_ready": "A default native RADIUS endpoint is available. Assign it to this tenant to continue with router onboarding.",
         "assignment_only": "Managed RADIUS assignment is active for this tenant, but this router still needs a NAS mapping before CLI setup can be generated.",
         "assignment_only_hint": "Use the button above to auto-create the NAS mapping from this router data.",
         "upgrade": {

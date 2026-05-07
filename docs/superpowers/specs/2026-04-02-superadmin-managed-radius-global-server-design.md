@@ -34,7 +34,7 @@ This preserves operational clarity while aligning the feature with a real SaaS c
 ### Non-goals
 - No multi-active server assignment per tenant in this phase.
 - No automatic failover or load balancing between RADIUS servers in this phase.
-- No per-tenant dedicated FreeRADIUS instance lifecycle management in this phase.
+- No per-tenant dedicated external RADIUS runtime lifecycle management in this phase.
 - No redesign of PPPoE business ownership; billing DB remains the source of truth.
 - No bulk end-user migration workflow beyond schema/data transition needed for this refactor.
 

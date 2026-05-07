@@ -70,7 +70,7 @@ Exclusion yang diterapkan saat analisis:
 
 - Local Postgres: `docker-compose.yml`
 - Systemd deployment: `deploy/systemd/`
-- FreeRADIUS sidecar/control-plane assets: `deploy/freeradius/`
+- Managed RADIUS runtime + systemd assets: `deploy/systemd/`
 - Repo utility scripts: `scripts/`
 
 ## Fast Start By Intent
@@ -569,7 +569,7 @@ Saat mengubah query berat:
 
 ### `deploy/`
 
-- Artefak ops untuk systemd + FreeRADIUS
+- Artefak ops untuk systemd deployment
 
 ### `docs/`
 

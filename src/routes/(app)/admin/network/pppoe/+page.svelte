@@ -114,11 +114,11 @@
       : $t('admin.network.pppoe.sources.router') || 'Router secret';
   const sourceTargetLabel = (source: 'router' | 'managed_radius') =>
     source === 'managed_radius'
-      ? $t('admin.network.pppoe.sync.present_radius') || 'On RADIUS'
+      ? $t('admin.network.pppoe.sync.present_radius') || 'Provisioned'
       : $t('admin.network.pppoe.sync.present') || 'On router';
   const sourceMissingLabel = (source: 'router' | 'managed_radius') =>
     source === 'managed_radius'
-      ? $t('admin.network.pppoe.sync.missing_radius') || 'Missing on RADIUS'
+      ? $t('admin.network.pppoe.sync.missing_radius') || 'Not provisioned'
       : $t('admin.network.pppoe.sync.missing') || 'Missing';
   const sourceApplyActionLabel = (source: 'router' | 'managed_radius') =>
     source === 'managed_radius'
@@ -153,14 +153,14 @@
       : $t('admin.network.pppoe.form.disabled_hint') ||
         'Disable this PPPoE account (will be applied to router when you click Apply).';
   const targetPresent = (row: PppoeAccountPublic) =>
-    row.account_source === 'managed_radius' ? row.radius_present : row.router_present;
+    row.account_source === 'managed_radius' ? row.is_provisioned : row.router_present;
   const targetLastError = (row: PppoeAccountPublic) =>
     row.account_source === 'managed_radius'
-      ? row.radius_last_error || row.last_error
+      ? row.provisioning_error || row.last_error
       : row.last_error;
   const targetLastSyncAt = (row: PppoeAccountPublic) =>
     row.account_source === 'managed_radius'
-      ? row.radius_last_sync_at || row.last_sync_at
+      ? row.provisioned_at || row.last_sync_at
       : row.last_sync_at;
   const customerName = (id: string) => customers.find((c) => c.id === id)?.name || '-';
   const isImportPlaceholderCustomer = (id: string) =>
@@ -615,7 +615,7 @@
   function provisioningState(row: PppoeAccountPublic): 'retrying' | 'failed' | 'applied' | 'draft' {
     if (retryingIds.includes(row.id)) return 'retrying';
     if (targetLastError(row) && targetLastError(row)!.trim()) return 'failed';
-    if (row.account_source === 'managed_radius' && row.radius_present && row.radius_identity)
+    if (row.account_source === 'managed_radius' && row.is_provisioned && row.radius_identity)
       return 'applied';
     if (row.account_source === 'router' && row.router_present && row.router_secret_id)
       return 'applied';

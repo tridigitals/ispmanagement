@@ -88,6 +88,10 @@ pub fn router() -> Router<AppState> {
             "/routers/{id}/managed-radius-setup/create-mapping",
             post(create_managed_radius_mapping),
         )
+        .route(
+            "/routers/{id}/managed-radius-setup/apply",
+            post(apply_managed_radius_setup),
+        )
         .route("/routers/{id}/test", post(test_router))
         .route("/routers/{id}/metrics", get(list_metrics))
         .route(
@@ -844,7 +848,7 @@ async fn assign_managed_radius_default(
 
     if assigned.is_none() {
         return Err(AppError::Configuration(
-            "No default Managed RADIUS server is configured".into(),
+            "No default native RADIUS endpoint is configured".into(),
         ));
     }
 
@@ -857,7 +861,7 @@ async fn assign_managed_radius_default(
             "mikrotik_router",
             Some(&router.id),
             Some(&format!(
-                "Assigned tenant {} to the default Managed RADIUS server from router {}",
+                "Assigned tenant {} to the default native RADIUS endpoint from router {}",
                 tenant_id, router.name
             )),
             None,
@@ -959,6 +963,75 @@ async fn create_managed_radius_mapping(
     }
 
     Ok(Json(setup))
+}
+
+async fn apply_managed_radius_setup(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<ManagedRadiusRouterSetup>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "manage")
+        .await?;
+
+    let router = state
+        .mikrotik_service
+        .get_router(&tenant_id, &id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Router not found".into()))?;
+
+    let plan_allows_managed_radius = state
+        .plan_service
+        .check_feature_access(&tenant_id, "managed_radius")
+        .await
+        .map(|access| access.has_access)
+        .unwrap_or(false);
+
+    let setup = state
+        .managed_radius_service
+        .get_router_setup(&tenant_id, &router, plan_allows_managed_radius)
+        .await?;
+
+    state
+        .mikrotik_service
+        .apply_managed_radius_setup(&tenant_id, &id, &setup)
+        .await?;
+
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "MIKROTIK_ROUTER_MANAGED_RADIUS_APPLIED",
+            "mikrotik_router",
+            Some(&router.id),
+            Some(&format!(
+                "Applied Managed RADIUS setup to router {}",
+                router.name
+            )),
+            None,
+        )
+        .await;
+
+    let can_reveal_secret = state
+        .auth_service
+        .check_permission(
+            &claims.sub,
+            &tenant_id,
+            "router_inventory",
+            "manage_radius_secret",
+        )
+        .await
+        .is_ok();
+
+    let mut response_setup = setup;
+    if !can_reveal_secret {
+        response_setup.shared_secret = None;
+    }
+
+    Ok(Json(response_setup))
 }
 
 // POST /api/admin/mikrotik/routers/{id}/ip-pools/sync

@@ -2,8 +2,8 @@ use crate::services::{
     AuditService, AuthService, CustomerService, DhcpStaticServiceManager, EmailService,
     IspPackageService, ManagedRadiusService, MessageTemplateService, MikrotikService,
     MixradiusImportService, NetworkMappingService, NotificationService, PaymentService,
-    PlanService, PppoeService, RoleService, SettingsService, StorageService, SystemService,
-    TeamService, UserService,
+    PlanService, PppoeService, RadiusService, RoleService, SettingsService, StorageService,
+    SystemService, TeamService, UserService,
 };
 use axum::{
     extract::DefaultBodyLimit,
@@ -58,6 +58,7 @@ pub async fn start_server_impl(
     isp_package_service: IspPackageService,
     network_mapping_service: NetworkMappingService,
     backup_service: crate::services::BackupService,
+    radius_service: RadiusService,
     ws_hub: Arc<WsHub>,
     app_data_dir: PathBuf,
     default_port: u16,
@@ -187,6 +188,7 @@ pub async fn start_server_impl(
         mikrotik_service: Arc::new(mikrotik_service),
         message_template_service: Arc::new(MessageTemplateService::new(pool.clone())),
         managed_radius_service: Arc::new(ManagedRadiusService::new(pool.clone())),
+        radius_service: Arc::new(radius_service),
         mixradius_import_service: Arc::new(MixradiusImportService::new(pool.clone())),
         customer_service: Arc::new(customer_service),
         pppoe_service: Arc::new(pppoe_service),
@@ -398,6 +400,10 @@ pub async fn start_server_impl(
             delete(superadmin::delete_tenant).put(superadmin::update_tenant),
         )
         .route(
+            "/api/superadmin/radius/runtime",
+            get(superadmin::get_managed_radius_runtime_status),
+        )
+        .route(
             "/api/superadmin/radius/servers",
             get(superadmin::list_managed_radius_servers)
                 .post(superadmin::create_managed_radius_server),
@@ -451,6 +457,10 @@ pub async fn start_server_impl(
         .route(
             "/api/superadmin/radius/users",
             get(superadmin::list_managed_radius_users),
+        )
+        .route(
+            "/api/superadmin/radius/sessions",
+            get(superadmin::list_managed_radius_sessions),
         )
         .route("/api/superadmin/audit-logs", get(audit::list_audit_logs))
         .route("/api/admin/audit-logs", get(audit::list_tenant_audit_logs))
@@ -691,6 +701,7 @@ pub fn spawn_http_server(
     isp_package_service: crate::services::IspPackageService,
     network_mapping_service: crate::services::NetworkMappingService,
     backup_service: crate::services::BackupService,
+    radius_service: crate::services::RadiusService,
     ws_hub: std::sync::Arc<crate::http::WsHub>,
     app_data_dir: std::path::PathBuf,
     default_port: u16,
@@ -718,6 +729,7 @@ pub fn spawn_http_server(
             isp_package_service,
             network_mapping_service,
             backup_service,
+            radius_service,
             ws_hub,
             app_data_dir,
             default_port,

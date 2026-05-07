@@ -269,14 +269,14 @@ export function summarizePppoeAccounts(
   accounts: Array<{
     disabled?: boolean | null;
     router_present?: boolean | null;
-    radius_present?: boolean | null;
+    is_provisioned?: boolean | null;
   }>,
 ): PppoeSummary {
   return {
     total: accounts.length,
     disabled: accounts.filter((account) => !!account.disabled).length,
     routerMissing: accounts.filter((account) => account.router_present === false).length,
-    radiusMissing: accounts.filter((account) => account.radius_present === false).length,
+    radiusMissing: accounts.filter((account) => account.is_provisioned === false).length,
   };
 }
 

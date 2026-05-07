@@ -8,6 +8,8 @@ import type {
   PaginatedResponse,
   SuperadminManagedRadiusAssignment,
   SuperadminManagedRadiusMapping,
+  SuperadminManagedRadiusRuntimeStatus,
+  SuperadminManagedRadiusSession,
   SuperadminManagedRadiusServer,
   SuperadminManagedRadiusUser,
 } from './types';
@@ -16,6 +18,9 @@ export const superadmin = {
   listTenants: (): Promise<{ data: any[]; total: number }> =>
     safeInvoke('list_tenants', { token: getTokenOrThrow() }),
 
+  getManagedRadiusRuntimeStatus: (): Promise<SuperadminManagedRadiusRuntimeStatus> =>
+    safeInvoke('get_managed_radius_runtime_status', { token: getTokenOrThrow() }),
+
   listManagedRadiusServers: (): Promise<{ data: SuperadminManagedRadiusServer[]; total: number }> =>
     safeInvoke('list_managed_radius_servers', { token: getTokenOrThrow() }),
 
@@ -23,16 +28,16 @@ export const superadmin = {
     safeInvoke('create_managed_radius_server', {
       token: getTokenOrThrow(),
       name: payload.name,
-      dbHost: payload.db_host,
-      db_host: payload.db_host,
-      dbPort: payload.db_port ?? null,
-      db_port: payload.db_port ?? null,
-      dbName: payload.db_name,
-      db_name: payload.db_name,
-      dbUser: payload.db_user,
-      db_user: payload.db_user,
-      dbPassword: payload.db_password ?? null,
-      db_password: payload.db_password ?? null,
+      endpointHost: payload.endpoint_host,
+      endpoint_host: payload.endpoint_host,
+      endpointPort: payload.endpoint_port ?? null,
+      endpoint_port: payload.endpoint_port ?? null,
+      runtimeLabel: payload.runtime_label ?? null,
+      runtime_label: payload.runtime_label ?? null,
+      runtimeUser: payload.runtime_user ?? null,
+      runtime_user: payload.runtime_user ?? null,
+      runtimeSecret: payload.runtime_secret ?? null,
+      runtime_secret: payload.runtime_secret ?? null,
       isActive: payload.is_active,
       is_active: payload.is_active,
       notes: payload.notes ?? null,
@@ -46,16 +51,16 @@ export const superadmin = {
       token: getTokenOrThrow(),
       id,
       name: payload.name,
-      dbHost: payload.db_host,
-      db_host: payload.db_host,
-      dbPort: payload.db_port ?? null,
-      db_port: payload.db_port ?? null,
-      dbName: payload.db_name,
-      db_name: payload.db_name,
-      dbUser: payload.db_user,
-      db_user: payload.db_user,
-      dbPassword: payload.db_password ?? null,
-      db_password: payload.db_password ?? null,
+      endpointHost: payload.endpoint_host,
+      endpoint_host: payload.endpoint_host,
+      endpointPort: payload.endpoint_port ?? null,
+      endpoint_port: payload.endpoint_port ?? null,
+      runtimeLabel: payload.runtime_label ?? null,
+      runtime_label: payload.runtime_label ?? null,
+      runtimeUser: payload.runtime_user ?? null,
+      runtime_user: payload.runtime_user ?? null,
+      runtimeSecret: payload.runtime_secret ?? null,
+      runtime_secret: payload.runtime_secret ?? null,
       isActive: payload.is_active,
       is_active: payload.is_active,
       notes: payload.notes ?? null,
@@ -208,6 +213,9 @@ export const superadmin = {
 
   listManagedRadiusUsers: (): Promise<{ data: SuperadminManagedRadiusUser[]; total: number }> =>
     safeInvoke('list_managed_radius_users', { token: getTokenOrThrow() }),
+
+  listManagedRadiusSessions: (): Promise<{ data: SuperadminManagedRadiusSession[]; total: number }> =>
+    safeInvoke('list_managed_radius_sessions', { token: getTokenOrThrow() }),
 
   createTenant: (
     name: string,

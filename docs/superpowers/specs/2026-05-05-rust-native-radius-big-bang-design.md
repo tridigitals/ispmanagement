@@ -1,22 +1,20 @@
 # Rust Native RADIUS Big-Bang Replacement Design
 
 ## Background / Current State
-- The current managed RADIUS topology uses the Rust billing app as a control plane and FreeRADIUS as the AAA runtime.
+- The current managed RADIUS topology uses the Rust billing app as a control plane and a legacy external RADIUS runtime as the AAA runtime.
 - PPPoE accounts with `account_source = managed_radius` are provisioned by Rust into the managed RADIUS PostgreSQL database.
-- FreeRADIUS handles:
+- The legacy external runtime handles:
   - UDP auth on `1812`
   - UDP accounting on `1813`
   - NAS/shared-secret lookup by source IP/CIDR
   - PAP, CHAP, and MS-CHAP auth routing
   - MikroTik reply attributes such as `Mikrotik-Group`, `Framed-IP-Address`, and `Framed-Pool`
-- The current implementation keeps a separate runtime RADIUS database and deployment stack:
-  - `freeradius`
-  - `radius-postgres`
+- The current implementation keeps a separate runtime RADIUS database and deployment stack outside the main billing backend.
 - The product is still in development, so a breaking architectural cleanup is acceptable if it produces a cleaner long-term system.
 
 ## Goals / Non-goals
 ### Goals
-- Remove FreeRADIUS entirely from the project runtime.
+- Remove the legacy external RADIUS runtime entirely from the project runtime.
 - Remove the separate managed RADIUS PostgreSQL runtime store.
 - Replace the external RADIUS runtime with a Rust-native RADIUS server implemented inside the existing backend codebase.
 - Keep the product focused on MikroTik PPPoE first.
@@ -29,7 +27,7 @@
 - Keep a path open for MikroTik hotspot support later.
 
 ### Non-goals
-- No attempt to reach full FreeRADIUS parity in phase 1.
+- No attempt to reach full legacy-runtime feature parity in phase 1.
 - No EAP/802.1X feature work in phase 1.
 - No LDAP, external identity provider, or generic enterprise AAA integrations.
 - No multi-node high-availability cluster design in phase 1.
@@ -40,7 +38,7 @@
 Use a big-bang replacement strategy:
 - build a Rust-native RADIUS runtime in the existing backend
 - migrate managed RADIUS data into the main app database
-- delete FreeRADIUS and `radius-postgres` from the target architecture
+- delete the legacy external runtime and its separate runtime database from the target architecture
 
 This is intentionally a clean architectural break, not a transitional hybrid.
 
@@ -115,7 +113,7 @@ Design stance:
 ## Data Model
 
 ### 1. Collapse runtime RADIUS data into the main app database
-The target system should not keep a separate `radius-postgres` database.
+The target system should not keep a separate runtime RADIUS database.
 
 Recommended target:
 - keep managed-RADIUS metadata in the main database
@@ -261,7 +259,7 @@ Superadmin continues to:
 - inspect infrastructure observability
 
 The authority model does not fundamentally change. What changes is the backend runtime owner:
-- before: FreeRADIUS runtime
+- before: legacy external RADIUS runtime
 - after: Rust runtime
 
 ## Configuration Model
@@ -337,7 +335,7 @@ Add internal observability for:
 - average request latency
 - active sessions count
 
-If the app already has a superadmin health or observability surface, extend it later to show native RADIUS runtime status instead of FreeRADIUS container status.
+If the app already has a superadmin health or observability surface, extend it later to show native RADIUS runtime status instead of legacy external runtime status.
 
 ## Migration Strategy
 
@@ -351,12 +349,12 @@ If the app already has a superadmin health or observability surface, extend it l
 1. add `radius_service`
 2. refactor `managed_radius_service` so it no longer provisions to external runtime DB
 3. make `pppoe_service` apply flow update local source-of-truth only
-4. remove FreeRADIUS restart hooks and runtime DB sync logic
+4. remove legacy external runtime restart hooks and runtime DB sync logic
 
 ### Deployment migration
 1. remove `docker-compose.radius.yml` from the target architecture
-2. remove `deploy/freeradius/`
-3. remove FreeRADIUS operational docs and replace them with native runtime docs
+2. remove legacy external-runtime deployment assets
+3. remove external-runtime operational docs and replace them with native runtime docs
 
 ## Testing Strategy
 
@@ -445,7 +443,7 @@ Mitigation:
 Proceed with the big-bang replacement because the product is still in development and the architectural payoff is meaningful.
 
 However, keep the implementation target narrow:
-- remove FreeRADIUS entirely
+- remove the legacy external RADIUS runtime entirely
 - do not chase full parity before the PPPoE MikroTik path is stable
 - make the main database the only source of truth
 - treat the `radius` crate as a protocol primitive, not a finished AAA product

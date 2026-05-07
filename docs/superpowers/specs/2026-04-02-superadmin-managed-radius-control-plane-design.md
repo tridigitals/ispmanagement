@@ -21,7 +21,7 @@
 ### Non-goals
 - No direct superadmin CRUD for PPPoE end-user accounts in this phase.
 - No multi-server failover orchestration in this phase.
-- No per-tenant dedicated FreeRADIUS instance lifecycle automation in this phase.
+- No per-tenant dedicated external RADIUS runtime lifecycle automation in this phase.
 - No secret exposure by default in list views.
 - No bulk migration workflow from router-local PPP secrets in this phase.
 

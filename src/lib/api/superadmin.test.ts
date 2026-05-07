@@ -31,11 +31,11 @@ describe('superadmin api wrapper', () => {
     const { superadmin } = await import('./superadmin');
     await superadmin.createManagedRadiusServer({
       name: 'Primary',
-      db_host: 'radius-db.local',
-      db_port: 5432,
-      db_name: 'radius',
-      db_user: 'radius',
-      db_password: 'secret',
+      endpoint_host: 'radius-native.local',
+      endpoint_port: 1812,
+      runtime_label: 'native-runtime',
+      runtime_user: 'native-radius',
+      runtime_secret: 'secret',
       is_active: true,
       notes: 'Shared platform radius',
     });
@@ -43,16 +43,16 @@ describe('superadmin api wrapper', () => {
     expect(safeInvoke).toHaveBeenCalledWith('create_managed_radius_server', {
       token: 'token-123',
       name: 'Primary',
-      dbHost: 'radius-db.local',
-      db_host: 'radius-db.local',
-      dbPort: 5432,
-      db_port: 5432,
-      dbName: 'radius',
-      db_name: 'radius',
-      dbUser: 'radius',
-      db_user: 'radius',
-      dbPassword: 'secret',
-      db_password: 'secret',
+      endpointHost: 'radius-native.local',
+      endpoint_host: 'radius-native.local',
+      endpointPort: 1812,
+      endpoint_port: 1812,
+      runtimeLabel: 'native-runtime',
+      runtime_label: 'native-runtime',
+      runtimeUser: 'native-radius',
+      runtime_user: 'native-radius',
+      runtimeSecret: 'secret',
+      runtime_secret: 'secret',
       isActive: true,
       is_active: true,
       notes: 'Shared platform radius',
@@ -106,6 +106,36 @@ describe('superadmin api wrapper', () => {
     expect(safeInvoke).toHaveBeenCalledWith('set_managed_radius_server_default', {
       token: 'token-123',
       id: 'server-1',
+    });
+  });
+
+  it('loads managed radius runtime status', async () => {
+    safeInvoke.mockResolvedValue({
+      enabled: true,
+      running: true,
+      bind_addr: '0.0.0.0',
+      auth_port: 1812,
+      acct_port: 1813,
+      advertised_host: 'radius.example.com',
+      require_message_authenticator: true,
+    });
+
+    const { superadmin } = await import('./superadmin');
+    await superadmin.getManagedRadiusRuntimeStatus();
+
+    expect(safeInvoke).toHaveBeenCalledWith('get_managed_radius_runtime_status', {
+      token: 'token-123',
+    });
+  });
+
+  it('lists managed radius accounting sessions through safeInvoke', async () => {
+    safeInvoke.mockResolvedValue({ data: [], total: 0 });
+
+    const { superadmin } = await import('./superadmin');
+    await superadmin.listManagedRadiusSessions();
+
+    expect(safeInvoke).toHaveBeenCalledWith('list_managed_radius_sessions', {
+      token: 'token-123',
     });
   });
 });

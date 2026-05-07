@@ -37,6 +37,7 @@ const commandMap: Record<string, { method: string; path: string }> = {
   update_my_address: { method: 'PUT', path: '/users/me/addresses/:addressId' },
   delete_my_address: { method: 'DELETE', path: '/users/me/addresses/:addressId' },
   list_tenants: { method: 'GET', path: '/superadmin/tenants' },
+  get_managed_radius_runtime_status: { method: 'GET', path: '/superadmin/radius/runtime' },
   list_managed_radius_servers: { method: 'GET', path: '/superadmin/radius/servers' },
   create_managed_radius_server: { method: 'POST', path: '/superadmin/radius/servers' },
   update_managed_radius_server: { method: 'PUT', path: '/superadmin/radius/servers/:id' },
@@ -71,6 +72,7 @@ const commandMap: Record<string, { method: string; path: string }> = {
     path: '/superadmin/radius/mappings/:id/secret/reveal',
   },
   list_managed_radius_users: { method: 'GET', path: '/superadmin/radius/users' },
+  list_managed_radius_sessions: { method: 'GET', path: '/superadmin/radius/sessions' },
   create_tenant: { method: 'POST', path: '/superadmin/tenants' },
   delete_tenant: { method: 'DELETE', path: '/superadmin/tenants/:id' },
   list_audit_logs: { method: 'GET', path: '/superadmin/audit-logs' },
@@ -368,6 +370,10 @@ const commandMap: Record<string, { method: string; path: string }> = {
   create_mikrotik_router_managed_radius_mapping: {
     method: 'POST',
     path: '/admin/mikrotik/routers/:routerId/managed-radius-setup/create-mapping',
+  },
+  apply_mikrotik_router_managed_radius: {
+    method: 'POST',
+    path: '/admin/mikrotik/routers/:routerId/managed-radius-setup/apply',
   },
   list_mikrotik_router_metrics: {
     method: 'GET',

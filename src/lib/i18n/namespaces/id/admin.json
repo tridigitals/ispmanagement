@@ -829,8 +829,8 @@
       "sync": {
         "present": "Ada di router",
         "missing": "Tidak ada",
-        "present_radius": "Ada di RADIUS",
-        "missing_radius": "Tidak ada di RADIUS"
+        "present_radius": "Tersedia",
+        "missing_radius": "Belum tersedia"
       },
       "actions": {
         "reconcile": "Sinkronkan",
@@ -848,7 +848,7 @@
         "assignment_hint": "PPP profile dan addressing akan mengikuti paket yang dipilih untuk router ini.",
         "package_mapping_missing": "Paket ini belum punya mapping router. Nilai akun yang sudah ada akan tetap dipakai sampai mapping ditambahkan.",
         "disabled_hint": "Nonaktifkan akun PPPoE ini (akan diterapkan ke router saat Anda klik Terapkan).",
-        "source_radius_hint": "Akun ini akan diprovisikan ke managed RADIUS dan membutuhkan konfigurasi managed RADIUS server serta NAS mapping untuk router yang dipilih.",
+        "source_radius_hint": "Akun ini akan diprovisikan ke managed RADIUS dan membutuhkan endpoint RADIUS native serta NAS mapping untuk router yang dipilih.",
         "source_router_hint": "Akun ini akan diprovisikan ke tabel PPP secret lokal di router.",
         "disabled_hint_radius": "Untuk managed RADIUS, ini menonaktifkan autentikasi terpusat untuk akun tersebut.",
         "disabled_hint_radius_apply": "Nonaktifkan akun PPPoE ini di managed RADIUS saat Anda klik Terapkan ke RADIUS."
@@ -1013,7 +1013,7 @@
           "shared_secret": "Shared secret"
         },
         "actions": {
-          "assign_default": "Assign Default RADIUS",
+          "assign_default": "Assign Default Endpoint",
           "create_mapping": "Buat NAS Mapping",
           "show_secret": "Tampilkan secret",
           "hide_secret": "Sembunyikan secret",

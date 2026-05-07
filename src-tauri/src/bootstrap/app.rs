@@ -9,8 +9,8 @@ use crate::services::{
     AnnouncementScheduler, AuditService, AuthService, BackupService, CustomerService,
     DhcpStaticServiceManager, EmailOutboxService, EmailService, IspPackageService,
     ManagedRadiusService, MikrotikService, NetworkMappingService, NotificationService,
-    PaymentService, PlanService, PppoeService, RoleService, SettingsService, SystemService,
-    TeamService, UserService,
+    PaymentService, PlanService, PppoeService, RadiusRuntimeConfig, RadiusService, RoleService,
+    SettingsService, SystemService, TeamService, UserService,
 };
 #[cfg(feature = "desktop")]
 use tauri::Manager;
@@ -70,6 +70,7 @@ pub async fn initialize_backend<R: tauri::Runtime>(
     let settings_service = SettingsService::new(pool.clone(), audit_service.clone());
     let email_service = EmailService::new(settings_service.clone());
     let managed_radius_service = ManagedRadiusService::new(pool.clone());
+    let radius_service = RadiusService::new(pool.clone(), RadiusRuntimeConfig::from_env());
     let auth_service = AuthService::new(
         pool.clone(),
         jwt_secret,
@@ -163,6 +164,7 @@ pub async fn initialize_backend<R: tauri::Runtime>(
         audit_service.clone(),
     );
     announcement_scheduler.start().await;
+    radius_service.start().await?;
 
     // Seed default features
     plan_service
@@ -195,6 +197,7 @@ pub async fn initialize_backend<R: tauri::Runtime>(
     app_handle.manage(email_outbox_service.clone());
     app_handle.manage(mikrotik_service.clone());
     app_handle.manage(managed_radius_service.clone());
+    app_handle.manage(radius_service.clone());
     app_handle.manage(ws_hub.clone());
     app_handle.manage(metrics_service.clone());
     info!("Services added to Tauri state.");
@@ -221,6 +224,7 @@ pub async fn initialize_backend<R: tauri::Runtime>(
         isp_package_service,
         network_mapping_service,
         backup_service,
+        radius_service,
         ws_hub,
         app_dir,
         3000,
@@ -287,11 +291,21 @@ mod tests {
         assert_relative_order(
             bootstrap,
             "announcement_scheduler.start().await;",
+            "radius_service.start().await?;",
+        );
+        assert_relative_order(
+            bootstrap,
+            "radius_service.start().await?;",
             "crate::bootstrap::http::spawn_http_server(",
         );
         assert_relative_order(
             bootstrap,
             "app_handle.manage(auth_service.clone());",
+            "app_handle.manage(radius_service.clone());",
+        );
+        assert_relative_order(
+            bootstrap,
+            "app_handle.manage(radius_service.clone());",
             "app_handle.manage(metrics_service.clone());",
         );
         assert_relative_order(

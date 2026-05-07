@@ -9,6 +9,7 @@ use crate::security::secret::{decrypt_secret_opt, decrypt_secret_opt_for, encryp
 use crate::services::{AuditService, AuthService, ManagedRadiusService, SettingsService};
 use chrono::Utc;
 use mikrotik_rs::{protocol::command::CommandBuilder, protocol::CommandResponse, MikrotikDevice};
+use std::collections::HashSet;
 use std::time::Instant;
 use tokio::time::{timeout, Duration};
 use uuid::Uuid;
@@ -1074,10 +1075,10 @@ impl PppoeService {
                       router_secret_id = $8,
                       last_sync_at = $9,
                       last_error = $10,
-                      radius_present = false,
+                      is_provisioned = false,
                       radius_identity = NULL,
-                      radius_last_sync_at = NULL,
-                      radius_last_error = NULL,
+                      provisioned_at = NULL,
+                      provisioning_error = NULL,
                       account_source = 'router',
                       updated_at = $11
                     WHERE tenant_id = $12 AND id = $13
@@ -1125,7 +1126,7 @@ impl PppoeService {
                       disabled, comment,
                       account_source,
                       router_present, router_secret_id, last_sync_at, last_error,
-                      radius_present, radius_identity, radius_last_sync_at, radius_last_error,
+                      is_provisioned, radius_identity, provisioned_at, provisioning_error,
                       created_at, updated_at
                     ) VALUES (
                       $1, $2, $3, $4, $5,
@@ -1331,7 +1332,7 @@ impl PppoeService {
               (id, tenant_id, router_id, customer_id, location_id, username, password_enc, package_id, profile_id, router_profile_name,
                remote_address, address_pool, disabled, comment, account_source,
                router_present, router_secret_id, last_sync_at, last_error,
-               radius_present, radius_identity, radius_last_sync_at, radius_last_error,
+               is_provisioned, radius_identity, provisioned_at, provisioning_error,
                created_at, updated_at)
             VALUES
               ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
@@ -1356,10 +1357,10 @@ impl PppoeService {
         .bind(&account.router_secret_id)
         .bind(account.last_sync_at)
         .bind(&account.last_error)
-        .bind(account.radius_present)
+        .bind(account.is_provisioned)
         .bind(&account.radius_identity)
-        .bind(account.radius_last_sync_at)
-        .bind(&account.radius_last_error)
+        .bind(account.provisioned_at)
+        .bind(&account.provisioning_error)
         .bind(account.created_at)
         .bind(account.updated_at)
         .execute(&self.pool)
@@ -1476,7 +1477,7 @@ impl PppoeService {
 
         account.updated_at = Utc::now();
         account.last_error = None;
-        account.radius_last_error = None;
+        account.provisioning_error = None;
 
         sqlx::query(
             r#"
@@ -1493,7 +1494,7 @@ impl PppoeService {
               account_source = $10,
               updated_at = $11,
               last_error = NULL,
-              radius_last_error = NULL
+              provisioning_error = NULL
             WHERE tenant_id = $12 AND id = $13
             "#,
         )
@@ -1791,9 +1792,6 @@ impl PppoeService {
                         };
                         account.last_sync_at = Some(now);
                         account.last_error = None;
-                        account.radius_present = false;
-                        account.radius_last_sync_at = None;
-                        account.radius_last_error = None;
 
                         let _ = sqlx::query(
                             r#"
@@ -1802,9 +1800,6 @@ impl PppoeService {
                               router_secret_id = $1,
                               last_sync_at = $2,
                               last_error = NULL,
-                              radius_present = false,
-                              radius_last_sync_at = NULL,
-                              radius_last_error = NULL,
                               updated_at = $3
                             WHERE tenant_id = $4 AND id = $5
                             "#,
@@ -1874,10 +1869,10 @@ impl PppoeService {
 
                         account.router_present = false;
                         account.router_secret_id = None;
-                        account.radius_present = true;
+                        account.is_provisioned = true;
                         account.radius_identity = Some(radius.radius_identity);
-                        account.radius_last_sync_at = Some(now);
-                        account.radius_last_error = None;
+                        account.provisioned_at = Some(now);
+                        account.provisioning_error = None;
                         account.last_sync_at = Some(now);
                         account.last_error = None;
 
@@ -1888,17 +1883,17 @@ impl PppoeService {
                               router_secret_id = NULL,
                               last_sync_at = $1,
                               last_error = NULL,
-                              radius_present = true,
+                              is_provisioned = true,
                               radius_identity = $2,
-                              radius_last_sync_at = $3,
-                              radius_last_error = NULL,
+                              provisioned_at = $3,
+                              provisioning_error = NULL,
                               updated_at = $4
                             WHERE tenant_id = $5 AND id = $6
                             "#,
                         )
                         .bind(account.last_sync_at)
                         .bind(&account.radius_identity)
-                        .bind(account.radius_last_sync_at)
+                        .bind(account.provisioned_at)
                         .bind(now)
                         .bind(tenant_id)
                         .bind(id)
@@ -1907,27 +1902,27 @@ impl PppoeService {
                     }
                     Err(e) => {
                         let msg = format!("apply failed: {}", e);
-                        account.radius_present = false;
-                        account.radius_last_sync_at = Some(now);
-                        account.radius_last_error = Some(msg.clone());
+                        account.is_provisioned = false;
+                        account.provisioned_at = Some(now);
+                        account.provisioning_error = Some(msg.clone());
                         account.last_sync_at = Some(now);
                         account.last_error = Some(msg.clone());
 
                         let _ = sqlx::query(
                             r#"
                             UPDATE pppoe_accounts SET
-                              radius_present = false,
+                              is_provisioned = false,
                               last_sync_at = $1,
                               last_error = $2,
-                              radius_last_sync_at = $3,
-                              radius_last_error = $4,
+                              provisioned_at = $3,
+                              provisioning_error = $4,
                               updated_at = $5
                             WHERE tenant_id = $6 AND id = $7
                             "#,
                         )
                         .bind(account.last_sync_at)
                         .bind(&msg)
-                        .bind(account.radius_last_sync_at)
+                        .bind(account.provisioned_at)
                         .bind(&msg)
                         .bind(now)
                         .bind(tenant_id)
@@ -1999,24 +1994,18 @@ impl PppoeService {
         } else {
             Default::default()
         };
-        let radius_usernames = if rows
+        let radius_usernames = rows
             .iter()
-            .any(|(_, _, source)| *source == PppoeAccountSource::ManagedRadius)
-        {
-            self.managed_radius_service
-                .reconcile_router(tenant_id, router_id)
-                .await?
-        } else {
-            Default::default()
-        };
+            .filter(|(_, _, source)| *source == PppoeAccountSource::ManagedRadius)
+            .map(|(_, username, _)| username.clone())
+            .collect::<HashSet<_>>();
 
         let mut present = 0i64;
         let mut missing = 0i64;
         let now = Utc::now();
         let mut router_present_ids: Vec<String> = Vec::new();
         let mut router_missing_ids: Vec<String> = Vec::new();
-        let mut radius_present_ids: Vec<String> = Vec::new();
-        let mut radius_missing_ids: Vec<String> = Vec::new();
+        let mut provisioned_ids: Vec<String> = Vec::new();
 
         for (id, username, source) in rows {
             let is_present = match source {
@@ -2038,9 +2027,7 @@ impl PppoeService {
                 }
                 PppoeAccountSource::ManagedRadius => {
                     if is_present {
-                        radius_present_ids.push(id);
-                    } else {
-                        radius_missing_ids.push(id);
+                        provisioned_ids.push(id);
                     }
                 }
             }
@@ -2080,13 +2067,13 @@ impl PppoeService {
             .execute(&self.pool)
             .await;
         }
-        if !radius_present_ids.is_empty() {
+        if !provisioned_ids.is_empty() {
             let _ = sqlx::query(
                 r#"
                 UPDATE pppoe_accounts SET
-                  radius_present = true,
-                  radius_last_sync_at = $1,
-                  radius_last_error = NULL,
+                  is_provisioned = true,
+                  provisioned_at = $1,
+                  provisioning_error = NULL,
                   last_sync_at = $1,
                   last_error = NULL,
                   updated_at = $2
@@ -2096,27 +2083,7 @@ impl PppoeService {
             .bind(now)
             .bind(now)
             .bind(tenant_id)
-            .bind(&radius_present_ids)
-            .execute(&self.pool)
-            .await;
-        }
-        if !radius_missing_ids.is_empty() {
-            let _ = sqlx::query(
-                r#"
-                UPDATE pppoe_accounts SET
-                  radius_present = false,
-                  radius_last_sync_at = $1,
-                  radius_last_error = 'Missing on managed RADIUS',
-                  last_sync_at = $1,
-                  last_error = 'Missing on managed RADIUS',
-                  updated_at = $2
-                WHERE tenant_id = $3 AND id = ANY($4)
-                "#,
-            )
-            .bind(now)
-            .bind(now)
-            .bind(tenant_id)
-            .bind(&radius_missing_ids)
+            .bind(&provisioned_ids)
             .execute(&self.pool)
             .await;
         }
@@ -2152,6 +2119,10 @@ mod tests {
         InstallationPppoeScope, PppoeAccountSource,
     };
 
+    fn pppoe_service_source() -> &'static str {
+        include_str!("pppoe_service.rs")
+    }
+
     #[test]
     fn managed_radius_accounts_disable_local_router_secret() {
         assert!(!should_disable_local_router_secret(
@@ -2160,6 +2131,24 @@ mod tests {
         assert!(should_disable_local_router_secret(
             PppoeAccountSource::ManagedRadius
         ));
+    }
+
+    #[test]
+    fn managed_radius_flow_does_not_treat_external_sync_as_runtime_truth() {
+        let source = pppoe_service_source();
+        let legacy_missing = ["Missing on managed ", "RADIUS"].concat();
+        let legacy_router_apply = [
+            "radius_",
+            "present = false,\n",
+            "                              radius_last_",
+            "sync_at = NULL,\n",
+            "                              radius_last_",
+            "error = NULL,",
+        ]
+        .concat();
+
+        assert!(!source.contains(&legacy_missing));
+        assert!(!source.contains(&legacy_router_apply));
     }
 
     fn scope() -> InstallationPppoeScope {

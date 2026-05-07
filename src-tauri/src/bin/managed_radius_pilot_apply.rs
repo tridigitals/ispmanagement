@@ -84,8 +84,8 @@ async fn main() -> Result<()> {
           id, tenant_id, router_id, customer_id, location_id, username, password_enc,
           package_id, profile_id, router_profile_name, remote_address, address_pool,
           disabled, comment, account_source, router_present, router_secret_id,
-          last_sync_at, last_error, radius_present, radius_identity,
-          radius_last_sync_at, radius_last_error, created_at, updated_at
+          last_sync_at, last_error, is_provisioned, radius_identity,
+          provisioned_at, provisioning_error, created_at, updated_at
         ) VALUES (
           $1,$2,$3,$4,$5,$6,$7,
           NULL,NULL,NULL,NULL,NULL,
@@ -136,7 +136,7 @@ async fn main() -> Result<()> {
     println!("pppoe_account_id={}", applied.id);
     println!("username={}", applied.username);
     println!("account_source={:?}", applied.account_source);
-    println!("radius_present={}", applied.radius_present);
+    println!("is_provisioned={}", applied.is_provisioned);
     println!(
         "radius_identity={}",
         applied.radius_identity.unwrap_or_else(|| "-".to_string())

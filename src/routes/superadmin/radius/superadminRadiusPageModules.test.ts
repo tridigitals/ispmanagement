@@ -4,7 +4,6 @@ const sentinels = vi.hoisted(() => ({
   assignmentFormModal: { name: 'radius-assignment-form-modal' },
   mappingFormModal: { name: 'radius-mapping-form-modal' },
   mappingSecretDialog: { name: 'radius-mapping-secret-dialog' },
-  serverFormModal: { name: 'radius-server-form-modal' },
 }));
 
 vi.mock('$lib/components/superadmin/radius/AssignmentFormModal.svelte', () => ({
@@ -19,10 +18,6 @@ vi.mock('$lib/components/superadmin/radius/MappingSecretDialog.svelte', () => ({
   default: sentinels.mappingSecretDialog,
 }));
 
-vi.mock('$lib/components/superadmin/radius/ServerFormModal.svelte', () => ({
-  default: sentinels.serverFormModal,
-}));
-
 import { loadSuperadminRadiusDialogs } from './superadminRadiusPageModules';
 
 describe('superadmin radius page modules', () => {
@@ -33,7 +28,6 @@ describe('superadmin radius page modules', () => {
     expect(first.AssignmentFormModalComponent).toBe(sentinels.assignmentFormModal);
     expect(first.MappingFormModalComponent).toBe(sentinels.mappingFormModal);
     expect(first.MappingSecretDialogComponent).toBe(sentinels.mappingSecretDialog);
-    expect(first.ServerFormModalComponent).toBe(sentinels.serverFormModal);
     expect(second).toBe(first);
   });
 });

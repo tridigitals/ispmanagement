@@ -147,6 +147,7 @@
   let showManagedRadiusModal = $state(false);
   let assigningManagedRadiusDefault = $state(false);
   let creatingManagedRadiusMapping = $state(false);
+  let applyingManagedRadius = $state(false);
   let canRevealManagedRadiusSecret = $derived($can('manage_radius_secret', 'router_inventory'));
 
   let cpuSeries = $derived.by(() => {
@@ -475,6 +476,28 @@
       toast.error(e?.message || e);
     } finally {
       creatingManagedRadiusMapping = false;
+    }
+  }
+
+  async function applyManagedRadius() {
+    const id = $page.params.id || router?.id || '';
+    if (!id || applyingManagedRadius) return;
+
+    applyingManagedRadius = true;
+    try {
+      managedRadiusSetup = (await api.mikrotik.routers.applyManagedRadius(
+        id,
+      )) as ManagedRadiusRouterSetupResponse;
+      managedRadiusLoadedFor = id;
+      showManagedRadiusSecret = false;
+      toast.success(
+        $t('admin.network.routers.managed_radius.toasts.applied') ||
+          'Managed RADIUS applied to router',
+      );
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    } finally {
+      applyingManagedRadius = false;
     }
   }
 
@@ -1284,10 +1307,12 @@
     bind:showManagedRadiusSecret
     {assigningManagedRadiusDefault}
     {creatingManagedRadiusMapping}
+    {applyingManagedRadius}
     {copyManagedRadiusSecret}
     {copyManagedRadiusScript}
     {assignManagedRadiusDefault}
     {createManagedRadiusMapping}
+    {applyManagedRadius}
     bind:showInterfaceTrafficModal
     {selectedInterface}
     {ifaceHistoryLoading}

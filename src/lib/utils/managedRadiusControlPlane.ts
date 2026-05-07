@@ -1,6 +1,6 @@
 import type { SuperadminManagedRadiusMapping } from '$lib/api/types';
 
-export type ManagedRadiusTabId = 'servers' | 'assignments' | 'mappings' | 'users';
+export type ManagedRadiusTabId = 'assignments' | 'mappings' | 'users' | 'sessions';
 
 type ManagedRadiusTabCounts = Record<ManagedRadiusTabId, number>;
 
@@ -66,7 +66,7 @@ export function buildManagedRadiusTabs(
   counts: ManagedRadiusTabCounts,
   activeTab: ManagedRadiusTabId,
 ): Array<{ id: ManagedRadiusTabId; count: number; active: boolean }> {
-  return (['servers', 'assignments', 'mappings', 'users'] as ManagedRadiusTabId[]).map((id) => ({
+  return (['assignments', 'mappings', 'users', 'sessions'] as ManagedRadiusTabId[]).map((id) => ({
     id,
     count: counts[id],
     active: id === activeTab,

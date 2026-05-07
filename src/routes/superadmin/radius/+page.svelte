@@ -4,14 +4,16 @@
     ManagedRadiusAssignmentPayload,
     ManagedRadiusMappingPayload,
     ManagedRadiusSecretValue,
-    ManagedRadiusServerPayload,
     SuperadminManagedRadiusAssignment,
     SuperadminManagedRadiusMapping,
+    SuperadminManagedRadiusRuntimeStatus,
+    SuperadminManagedRadiusSession,
     SuperadminManagedRadiusServer,
     SuperadminManagedRadiusUser,
     Tenant,
   } from '$lib/api/types';
   import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
+  import Table from '$lib/components/ui/Table.svelte';
   import { toast } from '$lib/stores/toast';
   import {
     buildManagedRadiusTabs,
@@ -19,6 +21,14 @@
     filterManagedRadiusMappings,
     type ManagedRadiusTabId,
   } from '$lib/utils/managedRadiusControlPlane';
+  import {
+    formatManagedRadiusSessionOctets,
+    getManagedRadiusSessionBadgeTone,
+    getManagedRadiusSessionStatus,
+    getManagedRadiusUserAttentionCount,
+    getManagedRadiusUserBadgeTone,
+    getManagedRadiusUserStatus,
+  } from './superadminRadiusStatus';
   import { loadSuperadminRadiusDialogs } from './superadminRadiusPageModules';
   import { t } from 'svelte-i18n';
   import { onMount } from 'svelte';
@@ -29,17 +39,6 @@
     name?: string | null;
     host?: string | null;
   };
-
-  const DEFAULT_SERVER_FORM = (): ManagedRadiusServerPayload => ({
-    name: '',
-    db_host: '',
-    db_port: 5432,
-    db_name: 'radius',
-    db_user: 'radius',
-    db_password: '',
-    is_active: true,
-    notes: '',
-  });
 
   const DEFAULT_ASSIGNMENT_FORM = (): ManagedRadiusAssignmentPayload => ({
     tenant_id: '',
@@ -60,18 +59,17 @@
 
   let tenants = $state<Tenant[]>([]);
   let routers = $state<RouterOption[]>([]);
+  let runtimeStatus = $state<SuperadminManagedRadiusRuntimeStatus | null>(null);
   let servers = $state<SuperadminManagedRadiusServer[]>([]);
   let assignments = $state<SuperadminManagedRadiusAssignment[]>([]);
   let mappings = $state<SuperadminManagedRadiusMapping[]>([]);
   let users = $state<SuperadminManagedRadiusUser[]>([]);
+  let sessions = $state<SuperadminManagedRadiusSession[]>([]);
 
   let loading = $state(true);
   let refreshing = $state(false);
   let error = $state('');
-  let activeTab = $state<ManagedRadiusTabId>('servers');
-
-  let serverSearch = $state('');
-  let serverStatusFilter = $state<'all' | 'active' | 'inactive'>('all');
+  let activeTab = $state<ManagedRadiusTabId>('assignments');
 
   let assignmentSearch = $state('');
   let assignmentTenantFilter = $state('all');
@@ -86,11 +84,9 @@
   let tenantFilter = $state('all');
   let routerFilter = $state('all');
   let userStatusFilter = $state<'all' | 'provisioned' | 'not_provisioned'>('all');
-
-  let showServerModal = $state(false);
-  let savingServer = $state(false);
-  let editingServerId = $state<string | null>(null);
-  let serverForm = $state<ManagedRadiusServerPayload>(DEFAULT_SERVER_FORM());
+  let sessionSearch = $state('');
+  let sessionTenantFilter = $state('all');
+  let sessionRouterFilter = $state('all');
 
   let showAssignmentModal = $state(false);
   let savingAssignment = $state(false);
@@ -113,7 +109,6 @@
   let AssignmentFormModalComponent = $state<any>(null);
   let MappingFormModalComponent = $state<any>(null);
   let MappingSecretDialogComponent = $state<any>(null);
-  let ServerFormModalComponent = $state<any>(null);
 
   onMount(() => {
     void loadData();
@@ -123,8 +118,7 @@
     if (
       AssignmentFormModalComponent &&
       MappingFormModalComponent &&
-      MappingSecretDialogComponent &&
-      ServerFormModalComponent
+      MappingSecretDialogComponent
     ) {
       return;
     }
@@ -136,7 +130,6 @@
       AssignmentFormModalComponent = modules.AssignmentFormModalComponent;
       MappingFormModalComponent = modules.MappingFormModalComponent;
       MappingSecretDialogComponent = modules.MappingSecretDialogComponent;
-      ServerFormModalComponent = modules.ServerFormModalComponent;
     } catch (err: any) {
       toast.error(err?.message || 'Failed to load managed RADIUS dialogs');
     } finally {
@@ -150,20 +143,24 @@
 
     error = '';
     try {
-      const [tenantRes, serverRes, assignmentRes, mappingRes, userRes, routerRes] = await Promise.all([
+      const [tenantRes, runtimeRes, serverRes, assignmentRes, mappingRes, userRes, sessionRes, routerRes] = await Promise.all([
         api.superadmin.listTenants(),
+        api.superadmin.getManagedRadiusRuntimeStatus(),
         api.superadmin.listManagedRadiusServers(),
         api.superadmin.listManagedRadiusAssignments(),
         api.superadmin.listManagedRadiusMappings(),
         api.superadmin.listManagedRadiusUsers(),
+        api.superadmin.listManagedRadiusSessions(),
         api.mikrotik.routers.list().catch(() => []),
       ]);
 
       tenants = tenantRes.data || [];
+      runtimeStatus = runtimeRes || null;
       servers = serverRes.data || [];
       assignments = assignmentRes.data || [];
       mappings = mappingRes.data || [];
       users = userRes.data || [];
+      sessions = sessionRes.data || [];
       routers = (routerRes || []) as RouterOption[];
     } catch (err: any) {
       console.error('Failed to load superadmin managed RADIUS data', err);
@@ -191,14 +188,11 @@
   }
 
   function userStatus(user: SuperadminManagedRadiusUser) {
-    if (user.radius_present) return 'provisioned';
-    return 'not_provisioned';
+    return getManagedRadiusUserStatus(user);
   }
 
   function userBadgeTone(user: SuperadminManagedRadiusUser) {
-    if (user.radius_present) return 'good';
-    if (user.radius_last_error) return 'danger';
-    return 'warn';
+    return getManagedRadiusUserBadgeTone(user);
   }
 
   function generateSecret(length = 32) {
@@ -214,11 +208,6 @@
     );
   }
 
-  function resetServerForm() {
-    serverForm = DEFAULT_SERVER_FORM();
-    editingServerId = null;
-  }
-
   function resetAssignmentForm() {
     assignmentForm = DEFAULT_ASSIGNMENT_FORM();
     editingAssignmentId = null;
@@ -229,96 +218,12 @@
     editingMappingId = null;
   }
 
-  function openCreateServerModal() {
-    resetServerForm();
-    showServerModal = true;
-  }
-
-  function openEditServerModal(server: SuperadminManagedRadiusServer) {
-    editingServerId = server.id;
-    serverForm = {
-      name: server.name,
-      db_host: server.db_host,
-      db_port: server.db_port,
-      db_name: server.db_name,
-      db_user: '',
-      db_password: '',
-      is_active: server.is_active,
-      notes: server.notes || '',
-    };
-    showServerModal = true;
-  }
-
-  async function submitServerForm() {
-    if (!serverForm.name || !serverForm.db_host || !serverForm.db_name) {
-      toast.error($t('superadmin.radius.toasts.server_validation') || 'Complete the server form first');
-      return;
-    }
-
-    savingServer = true;
-    try {
-      const payload: ManagedRadiusServerPayload = {
-        ...serverForm,
-        db_password: serverForm.db_password?.trim() ? serverForm.db_password : null,
-        db_user: serverForm.db_user?.trim() || 'radius',
-        db_port: Number(serverForm.db_port) || 5432,
-        notes: serverForm.notes?.trim() || null,
-      };
-
-      if (editingServerId) {
-        await api.superadmin.updateManagedRadiusServer(editingServerId, payload);
-        toast.success($t('superadmin.radius.toasts.server_updated') || 'Managed RADIUS server updated');
-      } else {
-        if (!payload.db_password) {
-          toast.error(
-            $t('superadmin.radius.toasts.server_password_required') || 'Database password is required for new servers',
-          );
-          return;
-        }
-        await api.superadmin.createManagedRadiusServer(payload);
-        toast.success($t('superadmin.radius.toasts.server_created') || 'Managed RADIUS server created');
-      }
-
-      showServerModal = false;
-      resetServerForm();
-      await loadData({ silent: true });
-    } catch (err: any) {
-      toast.error(err?.message || String(err) || 'Failed to save server');
-    } finally {
-      savingServer = false;
-    }
-  }
-
-  async function toggleServerActive(server: SuperadminManagedRadiusServer) {
-    try {
-      await api.superadmin.setManagedRadiusServerActive(server.id, !server.is_active);
-      toast.success(
-        !server.is_active
-          ? $t('superadmin.radius.toasts.server_activated') || 'Server activated'
-          : $t('superadmin.radius.toasts.server_deactivated') || 'Server deactivated',
-      );
-      await loadData({ silent: true });
-    } catch (err: any) {
-      toast.error(err?.message || String(err) || 'Failed to change server state');
-    }
-  }
-
-  async function setDefaultServer(server: SuperadminManagedRadiusServer) {
-    if (server.is_default) return;
-
-    try {
-      await api.superadmin.setManagedRadiusServerDefault(server.id);
-      toast.success(
-        $t('superadmin.radius.toasts.server_default_set') || 'Default server updated',
-      );
-      await loadData({ silent: true });
-    } catch (err: any) {
-      toast.error(err?.message || String(err) || 'Failed to set default server');
-    }
-  }
-
   function openCreateAssignmentModal() {
     resetAssignmentForm();
+    if (!assignmentForm.radius_server_id) {
+      assignmentForm.radius_server_id =
+        servers.find((server) => server.is_default)?.id || servers[0]?.id || '';
+    }
     showAssignmentModal = true;
   }
 
@@ -548,9 +453,20 @@
     }
   }
 
-  function focusMappingsForServer(server: SuperadminManagedRadiusServer) {
-    mappingServerFilter = server.id;
-  }
+  const runtimeStatusTone = $derived.by(() => {
+    if (!runtimeStatus?.enabled) return 'warn';
+    return runtimeStatus.running ? 'good' : 'danger';
+  });
+
+  const runtimeStatusLabel = $derived.by(() => {
+    if (!runtimeStatus?.enabled) {
+      return $t('superadmin.radius.runtime.disabled') || 'Disabled';
+    }
+
+    return runtimeStatus.running
+      ? $t('superadmin.radius.runtime.running') || 'Running'
+      : $t('superadmin.radius.runtime.stopped') || 'Stopped';
+  });
 
   const tenantOptions = $derived.by(() => {
     const names = [...new Set(users.map((user) => user.tenant_name).filter(Boolean))];
@@ -585,24 +501,6 @@
             ),
       )
       .map((server) => ({ id: server.id, name: server.name })),
-  );
-
-  const filteredServers = $derived.by(() =>
-    servers.filter((server) => {
-      const q = normalized(serverSearch);
-      const matchesSearch =
-        !q ||
-        normalized(server.name).includes(q) ||
-        normalized(server.host).includes(q) ||
-        normalized(server.db_host).includes(q) ||
-        normalized(server.notes).includes(q);
-
-      const matchesStatus =
-        serverStatusFilter === 'all' ||
-        (serverStatusFilter === 'active' ? server.is_active : !server.is_active);
-
-      return matchesSearch && matchesStatus;
-    }),
   );
 
   const filteredAssignments = $derived.by(() =>
@@ -657,18 +555,84 @@
     }),
   );
 
+  const filteredSessions = $derived.by(() =>
+    sessions.filter((session) => {
+      const q = normalized(sessionSearch);
+      const routerName =
+        session.router_name || ($t('superadmin.radius.labels.unknown_router') || 'Unknown router');
+      const identity = session.radius_identity || session.username;
+      const matchesSearch =
+        !q ||
+        normalized(session.username).includes(q) ||
+        normalized(identity).includes(q) ||
+        normalized(session.tenant_name).includes(q) ||
+        normalized(routerName).includes(q) ||
+        normalized(session.acct_session_id).includes(q) ||
+        normalized(session.status_type).includes(q);
+
+      const matchesTenant =
+        sessionTenantFilter === 'all' || session.tenant_name === sessionTenantFilter;
+      const matchesRouter =
+        sessionRouterFilter === 'all' || routerName === sessionRouterFilter;
+
+      return matchesSearch && matchesTenant && matchesRouter;
+    }),
+  );
+
   const stats = $derived.by(() => ({
-    servers: servers.length,
     assignments: assignments.length,
     mappings: mappings.length,
     users: users.length,
-    outOfSync: users.filter((user) => !user.radius_present || user.radius_last_error).length,
+    sessions: sessions.length,
+    outOfSync: getManagedRadiusUserAttentionCount(users),
   }));
+
+  const assignmentColumns = $derived.by(() => [
+    { key: 'tenant', label: $t('superadmin.radius.columns.tenant') || 'Tenant' },
+    { key: 'server', label: $t('superadmin.radius.columns.server') || 'Server' },
+    { key: 'status', label: $t('superadmin.radius.columns.status') || 'Status' },
+    { key: 'routers', label: $t('superadmin.radius.columns.routers') || 'Routers', align: 'right' as const },
+    { key: 'updated', label: $t('superadmin.radius.columns.updated') || 'Updated' },
+    { key: 'actions', label: $t('superadmin.radius.columns.actions') || 'Actions', width: '220px' },
+  ]);
+
+  const mappingColumns = $derived.by(() => [
+    { key: 'tenant', label: $t('superadmin.radius.columns.tenant') || 'Tenant' },
+    { key: 'server', label: $t('superadmin.radius.columns.server') || 'Server' },
+    { key: 'router', label: $t('superadmin.radius.columns.router') || 'Router' },
+    { key: 'nas', label: $t('superadmin.radius.columns.nas') || 'NAS' },
+    { key: 'secret', label: $t('superadmin.radius.columns.secret') || 'Secret' },
+    { key: 'status', label: $t('superadmin.radius.columns.status') || 'Status' },
+    { key: 'updated', label: $t('superadmin.radius.columns.updated') || 'Updated' },
+    { key: 'actions', label: $t('superadmin.radius.columns.actions') || 'Actions', width: '320px' },
+  ]);
+
+  const userColumns = $derived.by(() => [
+    { key: 'tenant', label: $t('superadmin.radius.columns.tenant') || 'Tenant' },
+    { key: 'router', label: $t('superadmin.radius.columns.router') || 'Router' },
+    { key: 'username', label: $t('superadmin.radius.columns.username') || 'Username' },
+    { key: 'identity', label: $t('superadmin.radius.columns.identity') || 'RADIUS Identity' },
+    { key: 'profile', label: $t('superadmin.radius.columns.profile') || 'Profile' },
+    { key: 'status', label: $t('superadmin.radius.columns.status') || 'Status' },
+    { key: 'last_sync', label: $t('superadmin.radius.columns.last_sync') || 'Last Sync' },
+    { key: 'last_error', label: $t('superadmin.radius.columns.last_error') || 'Last Error' },
+  ]);
+
+  const sessionColumns = $derived.by(() => [
+    { key: 'tenant', label: $t('superadmin.radius.columns.tenant') || 'Tenant' },
+    { key: 'router', label: $t('superadmin.radius.columns.router') || 'Router' },
+    { key: 'username', label: $t('superadmin.radius.columns.username') || 'Username' },
+    { key: 'identity', label: $t('superadmin.radius.columns.identity') || 'RADIUS Identity' },
+    { key: 'status', label: $t('superadmin.radius.columns.status') || 'Status' },
+    { key: 'ip_address', label: $t('superadmin.radius.columns.ip_address') || 'Framed IP' },
+    { key: 'session_id', label: $t('superadmin.radius.columns.session_id') || 'Session ID' },
+    { key: 'updated', label: $t('superadmin.radius.columns.updated') || 'Updated' },
+  ]);
 
   const tabs = $derived.by(() => buildManagedRadiusTabs(stats, activeTab));
 
   $effect(() => {
-    if (!showServerModal && !showAssignmentModal && !showMappingModal && !showSecretDialog) return;
+    if (!showAssignmentModal && !showMappingModal && !showSecretDialog) return;
     void ensureSuperadminRadiusDialogsLoaded();
   });
 </script>
@@ -679,14 +643,30 @@
       <h1>{$t('superadmin.radius.title') || 'Managed RADIUS'}</h1>
       <p>
         {$t('superadmin.radius.subtitle') ||
-          'Observe global RADIUS infrastructure and provisioned PPPoE users across tenants.'}
+          'Manage the native RADIUS runtime, tenant assignments, and NAS mappings for MikroTik PPPoE.'}
       </p>
+      {#if runtimeStatus}
+        <div class="runtime-banner">
+          <span class="badge" class:good={runtimeStatusTone === 'good'} class:warn={runtimeStatusTone === 'warn'} class:danger={runtimeStatusTone === 'danger'}>
+            {runtimeStatusLabel}
+          </span>
+          <span class="runtime-meta">
+            {$t('superadmin.radius.runtime.endpoint') || 'Endpoint'}:
+            <strong>{runtimeStatus.advertised_host}:{runtimeStatus.auth_port}/{runtimeStatus.acct_port}</strong>
+          </span>
+          <span class="runtime-meta">
+            {$t('superadmin.radius.runtime.authenticator') || 'Message-Authenticator'}:
+            <strong>
+              {runtimeStatus.require_message_authenticator
+                ? $t('superadmin.radius.runtime.required') || 'Required'
+                : $t('superadmin.radius.runtime.optional') || 'Optional'}
+            </strong>
+          </span>
+        </div>
+      {/if}
     </div>
 
     <div class="hero-actions">
-      <button class="btn btn-secondary" type="button" onclick={openCreateServerModal}>
-        {$t('superadmin.radius.actions.new_server') || 'New server'}
-      </button>
       <button class="btn btn-secondary" type="button" onclick={openCreateAssignmentModal}>
         {$t('superadmin.radius.actions.new_assignment') || 'New assignment'}
       </button>
@@ -709,10 +689,10 @@
     <div class="state-card error">{error}</div>
   {:else}
     <div class="stats-grid">
-      <StatsCard title={$t('superadmin.radius.stats.servers') || 'Servers'} value={stats.servers} icon="server" />
       <StatsCard title={$t('superadmin.radius.stats.assignments') || 'Assignments'} value={stats.assignments} icon="layers" color="info" />
       <StatsCard title={$t('superadmin.radius.stats.mappings') || 'NAS Mappings'} value={stats.mappings} icon="network" color="success" />
       <StatsCard title={$t('superadmin.radius.stats.users') || 'Users'} value={stats.users} icon="users" />
+      <StatsCard title={$t('superadmin.radius.stats.sessions') || 'Sessions'} value={stats.sessions} icon="activity" color="info" />
       <StatsCard title={$t('superadmin.radius.stats.out_of_sync') || 'Needs Attention'} value={stats.outOfSync} icon="activity" color="warning" />
     </div>
 
@@ -727,12 +707,12 @@
             onclick={() => (activeTab = tab.id)}
           >
             <span>
-              {#if tab.id === 'servers'}
-                {$t('superadmin.radius.sections.servers') || 'Servers'}
-              {:else if tab.id === 'assignments'}
+              {#if tab.id === 'assignments'}
                 {$t('superadmin.radius.sections.assignments') || 'Tenant Assignments'}
               {:else if tab.id === 'mappings'}
                 {$t('superadmin.radius.sections.mappings') || 'NAS Mappings'}
+              {:else if tab.id === 'sessions'}
+                {$t('superadmin.radius.sections.sessions') || 'Sessions'}
               {:else}
                 {$t('superadmin.radius.sections.users') || 'Users'}
               {/if}
@@ -742,97 +722,7 @@
         {/each}
       </div>
 
-      {#if activeTab === 'servers'}
-        <div class="panel-head">
-          <div>
-            <h2>{$t('superadmin.radius.sections.servers') || 'Servers'}</h2>
-            <p>{filteredServers.length} / {servers.length}</p>
-          </div>
-          <div class="filters">
-            <input bind:value={serverSearch} placeholder={$t('superadmin.radius.filters.search_servers') || 'Search servers...'} />
-            <select bind:value={serverStatusFilter}>
-              <option value="all">{$t('superadmin.radius.filters.all_statuses') || 'All statuses'}</option>
-              <option value="active">{$t('superadmin.radius.filters.active') || 'Active'}</option>
-              <option value="inactive">{$t('superadmin.radius.filters.inactive') || 'Inactive'}</option>
-            </select>
-          </div>
-        </div>
-
-        {#if filteredServers.length === 0}
-          <div class="empty-state">
-            <strong>{$t('superadmin.radius.empty.servers_title') || 'No managed RADIUS servers yet'}</strong>
-            <span>{$t('superadmin.radius.empty.servers_subtitle') || 'Create global RADIUS infrastructure here, then assign tenants and map routers.'}</span>
-          </div>
-        {:else}
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>{$t('superadmin.radius.columns.server') || 'Server'}</th>
-                  <th>{$t('superadmin.radius.columns.host') || 'Host'}</th>
-                  <th>{$t('superadmin.radius.columns.database') || 'Database'}</th>
-                  <th>{$t('superadmin.radius.columns.status') || 'Status'}</th>
-                  <th>{$t('superadmin.radius.columns.tenants') || 'Tenants'}</th>
-                  <th>{$t('superadmin.radius.columns.routers') || 'Routers'}</th>
-                  <th>{$t('superadmin.radius.columns.updated') || 'Updated'}</th>
-                  <th>{$t('superadmin.radius.columns.actions') || 'Actions'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each filteredServers as server}
-                  <tr>
-                    <td>
-                      <div class="primary">
-                        {server.name}
-                        {#if server.is_default}
-                          <span class="badge good inline-badge">
-                            {$t('superadmin.radius.status.default') || 'Default'}
-                          </span>
-                        {/if}
-                      </div>
-                      {#if server.notes}
-                        <div class="muted">{server.notes}</div>
-                      {/if}
-                    </td>
-                    <td>{server.host}</td>
-                    <td>{server.db_host}:{server.db_port}/{server.db_name}</td>
-                    <td>
-                      <span class="badge" class:good={server.is_active} class:muted={!server.is_active}>
-                        {server.is_active
-                          ? $t('superadmin.radius.status.active') || 'Active'
-                          : $t('superadmin.radius.status.inactive') || 'Inactive'}
-                      </span>
-                    </td>
-                    <td>{server.tenant_count}</td>
-                    <td>{server.router_count}</td>
-                    <td>{formatDateTime(server.updated_at)}</td>
-                    <td>
-                      <div class="row-actions">
-                        <button class="btn-link" type="button" onclick={() => openEditServerModal(server)}>
-                          {$t('superadmin.radius.actions.edit') || 'Edit'}
-                        </button>
-                        {#if !server.is_default}
-                          <button class="btn-link" type="button" onclick={() => setDefaultServer(server)}>
-                            {$t('superadmin.radius.actions.set_default') || 'Set default'}
-                          </button>
-                        {/if}
-                        <button class="btn-link" type="button" onclick={() => toggleServerActive(server)}>
-                          {server.is_active
-                            ? $t('superadmin.radius.actions.deactivate') || 'Deactivate'
-                            : $t('superadmin.radius.actions.activate') || 'Activate'}
-                        </button>
-                        <button class="btn-link" type="button" onclick={() => { focusMappingsForServer(server); activeTab = 'mappings'; }}>
-                          {$t('superadmin.radius.actions.view_mappings') || 'View mappings'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-        {/if}
-      {:else if activeTab === 'assignments'}
+      {#if activeTab === 'assignments'}
         <div class="panel-head">
           <div>
             <h2>{$t('superadmin.radius.sections.assignments') || 'Tenant Assignments'}</h2>
@@ -857,54 +747,41 @@
         {#if filteredAssignments.length === 0}
           <div class="empty-state">
             <strong>{$t('superadmin.radius.empty.assignments_title') || 'No tenant assignments yet'}</strong>
-            <span>{$t('superadmin.radius.empty.assignments_subtitle') || 'Assign one active global server per tenant before creating NAS mappings.'}</span>
+            <span>{$t('superadmin.radius.empty.assignments_subtitle') || 'Assign one active native RADIUS endpoint per tenant before creating NAS mappings.'}</span>
           </div>
         {:else}
           <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>{$t('superadmin.radius.columns.tenant') || 'Tenant'}</th>
-                  <th>{$t('superadmin.radius.columns.server') || 'Server'}</th>
-                  <th>{$t('superadmin.radius.columns.status') || 'Status'}</th>
-                  <th>{$t('superadmin.radius.columns.routers') || 'Routers'}</th>
-                  <th>{$t('superadmin.radius.columns.updated') || 'Updated'}</th>
-                  <th>{$t('superadmin.radius.columns.actions') || 'Actions'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each filteredAssignments as assignment}
-                  <tr>
-                    <td>{assignment.tenant_name}</td>
-                    <td>
-                      <div class="primary">{assignment.server_name}</div>
-                      <div class="muted">{assignment.radius_host}:{assignment.auth_port}/{assignment.acct_port}</div>
-                    </td>
-                    <td>
-                      <span class="badge" class:good={assignment.is_active} class:muted={!assignment.is_active}>
-                        {assignment.is_active
-                          ? $t('superadmin.radius.status.active') || 'Active'
-                          : $t('superadmin.radius.status.inactive') || 'Inactive'}
-                      </span>
-                    </td>
-                    <td>{assignment.router_count}</td>
-                    <td>{formatDateTime(assignment.updated_at)}</td>
-                    <td>
-                      <div class="row-actions">
-                        <button class="btn-link" type="button" onclick={() => openEditAssignmentModal(assignment)}>
-                          {$t('superadmin.radius.actions.edit') || 'Edit'}
-                        </button>
-                        <button class="btn-link" type="button" onclick={() => toggleAssignmentActive(assignment)}>
-                          {assignment.is_active
-                            ? $t('superadmin.radius.actions.deactivate') || 'Deactivate'
-                            : $t('superadmin.radius.actions.activate') || 'Activate'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
+            <Table columns={assignmentColumns} data={filteredAssignments} keyField="id" pagination={true} pageSize={10} mobileView="scroll">
+              {#snippet cell({ item, key })}
+                {#if key === 'tenant'}
+                  {item.tenant_name}
+                {:else if key === 'server'}
+                  <div class="primary">{item.server_name}</div>
+                  <div class="muted">{item.radius_host}:{item.auth_port}/{item.acct_port}</div>
+                {:else if key === 'status'}
+                  <span class="badge" class:good={item.is_active} class:muted={!item.is_active}>
+                    {item.is_active
+                      ? $t('superadmin.radius.status.active') || 'Active'
+                      : $t('superadmin.radius.status.inactive') || 'Inactive'}
+                  </span>
+                {:else if key === 'routers'}
+                  {item.router_count}
+                {:else if key === 'updated'}
+                  {formatDateTime(item.updated_at)}
+                {:else if key === 'actions'}
+                  <div class="row-actions">
+                    <button class="btn-link" type="button" onclick={() => openEditAssignmentModal(item)}>
+                      {$t('superadmin.radius.actions.edit') || 'Edit'}
+                    </button>
+                    <button class="btn-link" type="button" onclick={() => toggleAssignmentActive(item)}>
+                      {item.is_active
+                        ? $t('superadmin.radius.actions.deactivate') || 'Deactivate'
+                        : $t('superadmin.radius.actions.activate') || 'Activate'}
+                    </button>
+                  </div>
+                {/if}
+              {/snippet}
+            </Table>
           </div>
         {/if}
       {:else if activeTab === 'mappings'}
@@ -938,76 +815,61 @@
         {#if filteredMappings.length === 0}
           <div class="empty-state">
             <strong>{$t('superadmin.radius.empty.mappings_title') || 'No NAS mappings yet'}</strong>
-            <span>{$t('superadmin.radius.empty.mappings_subtitle') || 'Create a tenant assignment first, then map a router to start issuing copy-ready MikroTik CLI.'}</span>
+            <span>{$t('superadmin.radius.empty.mappings_subtitle') || 'Create a tenant assignment first, then map a router so MikroTik can authenticate PPPoE against the native RADIUS runtime.'}</span>
           </div>
         {:else}
           <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>{$t('superadmin.radius.columns.tenant') || 'Tenant'}</th>
-                  <th>{$t('superadmin.radius.columns.server') || 'Server'}</th>
-                  <th>{$t('superadmin.radius.columns.router') || 'Router'}</th>
-                  <th>{$t('superadmin.radius.columns.nas') || 'NAS'}</th>
-                  <th>{$t('superadmin.radius.columns.secret') || 'Secret'}</th>
-                  <th>{$t('superadmin.radius.columns.status') || 'Status'}</th>
-                  <th>{$t('superadmin.radius.columns.updated') || 'Updated'}</th>
-                  <th>{$t('superadmin.radius.columns.actions') || 'Actions'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each filteredMappings as mapping}
-                  <tr>
-                    <td>{mapping.tenant_name}</td>
-                    <td>
-                      <div class="primary">{mapping.server_name}</div>
-                      <div class="muted">{mapping.radius_host}:{mapping.auth_port}/{mapping.acct_port}</div>
-                    </td>
-                    <td>{mapping.router_name || ($t('superadmin.radius.labels.unknown_router') || 'Unknown router')}</td>
-                    <td>
-                      <div class="primary">{mapping.nas_name}</div>
-                      <div class="muted">{mapping.nas_ip_or_cidr}</div>
-                      {#if mapping.shortname}
-                        <div class="muted">{mapping.shortname}</div>
-                      {/if}
-                    </td>
-                    <td><code>{mapping.shared_secret_masked}</code></td>
-                    <td>
-                      <span class="badge" class:good={mapping.is_active} class:muted={!mapping.is_active}>
-                        {mapping.is_active
-                          ? $t('superadmin.radius.status.active') || 'Active'
-                          : $t('superadmin.radius.status.inactive') || 'Inactive'}
-                      </span>
-                    </td>
-                    <td>{formatDateTime(mapping.updated_at)}</td>
-                    <td>
-                      <div class="row-actions wrap">
-                        <button class="btn-link" type="button" onclick={() => openEditMappingModal(mapping)}>
-                          {$t('superadmin.radius.actions.edit') || 'Edit'}
-                        </button>
-                        <button class="btn-link" type="button" onclick={() => openSecretDialog(mapping, 'reveal')}>
-                          {$t('superadmin.radius.actions.reveal_secret') || 'Reveal secret'}
-                        </button>
-                        <button class="btn-link" type="button" onclick={() => openSecretDialog(mapping, 'rotate')}>
-                          {$t('superadmin.radius.actions.rotate_secret') || 'Rotate secret'}
-                        </button>
-                        <button class="btn-link" type="button" onclick={() => copyMappingCli(mapping)}>
-                          {$t('superadmin.radius.actions.copy_cli') || 'Copy CLI'}
-                        </button>
-                        <button class="btn-link" type="button" onclick={() => toggleMappingActive(mapping)}>
-                          {mapping.is_active
-                            ? $t('superadmin.radius.actions.deactivate') || 'Deactivate'
-                            : $t('superadmin.radius.actions.activate') || 'Activate'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
+            <Table columns={mappingColumns} data={filteredMappings} keyField="id" pagination={true} pageSize={10} mobileView="scroll">
+              {#snippet cell({ item, key })}
+                {#if key === 'tenant'}
+                  {item.tenant_name}
+                {:else if key === 'server'}
+                  <div class="primary">{item.server_name}</div>
+                  <div class="muted">{item.radius_host}:{item.auth_port}/{item.acct_port}</div>
+                {:else if key === 'router'}
+                  {item.router_name || ($t('superadmin.radius.labels.unknown_router') || 'Unknown router')}
+                {:else if key === 'nas'}
+                  <div class="primary">{item.nas_name}</div>
+                  <div class="muted">{item.nas_ip_or_cidr}</div>
+                  {#if item.shortname}
+                    <div class="muted">{item.shortname}</div>
+                  {/if}
+                {:else if key === 'secret'}
+                  <code>{item.shared_secret_masked}</code>
+                {:else if key === 'status'}
+                  <span class="badge" class:good={item.is_active} class:muted={!item.is_active}>
+                    {item.is_active
+                      ? $t('superadmin.radius.status.active') || 'Active'
+                      : $t('superadmin.radius.status.inactive') || 'Inactive'}
+                  </span>
+                {:else if key === 'updated'}
+                  {formatDateTime(item.updated_at)}
+                {:else if key === 'actions'}
+                  <div class="row-actions wrap">
+                    <button class="btn-link" type="button" onclick={() => openEditMappingModal(item)}>
+                      {$t('superadmin.radius.actions.edit') || 'Edit'}
+                    </button>
+                    <button class="btn-link" type="button" onclick={() => openSecretDialog(item, 'reveal')}>
+                      {$t('superadmin.radius.actions.reveal_secret') || 'Reveal secret'}
+                    </button>
+                    <button class="btn-link" type="button" onclick={() => openSecretDialog(item, 'rotate')}>
+                      {$t('superadmin.radius.actions.rotate_secret') || 'Rotate secret'}
+                    </button>
+                    <button class="btn-link" type="button" onclick={() => copyMappingCli(item)}>
+                      {$t('superadmin.radius.actions.copy_cli') || 'Copy CLI'}
+                    </button>
+                    <button class="btn-link" type="button" onclick={() => toggleMappingActive(item)}>
+                      {item.is_active
+                        ? $t('superadmin.radius.actions.deactivate') || 'Deactivate'
+                        : $t('superadmin.radius.actions.activate') || 'Activate'}
+                    </button>
+                  </div>
+                {/if}
+              {/snippet}
+            </Table>
           </div>
         {/if}
-      {:else}
+      {:else if activeTab === 'users'}
         <div class="panel-head">
           <div>
             <h2>{$t('superadmin.radius.sections.users') || 'Users'}</h2>
@@ -1038,64 +900,112 @@
         {#if filteredUsers.length === 0}
           <div class="empty-state">
             <strong>{$t('superadmin.radius.empty.users_title') || 'No managed RADIUS users yet'}</strong>
-            <span>{$t('superadmin.radius.empty.users_subtitle') || 'Managed-RADIUS-backed PPPoE users will appear here after tenant admins apply them.'}</span>
+            <span>{$t('superadmin.radius.empty.users_subtitle') || 'PPPoE users backed by the native RADIUS runtime will appear here after tenant admins apply them.'}</span>
           </div>
         {:else}
           <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>{$t('superadmin.radius.columns.tenant') || 'Tenant'}</th>
-                  <th>{$t('superadmin.radius.columns.router') || 'Router'}</th>
-                  <th>{$t('superadmin.radius.columns.username') || 'Username'}</th>
-                  <th>{$t('superadmin.radius.columns.identity') || 'RADIUS Identity'}</th>
-                  <th>{$t('superadmin.radius.columns.profile') || 'Profile'}</th>
-                  <th>{$t('superadmin.radius.columns.status') || 'Status'}</th>
-                  <th>{$t('superadmin.radius.columns.last_sync') || 'Last Sync'}</th>
-                  <th>{$t('superadmin.radius.columns.last_error') || 'Last Error'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each filteredUsers as user}
-                  <tr>
-                    <td>{user.tenant_name}</td>
-                    <td>{user.router_name || ($t('superadmin.radius.labels.unknown_router') || 'Unknown router')}</td>
-                    <td><div class="primary">{user.username}</div></td>
-                    <td>{user.radius_identity || user.username}</td>
-                    <td>{user.router_profile_name || ($t('superadmin.radius.labels.none') || 'None')}</td>
-                    <td>
-                      <span class="badge" class:good={userBadgeTone(user) === 'good'} class:warn={userBadgeTone(user) === 'warn'} class:danger={userBadgeTone(user) === 'danger'}>
-                        {#if user.radius_present}
-                          {$t('superadmin.radius.status.provisioned') || 'Provisioned'}
-                        {:else if user.radius_last_error}
-                          {$t('superadmin.radius.status.needs_attention') || 'Needs attention'}
-                        {:else}
-                          {$t('superadmin.radius.status.not_provisioned') || 'Not provisioned'}
-                        {/if}
-                      </span>
-                    </td>
-                    <td>{formatDateTime(user.radius_last_sync_at)}</td>
-                    <td class="error-text">{user.radius_last_error || ($t('superadmin.radius.labels.none') || 'None')}</td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
+            <Table columns={userColumns} data={filteredUsers} keyField="id" pagination={true} pageSize={10} mobileView="scroll">
+              {#snippet cell({ item, key })}
+                {#if key === 'tenant'}
+                  {item.tenant_name}
+                {:else if key === 'router'}
+                  {item.router_name || ($t('superadmin.radius.labels.unknown_router') || 'Unknown router')}
+                {:else if key === 'username'}
+                  <div class="primary">{item.username}</div>
+                {:else if key === 'identity'}
+                  {item.radius_identity || item.username}
+                {:else if key === 'profile'}
+                  {item.router_profile_name || ($t('superadmin.radius.labels.none') || 'None')}
+                {:else if key === 'status'}
+                  <span class="badge" class:good={userBadgeTone(item) === 'good'} class:warn={userBadgeTone(item) === 'warn'} class:danger={userBadgeTone(item) === 'danger'}>
+                    {#if item.is_provisioned}
+                      {$t('superadmin.radius.status.provisioned') || 'Provisioned'}
+                    {:else if item.provisioning_error}
+                      {$t('superadmin.radius.status.needs_attention') || 'Needs attention'}
+                    {:else}
+                      {$t('superadmin.radius.status.not_provisioned') || 'Not provisioned'}
+                    {/if}
+                  </span>
+                {:else if key === 'last_sync'}
+                  {formatDateTime(item.provisioned_at)}
+                {:else if key === 'last_error'}
+                  <span class="error-text">
+                    {item.provisioning_error || ($t('superadmin.radius.labels.none') || 'None')}
+                  </span>
+                {/if}
+              {/snippet}
+            </Table>
+          </div>
+        {/if}
+      {:else}
+        <div class="panel-head">
+          <div>
+            <h2>{$t('superadmin.radius.sections.sessions') || 'Sessions'}</h2>
+            <p>{filteredSessions.length} / {sessions.length}</p>
+          </div>
+          <div class="filters filters-wide">
+            <input bind:value={sessionSearch} placeholder={$t('superadmin.radius.filters.search_sessions') || 'Search sessions...'} />
+            <select bind:value={sessionTenantFilter}>
+              <option value="all">{$t('superadmin.radius.filters.all_tenants') || 'All tenants'}</option>
+              {#each tenantOptions as tenantName}
+                <option value={tenantName}>{tenantName}</option>
+              {/each}
+            </select>
+            <select bind:value={sessionRouterFilter}>
+              <option value="all">{$t('superadmin.radius.filters.all_routers') || 'All routers'}</option>
+              {#each routerOptions as routerName}
+                <option value={routerName}>{routerName}</option>
+              {/each}
+            </select>
+          </div>
+        </div>
+
+        {#if filteredSessions.length === 0}
+          <div class="empty-state">
+            <strong>{$t('superadmin.radius.empty.sessions_title') || 'No accounting sessions yet'}</strong>
+            <span>{$t('superadmin.radius.empty.sessions_subtitle') || 'Accounting start, interim, and stop packets from the native RADIUS runtime will appear here.'}</span>
+          </div>
+        {:else}
+          <div class="table-wrap">
+            <Table columns={sessionColumns} data={filteredSessions} keyField="id" pagination={true} pageSize={10} mobileView="scroll">
+              {#snippet cell({ item, key })}
+                {#if key === 'tenant'}
+                  {item.tenant_name}
+                {:else if key === 'router'}
+                  {item.router_name || ($t('superadmin.radius.labels.unknown_router') || 'Unknown router')}
+                {:else if key === 'username'}
+                  <div class="primary">{item.username}</div>
+                {:else if key === 'identity'}
+                  {item.radius_identity || item.username}
+                {:else if key === 'status'}
+                  <span
+                    class="badge"
+                    class:good={getManagedRadiusSessionBadgeTone(item) === 'good'}
+                    class:muted={getManagedRadiusSessionBadgeTone(item) === 'muted'}
+                  >
+                    {getManagedRadiusSessionStatus(item) === 'online'
+                      ? $t('superadmin.radius.status.online') || 'Online'
+                      : $t('superadmin.radius.status.offline') || 'Offline'}
+                  </span>
+                  <div class="muted">{item.status_type}</div>
+                {:else if key === 'ip_address'}
+                  {item.framed_ip_address || ($t('superadmin.radius.labels.none') || 'None')}
+                {:else if key === 'session_id'}
+                  <code>{item.acct_session_id}</code>
+                  <div class="muted">
+                    RX {formatManagedRadiusSessionOctets(item.input_octets)} / TX {formatManagedRadiusSessionOctets(item.output_octets)}
+                  </div>
+                {:else if key === 'updated'}
+                  {formatDateTime(item.last_update_at || item.updated_at)}
+                {/if}
+              {/snippet}
+            </Table>
           </div>
         {/if}
       {/if}
     </section>
   {/if}
 </div>
-
-{#if ServerFormModalComponent}
-  <ServerFormModalComponent
-    bind:show={showServerModal}
-    loading={savingServer}
-    isEditing={Boolean(editingServerId)}
-    bind:server={serverForm}
-    onSubmit={submitServerForm}
-  />
-{/if}
 
 {#if AssignmentFormModalComponent}
   <AssignmentFormModalComponent
@@ -1164,6 +1074,24 @@
     margin: 0;
     color: var(--text-secondary);
     max-width: 760px;
+  }
+
+  .runtime-banner {
+    margin-top: 0.9rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .runtime-meta {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+  }
+
+  .runtime-meta strong {
+    color: var(--text-primary);
+    font-weight: 600;
   }
 
   .hero-actions {
@@ -1256,10 +1184,6 @@
     margin: 0 0 0.25rem;
   }
 
-  .inline-badge {
-    margin-left: 0.5rem;
-  }
-
   .panel-head p {
     margin: 0;
     color: var(--text-secondary);
@@ -1283,26 +1207,6 @@
 
   .table-wrap {
     overflow-x: auto;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 1080px;
-  }
-
-  th,
-  td {
-    text-align: left;
-    padding: 0.9rem 0.75rem;
-    border-bottom: 1px solid var(--border-color);
-    vertical-align: top;
-  }
-
-  th {
-    color: var(--text-secondary);
-    font-weight: 600;
-    font-size: 0.9rem;
   }
 
   .primary {

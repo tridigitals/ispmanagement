@@ -910,7 +910,7 @@
         "tenants": "Tenants",
         "host": "Host",
         "ports": "Ports",
-        "database": "Database",
+        "database": "Runtime profile",
         "status": "Status",
         "routers": "Routers",
         "updated": "Updated",
@@ -933,7 +933,7 @@
         "needs_attention": "Needs attention"
       },
       "empty": {
-        "servers_title": "No managed RADIUS servers yet",
+        "servers_title": "No native RADIUS endpoints yet",
         "servers_subtitle": "Create global RADIUS infrastructure here, then assign tenants and map routers.",
         "assignments_title": "No tenant assignments yet",
         "assignments_subtitle": "Assign one active global server per tenant before creating NAS mappings.",
@@ -948,11 +948,11 @@
         "never": "Never"
       },
       "actions": {
-        "new_server": "New server",
+        "new_server": "New endpoint",
         "new_assignment": "New assignment",
         "new_mapping": "New mapping",
-        "create_server": "Create server",
-        "save_server": "Save server",
+        "create_server": "Create endpoint",
+        "save_server": "Save endpoint",
         "create_assignment": "Create assignment",
         "save_assignment": "Save assignment",
         "create_mapping": "Create mapping",
@@ -970,23 +970,23 @@
       },
       "form": {
         "tenant": "Tenant",
-        "server": "Server",
+        "server": "Endpoint",
         "router": "Router",
         "select_tenant": "Select a tenant",
-        "select_server": "Select a server",
+        "select_server": "Select an endpoint",
         "select_router": "Select a router",
-        "server_name": "Server name",
-        "server_name_placeholder": "Primary RADIUS DB",
-        "db_host": "DB host",
-        "db_port": "DB port",
-        "db_name": "DB name",
-        "db_user": "DB user",
-        "db_password": "DB password",
-        "db_password_placeholder": "Encrypted at rest",
+        "server_name": "Endpoint name",
+        "server_name_placeholder": "Primary RADIUS endpoint",
+        "db_host": "RADIUS host",
+        "db_port": "RADIUS port",
+        "db_name": "Runtime profile",
+        "db_user": "Runtime user",
+        "db_password": "Runtime secret",
+        "db_password_placeholder": "Stored encrypted",
         "db_password_placeholder_edit": "Leave blank to keep current password",
         "notes": "Notes",
         "notes_placeholder": "Optional operational note",
-        "active_server_hint": "Allow this global server to receive tenant assignments",
+        "active_server_hint": "Allow this native endpoint to receive tenant assignments",
         "active_assignment_hint": "Keep this assignment active for the tenant",
         "nas_name": "NAS name",
         "nas_name_placeholder": "router-pop-a",
@@ -999,8 +999,8 @@
       },
       "modals": {
         "server": {
-          "create_title": "New Managed RADIUS server",
-          "edit_title": "Edit Managed RADIUS server"
+          "create_title": "New native RADIUS endpoint",
+          "edit_title": "Edit native RADIUS endpoint"
         },
         "assignment": {
           "create_title": "New tenant assignment",
@@ -1022,8 +1022,8 @@
       "toasts": {
         "server_validation": "Complete the server form first",
         "server_password_required": "Database password is required for new servers",
-        "server_created": "Managed RADIUS server created",
-        "server_updated": "Managed RADIUS server updated",
+        "server_created": "Native RADIUS endpoint created",
+        "server_updated": "Native RADIUS endpoint updated",
         "server_default_set": "Default server updated",
         "server_activated": "Server activated",
         "server_deactivated": "Server deactivated",
@@ -3165,8 +3165,8 @@
         "sync": {
           "present": "On router",
           "missing": "Missing",
-          "present_radius": "On RADIUS",
-          "missing_radius": "Missing on RADIUS"
+          "present_radius": "Provisioned",
+          "missing_radius": "Not provisioned"
         },
         "actions": {
           "reconcile": "Reconcile",
@@ -3184,7 +3184,7 @@
           "assignment_hint": "PPP profile and addressing follow the selected package for this router.",
           "package_mapping_missing": "This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.",
           "disabled_hint": "Disable this PPPoE account (will be applied to router when you click Apply).",
-          "source_radius_hint": "This account will be provisioned to managed RADIUS and expects a managed RADIUS server plus NAS mapping for the selected router.",
+          "source_radius_hint": "This account will be provisioned to managed RADIUS and expects a native RADIUS endpoint plus NAS mapping for the selected router.",
           "source_router_hint": "This account will be provisioned to the router-local PPP secret table.",
           "disabled_hint_radius": "For managed RADIUS, this disables centralized authentication for the account.",
           "disabled_hint_radius_apply": "Disable this PPPoE account in managed RADIUS when you click Apply to RADIUS."
@@ -3237,14 +3237,14 @@
             "label": "Managed RADIUS"
           },
           "labels": {
-            "server": "Server",
+            "server": "Endpoint",
             "host": "RADIUS host",
             "ports": "Ports",
             "nas_source": "NAS source",
             "shared_secret": "Shared secret"
           },
           "actions": {
-            "assign_default": "Assign Default RADIUS",
+            "assign_default": "Assign Default Endpoint",
             "create_mapping": "Create NAS Mapping",
             "show_secret": "Show secret",
             "hide_secret": "Hide secret",
@@ -3257,7 +3257,7 @@
             "default_assigned": "Default Managed RADIUS assigned",
             "mapping_created": "Managed RADIUS NAS mapping created"
           },
-          "default_ready": "A default Managed RADIUS server is available. Assign it to this tenant to continue with router onboarding.",
+          "default_ready": "A default native RADIUS endpoint is available. Assign it to this tenant to continue with router onboarding.",
           "assignment_only": "Managed RADIUS assignment is active for this tenant, but this router still needs a NAS mapping before CLI setup can be generated.",
           "assignment_only_hint": "Use the button above to auto-create the NAS mapping from this router data.",
           "upgrade": {

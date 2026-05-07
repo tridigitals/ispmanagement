@@ -19,10 +19,12 @@
     showManagedRadiusSecret = $bindable(false),
     assigningManagedRadiusDefault = false,
     creatingManagedRadiusMapping = false,
+    applyingManagedRadius = false,
     copyManagedRadiusSecret,
     copyManagedRadiusScript,
     assignManagedRadiusDefault,
     createManagedRadiusMapping,
+    applyManagedRadius,
     showInterfaceTrafficModal = $bindable(false),
     selectedInterface = null,
     ifaceHistoryLoading = false,
@@ -42,10 +44,12 @@
     showManagedRadiusSecret?: boolean;
     assigningManagedRadiusDefault?: boolean;
     creatingManagedRadiusMapping?: boolean;
+    applyingManagedRadius?: boolean;
     copyManagedRadiusSecret: () => void;
     copyManagedRadiusScript: () => void;
     assignManagedRadiusDefault: () => void;
     createManagedRadiusMapping: () => void;
+    applyManagedRadius: () => void;
     showInterfaceTrafficModal?: boolean;
     selectedInterface?: string | null;
     ifaceHistoryLoading?: boolean;
@@ -86,7 +90,7 @@
             {$t('common.loading') || 'Loading...'}
           {:else}
             {$t('admin.network.routers.managed_radius.actions.assign_default') ||
-              'Assign Default RADIUS'}
+              'Assign Default Endpoint'}
           {/if}
         </button>
       {/if}
@@ -127,6 +131,15 @@
       {/if}
 
       {#if managedRadiusSetup?.configured && managedRadiusSetup.cli_script}
+        <button class="btn btn-sm" type="button" onclick={applyManagedRadius} disabled={applyingManagedRadius}>
+          <Icon name="play" size={14} />
+          {#if applyingManagedRadius}
+            {$t('common.loading') || 'Loading...'}
+          {:else}
+            {$t('admin.network.routers.managed_radius.actions.apply') || 'Apply to Router'}
+          {/if}
+        </button>
+
         <button class="btn ghost btn-sm" type="button" onclick={copyManagedRadiusScript}>
           <Icon name="copy" size={14} />
           {$t('admin.network.routers.managed_radius.actions.copy_cli') || 'Copy CLI'}
@@ -230,7 +243,7 @@
     <div class="setup-upgrade">
       <div class="muted">
         {$t('admin.network.routers.managed_radius.default_ready') ||
-          'A default Managed RADIUS server is available. Assign it to this tenant to continue with router onboarding.'}
+          'A default native RADIUS endpoint is available. Assign it to this tenant to continue with router onboarding.'}
       </div>
     </div>
   {:else}

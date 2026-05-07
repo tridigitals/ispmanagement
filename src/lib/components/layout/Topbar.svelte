@@ -107,7 +107,7 @@
     padding: 0 clamp(12px, 2.4vw, 24px);
     flex-shrink: 0;
     z-index: 40;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .left-section {
@@ -214,6 +214,7 @@
     .topbar {
       gap: 0.5rem;
       padding: 0 clamp(10px, 3.5vw, 16px);
+      overflow: hidden;
     }
 
     .left-section {

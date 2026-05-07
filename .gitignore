@@ -14,5 +14,7 @@ static/pdfjs/
 .superpowers/
 .specify/
 src-tauri/target/
+target-radius-*/
 .worktrees/
 MixRadiusDB_Gasal_2026-04-11_101103.sql.gz
+target/

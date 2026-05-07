@@ -62,18 +62,25 @@ export interface Tenant {
 export interface SuperadminManagedRadiusServer {
   id: string;
   name: string;
-  host: string;
+  endpoint_host: string;
   auth_port: number;
   acct_port: number;
-  db_host: string;
-  db_port: number;
-  db_name: string;
   is_active: boolean;
   is_default: boolean;
   notes: string | null;
   tenant_count: number;
   router_count: number;
   updated_at: string;
+}
+
+export interface SuperadminManagedRadiusRuntimeStatus {
+  enabled: boolean;
+  running: boolean;
+  bind_addr: string;
+  auth_port: number;
+  acct_port: number;
+  advertised_host: string;
+  require_message_authenticator: boolean;
 }
 
 export interface SuperadminManagedRadiusAssignment {
@@ -118,20 +125,41 @@ export interface SuperadminManagedRadiusUser {
   username: string;
   radius_identity: string | null;
   account_source: 'managed_radius' | 'router' | string;
-  radius_present: boolean;
-  radius_last_sync_at: string | null;
-  radius_last_error: string | null;
+  is_provisioned: boolean;
+  provisioned_at: string | null;
+  provisioning_error: string | null;
   router_profile_name: string | null;
+  updated_at: string;
+}
+
+export interface SuperadminManagedRadiusSession {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  router_id: string;
+  router_name: string | null;
+  username: string;
+  radius_identity: string | null;
+  acct_session_id: string;
+  status_type: string;
+  framed_ip_address: string | null;
+  calling_station_id: string | null;
+  session_time_seconds: number | null;
+  input_octets: number | null;
+  output_octets: number | null;
+  started_at: string | null;
+  last_update_at: string | null;
+  ended_at: string | null;
   updated_at: string;
 }
 
 export interface ManagedRadiusServerPayload {
   name: string;
-  db_host: string;
-  db_port?: number | null;
-  db_name: string;
-  db_user: string;
-  db_password?: string | null;
+  endpoint_host: string;
+  endpoint_port?: number | null;
+  runtime_label?: string | null;
+  runtime_user?: string | null;
+  runtime_secret?: string | null;
   is_active: boolean;
   notes?: string | null;
 }
@@ -592,10 +620,10 @@ export interface PppoeAccountPublic {
   router_secret_id: string | null;
   last_sync_at: string | null;
   last_error: string | null;
-  radius_present: boolean;
+  is_provisioned: boolean;
   radius_identity: string | null;
-  radius_last_sync_at: string | null;
-  radius_last_error: string | null;
+  provisioned_at: string | null;
+  provisioning_error: string | null;
   created_at: string;
   updated_at: string;
 }

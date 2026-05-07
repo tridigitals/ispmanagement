@@ -2,8 +2,8 @@ use crate::services::{
     AuditService, AuthService, CustomerService, DhcpStaticServiceManager, EmailService,
     IspPackageService, ManagedRadiusService, MessageTemplateService, MikrotikService,
     MixradiusImportService, NetworkMappingService, NotificationService, PaymentService,
-    PlanService, PppoeService, RoleService, SettingsService, StorageService, SystemService,
-    TeamService, UserService, WhatsappGatewayService,
+    PlanService, PppoeService, RadiusService, RoleService, SettingsService, StorageService,
+    SystemService, TeamService, UserService, WhatsappGatewayService,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -78,6 +78,7 @@ pub struct AppState {
     pub message_template_service: Arc<MessageTemplateService>,
     pub mikrotik_service: Arc<MikrotikService>,
     pub managed_radius_service: Arc<ManagedRadiusService>,
+    pub radius_service: Arc<RadiusService>,
     pub mixradius_import_service: Arc<MixradiusImportService>,
     pub customer_service: Arc<CustomerService>,
     pub pppoe_service: Arc<PppoeService>,
@@ -115,6 +116,7 @@ pub async fn start_server(
     isp_package_service: IspPackageService,
     network_mapping_service: NetworkMappingService,
     backup_service: crate::services::BackupService,
+    radius_service: RadiusService,
     ws_hub: Arc<WsHub>,
     app_data_dir: PathBuf,
     default_port: u16,
@@ -141,6 +143,7 @@ pub async fn start_server(
         isp_package_service,
         network_mapping_service,
         backup_service,
+        radius_service,
         ws_hub,
         app_data_dir,
         default_port,

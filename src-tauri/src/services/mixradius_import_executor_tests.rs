@@ -259,10 +259,10 @@ mod mixradius_import_executor_tests {
                 router_secret_id text,
                 last_sync_at timestamp with time zone,
                 last_error text,
-                radius_present boolean NOT NULL DEFAULT false,
+                is_provisioned boolean NOT NULL DEFAULT false,
                 radius_identity text,
-                radius_last_sync_at timestamp with time zone,
-                radius_last_error text,
+                provisioned_at timestamp with time zone,
+                provisioning_error text,
                 created_at timestamp with time zone NOT NULL,
                 updated_at timestamp with time zone NOT NULL,
                 CONSTRAINT pppoe_accounts_tenant_router_username_unique UNIQUE (tenant_id, router_id, username),
@@ -2175,7 +2175,7 @@ mod mixradius_import_executor_tests {
                 id, tenant_id, router_id, customer_id, location_id, username, password_enc,
                 package_id, profile_id, router_profile_name, remote_address, address_pool, disabled, comment,
                 account_source, router_present, router_secret_id, last_sync_at, last_error,
-                radius_present, radius_identity, radius_last_sync_at, radius_last_error,
+                is_provisioned, radius_identity, provisioned_at, provisioning_error,
                 created_at, updated_at
             )
             VALUES (
@@ -2300,7 +2300,7 @@ mod mixradius_import_executor_tests {
 
         let row = sqlx::query(
             r#"
-            SELECT username, router_id, account_source, router_present, radius_present, radius_identity
+            SELECT username, router_id, account_source, router_present, is_provisioned, radius_identity
             FROM public.pppoe_accounts
             WHERE tenant_id = $1
             "#,
@@ -2313,7 +2313,7 @@ mod mixradius_import_executor_tests {
         assert_eq!(row.get::<String, _>("router_id"), "router-radius-1");
         assert_eq!(row.get::<String, _>("account_source"), "managed_radius");
         assert!(!row.get::<bool, _>("router_present"));
-        assert!(!row.get::<bool, _>("radius_present"));
+        assert!(!row.get::<bool, _>("is_provisioned"));
         assert_eq!(
             row.get::<Option<String>, _>("radius_identity"),
             Some("radius001".into())

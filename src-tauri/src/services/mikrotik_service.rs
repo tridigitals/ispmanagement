@@ -13,7 +13,7 @@ use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     CreateMikrotikIpPoolRequest, CreateMikrotikPppProfileRequest, CreateMikrotikRouterRequest,
-    MikrotikAlert, MikrotikDhcpServer, MikrotikHealthSnapshot, MikrotikIncident,
+    ManagedRadiusRouterSetup, MikrotikAlert, MikrotikDhcpServer, MikrotikHealthSnapshot, MikrotikIncident,
     MikrotikInterfaceCounter, MikrotikInterfaceMetric, MikrotikInterfaceSnapshot,
     MikrotikIpAddressSnapshot, MikrotikIpPool, MikrotikIpPoolDeleteResult,
     MikrotikIpPoolDependencyItem, MikrotikIpPoolDependencyStatus, MikrotikLogClearResult,
@@ -60,6 +60,98 @@ struct Thresholds {
     latency_risk_ms: i32,
     latency_hot_ms: i32,
     offline_after_secs: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ManagedRadiusDesiredConfig {
+    host: String,
+    secret: String,
+    auth_port: i32,
+    acct_port: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RouterRadiusEntry {
+    id: String,
+    service_ppp: bool,
+    host: String,
+    secret: String,
+    auth_port: i32,
+    acct_port: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ManagedRadiusPppAaaTarget {
+    use_radius: bool,
+    accounting: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ManagedRadiusRouterUpdate {
+    Create {
+        host: String,
+        secret: String,
+        auth_port: i32,
+        acct_port: i32,
+    },
+    Update {
+        id: String,
+        host: String,
+        secret: String,
+        auth_port: i32,
+        acct_port: i32,
+    },
+    Noop,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ManagedRadiusApplyPlan {
+    radius_entry: ManagedRadiusRouterUpdate,
+    ppp_aaa: ManagedRadiusPppAaaTarget,
+}
+
+fn build_managed_radius_apply_plan(
+    desired: &ManagedRadiusDesiredConfig,
+    entries: &[RouterRadiusEntry],
+) -> ManagedRadiusApplyPlan {
+    let ppp_entries: Vec<&RouterRadiusEntry> = entries.iter().filter(|entry| entry.service_ppp).collect();
+    let target = ppp_entries
+        .iter()
+        .copied()
+        .find(|entry| entry.host == desired.host)
+        .or_else(|| ppp_entries.first().copied());
+
+    let radius_entry = match target {
+        Some(entry)
+            if entry.host == desired.host
+                && entry.secret == desired.secret
+                && entry.auth_port == desired.auth_port
+                && entry.acct_port == desired.acct_port =>
+        {
+            ManagedRadiusRouterUpdate::Noop
+        }
+        Some(entry) => ManagedRadiusRouterUpdate::Update {
+            id: entry.id.clone(),
+            host: desired.host.clone(),
+            secret: desired.secret.clone(),
+            auth_port: desired.auth_port,
+            acct_port: desired.acct_port,
+        },
+        None => ManagedRadiusRouterUpdate::Create {
+            host: desired.host.clone(),
+            secret: desired.secret.clone(),
+            auth_port: desired.auth_port,
+            acct_port: desired.acct_port,
+        },
+    };
+
+    ManagedRadiusApplyPlan {
+        radius_entry,
+        ppp_aaa: ManagedRadiusPppAaaTarget {
+            use_radius: true,
+            accounting: true,
+        },
+    }
 }
 
 #[cfg(test)]
@@ -4107,6 +4199,220 @@ impl MikrotikService {
         })
     }
 
+    fn radius_services_include_ppp(value: Option<&str>) -> bool {
+        value
+            .unwrap_or_default()
+            .split(',')
+            .map(str::trim)
+            .any(|service| service.eq_ignore_ascii_case("ppp"))
+    }
+
+    fn parse_router_i32(value: Option<&String>, default_value: i32) -> i32 {
+        value
+            .and_then(|raw| raw.trim().parse::<i32>().ok())
+            .unwrap_or(default_value)
+    }
+
+    async fn list_router_radius_entries(
+        &self,
+        dev: &MikrotikDevice,
+    ) -> Result<Vec<RouterRadiusEntry>, anyhow::Error> {
+        let cmd = CommandBuilder::new()
+            .command("/radius/print")
+            .attribute("detail", Some(""))
+            .build();
+        let mut rx = dev.send_command(cmd).await?;
+        let mut entries = Vec::new();
+        while let Some(res) = rx.recv().await {
+            match res? {
+                CommandResponse::Reply(reply) => {
+                    let id = reply
+                        .attributes
+                        .get(".id")
+                        .and_then(|value| value.clone())
+                        .unwrap_or_default()
+                        .trim()
+                        .to_string();
+                    if id.is_empty() {
+                        continue;
+                    }
+
+                    entries.push(RouterRadiusEntry {
+                        id,
+                        service_ppp: Self::radius_services_include_ppp(
+                            reply.attributes.get("service").and_then(|value| value.as_deref()),
+                        ),
+                        host: reply
+                            .attributes
+                            .get("address")
+                            .and_then(|value| value.clone())
+                            .unwrap_or_default()
+                            .trim()
+                            .to_string(),
+                        secret: reply
+                            .attributes
+                            .get("secret")
+                            .and_then(|value| value.clone())
+                            .unwrap_or_default()
+                            .trim()
+                            .to_string(),
+                        auth_port: Self::parse_router_i32(
+                            reply
+                                .attributes
+                                .get("authentication-port")
+                                .and_then(|value| value.as_ref()),
+                            1812,
+                        ),
+                        acct_port: Self::parse_router_i32(
+                            reply
+                                .attributes
+                                .get("accounting-port")
+                                .and_then(|value| value.as_ref()),
+                            1813,
+                        ),
+                    });
+                }
+                CommandResponse::Trap(trap) => {
+                    let message = trap.message.trim().to_string();
+                    return Err(anyhow::anyhow!(if message.is_empty() {
+                        "Router rejected RADIUS print".to_string()
+                    } else {
+                        message
+                    }));
+                }
+                CommandResponse::Done(_) => break,
+                _ => {}
+            }
+        }
+
+        Ok(entries)
+    }
+
+    async fn apply_router_radius_update(
+        &self,
+        dev: &MikrotikDevice,
+        update: &ManagedRadiusRouterUpdate,
+    ) -> AppResult<()> {
+        match update {
+            ManagedRadiusRouterUpdate::Create {
+                host,
+                secret,
+                auth_port,
+                acct_port,
+            } => {
+                let auth_port_value = auth_port.to_string();
+                let acct_port_value = acct_port.to_string();
+                let mut rx = dev
+                    .send_command(
+                        CommandBuilder::new()
+                            .command("/radius/add")
+                            .attribute("service", Some("ppp"))
+                            .attribute("address", Some(host.as_str()))
+                            .attribute("secret", Some(secret.as_str()))
+                            .attribute("authentication-port", Some(auth_port_value.as_str()))
+                            .attribute("accounting-port", Some(acct_port_value.as_str()))
+                            .attribute("protocol", Some("udp"))
+                            .build(),
+                    )
+                    .await
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
+                while let Some(res) = rx.recv().await {
+                    match res.map_err(|e| AppError::Internal(e.to_string()))? {
+                        CommandResponse::Trap(trap) => {
+                            let message = trap.message.trim().to_string();
+                            return Err(AppError::Validation(if message.is_empty() {
+                                "Router rejected Managed RADIUS create".into()
+                            } else {
+                                message
+                            }));
+                        }
+                        CommandResponse::Done(_) => break,
+                        _ => {}
+                    }
+                }
+                Ok(())
+            }
+            ManagedRadiusRouterUpdate::Update {
+                id,
+                host,
+                secret,
+                auth_port,
+                acct_port,
+            } => {
+                let auth_port_value = auth_port.to_string();
+                let acct_port_value = acct_port.to_string();
+                let mut rx = dev
+                    .send_command(
+                        CommandBuilder::new()
+                            .command("/radius/set")
+                            .attribute("numbers", Some(id.as_str()))
+                            .attribute("address", Some(host.as_str()))
+                            .attribute("secret", Some(secret.as_str()))
+                            .attribute("authentication-port", Some(auth_port_value.as_str()))
+                            .attribute("accounting-port", Some(acct_port_value.as_str()))
+                            .attribute("protocol", Some("udp"))
+                            .build(),
+                    )
+                    .await
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
+                while let Some(res) = rx.recv().await {
+                    match res.map_err(|e| AppError::Internal(e.to_string()))? {
+                        CommandResponse::Trap(trap) => {
+                            let message = trap.message.trim().to_string();
+                            return Err(AppError::Validation(if message.is_empty() {
+                                "Router rejected Managed RADIUS update".into()
+                            } else {
+                                message
+                            }));
+                        }
+                        CommandResponse::Done(_) => break,
+                        _ => {}
+                    }
+                }
+                Ok(())
+            }
+            ManagedRadiusRouterUpdate::Noop => Ok(()),
+        }
+    }
+
+    async fn apply_router_ppp_aaa(
+        &self,
+        dev: &MikrotikDevice,
+        target: &ManagedRadiusPppAaaTarget,
+    ) -> AppResult<()> {
+        let mut rx = dev
+            .send_command(
+                CommandBuilder::new()
+                    .command("/ppp/aaa/set")
+                    .attribute(
+                        "use-radius",
+                        Some(if target.use_radius { "yes" } else { "no" }),
+                    )
+                    .attribute(
+                        "accounting",
+                        Some(if target.accounting { "yes" } else { "no" }),
+                    )
+                    .build(),
+            )
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        while let Some(res) = rx.recv().await {
+            match res.map_err(|e| AppError::Internal(e.to_string()))? {
+                CommandResponse::Trap(trap) => {
+                    let message = trap.message.trim().to_string();
+                    return Err(AppError::Validation(if message.is_empty() {
+                        "Router rejected PPP AAA update".into()
+                    } else {
+                        message
+                    }));
+                }
+                CommandResponse::Done(_) => break,
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+
     async fn find_router_ppp_profile_id_by_name(
         &self,
         dev: &MikrotikDevice,
@@ -4631,6 +4937,59 @@ impl MikrotikService {
 
         rows.sort_by(|a, b| a.name.cmp(&b.name));
         Ok(rows)
+    }
+
+    pub async fn apply_managed_radius_setup(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        setup: &ManagedRadiusRouterSetup,
+    ) -> AppResult<()> {
+        if !setup.configured {
+            return Err(AppError::Validation(
+                "Managed RADIUS is not configured for this router yet".into(),
+            ));
+        }
+
+        let host = setup
+            .radius_host
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| AppError::Configuration("Managed RADIUS host is missing".into()))?;
+        let secret = setup
+            .shared_secret
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| AppError::Configuration("Managed RADIUS secret is missing".into()))?;
+
+        let router = self
+            .get_router(tenant_id, router_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Router not found".into()))?;
+        let dev = self
+            .connect_device(&router)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let existing_entries = self
+            .list_router_radius_entries(&dev)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        let plan = build_managed_radius_apply_plan(
+            &ManagedRadiusDesiredConfig {
+                host: host.to_string(),
+                secret: secret.to_string(),
+                auth_port: setup.auth_port,
+                acct_port: setup.acct_port,
+            },
+            &existing_entries,
+        );
+
+        self.apply_router_radius_update(&dev, &plan.radius_entry).await?;
+        self.apply_router_ppp_aaa(&dev, &plan.ppp_aaa).await?;
+        Ok(())
     }
 
     pub async fn get_ip_pool_dependencies(
@@ -5714,6 +6073,84 @@ mod tests {
             MikrotikService::find_router_named_item_id(&rows, "pool-c"),
             None
         );
+    }
+
+    #[test]
+    fn managed_radius_apply_plan_creates_radius_entry_when_router_has_none() {
+        let plan = build_managed_radius_apply_plan(
+            &ManagedRadiusDesiredConfig {
+                host: "radius.example.com".to_string(),
+                secret: "shared-secret".to_string(),
+                auth_port: 1812,
+                acct_port: 1813,
+            },
+            &[],
+        );
+
+        assert_eq!(
+            plan.radius_entry,
+            ManagedRadiusRouterUpdate::Create {
+                host: "radius.example.com".to_string(),
+                secret: "shared-secret".to_string(),
+                auth_port: 1812,
+                acct_port: 1813,
+            }
+        );
+        assert_eq!(plan.ppp_aaa.use_radius, true);
+        assert_eq!(plan.ppp_aaa.accounting, true);
+    }
+
+    #[test]
+    fn managed_radius_apply_plan_updates_matching_router_entry() {
+        let plan = build_managed_radius_apply_plan(
+            &ManagedRadiusDesiredConfig {
+                host: "radius.example.com".to_string(),
+                secret: "next-secret".to_string(),
+                auth_port: 1812,
+                acct_port: 1813,
+            },
+            &[RouterRadiusEntry {
+                id: "*7".to_string(),
+                service_ppp: true,
+                host: "radius.example.com".to_string(),
+                secret: "old-secret".to_string(),
+                auth_port: 1812,
+                acct_port: 1813,
+            }],
+        );
+
+        assert_eq!(
+            plan.radius_entry,
+            ManagedRadiusRouterUpdate::Update {
+                id: "*7".to_string(),
+                host: "radius.example.com".to_string(),
+                secret: "next-secret".to_string(),
+                auth_port: 1812,
+                acct_port: 1813,
+            }
+        );
+    }
+
+    #[test]
+    fn managed_radius_apply_plan_is_noop_when_router_already_matches() {
+        let plan = build_managed_radius_apply_plan(
+            &ManagedRadiusDesiredConfig {
+                host: "radius.example.com".to_string(),
+                secret: "shared-secret".to_string(),
+                auth_port: 1812,
+                acct_port: 1813,
+            },
+            &[RouterRadiusEntry {
+                id: "*7".to_string(),
+                service_ppp: true,
+                host: "radius.example.com".to_string(),
+                secret: "shared-secret".to_string(),
+                auth_port: 1812,
+                acct_port: 1813,
+            }],
+        );
+
+        assert_eq!(plan.radius_entry, ManagedRadiusRouterUpdate::Noop);
     }
 
     #[test]

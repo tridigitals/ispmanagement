@@ -140,7 +140,7 @@
       <div class="field-hint">
         {#if formAccountSource === 'managed_radius'}
           {$t('admin.network.pppoe.form.source_radius_hint') ||
-            'This account will be provisioned to managed RADIUS and expects a managed RADIUS server plus NAS mapping for the selected router.'}
+            'This account will be provisioned to managed RADIUS and expects a native RADIUS endpoint plus NAS mapping for the selected router.'}
         {:else}
           {$t('admin.network.pppoe.form.source_router_hint') ||
             'This account will be provisioned to the router-local PPP secret table.'}

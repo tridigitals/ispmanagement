@@ -79,8 +79,8 @@ describe('admin dashboard helpers', () => {
           { status: 'completed' },
         ]),
         pppoe: summarizePppoeAccounts([
-          { disabled: false, router_present: true, radius_present: true },
-          { disabled: true, router_present: false, radius_present: true },
+          { disabled: false, router_present: true, is_provisioned: true },
+          { disabled: true, router_present: false, is_provisioned: true },
         ]),
       },
     });
@@ -101,6 +101,18 @@ describe('admin dashboard helpers', () => {
       '/admin/network/pppoe',
       '/admin/customers',
     ]);
+  });
+
+  it('treats unprovisioned native radius accounts as pending provisioning, not external sync drift', () => {
+    expect(
+      summarizePppoeAccounts([
+        { disabled: false, router_present: true, is_provisioned: true },
+        { disabled: false, router_present: true, is_provisioned: false },
+      ]),
+    ).toMatchObject({
+      total: 2,
+      radiusMissing: 1,
+    });
   });
 
   it('gives admin users a broad business snapshot and billing trend', () => {

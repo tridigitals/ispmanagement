@@ -15,12 +15,9 @@ pub struct TenantListResponse {
 pub struct SuperadminManagedRadiusServer {
     pub id: String,
     pub name: String,
-    pub host: String,
+    pub endpoint_host: String,
     pub auth_port: i32,
     pub acct_port: i32,
-    pub db_host: String,
-    pub db_port: i32,
-    pub db_name: String,
     pub is_active: bool,
     pub is_default: bool,
     pub notes: Option<String>,
@@ -54,10 +51,32 @@ pub struct SuperadminManagedRadiusUser {
     pub username: String,
     pub radius_identity: Option<String>,
     pub account_source: String,
-    pub radius_present: bool,
-    pub radius_last_sync_at: Option<chrono::DateTime<chrono::Utc>>,
-    pub radius_last_error: Option<String>,
+    pub is_provisioned: bool,
+    pub provisioned_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub provisioning_error: Option<String>,
     pub router_profile_name: Option<String>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+pub struct SuperadminManagedRadiusSession {
+    pub id: String,
+    pub tenant_id: String,
+    pub tenant_name: String,
+    pub router_id: String,
+    pub router_name: Option<String>,
+    pub username: String,
+    pub radius_identity: Option<String>,
+    pub acct_session_id: String,
+    pub status_type: String,
+    pub framed_ip_address: Option<String>,
+    pub calling_station_id: Option<String>,
+    pub session_time_seconds: Option<i64>,
+    pub input_octets: Option<i64>,
+    pub output_octets: Option<i64>,
+    pub started_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub last_update_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub ended_at: Option<chrono::DateTime<chrono::Utc>>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -76,6 +95,12 @@ pub struct SuperadminManagedRadiusAssignmentListResponse {
 #[derive(serde::Serialize)]
 pub struct SuperadminManagedRadiusUserListResponse {
     pub data: Vec<SuperadminManagedRadiusUser>,
+    pub total: i64,
+}
+
+#[derive(serde::Serialize)]
+pub struct SuperadminManagedRadiusSessionListResponse {
+    pub data: Vec<SuperadminManagedRadiusSession>,
     pub total: i64,
 }
 
@@ -158,12 +183,9 @@ pub async fn list_managed_radius_servers(
         SELECT
           s.id,
           s.name,
-          s.db_host AS host,
+          s.db_host AS endpoint_host,
           $1::integer AS auth_port,
           $2::integer AS acct_port,
-          s.db_host,
-          s.db_port,
-          s.db_name,
           s.is_active,
           s.is_default,
           s.notes,
@@ -178,7 +200,7 @@ pub async fn list_managed_radius_servers(
           ON n.radius_server_id = s.id
          AND n.is_active = true
         GROUP BY
-          s.id, s.name, s.db_host, s.db_port, s.db_name, s.is_active, s.is_default, s.notes, s.updated_at
+          s.id, s.name, s.db_host, s.is_active, s.is_default, s.notes, s.updated_at
         ORDER BY s.is_default DESC, s.updated_at DESC, s.name ASC
         "#,
     )
@@ -277,9 +299,9 @@ pub async fn list_managed_radius_users(
           p.username,
           p.radius_identity,
           p.account_source,
-          p.radius_present,
-          p.radius_last_sync_at,
-          p.radius_last_error,
+          p.is_provisioned,
+          p.provisioned_at,
+          p.provisioning_error,
           p.router_profile_name,
           p.updated_at
         FROM pppoe_accounts p
@@ -299,6 +321,62 @@ pub async fn list_managed_radius_users(
     let total = users.len() as i64;
 
     Ok(SuperadminManagedRadiusUserListResponse { data: users, total })
+}
+
+#[tauri::command]
+pub async fn list_managed_radius_sessions(
+    token: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<SuperadminManagedRadiusSessionListResponse, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    let sessions: Vec<SuperadminManagedRadiusSession> = sqlx::query_as(
+        r#"
+        SELECT
+          s.id,
+          s.tenant_id,
+          t.name AS tenant_name,
+          s.router_id,
+          r.name AS router_name,
+          s.username,
+          s.radius_identity,
+          s.acct_session_id,
+          s.status_type::text AS status_type,
+          s.framed_ip_address,
+          s.calling_station_id,
+          s.session_time_seconds,
+          s.input_octets,
+          s.output_octets,
+          s.started_at,
+          s.last_update_at,
+          s.ended_at,
+          s.updated_at
+        FROM radius_accounting_sessions s
+        INNER JOIN tenants t
+          ON t.id = s.tenant_id
+        LEFT JOIN mikrotik_routers r
+          ON r.id = s.router_id
+        ORDER BY COALESCE(s.last_update_at, s.updated_at) DESC
+        LIMIT 200
+        "#,
+    )
+    .fetch_all(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let total = sessions.len() as i64;
+
+    Ok(SuperadminManagedRadiusSessionListResponse {
+        data: sessions,
+        total,
+    })
 }
 
 #[tauri::command]
@@ -409,11 +487,11 @@ pub async fn list_managed_radius_mappings(
 pub async fn create_managed_radius_server(
     token: String,
     name: String,
-    db_host: String,
-    db_port: Option<i32>,
-    db_name: String,
-    db_user: String,
-    db_password: String,
+    endpoint_host: String,
+    endpoint_port: Option<i32>,
+    runtime_label: Option<String>,
+    runtime_user: Option<String>,
+    runtime_secret: Option<String>,
     is_active: bool,
     notes: Option<String>,
     auth_service: State<'_, AuthService>,
@@ -432,11 +510,11 @@ pub async fn create_managed_radius_server(
         .create_server(
             crate::services::managed_radius_service::ManagedRadiusServerUpsert {
                 name,
-                db_host,
-                db_port,
-                db_name,
-                db_user,
-                db_password: Some(db_password),
+                endpoint_host,
+                endpoint_port,
+                runtime_label,
+                runtime_user,
+                runtime_secret,
                 is_active,
                 notes,
             },
@@ -451,7 +529,7 @@ pub async fn create_managed_radius_server(
             "MANAGED_RADIUS_SERVER_CREATED",
             "managed_radius_server",
             Some(&server.id),
-            Some("Managed RADIUS server created by Superadmin"),
+            Some("Native RADIUS endpoint created by Superadmin"),
             None,
         )
         .await;
@@ -465,11 +543,11 @@ pub async fn update_managed_radius_server(
     token: String,
     id: String,
     name: String,
-    db_host: String,
-    db_port: Option<i32>,
-    db_name: String,
-    db_user: String,
-    db_password: Option<String>,
+    endpoint_host: String,
+    endpoint_port: Option<i32>,
+    runtime_label: Option<String>,
+    runtime_user: Option<String>,
+    runtime_secret: Option<String>,
     is_active: bool,
     notes: Option<String>,
     auth_service: State<'_, AuthService>,
@@ -489,11 +567,11 @@ pub async fn update_managed_radius_server(
             &id,
             crate::services::managed_radius_service::ManagedRadiusServerUpsert {
                 name,
-                db_host,
-                db_port,
-                db_name,
-                db_user,
-                db_password,
+                endpoint_host,
+                endpoint_port,
+                runtime_label,
+                runtime_user,
+                runtime_secret,
                 is_active,
                 notes,
             },
@@ -508,7 +586,7 @@ pub async fn update_managed_radius_server(
             "MANAGED_RADIUS_SERVER_UPDATED",
             "managed_radius_server",
             Some(&id),
-            Some("Managed RADIUS server updated by Superadmin"),
+            Some("Native RADIUS endpoint updated by Superadmin"),
             None,
         )
         .await;
@@ -549,7 +627,7 @@ pub async fn set_managed_radius_server_active(
             },
             "managed_radius_server",
             Some(&id),
-            Some("Managed RADIUS server active state changed by Superadmin"),
+            Some("Native RADIUS endpoint active state changed by Superadmin"),
             None,
         )
         .await;
@@ -586,7 +664,7 @@ pub async fn set_managed_radius_server_default(
             "managed_radius_server",
             Some(&server.id),
             Some(&format!(
-                "Set managed RADIUS server {} as default",
+                "Set native RADIUS endpoint {} as default",
                 server.name
             )),
             None,
@@ -1188,7 +1266,7 @@ pub async fn create_tenant(
                         .await
                     {
                         tracing::error!(
-                            "Failed to auto-assign default Managed RADIUS server for tenant {}: {}",
+                            "Failed to auto-assign default native RADIUS endpoint for tenant {}: {}",
                             tenant.id,
                             e
                         );

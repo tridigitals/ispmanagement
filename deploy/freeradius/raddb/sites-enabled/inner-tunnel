@@ -1,9 +1,0 @@
-server inner-tunnel {
-    authorize {
-        reject
-    }
-
-    authenticate {
-        reject
-    }
-}

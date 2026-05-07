@@ -76,18 +76,18 @@ describe('managed radius control plane helpers', () => {
     expect(
       buildManagedRadiusTabs(
         {
-          servers: 3,
           assignments: 4,
           mappings: 8,
           users: 22,
+          sessions: 5,
         },
         'mappings',
       ),
     ).toEqual([
-      { id: 'servers', count: 3, active: false },
       { id: 'assignments', count: 4, active: false },
       { id: 'mappings', count: 8, active: true },
       { id: 'users', count: 22, active: false },
+      { id: 'sessions', count: 5, active: false },
     ]);
   });
 });

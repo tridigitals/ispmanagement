@@ -6,8 +6,8 @@ use saas_tauri_lib::{
         metrics_service::MetricsService, AnnouncementScheduler, AuditService, AuthService,
         BackupService, CustomerService, DhcpStaticServiceManager, EmailOutboxService, EmailService,
         IspPackageService, MikrotikService, NetworkMappingService, NotificationService,
-        PaymentService, PlanService, PppoeService, RoleService, SettingsService, StorageService,
-        SystemService, TeamService, UserService,
+        PaymentService, PlanService, PppoeService, RadiusRuntimeConfig, RadiusService, RoleService,
+        SettingsService, StorageService, SystemService, TeamService, UserService,
     },
 };
 use std::env;
@@ -70,6 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let settings_service = SettingsService::new(pool.clone(), audit_service.clone());
     let email_service = EmailService::new(settings_service.clone());
+    let radius_service = RadiusService::new(pool.clone(), RadiusRuntimeConfig::from_env());
     let auth_service = AuthService::new(
         pool.clone(),
         jwt_secret,
@@ -154,6 +155,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         audit_service.clone(),
     );
     announcement_scheduler.start().await;
+    radius_service.start().await?;
 
     let scheduler = BackupScheduler::new(
         pool.clone(),
@@ -186,6 +188,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         isp_package_service,
         network_mapping_service,
         backup_service,
+        radius_service,
         ws_hub,
         app_data_dir,
         3000,

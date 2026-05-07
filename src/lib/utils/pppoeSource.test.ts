@@ -27,19 +27,19 @@ describe('pppoe source helpers', () => {
     );
   });
 
-  it('uses radius presence for managed radius sync status', () => {
+  it('uses native radius provisioning language for managed radius status', () => {
     expect(
       getPppoeSyncDisplay({
         account_source: 'managed_radius',
         router_present: false,
-        radius_present: true,
+        is_provisioned: true,
         last_sync_at: null,
-        radius_last_sync_at: '2026-04-14T01:00:00Z',
+        provisioned_at: '2026-04-14T01:00:00Z',
         last_error: null,
-        radius_last_error: null,
+        provisioning_error: null,
       }),
     ).toEqual({
-      label: 'On RADIUS',
+      label: 'Provisioned',
       tone: 'ok',
       syncedAt: '2026-04-14T01:00:00Z',
       error: null,
@@ -51,11 +51,11 @@ describe('pppoe source helpers', () => {
       getPppoeSyncDisplay({
         account_source: 'router',
         router_present: false,
-        radius_present: true,
+        is_provisioned: true,
         last_sync_at: '2026-04-14T02:00:00Z',
-        radius_last_sync_at: '2026-04-14T01:00:00Z',
+        provisioned_at: '2026-04-14T01:00:00Z',
         last_error: 'router missing',
-        radius_last_error: null,
+        provisioning_error: null,
       }),
     ).toEqual({
       label: 'Missing',

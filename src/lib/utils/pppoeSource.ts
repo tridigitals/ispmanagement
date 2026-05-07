@@ -3,11 +3,11 @@ export type PppoeAccountSource = 'router' | 'managed_radius';
 export type PppoeSyncDisplayInput = {
   account_source: PppoeAccountSource;
   router_present: boolean;
-  radius_present: boolean;
+  is_provisioned: boolean;
   last_sync_at: string | null;
-  radius_last_sync_at: string | null;
+  provisioned_at: string | null;
   last_error: string | null;
-  radius_last_error: string | null;
+  provisioning_error: string | null;
 };
 
 export type PppoeSyncDisplay = {
@@ -36,10 +36,10 @@ export function getPppoeCreatedAndAppliedToastFallback(source: PppoeAccountSourc
 export function getPppoeSyncDisplay(row: PppoeSyncDisplayInput): PppoeSyncDisplay {
   if (row.account_source === 'managed_radius') {
     return {
-      label: row.radius_present ? 'On RADIUS' : 'Missing on RADIUS',
-      tone: row.radius_present ? 'ok' : 'warn',
-      syncedAt: row.radius_last_sync_at,
-      error: row.radius_last_error,
+      label: row.is_provisioned ? 'Provisioned' : 'Not provisioned',
+      tone: row.is_provisioned ? 'ok' : 'warn',
+      syncedAt: row.provisioned_at,
+      error: row.provisioning_error,
     };
   }
 

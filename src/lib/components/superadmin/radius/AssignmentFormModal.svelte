@@ -35,7 +35,7 @@
 
   let serverOptions = $derived(
     servers.map((server: SuperadminManagedRadiusServer) => ({
-      label: `${server.name} (${server.db_host})`,
+      label: `${server.name} (${server.endpoint_host})`,
       value: server.id,
     })),
   );
@@ -58,10 +58,10 @@
         disabled={loading || isEditing}
       />
       <Select
-        label={$t('superadmin.radius.form.server') || 'Server'}
+        label={$t('superadmin.radius.form.server') || 'Endpoint'}
         options={serverOptions}
         bind:value={assignment.radius_server_id}
-        placeholder={$t('superadmin.radius.form.select_server') || 'Select a server'}
+        placeholder={$t('superadmin.radius.form.select_server') || 'Select an endpoint'}
         disabled={loading}
       />
     </div>

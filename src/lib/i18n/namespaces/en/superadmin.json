@@ -182,7 +182,7 @@
   },
   "radius": {
     "title": "Managed RADIUS",
-    "subtitle": "Observe global RADIUS infrastructure and provisioned PPPoE users across tenants.",
+    "subtitle": "Manage the native RADIUS runtime, tenant assignments, and NAS mappings for MikroTik PPPoE.",
     "refresh": "Refresh",
     "loading": "Loading managed RADIUS observability...",
     "stats": {
@@ -191,6 +191,7 @@
       "mappings": "NAS Mappings",
       "routers": "Mapped Routers",
       "users": "Users",
+      "sessions": "Sessions",
       "out_of_sync": "Needs Attention"
     },
     "filters": {
@@ -198,6 +199,7 @@
       "search_assignments": "Search assignments...",
       "search_mappings": "Search mappings...",
       "search_users": "Search users...",
+      "search_sessions": "Search sessions...",
       "all_statuses": "All statuses",
       "active": "Active",
       "inactive": "Inactive",
@@ -212,15 +214,15 @@
       "servers": "Servers",
       "assignments": "Tenant Assignments",
       "mappings": "NAS Mappings",
-      "users": "Users"
+      "users": "Users",
+      "sessions": "Sessions"
     },
     "columns": {
       "server": "Server",
       "tenant": "Tenant",
       "tenants": "Tenants",
-      "host": "Host",
+      "host": "Endpoint",
       "ports": "Ports",
-      "database": "Database",
       "status": "Status",
       "routers": "Routers",
       "updated": "Updated",
@@ -232,7 +234,9 @@
       "nas": "NAS",
       "secret": "Secret",
       "last_sync": "Last Sync",
-      "last_error": "Last Error"
+      "last_error": "Last Error",
+      "ip_address": "Framed IP",
+      "session_id": "Session ID"
     },
     "status": {
       "active": "Active",
@@ -240,29 +244,42 @@
       "default": "Default",
       "provisioned": "Provisioned",
       "not_provisioned": "Not provisioned",
-      "needs_attention": "Needs attention"
+      "needs_attention": "Needs attention",
+      "online": "Online",
+      "offline": "Offline"
     },
     "empty": {
-      "servers_title": "No managed RADIUS servers yet",
-      "servers_subtitle": "Create global RADIUS infrastructure here, then assign tenants and map routers.",
+      "servers_title": "No native RADIUS endpoints yet",
+      "servers_subtitle": "Create a native RADIUS endpoint here, then assign tenants and map routers.",
       "assignments_title": "No tenant assignments yet",
-      "assignments_subtitle": "Assign one active global server per tenant before creating NAS mappings.",
+      "assignments_subtitle": "Assign one active native RADIUS endpoint per tenant before creating NAS mappings.",
       "mappings_title": "No NAS mappings yet",
-      "mappings_subtitle": "Create a tenant assignment first, then map a router to start issuing copy-ready MikroTik CLI.",
+      "mappings_subtitle": "Create a tenant assignment first, then map a router so MikroTik can authenticate PPPoE against the native RADIUS runtime.",
       "users_title": "No managed RADIUS users yet",
-      "users_subtitle": "Managed-RADIUS-backed PPPoE users will appear here after tenant admins apply them."
+      "users_subtitle": "PPPoE users backed by the native RADIUS runtime will appear here after tenant admins apply them.",
+      "sessions_title": "No accounting sessions yet",
+      "sessions_subtitle": "Accounting start, interim, and stop packets from the native RADIUS runtime will appear here."
     },
     "labels": {
       "unknown_router": "Unknown router",
       "none": "None",
       "never": "Never"
     },
+    "runtime": {
+      "disabled": "Disabled",
+      "running": "Running",
+      "stopped": "Stopped",
+      "endpoint": "Endpoint",
+      "authenticator": "Message-Authenticator",
+      "required": "Required",
+      "optional": "Optional"
+    },
     "actions": {
-      "new_server": "New server",
+      "new_server": "New endpoint",
       "new_assignment": "New assignment",
       "new_mapping": "New mapping",
-      "create_server": "Create server",
-      "save_server": "Save server",
+      "create_server": "Create endpoint",
+      "save_server": "Save endpoint",
       "create_assignment": "Create assignment",
       "save_assignment": "Save assignment",
       "create_mapping": "Create mapping",
@@ -280,23 +297,17 @@
     },
     "form": {
       "tenant": "Tenant",
-      "server": "Server",
+      "server": "Endpoint",
       "router": "Router",
       "select_tenant": "Select a tenant",
-      "select_server": "Select a server",
+      "select_server": "Select an endpoint",
       "select_router": "Select a router",
-      "server_name": "Server name",
-      "server_name_placeholder": "Primary RADIUS DB",
-      "db_host": "DB host",
-      "db_port": "DB port",
-      "db_name": "DB name",
-      "db_user": "DB user",
-      "db_password": "DB password",
-      "db_password_placeholder": "Encrypted at rest",
-      "db_password_placeholder_edit": "Leave blank to keep current password",
+      "server_name": "Endpoint name",
+      "server_name_placeholder": "Primary RADIUS endpoint",
+      "endpoint_host": "Endpoint host",
       "notes": "Notes",
       "notes_placeholder": "Optional operational note",
-      "active_server_hint": "Allow this global server to receive tenant assignments",
+      "active_server_hint": "Allow this native endpoint to receive tenant assignments",
       "active_assignment_hint": "Keep this assignment active for the tenant",
       "nas_name": "NAS name",
       "nas_name_placeholder": "router-pop-a",
@@ -309,8 +320,8 @@
     },
     "modals": {
       "server": {
-        "create_title": "New Managed RADIUS server",
-        "edit_title": "Edit Managed RADIUS server"
+        "create_title": "New native RADIUS endpoint",
+        "edit_title": "Edit native RADIUS endpoint"
       },
       "assignment": {
         "create_title": "New tenant assignment",
@@ -331,9 +342,8 @@
     },
     "toasts": {
       "server_validation": "Complete the server form first",
-      "server_password_required": "Database password is required for new servers",
-      "server_created": "Managed RADIUS server created",
-      "server_updated": "Managed RADIUS server updated",
+      "server_created": "Native RADIUS endpoint created",
+      "server_updated": "Native RADIUS endpoint updated",
       "server_default_set": "Default server updated",
       "server_activated": "Server activated",
       "server_deactivated": "Server deactivated",
