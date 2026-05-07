@@ -10,6 +10,41 @@ use std::collections::HashSet;
 use uuid::Uuid;
 
 impl CustomerService {
+    pub(super) fn normalize_installation_work_order_visibility_mode(
+        raw: Option<String>,
+    ) -> &'static str {
+        match raw
+            .as_deref()
+            .map(str::trim)
+            .map(str::to_ascii_lowercase)
+            .as_deref()
+        {
+            Some("all_staff") => "all_staff",
+            _ => "admin_only",
+        }
+    }
+
+    pub(super) fn should_non_admin_see_unassigned_installation_work_orders(mode: &str) -> bool {
+        mode.trim().eq_ignore_ascii_case("all_staff")
+    }
+
+    #[cfg(test)]
+    pub(super) fn should_actor_see_installation_work_order(
+        can_view_unassigned: bool,
+        actor_id: &str,
+        assigned_to: Option<&str>,
+        status: &str,
+    ) -> bool {
+        let normalized_assigned_to = assigned_to.map(str::trim).filter(|value| !value.is_empty());
+        if normalized_assigned_to == Some(actor_id.trim()) {
+            return true;
+        }
+
+        can_view_unassigned
+            && status.trim().eq_ignore_ascii_case("pending")
+            && normalized_assigned_to.is_none()
+    }
+
     pub(super) fn normalize_billing_cycle(v: &str) -> AppResult<String> {
         let x = v.trim().to_lowercase();
         match x.as_str() {
@@ -125,10 +160,19 @@ impl CustomerService {
 
     pub(super) fn filter_installation_request_user_ids(
         rows: Vec<(String, Option<String>)>,
+        include_technician: bool,
     ) -> Vec<String> {
         let mut set = HashSet::new();
         for (user_id, role) in rows {
-            if Self::is_owner_admin_or_technician_role(role.as_deref()) {
+            let allowed = if include_technician {
+                Self::is_owner_admin_or_technician_role(role.as_deref())
+            } else {
+                matches!(
+                    role.map(|value| value.trim().to_ascii_lowercase()),
+                    Some(role) if matches!(role.as_str(), "owner" | "admin")
+                )
+            };
+            if allowed {
                 set.insert(user_id);
             }
         }
@@ -276,5 +320,17 @@ impl CustomerService {
             .ok()
             .flatten();
         Self::parse_setting_i64(tenant_raw.or(global_raw), 72, 1, 24 * 30)
+    }
+
+    pub(super) async fn resolve_installation_work_order_visibility_mode(
+        &self,
+        tenant_id: &str,
+    ) -> &'static str {
+        let tenant_raw = self
+            .read_tenant_setting_value(tenant_id, "installation_work_order_visibility_mode")
+            .await
+            .ok()
+            .flatten();
+        Self::normalize_installation_work_order_visibility_mode(tenant_raw)
     }
 }

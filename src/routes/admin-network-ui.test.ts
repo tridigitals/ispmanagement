@@ -79,4 +79,21 @@ describe('admin network UI cleanup', () => {
     expect(adminSource).toContain('queueRateLimitPresets[0]');
     expect(installationSource).toContain('installationDhcpQueueRateLimitPresets[0]');
   });
+
+  it('exposes installation visibility controls on the installations page', () => {
+    const source = readSource('src/routes/(app)/admin/network/installations/+page.svelte');
+
+    expect(source).toContain('installation_work_order_visibility_mode');
+    expect(source).toContain('admin_only');
+    expect(source).toContain('all_staff');
+    expect(source).toContain('Work Order Visibility');
+  });
+
+  it('shows the active installation visibility mode in the page header', () => {
+    const source = readSource('src/routes/(app)/admin/network/installations/+page.svelte');
+
+    expect(source).toContain('visibility-mode-pill');
+    expect(source).toContain('visibilityModeLabel');
+    expect(source).toContain('visibilityModeHint');
+  });
 });

@@ -72,6 +72,11 @@ impl CustomerService {
             .filter(|s| !s.is_empty())
             .map(str::to_string);
         let is_admin_owner = self.is_actor_admin_or_owner(tenant_id, actor_id).await?;
+        let visibility_mode = self
+            .resolve_installation_work_order_visibility_mode(tenant_id)
+            .await;
+        let can_view_unassigned = is_admin_owner
+            || Self::should_non_admin_see_unassigned_installation_work_orders(visibility_mode);
 
         #[cfg(feature = "postgres")]
         let rows: Vec<InstallationWorkOrderView> = sqlx::query_as(
@@ -133,10 +138,10 @@ impl CustomerService {
                 )
               )
               AND (
-                $5::bool
-                OR wo.assigned_to = $6
+                wo.assigned_to = $6
                 OR (
-                  wo.status = 'pending'
+                  $5::bool
+                  AND wo.status = 'pending'
                   AND (wo.assigned_to IS NULL OR btrim(wo.assigned_to) = '')
                 )
               )
@@ -156,7 +161,7 @@ impl CustomerService {
         .bind(status_filter)
         .bind(assigned_filter)
         .bind(include_closed)
-        .bind(is_admin_owner)
+        .bind(can_view_unassigned)
         .bind(actor_id)
         .bind(limit as i64)
         .fetch_all(&self.pool)
@@ -222,9 +227,10 @@ impl CustomerService {
                 )
               )
               AND (
-                ? = 1
-                OR wo.assigned_to = ?
+                wo.assigned_to = ?
                 OR (
+                  ? = 1
+                  AND
                   wo.status = 'pending'
                   AND (wo.assigned_to IS NULL OR trim(wo.assigned_to) = '')
                 )
@@ -247,7 +253,7 @@ impl CustomerService {
         .bind(&assigned_filter)
         .bind(&assigned_filter)
         .bind(if include_closed { 1 } else { 0 })
-        .bind(if is_admin_owner { 1 } else { 0 })
+        .bind(if can_view_unassigned { 1 } else { 0 })
         .bind(actor_id)
         .bind(limit as i64)
         .fetch_all(&self.pool)
@@ -307,7 +313,8 @@ impl CustomerService {
             ));
         }
 
-        self.set_installation_work_order_status_internal(
+        let row = self
+            .set_installation_work_order_status_internal(
             actor_id,
             tenant_id,
             work_order_id,
@@ -324,7 +331,17 @@ impl CustomerService {
             "WORK_ORDER_ASSIGN",
             "Assigned installation work order",
         )
-        .await
+        .await?;
+
+        let previous_assigned = current.assigned_to.as_deref().map(str::trim).unwrap_or("");
+        let next_assigned = row.assigned_to.as_deref().map(str::trim).unwrap_or("");
+        if is_admin_owner && !next_assigned.is_empty() && previous_assigned != next_assigned {
+            let _ = self
+                .notify_installation_work_order_assigned(tenant_id, &row, actor_id)
+                .await;
+        }
+
+        Ok(row)
     }
 
     pub async fn claim_installation_work_order(
@@ -1049,6 +1066,82 @@ impl CustomerService {
                 )
                 .await?;
         }
+
+        Ok(())
+    }
+
+    async fn notify_installation_work_order_assigned(
+        &self,
+        tenant_id: &str,
+        work_order: &InstallationWorkOrder,
+        actor_id: &str,
+    ) -> AppResult<()> {
+        let Some(assignee_id) = work_order.assigned_to.as_deref().map(str::trim) else {
+            return Ok(());
+        };
+        if assignee_id.is_empty() || assignee_id == actor_id {
+            return Ok(());
+        }
+
+        #[cfg(feature = "postgres")]
+        let row: Option<(Option<String>, Option<String>, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT c.name, l.label, p.name
+            FROM installation_work_orders wo
+            LEFT JOIN customers c ON c.tenant_id = wo.tenant_id AND c.id = wo.customer_id
+            LEFT JOIN customer_locations l ON l.tenant_id = wo.tenant_id AND l.id = wo.location_id
+            LEFT JOIN customer_subscriptions cs ON cs.tenant_id = wo.tenant_id AND cs.id = wo.subscription_id
+            LEFT JOIN isp_packages p ON p.tenant_id = wo.tenant_id AND p.id = cs.package_id
+            WHERE wo.tenant_id = $1 AND wo.id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&work_order.id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let row: Option<(Option<String>, Option<String>, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT c.name, l.label, p.name
+            FROM installation_work_orders wo
+            LEFT JOIN customers c ON c.tenant_id = wo.tenant_id AND c.id = wo.customer_id
+            LEFT JOIN customer_locations l ON l.tenant_id = wo.tenant_id AND l.id = wo.location_id
+            LEFT JOIN customer_subscriptions cs ON cs.tenant_id = wo.tenant_id AND cs.id = wo.subscription_id
+            LEFT JOIN isp_packages p ON p.tenant_id = wo.tenant_id AND p.id = cs.package_id
+            WHERE wo.tenant_id = ? AND wo.id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&work_order.id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let (customer_name, location_label, package_name) = row.unwrap_or((None, None, None));
+        let mut message = format!("A work order has been assigned to you (WO {}).", work_order.id);
+        if customer_name.is_some() || location_label.is_some() || package_name.is_some() {
+            let customer = customer_name.unwrap_or_else(|| "Customer".to_string());
+            let location = location_label.unwrap_or_else(|| "-".to_string());
+            let package = package_name.unwrap_or_else(|| "-".to_string());
+            message = format!(
+                "A work order has been assigned to you for {} at {} ({}) (WO {}).",
+                customer, location, package, work_order.id
+            );
+        }
+
+        self.notification_service
+            .create_notification(
+                assignee_id.to_string(),
+                Some(tenant_id.to_string()),
+                "Installation Work Order Assigned".to_string(),
+                message,
+                "info".to_string(),
+                "operations".to_string(),
+                Some("/admin/network/installations".to_string()),
+            )
+            .await?;
 
         Ok(())
     }

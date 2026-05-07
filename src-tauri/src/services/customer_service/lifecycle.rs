@@ -240,7 +240,13 @@ impl CustomerService {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(Self::filter_installation_request_user_ids(rows))
+        let mode = self
+            .resolve_installation_work_order_visibility_mode(tenant_id)
+            .await;
+        Ok(Self::filter_installation_request_user_ids(
+            rows,
+            Self::should_non_admin_see_unassigned_installation_work_orders(mode),
+        ))
     }
 
     pub(super) async fn notify_new_installation_request(

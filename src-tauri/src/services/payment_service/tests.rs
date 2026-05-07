@@ -76,7 +76,7 @@ fn filters_installation_alert_recipients_to_owner_admin_and_technician() {
         ("u-tech".to_string(), Some("technician".to_string())),
     ];
 
-    let mut got = filter_installation_request_user_ids(rows);
+    let mut got = filter_installation_request_user_ids(rows, true);
     got.sort();
 
     assert_eq!(
@@ -87,6 +87,21 @@ fn filters_installation_alert_recipients_to_owner_admin_and_technician() {
             "u-tech".to_string()
         ]
     );
+}
+
+#[test]
+fn filters_installation_alert_recipients_to_owner_admin_only_when_technician_hidden() {
+    let rows = vec![
+        ("u-owner".to_string(), Some("Owner".to_string())),
+        ("u-admin".to_string(), Some("admin".to_string())),
+        ("u-tech".to_string(), Some("Technician".to_string())),
+        ("u-member".to_string(), Some("member".to_string())),
+    ];
+
+    let mut got = filter_installation_request_user_ids(rows, false);
+    got.sort();
+
+    assert_eq!(got, vec!["u-admin".to_string(), "u-owner".to_string()]);
 }
 
 #[test]

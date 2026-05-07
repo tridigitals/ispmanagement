@@ -239,6 +239,72 @@ fn installation_completion_auto_invoice_only_runs_for_unpaid_grace_activation() 
 }
 
 #[test]
+fn installation_visibility_mode_defaults_to_admin_only() {
+    assert_eq!(
+        CustomerService::normalize_installation_work_order_visibility_mode(None),
+        "admin_only"
+    );
+    assert_eq!(
+        CustomerService::normalize_installation_work_order_visibility_mode(Some(
+            "unknown".to_string()
+        )),
+        "admin_only"
+    );
+}
+
+#[test]
+fn installation_visibility_mode_accepts_all_staff_and_admin_only() {
+    assert_eq!(
+        CustomerService::normalize_installation_work_order_visibility_mode(Some(
+            "all_staff".to_string()
+        )),
+        "all_staff"
+    );
+    assert_eq!(
+        CustomerService::normalize_installation_work_order_visibility_mode(Some(
+            " Admin_Only ".to_string()
+        )),
+        "admin_only"
+    );
+}
+
+#[test]
+fn unassigned_installation_visibility_depends_on_mode() {
+    assert!(!CustomerService::should_non_admin_see_unassigned_installation_work_orders(
+        "admin_only"
+    ));
+    assert!(CustomerService::should_non_admin_see_unassigned_installation_work_orders("all_staff"));
+}
+
+#[test]
+fn technician_only_sees_assigned_installation_work_orders_in_admin_only_mode() {
+    assert!(CustomerService::should_actor_see_installation_work_order(
+        false,
+        "tech-1",
+        Some("tech-1"),
+        "pending",
+    ));
+    assert!(!CustomerService::should_actor_see_installation_work_order(
+        false,
+        "tech-1",
+        None,
+        "pending",
+    ));
+    assert!(!CustomerService::should_actor_see_installation_work_order(
+        false,
+        "tech-1",
+        Some("tech-2"),
+        "pending",
+    ));
+    assert!(CustomerService::should_actor_see_installation_work_order(
+        true,
+        "tech-1",
+        None,
+        "pending",
+    ));
+}
+
+#[test]
 fn customer_inactive_forces_pppoe_disabled_even_if_subscription_is_active() {
     assert!(CustomerService::should_disable_customer_location_pppoe(
         false,

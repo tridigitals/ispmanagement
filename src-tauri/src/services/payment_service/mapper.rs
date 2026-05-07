@@ -14,10 +14,16 @@ pub(super) fn filter_owner_admin_user_ids(rows: Vec<(String, Option<String>)>) -
 
 pub(super) fn filter_installation_request_user_ids(
     rows: Vec<(String, Option<String>)>,
+    include_technician: bool,
 ) -> Vec<String> {
     let mut set = HashSet::new();
     for (user_id, role) in rows {
-        if is_owner_admin_or_technician_role(role.as_deref()) {
+        let allowed = if include_technician {
+            is_owner_admin_or_technician_role(role.as_deref())
+        } else {
+            is_owner_or_admin_role(role.as_deref())
+        };
+        if allowed {
             set.insert(user_id);
         }
     }

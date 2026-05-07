@@ -84,6 +84,8 @@ export async function refreshUnreadCount(force: boolean = false) {
     unreadCount.set(res.count);
     lastUnreadRefreshAt = now;
   } catch (e) {
+    const fallbackCount = get(notifications).filter((notification) => !notification.is_read).length;
+    unreadCount.set(fallbackCount);
     console.error('Failed to get unread count:', e);
   }
 }

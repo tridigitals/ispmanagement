@@ -32,6 +32,8 @@ const BILLING_AUTO_SUSPEND_GRACE_DAYS_KEY: &str = "billing_auto_suspend_grace_da
 const BILLING_AUTO_RESUME_ON_PAYMENT_KEY: &str = "billing_auto_resume_on_payment";
 const BILLING_REMINDER_ENABLED_KEY: &str = "billing_reminder_enabled";
 const BILLING_REMINDER_SCHEDULE_KEY: &str = "billing_reminder_schedule";
+const INSTALLATION_WORK_ORDER_VISIBILITY_MODE_KEY: &str =
+    "installation_work_order_visibility_mode";
 
 use self::core::{
     customer_invoice_notification_action_url, customer_notification_user_ids,
@@ -3963,6 +3965,10 @@ impl PaymentService {
         &self,
         tenant_id: &str,
     ) -> AppResult<Vec<String>> {
+        let include_technician = self
+            .should_include_technicians_in_installation_request_alerts(tenant_id)
+            .await?;
+
         #[cfg(feature = "postgres")]
         let rows: Vec<(String, Option<String>)> = sqlx::query_as(
             r#"
@@ -3989,7 +3995,43 @@ impl PaymentService {
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        Ok(filter_installation_request_user_ids(rows))
+        Ok(filter_installation_request_user_ids(
+            rows,
+            include_technician,
+        ))
+    }
+
+    async fn should_include_technicians_in_installation_request_alerts(
+        &self,
+        tenant_id: &str,
+    ) -> AppResult<bool> {
+        #[cfg(feature = "postgres")]
+        let raw: Option<String> = sqlx::query_scalar(
+            "SELECT value FROM settings WHERE key = $1 AND tenant_id = $2 LIMIT 1",
+        )
+        .bind(INSTALLATION_WORK_ORDER_VISIBILITY_MODE_KEY)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let raw: Option<String> = sqlx::query_scalar(
+            "SELECT value FROM settings WHERE key = ? AND tenant_id = ? LIMIT 1",
+        )
+        .bind(INSTALLATION_WORK_ORDER_VISIBILITY_MODE_KEY)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(matches!(
+            raw.as_deref()
+                .map(str::trim)
+                .map(str::to_ascii_lowercase)
+                .as_deref(),
+            Some("all_staff")
+        ))
     }
 
     async fn has_sent_invoice_reminder(

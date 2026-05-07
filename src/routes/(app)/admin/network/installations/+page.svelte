@@ -35,6 +35,7 @@
   } from '$lib/utils/dhcpStaticValidation';
   import { buildDhcpStaticQueueRateLimitPresets } from '$lib/utils/dhcpStaticQueuePresets';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import Modal from '$lib/components/ui/Modal.svelte';
   import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import { loadInstallationDetailDialogs } from './installationsPageModules';
@@ -47,6 +48,11 @@
   let includeClosed = $state(false);
   let search = $state('');
   let statusFilter = $state('all');
+  const INSTALLATION_VISIBILITY_SETTING_KEY = 'installation_work_order_visibility_mode';
+  let visibilitySettingsOpen = $state(false);
+  let installationVisibilityMode = $state<'admin_only' | 'all_staff'>('admin_only');
+  let loadingVisibilityMode = $state(false);
+  let savingVisibilityMode = $state(false);
 
   let detailOpen = $state(false);
   let detailDialogsLoading = $state(false);
@@ -174,11 +180,33 @@
     }
     return options;
   });
+  const visibilityModeLabel = $derived.by(() =>
+    installationVisibilityMode === 'all_staff'
+      ? tr(
+          'admin.network.installations.visibility_all_staff',
+          'All including technicians',
+        )
+      : tr('admin.network.installations.visibility_admin_only', 'Admin only'),
+  );
+  const visibilityModeHint = $derived.by(() =>
+    installationVisibilityMode === 'all_staff'
+      ? tr(
+          'admin.network.installations.visibility_all_staff_help',
+          'Pending unassigned work orders can appear to technicians immediately.',
+        )
+      : tr(
+          'admin.network.installations.visibility_admin_only_help',
+          'Technicians only see a work order after admin assigns it to them.',
+        ),
+  );
 
   onMount(() => {
     if (!$can('read', 'work_orders') && !$can('manage', 'work_orders')) {
       goto('/unauthorized');
       return;
+    }
+    if (isAdminOwner) {
+      void loadVisibilityMode();
     }
     void loadAll();
 
@@ -268,6 +296,42 @@
       toast.error(e?.message || 'Failed to load installation work orders');
     } finally {
       loading = false;
+    }
+  }
+
+  async function loadVisibilityMode() {
+    loadingVisibilityMode = true;
+    try {
+      const raw = await api.settings.getValue(INSTALLATION_VISIBILITY_SETTING_KEY);
+      installationVisibilityMode = raw === 'all_staff' ? 'all_staff' : 'admin_only';
+    } catch {
+      installationVisibilityMode = 'admin_only';
+    } finally {
+      loadingVisibilityMode = false;
+    }
+  }
+
+  async function saveVisibilityMode() {
+    if (savingVisibilityMode) return;
+    savingVisibilityMode = true;
+    try {
+      await api.settings.upsert(
+        INSTALLATION_VISIBILITY_SETTING_KEY,
+        installationVisibilityMode,
+        'Controls whether new installation work orders are visible to admins only or all installation staff.',
+      );
+      toast.success(
+        tr(
+          'admin.network.installations.visibility_saved',
+          'Work order visibility updated',
+        ),
+      );
+      visibilitySettingsOpen = false;
+      await loadAll();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to save work order visibility');
+    } finally {
+      savingVisibilityMode = false;
     }
   }
 
@@ -1556,6 +1620,12 @@
     subtitle={tr('admin.network.installations.subtitle', 'Technician pipeline from paid invoices to active service')}
   >
     {#snippet actions()}
+      {#if isAdminOwner}
+        <button class="btn ghost" type="button" onclick={() => (visibilitySettingsOpen = true)}>
+          <Icon name="settings-2" size={14} />
+          {tr('admin.network.installations.visibility_settings', 'Work Order Visibility')}
+        </button>
+      {/if}
       <button
         class="btn ghost"
         type="button"
@@ -1593,6 +1663,15 @@
       <div class="stat-value">{stats.completed}</div>
     </article>
   </div>
+
+  {#if isAdminOwner}
+    <div class="visibility-mode-pill" title={visibilityModeHint}>
+      <span class="visibility-mode-pill__label">
+        {tr('admin.network.installations.visibility_settings', 'Work Order Visibility')}
+      </span>
+      <strong>{visibilityModeLabel}</strong>
+    </div>
+  {/if}
 
   <div class="filters-wrap">
     <NetworkFilterPanel>
@@ -1719,7 +1798,7 @@
   {/if}
 </div>
 
-{#if detailOpen}
+  {#if detailOpen}
   {#if InstallationDetailDialogsComponent}
     <InstallationDetailDialogsComponent
       {tr}
@@ -1844,7 +1923,78 @@
       </div>
     </div>
   {/if}
-{/if}
+  {/if}
+
+  <Modal
+    bind:show={visibilitySettingsOpen}
+    title={tr('admin.network.installations.visibility_settings', 'Work Order Visibility')}
+    width="520px"
+  >
+    <div class="visibility-settings">
+      <p class="visibility-settings__lead">
+        {tr(
+          'admin.network.installations.visibility_settings_desc',
+          'Choose whether new installation work orders stay on admin only until assigned, or also appear to technicians.',
+        )}
+      </p>
+
+      <label class="visibility-option">
+        <input
+          type="radio"
+          name="installation_work_order_visibility_mode"
+          value="admin_only"
+          checked={installationVisibilityMode === 'admin_only'}
+          disabled={loadingVisibilityMode || savingVisibilityMode}
+          onchange={() => (installationVisibilityMode = 'admin_only')}
+        />
+        <div>
+          <strong>{tr('admin.network.installations.visibility_admin_only', 'Admin only')}</strong>
+          <span>
+            {tr(
+              'admin.network.installations.visibility_admin_only_help',
+              'Technicians only see a work order after admin assigns it to them.',
+            )}
+          </span>
+        </div>
+      </label>
+
+      <label class="visibility-option">
+        <input
+          type="radio"
+          name="installation_work_order_visibility_mode"
+          value="all_staff"
+          checked={installationVisibilityMode === 'all_staff'}
+          disabled={loadingVisibilityMode || savingVisibilityMode}
+          onchange={() => (installationVisibilityMode = 'all_staff')}
+        />
+        <div>
+          <strong>{tr('admin.network.installations.visibility_all_staff', 'All including technicians')}</strong>
+          <span>
+            {tr(
+              'admin.network.installations.visibility_all_staff_help',
+              'Pending unassigned work orders can appear to technicians immediately.',
+            )}
+          </span>
+        </div>
+      </label>
+    </div>
+
+    {#snippet footer()}
+      <button
+        class="btn ghost"
+        type="button"
+        onclick={() => (visibilitySettingsOpen = false)}
+        disabled={savingVisibilityMode}
+      >
+        {tr('common.cancel', 'Cancel')}
+      </button>
+      <button class="btn" type="button" onclick={saveVisibilityMode} disabled={savingVisibilityMode}>
+        {savingVisibilityMode
+          ? tr('common.saving', 'Saving...')
+          : tr('common.save', 'Save')}
+      </button>
+    {/snippet}
+  </Modal>
 
 <style>
   .page-content {
@@ -2065,6 +2215,63 @@
     font-size: 0.9rem;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
   }
+  .visibility-mode-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    width: fit-content;
+    max-width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg-surface), var(--color-primary) 5%);
+    color: var(--text-primary);
+  }
+  .visibility-mode-pill__label {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .visibility-mode-pill strong {
+    font-size: 0.92rem;
+    font-weight: 900;
+    white-space: nowrap;
+  }
+  .visibility-settings {
+    display: grid;
+    gap: 14px;
+  }
+  .visibility-settings__lead {
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .visibility-option {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    align-items: start;
+    padding: 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--bg-surface);
+  }
+  .visibility-option input {
+    margin-top: 2px;
+  }
+  .visibility-option strong {
+    display: block;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .visibility-option span {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.45;
+  }
   @media (max-width: 800px) {
     .page-content {
       padding: 16px;
@@ -2076,6 +2283,15 @@
   @media (max-width: 640px) {
     .stats-grid {
       grid-template-columns: 1fr;
+    }
+    .visibility-mode-pill {
+      width: 100%;
+      justify-content: space-between;
+      border-radius: 14px;
+    }
+    .visibility-mode-pill strong {
+      white-space: normal;
+      text-align: right;
     }
   }
 </style>
