@@ -89,6 +89,10 @@ const commandMap: Record<string, { method: string; path: string }> = {
   get_customer: { method: 'GET', path: '/customers/:customerId' },
   create_customer: { method: 'POST', path: '/customers' },
   create_customer_with_portal: { method: 'POST', path: '/customers/with-portal' },
+  create_backoffice_installation_order: {
+    method: 'POST',
+    path: '/customers/orders/installations',
+  },
   update_customer: { method: 'PUT', path: '/customers/:customerId' },
   delete_customer: { method: 'DELETE', path: '/customers/:customerId' },
   get_customer_lifecycle_observability: {

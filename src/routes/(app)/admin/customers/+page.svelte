@@ -108,6 +108,7 @@
   let emailBody = $state('');
   const canReadCustomers = $derived($can('read', 'customers') || $can('manage', 'customers'));
   const canManageCustomers = $derived($can('manage', 'customers'));
+  const canCreateOrders = $derived($can('create', 'orders'));
 
   let stats = $derived({
     total: customerSummary.total,
@@ -761,6 +762,12 @@
         <Icon name="refresh-cw" size={16} />
         {$t('common.refresh') || 'Refresh'}
       </button>
+      {#if canCreateOrders}
+        <button class="btn btn-secondary" onclick={() => goto('/admin/customers/orders/new')}>
+          <Icon name="clipboard-plus" size={16} />
+          Create Order
+        </button>
+      {/if}
       {#if canManageCustomers}
         <button class="btn btn-secondary" onclick={openInviteModal}>
           <Icon name="link" size={16} />

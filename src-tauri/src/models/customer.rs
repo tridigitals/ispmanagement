@@ -486,6 +486,68 @@ pub struct PortalCheckoutSubscriptionRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BackofficeOrderCustomerMode {
+    New,
+    Existing,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BackofficeOrderLocationMode {
+    New,
+    Existing,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BackofficeOrderCustomerInput {
+    pub name: String,
+    pub email: Option<String>,
+    pub phone: Option<String>,
+    pub notes: Option<String>,
+    pub is_active: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BackofficeOrderLocationInput {
+    pub label: String,
+    pub address_line1: Option<String>,
+    pub address_line2: Option<String>,
+    pub city: Option<String>,
+    pub state: Option<String>,
+    pub postal_code: Option<String>,
+    pub country: Option<String>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CreateBackofficeInstallationOrderRequest {
+    pub customer_mode: BackofficeOrderCustomerMode,
+    pub customer_id: Option<String>,
+    pub customer: Option<BackofficeOrderCustomerInput>,
+    pub location_mode: BackofficeOrderLocationMode,
+    pub location_id: Option<String>,
+    pub location: Option<BackofficeOrderLocationInput>,
+    pub package_id: String,
+    pub billing_cycle: Option<String>,
+    pub notes: Option<String>,
+    pub requested_installation_date: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BackofficeInstallationOrderResponse {
+    pub customer: Customer,
+    pub location: CustomerLocation,
+    pub subscription: CustomerSubscription,
+    pub work_order: InstallationWorkOrder,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CreateCustomerRegistrationInviteRequest {
     #[serde(alias = "expiresInHours")]

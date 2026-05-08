@@ -47,6 +47,16 @@ async fn require_isp_package_permission(
     tenant_id: &str,
     action: &str,
 ) -> AppResult<()> {
+    if action == "read"
+        && state
+            .auth_service
+            .check_permission(&claims.sub, tenant_id, "orders", "create")
+            .await
+            .is_ok()
+    {
+        return Ok(());
+    }
+
     state
         .auth_service
         .check_permission(&claims.sub, tenant_id, "isp_packages", action)

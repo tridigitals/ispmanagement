@@ -289,6 +289,7 @@
   );
   const canReadCustomers = $derived($can('read', 'customers') || $can('manage', 'customers'));
   const canManageCustomers = $derived($can('manage', 'customers'));
+  const canCreateOrders = $derived($can('create', 'orders'));
   const canReadCustomerLocations = $derived(
     $can('read', 'customer_locations') || $can('manage', 'customer_locations'),
   );
@@ -965,6 +966,11 @@
     void goto(`${base}/invoices/${id}`);
   }
 
+  function openCreateOrderForCustomer() {
+    if (!customer) return;
+    void goto(`${customersPath}/orders/new?customer_id=${encodeURIComponent(customer.id)}`);
+  }
+
   function clearBillingFilters() {
     billingStatus = 'all';
     billingDateFrom = '';
@@ -1598,6 +1604,15 @@
           <Icon name="refresh-cw" size={16} />
           {$t('common.refresh') || 'Refresh'}
         </button>
+        {#if canCreateOrders && customer}
+          <button
+            class="btn btn-secondary"
+            onclick={openCreateOrderForCustomer}
+          >
+            <Icon name="clipboard-plus" size={16} />
+            Create Order
+          </button>
+        {/if}
         {#if canManageCustomers}
           <button
             class="btn btn-secondary"

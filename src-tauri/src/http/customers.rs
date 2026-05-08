@@ -2,9 +2,10 @@ use crate::error::{AppError, AppResult};
 use crate::http::auth::extract_ip;
 use crate::http::{middleware::CorrelationId, AppState};
 use crate::models::{
-    AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
-    CreateCustomerRegistrationInviteRequest, CreateCustomerRequest,
-    CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
+    AddCustomerPortalUserRequest, BackofficeInstallationOrderResponse,
+    CreateBackofficeInstallationOrderRequest, CreateCustomerLocationRequest,
+    CreateCustomerPortalUserRequest, CreateCustomerRegistrationInviteRequest,
+    CreateCustomerRequest, CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
     CreateMyCustomerLocationRequest, Customer, CustomerLifecycleObservability, CustomerListItem,
     CustomerLocation, CustomerPortalSubscriptionStats, CustomerPortalUser,
     CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
@@ -29,6 +30,7 @@ pub fn router() -> Router<AppState> {
         // Admin
         .route("/", get(list_customers).post(create_customer))
         .route("/with-portal", post(create_customer_with_portal))
+        .route("/orders/installations", post(create_backoffice_installation_order))
         .route("/summary", get(get_customer_summary))
         .route(
             "/invites",
@@ -213,7 +215,12 @@ async fn list_customers(
     Query(q): Query<ListQuery>,
 ) -> AppResult<Json<PaginatedResponse<CustomerListItem>>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
-    require_permission(&state, &claims, &tenant_id, "customers", "read").await?;
+    if require_permission(&state, &claims, &tenant_id, "customers", "read")
+        .await
+        .is_err()
+    {
+        require_permission(&state, &claims, &tenant_id, "orders", "create").await?;
+    }
     let resp = state
         .customer_service
         .list_customers(
@@ -266,7 +273,12 @@ async fn get_customer(
     Path(id): Path<String>,
 ) -> AppResult<Json<Customer>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
-    require_permission(&state, &claims, &tenant_id, "customers", "read").await?;
+    if require_permission(&state, &claims, &tenant_id, "customers", "read")
+        .await
+        .is_err()
+    {
+        require_permission(&state, &claims, &tenant_id, "orders", "create").await?;
+    }
     let row = state
         .customer_service
         .get_customer(&claims.sub, &tenant_id, &id)
@@ -449,7 +461,12 @@ async fn list_locations(
     Path(id): Path<String>,
 ) -> AppResult<Json<Vec<CustomerLocation>>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
-    require_permission(&state, &claims, &tenant_id, "customer_locations", "read").await?;
+    if require_permission(&state, &claims, &tenant_id, "customer_locations", "read")
+        .await
+        .is_err()
+    {
+        require_permission(&state, &claims, &tenant_id, "orders", "create").await?;
+    }
     let rows = state
         .customer_service
         .list_locations(&claims.sub, &tenant_id, &id)
@@ -879,6 +896,22 @@ async fn create_subscription(
     let row = state
         .customer_service
         .create_customer_subscription(&claims.sub, &tenant_id, dto, Some(&ip))
+        .await?;
+    Ok(Json(row))
+}
+
+async fn create_backoffice_installation_order(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Json(dto): Json<CreateBackofficeInstallationOrderRequest>,
+) -> AppResult<Json<BackofficeInstallationOrderResponse>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "orders", "create").await?;
+    let ip = extract_ip(&headers, addr);
+    let row = state
+        .customer_service
+        .create_backoffice_installation_order(&claims.sub, &tenant_id, dto, Some(&ip))
         .await?;
     Ok(Json(row))
 }

@@ -1,5 +1,7 @@
 import { getTokenOrThrow, safeInvoke } from './core';
 import type {
+  BackofficeInstallationOrderResponse,
+  CreateBackofficeInstallationOrderRequest,
   Customer,
   CustomerListItem,
   CustomerLifecycleObservability,
@@ -87,6 +89,16 @@ export const customers = {
       token: getTokenOrThrow(),
       ...dto,
     }),
+
+  orders: {
+    createInstallation: (
+      dto: CreateBackofficeInstallationOrderRequest,
+    ): Promise<BackofficeInstallationOrderResponse> =>
+      safeInvoke('create_backoffice_installation_order', {
+        token: getTokenOrThrow(),
+        ...dto,
+      }),
+  },
 
   update: (
     customerId: string,

@@ -172,6 +172,11 @@ impl RoleService {
             ("isp_packages", "read", "View ISP packages"),
             ("isp_packages", "manage", "Manage ISP packages"),
             // Installation work orders (tenant scoped)
+            (
+                "orders",
+                "create",
+                "Create installation orders from backoffice",
+            ),
             ("work_orders", "read", "View installation work orders"),
             ("work_orders", "manage", "Manage installation work orders"),
             // Billing / Payments (tenant scoped)
@@ -270,6 +275,7 @@ impl RoleService {
                     "pppoe:manage",
                     "isp_packages:read",
                     "isp_packages:manage",
+                    "orders:create",
                     "work_orders:read",
                     "work_orders:manage",
                     "billing:read",
@@ -341,6 +347,7 @@ impl RoleService {
                     "pppoe:manage",
                     "isp_packages:read",
                     "isp_packages:manage",
+                    "orders:create",
                     "work_orders:read",
                     "work_orders:manage",
                     "billing:read",
@@ -436,6 +443,7 @@ impl RoleService {
                     "customers:manage",
                     "customer_locations:read",
                     "customer_locations:manage",
+                    "orders:create",
                     "work_orders:read",
                     "storage_files:read",
                     "storage_files:upload",
@@ -1407,6 +1415,15 @@ mod tests {
         assert!(admin.contains("ip_pools:manage"));
         assert!(admin.contains("storage_console:read"));
         assert!(admin.contains("storage_files:delete"));
+        assert!(admin.contains("orders:create"));
+    }
+
+    #[test]
+    fn customer_service_role_can_create_orders_without_full_customer_manage() {
+        let customer_service = perms("Customer Service");
+
+        assert!(customer_service.contains("orders:create"));
+        assert!(customer_service.contains("customers:read"));
     }
 
     #[test]

@@ -501,6 +501,23 @@ export interface CustomerLifecycleObservability {
   aging_buckets: CustomerLifecycleAgingBucket[];
 }
 
+export interface InstallationWorkOrder {
+  id: string;
+  tenant_id: string;
+  subscription_id: string;
+  invoice_id: string | null;
+  customer_id: string;
+  location_id: string;
+  router_id: string | null;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | string;
+  assigned_to: string | null;
+  scheduled_at: string | null;
+  completed_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface InstallationWorkOrderView {
   id: string;
   tenant_id: string;
@@ -590,6 +607,50 @@ export interface CustomerPortalInstallationTrackerResponse {
   subscription: CustomerSubscriptionView;
   work_order: InstallationWorkOrderView | null;
   reschedule_request: WorkOrderRescheduleRequestView | null;
+}
+
+export type BackofficeOrderCustomerMode = 'new' | 'existing';
+export type BackofficeOrderLocationMode = 'new' | 'existing';
+
+export interface BackofficeOrderCustomerInput {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+  is_active?: boolean;
+}
+
+export interface BackofficeOrderLocationInput {
+  label: string;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  notes?: string | null;
+}
+
+export interface CreateBackofficeInstallationOrderRequest {
+  customer_mode: BackofficeOrderCustomerMode;
+  customer_id?: string | null;
+  customer?: BackofficeOrderCustomerInput | null;
+  location_mode: BackofficeOrderLocationMode;
+  location_id?: string | null;
+  location?: BackofficeOrderLocationInput | null;
+  package_id: string;
+  billing_cycle?: 'monthly' | 'yearly' | string | null;
+  notes?: string | null;
+  requested_installation_date?: string | null;
+}
+
+export interface BackofficeInstallationOrderResponse {
+  customer: Customer;
+  location: CustomerLocation;
+  subscription: CustomerSubscription;
+  work_order: InstallationWorkOrder;
 }
 
 export interface CustomerSubscriptionOption {

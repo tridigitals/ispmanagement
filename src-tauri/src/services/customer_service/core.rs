@@ -50,9 +50,16 @@ impl CustomerService {
         page: u32,
         per_page: u32,
     ) -> AppResult<PaginatedResponse<CustomerListItem>> {
-        self.auth_service
+        if self
+            .auth_service
             .check_permission(actor_id, tenant_id, "customers", "read")
-            .await?;
+            .await
+            .is_err()
+        {
+            self.auth_service
+                .check_permission(actor_id, tenant_id, "orders", "create")
+                .await?;
+        }
 
         let q = q.unwrap_or_default().trim().to_string();
         let status = match status.unwrap_or_default().trim() {
@@ -262,9 +269,16 @@ impl CustomerService {
         tenant_id: &str,
         customer_id: &str,
     ) -> AppResult<Customer> {
-        self.auth_service
+        if self
+            .auth_service
             .check_permission(actor_id, tenant_id, "customers", "read")
-            .await?;
+            .await
+            .is_err()
+        {
+            self.auth_service
+                .check_permission(actor_id, tenant_id, "orders", "create")
+                .await?;
+        }
 
         #[cfg(feature = "postgres")]
         let customer: Option<Customer> =
@@ -1085,9 +1099,16 @@ impl CustomerService {
         tenant_id: &str,
         customer_id: &str,
     ) -> AppResult<Vec<CustomerLocation>> {
-        self.auth_service
+        if self
+            .auth_service
             .check_permission(actor_id, tenant_id, "customer_locations", "read")
-            .await?;
+            .await
+            .is_err()
+        {
+            self.auth_service
+                .check_permission(actor_id, tenant_id, "orders", "create")
+                .await?;
+        }
 
         // Ensure customer is within tenant
         let _ = self.get_customer(actor_id, tenant_id, customer_id).await?;

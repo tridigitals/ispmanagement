@@ -16,9 +16,10 @@ use dto::{AgingBucketRow, InviteSummaryRow, LifecycleStageRow, OverdueInstallati
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
-    CreateCustomerRegistrationInviteRequest, CreateCustomerRequest,
-    CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
+    AddCustomerPortalUserRequest, BackofficeInstallationOrderResponse,
+    CreateBackofficeInstallationOrderRequest, CreateCustomerLocationRequest,
+    CreateCustomerPortalUserRequest, CreateCustomerRegistrationInviteRequest,
+    CreateCustomerRequest, CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
     CreateMyCustomerLocationRequest, Customer, CustomerLifecycleAgingBucket,
     CustomerLifecycleObservability, CustomerLifecycleStageMetric, CustomerListItem,
     CustomerLocation, CustomerPortalSubscriptionStats, CustomerPortalUser,

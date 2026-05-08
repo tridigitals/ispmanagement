@@ -157,9 +157,16 @@ impl IspPackageService {
         sort_by: Option<String>,
         sort_dir: Option<String>,
     ) -> AppResult<PaginatedResponse<IspPackage>> {
-        self.auth_service
+        if self
+            .auth_service
             .check_permission(actor_id, tenant_id, "isp_packages", "read")
-            .await?;
+            .await
+            .is_err()
+        {
+            self.auth_service
+                .check_permission(actor_id, tenant_id, "orders", "create")
+                .await?;
+        }
 
         let q = q.unwrap_or_default().trim().to_string();
         let offset = (page.saturating_sub(1)) * per_page;
