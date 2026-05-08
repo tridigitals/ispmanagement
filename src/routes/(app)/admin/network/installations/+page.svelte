@@ -36,8 +36,17 @@
   import { buildDhcpStaticQueueRateLimitPresets } from '$lib/utils/dhcpStaticQueuePresets';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import Select2 from '$lib/components/ui/Select2.svelte';
+  import Table from '$lib/components/ui/Table.svelte';
   import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
+  import { buildDefaultInstallationCancelReason } from './cancelReason';
+  import {
+    buildInstallationStats,
+    filterAndSortInstallationRows,
+    type InstallationAssignmentFilter,
+    type InstallationSortKey,
+  } from './installationTableState';
   import { loadInstallationDetailDialogs } from './installationsPageModules';
 
   let loading = $state(true);
@@ -45,9 +54,12 @@
   let creatingInvoiceId = $state<string | null>(null);
   let rows = $state<InstallationWorkOrderView[]>([]);
   let team = $state<TeamMember[]>([]);
-  let includeClosed = $state(false);
   let search = $state('');
   let statusFilter = $state('all');
+  let assignmentFilter = $state<InstallationAssignmentFilter>('all');
+  let assigneeFilterUserId = $state('');
+  let sortKey = $state<InstallationSortKey>('updated_at');
+  let sortDirection = $state<'asc' | 'desc'>('desc');
   const INSTALLATION_VISIBILITY_SETTING_KEY = 'installation_work_order_visibility_mode';
   let visibilitySettingsOpen = $state(false);
   let installationVisibilityMode = $state<'admin_only' | 'all_staff'>('admin_only');
@@ -58,6 +70,9 @@
   let detailDialogsLoading = $state(false);
   let InstallationDetailDialogsComponent = $state<any>(null);
   let activeRow = $state<InstallationWorkOrderView | null>(null);
+  let quickAssignOpen = $state(false);
+  let quickAssignTarget = $state<InstallationWorkOrderView | null>(null);
+  let quickAssignAssignee = $state('');
   let cancelDialogOpen = $state(false);
   let cancelTarget = $state<InstallationWorkOrderView | null>(null);
   let cancelReason = $state('');
@@ -134,29 +149,16 @@
   let lastHandledRefreshSignalTs = $state(0);
 
   const filteredRows = $derived.by(() => {
-    const q = search.trim().toLowerCase();
-    return rows.filter((row) => {
-      if (statusFilter !== 'all' && row.status !== statusFilter) return false;
-      if (!q) return true;
-      const hay = [
-        row.customer_name,
-        row.location_label,
-        row.package_name,
-        row.assigned_to_name,
-        row.status,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return hay.includes(q);
+    return filterAndSortInstallationRows(rows, {
+      search,
+      statusFilter,
+      assignmentFilter,
+      assigneeUserId: assigneeFilterUserId,
+      sortKey,
+      sortDirection,
     });
   });
-  const stats = $derived.by(() => ({
-    total: rows.length,
-    pending: rows.filter((r) => r.status === 'pending').length,
-    inProgress: rows.filter((r) => r.status === 'in_progress').length,
-    completed: rows.filter((r) => r.status === 'completed').length,
-  }));
+  const stats = $derived.by(() => buildInstallationStats(rows));
   const assignableTeam = $derived.by(() =>
     team
       .filter((member) => member.is_active)
@@ -180,6 +182,13 @@
     }
     return options;
   });
+  const installationAssigneeFilterOptions = $derived.by(() => [
+    { value: '', label: 'All assignees' },
+    ...assignableTeam.map((member) => ({
+      value: member.user_id,
+      label: member.name || member.email || member.user_id,
+    })),
+  ]);
   const visibilityModeLabel = $derived.by(() =>
     installationVisibilityMode === 'all_staff'
       ? tr(
@@ -199,6 +208,20 @@
           'Technicians only see a work order after admin assigns it to them.',
         ),
   );
+  const tableColumns = $derived.by(() => [
+    { key: 'customer', label: tr('common.customer', 'Customer'), sortable: true },
+    { key: 'location', label: tr('common.location', 'Location') },
+    { key: 'workflow', label: tr('admin.network.installations.workflow', 'Workflow') },
+    { key: 'assignee', label: tr('common.assignee', 'Assignee'), width: '180px', sortable: true },
+    { key: 'schedule', label: tr('common.schedule', 'Schedule'), width: '210px', sortable: true },
+    { key: 'updated', label: tr('common.updated_at', 'Updated'), width: '190px', sortable: true },
+    {
+      key: 'actions',
+      label: tr('common.actions', 'Actions'),
+      width: '300px',
+      align: 'right' as const,
+    },
+  ]);
 
   onMount(() => {
     if (!$can('read', 'work_orders') && !$can('manage', 'work_orders')) {
@@ -274,7 +297,7 @@
     loading = true;
     try {
       const [workOrders, members] = await Promise.all([
-        api.workOrders.list({ include_closed: includeClosed, limit: 300 }),
+        api.workOrders.list({ include_closed: true, limit: 300 }),
         canManageWorkOrders ? api.workOrders.assignees().catch(() => [] as TeamMember[]) : Promise.resolve([] as TeamMember[]),
       ]);
       rows = workOrders;
@@ -438,11 +461,6 @@
       if (action === 'cancel') await api.workOrders.cancel(row.id, notes);
       if (action === 'reopen') await api.workOrders.reopen(row.id, notes);
 
-      const shouldRevealClosed = (action === 'complete' || action === 'cancel') && !includeClosed;
-      if (shouldRevealClosed) {
-        includeClosed = true;
-      }
-
       toast.success(tr(`admin.network.installations.${action}_ok`, 'Updated'));
       await loadAll();
 
@@ -455,14 +473,6 @@
         }
       }
 
-      if (shouldRevealClosed) {
-        toast.info(
-          tr(
-            'admin.network.installations.closed_revealed',
-            'Work order moved to closed list. Closed filter is now visible.',
-          ),
-        );
-      }
       return true;
     } catch (e: any) {
       toast.error(e?.message || 'Update failed');
@@ -473,9 +483,50 @@
   }
 
   function openCancelDialog(row: InstallationWorkOrderView) {
+    void ensureInstallationDetailDialogsLoaded();
     cancelTarget = row;
-    cancelReason = '';
+    cancelReason = buildDefaultInstallationCancelReason();
     cancelDialogOpen = true;
+  }
+
+  function openQuickAssignDialog(row: InstallationWorkOrderView) {
+    quickAssignTarget = row;
+    quickAssignAssignee = row.assigned_to || '';
+    quickAssignOpen = true;
+  }
+
+  function closeQuickAssignDialog() {
+    quickAssignOpen = false;
+    quickAssignTarget = null;
+    quickAssignAssignee = '';
+  }
+
+  async function confirmQuickAssign() {
+    if (!quickAssignTarget) return;
+    const target = quickAssignTarget;
+    const assignedTo = quickAssignAssignee.trim();
+    if (!assignedTo) {
+      toast.error(tr('admin.network.installations.assign_required', 'Choose assignee first'));
+      return;
+    }
+
+    busyId = target.id;
+    try {
+      await api.workOrders.assign(target.id, {
+        assigned_to: assignedTo,
+      });
+      toast.success(tr('admin.network.installations.assigned', 'Assigned'));
+      await loadAll();
+      const refreshed = rows.find((row) => row.id === target.id) || null;
+      if (refreshed) {
+        openDetail(refreshed);
+      }
+      closeQuickAssignDialog();
+    } catch (e: any) {
+      toast.error(e?.message || 'Assign failed');
+    } finally {
+      busyId = null;
+    }
   }
 
   function closeCancelDialog() {
@@ -1509,6 +1560,34 @@
     return value && value !== key ? value : fallback;
   }
 
+  function provisioningTypeLabel(value?: string | null) {
+    if (value === 'dhcp_static') return 'DHCP Static';
+    if (value === 'pppoe') return 'PPPoE';
+    return 'Provisioning pending';
+  }
+
+  function setQuickStatus(next: string) {
+    statusFilter = next;
+  }
+
+  function handleTableSort(key: string) {
+    const mapping: Record<string, InstallationSortKey | undefined> = {
+      customer: 'customer_name',
+      assignee: 'assigned_to_name',
+      schedule: 'scheduled_at',
+      updated: 'updated_at',
+    };
+    const mapped = mapping[key];
+    if (!mapped) return;
+
+    if (sortKey === mapped) {
+      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortKey = mapped;
+      sortDirection = mapped === 'customer_name' || mapped === 'assigned_to_name' ? 'asc' : 'desc';
+    }
+  }
+
   function formatSubscriptionStatus(status: string) {
     const normalized = status.trim().toLowerCase();
     if (normalized === 'grace_active') {
@@ -1626,18 +1705,6 @@
           {tr('admin.network.installations.visibility_settings', 'Work Order Visibility')}
         </button>
       {/if}
-      <button
-        class="btn ghost"
-        type="button"
-        onclick={() => {
-          includeClosed = !includeClosed;
-          void loadAll();
-        }}
-      >
-        {includeClosed
-          ? tr('admin.network.installations.hide_closed', 'Hide closed')
-          : tr('admin.network.installations.show_closed', 'Show closed')}
-      </button>
       <button class="btn ghost" type="button" onclick={() => void loadAll()}>
         <Icon name="refresh-cw" size={14} />
         {tr('common.refresh', 'Refresh')}
@@ -1662,6 +1729,10 @@
       <div class="stat-label">{tr('common.completed', 'Completed')}</div>
       <div class="stat-value">{stats.completed}</div>
     </article>
+    <article class="stat-card danger">
+      <div class="stat-label">{tr('common.cancelled', 'Cancelled')}</div>
+      <div class="stat-value">{stats.cancelled}</div>
+    </article>
   </div>
 
   {#if isAdminOwner}
@@ -1674,6 +1745,29 @@
   {/if}
 
   <div class="filters-wrap">
+    <div class="quick-status-bar">
+      <button class:active-chip={statusFilter === 'all'} class="quick-chip" type="button" onclick={() => setQuickStatus('all')}>
+        All
+        <span>{stats.total}</span>
+      </button>
+      <button class:active-chip={statusFilter === 'pending'} class="quick-chip" type="button" onclick={() => setQuickStatus('pending')}>
+        Pending
+        <span>{stats.pending}</span>
+      </button>
+      <button class:active-chip={statusFilter === 'in_progress'} class="quick-chip" type="button" onclick={() => setQuickStatus('in_progress')}>
+        In Progress
+        <span>{stats.inProgress}</span>
+      </button>
+      <button class:active-chip={statusFilter === 'completed'} class="quick-chip" type="button" onclick={() => setQuickStatus('completed')}>
+        Completed
+        <span>{stats.completed}</span>
+      </button>
+      <button class:active-chip={statusFilter === 'cancelled'} class="quick-chip" type="button" onclick={() => setQuickStatus('cancelled')}>
+        Cancelled
+        <span>{stats.cancelled}</span>
+      </button>
+    </div>
+
     <NetworkFilterPanel>
       <div class="control control-wide">
         <label for="installations-search">{tr('common.search', 'Search')}</label>
@@ -1698,6 +1792,53 @@
           <option value="cancelled">{tr('common.cancelled', 'Cancelled')}</option>
         </select>
       </div>
+
+      <div class="control">
+        <label for="installations-assignment">Assignment</label>
+        <select id="installations-assignment" class="input" bind:value={assignmentFilter}>
+          <option value="all">All work orders</option>
+          <option value="assigned">Assigned only</option>
+          <option value="unassigned">Unassigned only</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="installations-assignee-user">Assignee</label>
+        <Select2
+          id="installations-assignee-user"
+          bind:value={assigneeFilterUserId}
+          options={installationAssigneeFilterOptions}
+          placeholder="All assignees"
+          width="100%"
+          disabled={installationAssigneeFilterOptions.length <= 1}
+          searchPlaceholder="Search assignee..."
+          noResultsText="No assignee found"
+          maxItems={500}
+        />
+      </div>
+
+      <div class="control">
+        <label for="installations-sort">Sort by</label>
+        <select
+          id="installations-sort"
+          class="input"
+          value={`${sortKey}:${sortDirection}`}
+          onchange={(event) => {
+            const [nextKey, nextDirection] = String((event.currentTarget as HTMLSelectElement).value).split(':');
+            sortKey = nextKey as InstallationSortKey;
+            sortDirection = nextDirection as 'asc' | 'desc';
+          }}
+        >
+          <option value="updated_at:desc">Latest updated</option>
+          <option value="updated_at:asc">Oldest updated</option>
+          <option value="scheduled_at:asc">Scheduled earliest</option>
+          <option value="scheduled_at:desc">Scheduled latest</option>
+          <option value="customer_name:asc">Customer A-Z</option>
+          <option value="customer_name:desc">Customer Z-A</option>
+          <option value="assigned_to_name:asc">Assignee A-Z</option>
+          <option value="assigned_to_name:desc">Assignee Z-A</option>
+        </select>
+      </div>
     </NetworkFilterPanel>
   </div>
 
@@ -1707,98 +1848,161 @@
     <div class="card muted">{tr('admin.network.installations.empty', 'No installation work orders')}</div>
   {:else}
     <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>{tr('common.customer', 'Customer')}</th>
-            <th>{tr('common.location', 'Location')}</th>
-            <th>{tr('common.package', 'Package')}</th>
-            <th>{tr('common.status', 'Status')}</th>
-            <th>{tr('common.assignee', 'Assignee')}</th>
-            <th>{tr('common.schedule', 'Schedule')}</th>
-            <th>{tr('common.updated_at', 'Updated')}</th>
-            <th>{tr('common.actions', 'Actions')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each filteredRows as row}
-            <tr class="clickable" onclick={() => openDetail(row)}>
-              <td>{row.customer_name || row.customer_id}</td>
-              <td>{row.location_label || row.location_id}</td>
-              <td>{row.package_name || '-'}</td>
-              <td><span class={statusClass(row.status)}>{row.status}</span></td>
-              <td>{row.assigned_to_name || '-'}</td>
-              <td>{row.scheduled_at ? formatDateTime(row.scheduled_at) : '-'}</td>
-              <td>{formatDateTime(row.updated_at)}</td>
-              <td>
-                <div class="actions">
-                  <button class="btn ghost" onclick={(e) => { e.stopPropagation(); openDetail(row); }}>
-                    {tr('common.view', 'View')}
-                  </button>
-                  {#if $can('manage', 'work_orders') && row.status === 'pending'}
-                    {#if canTakeRow(row)}
-                      <button
-                        class="btn ghost"
-                        onclick={(e) => {
-                          e.stopPropagation();
-                          claimWorkOrder(row);
-                        }}
-                        disabled={busyId === row.id}
-                      >
-                        {tr('common.take', 'Take')}
-                      </button>
-                    {/if}
-                    {#if canReleaseRow(row)}
-                      <button
-                        class="btn ghost"
-                        onclick={(e) => {
-                          e.stopPropagation();
-                          releaseWorkOrder(row);
-                        }}
-                        disabled={busyId === row.id}
-                      >
-                        {tr('common.release', 'Release')}
-                      </button>
-                    {/if}
-                    <button
-                      class="btn"
-                      onclick={(e) => {
-                        e.stopPropagation();
-                        setStatus(row, 'start');
-                      }}
-                      disabled={busyId === row.id || !canOperateRow(row) || !isPlanReady(row.assigned_to || '', row.scheduled_at || '')}
-                    >
-                      {tr('common.start', 'Start')}
-                    </button>
-                  {/if}
-                  {#if $can('manage', 'work_orders') && isAdminOwner && row.status !== 'completed' && row.status !== 'cancelled'}
-                    <button class="btn danger" onclick={(e) => { e.stopPropagation(); openCancelDialog(row); }} disabled={busyId === row.id}>
-                      {tr('common.cancel', 'Cancel')}
-                    </button>
-                  {/if}
-                  {#if $can('manage', 'work_orders') && row.status === 'cancelled'}
-                    <button
-                      class="btn ghost"
-                      onclick={(e) => {
-                        e.stopPropagation();
-                        setStatus(row, 'reopen');
-                      }}
-                      disabled={busyId === row.id}
-                    >
-                      {tr('common.reopen', 'Reopen')}
-                    </button>
-                  {/if}
-                </div>
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
+      <Table
+        columns={tableColumns}
+        data={filteredRows}
+        keyField="id"
+        {loading}
+        emptyText={tr('admin.network.installations.empty', 'No installation work orders')}
+        pagination={true}
+        pageSize={12}
+        mobileView="scroll"
+        sortKey={
+          sortKey === 'customer_name'
+            ? 'customer'
+            : sortKey === 'assigned_to_name'
+              ? 'assignee'
+              : sortKey === 'scheduled_at'
+                ? 'schedule'
+                : 'updated'
+        }
+        sortDirection={sortDirection}
+        onsort={handleTableSort}
+      >
+        {#snippet cell({ item, key }: any)}
+          {@const row = item as InstallationWorkOrderView}
+          {#if key === 'customer'}
+            <button class="linkish installation-primary" type="button" onclick={() => openDetail(row)}>
+              <div class="name-row">
+                <span class="name">{row.customer_name || row.customer_id}</span>
+                <span class={statusClass(row.status)}>{row.status}</span>
+              </div>
+              <div class="sub">{row.package_name || '-'}</div>
+              <div class="sub sub-soft">{row.subscription_status || 'subscription pending'}</div>
+            </button>
+          {:else if key === 'location'}
+            <div class="installation-meta">
+              <div class="name">{row.location_label || row.location_id}</div>
+              <div class="sub">{row.router_name || 'Router pending'}</div>
+              <div class="sub sub-soft">{row.selected_zone_name || row.selected_node_name || 'Zone / node not selected'}</div>
+            </div>
+          {:else if key === 'workflow'}
+            <div class="installation-meta">
+              <div class="name">{provisioningTypeLabel(row.package_provisioning_type)}</div>
+              <div class="sub">Invoice: {row.has_customer_package_invoice ? 'Ready' : 'Missing'}</div>
+              <div class="sub sub-soft">WO #{row.id.slice(0, 8)}</div>
+            </div>
+          {:else if key === 'assignee'}
+            <div class="installation-meta">
+              <div class="name">{row.assigned_to_name || '-'}</div>
+              <div class="sub">{row.assigned_to_email || 'Unassigned technician'}</div>
+            </div>
+          {:else if key === 'schedule'}
+            <div class="installation-meta">
+              <div class="name">{row.scheduled_at ? formatDateTime(row.scheduled_at) : '-'}</div>
+              <div class="sub">Created: {formatDateTime(row.created_at)}</div>
+              <div class="sub sub-soft">Completed: {row.completed_at ? formatDateTime(row.completed_at) : '-'}</div>
+            </div>
+          {:else if key === 'updated'}
+            <div class="installation-meta">
+              <div class="name">{formatDateTime(row.updated_at)}</div>
+              <div class="sub sub-soft">{row.assignment_status || 'No assignment status'}</div>
+            </div>
+          {:else if key === 'actions'}
+            <div class="actions actions-tight">
+              <button class="btn ghost" onclick={(e) => { e.stopPropagation(); openDetail(row); }}>
+                {tr('common.view', 'View')}
+              </button>
+              {#if $can('manage', 'work_orders') && isAdminOwner && row.status === 'pending'}
+                <button
+                  class="btn"
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    openQuickAssignDialog(row);
+                  }}
+                  disabled={busyId === row.id}
+                >
+                  {row.assigned_to ? tr('common.reassign', 'Reassign') : tr('common.assign', 'Assign')}
+                </button>
+              {/if}
+              {#if $can('manage', 'work_orders') && isAdminOwner && row.status !== 'completed' && row.status !== 'cancelled'}
+                <button class="btn danger" onclick={(e) => { e.stopPropagation(); openCancelDialog(row); }} disabled={busyId === row.id}>
+                  {tr('common.cancel', 'Cancel')}
+                </button>
+              {/if}
+              {#if $can('manage', 'work_orders') && isAdminOwner && row.status === 'cancelled'}
+                <button
+                  class="btn ghost"
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    setStatus(row, 'reopen');
+                  }}
+                  disabled={busyId === row.id}
+                >
+                  {tr('common.reopen', 'Reopen')}
+                </button>
+              {/if}
+            </div>
+          {/if}
+        {/snippet}
+      </Table>
     </div>
   {/if}
 </div>
 
-  {#if detailOpen}
+<Modal
+  bind:show={quickAssignOpen}
+  title={tr('admin.network.installations.step_assign', 'Assign')}
+  width="520px"
+  bodyOverflow="visible"
+  onclose={closeQuickAssignDialog}
+>
+  <div class="quick-assign-shell">
+    {#if quickAssignTarget}
+      <div class="quick-assign-summary">
+        <div>
+          <span class="summary-kicker">{tr('common.customer', 'Customer')}</span>
+          <strong>{quickAssignTarget.customer_name || quickAssignTarget.customer_id}</strong>
+        </div>
+        <div>
+          <span class="summary-kicker">{tr('common.location', 'Location')}</span>
+          <strong>{quickAssignTarget.location_label || quickAssignTarget.location_id}</strong>
+        </div>
+      </div>
+
+      <label class="quick-assign-field">
+        <span>{tr('common.assignee', 'Assignee')}</span>
+        <Select2
+          bind:value={quickAssignAssignee}
+          options={assigneeOptions}
+          placeholder={tr('admin.network.installations.assignee_placeholder', 'Select assignee')}
+          searchPlaceholder={tr('common.search', 'Search')}
+          noResultsText={tr('common.no_results', 'No results')}
+          width="100%"
+          disabled={busyId === quickAssignTarget.id}
+          maxItems={500}
+        />
+      </label>
+
+      {#if assigneeOptions.length === 0}
+        <p class="helper-text">
+          {tr('admin.network.installations.no_assignable_members', 'No eligible installers found. Only Admin/Technician or roles with installation permission are shown.')}
+        </p>
+      {/if}
+
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" onclick={closeQuickAssignDialog} disabled={busyId === quickAssignTarget.id}>
+          {tr('common.cancel', 'Cancel')}
+        </button>
+        <button class="btn" type="button" onclick={confirmQuickAssign} disabled={busyId === quickAssignTarget.id || !quickAssignAssignee.trim()}>
+          {busyId === quickAssignTarget.id ? tr('common.saving', 'Saving...') : tr('common.assign', 'Assign')}
+        </button>
+      </div>
+    {/if}
+  </div>
+</Modal>
+
+  {#if detailOpen || cancelDialogOpen}
   {#if InstallationDetailDialogsComponent}
     <InstallationDetailDialogsComponent
       {tr}
@@ -2024,6 +2228,9 @@
   .stat-card.success {
     box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.15) inset;
   }
+  .stat-card.danger {
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.16) inset;
+  }
   .stat-label {
     color: var(--text-secondary);
     font-size: 0.72rem;
@@ -2040,12 +2247,46 @@
   .filters-wrap {
     margin-bottom: 2px;
   }
+  .quick-status-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .quick-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    padding: 9px 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .quick-chip span {
+    display: inline-grid;
+    place-items: center;
+    min-width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    padding: 0 6px;
+  }
+  .quick-chip.active-chip {
+    border-color: color-mix(in srgb, var(--color-primary) 55%, var(--border-color));
+    background: color-mix(in srgb, var(--color-primary) 16%, var(--bg-surface));
+    color: var(--text-primary);
+  }
   .control {
     min-width: 180px;
   }
   .control-wide {
     min-width: 320px;
-    flex: 1 1 340px;
+    grid-column: span 2;
   }
   .control label {
     display: block;
@@ -2056,16 +2297,21 @@
     color: var(--text-secondary);
   }
   .search-wrap {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    position: relative;
+    display: block;
     min-width: 0;
-    padding: 0 10px;
     border: 1px solid var(--border-color);
     border-radius: 12px;
     background: var(--bg-surface);
     color: var(--text-secondary);
     margin-bottom: 0;
+  }
+  .search-wrap :global(svg) {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
   }
   .input,
   .control :global(select.input) {
@@ -2081,15 +2327,53 @@
     border: 0;
     background: transparent;
     width: 100%;
-    padding: 8px 0;
+    min-height: 40px;
+    padding: 8px 12px 8px 38px;
     outline: none;
     color: var(--text-primary);
+  }
+
+  @media (max-width: 1100px) {
+    .control-wide {
+      grid-column: span 1;
+    }
   }
   .card {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     background: var(--bg-surface);
     padding: 16px;
+  }
+  .quick-assign-shell {
+    display: grid;
+    gap: 14px;
+  }
+  .quick-assign-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--bg-surface) 82%, transparent);
+  }
+  .summary-kicker {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .quick-assign-field {
+    display: grid;
+    gap: 6px;
+  }
+  .quick-assign-field span {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-secondary);
   }
   .muted {
     color: var(--text-secondary);
@@ -2101,29 +2385,59 @@
     background: var(--bg-surface);
     box-shadow: var(--shadow-sm);
   }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 980px;
+  .table-wrap :global(.table-container) {
+    overflow: visible;
   }
-  th,
-  td {
-    padding: 12px;
-    border-bottom: 1px solid var(--border-color);
-    text-align: left;
-    vertical-align: middle;
-  }
-  th {
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
+  .table-wrap :global(.responsive-table) {
+    min-width: 1180px;
   }
   .actions {
     display: flex;
     gap: 8px;
     align-items: center;
     flex-wrap: wrap;
+  }
+  .actions-tight {
+    justify-content: flex-end;
+  }
+  .installation-primary,
+  .installation-meta {
+    display: grid;
+    gap: 4px;
+  }
+  .installation-primary {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+  }
+  .name-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .name {
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.35;
+  }
+  .sub {
+    color: var(--text-secondary);
+    font-size: 0.86rem;
+    line-height: 1.4;
+  }
+  .sub-soft {
+    color: var(--text-tertiary, var(--text-secondary));
+  }
+  .helper-text {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.45;
   }
   .btn {
     border: 1px solid var(--border-color);
@@ -2186,12 +2500,6 @@
     border-color: #7f2c2c;
     color: #f18989;
   }
-  .clickable {
-    cursor: pointer;
-  }
-  .clickable:hover {
-    background: color-mix(in srgb, var(--bg-hover), transparent 30%);
-  }
   .modal-backdrop {
     position: fixed;
     inset: 0;
@@ -2200,6 +2508,11 @@
     place-items: center;
     padding: 20px;
     z-index: 1000;
+  }
+  @media (max-width: 768px) {
+    .quick-assign-summary {
+      grid-template-columns: 1fr;
+    }
   }
   .inline-loader {
     width: min(320px, calc(100vw - 40px));

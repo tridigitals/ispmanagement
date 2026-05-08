@@ -21,6 +21,7 @@
     loadAdminSettingsEmailTab,
     loadAdminSettingsNotificationEventsTab,
     loadAdminSettingsPaymentTab,
+    loadAdminSettingsServiceTab,
     loadAdminSettingsWhatsAppTab,
     loadTenantBillingPlanPanel,
   } from './adminSettingsPageModules';
@@ -43,11 +44,13 @@
   let billingPlanPanelLoading = $state(false);
   let emailTabLoading = $state(false);
   let paymentTabLoading = $state(false);
+  let serviceTabLoading = $state(false);
   let whatsappTabLoading = $state(false);
   let notificationEventsTabLoading = $state(false);
   let TenantBillingPlanPanelComponent = $state<DeferredComponent | null>(null);
   let SettingsEmailTabComponent = $state<DeferredComponent | null>(null);
   let SettingsPaymentTabComponent = $state<DeferredComponent | null>(null);
+  let SettingsServiceTabComponent = $state<DeferredComponent | null>(null);
   let SettingsWhatsAppTabComponent = $state<DeferredComponent | null>(null);
   let SettingsNotificationEventsTabComponent = $state<DeferredComponent | null>(null);
 
@@ -169,10 +172,23 @@
         'payment_manual_enabled',
         'payment_manual_instructions',
         'payment_manual_accounts',
+      ],
+    },
+    service: {
+      label: $t('admin.settings.categories.service') || 'Service',
+      icon: 'wifi',
+      keys: [
         'customer_invoice_auto_generate_enabled',
         'customer_invoice_generate_days_before_due',
         'customer_invoice_scheduler_interval_minutes',
         'customer_invoice_last_run_at',
+        'billing_auto_suspend_enabled',
+        'billing_auto_suspend_mode',
+        'billing_auto_suspend_grace_days',
+        'billing_auto_suspend_fixed_day',
+        'billing_auto_resume_on_payment',
+        'billing_reminder_enabled',
+        'billing_reminder_schedule',
       ],
     },
     whatsapp: {
@@ -328,6 +344,21 @@
     }
   }
 
+  async function ensureServiceTabLoaded() {
+    if (SettingsServiceTabComponent || serviceTabLoading) return;
+
+    serviceTabLoading = true;
+    try {
+      const { SettingsServiceTabComponent: ServiceTabComponent } =
+        await loadAdminSettingsServiceTab();
+      SettingsServiceTabComponent = ServiceTabComponent;
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to load service settings tab');
+    } finally {
+      serviceTabLoading = false;
+    }
+  }
+
   async function ensureWhatsAppTabLoaded() {
     if (SettingsWhatsAppTabComponent || whatsappTabLoading) return;
 
@@ -371,6 +402,10 @@
   $effect(() => {
     if (activeTab !== 'payment') return;
     void ensurePaymentTabLoaded();
+  });
+  $effect(() => {
+    if (activeTab !== 'service') return;
+    void ensureServiceTabLoaded();
   });
   $effect(() => {
     if (activeTab !== 'whatsapp') return;
@@ -436,6 +471,16 @@
         if (key === 'pppoe_auto_apply_on_save_enabled' && !val) val = 'false';
         if (key === 'auth_require_email_verification' && !val) val = 'false';
         if (key === 'customer_self_registration_enabled' && !val) val = 'false';
+        if (key === 'customer_invoice_auto_generate_enabled' && !val) val = 'true';
+        if (key === 'customer_invoice_generate_days_before_due' && !val) val = '7';
+        if (key === 'customer_invoice_scheduler_interval_minutes' && !val) val = '60';
+        if (key === 'billing_auto_suspend_enabled' && !val) val = 'false';
+        if (key === 'billing_auto_suspend_mode' && !val) val = 'grace_period';
+        if (key === 'billing_auto_suspend_grace_days' && !val) val = '3';
+        if (key === 'billing_auto_suspend_fixed_day' && !val) val = '1';
+        if (key === 'billing_auto_resume_on_payment' && !val) val = 'true';
+        if (key === 'billing_reminder_enabled' && !val) val = 'true';
+        if (key === 'billing_reminder_schedule' && !val) val = 'H-3,H-1,H+1,H+3';
         if (key === 'wa_gateway_enabled' && !val) val = 'false';
         if (key === 'wa_gateway_provider' && !val) val = 'disabled';
         if (key === 'wa_events_tenant' && !val) val = '{}';
@@ -1377,10 +1422,22 @@
                   {bankAccounts}
                   bind:newBank
                   bind:showAddBank
-                  formattedLastRunAt={formatLastRunAt(localSettings['customer_invoice_last_run_at'])}
                   {handleChange}
                   {addBankAccount}
                   {removeBankAccount}
+                />
+              {:else}
+                <div class="inline-tab-loading">
+                  <div class="spinner"></div>
+                </div>
+              {/if}
+            {:else if activeTab === 'service'}
+              {#if SettingsServiceTabComponent}
+                {@const ServiceTab = SettingsServiceTabComponent}
+                <ServiceTab
+                  {localSettings}
+                  formattedLastRunAt={formatLastRunAt(localSettings['customer_invoice_last_run_at'])}
+                  {handleChange}
                 />
               {:else}
                 <div class="inline-tab-loading">

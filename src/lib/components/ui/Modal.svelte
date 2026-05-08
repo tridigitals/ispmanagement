@@ -6,6 +6,7 @@
     title = '',
     width = '420px',
     show = $bindable(false),
+    bodyOverflow = 'auto',
     onclose,
     children,
     footer,
@@ -13,21 +14,37 @@
     title?: string;
     width?: string;
     show: boolean;
+    bodyOverflow?: 'auto' | 'visible';
     onclose?: () => void;
     children?: import('svelte').Snippet;
     footer?: import('svelte').Snippet;
   }>();
 
+  let backdropPointerDown = $state(false);
+
   function close() {
     show = false;
     if (onclose) onclose();
+  }
+
+  function handleBackdropPointerDown(event: PointerEvent) {
+    backdropPointerDown = event.target === event.currentTarget;
+  }
+
+  function handleBackdropClick(event: MouseEvent) {
+    const isDirectBackdropClick = event.target === event.currentTarget;
+    if (backdropPointerDown && isDirectBackdropClick) {
+      close();
+    }
+    backdropPointerDown = false;
   }
 </script>
 
 {#if show}
   <div
     class="modal-backdrop"
-    onclick={close}
+    onpointerdown={handleBackdropPointerDown}
+    onclick={handleBackdropClick}
     onkeydown={(e) => e.key === 'Escape' && close()}
     role="button"
     tabindex="0"
@@ -50,7 +67,7 @@
           <Icon name="x" size={20} />
         </button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" class:body-overflow-visible={bodyOverflow === 'visible'}>
         {#if children}
           {@render children()}
         {/if}
@@ -126,6 +143,10 @@
   .modal-body {
     padding: 1.25rem;
     overflow-y: auto;
+  }
+
+  .modal-body.body-overflow-visible {
+    overflow: visible;
   }
 
   .modal-footer {

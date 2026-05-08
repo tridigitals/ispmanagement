@@ -8,6 +8,7 @@
   import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import { canAccessNetworkMap } from '$lib/utils/adminNetworkAccess';
+  import { canAccessServiceCatalog } from '$lib/utils/serviceCatalogAccess';
   import { api, type Invoice } from '$lib/api/client';
   import Icon from '../ui/Icon.svelte';
 
@@ -343,7 +344,11 @@
             label: $t('sidebar.services') || $t('sidebar.packages') || 'Services',
             icon: 'package',
             href: `${tenantPrefix}/admin/services`,
-            show: $can('read', 'isp_packages') || $can('manage', 'isp_packages'),
+            show: canAccessServiceCatalog(
+              $user,
+              $can('read', 'isp_packages'),
+              $can('manage', 'isp_packages'),
+            ),
           },
           {
             label: $t('sidebar.pppoe') || 'PPPoE',

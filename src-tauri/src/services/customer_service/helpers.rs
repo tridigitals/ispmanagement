@@ -29,6 +29,14 @@ impl CustomerService {
     }
 
     #[cfg(test)]
+    pub(super) fn should_actor_have_full_installation_visibility(
+        is_admin_owner: bool,
+        can_manage_work_orders: bool,
+    ) -> bool {
+        is_admin_owner || can_manage_work_orders
+    }
+
+    #[cfg(test)]
     pub(super) fn should_actor_see_installation_work_order(
         can_view_unassigned: bool,
         actor_id: &str,
@@ -155,6 +163,13 @@ impl CustomerService {
         matches!(
             role.map(|value| value.trim().to_ascii_lowercase()),
             Some(role) if matches!(role.as_str(), "owner" | "admin" | "technician")
+        )
+    }
+
+    pub(super) fn is_technician_role(role: Option<&str>) -> bool {
+        matches!(
+            role.map(|value| value.trim().to_ascii_lowercase()),
+            Some(role) if matches!(role.as_str(), "technician" | "teknisi")
         )
     }
 

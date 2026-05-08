@@ -2470,7 +2470,8 @@
       "billing_plan": "Billing & Plan",
       "whatsapp": "WhatsApp Gateway",
       "event_notifications": "Notifikasi Event",
-      "payment": "Pembayaran"
+      "payment": "Pembayaran",
+      "service": "Service"
     },
     "whatsapp": {
       "title": "WhatsApp Gateway",

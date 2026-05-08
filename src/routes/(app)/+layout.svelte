@@ -15,6 +15,7 @@
   import { resolveTenantContext, APP_ROOT_SEGMENTS } from '$lib/utils/tenantRouting';
   import { isPlatformDomain } from '$lib/utils/domain';
   import { canAccessNetworkMap } from '$lib/utils/adminNetworkAccess';
+  import { canAccessServiceCatalog } from '$lib/utils/serviceCatalogAccess';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
 
@@ -106,7 +107,11 @@
       return $can('manage', 'pppoe');
     }
     if (path.startsWith('/admin/services') || path.startsWith('/admin/network/packages')) {
-      return $can('read', 'isp_packages') || $can('manage', 'isp_packages');
+      return canAccessServiceCatalog(
+        $user,
+        $can('read', 'isp_packages'),
+        $can('manage', 'isp_packages'),
+      );
     }
     if (path.startsWith('/admin/network/installations')) {
       return $can('read', 'work_orders') || $can('manage', 'work_orders');

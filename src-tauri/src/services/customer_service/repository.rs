@@ -1,6 +1,44 @@
 use super::*;
 
 impl CustomerService {
+    pub(super) async fn get_actor_role_name(
+        &self,
+        tenant_id: &str,
+        actor_id: &str,
+    ) -> AppResult<Option<String>> {
+        #[cfg(feature = "postgres")]
+        let role_name: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT LOWER(COALESCE(r.name, tm.role, ''))
+            FROM tenant_members tm
+            LEFT JOIN roles r ON r.id = tm.role_id
+            WHERE tm.tenant_id = $1 AND tm.user_id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(actor_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let role_name: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT LOWER(COALESCE(r.name, tm.role, ''))
+            FROM tenant_members tm
+            LEFT JOIN roles r ON r.id = tm.role_id
+            WHERE tm.tenant_id = ? AND tm.user_id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(actor_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(role_name)
+    }
+
     pub(super) async fn get_installation_work_order_row(
         &self,
         tenant_id: &str,
@@ -42,35 +80,7 @@ impl CustomerService {
         tenant_id: &str,
         actor_id: &str,
     ) -> AppResult<bool> {
-        #[cfg(feature = "postgres")]
-        let role_name: Option<String> = sqlx::query_scalar(
-            r#"
-            SELECT LOWER(COALESCE(r.name, tm.role, ''))
-            FROM tenant_members tm
-            LEFT JOIN roles r ON r.id = tm.role_id
-            WHERE tm.tenant_id = $1 AND tm.user_id = $2
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(actor_id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        #[cfg(feature = "sqlite")]
-        let role_name: Option<String> = sqlx::query_scalar(
-            r#"
-            SELECT LOWER(COALESCE(r.name, tm.role, ''))
-            FROM tenant_members tm
-            LEFT JOIN roles r ON r.id = tm.role_id
-            WHERE tm.tenant_id = ? AND tm.user_id = ?
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(actor_id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let role_name = self.get_actor_role_name(tenant_id, actor_id).await?;
 
         Ok(matches!(
             role_name.as_deref(),

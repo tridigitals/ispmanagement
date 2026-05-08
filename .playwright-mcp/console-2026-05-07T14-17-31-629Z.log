@@ -1,0 +1,693 @@
+[    1373ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ https://billing.tridigitals.com/login:0
+[  231123ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  231123ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  233622ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  233622ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  236121ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  236121ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  238621ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  238621ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  240790ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/auth/validate' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  240792ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/auth/validate:0
+[  240792ms] [ERROR] API Error (validate_token): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.validateToken (https://billing.tridigitals.com/src/lib/api/auth.ts:8:29)
+    at run (https://billing.tridigitals.com/src/lib/stores/auth.ts:208:32)
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async keepSessionAliveIfActive (https://billing.tridigitals.com/src/routes/+layout.svelte:135:5) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  241122ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  241122ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  243622ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  243622ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  246123ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  246123ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  248622ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  248622ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  251122ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  251122ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  253627ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  253627ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  256127ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  256127ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  258625ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  258625ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  261129ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  261129ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  263629ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  263630ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  266140ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  266140ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  268638ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  268638ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  271152ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  271152ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  273638ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  273638ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  276162ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  276162ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  278665ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  278665ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  281155ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  281155ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  283719ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  283719ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  286349ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  286350ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  288841ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  288841ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  291631ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  291631ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  293987ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  293987ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  296729ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  296729ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  299372ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  299372ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  300788ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/auth/validate' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  300789ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/auth/validate:0
+[  300789ms] [ERROR] API Error (validate_token): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.validateToken (https://billing.tridigitals.com/src/lib/api/auth.ts:8:29)
+    at run (https://billing.tridigitals.com/src/lib/stores/auth.ts:208:32)
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async keepSessionAliveIfActive (https://billing.tridigitals.com/src/routes/+layout.svelte:135:5) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  302231ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  302231ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  305657ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  305657ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  308811ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  308812ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  313781ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  313782ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  319084ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  319085ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  324531ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  324531ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  329753ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  329753ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  334159ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  334160ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  340028ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  340029ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  342445ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  342445ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  348085ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  348085ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  351556ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  351556ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  356862ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  356862ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  360786ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/auth/validate' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  360787ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/auth/validate:0
+[  360787ms] [ERROR] API Error (validate_token): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.validateToken (https://billing.tridigitals.com/src/lib/api/auth.ts:8:29)
+    at run (https://billing.tridigitals.com/src/lib/stores/auth.ts:208:32)
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async keepSessionAliveIfActive (https://billing.tridigitals.com/src/routes/+layout.svelte:135:5) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  363191ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  363191ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  367880ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  367881ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  369925ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  369926ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  374030ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  374030ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  379179ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  379179ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  383074ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  383074ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  388205ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  388205ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  393366ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  393366ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  397703ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  397703ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  402944ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  402945ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  405202ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  405202ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  408845ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  408845ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  413810ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  413811ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  417381ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  417381ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  420789ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/auth/validate' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  420789ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/auth/validate:0
+[  420790ms] [ERROR] API Error (validate_token): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.validateToken (https://billing.tridigitals.com/src/lib/api/auth.ts:8:29)
+    at run (https://billing.tridigitals.com/src/lib/stores/auth.ts:208:32)
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async keepSessionAliveIfActive (https://billing.tridigitals.com/src/routes/+layout.svelte:135:5) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  422061ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  422061ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  424752ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  424752ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  427711ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  427712ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  430991ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  430992ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  436095ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  436095ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  438517ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  438518ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  441297ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  441297ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  447918ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  447919ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  449965ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  449965ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  453089ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  453089ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  455231ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  455231ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  460386ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  460386ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  463464ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  463465ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  467719ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  467719ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  473115ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  473115ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  475690ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  475690ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  477543ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  477543ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  479897ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  479897ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  480788ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/auth/validate' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  480788ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/auth/validate:0
+[  480789ms] [ERROR] API Error (validate_token): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.validateToken (https://billing.tridigitals.com/src/lib/api/auth.ts:8:29)
+    at run (https://billing.tridigitals.com/src/lib/stores/auth.ts:208:32)
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async keepSessionAliveIfActive (https://billing.tridigitals.com/src/routes/+layout.svelte:135:5) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  484632ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  484632ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  652696ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[  653618ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  653619ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  681745ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  681745ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  684246ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  684246ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  686745ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  686746ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  690072ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/settings/logo' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  690073ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/settings/logo:0
+[  690073ms] [ERROR] API Error (get_logo): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getLogo (https://billing.tridigitals.com/src/lib/api/settings.ts:11:23)
+    at Object.refresh (https://billing.tridigitals.com/src/lib/stores/logo.ts:54:40)
+    at https://billing.tridigitals.com/src/lib/stores/auth.ts:71:19 @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  690074ms] [ERROR] [LogoStore] Failed to load logo: TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getLogo (https://billing.tridigitals.com/src/lib/api/settings.ts:11:23)
+    at Object.refresh (https://billing.tridigitals.com/src/lib/stores/logo.ts:54:40)
+    at https://billing.tridigitals.com/src/lib/stores/auth.ts:71:19 @ https://billing.tridigitals.com/src/lib/stores/logo.ts:61
+[  690075ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/auth/settings' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  690075ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/auth/settings:0
+[  690075ms] [ERROR] API Error (get_auth_settings): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getAuthSettings (https://billing.tridigitals.com/src/lib/api/settings.ts:5:26)
+    at https://billing.tridigitals.com/src/lib/stores/settings.ts:44:23
+    at loadSettings (https://billing.tridigitals.com/src/lib/stores/settings.ts:78:7)
+    at Object.refresh (https://billing.tridigitals.com/src/lib/stores/settings.ts:89:13)
+    at https://billing.tridigitals.com/src/lib/stores/auth.ts:72:23 @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  690077ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/settings/public' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  690077ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/settings/public:0
+[  690078ms] [ERROR] API Error (get_public_settings): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getPublicSettings (https://billing.tridigitals.com/src/lib/api/settings.ts:4:28)
+    at https://billing.tridigitals.com/src/lib/stores/settings.ts:45:23
+    at loadSettings (https://billing.tridigitals.com/src/lib/stores/settings.ts:78:7)
+    at Object.refresh (https://billing.tridigitals.com/src/lib/stores/settings.ts:89:13)
+    at https://billing.tridigitals.com/src/lib/stores/auth.ts:72:23 @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  690079ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/settings' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  690079ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/settings:0
+[  690079ms] [ERROR] API Error (get_all_settings): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getAll (https://billing.tridigitals.com/src/lib/api/settings.ts:3:17)
+    at https://billing.tridigitals.com/src/lib/stores/settings.ts:46:41
+    at loadSettings (https://billing.tridigitals.com/src/lib/stores/settings.ts:78:7)
+    at Object.refresh (https://billing.tridigitals.com/src/lib/stores/settings.ts:89:13)
+    at https://billing.tridigitals.com/src/lib/stores/auth.ts:72:23 @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  690082ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/version' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  690082ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/version:0
+[  690082ms] [ERROR] API Error (get_app_version): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getAppVersion (https://billing.tridigitals.com/src/lib/api/settings.ts:16:23)
+    at https://billing.tridigitals.com/src/lib/stores/settings.ts:47:23
+    at loadSettings (https://billing.tridigitals.com/src/lib/stores/settings.ts:78:7)
+    at Object.refresh (https://billing.tridigitals.com/src/lib/stores/settings.ts:89:13)
+    at https://billing.tridigitals.com/src/lib/stores/auth.ts:72:23 @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  690346ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/auth/validate' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  690346ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/auth/validate:0
+[  690346ms] [ERROR] API Error (validate_token): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.validateToken (https://billing.tridigitals.com/src/lib/api/auth.ts:8:29)
+    at run (https://billing.tridigitals.com/src/lib/stores/auth.ts:208:32)
+    at async Promise.all (index 0)
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async https://billing.tridigitals.com/src/routes/+layout.svelte:345:35 @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  690347ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/install/check' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  690348ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/install/check:0
+[  690348ms] [ERROR] API Error (is_installed): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.checkIsInstalled (https://billing.tridigitals.com/src/lib/api/install.ts:4:23)
+    at checkInstallationStatus (https://billing.tridigitals.com/src/routes/+layout.svelte:282:18)
+    at async Promise.all (index 1)
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async https://billing.tridigitals.com/src/routes/+layout.svelte:345:35 @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  690349ms] [ERROR] Critical Error during app initialization in +layout.svelte: TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.checkIsInstalled (https://billing.tridigitals.com/src/lib/api/install.ts:4:23)
+    at checkInstallationStatus (https://billing.tridigitals.com/src/routes/+layout.svelte:282:18)
+    at async Promise.all (index 1)
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async https://billing.tridigitals.com/src/routes/+layout.svelte:345:35 @ https://billing.tridigitals.com/src/routes/+layout.svelte:374
+[  690351ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/notifications?page=1&per_page=20' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  690352ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/notifications?page=1&per_page=20:0
+[  690352ms] [ERROR] API Error (list_notifications): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.list (https://billing.tridigitals.com/src/lib/api/notifications.ts:3:28)
+    at Object.loadNotifications (https://billing.tridigitals.com/src/lib/stores/notifications.ts:36:27)
+    at https://billing.tridigitals.com/src/lib/bootstrap/rootRealtimeController.ts:19:23
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncRealtimeConnections (https://billing.tridigitals.com/src/routes/+layout.svelte:270:4) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  690353ms] [ERROR] Failed to load notifications: TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.list (https://billing.tridigitals.com/src/lib/api/notifications.ts:3:28)
+    at Object.loadNotifications (https://billing.tridigitals.com/src/lib/stores/notifications.ts:36:27)
+    at https://billing.tridigitals.com/src/lib/bootstrap/rootRealtimeController.ts:19:23
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncRealtimeConnections (https://billing.tridigitals.com/src/routes/+layout.svelte:270:4) @ https://billing.tridigitals.com/src/lib/stores/notifications.ts:50
+[  690398ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  690398ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  690403ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/notifications/unread-count' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  690404ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/notifications/unread-count:0
+[  690404ms] [ERROR] API Error (get_unread_count): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getUnreadCount (https://billing.tridigitals.com/src/lib/api/notifications.ts:4:25)
+    at Object.refreshUnreadCount (https://billing.tridigitals.com/src/lib/stores/notifications.ts:60:27)
+    at https://billing.tridigitals.com/src/lib/bootstrap/rootRealtimeController.ts:20:17
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncRealtimeConnections (https://billing.tridigitals.com/src/routes/+layout.svelte:270:4) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  690405ms] [ERROR] Failed to get unread count: TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getUnreadCount (https://billing.tridigitals.com/src/lib/api/notifications.ts:4:25)
+    at Object.refreshUnreadCount (https://billing.tridigitals.com/src/lib/stores/notifications.ts:60:27)
+    at https://billing.tridigitals.com/src/lib/bootstrap/rootRealtimeController.ts:20:17
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncRealtimeConnections (https://billing.tridigitals.com/src/routes/+layout.svelte:270:4) @ https://billing.tridigitals.com/src/lib/stores/notifications.ts:63
+[  690406ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/auth/validate' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  690407ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/auth/validate:0
+[  690407ms] [ERROR] API Error (validate_token): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.validateToken (https://billing.tridigitals.com/src/lib/api/auth.ts:8:29)
+    at run (https://billing.tridigitals.com/src/lib/stores/auth.ts:208:32)
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async runGuard (https://billing.tridigitals.com/src/routes/superadmin/+layout.svelte:28:19) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  690520ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/superadmin/tenants' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  690520ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/superadmin/tenants:0
+[  690520ms] [ERROR] API Error (list_tenants): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.listTenants (https://billing.tridigitals.com/src/lib/api/superadmin.ts:3:22)
+    at loadStats (https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:63:20)
+    at https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:55:34
+    at untrack (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3830:12)
+    at $effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-JE4MGW45.js?v=a1ff02f4:4431:23)
+    at update_reaction (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3535:18)
+    at update_effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3673:21)
+    at flush_queued_effects (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:2652:7) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  690521ms] [ERROR] Failed to load stats TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.listTenants (https://billing.tridigitals.com/src/lib/api/superadmin.ts:3:22)
+    at loadStats (https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:63:20)
+    at https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:55:34
+    at untrack (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3830:12)
+    at $effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-JE4MGW45.js?v=a1ff02f4:4431:23)
+    at update_reaction (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3535:18)
+    at update_effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3673:21)
+    at flush_queued_effects (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:2652:7) @ https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:79
+[  690533ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/users?page=1&per_page=1' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  690536ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/users?page=1&per_page=1:0
+[  690536ms] [ERROR] API Error (list_users): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.list (https://billing.tridigitals.com/src/lib/api/users.ts:3:28)
+    at loadStats (https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:64:15)
+    at https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:55:34
+    at untrack (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3830:12)
+    at $effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-JE4MGW45.js?v=a1ff02f4:4431:23)
+    at update_reaction (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3535:18)
+    at update_effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3673:21)
+    at flush_queued_effects (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:2652:7) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  690537ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/superadmin/system' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  690538ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/superadmin/system:0
+[  690538ms] [ERROR] API Error (get_system_health): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getSystemHealth (https://billing.tridigitals.com/src/lib/api/superadmin.ts:168:26)
+    at loadStats (https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:65:20)
+    at https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:55:34
+    at untrack (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3830:12)
+    at $effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-JE4MGW45.js?v=a1ff02f4:4431:23)
+    at update_reaction (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3535:18)
+    at update_effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3673:21)
+    at flush_queued_effects (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:2652:7) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  692804ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  692804ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  695300ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  695300ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  697804ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  697804ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  700302ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  700303ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  702800ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  702801ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  705299ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  705300ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  707799ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  707800ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  710301ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  710302ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  712800ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  712800ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  715299ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  715299ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  717800ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  717801ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  720299ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  720300ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  722804ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  722804ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  725298ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  725298ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  727800ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  727801ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  730299ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  730299ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  732848ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/settings/logo' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  732848ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/settings/logo:0
+[  732848ms] [ERROR] API Error (get_logo): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getLogo (https://billing.tridigitals.com/src/lib/api/settings.ts:11:23)
+    at Object.refresh (https://billing.tridigitals.com/src/lib/stores/logo.ts:54:40)
+    at https://billing.tridigitals.com/src/lib/stores/auth.ts:71:19 @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  732849ms] [ERROR] [LogoStore] Failed to load logo: TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getLogo (https://billing.tridigitals.com/src/lib/api/settings.ts:11:23)
+    at Object.refresh (https://billing.tridigitals.com/src/lib/stores/logo.ts:54:40)
+    at https://billing.tridigitals.com/src/lib/stores/auth.ts:71:19 @ https://billing.tridigitals.com/src/lib/stores/logo.ts:61
+[  732850ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/auth/settings' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  732850ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/auth/settings:0
+[  732850ms] [ERROR] API Error (get_auth_settings): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getAuthSettings (https://billing.tridigitals.com/src/lib/api/settings.ts:5:26)
+    at https://billing.tridigitals.com/src/lib/stores/settings.ts:44:23
+    at loadSettings (https://billing.tridigitals.com/src/lib/stores/settings.ts:78:7)
+    at Object.refresh (https://billing.tridigitals.com/src/lib/stores/settings.ts:89:13)
+    at https://billing.tridigitals.com/src/lib/stores/auth.ts:72:23 @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  732851ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/settings/public' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  732851ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/settings/public:0
+[  732851ms] [ERROR] API Error (get_public_settings): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getPublicSettings (https://billing.tridigitals.com/src/lib/api/settings.ts:4:28)
+    at https://billing.tridigitals.com/src/lib/stores/settings.ts:45:23
+    at loadSettings (https://billing.tridigitals.com/src/lib/stores/settings.ts:78:7)
+    at Object.refresh (https://billing.tridigitals.com/src/lib/stores/settings.ts:89:13)
+    at https://billing.tridigitals.com/src/lib/stores/auth.ts:72:23 @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  732852ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/settings' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  732852ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/settings:0
+[  732852ms] [ERROR] API Error (get_all_settings): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getAll (https://billing.tridigitals.com/src/lib/api/settings.ts:3:17)
+    at https://billing.tridigitals.com/src/lib/stores/settings.ts:46:41
+    at loadSettings (https://billing.tridigitals.com/src/lib/stores/settings.ts:78:7)
+    at Object.refresh (https://billing.tridigitals.com/src/lib/stores/settings.ts:89:13)
+    at https://billing.tridigitals.com/src/lib/stores/auth.ts:72:23 @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  732853ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/version' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  732853ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/version:0
+[  732854ms] [ERROR] API Error (get_app_version): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getAppVersion (https://billing.tridigitals.com/src/lib/api/settings.ts:16:23)
+    at https://billing.tridigitals.com/src/lib/stores/settings.ts:47:23
+    at loadSettings (https://billing.tridigitals.com/src/lib/stores/settings.ts:78:7)
+    at Object.refresh (https://billing.tridigitals.com/src/lib/stores/settings.ts:89:13)
+    at https://billing.tridigitals.com/src/lib/stores/auth.ts:72:23 @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  733021ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/auth/validate' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  733022ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/auth/validate:0
+[  733022ms] [ERROR] API Error (validate_token): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.validateToken (https://billing.tridigitals.com/src/lib/api/auth.ts:8:29)
+    at run (https://billing.tridigitals.com/src/lib/stores/auth.ts:208:32)
+    at async Promise.all (index 0)
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async https://billing.tridigitals.com/src/routes/+layout.svelte:345:35 @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  733024ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/install/check' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  733024ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/install/check:0
+[  733024ms] [ERROR] API Error (is_installed): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.checkIsInstalled (https://billing.tridigitals.com/src/lib/api/install.ts:4:23)
+    at checkInstallationStatus (https://billing.tridigitals.com/src/routes/+layout.svelte:282:18)
+    at async Promise.all (index 1)
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async https://billing.tridigitals.com/src/routes/+layout.svelte:345:35 @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  733026ms] [ERROR] Critical Error during app initialization in +layout.svelte: TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.checkIsInstalled (https://billing.tridigitals.com/src/lib/api/install.ts:4:23)
+    at checkInstallationStatus (https://billing.tridigitals.com/src/routes/+layout.svelte:282:18)
+    at async Promise.all (index 1)
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async https://billing.tridigitals.com/src/routes/+layout.svelte:345:35 @ https://billing.tridigitals.com/src/routes/+layout.svelte:374
+[  733110ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/auth/validate' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  733111ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/auth/validate:0
+[  733111ms] [ERROR] API Error (validate_token): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.validateToken (https://billing.tridigitals.com/src/lib/api/auth.ts:8:29)
+    at run (https://billing.tridigitals.com/src/lib/stores/auth.ts:208:32)
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async runGuard (https://billing.tridigitals.com/src/routes/superadmin/+layout.svelte:28:19) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  733254ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/notifications?page=1&per_page=20' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  733255ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/notifications?page=1&per_page=20:0
+[  733255ms] [ERROR] API Error (list_notifications): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.list (https://billing.tridigitals.com/src/lib/api/notifications.ts:3:28)
+    at Object.loadNotifications (https://billing.tridigitals.com/src/lib/stores/notifications.ts:36:27)
+    at https://billing.tridigitals.com/src/lib/bootstrap/rootRealtimeController.ts:19:23
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncRealtimeConnections (https://billing.tridigitals.com/src/routes/+layout.svelte:270:4) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  733256ms] [ERROR] Failed to load notifications: TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.list (https://billing.tridigitals.com/src/lib/api/notifications.ts:3:28)
+    at Object.loadNotifications (https://billing.tridigitals.com/src/lib/stores/notifications.ts:36:27)
+    at https://billing.tridigitals.com/src/lib/bootstrap/rootRealtimeController.ts:19:23
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncRealtimeConnections (https://billing.tridigitals.com/src/routes/+layout.svelte:270:4) @ https://billing.tridigitals.com/src/lib/stores/notifications.ts:50
+[  733261ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/superadmin/tenants' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  733261ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/superadmin/tenants:0
+[  733261ms] [ERROR] API Error (list_tenants): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.listTenants (https://billing.tridigitals.com/src/lib/api/superadmin.ts:3:22)
+    at loadStats (https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:63:20)
+    at https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:55:34
+    at untrack (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3830:12)
+    at $effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-JE4MGW45.js?v=a1ff02f4:4431:23)
+    at update_reaction (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3535:18)
+    at update_effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3673:21)
+    at flush_queued_effects (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:2652:7) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  733262ms] [ERROR] Failed to load stats TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.listTenants (https://billing.tridigitals.com/src/lib/api/superadmin.ts:3:22)
+    at loadStats (https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:63:20)
+    at https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:55:34
+    at untrack (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3830:12)
+    at $effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-JE4MGW45.js?v=a1ff02f4:4431:23)
+    at update_reaction (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3535:18)
+    at update_effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3673:21)
+    at flush_queued_effects (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:2652:7) @ https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:79
+[  733273ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/users?page=1&per_page=1' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  733273ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/users?page=1&per_page=1:0
+[  733273ms] [ERROR] API Error (list_users): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.list (https://billing.tridigitals.com/src/lib/api/users.ts:3:28)
+    at loadStats (https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:64:15)
+    at https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:55:34
+    at untrack (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3830:12)
+    at $effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-JE4MGW45.js?v=a1ff02f4:4431:23)
+    at update_reaction (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3535:18)
+    at update_effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3673:21)
+    at flush_queued_effects (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:2652:7) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  733274ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/superadmin/system' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  733274ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/superadmin/system:0
+[  733274ms] [ERROR] API Error (get_system_health): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getSystemHealth (https://billing.tridigitals.com/src/lib/api/superadmin.ts:168:26)
+    at loadStats (https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:65:20)
+    at https://billing.tridigitals.com/src/routes/superadmin/+page.svelte:55:34
+    at untrack (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3830:12)
+    at $effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-JE4MGW45.js?v=a1ff02f4:4431:23)
+    at update_reaction (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3535:18)
+    at update_effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3673:21)
+    at flush_queued_effects (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:2652:7) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  733306ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/notifications/unread-count' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  733306ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/notifications/unread-count:0
+[  733306ms] [ERROR] API Error (get_unread_count): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getUnreadCount (https://billing.tridigitals.com/src/lib/api/notifications.ts:4:25)
+    at Object.refreshUnreadCount (https://billing.tridigitals.com/src/lib/stores/notifications.ts:60:27)
+    at https://billing.tridigitals.com/src/lib/bootstrap/rootRealtimeController.ts:20:17
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncRealtimeConnections (https://billing.tridigitals.com/src/routes/+layout.svelte:270:4) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  733307ms] [ERROR] Failed to get unread count: TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.getUnreadCount (https://billing.tridigitals.com/src/lib/api/notifications.ts:4:25)
+    at Object.refreshUnreadCount (https://billing.tridigitals.com/src/lib/stores/notifications.ts:60:27)
+    at https://billing.tridigitals.com/src/lib/bootstrap/rootRealtimeController.ts:20:17
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncRealtimeConnections (https://billing.tridigitals.com/src/routes/+layout.svelte:270:4) @ https://billing.tridigitals.com/src/lib/stores/notifications.ts:63
+[  733311ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  733376ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  735613ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  735613ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  738117ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  738117ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  740614ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  740614ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  743113ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  743113ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  745611ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  745612ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  748114ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  748114ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  750614ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  750615ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  753116ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  753116ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  755613ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  755613ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  758113ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  758113ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  760612ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  760613ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  763115ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  763115ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  765612ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  765612ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  768116ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  768117ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  770615ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  770615ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  773115ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  773115ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  775614ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  775614ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  778117ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  778117ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  780616ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  780617ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  783114ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  783115ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  785615ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  785615ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  788119ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  788119ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  790615ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  790616ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  792906ms] [ERROR] Access to fetch at 'https://api-isp-management.tridigitals.com/api/auth/validate' from origin 'https://billing.tridigitals.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://billing.tridigitals.com/superadmin:0
+[  792906ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api-isp-management.tridigitals.com/api/auth/validate:0
+[  792906ms] [ERROR] API Error (validate_token): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:655:26)
+    at Object.validateToken (https://billing.tridigitals.com/src/lib/api/auth.ts:8:29)
+    at run (https://billing.tridigitals.com/src/lib/stores/auth.ts:208:32)
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async keepSessionAliveIfActive (https://billing.tridigitals.com/src/routes/+layout.svelte:135:5) @ https://billing.tridigitals.com/src/lib/api/core.ts:726
+[  793117ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  793117ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  795618ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  795618ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  798120ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  798120ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  800619ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  800619ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  803123ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  803124ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  805618ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  805618ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  808122ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  808122ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  810631ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  810631ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  813129ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  813129ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  815620ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  815620ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  818131ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  818131ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  820625ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  820625ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  823144ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  823144ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  825626ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  825626ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  828145ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  828145ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  830635ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  830635ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  833142ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  833142ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  835640ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  835640ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  838168ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  838168ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  840705ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  840706ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 1074554ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 1074579ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 1075584ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 1075607ms] [ERROR] WebSocket connection to 'wss://api-isp-management.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 1075608ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108

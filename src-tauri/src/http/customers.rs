@@ -30,7 +30,10 @@ pub fn router() -> Router<AppState> {
         // Admin
         .route("/", get(list_customers).post(create_customer))
         .route("/with-portal", post(create_customer_with_portal))
-        .route("/orders/installations", post(create_backoffice_installation_order))
+        .route(
+            "/orders/installations",
+            post(create_backoffice_installation_order),
+        )
         .route("/summary", get(get_customer_summary))
         .route(
             "/invites",

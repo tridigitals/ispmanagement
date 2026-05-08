@@ -11,7 +11,6 @@
   export let bankAccounts: any[] = [];
   export let newBank: { bank_name: string; account_number: string; account_holder: string };
   export let showAddBank = false;
-  export let formattedLastRunAt = '-';
   export let handleChange: (key: string, value: any) => void;
   export let addBankAccount: () => void;
   export let removeBankAccount: (id: string) => void;
@@ -66,102 +65,6 @@
 
 <div class="payment-settings">
   <span class="section-label">{tt('admin.settings.payment.methods_label', 'Payment Methods')}</span>
-
-  <div class="setting-item full-width mb-4">
-    <label class="checkbox-label" for="customer-invoice-auto-generate-enabled">
-      <input
-        id="customer-invoice-auto-generate-enabled"
-        type="checkbox"
-        checked={localSettings['customer_invoice_auto_generate_enabled'] !== 'false'}
-        onchange={(e: any) =>
-          handleChange('customer_invoice_auto_generate_enabled', e.currentTarget.checked)}
-      />
-      <span>
-        {tt(
-          'admin.settings.payment.customer_invoice_auto_generate_enabled_label',
-          'Enable automatic customer invoice generation',
-        )}
-      </span>
-    </label>
-    <p class="help-text">
-      {tt(
-        'admin.settings.payment.customer_invoice_auto_generate_enabled_help',
-        'Runs in background and creates due invoices automatically based on lead days.',
-      )}
-    </p>
-  </div>
-
-  <div class="setting-item full-width mb-4">
-    <label for="customer-invoice-days-before-due">
-      {tt(
-        'admin.settings.payment.invoice_generation_days_before_due_label',
-        'Generate customer invoice (days before due)',
-      )}
-    </label>
-    <Input
-      id="customer-invoice-days-before-due"
-      type="number"
-      min="0"
-      max="60"
-      value={localSettings['customer_invoice_generate_days_before_due'] || '7'}
-      oninput={(e: any) =>
-        handleChange(
-          'customer_invoice_generate_days_before_due',
-          Math.max(0, Math.min(60, Number(e.target.value || 0))),
-        )}
-      placeholder="7"
-    />
-    <p class="help-text">
-      {tt(
-        'admin.settings.payment.invoice_generation_days_before_due_help',
-        'Invoices will be generated automatically by bulk process when entering this window.',
-      )}
-    </p>
-  </div>
-
-  <div class="setting-item full-width mb-4">
-    <label for="customer-invoice-scheduler-interval-minutes">
-      {tt(
-        'admin.settings.payment.customer_invoice_scheduler_interval_minutes_label',
-        'Customer invoice scheduler interval (minutes)',
-      )}
-    </label>
-    <Input
-      id="customer-invoice-scheduler-interval-minutes"
-      type="number"
-      min="5"
-      max="1440"
-      value={localSettings['customer_invoice_scheduler_interval_minutes'] || '60'}
-      oninput={(e: any) =>
-        handleChange(
-          'customer_invoice_scheduler_interval_minutes',
-          Math.max(5, Math.min(1440, Number(e.target.value || 60))),
-        )}
-      placeholder="60"
-    />
-    <p class="help-text">
-      {tt(
-        'admin.settings.payment.customer_invoice_scheduler_interval_minutes_help',
-        'How often background worker checks for due customer invoices.',
-      )}
-    </p>
-  </div>
-
-  <div class="setting-item full-width mb-4">
-    <span class="inline-label">
-      {tt(
-        'admin.settings.payment.customer_invoice_last_run_at_label',
-        'Last customer invoice generation run',
-      )}
-    </span>
-    <div class="readonly-value">{formattedLastRunAt}</div>
-    <p class="help-text">
-      {tt(
-        'admin.settings.payment.customer_invoice_last_run_at_help',
-        'Updated when due invoice generation process runs (manual or automatic).',
-      )}
-    </p>
-  </div>
 
   <div class="method-card">
     <div class="method-header">
@@ -503,10 +406,6 @@
     font-size: 0.95rem;
   }
 
-  .mb-4 {
-    margin-bottom: 1rem;
-  }
-
   .mt-2 {
     margin-top: 0.5rem;
   }
@@ -523,26 +422,6 @@
     font-size: 0.85rem;
     color: var(--text-secondary);
     margin-top: 0.25rem;
-  }
-
-  .readonly-value {
-    padding: 0.55rem 0.75rem;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    font-weight: 500;
-    min-height: 40px;
-    display: flex;
-    align-items: center;
-  }
-
-  .inline-label {
-    font-weight: 650;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-    display: inline-block;
-    margin-bottom: 0.35rem;
   }
 
   .toggle {

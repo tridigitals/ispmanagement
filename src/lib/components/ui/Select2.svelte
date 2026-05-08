@@ -31,6 +31,7 @@
 
   let isOpen = $state(false);
   let selectingViaPointer = $state(false);
+  let pendingPointerCloseTimeout = $state<number | null>(null);
   let containerElement: HTMLElement;
   let searchElement: HTMLInputElement | null = $state(null);
   let query = $state('');
@@ -75,6 +76,10 @@
   }
 
   function close() {
+    if (pendingPointerCloseTimeout !== null) {
+      window.clearTimeout(pendingPointerCloseTimeout);
+      pendingPointerCloseTimeout = null;
+    }
     isOpen = false;
     query = '';
   }
@@ -84,10 +89,21 @@
     else void open();
   }
 
-  function selectOption(optionVal: any) {
+  function selectOption(optionVal: any, deferClose = false) {
     value = optionVal;
     if (onchange) onchange({ detail: value });
+    if (deferClose) {
+      pendingPointerCloseTimeout = window.setTimeout(() => {
+        pendingPointerCloseTimeout = null;
+        close();
+      }, 0);
+      return;
+    }
     close();
+  }
+
+  function stopPropagation(event: Event) {
+    event.stopPropagation();
   }
 
   function isEventInsideContainer(event: Event) {
@@ -119,7 +135,7 @@
     event.preventDefault();
     event.stopPropagation();
     selectingViaPointer = true;
-    selectOption(optionVal);
+    selectOption(optionVal, true);
     queueMicrotask(() => {
       selectingViaPointer = false;
     });
@@ -216,7 +232,7 @@
               ? 'active'
               : ''}"
             onpointerdown={(event) => handleOptionPointerDown(option.value, event)}
-            onclick={() => selectOption(option.value)}
+            onclick={stopPropagation}
             onmousemove={() => (activeIndex = idx)}
             type="button"
             role="option"

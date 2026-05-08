@@ -270,14 +270,20 @@ fn installation_visibility_mode_accepts_all_staff_and_admin_only() {
 
 #[test]
 fn unassigned_installation_visibility_depends_on_mode() {
-    assert!(!CustomerService::should_non_admin_see_unassigned_installation_work_orders(
-        "admin_only"
-    ));
+    assert!(
+        !CustomerService::should_non_admin_see_unassigned_installation_work_orders("admin_only")
+    );
     assert!(CustomerService::should_non_admin_see_unassigned_installation_work_orders("all_staff"));
 }
 
 #[test]
 fn technician_only_sees_assigned_installation_work_orders_in_admin_only_mode() {
+    assert!(CustomerService::should_actor_have_full_installation_visibility(true, false));
+    assert!(CustomerService::should_actor_have_full_installation_visibility(false, true));
+    assert!(!CustomerService::should_actor_have_full_installation_visibility(false, false));
+    assert!(CustomerService::is_technician_role(Some("technician")));
+    assert!(CustomerService::is_technician_role(Some(" Teknisi ")));
+    assert!(!CustomerService::is_technician_role(Some("admin")));
     assert!(CustomerService::should_actor_see_installation_work_order(
         false,
         "tech-1",
@@ -285,10 +291,7 @@ fn technician_only_sees_assigned_installation_work_orders_in_admin_only_mode() {
         "pending",
     ));
     assert!(!CustomerService::should_actor_see_installation_work_order(
-        false,
-        "tech-1",
-        None,
-        "pending",
+        false, "tech-1", None, "pending",
     ));
     assert!(!CustomerService::should_actor_see_installation_work_order(
         false,
@@ -297,10 +300,7 @@ fn technician_only_sees_assigned_installation_work_orders_in_admin_only_mode() {
         "pending",
     ));
     assert!(CustomerService::should_actor_see_installation_work_order(
-        true,
-        "tech-1",
-        None,
-        "pending",
+        true, "tech-1", None, "pending",
     ));
 }
 

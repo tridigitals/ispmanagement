@@ -56,6 +56,15 @@ describe('order wizard state helpers', () => {
     expect(payload.location_id).toBeNull();
   });
 
+  it('normalizes datetime-local requested installation date to RFC3339', () => {
+    const payload = buildBackofficeInstallationOrderPayload({
+      ...baseDraft(),
+      requestedInstallationDate: '2026-05-08T10:30',
+    });
+
+    expect(payload.requested_installation_date).toBe(new Date('2026-05-08T10:30').toISOString());
+  });
+
   it('builds payload for an existing customer and existing location flow', () => {
     const payload = buildBackofficeInstallationOrderPayload({
       ...baseDraft(),

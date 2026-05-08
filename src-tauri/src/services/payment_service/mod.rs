@@ -28,12 +28,13 @@ use crate::services::subscription_lifecycle::{
 use crate::services::{NotificationService, PppoeService};
 
 const BILLING_AUTO_SUSPEND_ENABLED_KEY: &str = "billing_auto_suspend_enabled";
+const BILLING_AUTO_SUSPEND_MODE_KEY: &str = "billing_auto_suspend_mode";
 const BILLING_AUTO_SUSPEND_GRACE_DAYS_KEY: &str = "billing_auto_suspend_grace_days";
+const BILLING_AUTO_SUSPEND_FIXED_DAY_KEY: &str = "billing_auto_suspend_fixed_day";
 const BILLING_AUTO_RESUME_ON_PAYMENT_KEY: &str = "billing_auto_resume_on_payment";
 const BILLING_REMINDER_ENABLED_KEY: &str = "billing_reminder_enabled";
 const BILLING_REMINDER_SCHEDULE_KEY: &str = "billing_reminder_schedule";
-const INSTALLATION_WORK_ORDER_VISIBILITY_MODE_KEY: &str =
-    "installation_work_order_visibility_mode";
+const INSTALLATION_WORK_ORDER_VISIBILITY_MODE_KEY: &str = "installation_work_order_visibility_mode";
 
 use self::core::{
     customer_invoice_notification_action_url, customer_notification_user_ids,
@@ -129,6 +130,50 @@ pub(crate) fn duitku_callback_result_code_to_invoice_status(result_code: &str) -
     }
 }
 
+pub(crate) fn parse_auto_suspend_mode(
+    value: Option<String>,
+    default: AutoSuspendMode,
+) -> AutoSuspendMode {
+    match value
+        .unwrap_or_else(|| default.as_str().to_string())
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "fixed_day" => AutoSuspendMode::FixedDay,
+        "grace_period" => AutoSuspendMode::GracePeriod,
+        _ => default,
+    }
+}
+
+pub(crate) fn clamp_auto_suspend_fixed_day(value: i64) -> i64 {
+    value.clamp(1, 28)
+}
+
+pub(crate) fn auto_suspend_threshold_date(
+    due_date: chrono::NaiveDate,
+    mode: AutoSuspendMode,
+    grace_days: i64,
+    fixed_day: i64,
+) -> chrono::NaiveDate {
+    match mode {
+        AutoSuspendMode::GracePeriod => due_date + Duration::days(grace_days.max(0)),
+        AutoSuspendMode::FixedDay => {
+            let target_day = clamp_auto_suspend_fixed_day(fixed_day) as u32;
+            if due_date.day() <= target_day {
+                due_date.with_day(target_day).unwrap_or(due_date)
+            } else {
+                let (year, month) = if due_date.month() == 12 {
+                    (due_date.year() + 1, 1)
+                } else {
+                    (due_date.year(), due_date.month() + 1)
+                };
+                chrono::NaiveDate::from_ymd_opt(year, month, target_day).unwrap_or(due_date)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct BulkGenerateInvoicesResult {
     pub created_count: u32,
@@ -146,10 +191,27 @@ pub struct BillingCollectionRunResult {
     pub failed_count: u32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub enum AutoSuspendMode {
+    GracePeriod,
+    FixedDay,
+}
+
+impl AutoSuspendMode {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::GracePeriod => "grace_period",
+            Self::FixedDay => "fixed_day",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct BillingCollectionSettings {
     pub auto_suspend_enabled: bool,
+    pub auto_suspend_mode: AutoSuspendMode,
     pub auto_suspend_grace_days: i64,
+    pub auto_suspend_fixed_day: i64,
     pub auto_resume_on_payment: bool,
     pub reminder_enabled: bool,
     pub reminder_schedule: Vec<String>,
@@ -166,7 +228,9 @@ impl Default for BillingCollectionSettings {
     fn default() -> Self {
         Self {
             auto_suspend_enabled: false,
+            auto_suspend_mode: AutoSuspendMode::GracePeriod,
             auto_suspend_grace_days: 3,
+            auto_suspend_fixed_day: 1,
             auto_resume_on_payment: true,
             reminder_enabled: true,
             reminder_schedule: vec![
@@ -1471,7 +1535,14 @@ impl PaymentService {
                 }
             }
 
-            if settings.auto_suspend_enabled && day_offset >= settings.auto_suspend_grace_days {
+            let threshold_day = auto_suspend_threshold_date(
+                due_day,
+                settings.auto_suspend_mode.clone(),
+                settings.auto_suspend_grace_days,
+                settings.auto_suspend_fixed_day,
+            );
+
+            if settings.auto_suspend_enabled && today >= threshold_day {
                 match self
                     .update_customer_subscription_status_if(
                         tenant_id,
@@ -4941,6 +5012,12 @@ impl PaymentService {
             defaults.auto_suspend_enabled,
         );
 
+        let auto_suspend_mode = parse_auto_suspend_mode(
+            self.get_setting_value_fallback(tenant_id, BILLING_AUTO_SUSPEND_MODE_KEY)
+                .await,
+            defaults.auto_suspend_mode.clone(),
+        );
+
         let auto_suspend_grace_days = Self::parse_i64_setting(
             self.get_setting_value_fallback(tenant_id, BILLING_AUTO_SUSPEND_GRACE_DAYS_KEY)
                 .await,
@@ -4948,6 +5025,14 @@ impl PaymentService {
             0,
             365,
         );
+
+        let auto_suspend_fixed_day = clamp_auto_suspend_fixed_day(Self::parse_i64_setting(
+            self.get_setting_value_fallback(tenant_id, BILLING_AUTO_SUSPEND_FIXED_DAY_KEY)
+                .await,
+            defaults.auto_suspend_fixed_day,
+            1,
+            28,
+        ));
 
         let auto_resume_on_payment = Self::parse_bool_setting(
             self.get_setting_value_fallback(tenant_id, BILLING_AUTO_RESUME_ON_PAYMENT_KEY)
@@ -4969,7 +5054,9 @@ impl PaymentService {
 
         BillingCollectionSettings {
             auto_suspend_enabled,
+            auto_suspend_mode,
             auto_suspend_grace_days,
+            auto_suspend_fixed_day,
             auto_resume_on_payment,
             reminder_enabled,
             reminder_schedule,

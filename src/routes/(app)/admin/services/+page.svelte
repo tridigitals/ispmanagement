@@ -15,6 +15,7 @@
   import { loadServicesRouterMappingHelpers } from './servicesPageDeferredModules';
   import { loadServicesDialogs } from './servicesPageModules';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
+  import { canAccessServiceCatalog } from '$lib/utils/serviceCatalogAccess';
 
   type RouterRow = { id: string; name: string };
   type ProfileSuggestion = { id: string; name: string };
@@ -286,7 +287,7 @@
   }
 
   onMount(() => {
-    if (!$can('read', 'isp_packages') && !$can('manage', 'isp_packages')) {
+    if (!canAccessServiceCatalog($user, $can('read', 'isp_packages'), $can('manage', 'isp_packages'))) {
       goto('/unauthorized');
       return;
     }

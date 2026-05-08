@@ -50,6 +50,24 @@ function numberOrNull(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function normalizedRequestedInstallationDateOrNull(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(trimmed)) {
+    const parsed = new Date(trimmed);
+    if (Number.isFinite(parsed.getTime())) {
+      return parsed.toISOString();
+    }
+  }
+
+  return trimmed;
+}
+
 export function inferInitialCustomerMode(prefilledCustomerId?: string | null): BackofficeOrderCustomerMode {
   return prefilledCustomerId?.trim() ? 'existing' : 'new';
 }
@@ -123,6 +141,8 @@ export function buildBackofficeInstallationOrderPayload(
     package_id: draft.packageId.trim(),
     billing_cycle: draft.billingCycle,
     notes: trimmedOrNull(draft.notes),
-    requested_installation_date: trimmedOrNull(draft.requestedInstallationDate),
+    requested_installation_date: normalizedRequestedInstallationDateOrNull(
+      draft.requestedInstallationDate,
+    ),
   };
 }

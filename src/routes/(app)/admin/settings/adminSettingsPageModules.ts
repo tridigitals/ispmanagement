@@ -38,6 +38,14 @@ export const loadAdminSettingsPaymentTab = createCachedLoader(async () => {
   };
 });
 
+export const loadAdminSettingsServiceTab = createCachedLoader(async () => {
+  const { default: SettingsServiceTabComponent } = await import('./SettingsServiceTab.svelte');
+
+  return {
+    SettingsServiceTabComponent,
+  };
+});
+
 export const loadAdminSettingsWhatsAppTab = createCachedLoader(async () => {
   const { default: SettingsWhatsAppTabComponent } = await import(
     '$lib/components/settings/WhatsAppGatewayTab.svelte'

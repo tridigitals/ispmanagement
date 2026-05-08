@@ -1,12 +1,15 @@
 use super::{
+    auto_suspend_threshold_date, clamp_auto_suspend_fixed_day,
     customer_invoice_notification_action_url, customer_notification_user_ids,
     decide_midtrans_transition, filter_installation_request_user_ids, filter_owner_admin_user_ids,
     is_customer_package_invoice_external_id, is_owner_admin_or_technician_role,
-    is_owner_or_admin_role, MidtransTransitionDecision,
+    is_owner_or_admin_role, parse_auto_suspend_mode, AutoSuspendMode, BillingCollectionSettings,
+    MidtransTransitionDecision,
 };
 use crate::services::subscription_lifecycle::{
     resolve_activation_status, SubscriptionLifecycleStatus,
 };
+use chrono::NaiveDate;
 
 #[test]
 fn owner_admin_role_detection_is_case_insensitive() {
@@ -260,5 +263,70 @@ fn duitku_callback_result_code_maps_to_invoice_status() {
     assert_eq!(
         super::duitku_callback_result_code_to_invoice_status("99"),
         "pending"
+    );
+}
+
+#[test]
+fn billing_collection_settings_default_to_grace_period_mode() {
+    let defaults = BillingCollectionSettings::default();
+
+    assert_eq!(defaults.auto_suspend_mode, AutoSuspendMode::GracePeriod);
+    assert_eq!(defaults.auto_suspend_fixed_day, 1);
+}
+
+#[test]
+fn parse_auto_suspend_mode_accepts_known_values_and_falls_back() {
+    assert_eq!(
+        parse_auto_suspend_mode(Some("fixed_day".to_string()), AutoSuspendMode::GracePeriod),
+        AutoSuspendMode::FixedDay
+    );
+    assert_eq!(
+        parse_auto_suspend_mode(
+            Some(" grace_period ".to_string()),
+            AutoSuspendMode::FixedDay
+        ),
+        AutoSuspendMode::GracePeriod
+    );
+    assert_eq!(
+        parse_auto_suspend_mode(Some("unexpected".to_string()), AutoSuspendMode::GracePeriod),
+        AutoSuspendMode::GracePeriod
+    );
+}
+
+#[test]
+fn clamp_auto_suspend_fixed_day_limits_value_to_safe_month_days() {
+    assert_eq!(clamp_auto_suspend_fixed_day(0), 1);
+    assert_eq!(clamp_auto_suspend_fixed_day(1), 1);
+    assert_eq!(clamp_auto_suspend_fixed_day(15), 15);
+    assert_eq!(clamp_auto_suspend_fixed_day(31), 28);
+}
+
+#[test]
+fn grace_period_threshold_is_due_date_plus_grace_days() {
+    let due_date = NaiveDate::from_ymd_opt(2026, 5, 8).expect("valid due date");
+
+    assert_eq!(
+        auto_suspend_threshold_date(due_date, AutoSuspendMode::GracePeriod, 3, 10),
+        NaiveDate::from_ymd_opt(2026, 5, 11).expect("valid threshold date")
+    );
+}
+
+#[test]
+fn fixed_day_threshold_uses_same_month_when_due_before_or_on_fixed_day() {
+    let due_date = NaiveDate::from_ymd_opt(2026, 5, 8).expect("valid due date");
+
+    assert_eq!(
+        auto_suspend_threshold_date(due_date, AutoSuspendMode::FixedDay, 3, 20),
+        NaiveDate::from_ymd_opt(2026, 5, 20).expect("valid threshold date")
+    );
+}
+
+#[test]
+fn fixed_day_threshold_rolls_to_next_month_when_due_after_fixed_day() {
+    let due_date = NaiveDate::from_ymd_opt(2026, 5, 21).expect("valid due date");
+
+    assert_eq!(
+        auto_suspend_threshold_date(due_date, AutoSuspendMode::FixedDay, 3, 20),
+        NaiveDate::from_ymd_opt(2026, 6, 20).expect("valid threshold date")
     );
 }

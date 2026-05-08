@@ -71,11 +71,19 @@ impl CustomerService {
             .map(str::trim)
             .filter(|s| !s.is_empty())
             .map(str::to_string);
-        let is_admin_owner = self.is_actor_admin_or_owner(tenant_id, actor_id).await?;
+        let actor_role_name = self.get_actor_role_name(tenant_id, actor_id).await?;
+        let is_admin_owner = matches!(actor_role_name.as_deref(), Some("owner") | Some("admin"));
+        let can_manage_work_orders = self
+            .auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "manage")
+            .await
+            .is_ok();
+        let has_full_visibility = is_admin_owner
+            || (can_manage_work_orders && !Self::is_technician_role(actor_role_name.as_deref()));
         let visibility_mode = self
             .resolve_installation_work_order_visibility_mode(tenant_id)
             .await;
-        let can_view_unassigned = is_admin_owner
+        let can_view_unassigned = has_full_visibility
             || Self::should_non_admin_see_unassigned_installation_work_orders(visibility_mode);
 
         #[cfg(feature = "postgres")]
@@ -138,7 +146,8 @@ impl CustomerService {
                 )
               )
               AND (
-                wo.assigned_to = $6
+                $6::bool
+                OR wo.assigned_to = $7
                 OR (
                   $5::bool
                   AND wo.status = 'pending'
@@ -154,7 +163,7 @@ impl CustomerService {
                 ELSE 4
               END ASC,
               wo.updated_at DESC
-            LIMIT $7
+            LIMIT $8
             "#,
         )
         .bind(tenant_id)
@@ -162,6 +171,7 @@ impl CustomerService {
         .bind(assigned_filter)
         .bind(include_closed)
         .bind(can_view_unassigned)
+        .bind(has_full_visibility)
         .bind(actor_id)
         .bind(limit as i64)
         .fetch_all(&self.pool)
@@ -227,7 +237,8 @@ impl CustomerService {
                 )
               )
               AND (
-                wo.assigned_to = ?
+                ? = 1
+                OR wo.assigned_to = ?
                 OR (
                   ? = 1
                   AND
@@ -254,6 +265,7 @@ impl CustomerService {
         .bind(&assigned_filter)
         .bind(if include_closed { 1 } else { 0 })
         .bind(if can_view_unassigned { 1 } else { 0 })
+        .bind(if has_full_visibility { 1 } else { 0 })
         .bind(actor_id)
         .bind(limit as i64)
         .fetch_all(&self.pool)
@@ -315,23 +327,23 @@ impl CustomerService {
 
         let row = self
             .set_installation_work_order_status_internal(
-            actor_id,
-            tenant_id,
-            work_order_id,
-            if current.status == "pending" {
-                Some("pending")
-            } else {
-                None
-            },
-            Some(assigned_to),
-            scheduled_at,
-            notes,
-            false,
-            ip_address,
-            "WORK_ORDER_ASSIGN",
-            "Assigned installation work order",
-        )
-        .await?;
+                actor_id,
+                tenant_id,
+                work_order_id,
+                if current.status == "pending" {
+                    Some("pending")
+                } else {
+                    None
+                },
+                Some(assigned_to),
+                scheduled_at,
+                notes,
+                false,
+                ip_address,
+                "WORK_ORDER_ASSIGN",
+                "Assigned installation work order",
+            )
+            .await?;
 
         let previous_assigned = current.assigned_to.as_deref().map(str::trim).unwrap_or("");
         let next_assigned = row.assigned_to.as_deref().map(str::trim).unwrap_or("");
@@ -1120,7 +1132,10 @@ impl CustomerService {
         .await?;
 
         let (customer_name, location_label, package_name) = row.unwrap_or((None, None, None));
-        let mut message = format!("A work order has been assigned to you (WO {}).", work_order.id);
+        let mut message = format!(
+            "A work order has been assigned to you (WO {}).",
+            work_order.id
+        );
         if customer_name.is_some() || location_label.is_some() || package_name.is_some() {
             let customer = customer_name.unwrap_or_else(|| "Customer".to_string());
             let location = location_label.unwrap_or_else(|| "-".to_string());

@@ -7,6 +7,7 @@
   import { get } from 'svelte/store';
   import { toast } from 'svelte-sonner';
   import { can } from '$lib/stores/auth';
+  import { appSettings } from '$lib/stores/settings';
   import {
     api,
     type AuditLog,
@@ -29,7 +30,11 @@
     shouldAutoLoadCustomerDetailTab,
     type CustomerDetailTab,
   } from '$lib/utils/customerDetailAccess';
-  import { timeAgo } from '$lib/utils/date';
+  import {
+    buildCustomerSubscriptionPolicySummary,
+    clampFixedSuspendDay,
+  } from '$lib/utils/customerSubscriptionPolicy';
+  import { formatDate, timeAgo } from '$lib/utils/date';
   import { formatMoney } from '$lib/utils/money';
   import { getAdminCustomerNavigation } from '$lib/utils/adminCustomerNavigation';
   import {
@@ -244,7 +249,7 @@
     { key: 'billing', label: 'Billing' },
     { key: 'location', label: 'Location' },
     { key: 'router', label: 'Router' },
-    { key: 'period', label: 'Period' },
+    { key: 'lifecycle', label: 'Lifecycle' },
     { key: 'actions', label: '', align: 'right' as const },
   ]);
 
@@ -872,6 +877,31 @@
       cancelled: get(t)('common.cancelled') || 'Cancelled',
     };
     return map[status] || status;
+  }
+
+  const customerSubscriptionPolicy = $derived.by(() => ({
+    enabled: String($appSettings['billing_auto_suspend_enabled'] ?? 'false') === 'true',
+    mode: (
+      String($appSettings['billing_auto_suspend_mode'] || 'grace_period') === 'fixed_day'
+        ? 'fixed_day'
+        : 'grace_period'
+    ) as 'grace_period' | 'fixed_day',
+    graceDays: Number.parseInt(String($appSettings['billing_auto_suspend_grace_days'] || '3'), 10),
+    fixedDay: clampFixedSuspendDay(
+      Number.parseInt(String($appSettings['billing_auto_suspend_fixed_day'] || '1'), 10),
+    ),
+  }));
+
+  function getSubscriptionPolicySummary(row: CustomerSubscriptionView) {
+    return buildCustomerSubscriptionPolicySummary({
+      endsAt: row.ends_at,
+      policy: customerSubscriptionPolicy,
+    });
+  }
+
+  function formatCustomerPolicyDate(value: string | null) {
+    if (!value) return '-';
+    return formatDate(value, { timeZone: $appSettings.app_timezone || 'UTC' });
   }
 
   function metricCount(stage: string, source: 'lifecycle' | 'work_order' = 'lifecycle'): number {
@@ -1609,7 +1639,7 @@
             class="btn btn-secondary"
             onclick={openCreateOrderForCustomer}
           >
-            <Icon name="clipboard-plus" size={16} />
+            <Icon name="file-text" size={16} />
             Create Order
           </button>
         {/if}
@@ -1870,6 +1900,8 @@
           subscriptionColumns={subscriptionColumns}
           subscriptions={subscriptions}
           subscriptionStatusLabel={subscriptionStatusLabel}
+          getSubscriptionPolicySummary={getSubscriptionPolicySummary}
+          formatCustomerPolicyDate={formatCustomerPolicyDate}
           canManageCustomers={$can('manage', 'customers')}
           onRefresh={() => loadSubscriptions({ force: true })}
           onAdd={openCreateSubscription}

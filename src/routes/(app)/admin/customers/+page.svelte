@@ -764,7 +764,7 @@
       </button>
       {#if canCreateOrders}
         <button class="btn btn-secondary" onclick={() => goto('/admin/customers/orders/new')}>
-          <Icon name="clipboard-plus" size={16} />
+          <Icon name="file-text" size={16} />
           Create Order
         </button>
       {/if}

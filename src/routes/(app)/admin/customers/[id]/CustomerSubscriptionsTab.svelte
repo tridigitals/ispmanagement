@@ -14,6 +14,8 @@
     subscriptionColumns,
     subscriptions,
     subscriptionStatusLabel,
+    getSubscriptionPolicySummary,
+    formatCustomerPolicyDate,
     canManageCustomers,
     onRefresh,
     onAdd,
@@ -129,9 +131,30 @@
         <div>{row.location_label || '-'}</div>
       {:else if key === 'router'}
         <div>{row.router_name || '-'}</div>
-      {:else if key === 'period'}
-        <div class="sub">{row.starts_at ? new Date(row.starts_at).toLocaleDateString() : '-'}</div>
-        <div class="sub">{row.ends_at ? new Date(row.ends_at).toLocaleDateString() : '-'}</div>
+      {:else if key === 'lifecycle'}
+        {@const summary = getSubscriptionPolicySummary(row)}
+        <div class="policy-stack">
+          <div>
+            <span class="policy-label">Masa aktif</span>
+            <div class="sub">
+              {summary.activeUntilMissing
+                ? 'Belum ada masa aktif akhir'
+                : formatCustomerPolicyDate(summary.activeUntilIso)}
+            </div>
+          </div>
+          <div>
+            <span class="policy-label">Policy</span>
+            <div class="sub">{summary.policyLabel}</div>
+          </div>
+          <div>
+            <span class="policy-label">Perkiraan suspend</span>
+            <div class="sub">
+              {summary.estimatedSuspendIso
+                ? formatCustomerPolicyDate(summary.estimatedSuspendIso)
+                : summary.estimatedSuspendMissingReason || '-'}
+            </div>
+          </div>
+        </div>
       {:else if key === 'actions'}
         <div class="row-actions">
           {#if canManageCustomers}
@@ -210,7 +233,8 @@
   .subtitle,
   .sub,
   .metric-label,
-  .aging-pill {
+  .aging-pill,
+  .policy-label {
     color: var(--text-secondary);
   }
 
@@ -281,6 +305,19 @@
   .sub {
     font-size: 0.85rem;
     margin-top: 0.15rem;
+  }
+
+  .policy-stack {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .policy-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
   }
 
   .mono {

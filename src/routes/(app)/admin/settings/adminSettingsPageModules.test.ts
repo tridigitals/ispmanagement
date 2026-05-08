@@ -4,6 +4,7 @@ const sentinels = vi.hoisted(() => ({
   billingPlanPanel: { name: 'tenant-billing-plan-panel' },
   emailTab: { name: 'settings-email-tab' },
   paymentTab: { name: 'settings-payment-tab' },
+  serviceTab: { name: 'settings-service-tab' },
 }));
 
 vi.mock('$lib/components/billing/TenantBillingPlanPanel.svelte', () => ({
@@ -18,9 +19,14 @@ vi.mock('./SettingsPaymentTab.svelte', () => ({
   default: sentinels.paymentTab,
 }));
 
+vi.mock('./SettingsServiceTab.svelte', () => ({
+  default: sentinels.serviceTab,
+}));
+
 import {
   loadAdminSettingsEmailTab,
   loadAdminSettingsPaymentTab,
+  loadAdminSettingsServiceTab,
   loadTenantBillingPlanPanel,
 } from './adminSettingsPageModules';
 
@@ -46,6 +52,14 @@ describe('admin settings page modules', () => {
     const second = await loadAdminSettingsPaymentTab();
 
     expect(first.SettingsPaymentTabComponent).toBe(sentinels.paymentTab);
+    expect(second).toBe(first);
+  });
+
+  it('loads and caches the service tab lazily', async () => {
+    const first = await loadAdminSettingsServiceTab();
+    const second = await loadAdminSettingsServiceTab();
+
+    expect(first.SettingsServiceTabComponent).toBe(sentinels.serviceTab);
     expect(second).toBe(first);
   });
 });

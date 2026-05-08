@@ -397,9 +397,8 @@ impl CustomerService {
             return Err(AppError::Validation("package_id is required".to_string()));
         }
 
-        let billing_cycle = Self::normalize_billing_cycle(
-            dto.billing_cycle.as_deref().unwrap_or("monthly"),
-        )?;
+        let billing_cycle =
+            Self::normalize_billing_cycle(dto.billing_cycle.as_deref().unwrap_or("monthly"))?;
         let price = self
             .resolve_active_package_price(tenant_id, &package_id, &billing_cycle)
             .await?;
@@ -413,11 +412,13 @@ impl CustomerService {
                     .map(str::trim)
                     .filter(|value| !value.is_empty())
                     .ok_or_else(|| AppError::Validation("customer_id is required".to_string()))?;
-                self.get_customer_by_id_in_tenant(tenant_id, customer_id).await?
+                self.get_customer_by_id_in_tenant(tenant_id, customer_id)
+                    .await?
             }
             crate::models::BackofficeOrderCustomerMode::New => {
-                let input = maybe_customer_input
-                    .ok_or_else(|| AppError::Validation("customer payload is required".to_string()))?;
+                let input = maybe_customer_input.ok_or_else(|| {
+                    AppError::Validation("customer payload is required".to_string())
+                })?;
                 self.build_order_customer(tenant_id, input)?
             }
         };
@@ -435,8 +436,9 @@ impl CustomerService {
                     .await?
             }
             crate::models::BackofficeOrderLocationMode::New => {
-                let input = maybe_location_input
-                    .ok_or_else(|| AppError::Validation("location payload is required".to_string()))?;
+                let input = maybe_location_input.ok_or_else(|| {
+                    AppError::Validation("location payload is required".to_string())
+                })?;
                 self.build_order_location(tenant_id, &customer.id, input)?
             }
         };
@@ -514,7 +516,10 @@ impl CustomerService {
                     "CUSTOMER_CREATE_FROM_ORDER",
                     "customers",
                     Some(&customer.id),
-                    Some(&format!("Created customer {} from order flow", customer.name)),
+                    Some(&format!(
+                        "Created customer {} from order flow",
+                        customer.name
+                    )),
                     ip_address,
                 )
                 .await;
@@ -755,7 +760,9 @@ impl CustomerService {
     ) -> AppResult<Customer> {
         let name = input.name.trim().to_string();
         if name.is_empty() {
-            return Err(AppError::Validation("customer.name is required".to_string()));
+            return Err(AppError::Validation(
+                "customer.name is required".to_string(),
+            ));
         }
 
         let email = input
@@ -795,7 +802,9 @@ impl CustomerService {
     ) -> AppResult<CustomerLocation> {
         let label = input.label.trim().to_string();
         if label.is_empty() {
-            return Err(AppError::Validation("location.label is required".to_string()));
+            return Err(AppError::Validation(
+                "location.label is required".to_string(),
+            ));
         }
 
         let address_line1 = input
@@ -1128,9 +1137,8 @@ impl CustomerService {
         work_order_id: &str,
         requested_installation_date: Option<&str>,
     ) -> AppResult<InstallationWorkOrder> {
-        let scheduled_at = Self::parse_optional_datetime(
-            requested_installation_date.map(str::to_string),
-        )?;
+        let scheduled_at =
+            Self::parse_optional_datetime(requested_installation_date.map(str::to_string))?;
 
         #[cfg(feature = "postgres")]
         sqlx::query(

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Select2 from '$lib/components/ui/Select2.svelte';
   import InstallationCableMap from '$lib/components/network/InstallationCableMap.svelte';
@@ -121,6 +122,16 @@
     confirmCancelFromDialog,
     hasValidCancelReason,
   } = $props();
+
+  let cancelReasonTextarea = $state<HTMLTextAreaElement | null>(null);
+
+  $effect(() => {
+    if (!cancelDialogOpen || !cancelTarget) return;
+    void tick().then(() => {
+      cancelReasonTextarea?.focus();
+      cancelReasonTextarea?.select();
+    });
+  });
 </script>
 
 {#if detailOpen && activeRow}
@@ -746,14 +757,23 @@
           <Icon name="x" size={16} />
         </button>
       </div>
-      <p class="step-help">{tr('admin.network.installations.cancel_reason_required', 'Cancellation reason is required (minimum 10 characters).')}</p>
+      <p class="step-help">
+        {tr('admin.network.installations.cancel_reason_required', 'Cancellation reason is required (minimum 10 characters).')}
+        {` `}
+        {tr('admin.network.installations.cancel_reason_editable', 'You can replace the default reason with a more specific note.')}
+      </p>
       <div class="meta-grid">
         <div><strong>{tr('common.customer', 'Customer')}:</strong> {cancelTarget.customer_name || cancelTarget.customer_id}</div>
         <div><strong>{tr('common.location', 'Location')}:</strong> {cancelTarget.location_label || cancelTarget.location_id}</div>
       </div>
       <label class="notes">
         {tr('common.notes', 'Notes')}
-        <textarea rows="4" bind:value={cancelReason} placeholder={tr('admin.network.installations.notes_placeholder', 'Technician notes and onsite findings')}></textarea>
+        <textarea
+          bind:this={cancelReasonTextarea}
+          rows="4"
+          bind:value={cancelReason}
+          placeholder={tr('admin.network.installations.notes_placeholder', 'Technician notes and onsite findings')}
+        ></textarea>
       </label>
       <div class="modal-actions">
         <button class="btn ghost" onclick={closeCancelDialog} disabled={busyId === cancelTarget.id}>{tr('common.close', 'Close')}</button>
