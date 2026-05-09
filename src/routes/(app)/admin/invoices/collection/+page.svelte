@@ -162,28 +162,6 @@
   const currentLoading = $derived(
     activeTab === 'collection' ? loadingCollection : loadingReminders,
   );
-  const actionHighlights = $derived.by(() => {
-    const keys = [
-      'reminder',
-      'suspend',
-      'grace_expire_suspend',
-      'resume',
-      'installation',
-      'assignment',
-    ];
-    return keys
-      .map((action) => {
-        const count = collectionRows.filter(
-          (row) => String(row.action || '').toLowerCase() === action,
-        ).length;
-        return {
-          action,
-          count,
-        };
-      })
-      .filter((item) => item.count > 0);
-  });
-
   onMount(async () => {
     if (!$can('read', 'billing') && !$can('manage', 'billing')) {
       goto('/unauthorized');
@@ -453,8 +431,7 @@
     <div>
       <h1>{$t('admin.billing_collection.title') || 'Billing Collection Logs'}</h1>
       <p class="subtitle">
-        {$t('admin.billing_collection.subtitle') ||
-          'Monitor reminder delivery, suspend/resume actions, and run collection manually.'}
+        {$t('admin.billing_collection.subtitle') || 'Monitor reminder, suspend, dan resume billing.'}
       </p>
     </div>
     <div class="header-actions">
@@ -537,18 +514,6 @@
         <span>{$t('admin.billing_collection.summary.failed') || 'Failed'}</span>
         <strong>{lastRunResult.failed_count}</strong>
       </div>
-    </div>
-  {/if}
-
-  {#if actionHighlights.length > 0}
-    <div class="action-overview">
-      {#each actionHighlights as item}
-        <div class="action-overview-card">
-          <span class={`pill ${actionTone(item.action)}`}>{normalizeAction(item.action)}</span>
-          <strong>{item.count}</strong>
-          <small>{actionHelper(item.action)}</small>
-        </div>
-      {/each}
     </div>
   {/if}
 
@@ -827,9 +792,9 @@
 
   .summary-item {
     border: 1px solid var(--border-color);
-    border-radius: 10px;
-    background: var(--bg-surface);
-    padding: 0.75rem;
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--bg-surface), transparent 3%);
+    padding: 0.7rem 0.75rem;
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
@@ -843,36 +808,6 @@
   .summary-item strong {
     font-size: 1.12rem;
     color: var(--text-primary);
-  }
-
-  .action-overview {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-
-  .action-overview-card {
-    display: grid;
-    gap: 0.45rem;
-    padding: 0.85rem 0.9rem;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-surface), #17304d 8%),
-      var(--bg-surface)
-    );
-  }
-
-  .action-overview-card strong {
-    font-size: 1.2rem;
-    color: var(--text-primary);
-  }
-
-  .action-overview-card small {
-    color: var(--text-secondary);
-    line-height: 1.45;
   }
 
   .content-card {
@@ -1071,10 +1006,6 @@
   }
 
   @media (max-width: 1080px) {
-    .action-overview {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     .filter-row {
       grid-template-columns: 1fr 1fr 1fr;
     }
@@ -1084,10 +1015,6 @@
     }
   }
   @media (max-width: 760px) {
-    .action-overview {
-      grid-template-columns: 1fr;
-    }
-
     .filter-row {
       grid-template-columns: 1fr;
     }

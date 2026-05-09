@@ -33,12 +33,8 @@
 <div class="card section">
   <div class="section-head">
     <div>
-      <span class="section-kicker">Customer service</span>
       <h3>{$t('admin.customers.subscriptions.title') || 'Layanan'}</h3>
-      <p class="subtitle">
-        {$t('admin.customers.subscriptions.subtitle') ||
-          'Daftar layanan pelanggan untuk billing dan pengelolaan layanan.'}
-      </p>
+      <p class="subtitle">Daftar layanan pelanggan.</p>
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingSubscriptions}>
@@ -56,28 +52,24 @@
 
   <div class="summary-strip">
     <div class="summary-card">
-      <span class="summary-icon"><Icon name="wifi" size={16} /></span>
       <div>
         <span class="summary-label">Total layanan</span>
         <strong>{subscriptions.length}</strong>
       </div>
     </div>
     <div class="summary-card emphasis">
-      <span class="summary-icon"><Icon name="pause-circle" size={16} /></span>
       <div>
         <span class="summary-label">Masa tenggang aktif</span>
         <strong>{metricCount('grace_active') || metricCount('installation_done_awaiting_payment')}</strong>
       </div>
     </div>
     <div class="summary-card">
-      <span class="summary-icon"><Icon name="activity" size={16} /></span>
       <div>
         <span class="summary-label">Aktif</span>
         <strong>{metricCount('active')}</strong>
       </div>
     </div>
     <div class="summary-card">
-      <span class="summary-icon"><Icon name="clipboard-list" size={16} /></span>
       <div>
         <span class="summary-label">WO berjalan</span>
         <strong>{metricCount('in_progress', 'work_order')}</strong>
@@ -88,9 +80,8 @@
   <div class="lifecycle-observability card">
     <div class="observability-head">
       <div>
-        <span class="section-kicker">Lifecycle insight</span>
         <h4>Ringkasan lifecycle layanan</h4>
-        <p class="subtitle">Pantau status layanan, progres instalasi, dan umur antrean aktivasi pelanggan ini.</p>
+        <p class="subtitle">Status layanan dan progres aktivasi.</p>
       </div>
       <span class="meta-pill">
         <Icon name="activity" size={14} />
@@ -256,8 +247,7 @@
 <style>
   .section {
     padding: 1.1rem;
-    background:
-      linear-gradient(180deg, color-mix(in srgb, var(--bg-surface), #17304d 7%), var(--bg-surface));
+    background: var(--bg-surface);
   }
 
   .section-head,
@@ -279,16 +269,6 @@
     justify-content: flex-end;
   }
 
-  .section-kicker {
-    display: inline-flex;
-    margin-bottom: 0.35rem;
-    color: color-mix(in srgb, var(--text-secondary), white 10%);
-    font-size: 0.76rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
   .subtitle,
   .metric-label,
   .aging-pill,
@@ -308,31 +288,15 @@
   }
 
   .summary-card {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.7rem;
-    align-items: start;
-    padding: 0.85rem 0.9rem;
-    border-radius: 14px;
-    border: 1px solid color-mix(in srgb, var(--border-color), transparent 18%);
-    background: color-mix(in srgb, var(--bg-surface), #10253d 8%);
+    padding: 0.75rem 0.85rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface), transparent 4%);
   }
 
   .summary-card.emphasis {
-    border-color: rgba(245, 158, 11, 0.28);
-    background: rgba(245, 158, 11, 0.08);
-  }
-
-  .summary-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 999px;
-    color: color-mix(in srgb, var(--accent-color, #3b82f6), white 8%);
-    background: color-mix(in srgb, var(--accent-color, #3b82f6) 14%, var(--bg-surface));
-    border: 1px solid color-mix(in srgb, var(--accent-color, #3b82f6), transparent 58%);
+    border-color: rgba(245, 158, 11, 0.22);
+    background: rgba(245, 158, 11, 0.05);
   }
 
   .summary-label {
@@ -364,9 +328,9 @@
   .lifecycle-observability {
     margin-bottom: 1rem;
     padding: 1rem;
-    border: 1px solid color-mix(in srgb, var(--border-color), transparent 20%);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    background: color-mix(in srgb, var(--bg-surface), #10253d 8%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 3%);
   }
 
   .observability-grid {
@@ -376,11 +340,10 @@
   }
 
   .metric-tile {
-    border-radius: 14px;
+    border-radius: 12px;
     padding: 0.85rem 0.9rem;
-    border: 1px solid color-mix(in srgb, var(--border-color), transparent 18%);
-    background: color-mix(in srgb, var(--bg-surface), transparent 4%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface), transparent 2%);
   }
 
   .metric-tile.emphasis {
@@ -421,10 +384,9 @@
     gap: 0.55rem;
     min-width: 240px;
     padding: 0.8rem 0.85rem;
-    border-radius: 14px;
-    border: 1px solid color-mix(in srgb, var(--border-color), transparent 18%);
-    background:
-      linear-gradient(180deg, color-mix(in srgb, var(--bg-surface), #10253d 10%), var(--bg-surface));
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface), transparent 3%);
   }
 
   .policy-row {

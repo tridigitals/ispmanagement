@@ -1,7 +1,6 @@
 <script lang="ts">
   import { get } from 'svelte/store';
   import { t } from 'svelte-i18n';
-  import Icon from '$lib/components/ui/Icon.svelte';
   import Input from '$lib/components/ui/Input.svelte';
   import {
     REMINDER_PRESETS,
@@ -171,20 +170,11 @@
 
 <div class="service-settings">
   <div class="intro-card">
-    <span class="section-label"
-      >{tt('admin.settings.service.lifecycle_label', 'Layanan Pelanggan')}</span
-    >
     <h3>{tt('admin.settings.categories.service', 'Service')}</h3>
-    <p>
-      {tt(
-        'admin.settings.service.global_policy_help',
-        'Policy ini berlaku global untuk semua customer dan layanan.',
-      )}
-    </p>
+    <p>Pengaturan global untuk billing dan lifecycle layanan.</p>
 
     <div class="summary-grid">
       <div class="summary-card">
-        <span class="summary-icon"><Icon name="activity" size={16} /></span>
         <div>
           <span class="summary-label">Health scheduler</span>
           <strong>{schedulerStatusLabel()}</strong>
@@ -192,14 +182,12 @@
         </div>
       </div>
       <div class="summary-card">
-        <span class="summary-icon"><Icon name="file-text" size={16} /></span>
         <div>
           <span class="summary-label">Invoice otomatis</span>
           <strong>{invoicePreview()}</strong>
         </div>
       </div>
       <div class="summary-card">
-        <span class="summary-icon"><Icon name="pause-circle" size={16} /></span>
         <div>
           <span class="summary-label">Suspend otomatis</span>
           <strong
@@ -210,14 +198,12 @@
         </div>
       </div>
       <div class="summary-card">
-        <span class="summary-icon"><Icon name="play-circle" size={16} /></span>
         <div>
           <span class="summary-label">Auto resume</span>
           <strong>{autoResumePreview()}</strong>
         </div>
       </div>
       <div class="summary-card">
-        <span class="summary-icon"><Icon name="bell-ring" size={16} /></span>
         <div>
           <span class="summary-label">Reminder</span>
           <strong>{reminderPreview()}</strong>
@@ -227,17 +213,15 @@
 
     <div class="quick-actions">
       <a class="quick-link" href={invoicesPath || '/admin/invoices'}>
-        <span class="quick-link-icon"><Icon name="receipt" size={16} /></span>
         <span>
           <strong>Lihat invoice</strong>
-          <small>Cek tagihan dan status pembayaran pelanggan</small>
+          <small>Status tagihan pelanggan</small>
         </span>
       </a>
       <a class="quick-link" href={billingLogsPath || '/admin/invoices/collection'}>
-        <span class="quick-link-icon"><Icon name="clipboard-list" size={16} /></span>
         <span>
           <strong>Lihat log automation</strong>
-          <small>Audit reminder, suspend, resume, dan hasil background runner</small>
+          <small>Riwayat scheduler billing</small>
         </span>
       </a>
     </div>
@@ -246,14 +230,7 @@
   <section class="service-section">
     <div class="section-head">
       <div>
-        <span class="section-kicker">Billing service</span>
         <h4>{tt('admin.settings.service.auto_invoice_title', 'Invoice Otomatis')}</h4>
-        <p>
-          {tt(
-            'admin.settings.service.auto_invoice_help',
-            'Atur pembuatan invoice layanan pelanggan secara otomatis.',
-          )}
-        </p>
       </div>
     </div>
 
@@ -342,14 +319,7 @@
   <section class="service-section">
     <div class="section-head">
       <div>
-        <span class="section-kicker">Lifecycle policy</span>
         <h4>{tt('admin.settings.service.auto_suspend_title', 'Suspend Otomatis')}</h4>
-        <p>
-          {tt(
-            'admin.settings.service.auto_suspend_help',
-            'Suspend layanan pelanggan secara otomatis sesuai policy global.',
-          )}
-        </p>
       </div>
     </div>
 
@@ -414,22 +384,9 @@
         <strong>{activeSuspendPreview()}</strong>
       </div>
 
-      <p class="help-text">
-        {tt(
-          'admin.settings.service.auto_suspend_mode_help',
-          'Pilih masa tenggang jika suspend dihitung dari jatuh tempo, atau tanggal tetap jika semua layanan mengikuti satu tanggal bulanan.',
-        )}
-      </p>
-
       <div class="mode-detail-card">
         {#if suspendMode() === 'grace_period'}
           <div class="setting-item full-width">
-            <div class="mode-detail-head">
-              <span class="mode-detail-badge">Mode masa tenggang</span>
-              <p class="help-text">
-                Layanan akan disuspend setelah lewat beberapa hari dari tanggal jatuh tempo.
-              </p>
-            </div>
             <label for="billing-auto-suspend-grace-days">
               {tt('admin.settings.service.auto_suspend_grace_days_label', 'Hari tenggang')}
             </label>
@@ -446,18 +403,9 @@
                 )}
               placeholder="3"
             />
-            <p class="help-text">
-              Suspend dilakukan setelah melewati jumlah hari tenggang yang Anda tentukan.
-            </p>
           </div>
         {:else}
           <div class="setting-item full-width">
-            <div class="mode-detail-head">
-              <span class="mode-detail-badge">Mode tanggal tetap</span>
-              <p class="help-text">
-                Semua layanan mengikuti satu tanggal suspend bulanan yang sama secara global.
-              </p>
-            </div>
             <label for="billing-auto-suspend-fixed-day">
               {tt(
                 'admin.settings.service.auto_suspend_fixed_day_label',
@@ -474,25 +422,14 @@
                 handleChange('billing_auto_suspend_fixed_day', clampInt(e.target.value, 1, 28, 1))}
               placeholder="1"
             />
-            <p class="help-text">
-              {tt(
-                'admin.settings.service.auto_suspend_fixed_day_help',
-                'Pilih tanggal 1-28 agar selalu valid di semua bulan, termasuk Februari.',
-              )}
-            </p>
+            <p class="help-text">Gunakan 1-28 agar selalu valid di semua bulan.</p>
           </div>
         {/if}
       </div>
 
       <div class="mode-detail-card">
         <div class="setting-item full-width">
-          <div class="mode-detail-head">
-            <span class="mode-detail-badge">Aksi PPPoE saat suspend</span>
-            <p class="help-text">
-              Pilih apakah pelanggan diputus total atau dipindahkan ke pool isolir lalu sesi aktif
-              diputus supaya mendapat IP baru.
-            </p>
-          </div>
+          <span class="field-title">Aksi PPPoE saat suspend</span>
 
           <div class="mode-picker" role="radiogroup" aria-label="Aksi PPPoE saat suspend">
             <button
@@ -521,10 +458,8 @@
           <strong>{activeSuspendPppoePreview()}</strong>
         </div>
 
-        <div class="setting-item full-width">
-          <p class="help-text">
-            Pool isolir diatur di service/router mapping.
-          </p>
+      <div class="setting-item full-width">
+          <p class="help-text">Pool isolir diatur di mapping service/router.</p>
         </div>
       </div>
     </div>
@@ -533,14 +468,7 @@
   <section class="service-section">
     <div class="section-head">
       <div>
-        <span class="section-kicker">Recovery</span>
         <h4>{tt('admin.settings.service.auto_resume_title', 'Aktifkan Kembali Otomatis')}</h4>
-        <p>
-          {tt(
-            'admin.settings.service.auto_resume_help',
-            'Aktifkan kembali layanan yang disuspend billing setelah pembayaran diterima.',
-          )}
-        </p>
       </div>
     </div>
     <div class="service-panel compact-panel">
@@ -572,14 +500,7 @@
   <section class="service-section">
     <div class="section-head">
       <div>
-        <span class="section-kicker">Komunikasi</span>
         <h4>{tt('admin.settings.service.reminder_title', 'Pengingat')}</h4>
-        <p>
-          {tt(
-            'admin.settings.service.reminder_help',
-            'Atur reminder invoice layanan pelanggan sebelum dan sesudah jatuh tempo.',
-          )}
-        </p>
       </div>
     </div>
     <div class="service-panel">
@@ -606,9 +527,6 @@
         <span class="field-title">
           {tt('admin.settings.service.reminder_schedule_label', 'Jadwal pengingat')}
         </span>
-        <p class="help-text compact-help">
-          Pilih preset cepat atau susun kombinasi pengingat sendiri sesuai ritme penagihan Anda.
-        </p>
         <div class="preset-grid">
           <button
             type="button"
@@ -691,9 +609,6 @@
         <div class="reminder-builder">
           <div class="builder-head">
             <span class="policy-preview-label">Tambah aturan manual</span>
-            <p class="help-text compact-help">
-              Tambahkan reminder baru tanpa perlu menulis format kode secara manual.
-            </p>
           </div>
           <div class="builder-controls">
             <div class="timing-toggle" role="radiogroup" aria-label="Waktu reminder">
@@ -767,12 +682,7 @@
           <code>{stringifyReminderSchedule(reminderCodes())}</code>
         </details>
 
-        <p class="help-text">
-          {tt(
-            'admin.settings.service.reminder_schedule_help',
-            'Atur pengingat sebelum dan sesudah jatuh tempo. Format tersimpan tetap memakai kode H-.',
-          )}
-        </p>
+        <p class="help-text">Format teknis tetap disimpan sebagai kode H-.</p>
       </div>
     </div>
   </section>
@@ -787,33 +697,9 @@
   .intro-card,
   .service-section {
     border: 1px solid var(--border-color);
-    border-radius: 16px;
+    border-radius: 14px;
     padding: 1rem;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-surface), #17304d 10%),
-      var(--bg-surface)
-    );
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
-  }
-
-  .section-label {
-    display: inline-block;
-    margin-bottom: 0.35rem;
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .section-kicker {
-    display: inline-flex;
-    margin-bottom: 0.35rem;
-    color: color-mix(in srgb, var(--text-secondary), white 10%);
-    font-size: 0.76rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    background: var(--bg-surface);
   }
 
   .section-head {
@@ -825,7 +711,6 @@
     margin: 0;
   }
 
-  .section-head p,
   .intro-card p,
   .help-text {
     margin: 0.3rem 0 0;
@@ -855,26 +740,10 @@
   }
 
   .summary-card {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.7rem;
-    align-items: start;
     padding: 0.85rem 0.9rem;
-    border-radius: 14px;
-    border: 1px solid color-mix(in srgb, var(--border-color), transparent 18%);
-    background: color-mix(in srgb, var(--bg-surface), #10253d 8%);
-  }
-
-  .summary-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 999px;
-    color: color-mix(in srgb, var(--accent-color, #3b82f6), white 8%);
-    background: color-mix(in srgb, var(--accent-color, #3b82f6) 14%, var(--bg-surface));
-    border: 1px solid color-mix(in srgb, var(--accent-color, #3b82f6), transparent 58%);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface), transparent 3%);
   }
 
   .summary-card strong,
@@ -911,14 +780,11 @@
   }
 
   .quick-link {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.75rem;
-    align-items: start;
-    padding: 0.9rem 1rem;
-    border-radius: 14px;
-    border: 1px solid color-mix(in srgb, var(--border-color), transparent 18%);
-    background: color-mix(in srgb, var(--bg-surface), #10253d 7%);
+    display: block;
+    padding: 0.85rem 0.95rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface), transparent 3%);
     color: inherit;
     text-decoration: none;
     transition:
@@ -928,9 +794,7 @@
   }
 
   .quick-link:hover {
-    transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--accent-color, #3b82f6), var(--border-color) 34%);
-    background: color-mix(in srgb, var(--accent-color, #3b82f6) 9%, var(--bg-surface));
+    border-color: color-mix(in srgb, var(--accent-color, #3b82f6), var(--border-color) 38%);
   }
 
   .quick-link strong {
@@ -942,18 +806,6 @@
   .quick-link small {
     color: var(--text-secondary);
     line-height: 1.45;
-  }
-
-  .quick-link-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.1rem;
-    height: 2.1rem;
-    border-radius: 12px;
-    color: color-mix(in srgb, var(--accent-color, #3b82f6), white 10%);
-    background: color-mix(in srgb, var(--accent-color, #3b82f6) 14%, var(--bg-surface));
-    border: 1px solid color-mix(in srgb, var(--accent-color, #3b82f6), transparent 56%);
   }
 
   .full-width {
@@ -1076,26 +928,6 @@
     padding: 0.9rem;
     background: color-mix(in srgb, var(--bg-surface), transparent 3%);
     border: 1px solid color-mix(in srgb, var(--border-color), transparent 20%);
-  }
-
-  .mode-detail-head {
-    display: grid;
-    gap: 0.35rem;
-  }
-
-  .mode-detail-badge {
-    display: inline-flex;
-    width: fit-content;
-    align-items: center;
-    border-radius: 999px;
-    padding: 0.28rem 0.62rem;
-    font-size: 0.76rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    color: var(--text-primary);
-    background: color-mix(in srgb, var(--accent-color, #3b82f6) 14%, var(--bg-surface));
-    border: 1px solid color-mix(in srgb, var(--accent-color, #3b82f6), transparent 55%);
   }
 
   .chip-list,
@@ -1280,10 +1112,6 @@
   .builder-head {
     display: grid;
     gap: 0.2rem;
-  }
-
-  .compact-help {
-    margin-top: 0;
   }
 
   .raw-schedule {
