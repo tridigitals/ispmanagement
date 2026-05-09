@@ -466,15 +466,15 @@
 
 <style>
   .page-content {
-    padding: 28px;
+    padding: 24px;
   }
 
   .btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 14px;
-    border-radius: 12px;
+    padding: 9px 13px;
+    border-radius: 10px;
     border: 1px solid var(--border-color);
     background: var(--color-primary);
     color: white;
@@ -495,15 +495,15 @@
   .stats {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: 10px;
+    margin-bottom: 12px;
   }
 
   .stat-card {
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    padding: 14px 14px 12px;
+    padding: 12px 13px 11px;
   }
 
   .stat-top {
@@ -518,8 +518,8 @@
   }
 
   .stat-value {
-    margin-top: 10px;
-    font-size: 1.6rem;
+    margin-top: 8px;
+    font-size: 1.42rem;
     font-weight: 900;
     color: var(--text-primary);
   }
@@ -536,18 +536,18 @@
     display: flex;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
 
   .search {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: 14px;
-    padding: 10px 12px;
-    min-width: min(560px, 100%);
+    border-radius: 12px;
+    padding: 9px 11px;
+    min-width: min(500px, 100%);
     color: var(--text-secondary);
   }
 
@@ -557,7 +557,7 @@
     outline: none;
     background: transparent;
     color: var(--text-primary);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
   }
 
   .clear {
@@ -588,9 +588,9 @@
   }
 
   .chip {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     font-weight: 800;
-    padding: 3px 8px;
+    padding: 2px 7px;
     border-radius: 999px;
     background: color-mix(in srgb, var(--bg-hover), transparent 20%);
     border: 1px solid var(--border-color);
@@ -611,7 +611,7 @@
 
   .muted {
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: 0.86rem;
   }
 
   .error {
@@ -624,10 +624,10 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 10px;
+    padding: 5px 9px;
     border-radius: 999px;
     font-weight: 900;
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     border: 1px solid var(--border-color);
   }
 
@@ -653,8 +653,8 @@
     border: 1px solid var(--border-color);
     background: transparent;
     color: var(--text-primary);
-    border-radius: 12px;
-    padding: 8px;
+    border-radius: 10px;
+    padding: 7px;
     cursor: pointer;
     display: grid;
     place-items: center;

@@ -366,7 +366,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.9rem;
   }
 
   .title-row {
@@ -378,21 +378,21 @@
 
   h1 {
     margin: 0;
-    font-size: 1.2rem;
+    font-size: 1.12rem;
     font-weight: 800;
     color: var(--text-primary);
   }
 
   .muted {
     color: var(--text-secondary);
-    margin: 0.25rem 0 0;
-    font-size: 0.92rem;
+    margin: 0.2rem 0 0;
+    font-size: 0.88rem;
     line-height: 1.4;
   }
 
   .actions-col {
     display: flex;
-    gap: 0.6rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
     justify-content: flex-end;
   }
@@ -407,20 +407,20 @@
   .count-badge {
     background: var(--bg-tertiary);
     color: var(--text-secondary);
-    padding: 0.35rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 10px;
+    font-size: 0.76rem;
     font-weight: 800;
     border: 1px solid var(--border-color);
   }
 
   .toolbar {
-    padding: 0.9rem;
+    padding: 0.75rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.8rem;
-    margin-bottom: 1rem;
+    gap: 0.65rem;
+    margin-bottom: 0.9rem;
     flex-wrap: wrap;
   }
 
@@ -429,11 +429,11 @@
     min-width: 220px;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.55rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 0.65rem 0.8rem;
+    border-radius: 10px;
+    padding: 0.58rem 0.72rem;
   }
 
   .search input {
@@ -442,13 +442,13 @@
     border: 0;
     outline: none;
     color: var(--text-primary);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
   }
 
   .clear {
-    width: 30px;
-    height: 30px;
-    border-radius: 10px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
     border: 1px solid var(--border-color);
     background: transparent;
     color: var(--text-secondary);
@@ -469,21 +469,22 @@
 
   .filters {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.45rem;
     align-items: center;
+    flex-wrap: wrap;
   }
 
   .chip {
     border: 1px solid var(--border-color);
     background: var(--bg-surface);
     color: var(--text-secondary);
-    border-radius: 12px;
-    padding: 0.55rem 0.75rem;
+    border-radius: 10px;
+    padding: 0.5rem 0.68rem;
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 0.84rem;
     cursor: pointer;
     display: inline-flex;
-    gap: 0.5rem;
+    gap: 0.45rem;
     align-items: center;
   }
 
@@ -499,7 +500,7 @@
     color: #fecaca;
     border-radius: 999px;
     padding: 0.1rem 0.45rem;
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     font-weight: 800;
   }
 
