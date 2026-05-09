@@ -330,7 +330,7 @@
     </NetworkPageHeader>
 
     <div class="filters">
-      <label>
+      <label class="filter-field">
         <span>{$t('admin.network.logs.filters.router') || 'Router'}</span>
         <select bind:value={routerId} onchange={() => void loadRowsPage(1)}>
           <option value="">{$t('admin.network.logs.filters.all_routers') || 'All routers'}</option>
@@ -340,7 +340,7 @@
         </select>
       </label>
 
-      <label>
+      <label class="filter-field">
         <span>{$t('admin.network.logs.filters.level') || 'Level'}</span>
         <select bind:value={level} onchange={() => void loadRowsPage(1)}>
           <option value="">{$t('admin.network.logs.filters.all_levels') || 'All levels'}</option>
@@ -352,12 +352,12 @@
         </select>
       </label>
 
-      <label>
+      <label class="filter-field">
         <span>{$t('admin.network.logs.filters.topic') || 'Topic'}</span>
         <input bind:value={topic} placeholder="system,error,interface..." />
       </label>
 
-      <label>
+      <label class="filter-field">
         <span>Month</span>
         <select bind:value={month} onchange={() => void loadRowsPage(1)}>
           {#each monthOptions as option}
@@ -366,7 +366,7 @@
         </select>
       </label>
 
-      <label>
+      <label class="filter-field">
         <span>Year</span>
         <select bind:value={year} onchange={() => void loadRowsPage(1)}>
           <option value="">{$t('common.all') || 'All years'}</option>
@@ -376,12 +376,15 @@
         </select>
       </label>
 
-      <label class="search">
+      <label class="filter-field search-field">
         <span>{$t('common.search') || 'Search'}</span>
-        <input
-          bind:value={q}
-          placeholder={$t('admin.network.logs.search') || 'Search log message...'}
-        />
+        <div class="search-input-shell">
+          <Icon name="search" size={16} />
+          <input
+            bind:value={q}
+            placeholder={$t('admin.network.logs.search') || 'Search log message...'}
+          />
+        </div>
       </label>
     </div>
 
@@ -492,22 +495,44 @@
     border-radius: var(--radius-lg);
     background: var(--bg-surface);
     box-shadow: var(--shadow-md);
-    padding: 1rem 1rem 0.8rem;
+    padding: 0.95rem 0.95rem 0.8rem;
   }
   .filters {
     display: grid;
-    grid-template-columns: repeat(6, minmax(160px, 1fr));
-    gap: 0.75rem;
-    margin-bottom: 1rem;
+    grid-template-columns: repeat(6, minmax(140px, 1fr));
+    gap: 0.65rem;
+    margin-bottom: 0.9rem;
+    padding: 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--bg-surface) 82%, var(--bg-tertiary));
   }
-  .filters label { display: grid; gap: 0.35rem; }
-  .filters span { color: var(--text-secondary); font-size: 0.82rem; font-weight: 700; }
+  .filter-field {
+    display: grid;
+    gap: 0.32rem;
+    min-width: 0;
+  }
+  .filters span {
+    color: var(--text-secondary);
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
   .filters input, .filters select {
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 10px;
     background: var(--bg-tertiary);
     color: var(--text-primary);
-    padding: 0.6rem 0.75rem;
+    padding: 0.58rem 0.72rem;
+    min-height: 38px;
+    width: 100%;
+  }
+  .filters input:focus,
+  .filters select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
   }
   .table-wrap {
     margin-top: 0.4rem;
@@ -543,7 +568,29 @@
     padding: 0.45rem 0.6rem;
     min-height: 38px;
   }
-  .search { grid-column: span 1; }
+  .search-field {
+    grid-column: span 2;
+  }
+  .search-input-shell {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-tertiary);
+    padding: 0 0.72rem;
+    min-height: 38px;
+  }
+  .search-input-shell :global(svg) {
+    color: var(--text-secondary);
+    flex: 0 0 auto;
+  }
+  .search-input-shell input {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
   .retention-panel {
     display: flex;
     align-items: center;
@@ -551,9 +598,9 @@
     gap: 1rem;
     border: 1px solid var(--border-color);
     border-radius: 14px;
-    background: var(--bg-secondary);
-    padding: 0.85rem 1rem;
-    margin-bottom: 1rem;
+    background: color-mix(in srgb, var(--bg-surface) 80%, var(--bg-secondary));
+    padding: 0.78rem 0.9rem;
+    margin-bottom: 0.9rem;
   }
   .retention-copy {
     display: grid;
@@ -562,7 +609,7 @@
   .retention-copy p {
     margin: 0;
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: 0.84rem;
   }
   .retention-controls {
     display: flex;
@@ -573,10 +620,11 @@
   }
   .retention-controls select {
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 10px;
     background: var(--bg-tertiary);
     color: var(--text-primary);
-    padding: 0.6rem 0.75rem;
+    padding: 0.58rem 0.72rem;
+    min-height: 38px;
     min-width: 160px;
   }
   .hint {
@@ -607,12 +655,14 @@
 
   @media (max-width: 1100px) {
     .filters { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
+    .search-field { grid-column: span 3; }
   }
   @media (max-width: 780px) {
     .logs-page { padding: 0.75rem; }
     .logs-shell { padding: 0.85rem 0.75rem 0.7rem; }
     .head { flex-direction: column; }
     .filters { grid-template-columns: 1fr; }
+    .search-field { grid-column: span 1; }
     .retention-panel {
       flex-direction: column;
       align-items: stretch;

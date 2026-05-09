@@ -450,21 +450,27 @@
               />
             </div>
             <div class="filters">
-              <Select
-                label={$t('announcements.fields.status') || 'Status'}
-                options={statusFilterOptions}
-                bind:value={statusFilter}
-              />
-              <Select
-                label={$t('announcements.fields.severity') || 'Severity'}
-                options={severityFilterOptions}
-                bind:value={severityFilter}
-              />
-              <Select
-                label={$t('announcements.fields.mode') || 'Mode'}
-                options={modeFilterOptions}
-                bind:value={modeFilter}
-              />
+              <div class="filter-slot">
+                <Select
+                  label={$t('announcements.fields.status') || 'Status'}
+                  options={statusFilterOptions}
+                  bind:value={statusFilter}
+                />
+              </div>
+              <div class="filter-slot">
+                <Select
+                  label={$t('announcements.fields.severity') || 'Severity'}
+                  options={severityFilterOptions}
+                  bind:value={severityFilter}
+                />
+              </div>
+              <div class="filter-slot">
+                <Select
+                  label={$t('announcements.fields.mode') || 'Mode'}
+                  options={modeFilterOptions}
+                  bind:value={modeFilter}
+                />
+              </div>
             </div>
           </div>
 
@@ -672,8 +678,8 @@
 
   .history-controls {
     display: grid;
-    gap: 0.75rem;
-    padding-top: 0.25rem;
+    gap: 0.65rem;
+    padding-top: 0.15rem;
   }
 
   .search {
@@ -682,8 +688,8 @@
     gap: 0.55rem;
     border: 1px solid var(--border-color);
     background: var(--bg-tertiary);
-    padding: 0.55rem 0.7rem;
-    border-radius: 14px;
+    padding: 0.5rem 0.68rem;
+    border-radius: 12px;
     color: var(--text-secondary);
   }
 
@@ -698,13 +704,18 @@
     background: transparent;
     color: var(--text-primary);
     font-weight: 650;
+    min-height: 24px;
     min-width: 0;
   }
 
   .filters {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.75rem;
+    gap: 0.65rem;
+  }
+
+  .filter-slot {
+    min-width: 0;
   }
 
   .more-row {
