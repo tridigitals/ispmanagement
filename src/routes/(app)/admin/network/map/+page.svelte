@@ -1631,10 +1631,10 @@
               groups={workspaceSearchGroups}
               summary=""
               placeholder={$t('admin.network.map.search.placeholder') ||
-                'Search customer, service, node, link, zone, or router...'}
+                'Cari customer, node, link, zone, atau router...'}
               emptyTitle={$t('admin.network.map.search.empty_title') || 'No matching results'}
               emptyHint={$t('admin.network.map.search.empty_hint') ||
-                'Try another keyword to widen the result scope.'}
+                'Coba kata kunci lain.'}
               onQueryChange={(value: string) => (workspaceSearchQuery = value)}
               onSelect={handleWorkspaceSearchSelect}
             />
@@ -1772,7 +1772,7 @@
 
 <style>
   .page-content {
-    padding: 14px 16px 18px;
+    padding: 12px 14px 16px;
     max-width: 100%;
     margin: 0 auto;
   }
@@ -1785,9 +1785,9 @@
   .btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    border-radius: 12px;
+    gap: 7px;
+    padding: 8px 12px;
+    border-radius: 10px;
     border: 1px solid var(--border-color);
     background: var(--color-primary);
     color: white;
@@ -1807,9 +1807,9 @@
   }
 
   .btn-xs {
-    padding: 6px 10px;
+    padding: 5px 9px;
     font-size: 0.78rem;
-    border-radius: 9px;
+    border-radius: 8px;
   }
 
   .btn.danger {
@@ -1819,25 +1819,25 @@
 
   .map-workspace-search {
     position: absolute;
-    top: 12px;
-    left: 12px;
+    top: 10px;
+    left: 10px;
     z-index: 9;
     display: flex;
     align-items: flex-start;
-    gap: 8px;
+    gap: 6px;
   }
 
   .map-workspace-search-toggle {
-    width: 42px;
-    height: 42px;
+    width: 38px;
+    height: 38px;
     display: grid;
     place-items: center;
     border: 1px solid rgba(15, 23, 42, 0.22);
-    border-radius: 12px;
+    border-radius: 10px;
     background: var(--bg-surface);
     color: var(--text-primary);
     cursor: pointer;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
   }
 
   .map-workspace-search-toggle.active {
@@ -1847,11 +1847,11 @@
 
   .map-workspace-search-panel {
     width: min(540px, calc(100vw - 92px));
-    padding: 8px;
-    border: 1px solid rgba(15, 23, 42, 0.18);
-    border-radius: 12px;
+    padding: 7px;
+    border: 1px solid rgba(15, 23, 42, 0.14);
+    border-radius: 10px;
     background: var(--bg-surface);
-    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.14);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
   }
 
   .map-workspace-search-panel :global(.search-input-wrap) {
@@ -1875,13 +1875,13 @@
 
   .map-workspace-search :global(.search-results) {
     z-index: 20;
-    gap: 6px;
+    gap: 5px;
     max-height: min(50vh, 380px);
-    padding: 8px;
-    border-radius: 12px;
+    padding: 7px;
+    border-radius: 10px;
     background: var(--bg-surface);
     border-color: rgba(15, 23, 42, 0.16);
-    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
     
   }
 
@@ -1902,8 +1902,8 @@
 
   .map-workspace-search :global(.search-item) {
     gap: 3px;
-    min-height: 56px;
-    padding: 9px 11px;
+    min-height: 52px;
+    padding: 8px 10px;
     border-color: rgba(15, 23, 42, 0.12);
     border-radius: 10px;
     background: var(--bg-surface);
@@ -1917,7 +1917,7 @@
     background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-surface));
     box-shadow:
       inset 3px 0 0 var(--color-primary),
-      0 8px 18px rgba(15, 23, 42, 0.08);
+      0 6px 14px rgba(15, 23, 42, 0.06);
   }
 
   .map-workspace-search :global(.search-item-label) {
@@ -1962,17 +1962,17 @@
 
   .map-link-draw-controls {
     position: absolute;
-    top: 14px;
+    top: 12px;
     right: 58px;
     z-index: 8;
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
-    padding: 8px;
-    border-radius: 10px;
+    padding: 7px;
+    border-radius: 9px;
     border: 1px solid var(--border-color, #24304a);
     background: var(--panel-bg, #0f1422);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
   }
 
   @keyframes spin {

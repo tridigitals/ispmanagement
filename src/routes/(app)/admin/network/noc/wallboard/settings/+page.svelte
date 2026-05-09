@@ -146,9 +146,9 @@
 <div class="wall-settings-wrap">
   <div class="wall-settings-head">
     <div>
-      <div class="kicker">{$t('admin.network.wallboard.controls.title') || 'Wallboard Settings'}</div>
+      <div class="kicker">{$t('admin.network.wallboard.controls.title') || 'Wallboard'}</div>
       <h1>{$t('admin.network.wallboard.title') || 'Network Wallboard'}</h1>
-      <p>{$t('admin.network.wallboard.subtitle') || 'Live NOC view optimized for 24/7 display.'}</p>
+      <p>Tampilan NOC live.</p>
     </div>
     <div class="actions">
       <button class="btn ghost" type="button" onclick={exitWithoutSave}>
@@ -262,7 +262,7 @@
 
   .wall-settings-wrap {
     min-height: 100dvh;
-    padding: clamp(16px, 2vw, 24px);
+    padding: clamp(14px, 1.8vw, 20px);
     background: var(--bg-base);
     animation: wall-settings-in 180ms ease-out;
   }
@@ -270,42 +270,42 @@
   .wall-settings-head {
     display: flex;
     justify-content: space-between;
-    gap: 16px;
+    gap: 14px;
     align-items: flex-start;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
 
   .kicker {
-    font-size: 12px;
+    font-size: 11px;
     letter-spacing: 0.1em;
     font-weight: 800;
     color: var(--text-muted);
     text-transform: uppercase;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
   h1 {
     margin: 0;
-    font-size: 28px;
+    font-size: 24px;
   }
 
   p {
-    margin: 6px 0 0;
+    margin: 4px 0 0;
     color: var(--text-muted);
   }
 
   .actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
   }
 
   .btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    border-radius: 12px;
+    gap: 7px;
+    border-radius: 10px;
     border: 1px solid var(--border-color);
-    padding: 10px 14px;
+    padding: 8px 12px;
     background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
     color: var(--text-primary);
     font-weight: 700;
@@ -325,10 +325,10 @@
   .grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 10px;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    padding: 14px;
+    padding: 12px;
     background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
   }
 
@@ -339,8 +339,8 @@
   .toggle {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
+    gap: 7px;
+    padding: 8px 10px;
     border: 1px solid var(--border-color);
     border-radius: 12px;
     background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
