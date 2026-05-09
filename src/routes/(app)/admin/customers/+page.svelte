@@ -753,9 +753,7 @@
   <div class="page-header">
     <div>
       <h1>{$t('admin.customers.title') || 'Customers'}</h1>
-      <p class="subtitle">
-        {$t('admin.customers.subtitle') || 'Manage customer accounts and service locations.'}
-      </p>
+      <p class="subtitle">Kelola pelanggan dan lokasi layanan.</p>
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary" onclick={() => refreshCustomers()} disabled={loading}>

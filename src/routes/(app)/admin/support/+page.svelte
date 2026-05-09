@@ -126,7 +126,7 @@
   <div class="head">
     <div>
       <h1 class="title">{$t('admin.support.title') || 'Support Tickets'}</h1>
-      <p class="sub">{$t('admin.support.subtitle') || 'Manage tenant support requests'}</p>
+      <p class="sub">Tiket support pelanggan.</p>
     </div>
 
     <button

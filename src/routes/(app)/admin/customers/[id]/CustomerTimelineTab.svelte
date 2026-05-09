@@ -16,7 +16,7 @@
   <div class="section-head">
     <div>
       <h3>Timeline</h3>
-      <p class="subtitle">Recent customer activity and audit history.</p>
+      <p class="subtitle">Aktivitas terbaru pelanggan.</p>
     </div>
     <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingTimeline}>
       <Icon name="refresh-cw" size={16} />

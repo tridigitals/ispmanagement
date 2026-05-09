@@ -23,7 +23,7 @@
     emailReady,
     emailReadinessReason,
     title = 'Event Notifications',
-    description = 'Choose channels for each notification event.',
+    description = 'Pilih channel notifikasi.',
   }: {
     localSettings: Record<string, string>;
     handleChange: (key: string, value: string | boolean) => void;
@@ -171,7 +171,7 @@
         <button class="btn btn-secondary btn-sm" type="button" onclick={loadEvents}>Retry</button>
       </div>
     {:else if scopedEvents.length === 0}
-      <p class="help-text">No notification events are available for this scope yet.</p>
+      <p class="help-text">Belum ada event notifikasi.</p>
     {:else}
       <div class="event-table">
         <div class="event-row header">

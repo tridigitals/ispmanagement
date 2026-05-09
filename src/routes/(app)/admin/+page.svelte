@@ -325,7 +325,7 @@
   <div class="masthead">
     <div class="masthead-copy">
       <div class="eyebrow">
-        {$t('admin.dashboard.eyebrow') || 'Adaptive admin dashboard'}
+        {$t('admin.dashboard.eyebrow') || 'Admin dashboard'}
       </div>
       <h1>{$t(audienceContent.titleKey) || audienceContent.fallbackTitle}</h1>
       <p>{$t(audienceContent.subtitleKey) || audienceContent.fallbackSubtitle}</p>
@@ -335,7 +335,7 @@
       <div class="context-pill">
         <Icon name="activity" size={14} />
         <span
-          >{$t('admin.dashboard.role_scoped') || 'Only modules you can access are shown here'}</span
+          >{$t('admin.dashboard.role_scoped') || 'Hanya modul yang dapat Anda akses'}</span
         >
       </div>
 
@@ -364,17 +364,17 @@
   {#if loading}
     <div class="loading-panel">
       <div class="spinner"></div>
-      <p>{$t('admin.dashboard.loading') || 'Loading your workspace snapshot...'}</p>
+      <p>{$t('admin.dashboard.loading') || 'Memuat ringkasan dashboard...'}</p>
     </div>
   {:else if !hasVisibleContent}
     <section class="empty-panel">
       <div class="empty-icon">
         <Icon name="lock" size={26} />
       </div>
-      <h2>{$t('admin.dashboard.empty.title') || 'No dashboard modules available yet'}</h2>
+      <h2>{$t('admin.dashboard.empty.title') || 'Belum ada modul dashboard'}</h2>
       <p>
         {$t('admin.dashboard.empty.description') ||
-          'This account does not currently expose a dashboard section. Ask an owner or admin to grant one or more tenant permissions.'}
+          'Akun ini belum memiliki akses ke modul dashboard.'}
       </p>
     </section>
   {:else}

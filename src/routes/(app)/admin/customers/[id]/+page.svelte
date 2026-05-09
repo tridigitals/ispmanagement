@@ -1709,7 +1709,7 @@
           {customer?.email ||
             customer?.phone ||
             $t('admin.customers.detail.subtitle') ||
-            'Customer details'}
+            'Detail pelanggan'}
         </p>
         <div class="hero-badges">
           <span class={`status-pill ${customer?.is_active ? 'is-active' : 'is-inactive'}`}>
@@ -1777,7 +1777,7 @@
         <div class="section-head">
           <div>
             <h3>{$t('admin.customers.overview.title') || 'Customer profile'}</h3>
-            <p class="subtitle">Primary identity and contact data used for billing and support.</p>
+            <p class="subtitle">Data profil dan kontak.</p>
           </div>
           {#if canManageCustomers}
             <button
@@ -1832,9 +1832,7 @@
               <strong>{isActive ? 'Active' : 'Inactive'}</strong>
             </div>
             <div class="side-divider"></div>
-            <p class="side-note">
-              Keep customer identity and contacts accurate to avoid billing and support issues.
-            </p>
+            <p class="side-note">Pastikan data kontak tetap akurat.</p>
           </aside>
         </div>
       </div>
@@ -1843,9 +1841,7 @@
         <div class="section-head">
           <div>
             <h3>{$t('admin.customers.locations.title') || 'Locations'}</h3>
-            <p class="subtitle">
-              {$t('admin.customers.locations.subtitle') || 'Service locations under this customer.'}
-            </p>
+            <p class="subtitle">Lokasi layanan pelanggan.</p>
           </div>
           {#if canManageCustomerLocations}
             <button class="btn btn-primary" onclick={() => void openCreateLocation()}>

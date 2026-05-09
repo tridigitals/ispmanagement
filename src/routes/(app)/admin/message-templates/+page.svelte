@@ -196,7 +196,7 @@
   <header class="page-header">
     <div>
       <h1>{$t('topbar.titles.message_templates') || 'Message Templates'}</h1>
-      <p class="subtitle">{$t('admin.message_templates.subtitle') || 'Build granular WhatsApp and email templates for manual and automated communication.'}</p>
+      <p class="subtitle">Template pesan untuk WhatsApp dan email.</p>
     </div>
     {#if canManageTemplates}
       <button class="btn btn-primary" onclick={openCreate}>

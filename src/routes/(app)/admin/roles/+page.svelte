@@ -202,9 +202,7 @@
     <div class="card-header glass">
       <div>
         <h3>{$t('admin.roles.title') || 'All Roles'}</h3>
-        <span class="muted">
-          {$t('admin.roles.subtitle') || 'Manage role definitions and permissions'}
-        </span>
+        <span class="muted">Role dan izin akses.</span>
       </div>
       <span class="count-badge">
         {filteredRoles.length}

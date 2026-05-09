@@ -15,7 +15,7 @@
     handleChange,
     eventScope,
     title = 'WhatsApp Gateway',
-    description = 'Configure WhatsApp message delivery and choose which notification events use WhatsApp.',
+    description = 'Pengaturan pengiriman WhatsApp.',
   }: {
     localSettings: Record<string, string>;
     handleChange: (key: string, value: string | boolean) => void;
@@ -296,8 +296,7 @@
     font-weight: 650;
   }
 
-  .panel-heading p,
-  .help-text {
+  .panel-heading p {
     margin: 0;
     color: var(--text-secondary);
     font-size: 0.875rem;
@@ -433,13 +432,6 @@
 
   .status.error {
     color: var(--color-danger);
-  }
-
-  code {
-    background: var(--bg-app);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 0.05rem 0.3rem;
   }
 
   @media (max-width: 760px) {

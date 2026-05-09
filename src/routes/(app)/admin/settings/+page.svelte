@@ -890,13 +890,7 @@
             <h2 class="card-title">
               {categories[activeTab as keyof typeof categories].label}
             </h2>
-            <p class="card-subtitle">
-              {$t('admin.settings.subtitle_dynamic', {
-                values: {
-                  tab: categories[activeTab as keyof typeof categories].label,
-                },
-              }) || `Manage your ${activeTab} settings`}
-            </p>
+            <p class="card-subtitle">Pengaturan {categories[activeTab as keyof typeof categories].label}.</p>
           </div>
 
           <div class="settings-body">

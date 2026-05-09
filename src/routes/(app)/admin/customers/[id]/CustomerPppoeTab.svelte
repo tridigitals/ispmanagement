@@ -29,9 +29,7 @@
   <div class="section-head">
     <div>
       <h3>{$t('admin.customers.pppoe.title') || 'PPPoE accounts'}</h3>
-      <p class="subtitle">
-        {$t('admin.customers.pppoe.subtitle') || 'Manage PPPoE secrets for this customer (per-router). The database is the source of truth.'}
-      </p>
+      <p class="subtitle">Akun PPPoE pelanggan.</p>
     </div>
     <div class="pppoe-toolbar">
       {#if pppoeToolbar.showSearch}

@@ -280,13 +280,10 @@
   <div class="page-header">
     <div class="header-content">
       <span class="page-eyebrow">
-        {$t('admin.package_invoices.list.eyebrow') || 'Customer billing workspace'}
+        {$t('admin.package_invoices.list.eyebrow') || 'Customer billing'}
       </span>
       <h1>{$t('admin.package_invoices.list.title') || 'Billing'}</h1>
-      <p class="subtitle">
-        {$t('admin.package_invoices.list.subtitle') ||
-          'Monitor collections, generate due invoices, and handle manual customer billing from one place.'}
-      </p>
+      <p class="subtitle">Tagihan, collection, dan invoice pelanggan.</p>
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary" onclick={goToBillingLogs}>

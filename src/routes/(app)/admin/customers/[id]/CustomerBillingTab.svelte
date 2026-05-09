@@ -29,9 +29,7 @@
   <div class="section-head">
     <div>
       <h3>{$t('admin.customers.billing.title') || 'Billing'}</h3>
-      <p class="subtitle">
-        {$t('admin.customers.billing.subtitle') || 'Invoice history generated from this customer subscriptions.'}
-      </p>
+      <p class="subtitle">Riwayat invoice pelanggan.</p>
     </div>
     <div class="header-actions">
       <label class="inline-filter">
