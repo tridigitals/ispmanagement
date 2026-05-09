@@ -1503,7 +1503,7 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 1rem;
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.9rem;
   }
 
   .subtitle {
@@ -1513,7 +1513,7 @@
 
   .header-actions {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.55rem;
     flex-wrap: wrap;
     justify-content: flex-end;
   }
@@ -1594,7 +1594,8 @@
   }
 
   .table-card {
-    padding: 1.25rem;
+    padding: 1rem;
+    overflow: hidden;
   }
 
   .toolbar-filters {
@@ -2004,7 +2005,7 @@
       justify-content: stretch;
     }
     .header-actions .btn {
-      flex: 1 1 100%;
+      flex: 1 1 calc(50% - 0.55rem);
       min-width: 0;
     }
     .toolbar-filters {

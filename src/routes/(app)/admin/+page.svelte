@@ -324,9 +324,6 @@
 <div class="admin-dashboard fade-in">
   <div class="masthead">
     <div class="masthead-copy">
-      <div class="eyebrow">
-        {$t('admin.dashboard.eyebrow') || 'Admin dashboard'}
-      </div>
       <h1>{$t(audienceContent.titleKey) || audienceContent.fallbackTitle}</h1>
       <p>{$t(audienceContent.subtitleKey) || audienceContent.fallbackSubtitle}</p>
     </div>
@@ -382,9 +379,6 @@
       <section class="section-block">
         <div class="section-heading">
           <div>
-            <div class="section-kicker">
-              {$t('admin.dashboard.sections.primary.kicker') || 'Snapshot'}
-            </div>
             <h2>{$t('admin.dashboard.sections.primary.title') || 'Selected KPIs'}</h2>
           </div>
         </div>
@@ -422,9 +416,6 @@
       <section class="section-block">
         <div class="section-heading">
           <div>
-            <div class="section-kicker">
-              {$t('admin.dashboard.sections.focus.kicker') || 'Action'}
-            </div>
             <h2>{$t('admin.dashboard.sections.focus.title') || 'My Focus Today'}</h2>
           </div>
         </div>
@@ -456,9 +447,6 @@
         <section class="section-block section-actions">
           <div class="section-heading">
             <div>
-              <div class="section-kicker">
-                {$t('admin.dashboard.sections.actions.kicker') || 'Go next'}
-              </div>
               <h2>{$t('admin.dashboard.sections.actions.title') || 'Quick Actions'}</h2>
             </div>
           </div>
@@ -484,9 +472,6 @@
         <section class="section-block section-trends">
           <div class="section-heading">
             <div>
-              <div class="section-kicker">
-                {$t('admin.dashboard.sections.trends.kicker') || 'Distribution'}
-              </div>
               <h2>{$t('admin.dashboard.sections.trends.title') || 'Compact trends'}</h2>
             </div>
           </div>
@@ -542,27 +527,22 @@
   .masthead {
     display: flex;
     justify-content: space-between;
-    gap: 1.5rem;
+    gap: 1.1rem;
     align-items: flex-start;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.1rem;
+    padding: 1rem 1.05rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
   }
 
   .masthead-copy {
     max-width: 720px;
   }
 
-  .eyebrow,
-  .section-kicker {
-    color: var(--color-primary);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.72rem;
-    font-weight: 700;
-  }
-
   .masthead h1 {
-    margin: 0.45rem 0 0.65rem;
-    font-size: clamp(1.65rem, 2.3vw, 2.35rem);
+    margin: 0 0 0.45rem;
+    font-size: clamp(1.55rem, 2.1vw, 2rem);
     line-height: 1.12;
   }
 
@@ -570,14 +550,14 @@
     margin: 0;
     max-width: 62ch;
     color: var(--text-secondary);
-    font-size: 1rem;
-    line-height: 1.65;
+    font-size: 0.94rem;
+    line-height: 1.55;
   }
 
   .masthead-tools {
     min-width: 280px;
     display: grid;
-    gap: 0.85rem;
+    gap: 0.6rem;
     justify-items: end;
   }
 
@@ -586,12 +566,12 @@
     display: inline-flex;
     align-items: center;
     gap: 0.55rem;
-    padding: 0.7rem 0.95rem;
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(148, 163, 184, 0.15);
-    background: var(--bg-secondary);
+    padding: 0.55rem 0.8rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface), transparent 3%);
     color: var(--text-secondary);
-    font-size: 0.88rem;
+    font-size: 0.82rem;
   }
 
   .refresh-button {
@@ -601,8 +581,8 @@
     border: 1px solid color-mix(in srgb, var(--color-primary) 24%, var(--border-color));
     background: color-mix(in srgb, var(--color-primary) 13%, var(--bg-secondary));
     color: var(--text-primary);
-    padding: 0.8rem 1rem;
-    border-radius: var(--radius-md);
+    padding: 0.65rem 0.9rem;
+    border-radius: 10px;
     cursor: pointer;
     font-weight: 600;
   }
@@ -617,8 +597,7 @@
   .section-block {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
+    border-radius: 14px;
   }
 
   .loading-panel,
@@ -662,8 +641,8 @@
   }
 
   .section-block {
-    padding: 1.35rem;
-    margin-bottom: 1.25rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
   }
 
   .section-heading {
@@ -676,8 +655,8 @@
 
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 0.8rem;
   }
 
   .metric-card,
@@ -706,40 +685,40 @@
   }
 
   .metric-card {
-    padding: 1.1rem;
+    padding: 0.95rem;
   }
 
   .metric-topline {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
   }
 
   .metric-icon,
   .action-icon {
-    width: 2.2rem;
-    height: 2.2rem;
-    border-radius: 8px;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 7px;
     display: grid;
     place-items: center;
   }
 
   .metric-title {
     color: var(--text-secondary);
-    font-size: 0.93rem;
-    margin-bottom: 0.45rem;
+    font-size: 0.86rem;
+    margin-bottom: 0.3rem;
   }
 
   .metric-value {
-    font-size: clamp(1.5rem, 2vw, 2.2rem);
+    font-size: clamp(1.35rem, 1.8vw, 1.95rem);
     font-weight: 700;
     line-height: 1.1;
     word-break: break-word;
   }
 
   .metric-meta {
-    margin-top: 0.8rem;
+    margin-top: 0.6rem;
     display: flex;
     gap: 0.45rem;
     align-items: baseline;
@@ -922,7 +901,15 @@
     }
 
     .masthead-tools {
-      justify-items: start;
+      min-width: 0;
+      justify-items: stretch;
+    }
+
+    .refresh-button,
+    .context-pill,
+    .last-updated {
+      width: 100%;
+      justify-content: center;
     }
   }
 

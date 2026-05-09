@@ -1630,7 +1630,7 @@
         <Icon name="arrow-left" size={16} />
         {$t('common.back') || 'Back'}
       </button>
-      <div class="header-actions">
+      <div class="header-actions hero-actions">
         {#if canManageCustomers && customer}
           {#if customer.is_active}
             <button
@@ -1718,10 +1718,7 @@
               ? $t('common.active') || 'Active'
               : $t('common.inactive') || 'Inactive'}
           </span>
-          <span class="meta-pill">
-            <Icon name="clock" size={14} />
-            {customer?.updated_at ? `Updated ${timeAgo(customer.updated_at)}` : '-'}
-          </span>
+          <span class="meta-pill">{customer?.updated_at ? `Updated ${timeAgo(customer.updated_at)}` : '-'}</span>
         </div>
       </div>
     </div>
@@ -2269,29 +2266,29 @@
 
   .customer-hero {
     margin-bottom: 1rem;
-    padding: 1rem 1.05rem;
+    padding: 0.9rem 0.95rem;
     background: var(--bg-surface);
   }
 
   .hero-top {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.75rem;
-    margin-bottom: 0.9rem;
+    margin-bottom: 0.75rem;
   }
 
   .hero-main {
     display: flex;
     align-items: center;
-    gap: 0.95rem;
+    gap: 0.8rem;
     min-width: 0;
   }
 
   .avatar {
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
     display: grid;
     place-items: center;
     font-weight: 800;
@@ -2304,13 +2301,13 @@
 
   .meta h1 {
     margin: 0;
-    font-size: 1.65rem;
+    font-size: 1.45rem;
     letter-spacing: -0.02em;
     overflow-wrap: anywhere;
   }
 
   .hero-badges {
-    margin-top: 0.5rem;
+    margin-top: 0.35rem;
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
@@ -2322,8 +2319,8 @@
     align-items: center;
     gap: 0.35rem;
     border-radius: 999px;
-    padding: 0.28rem 0.62rem;
-    font-size: 0.8rem;
+    padding: 0.24rem 0.55rem;
+    font-size: 0.76rem;
     font-weight: 700;
     border: none;
     background: color-mix(in srgb, var(--bg-surface), transparent 12%);
@@ -2370,9 +2367,13 @@
 
   .header-actions {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.55rem;
     flex-wrap: wrap;
     justify-content: flex-end;
+  }
+
+  .hero-actions .btn {
+    padding-inline: 0.8rem;
   }
 
   .btn {
@@ -2454,10 +2455,10 @@
     background: var(--bg-surface);
     color: var(--text-primary);
     border-radius: 999px;
-    padding: 0.45rem 0.85rem;
+    padding: 0.4rem 0.78rem;
     cursor: pointer;
     font-weight: 650;
-    font-size: 0.9rem;
+    font-size: 0.86rem;
   }
 
   .tabs button.active {
@@ -2937,6 +2938,13 @@
     }
     .header-actions {
       justify-content: stretch;
+    }
+    .hero-actions {
+      width: 100%;
+    }
+    .hero-actions .btn {
+      flex: 1 1 calc(50% - 0.55rem);
+      min-width: 0;
     }
     .header-actions .btn {
       flex: 1 1 11rem;

@@ -307,18 +307,6 @@
   </div>
 
   <div class="workspace-grid">
-    <article class="workspace-card workspace-card--primary">
-      <div class="workspace-card__icon">
-        <Icon name="receipt" size={18} />
-      </div>
-      <div>
-        <h2>{$t('admin.package_invoices.list.workspace.queue_title') || 'Invoice queue'}</h2>
-        <p>
-          {$t('admin.package_invoices.list.workspace.queue_desc') ||
-            'Keep overdue, pending verification, and paid invoices visible without leaving the billing workspace.'}
-        </p>
-      </div>
-    </article>
     <article class="workspace-card">
       <span class="workspace-card__label">
         {$t('admin.package_invoices.list.workspace.action_needed') || 'Need action'}
@@ -339,6 +327,13 @@
           'Focus collection reminders and service actions on these accounts first.'}
       </p>
     </article>
+    <article class="workspace-card">
+      <span class="workspace-card__label">
+        {$t('admin.package_invoices.list.workspace.queue_title') || 'Invoice queue'}
+      </span>
+      <strong class="workspace-card__value">{invoiceStats.total}</strong>
+      <p>Pantau invoice aktif tanpa pindah halaman.</p>
+    </article>
   </div>
 
   <section class="section-block">
@@ -347,10 +342,7 @@
         <h2>
           {$t('admin.package_invoices.list.sections.manual_title') || 'Manual billing action'}
         </h2>
-        <p>
-          {$t('admin.package_invoices.list.sections.manual_desc') ||
-            'Select a customer subscription to generate a targeted invoice immediately.'}
-        </p>
+        <p>Pilih subscription untuk membuat invoice manual.</p>
       </div>
     </div>
 
@@ -397,10 +389,7 @@
     <div class="section-heading">
       <div>
         <h2>{$t('admin.package_invoices.list.sections.summary_title') || 'Billing overview'}</h2>
-        <p>
-          {$t('admin.package_invoices.list.sections.summary_desc') ||
-            'Track payment status distribution before drilling into the full invoice queue.'}
-        </p>
+        <p>Ringkasan status pembayaran.</p>
       </div>
     </div>
 
@@ -434,10 +423,7 @@
     <div class="section-heading">
       <div>
         <h2>{$t('admin.package_invoices.list.sections.queue_title') || 'Invoice queue'}</h2>
-        <p>
-          {$t('admin.package_invoices.list.sections.queue_desc') ||
-            'Filter and inspect customer invoices by status, created window, and payment progress.'}
-        </p>
+        <p>Filter dan cek invoice pelanggan.</p>
       </div>
     </div>
 
@@ -575,7 +561,7 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
     gap: 1rem;
     flex-wrap: wrap;
   }
@@ -590,48 +576,27 @@
   }
   .header-actions {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.55rem;
     align-items: center;
     flex-wrap: wrap;
   }
   .workspace-grid {
     display: grid;
-    grid-template-columns: 1.5fr 1fr 1fr;
-    gap: 0.9rem;
-    margin-bottom: 1rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.9rem;
   }
   .workspace-card {
     border: 1px solid var(--border-color);
-    border-radius: 14px;
+    border-radius: 12px;
     background: var(--bg-surface);
-    padding: 1rem 1.05rem;
-    box-shadow: var(--shadow-sm);
-  }
-  .workspace-card--primary {
-    display: flex;
-    gap: 0.9rem;
-    align-items: flex-start;
-  }
-  .workspace-card__icon {
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-primary);
-    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-    flex-shrink: 0;
-  }
-  .workspace-card h2 {
-    margin: 0 0 0.35rem;
-    font-size: 1rem;
-    color: var(--text-primary);
+    padding: 0.85rem 0.95rem;
   }
   .workspace-card p {
     margin: 0;
     color: var(--text-secondary);
-    line-height: 1.55;
+    line-height: 1.45;
+    font-size: 0.86rem;
   }
   .workspace-card__label {
     display: inline-flex;
@@ -645,19 +610,19 @@
   .workspace-card__value {
     display: block;
     margin-bottom: 0.35rem;
-    font-size: 1.45rem;
+    font-size: 1.25rem;
     line-height: 1;
     color: var(--text-primary);
   }
   .section-block {
-    margin-bottom: 1rem;
+    margin-bottom: 0.9rem;
   }
   .section-heading {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
     gap: 1rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.6rem;
   }
   .section-heading h2 {
     margin: 0 0 0.2rem;
@@ -667,7 +632,8 @@
   .section-heading p {
     margin: 0;
     color: var(--text-secondary);
-    line-height: 1.5;
+    line-height: 1.4;
+    font-size: 0.88rem;
   }
   .create-row {
     display: grid;
@@ -825,6 +791,13 @@
       flex-direction: column;
       align-items: stretch;
     }
+    .header-actions {
+      width: 100%;
+    }
+    .header-actions .btn {
+      flex: 1 1 calc(50% - 0.55rem);
+      justify-content: center;
+    }
     .workspace-grid {
       grid-template-columns: 1fr;
     }
@@ -840,12 +813,6 @@
     .section-heading {
       align-items: stretch;
     }
-
-    .btn.btn-secondary {
-      width: 100%;
-      justify-content: center;
-    }
-
     .header-content h1 {
       font-size: 1.35rem;
     }
