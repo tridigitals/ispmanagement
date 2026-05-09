@@ -148,7 +148,6 @@
   <div class="link-form">
     <section class="form-section">
       <div class="section-head">
-        <span class="section-kicker">Link</span>
         <h4>Identity</h4>
       </div>
       <div class="form-grid identity-grid">
@@ -184,7 +183,6 @@
     <section class="form-section">
       <div class="section-head endpoints-head">
         <div>
-          <span class="section-kicker">Topology</span>
           <h4>Endpoints</h4>
         </div>
         <button class="inline-link-action" type="button" onclick={onUseStraightLine}>
@@ -227,7 +225,6 @@
     <section class="form-section">
       <div class="section-head with-helper">
         <div>
-          <span class="section-kicker">Monitoring</span>
           <h4>Link Metrics</h4>
         </div>
         <div class="helper-pill">
@@ -283,11 +280,11 @@
 <style>
   .link-workflow {
     display: grid;
-    gap: 12px;
-    padding: 14px;
-    margin-bottom: 18px;
+    gap: 10px;
+    padding: 12px;
+    margin-bottom: 16px;
     border: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
-    border-radius: 14px;
+    border-radius: 12px;
     background: var(--bg-surface);
   }
 
@@ -305,10 +302,10 @@
   .segmented-control {
     display: inline-grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    min-width: 210px;
+    min-width: 196px;
     padding: 3px;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 88%, transparent);
+    border-radius: 10px;
     background: color-mix(in srgb, var(--bg-surface) 76%, #020617);
   }
 
@@ -327,11 +324,11 @@
   }
 
   .segmented-control button {
-    min-height: 34px;
-    border-radius: 9px;
+    min-height: 32px;
+    border-radius: 8px;
     background: transparent;
     color: var(--text-secondary);
-    font-size: 0.84rem;
+    font-size: 0.82rem;
     font-weight: 800;
   }
 
@@ -342,16 +339,16 @@
   }
 
   .workflow-action {
-    min-height: 36px;
+    min-height: 34px;
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    padding: 0 12px;
-    border-radius: 10px;
+    padding: 0 11px;
+    border-radius: 9px;
     background: color-mix(in srgb, var(--bg-surface) 78%, transparent);
     border-color: var(--border-color);
     color: var(--text-primary);
-    font-size: 0.84rem;
+    font-size: 0.82rem;
     font-weight: 800;
     white-space: nowrap;
   }
@@ -373,15 +370,15 @@
   }
 
   .workflow-hint {
-    min-height: 34px;
+    min-height: 32px;
     display: flex;
     align-items: center;
-    padding: 8px 10px;
-    border-radius: 10px;
+    padding: 7px 10px;
+    border-radius: 9px;
     color: var(--text-secondary);
     background: color-mix(in srgb, var(--bg-app) 72%, transparent);
     border: 1px dashed color-mix(in srgb, var(--border-color) 75%, transparent);
-    font-size: 0.84rem;
+    font-size: 0.8rem;
     line-height: 1.35;
   }
 
@@ -394,15 +391,15 @@
 
   .link-form {
     display: grid;
-    gap: 14px;
+    gap: 12px;
   }
 
   .form-section {
     display: grid;
-    gap: 12px;
-    padding: 14px;
+    gap: 10px;
+    padding: 12px;
     border: 1px solid color-mix(in srgb, var(--border-color) 86%, transparent);
-    border-radius: 14px;
+    border-radius: 12px;
     background: color-mix(in srgb, var(--bg-surface) 84%, #020617);
   }
 
@@ -411,19 +408,10 @@
   }
 
   .section-head h4 {
-    margin: 2px 0 0;
+    margin: 0;
     color: var(--text-primary);
-    font-size: 0.98rem;
+    font-size: 0.94rem;
     line-height: 1.2;
-  }
-
-  .section-kicker {
-    display: block;
-    color: var(--text-secondary);
-    font-size: 0.72rem;
-    font-weight: 900;
-    letter-spacing: 0;
-    text-transform: uppercase;
   }
 
   .section-head.with-helper {
@@ -431,16 +419,16 @@
   }
 
   .helper-pill {
-    max-width: 520px;
+    max-width: 460px;
     display: inline-flex;
     align-items: flex-start;
     gap: 7px;
-    padding: 8px 10px;
-    border-radius: 10px;
+    padding: 7px 9px;
+    border-radius: 9px;
     background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-app));
     border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--border-color));
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-size: 0.77rem;
     line-height: 1.35;
   }
 
@@ -453,7 +441,7 @@
   .form-grid {
     display: grid;
     grid-template-columns: repeat(12, minmax(0, 1fr));
-    gap: 12px;
+    gap: 10px;
     align-items: start;
   }
 
@@ -463,13 +451,13 @@
 
   .field {
     display: grid;
-    gap: 7px;
+    gap: 6px;
     min-width: 0;
   }
 
   .field span {
     color: var(--text-secondary);
-    font-size: 0.79rem;
+    font-size: 0.77rem;
     font-weight: 800;
     line-height: 1.25;
   }
@@ -492,13 +480,13 @@
 
   .input {
     width: 100%;
-    min-height: 40px;
+    min-height: 38px;
     border: 1px solid var(--border-color);
-    border-radius: 10px;
+    border-radius: 9px;
     background: color-mix(in srgb, var(--bg-app) 78%, #020617);
     color: var(--text-primary);
-    padding: 9px 11px;
-    font-size: 0.9rem;
+    padding: 8px 10px;
+    font-size: 0.88rem;
     outline: none;
     transition:
       border-color 0.16s ease,
@@ -521,13 +509,13 @@
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    min-height: 34px;
-    padding: 0 11px;
-    border-radius: 10px;
+    min-height: 32px;
+    padding: 0 10px;
+    border-radius: 9px;
     background: transparent;
     border-color: var(--border-color);
     color: var(--text-primary);
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     font-weight: 800;
   }
 

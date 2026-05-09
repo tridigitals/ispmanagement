@@ -450,13 +450,8 @@
   <div class="page-content fade-in">
     <section class="hero-card">
       <div class="hero-copy">
-        <p class="eyebrow">Backoffice Order</p>
         <h1>Create Installation Order</h1>
-        <p class="subtitle">Create customer, address, service, and installation work order from one flow.</p>
-      </div>
-      <div class="hero-chip">
-        <Icon name="file-text" size={18} />
-        Installation Intake
+        <p class="subtitle">Customer, service, and installation in one flow.</p>
       </div>
     </section>
 
@@ -480,7 +475,7 @@
         <div class="section-header">
           <div>
             <h2>Customer Context</h2>
-            <p>Start from a new lead or reuse an existing customer profile.</p>
+            <p>Use a new customer or select an existing profile.</p>
           </div>
         </div>
 
@@ -570,7 +565,7 @@
         <div class="section-header">
           <div>
             <h2>Address & Service</h2>
-            <p>Choose where the service will be installed and what package should be provisioned.</p>
+            <p>Set the install address and package.</p>
           </div>
         </div>
 
@@ -620,7 +615,7 @@
           <div class="map-picked-box">
             <div>
               <div class="map-picked-title">Installation point on map</div>
-              <div class="map-picked-sub">Pick the exact installation point from the map so coordinates stay accurate.</div>
+              <div class="map-picked-sub">Choose the map point for accurate coordinates.</div>
             </div>
             <button class="btn btn-secondary" type="button" onclick={openMapPicker}>
               <Icon name="map" size={16} />
@@ -677,7 +672,7 @@
         <div class="section-header">
           <div>
             <h2>Review Order</h2>
-            <p>Confirm the final installation intake before creating the work order.</p>
+            <p>Review before creating the work order.</p>
           </div>
         </div>
 
@@ -711,9 +706,9 @@
         <div class="review-band">
           <Icon name="shield-check" size={18} />
           <span>
-            This will create the subscription in
+            Subscription status will be
             <strong class="status-token">pending_installation</strong>
-            and generate the installation work order immediately.
+            and the work order will be created immediately.
           </span>
         </div>
       </section>
@@ -772,11 +767,11 @@
 
 <style>
   .page-content {
-    padding: 28px;
+    padding: 24px;
     max-width: 1400px;
     margin: 0 auto;
     display: grid;
-    gap: 16px;
+    gap: 14px;
   }
 
   .hero-card,
@@ -788,61 +783,36 @@
   }
 
   .hero-card {
-    padding: 22px 24px;
-    display: flex;
-    justify-content: space-between;
-    gap: 20px;
-    align-items: flex-start;
+    padding: 18px 20px;
   }
 
   .hero-copy {
     display: grid;
-    gap: 6px;
-  }
-
-  .hero-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    border-radius: 999px;
-    border: 1px solid rgba(20, 184, 166, 0.28);
-    background: rgba(20, 184, 166, 0.12);
-    color: rgb(153, 246, 228);
-    padding: 10px 14px;
-    font-weight: 700;
-    white-space: nowrap;
-  }
-
-  .eyebrow {
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: rgb(245, 158, 11);
-    font-size: 0.72rem;
+    gap: 4px;
   }
 
   h1 {
     margin: 0;
-    font-size: 2rem;
+    font-size: 1.7rem;
     color: var(--text-primary);
   }
 
   .subtitle {
     margin: 0;
     color: var(--text-muted);
-    max-width: 760px;
-    line-height: 1.55;
+    max-width: 640px;
+    line-height: 1.45;
   }
 
   .form-card {
-    padding: 20px;
+    padding: 18px;
     display: grid;
-    gap: 18px;
+    gap: 16px;
   }
 
   .section {
     display: grid;
-    gap: 18px;
+    gap: 16px;
   }
 
   .section-header {
@@ -859,10 +829,10 @@
   }
 
   .section-header p {
-    margin: 4px 0 0;
+    margin: 3px 0 0;
     color: var(--text-muted);
-    font-size: 0.88rem;
-    line-height: 1.45;
+    font-size: 0.84rem;
+    line-height: 1.4;
   }
 
   .stepper {
@@ -1152,8 +1122,8 @@
   .map-picked-sub {
     margin-top: 0.25rem;
     color: var(--text-muted);
-    font-size: 0.88rem;
-    line-height: 1.45;
+    font-size: 0.84rem;
+    line-height: 1.4;
   }
 
   .map-picker-shell {

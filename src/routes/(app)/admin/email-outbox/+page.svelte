@@ -270,10 +270,7 @@
   <div class="head">
     <div>
       <h1 class="title">{$t('admin.email_outbox.title') || 'Email Outbox'}</h1>
-      <p class="sub">
-        {$t('admin.email_outbox.subtitle') ||
-          'Monitor queued and failed emails, and retry delivery.'}
-      </p>
+      <p class="sub">{$t('admin.email_outbox.subtitle') || 'Queue, retry, and review email delivery.'}</p>
     </div>
 
     <button
@@ -606,11 +603,11 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 1.25rem;
+    margin-bottom: 1rem;
   }
 
   .title {
-    font-size: 1.45rem;
+    font-size: 1.3rem;
     font-weight: 800;
     letter-spacing: -0.02em;
     color: var(--text-primary);
@@ -618,23 +615,24 @@
   }
 
   .sub {
-    margin: 0.25rem 0 0;
+    margin: 0.2rem 0 0;
     color: var(--text-secondary);
-    max-width: 62ch;
+    max-width: 52ch;
+    font-size: 0.9rem;
   }
 
   .stats {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.75rem;
-    margin-bottom: 1rem;
+    gap: 0.65rem;
+    margin-bottom: 0.9rem;
   }
 
   .stat-card {
     border: 1px solid var(--border-color);
     background: var(--bg-surface);
     border-radius: var(--radius-lg);
-    padding: 0.9rem 1rem;
+    padding: 0.78rem 0.9rem;
     text-align: left;
     cursor: pointer;
     transition:
@@ -657,17 +655,17 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
+    gap: 0.6rem;
     color: var(--text-secondary);
     font-weight: 700;
-    font-size: 0.8rem;
+    font-size: 0.74rem;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
   }
 
   .stat-value {
-    margin-top: 0.5rem;
-    font-size: 1.5rem;
+    margin-top: 0.4rem;
+    font-size: 1.35rem;
     font-weight: 900;
     color: var(--text-primary);
   }
@@ -677,7 +675,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    margin: 1rem 0;
+    margin: 0.85rem 0;
     flex-wrap: wrap;
   }
 
@@ -687,7 +685,7 @@
     justify-content: space-between;
     gap: 1rem;
     flex-wrap: wrap;
-    margin: 0.25rem 0 1rem;
+    margin: 0.15rem 0 0.9rem;
   }
 
   .toolbar-left {
@@ -702,7 +700,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    padding: 0.55rem 0.7rem;
+    padding: 0.5rem 0.65rem;
     border: 1px solid var(--border-color);
     background: rgba(255, 255, 255, 0.03);
     border-radius: 14px;
@@ -746,8 +744,8 @@
   .scope {
     display: inline-flex;
     gap: 0.35rem;
-    padding: 0.3rem;
-    border-radius: 12px;
+    padding: 0.26rem;
+    border-radius: 10px;
     border: 1px solid var(--border-color);
     background: rgba(255, 255, 255, 0.03);
   }
@@ -756,11 +754,11 @@
     border: 1px solid transparent;
     background: transparent;
     color: var(--text-secondary);
-    padding: 0.45rem 0.7rem;
-    border-radius: 10px;
+    padding: 0.42rem 0.65rem;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: 800;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
   }
 
   .scope button.active {
@@ -776,8 +774,13 @@
     border: 1px solid var(--border-color);
     background: var(--bg-surface);
     border-radius: 999px;
-    padding: 0.55rem 0.75rem;
+    padding: 0.5rem 0.7rem;
     width: min(520px, 100%);
+  }
+
+  .btn {
+    padding: 0.58rem 0.82rem;
+    min-height: 38px;
   }
 
   .search-input {
