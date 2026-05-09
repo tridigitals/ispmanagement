@@ -282,7 +282,7 @@
     <div class="editor-intro">
       <div>
         <strong>{$t('admin.message_templates.editor.content_title') || 'Template content'}</strong>
-        <p>{$t('admin.message_templates.editor.content_hint') || 'Use variables for customer-specific messages. Keep WhatsApp concise and email more complete.'}</p>
+        <p>Gunakan variabel untuk personalisasi pesan.</p>
       </div>
       <span class="editor-badge">{editing ? `v${editing.version}` : $t('admin.message_templates.editor.draft_badge') || 'Draft'}</span>
     </div>
@@ -341,7 +341,7 @@
 
       <aside class="side-panel">
         <strong>{$t('admin.message_templates.variables.title') || 'Variable Picker'}</strong>
-        <p>{$t('admin.message_templates.variables.hint') || 'Click a token to insert it into the active channel body.'}</p>
+        <p>Klik token untuk menyisipkan variabel.</p>
       {#each variableGroups as group}
         <div class="variable-group">
           <span>{$t(group.labelKey)}</span>
@@ -379,7 +379,7 @@
 
 <style>
   .page-content {
-    padding: 1.25rem 1.5rem 1.5rem;
+    padding: 1.1rem 1.25rem 1.25rem;
   }
 
   .page-header,
@@ -395,7 +395,7 @@
   .page-header {
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 1rem;
+    margin-bottom: 0.85rem;
   }
 
   .subtitle,
@@ -413,8 +413,8 @@
     border: 1px solid var(--border-color);
     border-radius: 12px;
     background: var(--bg-surface);
-    padding: 0.85rem;
-    margin-bottom: 1rem;
+    padding: 0.75rem;
+    margin-bottom: 0.85rem;
   }
 
   .input {
@@ -428,7 +428,7 @@
   }
 
   .toolbar .input {
-    max-width: 220px;
+    max-width: 210px;
   }
 
   .btn,
@@ -446,7 +446,7 @@
     align-items: center;
     justify-content: center;
     gap: 0.45rem;
-    padding: 0.58rem 0.85rem;
+    padding: 0.52rem 0.8rem;
   }
 
   .btn-primary {
@@ -483,7 +483,7 @@
     border: 1px solid var(--border-color);
     border-radius: 12px;
     background: var(--bg-surface);
-    padding: 0.9rem;
+    padding: 0.82rem 0.9rem;
   }
 
   .template-head {
@@ -521,7 +521,7 @@
   }
 
   .editor-shell {
-    gap: 1rem;
+    gap: 0.85rem;
   }
 
   .editor-intro {
@@ -532,14 +532,14 @@
     border: 1px solid var(--border-color);
     border-radius: 12px;
     background: color-mix(in srgb, var(--bg-surface) 88%, var(--bg-app));
-    padding: 0.85rem 1rem;
+    padding: 0.75rem 0.85rem;
   }
 
   .editor-intro p {
     margin: 0.25rem 0 0;
     color: var(--text-secondary);
-    font-size: 0.88rem;
-    line-height: 1.45;
+    font-size: 0.86rem;
+    line-height: 1.4;
   }
 
   .editor-badge {

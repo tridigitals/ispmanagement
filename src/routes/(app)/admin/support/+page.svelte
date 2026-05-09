@@ -192,21 +192,6 @@
   </div>
 
   <div class="filters">
-    <div class="filter">
-      <button class:active={statusFilter === 'all'} onclick={() => setStatusFilter('all')}>
-        {$t('support.filters.all') || 'All'}
-      </button>
-      <button class:active={statusFilter === 'open'} onclick={() => setStatusFilter('open')}>
-        {$t('support.filters.open') || 'Open'}
-      </button>
-      <button class:active={statusFilter === 'pending'} onclick={() => setStatusFilter('pending')}>
-        {$t('support.filters.pending') || 'Pending'}
-      </button>
-      <button class:active={statusFilter === 'closed'} onclick={() => setStatusFilter('closed')}>
-        {$t('support.filters.closed') || 'Closed'}
-      </button>
-    </div>
-
     <div class="search">
       <Icon name="search" size={16} />
       <input
@@ -285,7 +270,7 @@
 
 <style>
   .page-content {
-    padding: 1.5rem;
+    padding: 1.1rem 1.25rem 1.25rem;
   }
 
   .head {
@@ -293,14 +278,14 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.85rem;
     flex-wrap: wrap;
   }
 
   .title {
     margin: 0;
-    font-size: 1.5rem;
-    font-weight: 900;
+    font-size: 1.35rem;
+    font-weight: 800;
     color: var(--text-primary);
   }
 
@@ -316,7 +301,7 @@
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
-    padding: 0.6rem 0.9rem;
+    padding: 0.55rem 0.85rem;
     border-radius: 10px;
     cursor: pointer;
     font-weight: 800;
@@ -325,26 +310,26 @@
   .filters {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
     flex-wrap: wrap;
   }
 
   .stats {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.75rem;
-    margin: 0.9rem 0 1rem 0;
+    gap: 0.65rem;
+    margin: 0.75rem 0 0.85rem 0;
   }
 
   .stat-card {
     text-align: left;
-    border-radius: var(--radius-lg);
+    border-radius: 12px;
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     background: var(--bg-surface);
-    padding: 0.9rem;
+    padding: 0.8rem 0.85rem;
     cursor: pointer;
     transition:
       transform 0.12s ease,
@@ -397,32 +382,6 @@
     border-color: rgba(34, 197, 94, 0.22);
   }
 
-  .filter {
-    display: inline-flex;
-    gap: 0.35rem;
-    padding: 0.3rem;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.03);
-  }
-
-  .filter button {
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--text-secondary);
-    padding: 0.45rem 0.7rem;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 800;
-    font-size: 0.85rem;
-  }
-
-  .filter button.active {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.35);
-    color: var(--text-primary);
-  }
-
   .search {
     display: inline-flex;
     align-items: center;
@@ -432,7 +391,7 @@
     border-radius: 12px;
     padding: 0.55rem 0.75rem;
     color: var(--text-secondary);
-    min-width: min(420px, 100%);
+    min-width: min(360px, 100%);
   }
 
   .search-input {

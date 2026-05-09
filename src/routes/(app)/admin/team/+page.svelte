@@ -590,7 +590,7 @@
   }
 
   .card-header {
-    padding: 1.25rem 1.75rem;
+    padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
@@ -615,7 +615,7 @@
   .count-badge {
     background: var(--bg-hover);
     color: var(--text-secondary);
-    padding: 0.35rem 0.75rem;
+    padding: 0.32rem 0.65rem;
     border-radius: 12px;
     font-size: 0.8rem;
     font-weight: 800;
@@ -797,8 +797,8 @@
   }
 
   .btn-icon {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
     padding: 0;
     border-radius: 10px;
     display: inline-flex;
@@ -879,7 +879,7 @@
 
   /* Buttons */
   .btn {
-    padding: 0.6rem 1.2rem;
+    padding: 0.55rem 0.9rem;
     border-radius: 8px;
     font-weight: 500;
     cursor: pointer;

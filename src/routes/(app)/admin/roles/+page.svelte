@@ -458,7 +458,7 @@
 
 <style>
   .page-content {
-    padding: 1.5rem;
+    padding: 1.1rem 1.25rem 1.25rem;
     max-width: 1400px;
     margin: 0 auto;
     --glass: rgba(255, 255, 255, 0.04);
@@ -474,7 +474,7 @@
   }
 
   .card-header {
-    padding: 1.25rem 1.75rem;
+    padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--glass-border);
     display: flex;
     justify-content: space-between;
@@ -499,7 +499,7 @@
   .count-badge {
     background: rgba(255, 255, 255, 0.06);
     color: var(--text-secondary);
-    padding: 0.35rem 0.75rem;
+    padding: 0.32rem 0.65rem;
     border-radius: 12px;
     font-size: 0.8rem;
     font-weight: 700;
@@ -565,8 +565,8 @@
     width: 100%;
   }
   .btn-icon {
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -876,7 +876,7 @@
   }
 
   .btn {
-    padding: 0.6rem 1.2rem;
+    padding: 0.55rem 0.9rem;
     border-radius: 8px;
     font-weight: 500;
     cursor: pointer;
