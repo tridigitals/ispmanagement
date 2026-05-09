@@ -309,7 +309,7 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.network.routers.ip_pools.title') || 'IP Pools'}
-    subtitle={$t('admin.network.routers.ip_pools.subtitle') || 'Per-router RouterOS IP pools (used for PPPoE remote-address mapping).'}
+    subtitle="IP pool RouterOS per router."
   >
     {#snippet actions()}
       {#if loading}

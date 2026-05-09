@@ -367,7 +367,7 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.network.routers.ppp_profiles.title') || 'PPP Profiles'}
-    subtitle={$t('admin.network.routers.ppp_profiles.subtitle') || 'Per-router RouterOS PPP profiles (synced into database for mapping & import).'}
+    subtitle="PPP profile RouterOS per router."
   >
     {#snippet actions()}
       {#if loading}

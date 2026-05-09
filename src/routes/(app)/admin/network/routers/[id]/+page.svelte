@@ -961,9 +961,6 @@
           <button class="btn ghost btn-sm hero-action" type="button" onclick={openManagedRadiusModal}>
             <Icon name="shield" size={14} />
             {$t('admin.network.routers.managed_radius.trigger.label') || 'Managed RADIUS'}
-            <span class="hero-action-note">
-              {getManagedRadiusSummary(managedRadiusSetup)}
-            </span>
           </button>
         {/if}
 
@@ -1377,10 +1374,10 @@
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    padding: 18px 18px 16px;
+    padding: 14px 14px 13px;
     display: grid;
     grid-template-columns: 1.4fr 0.6fr;
-    gap: 16px;
+    gap: 12px;
     margin-bottom: 14px;
   }
 
@@ -1466,19 +1463,13 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 10px;
+    gap: 8px;
   }
 
   .hero-action {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-  }
-
-  .hero-action-note {
-    color: var(--text-secondary);
-    font-size: 0.82rem;
-    font-weight: 700;
   }
 
   .hint {

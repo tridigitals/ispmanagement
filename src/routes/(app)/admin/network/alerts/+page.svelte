@@ -267,7 +267,7 @@
   {#if NetworkPageHeaderComponent && AlertsIncidentsSwitchComponent && NetworkFilterPanelComponent}
     <NetworkPageHeaderComponent
       title={$t('admin.network.alerts.title') || 'Router Alerts'}
-      subtitle={$t('admin.network.alerts.subtitle') || 'Incidents detected from router polling.'}
+      subtitle="Alert dari polling router."
     >
       {#snippet actions()}
         <AlertsIncidentsSwitchComponent

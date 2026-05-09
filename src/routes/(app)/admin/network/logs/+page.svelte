@@ -300,7 +300,7 @@
   <div class="logs-shell">
     <NetworkPageHeader
       title={$t('admin.network.logs.title') || 'Router Logs'}
-      subtitle={$t('admin.network.logs.subtitle') || 'Read and store MikroTik logs for troubleshooting and audits.'}
+      subtitle="Log MikroTik untuk audit dan troubleshooting."
     >
       {#snippet actions()}
         <button class="btn ghost" type="button" onclick={() => void loadRowsPage(1)} title={$t('common.refresh') || 'Refresh'}>

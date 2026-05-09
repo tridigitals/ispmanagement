@@ -670,8 +670,7 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.network.pppoe.title') || 'PPPoE'}
-    subtitle={$t('admin.network.pppoe.subtitle') ||
-      'Tenant-wide view of PPPoE accounts across routers.'}
+    subtitle="Kelola akun PPPoE."
   >
     {#snippet actions()}
       {#if $can('manage', 'pppoe') && autoApplyOnSave}

@@ -277,7 +277,7 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.network.noc.title') || 'Network NOC'}
-    subtitle={$t('admin.network.noc.subtitle') || 'A quick operational view of all routers: status, health, and traffic.'}
+    subtitle="Ringkasan operasional seluruh router."
   >
     {#snippet actions()}
       <AlertsIncidentsSwitch

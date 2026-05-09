@@ -1696,7 +1696,7 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={tr('admin.network.installations.title', 'Installation Work Orders')}
-    subtitle={tr('admin.network.installations.subtitle', 'Technician pipeline from paid invoices to active service')}
+    subtitle="Pipeline instalasi hingga layanan aktif."
   >
     {#snippet actions()}
       {#if isAdminOwner}

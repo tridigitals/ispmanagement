@@ -313,7 +313,7 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.network.routers.title') || 'Routers'}
-    subtitle={$t('admin.network.routers.subtitle') || 'Manage MikroTik routers and monitoring'}
+    subtitle="Kelola router MikroTik."
   >
     {#snippet actions()}
       <button class="btn ghost" type="button" onclick={load} title={$t('common.refresh') || 'Refresh'}>

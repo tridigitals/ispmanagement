@@ -742,7 +742,7 @@
 <div class="page-content">
   <NetworkPageHeader
     title={$t('admin.network.dhcp_static.title') || 'DHCP Static'}
-    subtitle={$t('admin.network.dhcp_static.subtitle') || 'Monitor and re-apply static DHCP leases and optional simple queues.'}
+    subtitle="Pantau lease DHCP static."
   />
 
   <section class="stats-grid">

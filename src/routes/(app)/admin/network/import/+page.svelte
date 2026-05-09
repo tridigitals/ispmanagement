@@ -20,17 +20,15 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.network.import_center.title') || 'Network Imports'}
-    subtitle={$t('admin.network.import_center.subtitle') ||
-      'Pusat import data jaringan dari MixRadius dan source lain yang akan ditambahkan.'}
+    subtitle="Pusat import data jaringan."
   />
 
   <section class="import-overview" aria-label="Import center overview">
     <div>
-      <span class="eyebrow">Migration control</span>
       <h2>{$t('admin.network.import_center.panel_title') || 'Import aman untuk lifecycle ISP'}</h2>
       <p>
         {$t('admin.network.import_center.panel_description') ||
-          'Setiap source masuk lewat staging, mapping, preview, lalu eksekusi agar package, customer, subscription, billing, dan akun PPPoE tetap konsisten.'}
+          'Import melewati staging, mapping, preview, lalu eksekusi.'}
       </p>
     </div>
     <div class="overview-metrics">
@@ -50,8 +48,7 @@
       <div>
         <h2>{$t('admin.network.import_center.sources_title') || 'Pilih source import'}</h2>
         <p>
-          {$t('admin.network.import_center.sources_subtitle') ||
-            'Mulai dari MixRadius, nanti area ini bisa diperluas untuk Radbox atau sistem RADIUS lain.'}
+          {$t('admin.network.import_center.sources_subtitle') || 'Pilih sumber import yang tersedia.'}
         </p>
       </div>
     </div>
@@ -86,8 +83,8 @@
 <style>
   .page-content {
     display: grid;
-    gap: 20px;
-    padding: 28px;
+    gap: 16px;
+    padding: 22px;
     max-width: 1460px;
     margin: 0 auto;
   }
@@ -97,23 +94,15 @@
     border: 1px solid var(--border-color, rgba(148, 163, 184, 0.22));
     background: var(--bg-surface);
     border-radius: var(--radius-lg);
-    box-shadow: var(--card-shadow, 0 18px 40px rgba(15, 23, 42, 0.16));
+    box-shadow: none;
   }
 
   .import-overview {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 20px;
+    gap: 16px;
     align-items: center;
-    padding: 22px;
-  }
-
-  .eyebrow {
-    color: var(--text-secondary);
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    padding: 18px;
   }
 
   h2,
