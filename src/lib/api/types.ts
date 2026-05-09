@@ -470,6 +470,9 @@ export interface CustomerSubscriptionView extends CustomerSubscription {
   package_name: string | null;
   location_label: string | null;
   router_name: string | null;
+  pppoe_address_pool: string | null;
+  pppoe_isolation_pool: string | null;
+  pppoe_disabled: boolean | null;
   latest_work_order_id: string | null;
   latest_work_order_status: string | null;
   can_request_reopen: boolean;
@@ -763,6 +766,7 @@ export interface IspPackageRouterMappingView {
   router_name: string | null;
   router_profile_name: string;
   address_pool: string | null;
+  isolation_pool: string | null;
   created_at: string;
   updated_at: string;
 }

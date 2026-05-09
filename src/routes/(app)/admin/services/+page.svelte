@@ -40,7 +40,9 @@
   let baseLocale = $state('en-US');
   let fxRate = $state<number | null>(null);
 
-  const tenantCurrencyCode = $derived.by(() => String($appSettings?.currency_code || baseCurrencyCode).toUpperCase());
+  const tenantCurrencyCode = $derived.by(() =>
+    String($appSettings?.currency_code || baseCurrencyCode).toUpperCase(),
+  );
 
   let q = $state('');
   let packages = $state<IspPackage[]>([]);
@@ -77,6 +79,7 @@
   let pkgMapRouterId = $state('');
   let pkgMapProfile = $state('');
   let pkgMapPool = $state('');
+  let pkgMapIsolationPool = $state('');
   let pkgProfileSuggestions = $state<ProfileSuggestion[]>([]);
   let pkgPoolSuggestions = $state<PoolSuggestion[]>([]);
   let pkgLoadingMeta = $state(false);
@@ -87,6 +90,7 @@
   let mapRouterId = $state('');
   let mapProfile = $state('');
   let mapPool = $state('');
+  let mapIsolationPool = $state('');
   let profileSuggestions = $state<ProfileSuggestion[]>([]);
   let poolSuggestions = $state<PoolSuggestion[]>([]);
   let loadingMeta = $state(false);
@@ -124,25 +128,38 @@
   const columns = $derived.by(() => [
     {
       key: 'name',
-      label: $t('admin.services.columns.name') || $t('admin.network.packages.columns.name') || 'Name',
+      label:
+        $t('admin.services.columns.name') || $t('admin.network.packages.columns.name') || 'Name',
       sortable: true,
     },
-    { key: 'type', label: $t('admin.services.columns.type') || 'Type', width: '140px', sortable: true },
+    {
+      key: 'type',
+      label: $t('admin.services.columns.type') || 'Type',
+      width: '140px',
+      sortable: true,
+    },
     {
       key: 'price',
-      label: $t('admin.services.columns.price') || $t('admin.network.packages.columns.price') || 'Price',
+      label:
+        $t('admin.services.columns.price') || $t('admin.network.packages.columns.price') || 'Price',
       width: '160px',
       sortable: true,
     },
     {
       key: 'status',
-      label: $t('admin.services.columns.status') || $t('admin.network.packages.columns.status') || 'Status',
+      label:
+        $t('admin.services.columns.status') ||
+        $t('admin.network.packages.columns.status') ||
+        'Status',
       width: '120px',
       sortable: true,
     },
     {
       key: 'mappings',
-      label: $t('admin.services.columns.mappings') || $t('admin.network.packages.columns.mappings') || 'Mapped',
+      label:
+        $t('admin.services.columns.mappings') ||
+        $t('admin.network.packages.columns.mappings') ||
+        'Mapped',
       width: '140px',
       sortable: true,
     },
@@ -182,7 +199,8 @@
     if (key === 'vpn') return 'vpn';
     return 'internet_pppoe';
   };
-  const isInternetType = (value?: string | null) => normalizeServiceType(value) === 'internet_pppoe';
+  const isInternetType = (value?: string | null) =>
+    normalizeServiceType(value) === 'internet_pppoe';
   const normalizeProvisioningType = (value?: string | null): ProvisioningType => {
     return String(value || 'pppoe').toLowerCase() === 'dhcp_static' ? 'dhcp_static' : 'pppoe';
   };
@@ -190,15 +208,15 @@
     normalizeProvisioningType(value) === 'pppoe';
   const provisioningTypeLabel = (value?: string | null) =>
     normalizeProvisioningType(value) === 'dhcp_static'
-      ? ($t('admin.services.provisioning.dhcp_static') || 'DHCP Static')
-      : ($t('admin.services.provisioning.pppoe') || 'PPPoE');
+      ? $t('admin.services.provisioning.dhcp_static') || 'DHCP Static'
+      : $t('admin.services.provisioning.pppoe') || 'PPPoE';
   const serviceTypeLabel = (value?: string | null, provisioningType?: string | null) => {
     const key = String(value || 'internet_pppoe').toLowerCase();
     if (key === 'hotspot') return $t('admin.services.types.hotspot') || 'Hotspot';
     if (key === 'vpn') return $t('admin.services.types.vpn') || 'VPN';
     return normalizeProvisioningType(provisioningType) === 'dhcp_static'
-      ? ($t('admin.services.types.internet_dhcp_static') || 'Internet / DHCP Static')
-      : ($t('admin.services.types.internet_pppoe') || 'Internet / PPPoE');
+      ? $t('admin.services.types.internet_dhcp_static') || 'Internet / DHCP Static'
+      : $t('admin.services.types.internet_pppoe') || 'Internet / PPPoE';
   };
   const serviceTypeCards = $derived.by(() => [
     {
@@ -281,13 +299,16 @@
     pkgMapRouterId = '';
     pkgMapProfile = '';
     pkgMapPool = '';
+    pkgMapIsolationPool = '';
     pkgProfileSuggestions = [];
     pkgPoolSuggestions = [];
     pkgFormTab = 'details';
   }
 
   onMount(() => {
-    if (!canAccessServiceCatalog($user, $can('read', 'isp_packages'), $can('manage', 'isp_packages'))) {
+    if (
+      !canAccessServiceCatalog($user, $can('read', 'isp_packages'), $can('manage', 'isp_packages'))
+    ) {
       goto('/unauthorized');
       return;
     }
@@ -311,7 +332,9 @@
     try {
       const publicSettings = await api.settings.getPublicSettings();
       if (publicSettings?.base_currency_code || publicSettings?.currency_code) {
-        baseCurrencyCode = String(publicSettings.base_currency_code || publicSettings.currency_code).toUpperCase();
+        baseCurrencyCode = String(
+          publicSettings.base_currency_code || publicSettings.currency_code,
+        ).toUpperCase();
       }
       if (publicSettings?.default_locale) baseLocale = String(publicSettings.default_locale);
 
@@ -390,12 +413,14 @@
       pkgMapRouterId = existing.router_id || '';
       pkgMapProfile = existing.router_profile_name || '';
       pkgMapPool = existing.address_pool || '';
+      pkgMapIsolationPool = existing.isolation_pool || '';
       if (pkgMapRouterId) void loadPkgRouterMeta(pkgMapRouterId);
     } else {
       pkgMapEnabled = false;
       pkgMapRouterId = '';
       pkgMapProfile = '';
       pkgMapPool = '';
+      pkgMapIsolationPool = '';
     }
     pkgFormTab = 'details';
 
@@ -406,18 +431,22 @@
     if (saving) return;
     if (!pkgName.trim()) return;
     if (!(Number(pkgPriceMonthly) > 0)) {
-      toast.error($t('admin.network.packages.validation.monthly_required') || 'Monthly price is required and must be greater than 0.');
+      toast.error(
+        $t('admin.network.packages.validation.monthly_required') ||
+          'Monthly price is required and must be greater than 0.',
+      );
       return;
     }
     if (pkgYearlyEnabled && !(Number(pkgPriceYearly) > 0)) {
-      toast.error($t('admin.network.packages.validation.yearly_required') || 'Yearly price must be greater than 0 when enabled.');
+      toast.error(
+        $t('admin.network.packages.validation.yearly_required') ||
+          'Yearly price must be greater than 0 when enabled.',
+      );
       return;
     }
     saving = true;
-    const {
-      getPackageRouterMappingErrorFallback,
-      getPackageRouterMappingReferenceError,
-    } = await loadServicesRouterMappingHelpers();
+    const { getPackageRouterMappingErrorFallback, getPackageRouterMappingReferenceError } =
+      await loadServicesRouterMappingHelpers();
 
     try {
       const wasCreate = !editingPkg;
@@ -427,6 +456,7 @@
         pkgMapRouterId = '';
         pkgMapProfile = '';
         pkgMapPool = '';
+        pkgMapIsolationPool = '';
       }
       const payload = {
         service_type: pkgServiceType,
@@ -470,13 +500,18 @@
           package_id: pkg.id,
           router_profile_name: pkgMapProfile.trim(),
           address_pool: pkgMapPool.trim() || null,
+          isolation_pool: pkgMapIsolationPool.trim() || null,
         });
       }
 
       toast.success(
         wasCreate
-          ? ($t('admin.services.toasts.created') || $t('admin.network.packages.toasts.created') || 'Service created')
-          : ($t('admin.services.toasts.updated') || $t('admin.network.packages.toasts.updated') || 'Service updated'),
+          ? $t('admin.services.toasts.created') ||
+              $t('admin.network.packages.toasts.created') ||
+              'Service created'
+          : $t('admin.services.toasts.updated') ||
+              $t('admin.network.packages.toasts.updated') ||
+              'Service updated',
       );
 
       showPkgModal = false;
@@ -490,7 +525,14 @@
 
   async function deletePackage(p: IspPackage) {
     if (!$can('manage', 'isp_packages')) return;
-    if (!confirm($t('admin.services.confirm_delete') || $t('admin.network.packages.confirm_delete') || 'Delete this service?')) return;
+    if (
+      !confirm(
+        $t('admin.services.confirm_delete') ||
+          $t('admin.network.packages.confirm_delete') ||
+          'Delete this service?',
+      )
+    )
+      return;
     try {
       await api.ispPackages.packages.delete(p.id);
       toast.success($t('common.deleted') || 'Deleted');
@@ -515,6 +557,7 @@
     mapRouterId = existing?.router_id || '';
     mapProfile = existing?.router_profile_name || '';
     mapPool = existing?.address_pool || '';
+    mapIsolationPool = existing?.isolation_pool || '';
     profileSuggestions = [];
     poolSuggestions = [];
     if (mapRouterId) await loadRouterMeta(mapRouterId);
@@ -534,10 +577,12 @@
         api.mikrotik.routers.pppProfiles(routerId),
         api.mikrotik.routers.ipPools(routerId),
       ]);
-      pkgProfileSuggestions = getAvailableRouterNameSuggestions(profiles || []).map((name, index) => ({
-        id: `${index}:${name}`,
-        name,
-      }));
+      pkgProfileSuggestions = getAvailableRouterNameSuggestions(profiles || []).map(
+        (name, index) => ({
+          id: `${index}:${name}`,
+          name,
+        }),
+      );
       pkgPoolSuggestions = getAvailableRouterNameSuggestions(pools || []).map((name, index) => ({
         id: `${index}:${name}`,
         name,
@@ -577,10 +622,8 @@
     if (saving) return;
     if (!mapPkg || !mapRouterId || !mapProfile.trim()) return;
     saving = true;
-    const {
-      getPackageRouterMappingErrorFallback,
-      getPackageRouterMappingReferenceError,
-    } = await loadServicesRouterMappingHelpers();
+    const { getPackageRouterMappingErrorFallback, getPackageRouterMappingReferenceError } =
+      await loadServicesRouterMappingHelpers();
     try {
       const mappingReferenceError = getPackageRouterMappingReferenceError({
         routerId: mapRouterId,
@@ -598,6 +641,7 @@
         package_id: mapPkg.id,
         router_profile_name: mapProfile.trim(),
         address_pool: mapPool.trim() || null,
+        isolation_pool: mapIsolationPool.trim() || null,
       });
       toast.success($t('admin.network.packages.toasts.mapping_saved') || 'Mapping saved');
       showMapModal = false;
@@ -628,7 +672,8 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.services.title') || $t('admin.network.packages.title') || 'Services'}
-    subtitle={$t('admin.services.subtitle') || 'Create services and configure service-specific options.'}
+    subtitle={$t('admin.services.subtitle') ||
+      'Create services and configure service-specific options.'}
   >
     {#snippet actions()}
       <button class="btn ghost" type="button" onclick={() => void load()} disabled={loading}>
@@ -638,7 +683,9 @@
       {#if $can('manage', 'isp_packages')}
         <button class="btn" type="button" onclick={() => void openCreate()}>
           <Icon name="plus" size={16} />
-          {$t('admin.services.actions.add') || $t('admin.network.packages.actions.add') || 'Add service'}
+          {$t('admin.services.actions.add') ||
+            $t('admin.network.packages.actions.add') ||
+            'Add service'}
         </button>
       {/if}
     {/snippet}
@@ -653,7 +700,9 @@
           <input
             id="packages-search"
             type="text"
-            placeholder={$t('admin.services.search') || $t('admin.network.packages.search') || 'Search services...'}
+            placeholder={$t('admin.services.search') ||
+              $t('admin.network.packages.search') ||
+              'Search services...'}
             value={q}
             oninput={(e) => {
               q = (e.currentTarget as HTMLInputElement).value;
@@ -684,15 +733,19 @@
 
   <div class="table-wrap">
     <div class="table-top">
-      <span class="muted">{total >= 0 ? total : packages.length} {$t('common.results') || 'results'}</span>
+      <span class="muted"
+        >{total >= 0 ? total : packages.length} {$t('common.results') || 'results'}</span
+      >
     </div>
 
     {#key packageTableVersion}
       <Table
-        columns={columns}
+        {columns}
         data={packages}
-        loading={loading}
-        emptyText={$t('admin.services.empty') || $t('admin.network.packages.empty') || 'No services.'}
+        {loading}
+        emptyText={$t('admin.services.empty') ||
+          $t('admin.network.packages.empty') ||
+          'No services.'}
         pagination
         serverSide
         count={total}
@@ -712,71 +765,89 @@
         }}
       >
         {#snippet cell({ item, key })}
-        {@const row = item as IspPackage}
-        {#if key === 'name'}
-          <div class="stack">
-            <div class="name">{row.name}</div>
-            {#if row.description}
-              <div class="meta">{row.description}</div>
-            {/if}
-            {#if row.features?.length}
-              <div class="feature-list">
-                {#each row.features.slice(0, 4) as f}
-                  <span class="feature-chip">{f}</span>
-                {/each}
-                {#if row.features.length > 4}
-                  <span class="feature-chip more">+{row.features.length - 4}</span>
-                {/if}
-              </div>
-            {/if}
-          </div>
-        {:else if key === 'type'}
-          <div class="stack compact">
-            <span class="badge neutral">{serviceTypeLabel(row.service_type, row.provisioning_type)}</span>
-            {#if isInternetType(row.service_type)}
-              <span class="meta">{provisioningTypeLabel(row.provisioning_type)}</span>
-            {/if}
-          </div>
-        {:else if key === 'price'}
-          <div class="stack">
-            <div class="mono">{formatDisplayPrice(Number(row.price_monthly || 0))}<span class="unit">/mo</span></div>
-            <div class="mono">{formatDisplayPrice(Number(row.price_yearly || 0))}<span class="unit">/yr</span></div>
-            {#if tenantCurrencyCode !== baseCurrencyCode}
-              <div class="meta">{formatBasePrice(Number(row.price_monthly || 0))}/mo</div>
-              <div class="meta">{formatBasePrice(Number(row.price_yearly || 0))}/yr</div>
-            {/if}
-          </div>
-        {:else if key === 'status'}
-          {#if row.is_active}
-            <span class="badge ok">{$t('common.active') || 'Active'}</span>
-          {:else}
-            <span class="badge warn">{$t('common.disabled') || 'Disabled'}</span>
-          {/if}
-        {:else if key === 'mappings'}
-          {#if isInternetType(row.service_type)}
-            <span class="pill mono">{mappingCountFor(row.id)}</span>
-          {:else}
-            <span class="meta">-</span>
-          {/if}
-        {:else if key === 'actions'}
-          <div class="row-actions">
-            {#if $can('manage', 'isp_packages')}
+          {@const row = item as IspPackage}
+          {#if key === 'name'}
+            <div class="stack">
+              <div class="name">{row.name}</div>
+              {#if row.description}
+                <div class="meta">{row.description}</div>
+              {/if}
+              {#if row.features?.length}
+                <div class="feature-list">
+                  {#each row.features.slice(0, 4) as f}
+                    <span class="feature-chip">{f}</span>
+                  {/each}
+                  {#if row.features.length > 4}
+                    <span class="feature-chip more">+{row.features.length - 4}</span>
+                  {/if}
+                </div>
+              {/if}
+            </div>
+          {:else if key === 'type'}
+            <div class="stack compact">
+              <span class="badge neutral"
+                >{serviceTypeLabel(row.service_type, row.provisioning_type)}</span
+              >
               {#if isInternetType(row.service_type)}
-                <button class="btn-icon" title={$t('admin.network.packages.actions.map') || 'Map to router'} onclick={() => void openMapping(row)}>
-                  <Icon name="router" size={16} />
+                <span class="meta">{provisioningTypeLabel(row.provisioning_type)}</span>
+              {/if}
+            </div>
+          {:else if key === 'price'}
+            <div class="stack">
+              <div class="mono">
+                {formatDisplayPrice(Number(row.price_monthly || 0))}<span class="unit">/mo</span>
+              </div>
+              <div class="mono">
+                {formatDisplayPrice(Number(row.price_yearly || 0))}<span class="unit">/yr</span>
+              </div>
+              {#if tenantCurrencyCode !== baseCurrencyCode}
+                <div class="meta">{formatBasePrice(Number(row.price_monthly || 0))}/mo</div>
+                <div class="meta">{formatBasePrice(Number(row.price_yearly || 0))}/yr</div>
+              {/if}
+            </div>
+          {:else if key === 'status'}
+            {#if row.is_active}
+              <span class="badge ok">{$t('common.active') || 'Active'}</span>
+            {:else}
+              <span class="badge warn">{$t('common.disabled') || 'Disabled'}</span>
+            {/if}
+          {:else if key === 'mappings'}
+            {#if isInternetType(row.service_type)}
+              <span class="pill mono">{mappingCountFor(row.id)}</span>
+            {:else}
+              <span class="meta">-</span>
+            {/if}
+          {:else if key === 'actions'}
+            <div class="row-actions">
+              {#if $can('manage', 'isp_packages')}
+                {#if isInternetType(row.service_type)}
+                  <button
+                    class="btn-icon"
+                    title={$t('admin.network.packages.actions.map') || 'Map to router'}
+                    onclick={() => void openMapping(row)}
+                  >
+                    <Icon name="router" size={16} />
+                  </button>
+                {/if}
+                <button
+                  class="btn-icon"
+                  title={$t('common.edit') || 'Edit'}
+                  onclick={() => void openEdit(row)}
+                >
+                  <Icon name="edit" size={16} />
+                </button>
+                <button
+                  class="btn-icon danger"
+                  title={$t('common.delete') || 'Delete'}
+                  onclick={() => deletePackage(row)}
+                >
+                  <Icon name="trash-2" size={16} />
                 </button>
               {/if}
-              <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => void openEdit(row)}>
-                <Icon name="edit" size={16} />
-              </button>
-              <button class="btn-icon danger" title={$t('common.delete') || 'Delete'} onclick={() => deletePackage(row)}>
-                <Icon name="trash-2" size={16} />
-              </button>
-            {/if}
-          </div>
-        {:else}
-          {item[key] ?? ''}
-        {/if}
+            </div>
+          {:else}
+            {item[key] ?? ''}
+          {/if}
         {/snippet}
       </Table>
     {/key}
@@ -815,6 +886,7 @@
       bind:pkgMapRouterId
       bind:pkgMapProfile
       bind:pkgMapPool
+      bind:pkgMapIsolationPool
       {loadPkgRouterMeta}
       {pkgProfileOptions}
       {pkgPoolOptions}
@@ -829,6 +901,7 @@
       bind:mapRouterId
       bind:mapProfile
       bind:mapPool
+      bind:mapIsolationPool
       {loadRouterMeta}
       {mapProfileOptions}
       {mapPoolOptions}
@@ -1010,8 +1083,9 @@
   }
 
   .mono {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-      'Courier New', monospace;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+      monospace;
   }
 
   .row-actions {

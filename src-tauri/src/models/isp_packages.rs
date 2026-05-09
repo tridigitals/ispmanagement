@@ -88,6 +88,7 @@ pub struct IspPackageRouterMapping {
     pub package_id: String,
     pub router_profile_name: String,
     pub address_pool: Option<String>,
+    pub isolation_pool: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -99,6 +100,7 @@ impl IspPackageRouterMapping {
         package_id: String,
         router_profile_name: String,
         address_pool: Option<String>,
+        isolation_pool: Option<String>,
     ) -> Self {
         let now = Utc::now();
         Self {
@@ -108,6 +110,7 @@ impl IspPackageRouterMapping {
             package_id,
             router_profile_name,
             address_pool,
+            isolation_pool,
             created_at: now,
             updated_at: now,
         }
@@ -120,6 +123,7 @@ pub struct UpsertIspPackageRouterMappingRequest {
     pub package_id: String,
     pub router_profile_name: String,
     pub address_pool: Option<String>,
+    pub isolation_pool: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -132,6 +136,7 @@ pub struct IspPackageRouterMappingView {
     pub router_name: Option<String>,
     pub router_profile_name: String,
     pub address_pool: Option<String>,
+    pub isolation_pool: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

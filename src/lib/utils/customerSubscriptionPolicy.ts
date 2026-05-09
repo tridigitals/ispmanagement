@@ -15,6 +15,12 @@ export type CustomerSubscriptionPolicySummary = {
   estimatedSuspendMissingReason: string | null;
 };
 
+export type CustomerSubscriptionAccessState = {
+  tone: 'warning' | 'danger' | 'neutral';
+  label: string;
+  detail: string;
+};
+
 export function clampFixedSuspendDay(day: number): number {
   if (!Number.isFinite(day)) return 1;
   return Math.max(1, Math.min(28, Math.trunc(day)));
@@ -95,5 +101,40 @@ export function buildCustomerSubscriptionPolicySummary(args: {
     policyLabel,
     estimatedSuspendIso,
     estimatedSuspendMissingReason: estimatedSuspendIso ? null : 'Suspend otomatis tidak bisa dihitung',
+  };
+}
+
+export function buildCustomerSubscriptionAccessState(args: {
+  subscriptionStatus: string | null | undefined;
+  pppoeDisabled: boolean | null | undefined;
+  pppoeAddressPool: string | null | undefined;
+  isolationPool: string | null | undefined;
+}): CustomerSubscriptionAccessState | null {
+  if ((args.subscriptionStatus || '').trim().toLowerCase() !== 'suspended') {
+    return null;
+  }
+
+  if (args.pppoeDisabled) {
+    return {
+      tone: 'danger',
+      label: 'PPP dinonaktifkan',
+      detail: 'Akses diputus dari secret PPPoE.',
+    };
+  }
+
+  const currentPool = (args.pppoeAddressPool || '').trim();
+  const isolationPool = (args.isolationPool || '').trim();
+  if (currentPool && isolationPool && currentPool === isolationPool) {
+    return {
+      tone: 'warning',
+      label: 'Masuk pool isolir',
+      detail: 'PPPoE tetap aktif, tetapi diarahkan ke pool isolir.',
+    };
+  }
+
+  return {
+    tone: 'neutral',
+    label: 'Suspend internal',
+    detail: 'Status subscription tersuspend, tetapi mode akses belum terdeteksi.',
   };
 }

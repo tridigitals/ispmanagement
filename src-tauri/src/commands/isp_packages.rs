@@ -181,6 +181,7 @@ pub async fn upsert_isp_package_router_mapping(
     package_id: String,
     router_profile_name: String,
     address_pool: Option<String>,
+    isolation_pool: Option<String>,
     auth: State<'_, AuthService>,
     svc: State<'_, IspPackageService>,
 ) -> Result<IspPackageRouterMapping, String> {
@@ -199,6 +200,7 @@ pub async fn upsert_isp_package_router_mapping(
         package_id,
         router_profile_name,
         address_pool,
+        isolation_pool,
     };
 
     svc.upsert_router_mapping(&claims.sub, &tenant_id, dto, Some("127.0.0.1"))

@@ -35,6 +35,7 @@
     pkgMapRouterId = $bindable(''),
     pkgMapProfile = $bindable(''),
     pkgMapPool = $bindable(''),
+    pkgMapIsolationPool = $bindable(''),
     loadPkgRouterMeta,
     pkgProfileOptions,
     pkgPoolOptions,
@@ -49,6 +50,7 @@
     mapRouterId = $bindable(''),
     mapProfile = $bindable(''),
     mapPool = $bindable(''),
+    mapIsolationPool = $bindable(''),
     loadRouterMeta,
     mapProfileOptions,
     mapPoolOptions,
@@ -96,12 +98,10 @@
 <Modal
   show={showPkgModal}
   title={editingPkg
-    ? ($t('admin.services.actions.edit') ||
-        $t('admin.network.packages.actions.edit') ||
-        'Edit service')
-    : ($t('admin.services.actions.add') ||
-        $t('admin.network.packages.actions.add') ||
-        'Add service')}
+    ? $t('admin.services.actions.edit') ||
+      $t('admin.network.packages.actions.edit') ||
+      'Edit service'
+    : $t('admin.services.actions.add') || $t('admin.network.packages.actions.add') || 'Add service'}
   width="640px"
   onclose={() => (showPkgModal = false)}
 >
@@ -128,7 +128,9 @@
     {#if pkgFormTab === 'details'}
       <div class="selected-type-banner">
         <div class="selected-type-main">
-          <span class="selected-type-label">{$t('admin.services.fields.service_type') || 'Service type'}</span>
+          <span class="selected-type-label"
+            >{$t('admin.services.fields.service_type') || 'Service type'}</span
+          >
           <span class="badge neutral">{serviceTypeLabel(pkgServiceType, pkgProvisioningType)}</span>
         </div>
         {#if !editingPkg}
@@ -185,7 +187,9 @@
       {/if}
 
       <label>
-        <span>{$t('admin.network.packages.fields.price_monthly') || 'Monthly price'} ({tenantCurrencyCode})</span>
+        <span
+          >{$t('admin.network.packages.fields.price_monthly') || 'Monthly price'} ({tenantCurrencyCode})</span
+        >
         <div class="price-input-wrap">
           <input
             class="input mono with-addon"
@@ -201,32 +205,51 @@
 
       <div class="toggle-row">
         <div class="toggle-text">
-          <div class="toggle-title">{$t('admin.network.packages.fields.enable_yearly') || 'Enable yearly price'}</div>
+          <div class="toggle-title">
+            {$t('admin.network.packages.fields.enable_yearly') || 'Enable yearly price'}
+          </div>
           <div class="toggle-sub">
-            {$t('admin.network.packages.fields.enable_yearly_hint') || 'Turn on if this package has yearly billing.'}
+            {$t('admin.network.packages.fields.enable_yearly_hint') ||
+              'Turn on if this package has yearly billing.'}
           </div>
         </div>
-        <Toggle bind:checked={pkgYearlyEnabled} ariaLabel={$t('admin.network.packages.fields.enable_yearly') || 'Enable yearly price'} />
+        <Toggle
+          bind:checked={pkgYearlyEnabled}
+          ariaLabel={$t('admin.network.packages.fields.enable_yearly') || 'Enable yearly price'}
+        />
       </div>
 
       {#if pkgYearlyEnabled}
         <label>
-          <span>{$t('admin.network.packages.fields.price_yearly') || 'Yearly price'} ({tenantCurrencyCode})</span>
+          <span
+            >{$t('admin.network.packages.fields.price_yearly') || 'Yearly price'} ({tenantCurrencyCode})</span
+          >
           <div class="price-input-wrap">
-            <input class="input mono with-addon" type="number" min="0" step="0.01" bind:value={pkgPriceYearly} />
+            <input
+              class="input mono with-addon"
+              type="number"
+              min="0"
+              step="0.01"
+              bind:value={pkgPriceYearly}
+            />
             <span class="currency-addon">{tenantCurrencyCode}</span>
           </div>
           <div class="field-hint">
-            {$t('admin.network.packages.fields.currency_active') || 'Active currency'}: <strong>{tenantCurrencyCode}</strong>
+            {$t('admin.network.packages.fields.currency_active') || 'Active currency'}:
+            <strong>{tenantCurrencyCode}</strong>
             {#if tenantCurrencyCode !== baseCurrencyCode}
-              · {$t('admin.network.packages.fields.currency_base') || 'Base currency'}: <strong>{baseCurrencyCode}</strong>
+              · {$t('admin.network.packages.fields.currency_base') || 'Base currency'}:
+              <strong>{baseCurrencyCode}</strong>
             {/if}
           </div>
           <div class="field-hint">
-            {$t('admin.network.packages.fields.price_hint') || 'Stored in base currency; displayed in your tenant currency when possible.'}
+            {$t('admin.network.packages.fields.price_hint') ||
+              'Stored in base currency; displayed in your tenant currency when possible.'}
             {#if tenantCurrencyCode !== baseCurrencyCode}
               <span class="hint-inline">
-                Preview: {formatDisplayPrice(Number(pkgPriceMonthly || 0))}/mo, {formatDisplayPrice(Number(pkgPriceYearly || 0))}/yr
+                Preview: {formatDisplayPrice(Number(pkgPriceMonthly || 0))}/mo, {formatDisplayPrice(
+                  Number(pkgPriceYearly || 0),
+                )}/yr
               </span>
             {/if}
           </div>
@@ -237,25 +260,35 @@
         <div class="toggle-text">
           <div class="toggle-title">{$t('admin.network.packages.fields.active') || 'Active'}</div>
           <div class="toggle-sub">
-            {$t('admin.network.packages.fields.active_hint') || 'Inactive packages will be hidden from selection.'}
+            {$t('admin.network.packages.fields.active_hint') ||
+              'Inactive packages will be hidden from selection.'}
           </div>
         </div>
-        <Toggle bind:checked={pkgActive} ariaLabel={$t('admin.network.packages.fields.active') || 'Active'} />
+        <Toggle
+          bind:checked={pkgActive}
+          ariaLabel={$t('admin.network.packages.fields.active') || 'Active'}
+        />
       </div>
 
       {#if isInternetType(pkgServiceType) && isPppoeProvisioning(pkgProvisioningType)}
         <div class="toggle-row">
           <div class="toggle-text">
-            <div class="toggle-title">{$t('admin.network.packages.mapping.inline_title') || 'Map to router now'}</div>
+            <div class="toggle-title">
+              {$t('admin.network.packages.mapping.inline_title') || 'Map to router now'}
+            </div>
             <div class="toggle-sub">
-              {$t('admin.network.packages.mapping.inline_hint') || 'Optional: prefill router profile/pool for this package (per-router).'}
+              {$t('admin.network.packages.mapping.inline_hint') || 'Optional, per router.'}
             </div>
           </div>
-          <Toggle bind:checked={pkgMapEnabled} ariaLabel={$t('admin.network.packages.mapping.inline_title') || 'Map to router now'} />
+          <Toggle
+            bind:checked={pkgMapEnabled}
+            ariaLabel={$t('admin.network.packages.mapping.inline_title') || 'Map to router now'}
+          />
         </div>
       {:else if !isInternetType(pkgServiceType)}
         <div class="field-hint">
-          {$t('admin.services.mapping.not_required') || 'Router PPP profile mapping is not required for this service type.'}
+          {$t('admin.services.mapping.not_required') ||
+            'Router PPP profile mapping is not required for this service type.'}
         </div>
       {:else}
         <div class="field-hint">
@@ -279,12 +312,13 @@
               onchange={() => {
                 pkgMapProfile = '';
                 pkgMapPool = '';
+                pkgMapIsolationPool = '';
                 void loadPkgRouterMeta(pkgMapRouterId);
               }}
             />
           </label>
           <label>
-            <span>{$t('admin.network.packages.mapping.profile') || 'Router PPP Profile'}</span>
+            <span>{$t('admin.network.packages.mapping.profile') || 'PPP Profile'}</span>
             <Select2
               bind:value={pkgMapProfile}
               options={pkgProfileOptions}
@@ -300,7 +334,7 @@
 
         <div class="grid2">
           <label>
-            <span>{$t('admin.network.packages.mapping.pool') || 'Address pool (optional)'}</span>
+            <span>{$t('admin.network.packages.mapping.pool') || 'Address Pool'}</span>
             <Select2
               bind:value={pkgMapPool}
               options={pkgPoolOptions}
@@ -312,20 +346,33 @@
               noResultsText={$t('common.no_results') || 'No results'}
             />
           </label>
-          <div></div>
+          <label>
+            <span
+              >{$t('admin.services.mapping.isolation_pool') ||
+                'Isolation Pool'}</span
+            >
+            <Select2
+              bind:value={pkgMapIsolationPool}
+              options={pkgPoolOptions}
+              placeholder={($t('common.select') || 'Select') + '...'}
+              width="100%"
+              disabled={!pkgMapRouterId || pkgPoolOptions.length === 0}
+              maxItems={5000}
+              searchPlaceholder={$t('common.search') || 'Search'}
+              noResultsText={$t('common.no_results') || 'No results'}
+            />
+          </label>
         </div>
 
         {#if pkgMapRouterId && !pkgLoadingMeta && pkgProfileOptions.length === 0}
           <div class="field-hint">
-            {$t('admin.network.packages.mapping.profile_empty') ||
-              'No active PPP profile is available for this router yet. Sync PPP profiles first.'}
+            {$t('admin.network.packages.mapping.profile_empty') || 'PPP profile belum tersedia.'}
           </div>
         {/if}
 
         {#if pkgMapRouterId && !pkgLoadingMeta && pkgPoolOptions.length === 0}
           <div class="field-hint">
-            {$t('admin.network.packages.mapping.pool_empty') ||
-              'No active IP pool is available for this router yet. Sync IP pools first.'}
+            {$t('admin.network.packages.mapping.pool_empty') || 'IP pool belum tersedia.'}
           </div>
         {/if}
 
@@ -343,7 +390,8 @@
           <input
             class="input"
             bind:value={pkgFeatureInput}
-            placeholder={$t('admin.network.packages.fields.feature_placeholder') || 'Add feature and press Enter'}
+            placeholder={$t('admin.network.packages.fields.feature_placeholder') ||
+              'Add feature and press Enter'}
             onkeydown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
@@ -373,13 +421,20 @@
             {/each}
           </div>
         {:else}
-          <div class="field-hint">{$t('admin.network.packages.fields.features_empty') || 'No features yet.'}</div>
+          <div class="field-hint">
+            {$t('admin.network.packages.fields.features_empty') || 'No features yet.'}
+          </div>
         {/if}
       </label>
     {/if}
 
     <div class="actions">
-      <button class="btn ghost" type="button" onclick={() => (showPkgModal = false)} disabled={saving}>
+      <button
+        class="btn ghost"
+        type="button"
+        onclick={() => (showPkgModal = false)}
+        disabled={saving}
+      >
         {$t('common.cancel') || 'Cancel'}
       </button>
       <button
@@ -390,7 +445,9 @@
           !pkgName.trim() ||
           !(Number(pkgPriceMonthly) > 0) ||
           (pkgYearlyEnabled && !(Number(pkgPriceYearly) > 0)) ||
-          (isInternetType(pkgServiceType) && pkgMapEnabled && (!pkgMapRouterId || !pkgMapProfile.trim()))}
+          (isInternetType(pkgServiceType) &&
+            pkgMapEnabled &&
+            (!pkgMapRouterId || !pkgMapProfile.trim()))}
       >
         <Icon name="save" size={16} />
         {$t('common.save') || 'Save'}
@@ -428,7 +485,7 @@
 
     <div class="grid2">
       <label>
-        <span>{$t('admin.network.packages.mapping.profile') || 'Router PPP Profile'}</span>
+        <span>{$t('admin.network.packages.mapping.profile') || 'PPP Profile'}</span>
         <Select2
           bind:value={mapProfile}
           options={mapProfileOptions}
@@ -441,9 +498,25 @@
         />
       </label>
       <label>
-        <span>{$t('admin.network.packages.mapping.pool') || 'Address pool (optional)'}</span>
+        <span>{$t('admin.network.packages.mapping.pool') || 'Address Pool'}</span>
         <Select2
           bind:value={mapPool}
+          options={mapPoolOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          disabled={!mapRouterId || mapPoolOptions.length === 0}
+          maxItems={5000}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+        />
+      </label>
+      <label>
+        <span
+          >{$t('admin.services.mapping.isolation_pool') ||
+            'Isolation Pool'}</span
+        >
+        <Select2
+          bind:value={mapIsolationPool}
           options={mapPoolOptions}
           placeholder={($t('common.select') || 'Select') + '...'}
           width="100%"
@@ -457,15 +530,13 @@
 
     {#if mapRouterId && !loadingMeta && mapProfileOptions.length === 0}
       <div class="field-hint">
-        {$t('admin.network.packages.mapping.profile_empty') ||
-          'No active PPP profile is available for this router yet. Sync PPP profiles first.'}
+        {$t('admin.network.packages.mapping.profile_empty') || 'PPP profile belum tersedia.'}
       </div>
     {/if}
 
     {#if mapRouterId && !loadingMeta && mapPoolOptions.length === 0}
       <div class="field-hint">
-        {$t('admin.network.packages.mapping.pool_empty') ||
-          'No active IP pool is available for this router yet. Sync IP pools first.'}
+        {$t('admin.network.packages.mapping.pool_empty') || 'IP pool belum tersedia.'}
       </div>
     {/if}
 
@@ -477,7 +548,12 @@
     {/if}
 
     <div class="actions">
-      <button class="btn ghost" type="button" onclick={() => (showMapModal = false)} disabled={saving}>
+      <button
+        class="btn ghost"
+        type="button"
+        onclick={() => (showMapModal = false)}
+        disabled={saving}
+      >
         {$t('common.cancel') || 'Cancel'}
       </button>
       <button
@@ -550,8 +626,9 @@
     border-color: rgba(99, 102, 241, 0.32);
   }
   .mono {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-      'Courier New', monospace;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+      monospace;
   }
   .form {
     display: grid;
@@ -582,7 +659,10 @@
     display: grid;
     gap: 0.65rem;
     cursor: pointer;
-    transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      transform 0.2s ease,
+      background 0.2s ease;
   }
   .type-card:hover {
     border-color: rgba(99, 102, 241, 0.45);

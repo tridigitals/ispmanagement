@@ -31,6 +31,7 @@
     type CustomerDetailTab,
   } from '$lib/utils/customerDetailAccess';
   import {
+    buildCustomerSubscriptionAccessState,
     buildCustomerSubscriptionPolicySummary,
     clampFixedSuspendDay,
   } from '$lib/utils/customerSubscriptionPolicy';
@@ -896,6 +897,27 @@
     return buildCustomerSubscriptionPolicySummary({
       endsAt: row.ends_at,
       policy: customerSubscriptionPolicy,
+    });
+  }
+
+  function getSubscriptionAccessState(row: CustomerSubscriptionView) {
+    return buildCustomerSubscriptionAccessState({
+      subscriptionStatus: row.status,
+      pppoeDisabled: row.pppoe_disabled,
+      pppoeAddressPool: row.pppoe_address_pool,
+      isolationPool: row.pppoe_isolation_pool || String($appSettings['billing_auto_suspend_isolation_pool'] || ''),
+    });
+  }
+
+  function getPppoeAccessState(row: PppoeAccountPublic) {
+    const linkedSubscription = subscriptions.find((sub) => sub.location_id === row.location_id);
+    return buildCustomerSubscriptionAccessState({
+      subscriptionStatus: linkedSubscription?.status,
+      pppoeDisabled: row.disabled,
+      pppoeAddressPool: row.address_pool,
+      isolationPool:
+        linkedSubscription?.pppoe_isolation_pool ||
+        String($appSettings['billing_auto_suspend_isolation_pool'] || ''),
     });
   }
 
@@ -1901,6 +1923,7 @@
           subscriptions={subscriptions}
           subscriptionStatusLabel={subscriptionStatusLabel}
           getSubscriptionPolicySummary={getSubscriptionPolicySummary}
+          getSubscriptionAccessState={getSubscriptionAccessState}
           formatCustomerPolicyDate={formatCustomerPolicyDate}
           canManageCustomers={$can('manage', 'customers')}
           onRefresh={() => loadSubscriptions({ force: true })}
@@ -1962,6 +1985,7 @@
           getPppoeSyncDisplay={pppoeHelperModule.getPppoeSyncDisplay}
           getPppoeProvisioningTargetFallback={pppoeHelperModule.getPppoeProvisioningTargetFallback}
           getPppoeApplyActionFallback={pppoeHelperModule.getPppoeApplyActionFallback}
+          getPppoeAccessState={getPppoeAccessState}
           timeAgo={timeAgo}
           canManagePppoe={$can('manage', 'pppoe')}
           onApplyPppoe={applyPppoe}

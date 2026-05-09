@@ -74,6 +74,8 @@
   );
   const tenantSubscriptionPath = $derived(billingNav.subscriptionPath);
   const billingPlanSettingsPath = $derived(billingNav.billingPlanSettingsPath);
+  const billingLogsPath = $derived(billingNav.collectionsPath);
+  const invoicesPath = $derived(billingNav.billingPath);
 
   // Categories configuration (i18n-aware)
   let categories = $derived.by(() => ({
@@ -186,6 +188,7 @@
         'billing_auto_suspend_mode',
         'billing_auto_suspend_grace_days',
         'billing_auto_suspend_fixed_day',
+        'billing_auto_suspend_pppoe_action',
         'billing_auto_resume_on_payment',
         'billing_reminder_enabled',
         'billing_reminder_schedule',
@@ -1436,7 +1439,11 @@
                 {@const ServiceTab = SettingsServiceTabComponent}
                 <ServiceTab
                   {localSettings}
-                  formattedLastRunAt={formatLastRunAt(localSettings['customer_invoice_last_run_at'])}
+                  formattedLastRunAt={formatLastRunAt(
+                    localSettings['customer_invoice_last_run_at'],
+                  )}
+                  {billingLogsPath}
+                  {invoicesPath}
                   {handleChange}
                 />
               {:else}
@@ -2069,5 +2076,4 @@
       align-self: flex-end;
     }
   }
-
 </style>

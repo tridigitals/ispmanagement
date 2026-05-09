@@ -14,6 +14,7 @@
     pppoeRouters,
     locations,
     getPppoeSyncDisplay,
+    getPppoeAccessState,
     getPppoeProvisioningTargetFallback,
     getPppoeApplyActionFallback,
     timeAgo,
@@ -78,10 +79,17 @@
         <div class="name">{locName}</div>
         <div class="sub mono">{row.location_id}</div>
       {:else if key === 'assignment'}
+        {@const accessState = getPppoeAccessState(row)}
         <div class="sub">
           <span class="pill">{$t('admin.customers.pppoe.fields.profile') || 'Profile'}: {row.router_profile_name || '-'}</span>
           <span class="pill">{$t('admin.customers.pppoe.fields.remote_address') || 'Remote'}: {row.remote_address || row.address_pool || '-'}</span>
         </div>
+        {#if accessState}
+          <div class="sub access-state">
+            <span class={`access-badge ${accessState.tone}`}>{accessState.label}</span>
+            <span>{accessState.detail}</span>
+          </div>
+        {/if}
       {:else if key === 'sync'}
         <div class="sub">
           <span class={`badge ${syncMeta.tone === 'ok' ? 'ok' : 'warn'}`}>{syncMeta.label}</span>
@@ -200,6 +208,43 @@
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
+  }
+
+  .access-state {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .access-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    border-radius: 999px;
+    padding: 0.24rem 0.58rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    border: 1px solid color-mix(in srgb, var(--border-color), transparent 10%);
+  }
+
+  .access-badge.warning {
+    color: rgb(245, 158, 11);
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.24);
+  }
+
+  .access-badge.danger {
+    color: rgb(239, 68, 68);
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.24);
+  }
+
+  .access-badge.neutral {
+    color: var(--text-secondary);
+    background: color-mix(in srgb, var(--bg-surface), transparent 5%);
   }
   .btn,
   .btn-icon {

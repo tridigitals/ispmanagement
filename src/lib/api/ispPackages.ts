@@ -76,6 +76,7 @@ export const ispPackages = {
       package_id: string;
       router_profile_name: string;
       address_pool?: string | null;
+      isolation_pool?: string | null;
     }): Promise<any> =>
       safeInvoke('upsert_isp_package_router_mapping', {
         token: getTokenOrThrow(),
@@ -83,6 +84,7 @@ export const ispPackages = {
         package_id: dto.package_id,
         router_profile_name: dto.router_profile_name,
         address_pool: dto.address_pool ?? null,
+        isolation_pool: dto.isolation_pool ?? null,
       }),
   },
 };

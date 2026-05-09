@@ -67,6 +67,8 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("billing_auto_suspend_mode", "grace_period", "Global customer subscription auto suspend mode: grace_period or fixed_day"),
         ("billing_auto_suspend_grace_days", "3", "Grace period (days) after due date before auto suspend is allowed"),
         ("billing_auto_suspend_fixed_day", "1", "Global fixed suspend day of month for overdue customer subscriptions (1-28)"),
+        ("billing_auto_suspend_pppoe_action", "disable_secret", "Action for PPPoE when a customer subscription is suspended: disable_secret or move_to_isolation_pool"),
+        ("billing_auto_suspend_isolation_pool", "", "Isolation IP pool name used when billing auto suspend PPPoE action moves customers to isolation pool"),
         ("billing_auto_resume_on_payment", "true", "Automatically resume suspended customer subscriptions when invoice is paid"),
         ("billing_reminder_enabled", "true", "Enable automatic invoice reminder notifications"),
         ("billing_reminder_schedule", "H-3,H-1,H+1,H+3", "Reminder schedule offsets around due date, comma separated"),

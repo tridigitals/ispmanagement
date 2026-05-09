@@ -1851,6 +1851,19 @@ impl CustomerService {
               FROM work_order_reschedule_requests worr
               JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
               WHERE worr.tenant_id = $1
+            ),
+            latest_pppoe_accounts AS (
+              SELECT
+                pa.tenant_id,
+                pa.location_id,
+                pa.address_pool,
+                pa.disabled,
+                ROW_NUMBER() OVER (
+                  PARTITION BY pa.tenant_id, pa.location_id
+                  ORDER BY pa.updated_at DESC, pa.created_at DESC, pa.id DESC
+                ) AS rn
+              FROM pppoe_accounts pa
+              WHERE pa.tenant_id = $1
             )
             SELECT
               cs.id,
@@ -1873,6 +1886,9 @@ impl CustomerService {
               p.name AS package_name,
               l.label AS location_label,
               r.name AS router_name,
+              lpa.address_pool AS pppoe_address_pool,
+              iprm.isolation_pool AS pppoe_isolation_pool,
+              lpa.disabled AS pppoe_disabled,
               lwo.id AS latest_work_order_id,
               lwo.status AS latest_work_order_status,
               CASE
@@ -1886,6 +1902,14 @@ impl CustomerService {
             LEFT JOIN isp_packages p ON p.id = cs.package_id
             LEFT JOIN customer_locations l ON l.id = cs.location_id
             LEFT JOIN mikrotik_routers r ON r.id = cs.router_id
+            LEFT JOIN latest_pppoe_accounts lpa
+              ON lpa.tenant_id = cs.tenant_id
+             AND lpa.location_id = cs.location_id
+             AND lpa.rn = 1
+            LEFT JOIN isp_package_router_mappings iprm
+              ON iprm.tenant_id = cs.tenant_id
+             AND iprm.package_id = cs.package_id
+             AND iprm.router_id = cs.router_id
             LEFT JOIN latest_work_orders lwo
               ON lwo.tenant_id = cs.tenant_id
              AND lwo.subscription_id = cs.id
@@ -1935,6 +1959,19 @@ impl CustomerService {
               FROM work_order_reschedule_requests worr
               JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
               WHERE worr.tenant_id = ?
+            ),
+            latest_pppoe_accounts AS (
+              SELECT
+                pa.tenant_id,
+                pa.location_id,
+                pa.address_pool,
+                pa.disabled,
+                ROW_NUMBER() OVER (
+                  PARTITION BY pa.tenant_id, pa.location_id
+                  ORDER BY pa.updated_at DESC, pa.created_at DESC, pa.id DESC
+                ) AS rn
+              FROM pppoe_accounts pa
+              WHERE pa.tenant_id = ?
             )
             SELECT
               cs.id,
@@ -1955,6 +1992,9 @@ impl CustomerService {
               p.name AS package_name,
               l.label AS location_label,
               r.name AS router_name,
+              lpa.address_pool AS pppoe_address_pool,
+              iprm.isolation_pool AS pppoe_isolation_pool,
+              lpa.disabled AS pppoe_disabled,
               lwo.id AS latest_work_order_id,
               lwo.status AS latest_work_order_status,
               CASE
@@ -1968,6 +2008,14 @@ impl CustomerService {
             LEFT JOIN isp_packages p ON p.id = cs.package_id
             LEFT JOIN customer_locations l ON l.id = cs.location_id
             LEFT JOIN mikrotik_routers r ON r.id = cs.router_id
+            LEFT JOIN latest_pppoe_accounts lpa
+              ON lpa.tenant_id = cs.tenant_id
+             AND lpa.location_id = cs.location_id
+             AND lpa.rn = 1
+            LEFT JOIN isp_package_router_mappings iprm
+              ON iprm.tenant_id = cs.tenant_id
+             AND iprm.package_id = cs.package_id
+             AND iprm.router_id = cs.router_id
             LEFT JOIN latest_work_orders lwo
               ON lwo.tenant_id = cs.tenant_id
              AND lwo.subscription_id = cs.id
@@ -1981,6 +2029,7 @@ impl CustomerService {
             LIMIT ? OFFSET ?
             "#,
         )
+        .bind(tenant_id)
         .bind(tenant_id)
         .bind(tenant_id)
         .bind(tenant_id)

@@ -104,7 +104,8 @@ impl IspPackageService {
     fn normalize_router_mapping_fields(
         router_profile_name: &str,
         address_pool: Option<String>,
-    ) -> AppResult<(String, Option<String>)> {
+        isolation_pool: Option<String>,
+    ) -> AppResult<(String, Option<String>, Option<String>)> {
         let profile = router_profile_name.trim().to_string();
         if profile.is_empty() {
             return Err(AppError::Validation(
@@ -121,13 +122,24 @@ impl IspPackageService {
             }
         });
 
-        Ok((profile, addr_pool))
+        let isolation_pool = isolation_pool.and_then(|v| {
+            let vv = v.trim().to_string();
+            if vv.is_empty() {
+                None
+            } else {
+                Some(vv)
+            }
+        });
+
+        Ok((profile, addr_pool, isolation_pool))
     }
 
     fn validate_router_mapping_references(
         router_profile_exists: bool,
         address_pool: Option<&str>,
         address_pool_exists: bool,
+        isolation_pool: Option<&str>,
+        isolation_pool_exists: bool,
     ) -> AppResult<()> {
         if !router_profile_exists {
             return Err(AppError::Validation(
@@ -139,6 +151,15 @@ impl IspPackageService {
             if !address_pool_exists {
                 return Err(AppError::Validation(format!(
                     "Selected IP pool '{}' does not exist on this router. Sync IP pools and choose a valid pool.",
+                    pool
+                )));
+            }
+        }
+
+        if let Some(pool) = isolation_pool {
+            if !isolation_pool_exists {
+                return Err(AppError::Validation(format!(
+                    "Selected isolation pool '{}' does not exist on this router. Sync IP pools and choose a valid pool.",
                     pool
                 )));
             }
@@ -628,6 +649,7 @@ impl IspPackageService {
               r.name AS router_name,
               m.router_profile_name,
               m.address_pool,
+              m.isolation_pool,
               m.created_at,
               m.updated_at
             FROM isp_package_router_mappings m
@@ -676,8 +698,11 @@ impl IspPackageService {
             ));
         }
 
-        let (profile, addr_pool) =
-            Self::normalize_router_mapping_fields(&dto.router_profile_name, dto.address_pool)?;
+        let (profile, addr_pool, isolation_pool) = Self::normalize_router_mapping_fields(
+            &dto.router_profile_name,
+            dto.address_pool,
+            dto.isolation_pool,
+        )?;
 
         let router_profile_exists: bool = sqlx::query_scalar(
             r#"
@@ -721,10 +746,35 @@ impl IspPackageService {
             true
         };
 
+        let isolation_pool_exists: bool = if let Some(pool_name) = isolation_pool.as_deref() {
+            sqlx::query_scalar(
+                r#"
+                SELECT EXISTS(
+                  SELECT 1
+                  FROM mikrotik_ip_pools
+                  WHERE tenant_id = $1
+                    AND router_id = $2
+                    AND name = $3
+                    AND router_present = TRUE
+                )
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(&dto.router_id)
+            .bind(pool_name)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+        } else {
+            true
+        };
+
         Self::validate_router_mapping_references(
             router_profile_exists,
             addr_pool.as_deref(),
             address_pool_exists,
+            isolation_pool.as_deref(),
+            isolation_pool_exists,
         )?;
 
         let now = Utc::now();
@@ -734,12 +784,13 @@ impl IspPackageService {
         sqlx::query(
             r#"
             INSERT INTO isp_package_router_mappings
-              (id, tenant_id, router_id, package_id, router_profile_name, address_pool, created_at, updated_at)
+              (id, tenant_id, router_id, package_id, router_profile_name, address_pool, isolation_pool, created_at, updated_at)
             VALUES
-              ($1,$2,$3,$4,$5,$6,$7,$8)
+              ($1,$2,$3,$4,$5,$6,$7,$8,$9)
             ON CONFLICT (tenant_id, router_id, package_id) DO UPDATE SET
               router_profile_name = EXCLUDED.router_profile_name,
               address_pool = EXCLUDED.address_pool,
+              isolation_pool = EXCLUDED.isolation_pool,
               updated_at = EXCLUDED.updated_at
             "#,
         )
@@ -749,6 +800,7 @@ impl IspPackageService {
         .bind(&dto.package_id)
         .bind(&profile)
         .bind(&addr_pool)
+        .bind(&isolation_pool)
         .bind(now)
         .bind(now)
         .execute(&self.pool)
@@ -791,9 +843,12 @@ mod tests {
 
     #[test]
     fn normalize_router_mapping_fields_requires_profile_name() {
-        let err =
-            IspPackageService::normalize_router_mapping_fields("   ", Some(" pool-a ".into()))
-                .expect_err("blank profile should be rejected");
+        let err = IspPackageService::normalize_router_mapping_fields(
+            "   ",
+            Some(" pool-a ".into()),
+            Some(" pool-isolir ".into()),
+        )
+        .expect_err("blank profile should be rejected");
 
         match err {
             AppError::Validation(message) => {
@@ -805,20 +860,23 @@ mod tests {
 
     #[test]
     fn normalize_router_mapping_fields_trims_values() {
-        let (profile, pool) = IspPackageService::normalize_router_mapping_fields(
+        let (profile, pool, isolation_pool) = IspPackageService::normalize_router_mapping_fields(
             " basic-10m ",
             Some(" pool-basic ".into()),
+            Some(" pool-isolir ".into()),
         )
         .expect("trimmed values should be accepted");
 
         assert_eq!(profile, "basic-10m");
         assert_eq!(pool.as_deref(), Some("pool-basic"));
+        assert_eq!(isolation_pool.as_deref(), Some("pool-isolir"));
     }
 
     #[test]
     fn validate_router_mapping_references_rejects_missing_profile() {
-        let err = IspPackageService::validate_router_mapping_references(false, None, true)
-            .expect_err("missing profile should be rejected");
+        let err =
+            IspPackageService::validate_router_mapping_references(false, None, true, None, true)
+                .expect_err("missing profile should be rejected");
 
         match err {
             AppError::Validation(message) => {
@@ -837,6 +895,8 @@ mod tests {
             true,
             Some("pool-missing"),
             false,
+            None,
+            true,
         )
         .expect_err("missing pool should be rejected");
 
@@ -853,10 +913,38 @@ mod tests {
 
     #[test]
     fn validate_router_mapping_references_accepts_existing_profile_and_optional_pool() {
-        IspPackageService::validate_router_mapping_references(true, None, true)
+        IspPackageService::validate_router_mapping_references(true, None, true, None, true)
             .expect("valid references should pass");
-        IspPackageService::validate_router_mapping_references(true, Some("pool-a"), true)
-            .expect("valid references with pool should pass");
+        IspPackageService::validate_router_mapping_references(
+            true,
+            Some("pool-a"),
+            true,
+            Some("pool-isolir"),
+            true,
+        )
+        .expect("valid references with pool should pass");
+    }
+
+    #[test]
+    fn validate_router_mapping_references_rejects_missing_isolation_pool() {
+        let err = IspPackageService::validate_router_mapping_references(
+            true,
+            Some("pool-a"),
+            true,
+            Some("pool-isolir-missing"),
+            false,
+        )
+        .expect_err("missing isolation pool should be rejected");
+
+        match err {
+            AppError::Validation(message) => {
+                assert_eq!(
+                    message,
+                    "Selected isolation pool 'pool-isolir-missing' does not exist on this router. Sync IP pools and choose a valid pool."
+                );
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
     }
 
     #[test]

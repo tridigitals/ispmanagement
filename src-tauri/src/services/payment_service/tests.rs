@@ -3,8 +3,9 @@ use super::{
     customer_invoice_notification_action_url, customer_notification_user_ids,
     decide_midtrans_transition, filter_installation_request_user_ids, filter_owner_admin_user_ids,
     is_customer_package_invoice_external_id, is_owner_admin_or_technician_role,
-    is_owner_or_admin_role, parse_auto_suspend_mode, AutoSuspendMode, BillingCollectionSettings,
-    MidtransTransitionDecision,
+    is_owner_or_admin_role, normalize_auto_suspend_isolation_pool, parse_auto_suspend_mode,
+    parse_auto_suspend_pppoe_action, AutoSuspendMode, AutoSuspendPppoeAction,
+    BillingCollectionSettings, MidtransTransitionDecision,
 };
 use crate::services::subscription_lifecycle::{
     resolve_activation_status, SubscriptionLifecycleStatus,
@@ -272,6 +273,11 @@ fn billing_collection_settings_default_to_grace_period_mode() {
 
     assert_eq!(defaults.auto_suspend_mode, AutoSuspendMode::GracePeriod);
     assert_eq!(defaults.auto_suspend_fixed_day, 1);
+    assert_eq!(
+        defaults.auto_suspend_pppoe_action,
+        AutoSuspendPppoeAction::DisableSecret
+    );
+    assert_eq!(defaults.auto_suspend_isolation_pool, None);
 }
 
 #[test]
@@ -291,6 +297,44 @@ fn parse_auto_suspend_mode_accepts_known_values_and_falls_back() {
         parse_auto_suspend_mode(Some("unexpected".to_string()), AutoSuspendMode::GracePeriod),
         AutoSuspendMode::GracePeriod
     );
+}
+
+#[test]
+fn parse_auto_suspend_pppoe_action_accepts_known_values_and_falls_back() {
+    assert_eq!(
+        parse_auto_suspend_pppoe_action(
+            Some("move_to_isolation_pool".to_string()),
+            AutoSuspendPppoeAction::DisableSecret,
+        ),
+        AutoSuspendPppoeAction::MoveToIsolationPool
+    );
+    assert_eq!(
+        parse_auto_suspend_pppoe_action(
+            Some(" disable_secret ".to_string()),
+            AutoSuspendPppoeAction::MoveToIsolationPool,
+        ),
+        AutoSuspendPppoeAction::DisableSecret
+    );
+    assert_eq!(
+        parse_auto_suspend_pppoe_action(
+            Some("unexpected".to_string()),
+            AutoSuspendPppoeAction::DisableSecret,
+        ),
+        AutoSuspendPppoeAction::DisableSecret
+    );
+}
+
+#[test]
+fn normalize_auto_suspend_isolation_pool_trims_and_rejects_empty_values() {
+    assert_eq!(
+        normalize_auto_suspend_isolation_pool(Some(" pool-isolir ".to_string())),
+        Some("pool-isolir".to_string())
+    );
+    assert_eq!(
+        normalize_auto_suspend_isolation_pool(Some("   ".to_string())),
+        None
+    );
+    assert_eq!(normalize_auto_suspend_isolation_pool(None), None);
 }
 
 #[test]

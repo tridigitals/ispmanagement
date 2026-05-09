@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildCustomerSubscriptionPolicySummary,
+  buildCustomerSubscriptionAccessState,
   clampFixedSuspendDay,
 } from './customerSubscriptionPolicy';
 
@@ -73,5 +74,46 @@ describe('customer subscription policy helpers', () => {
     expect(summary.activeUntilIso).toBeNull();
     expect(summary.estimatedSuspendIso).toBeNull();
     expect(summary.estimatedSuspendMissingReason).toBe('Suspend otomatis tidak bisa dihitung');
+  });
+
+  it('marks suspended subscriptions with disabled PPP when account is disabled', () => {
+    const access = buildCustomerSubscriptionAccessState({
+      subscriptionStatus: 'suspended',
+      pppoeDisabled: true,
+      pppoeAddressPool: 'pool-normal',
+      isolationPool: 'pool-isolir',
+    });
+
+    expect(access).toEqual({
+      tone: 'danger',
+      label: 'PPP dinonaktifkan',
+      detail: 'Akses diputus dari secret PPPoE.',
+    });
+  });
+
+  it('marks suspended subscriptions with isolation pool when pool matches configured isolation pool', () => {
+    const access = buildCustomerSubscriptionAccessState({
+      subscriptionStatus: 'suspended',
+      pppoeDisabled: false,
+      pppoeAddressPool: 'pool-isolir',
+      isolationPool: 'pool-isolir',
+    });
+
+    expect(access).toEqual({
+      tone: 'warning',
+      label: 'Masuk pool isolir',
+      detail: 'PPPoE tetap aktif, tetapi diarahkan ke pool isolir.',
+    });
+  });
+
+  it('returns null for active subscriptions', () => {
+    expect(
+      buildCustomerSubscriptionAccessState({
+        subscriptionStatus: 'active',
+        pppoeDisabled: false,
+        pppoeAddressPool: 'pool-normal',
+        isolationPool: 'pool-isolir',
+      }),
+    ).toBeNull();
   });
 });

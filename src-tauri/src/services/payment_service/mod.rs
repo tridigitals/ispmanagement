@@ -31,6 +31,8 @@ const BILLING_AUTO_SUSPEND_ENABLED_KEY: &str = "billing_auto_suspend_enabled";
 const BILLING_AUTO_SUSPEND_MODE_KEY: &str = "billing_auto_suspend_mode";
 const BILLING_AUTO_SUSPEND_GRACE_DAYS_KEY: &str = "billing_auto_suspend_grace_days";
 const BILLING_AUTO_SUSPEND_FIXED_DAY_KEY: &str = "billing_auto_suspend_fixed_day";
+const BILLING_AUTO_SUSPEND_PPPOE_ACTION_KEY: &str = "billing_auto_suspend_pppoe_action";
+const BILLING_AUTO_SUSPEND_ISOLATION_POOL_KEY: &str = "billing_auto_suspend_isolation_pool";
 const BILLING_AUTO_RESUME_ON_PAYMENT_KEY: &str = "billing_auto_resume_on_payment";
 const BILLING_REMINDER_ENABLED_KEY: &str = "billing_reminder_enabled";
 const BILLING_REMINDER_SCHEDULE_KEY: &str = "billing_reminder_schedule";
@@ -146,6 +148,33 @@ pub(crate) fn parse_auto_suspend_mode(
     }
 }
 
+pub(crate) fn parse_auto_suspend_pppoe_action(
+    value: Option<String>,
+    default: AutoSuspendPppoeAction,
+) -> AutoSuspendPppoeAction {
+    match value
+        .unwrap_or_else(|| default.as_str().to_string())
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "move_to_isolation_pool" => AutoSuspendPppoeAction::MoveToIsolationPool,
+        "disable_secret" => AutoSuspendPppoeAction::DisableSecret,
+        _ => default,
+    }
+}
+
+pub(crate) fn normalize_auto_suspend_isolation_pool(value: Option<String>) -> Option<String> {
+    value.and_then(|raw| {
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
+}
+
 pub(crate) fn clamp_auto_suspend_fixed_day(value: i64) -> i64 {
     value.clamp(1, 28)
 }
@@ -206,12 +235,29 @@ impl AutoSuspendMode {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub enum AutoSuspendPppoeAction {
+    DisableSecret,
+    MoveToIsolationPool,
+}
+
+impl AutoSuspendPppoeAction {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::DisableSecret => "disable_secret",
+            Self::MoveToIsolationPool => "move_to_isolation_pool",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct BillingCollectionSettings {
     pub auto_suspend_enabled: bool,
     pub auto_suspend_mode: AutoSuspendMode,
     pub auto_suspend_grace_days: i64,
     pub auto_suspend_fixed_day: i64,
+    pub auto_suspend_pppoe_action: AutoSuspendPppoeAction,
+    pub auto_suspend_isolation_pool: Option<String>,
     pub auto_resume_on_payment: bool,
     pub reminder_enabled: bool,
     pub reminder_schedule: Vec<String>,
@@ -231,6 +277,8 @@ impl Default for BillingCollectionSettings {
             auto_suspend_mode: AutoSuspendMode::GracePeriod,
             auto_suspend_grace_days: 3,
             auto_suspend_fixed_day: 1,
+            auto_suspend_pppoe_action: AutoSuspendPppoeAction::DisableSecret,
+            auto_suspend_isolation_pool: None,
             auto_resume_on_payment: true,
             reminder_enabled: true,
             reminder_schedule: vec![
@@ -1291,10 +1339,10 @@ impl PaymentService {
                     Ok(true) => {
                         result.suspended_count += 1;
                         let _ = self
-                            .set_subscription_pppoe_disabled_state(
+                            .apply_subscription_pppoe_billing_state(
                                 tenant_id,
                                 &subscription_id,
-                                true,
+                                "suspended",
                             )
                             .await;
                         if let Some(invoice_id) = invoice_id.as_deref() {
@@ -1555,10 +1603,10 @@ impl PaymentService {
                     Ok(true) => {
                         result.suspended_count += 1;
                         let _ = self
-                            .set_subscription_pppoe_disabled_state(
+                            .apply_subscription_pppoe_billing_state(
                                 tenant_id,
                                 &subscription_id,
-                                should_disable_pppoe_for_subscription_status("suspended"),
+                                "suspended",
                             )
                             .await;
                         let _ = self
@@ -3508,6 +3556,25 @@ impl PaymentService {
             return Ok(());
         }
 
+        let settings = self
+            .resolve_billing_collection_settings(Some(&invoice.tenant_id))
+            .await;
+        if current == SubscriptionLifecycleStatus::Suspended && !settings.auto_resume_on_payment {
+            let _ = self
+                .insert_billing_collection_log(
+                    &invoice.tenant_id,
+                    &invoice.id,
+                    Some(&subscription_id),
+                    "resume",
+                    "skipped",
+                    Some("Auto resume disabled by billing setting"),
+                    "system",
+                    None,
+                )
+                .await;
+            return Ok(());
+        }
+
         let installation_completed = self
             .has_completed_installation_work_order(&invoice.tenant_id, &subscription_id)
             .await?;
@@ -3526,10 +3593,14 @@ impl PaymentService {
             SubscriptionLifecycleStatus::Active | SubscriptionLifecycleStatus::GraceActive
         );
         let _ = self
-            .set_subscription_pppoe_disabled_state(
+            .apply_subscription_pppoe_billing_state(
                 &invoice.tenant_id,
                 &subscription_id,
-                should_disable_pppoe,
+                if should_disable_pppoe {
+                    "suspended"
+                } else {
+                    resolved.as_str()
+                },
             )
             .await;
 
@@ -4454,6 +4525,157 @@ impl PaymentService {
             .await
     }
 
+    async fn apply_subscription_pppoe_billing_state(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        subscription_status: &str,
+    ) -> AppResult<u64> {
+        #[derive(sqlx::FromRow)]
+        struct SubscriptionPppoeContext {
+            location_id: String,
+            router_id: Option<String>,
+            package_id: String,
+        }
+
+        #[cfg(feature = "postgres")]
+        let context: Option<SubscriptionPppoeContext> = sqlx::query_as(
+            r#"
+            SELECT location_id, router_id, package_id
+            FROM customer_subscriptions
+            WHERE tenant_id = $1 AND id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let context: Option<SubscriptionPppoeContext> = sqlx::query_as(
+            r#"
+            SELECT location_id, router_id, package_id
+            FROM customer_subscriptions
+            WHERE tenant_id = ? AND id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let Some(context) = context else {
+            return Ok(0);
+        };
+
+        if should_disable_pppoe_for_subscription_status(subscription_status) {
+            let settings = self
+                .resolve_billing_collection_settings(Some(tenant_id))
+                .await;
+
+            match settings.auto_suspend_pppoe_action {
+                AutoSuspendPppoeAction::MoveToIsolationPool => {
+                    let mapping_isolation_pool: Option<String> =
+                        sqlx::query_scalar::<_, Option<String>>(
+                            r#"
+                        SELECT isolation_pool
+                        FROM isp_package_router_mappings
+                        WHERE tenant_id = $1
+                          AND router_id = $2
+                          AND package_id = $3
+                        LIMIT 1
+                        "#,
+                        )
+                        .bind(tenant_id)
+                        .bind(context.router_id.as_deref().unwrap_or_default())
+                        .bind(&context.package_id)
+                        .fetch_optional(&self.pool)
+                        .await
+                        .map_err(|e| AppError::Internal(e.to_string()))?
+                        .flatten();
+
+                    let isolation_pool = mapping_isolation_pool
+                        .as_deref()
+                        .filter(|value| !value.trim().is_empty())
+                        .or(settings.auto_suspend_isolation_pool.as_deref());
+
+                    if let Some(pool_name) = isolation_pool {
+                        return self
+                            .pppoe_service
+                            .set_location_accounts_address_pool_state(
+                                tenant_id,
+                                &context.location_id,
+                                Some(pool_name),
+                                false,
+                                true,
+                            )
+                            .await;
+                    }
+
+                    tracing::warn!(
+                        "billing auto suspend isolation pool is empty for tenant {}, falling back to disable_secret",
+                        tenant_id
+                    );
+                }
+                AutoSuspendPppoeAction::DisableSecret => {}
+            }
+
+            return self
+                .set_subscription_pppoe_disabled_state(tenant_id, subscription_id, true)
+                .await;
+        }
+
+        #[cfg(feature = "postgres")]
+        let package_pool: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT address_pool
+            FROM isp_package_router_mappings
+            WHERE tenant_id = $1
+              AND router_id = $2
+              AND package_id = $3
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(context.router_id.as_deref().unwrap_or_default())
+        .bind(&context.package_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let package_pool: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT address_pool
+            FROM isp_package_router_mappings
+            WHERE tenant_id = ?
+              AND router_id = ?
+              AND package_id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(context.router_id.as_deref().unwrap_or_default())
+        .bind(&context.package_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        self.pppoe_service
+            .set_location_accounts_address_pool_state(
+                tenant_id,
+                &context.location_id,
+                package_pool.as_deref(),
+                false,
+                true,
+            )
+            .await
+    }
+
     async fn upsert_customer_service_assignment_from_paid_invoice(
         &self,
         tenant_id: &str,
@@ -5034,6 +5256,17 @@ impl PaymentService {
             28,
         ));
 
+        let auto_suspend_pppoe_action = parse_auto_suspend_pppoe_action(
+            self.get_setting_value_fallback(tenant_id, BILLING_AUTO_SUSPEND_PPPOE_ACTION_KEY)
+                .await,
+            defaults.auto_suspend_pppoe_action.clone(),
+        );
+
+        let auto_suspend_isolation_pool = normalize_auto_suspend_isolation_pool(
+            self.get_setting_value_fallback(tenant_id, BILLING_AUTO_SUSPEND_ISOLATION_POOL_KEY)
+                .await,
+        );
+
         let auto_resume_on_payment = Self::parse_bool_setting(
             self.get_setting_value_fallback(tenant_id, BILLING_AUTO_RESUME_ON_PAYMENT_KEY)
                 .await,
@@ -5057,6 +5290,8 @@ impl PaymentService {
             auto_suspend_mode,
             auto_suspend_grace_days,
             auto_suspend_fixed_day,
+            auto_suspend_pppoe_action,
+            auto_suspend_isolation_pool,
             auto_resume_on_payment,
             reminder_enabled,
             reminder_schedule,
@@ -5350,5 +5585,7 @@ impl PaymentService {
     }
 }
 
+#[cfg(all(test, feature = "postgres"))]
+mod integration_tests;
 #[cfg(test)]
 mod tests;

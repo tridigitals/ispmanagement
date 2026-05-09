@@ -4,7 +4,12 @@
   import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
-  import { api, type BillingCollectionLogView, type BillingCollectionRunResult, type InvoiceReminderLogView } from '$lib/api/client';
+  import {
+    api,
+    type BillingCollectionLogView,
+    type BillingCollectionRunResult,
+    type InvoiceReminderLogView,
+  } from '$lib/api/client';
   import { appSettings } from '$lib/stores/settings';
   import { can, user, tenant } from '$lib/stores/auth';
   import { toast } from '$lib/stores/toast';
@@ -53,28 +58,87 @@
   const invoicesPath = $derived(`${tenantPrefix}/admin/invoices`);
 
   const collectionColumns = $derived.by(() => [
-    { key: 'created_at', label: $t('admin.billing_collection.columns.time') || 'Time', width: '180px' },
-    { key: 'invoice', label: $t('admin.billing_collection.columns.invoice') || 'Invoice', width: '160px' },
-    { key: 'customer', label: $t('admin.billing_collection.columns.customer') || 'Customer', width: '180px' },
-    { key: 'action', label: $t('admin.billing_collection.columns.action') || 'Action', width: '120px' },
-    { key: 'result', label: $t('admin.billing_collection.columns.result') || 'Result', width: '110px' },
-    { key: 'subscription_status', label: $t('admin.billing_collection.columns.subscription_status') || 'Subscription', width: '140px' },
+    {
+      key: 'created_at',
+      label: $t('admin.billing_collection.columns.time') || 'Time',
+      width: '180px',
+    },
+    {
+      key: 'invoice',
+      label: $t('admin.billing_collection.columns.invoice') || 'Invoice',
+      width: '160px',
+    },
+    {
+      key: 'customer',
+      label: $t('admin.billing_collection.columns.customer') || 'Customer',
+      width: '180px',
+    },
+    {
+      key: 'action',
+      label: $t('admin.billing_collection.columns.action') || 'Action',
+      width: '120px',
+    },
+    {
+      key: 'result',
+      label: $t('admin.billing_collection.columns.result') || 'Result',
+      width: '110px',
+    },
+    {
+      key: 'subscription_status',
+      label: $t('admin.billing_collection.columns.subscription_status') || 'Subscription',
+      width: '140px',
+    },
     { key: 'reason', label: $t('admin.billing_collection.columns.reason') || 'Reason' },
   ]);
 
   const reminderColumns = $derived.by(() => [
-    { key: 'created_at', label: $t('admin.billing_collection.columns.time') || 'Time', width: '180px' },
-    { key: 'invoice', label: $t('admin.billing_collection.columns.invoice') || 'Invoice', width: '160px' },
-    { key: 'reminder_code', label: $t('admin.billing_collection.columns.reminder_code') || 'Reminder', width: '120px' },
-    { key: 'channel', label: $t('admin.billing_collection.columns.channel') || 'Channel', width: '120px' },
-    { key: 'recipient', label: $t('admin.billing_collection.columns.recipient') || 'Recipient', width: '220px' },
-    { key: 'status', label: $t('admin.billing_collection.columns.status') || 'Status', width: '120px' },
+    {
+      key: 'created_at',
+      label: $t('admin.billing_collection.columns.time') || 'Time',
+      width: '180px',
+    },
+    {
+      key: 'invoice',
+      label: $t('admin.billing_collection.columns.invoice') || 'Invoice',
+      width: '160px',
+    },
+    {
+      key: 'reminder_code',
+      label: $t('admin.billing_collection.columns.reminder_code') || 'Reminder',
+      width: '120px',
+    },
+    {
+      key: 'channel',
+      label: $t('admin.billing_collection.columns.channel') || 'Channel',
+      width: '120px',
+    },
+    {
+      key: 'recipient',
+      label: $t('admin.billing_collection.columns.recipient') || 'Recipient',
+      width: '220px',
+    },
+    {
+      key: 'status',
+      label: $t('admin.billing_collection.columns.status') || 'Status',
+      width: '120px',
+    },
     { key: 'detail', label: $t('admin.billing_collection.columns.detail') || 'Detail' },
   ]);
 
   const collectionActionOptions = $derived.by(() => {
     const fromData = collectionRows.map((row) => row.action).filter(Boolean);
-    return Array.from(new Set(['reminder', 'suspend', 'resume', ...fromData]));
+    return Array.from(
+      new Set([
+        'reminder',
+        'suspend',
+        'grace_expire_suspend',
+        'resume',
+        'installation',
+        'assignment',
+        'payment_callback',
+        ...fromData,
+      ]),
+    );
   });
 
   const collectionResultOptions = $derived.by(() => {
@@ -92,8 +156,33 @@
     return Array.from(new Set(['sent', 'queued', 'failed', ...fromData]));
   });
 
-  const activeCount = $derived(activeTab === 'collection' ? collectionRows.length : reminderRows.length);
-  const currentLoading = $derived(activeTab === 'collection' ? loadingCollection : loadingReminders);
+  const activeCount = $derived(
+    activeTab === 'collection' ? collectionRows.length : reminderRows.length,
+  );
+  const currentLoading = $derived(
+    activeTab === 'collection' ? loadingCollection : loadingReminders,
+  );
+  const actionHighlights = $derived.by(() => {
+    const keys = [
+      'reminder',
+      'suspend',
+      'grace_expire_suspend',
+      'resume',
+      'installation',
+      'assignment',
+    ];
+    return keys
+      .map((action) => {
+        const count = collectionRows.filter(
+          (row) => String(row.action || '').toLowerCase() === action,
+        ).length;
+        return {
+          action,
+          count,
+        };
+      })
+      .filter((item) => item.count > 0);
+  });
 
   onMount(async () => {
     if (!$can('read', 'billing') && !$can('manage', 'billing')) {
@@ -149,7 +238,9 @@
       });
     } catch (e: any) {
       toast.error(
-        e?.message || get(t)('admin.billing_collection.toasts.load_collection_failed') || 'Failed to load billing collection logs',
+        e?.message ||
+          get(t)('admin.billing_collection.toasts.load_collection_failed') ||
+          'Failed to load billing collection logs',
       );
     } finally {
       loadingCollection = false;
@@ -169,7 +260,9 @@
       });
     } catch (e: any) {
       toast.error(
-        e?.message || get(t)('admin.billing_collection.toasts.load_reminders_failed') || 'Failed to load reminder logs',
+        e?.message ||
+          get(t)('admin.billing_collection.toasts.load_reminders_failed') ||
+          'Failed to load reminder logs',
       );
     } finally {
       loadingReminders = false;
@@ -186,10 +279,16 @@
     runningNow = true;
     try {
       lastRunResult = await api.payment.runBillingCollectionNow();
-      toast.success(get(t)('admin.billing_collection.toasts.run_ok') || 'Billing collection run completed');
+      toast.success(
+        get(t)('admin.billing_collection.toasts.run_ok') || 'Billing collection run completed',
+      );
       await Promise.all([loadCollection(), loadReminders()]);
     } catch (e: any) {
-      toast.error(e?.message || get(t)('admin.billing_collection.toasts.run_failed') || 'Failed to run billing collection');
+      toast.error(
+        e?.message ||
+          get(t)('admin.billing_collection.toasts.run_failed') ||
+          'Failed to run billing collection',
+      );
     } finally {
       runningNow = false;
     }
@@ -233,15 +332,41 @@
     const x = String(value || '').toLowerCase();
     if (x === 'reminder') return get(t)('admin.billing_collection.actions.reminder') || 'Reminder';
     if (x === 'suspend') return get(t)('admin.billing_collection.actions.suspend') || 'Suspend';
+    if (x === 'grace_expire_suspend') return 'Suspend grace habis';
     if (x === 'resume') return get(t)('admin.billing_collection.actions.resume') || 'Resume';
+    if (x === 'installation') return 'Aktivasi instalasi';
+    if (x === 'assignment') return 'Assign layanan';
+    if (x === 'payment_callback') return 'Callback pembayaran';
     return value || '—';
+  }
+
+  function actionTone(action: string) {
+    const x = String(action || '').toLowerCase();
+    if (x === 'resume' || x === 'installation' || x === 'assignment') return 'tone-success';
+    if (x === 'suspend' || x === 'grace_expire_suspend') return 'tone-danger';
+    if (x === 'payment_callback') return 'tone-neutral';
+    return 'tone-warn';
+  }
+
+  function actionHelper(action: string) {
+    const x = String(action || '').toLowerCase();
+    if (x === 'reminder') return 'Pengingat invoice dikirim atau dijadwalkan';
+    if (x === 'suspend') return 'Suspend dilakukan sesuai policy billing aktif';
+    if (x === 'grace_expire_suspend') return 'Suspend dipicu setelah masa tenggang berakhir';
+    if (x === 'resume') return 'Layanan aktif lagi setelah pembayaran diterima';
+    if (x === 'installation') return 'Invoice instalasi dibayar, layanan siap diaktifkan';
+    if (x === 'assignment') return 'Runner menemukan assignment atau relasi layanan';
+    if (x === 'payment_callback') return 'Status invoice diperbarui dari callback pembayaran';
+    return 'Aktivitas scheduler billing';
   }
 
   function normalizeStatus(value: string) {
     const x = String(value || '').toLowerCase();
-    if (x === 'success' || x === 'sent') return get(t)('admin.billing_collection.results.success') || 'Success';
+    if (x === 'success' || x === 'sent')
+      return get(t)('admin.billing_collection.results.success') || 'Success';
     if (x === 'failed') return get(t)('admin.billing_collection.results.failed') || 'Failed';
-    if (x === 'skipped' || x === 'queued') return get(t)('admin.billing_collection.results.skipped') || 'Skipped';
+    if (x === 'skipped' || x === 'queued')
+      return get(t)('admin.billing_collection.results.skipped') || 'Skipped';
     return value || '—';
   }
 
@@ -279,9 +404,13 @@
   }
 
   async function exportCsv() {
-    const rows = activeTab === 'collection' ? buildCollectionExportRows() : buildReminderExportRows();
+    const rows =
+      activeTab === 'collection' ? buildCollectionExportRows() : buildReminderExportRows();
     const { exportCsvRows } = await loadCollectionExportModule();
-    const ok = exportCsvRows(rows, activeTab === 'collection' ? 'billing-collection-logs' : 'invoice-reminder-logs');
+    const ok = exportCsvRows(
+      rows,
+      activeTab === 'collection' ? 'billing-collection-logs' : 'invoice-reminder-logs',
+    );
     if (!ok) {
       toast.error(get(t)('admin.billing_collection.toasts.no_data_export') || 'No data to export');
       return;
@@ -290,9 +419,13 @@
   }
 
   async function exportExcel() {
-    const rows = activeTab === 'collection' ? buildCollectionExportRows() : buildReminderExportRows();
+    const rows =
+      activeTab === 'collection' ? buildCollectionExportRows() : buildReminderExportRows();
     const { exportExcelRows } = await loadCollectionExportModule();
-    const ok = exportExcelRows(rows, activeTab === 'collection' ? 'billing-collection-logs' : 'invoice-reminder-logs');
+    const ok = exportExcelRows(
+      rows,
+      activeTab === 'collection' ? 'billing-collection-logs' : 'invoice-reminder-logs',
+    );
     if (!ok) {
       toast.error(get(t)('admin.billing_collection.toasts.no_data_export') || 'No data to export');
       return;
@@ -311,7 +444,9 @@
       {$t('sidebar.invoices') || 'Invoices'}
     </button>
     <span class="crumb-sep">/</span>
-    <span class="crumb-current">{$t('admin.billing_collection.title') || 'Billing Collection Logs'}</span>
+    <span class="crumb-current"
+      >{$t('admin.billing_collection.title') || 'Billing Collection Logs'}</span
+    >
   </nav>
 
   <div class="page-header">
@@ -327,7 +462,12 @@
         <Icon name="refresh-cw" size={16} />
         {$t('common.refresh') || 'Refresh'}
       </button>
-      <button class="btn btn-primary" type="button" onclick={runCollectionNow} disabled={runningNow}>
+      <button
+        class="btn btn-primary"
+        type="button"
+        onclick={runCollectionNow}
+        disabled={runningNow}
+      >
         <Icon name="play" size={16} />
         {runningNow
           ? $t('admin.billing_collection.actions.running') || 'Running...'
@@ -400,13 +540,35 @@
     </div>
   {/if}
 
+  {#if actionHighlights.length > 0}
+    <div class="action-overview">
+      {#each actionHighlights as item}
+        <div class="action-overview-card">
+          <span class={`pill ${actionTone(item.action)}`}>{normalizeAction(item.action)}</span>
+          <strong>{item.count}</strong>
+          <small>{actionHelper(item.action)}</small>
+        </div>
+      {/each}
+    </div>
+  {/if}
+
   <div class="card content-card">
     <div class="tabs">
-      <button class="tab-btn" class:active={activeTab === 'collection'} type="button" onclick={() => switchTab('collection')}>
+      <button
+        class="tab-btn"
+        class:active={activeTab === 'collection'}
+        type="button"
+        onclick={() => switchTab('collection')}
+      >
         {$t('admin.billing_collection.tabs.collection') || 'Collection Logs'}
         <span>{collectionRows.length}</span>
       </button>
-      <button class="tab-btn" class:active={activeTab === 'reminders'} type="button" onclick={() => switchTab('reminders')}>
+      <button
+        class="tab-btn"
+        class:active={activeTab === 'reminders'}
+        type="button"
+        onclick={() => switchTab('reminders')}
+      >
         {$t('admin.billing_collection.tabs.reminders') || 'Reminder Logs'}
         <span>{reminderRows.length}</span>
       </button>
@@ -415,13 +577,17 @@
     {#if activeTab === 'collection'}
       <div class="filter-row">
         <select class="select-input" bind:value={collectionAction}>
-          <option value="all">{$t('admin.billing_collection.filters.all_actions') || 'All actions'}</option>
+          <option value="all"
+            >{$t('admin.billing_collection.filters.all_actions') || 'All actions'}</option
+          >
           {#each collectionActionOptions as option}
             <option value={option}>{normalizeAction(option)}</option>
           {/each}
         </select>
         <select class="select-input" bind:value={collectionResult}>
-          <option value="all">{$t('admin.billing_collection.filters.all_results') || 'All results'}</option>
+          <option value="all"
+            >{$t('admin.billing_collection.filters.all_results') || 'All results'}</option
+          >
           {#each collectionResultOptions as option}
             <option value={option}>{normalizeStatus(option)}</option>
           {/each}
@@ -430,10 +596,21 @@
           class="text-input"
           type="text"
           bind:value={collectionSearch}
-          placeholder={$t('admin.billing_collection.filters.search_placeholder') || 'Search invoice/customer/reason...'}
+          placeholder={$t('admin.billing_collection.filters.search_placeholder') ||
+            'Search invoice/customer/reason...'}
         />
-        <input class="text-input" type="datetime-local" bind:value={collectionFrom} title={$t('common.from') || 'From'} />
-        <input class="text-input" type="datetime-local" bind:value={collectionTo} title={$t('common.to') || 'To'} />
+        <input
+          class="text-input"
+          type="datetime-local"
+          bind:value={collectionFrom}
+          title={$t('common.from') || 'From'}
+        />
+        <input
+          class="text-input"
+          type="datetime-local"
+          bind:value={collectionTo}
+          title={$t('common.to') || 'To'}
+        />
         <select class="select-input limit-input" bind:value={collectionLimit}>
           <option value={100}>100</option>
           <option value={200}>200</option>
@@ -447,13 +624,17 @@
     {:else}
       <div class="filter-row">
         <select class="select-input" bind:value={reminderCode}>
-          <option value="all">{$t('admin.billing_collection.filters.all_reminders') || 'All reminders'}</option>
+          <option value="all"
+            >{$t('admin.billing_collection.filters.all_reminders') || 'All reminders'}</option
+          >
           {#each reminderCodeOptions as option}
             <option value={option}>{normalizeReminder(option)}</option>
           {/each}
         </select>
         <select class="select-input" bind:value={reminderStatus}>
-          <option value="all">{$t('admin.billing_collection.filters.all_statuses') || 'All statuses'}</option>
+          <option value="all"
+            >{$t('admin.billing_collection.filters.all_statuses') || 'All statuses'}</option
+          >
           {#each reminderStatusOptions as option}
             <option value={option}>{normalizeStatus(option)}</option>
           {/each}
@@ -462,10 +643,21 @@
           class="text-input"
           type="text"
           bind:value={reminderSearch}
-          placeholder={$t('admin.billing_collection.filters.search_reminder') || 'Search invoice/detail...'}
+          placeholder={$t('admin.billing_collection.filters.search_reminder') ||
+            'Search invoice/detail...'}
         />
-        <input class="text-input" type="datetime-local" bind:value={reminderFrom} title={$t('common.from') || 'From'} />
-        <input class="text-input" type="datetime-local" bind:value={reminderTo} title={$t('common.to') || 'To'} />
+        <input
+          class="text-input"
+          type="datetime-local"
+          bind:value={reminderFrom}
+          title={$t('common.from') || 'From'}
+        />
+        <input
+          class="text-input"
+          type="datetime-local"
+          bind:value={reminderTo}
+          title={$t('common.to') || 'To'}
+        />
         <select class="select-input limit-input" bind:value={reminderLimit}>
           <option value={100}>100</option>
           <option value={200}>200</option>
@@ -479,7 +671,11 @@
     {/if}
 
     <div class="result-meta">
-      <span>{$t('admin.billing_collection.meta.showing') || 'Showing'} {activeCount} {$t('common.results') || 'results'}</span>
+      <span
+        >{$t('admin.billing_collection.meta.showing') || 'Showing'}
+        {activeCount}
+        {$t('common.results') || 'results'}</span
+      >
     </div>
 
     {#if activeTab === 'collection'}
@@ -487,7 +683,9 @@
         {#snippet cell({ item, column })}
           {#if column.key === 'created_at'}
             <div class="time-cell">
-              <strong>{formatDateTime(item.created_at, { timeZone: $appSettings.app_timezone })}</strong>
+              <strong
+                >{formatDateTime(item.created_at, { timeZone: $appSettings.app_timezone })}</strong
+              >
               <small>{timeAgo(item.created_at)}</small>
             </div>
           {:else if column.key === 'invoice'}
@@ -498,10 +696,17 @@
           {:else if column.key === 'customer'}
             <div>
               <strong>{item.customer_name || '—'}</strong>
-              <small class="muted">{item.due_date ? formatDateTime(item.due_date, { timeZone: $appSettings.app_timezone }) : '—'}</small>
+              <small class="muted"
+                >{item.due_date
+                  ? formatDateTime(item.due_date, { timeZone: $appSettings.app_timezone })
+                  : '—'}</small
+              >
             </div>
           {:else if column.key === 'action'}
-            <span class="pill">{normalizeAction(item.action)}</span>
+            <div class="action-cell">
+              <span class={`pill ${actionTone(item.action)}`}>{normalizeAction(item.action)}</span>
+              <small class="muted">{actionHelper(item.action)}</small>
+            </div>
           {:else if column.key === 'result'}
             <span class={`pill ${resultTone(item.result)}`}>{normalizeStatus(item.result)}</span>
           {:else if column.key === 'subscription_status'}
@@ -516,13 +721,19 @@
         {#snippet cell({ item, column })}
           {#if column.key === 'created_at'}
             <div class="time-cell">
-              <strong>{formatDateTime(item.created_at, { timeZone: $appSettings.app_timezone })}</strong>
+              <strong
+                >{formatDateTime(item.created_at, { timeZone: $appSettings.app_timezone })}</strong
+              >
               <small>{timeAgo(item.created_at)}</small>
             </div>
           {:else if column.key === 'invoice'}
             <div>
               <strong>{item.invoice_number || item.invoice_id}</strong>
-              <small class="muted">{item.due_date ? formatDateTime(item.due_date, { timeZone: $appSettings.app_timezone }) : '—'}</small>
+              <small class="muted"
+                >{item.due_date
+                  ? formatDateTime(item.due_date, { timeZone: $appSettings.app_timezone })
+                  : '—'}</small
+              >
             </div>
           {:else if column.key === 'reminder_code'}
             <span class="pill">{normalizeReminder(item.reminder_code)}</span>
@@ -634,6 +845,36 @@
     color: var(--text-primary);
   }
 
+  .action-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .action-overview-card {
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.85rem 0.9rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface), #17304d 8%),
+      var(--bg-surface)
+    );
+  }
+
+  .action-overview-card strong {
+    font-size: 1.2rem;
+    color: var(--text-primary);
+  }
+
+  .action-overview-card small {
+    color: var(--text-secondary);
+    line-height: 1.45;
+  }
+
   .content-card {
     border: 1px solid var(--border-color);
     border-radius: 12px;
@@ -676,7 +917,10 @@
     padding: 0.9rem;
     border-bottom: 1px solid var(--border-color);
     display: grid;
-    grid-template-columns: minmax(160px, 0.9fr) minmax(160px, 0.9fr) minmax(280px, 1.5fr) minmax(170px, 1fr) minmax(170px, 1fr) 120px auto;
+    grid-template-columns: minmax(160px, 0.9fr) minmax(160px, 0.9fr) minmax(280px, 1.5fr) minmax(
+        170px,
+        1fr
+      ) minmax(170px, 1fr) 120px auto;
     gap: 0.6rem;
   }
 
@@ -722,6 +966,12 @@
     word-break: break-word;
   }
 
+  .action-cell {
+    display: grid;
+    gap: 0.28rem;
+    align-items: start;
+  }
+
   .pill {
     border: 1px solid var(--border-color);
     border-radius: 999px;
@@ -749,6 +999,12 @@
     color: var(--color-warning, #f59e0b);
     border-color: color-mix(in srgb, var(--color-warning, #f59e0b) 40%, var(--border-color) 60%);
     background: color-mix(in srgb, var(--color-warning, #f59e0b) 12%, transparent 88%);
+  }
+
+  .tone-neutral {
+    color: var(--color-info, #38bdf8);
+    border-color: color-mix(in srgb, var(--color-info, #38bdf8) 40%, var(--border-color) 60%);
+    background: color-mix(in srgb, var(--color-info, #38bdf8) 12%, transparent 88%);
   }
 
   .btn {
@@ -815,6 +1071,10 @@
   }
 
   @media (max-width: 1080px) {
+    .action-overview {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .filter-row {
       grid-template-columns: 1fr 1fr 1fr;
     }
@@ -824,6 +1084,10 @@
     }
   }
   @media (max-width: 760px) {
+    .action-overview {
+      grid-template-columns: 1fr;
+    }
+
     .filter-row {
       grid-template-columns: 1fr;
     }

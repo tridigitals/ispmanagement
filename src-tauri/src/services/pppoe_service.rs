@@ -1731,6 +1731,144 @@ impl PppoeService {
         Ok(rows)
     }
 
+    pub async fn set_location_accounts_address_pool_state(
+        &self,
+        tenant_id: &str,
+        location_id: &str,
+        address_pool: Option<&str>,
+        disabled: bool,
+        disconnect_active_sessions: bool,
+    ) -> AppResult<u64> {
+        #[derive(sqlx::FromRow)]
+        struct AccountRef {
+            id: String,
+        }
+
+        let now = Utc::now();
+        let normalized_pool = address_pool
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(ToOwned::to_owned);
+
+        #[cfg(feature = "postgres")]
+        let account_refs: Vec<AccountRef> = sqlx::query_as(
+            "SELECT id FROM pppoe_accounts WHERE tenant_id = $1 AND location_id = $2 ORDER BY created_at ASC",
+        )
+        .bind(tenant_id)
+        .bind(location_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        #[cfg(feature = "sqlite")]
+        let account_refs: Vec<AccountRef> = sqlx::query_as(
+            "SELECT id FROM pppoe_accounts WHERE tenant_id = ? AND location_id = ? ORDER BY created_at ASC",
+        )
+        .bind(tenant_id)
+        .bind(location_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        #[cfg(feature = "postgres")]
+        let rows = sqlx::query(
+            r#"
+            UPDATE pppoe_accounts
+            SET remote_address = NULL,
+                address_pool = $1,
+                disabled = $2,
+                updated_at = $3
+            WHERE tenant_id = $4 AND location_id = $5
+            "#,
+        )
+        .bind(&normalized_pool)
+        .bind(disabled)
+        .bind(now)
+        .bind(tenant_id)
+        .bind(location_id)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .rows_affected();
+
+        #[cfg(feature = "sqlite")]
+        let rows = sqlx::query(
+            r#"
+            UPDATE pppoe_accounts
+            SET remote_address = NULL,
+                address_pool = ?,
+                disabled = ?,
+                updated_at = ?
+            WHERE tenant_id = ? AND location_id = ?
+            "#,
+        )
+        .bind(&normalized_pool)
+        .bind(disabled)
+        .bind(now.to_rfc3339())
+        .bind(tenant_id)
+        .bind(location_id)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .rows_affected();
+
+        for account_ref in account_refs {
+            let _ = self
+                .apply_account_internal(tenant_id, &account_ref.id)
+                .await;
+            if disconnect_active_sessions {
+                let _ = self
+                    .disconnect_account_active_sessions(tenant_id, &account_ref.id)
+                    .await;
+            }
+        }
+
+        Ok(rows)
+    }
+
+    async fn disconnect_account_active_sessions(
+        &self,
+        tenant_id: &str,
+        account_id: &str,
+    ) -> AppResult<u32> {
+        #[derive(sqlx::FromRow)]
+        struct SessionRef {
+            router_id: String,
+            username: String,
+        }
+
+        #[cfg(feature = "postgres")]
+        let account: Option<SessionRef> = sqlx::query_as(
+            "SELECT router_id, username FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2 LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(account_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        #[cfg(feature = "sqlite")]
+        let account: Option<SessionRef> = sqlx::query_as(
+            "SELECT router_id, username FROM pppoe_accounts WHERE tenant_id = ? AND id = ? LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(account_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let Some(account) = account else {
+            return Ok(0);
+        };
+
+        let dev = self
+            .connect_router(tenant_id, account.router_id.as_str())
+            .await?;
+        self.router_disconnect_active_sessions_by_name(&dev, account.username.as_str())
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))
+    }
+
     async fn apply_account_internal(
         &self,
         tenant_id: &str,
