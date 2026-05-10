@@ -1,4 +1,5 @@
 use crate::db::DbPool;
+use crate::models::tenant::CUSTOM_DOMAIN_STATUS_ACTIVE;
 
 const DEFAULT_PLATFORM_DOMAIN: &str = "billing.tridigitals.com";
 
@@ -70,6 +71,20 @@ pub fn normalize_host(raw: &str) -> Option<String> {
     } else {
         Some(host.to_string())
     }
+}
+
+pub fn normalize_custom_domain_input(raw: Option<&str>) -> Result<Option<String>, String> {
+    let Some(raw) = raw.map(str::trim) else {
+        return Ok(None);
+    };
+
+    if raw.is_empty() {
+        return Ok(None);
+    }
+
+    normalize_host(raw).map(Some).ok_or_else(|| {
+        "Custom domain must be a valid hostname without unsupported characters".to_string()
+    })
 }
 
 pub fn is_platform_domain(host: &str, configured_main_domain: Option<&str>) -> bool {
@@ -195,17 +210,19 @@ pub async fn resolve_request_domain(
 
     #[cfg(feature = "postgres")]
     let row: Option<TenantDomainRow> = sqlx::query_as(
-        "SELECT id, slug FROM tenants WHERE custom_domain = $1 AND is_active = true LIMIT 1",
+        "SELECT id, slug FROM tenants WHERE custom_domain = $1 AND is_active = true AND custom_domain_status = $2 LIMIT 1",
     )
     .bind(&host)
+    .bind(CUSTOM_DOMAIN_STATUS_ACTIVE)
     .fetch_optional(pool)
     .await?;
 
     #[cfg(feature = "sqlite")]
     let row: Option<TenantDomainRow> = sqlx::query_as(
-        "SELECT id, slug FROM tenants WHERE custom_domain = ? AND is_active = 1 LIMIT 1",
+        "SELECT id, slug FROM tenants WHERE custom_domain = ? AND is_active = 1 AND custom_domain_status = ? LIMIT 1",
     )
     .bind(&host)
+    .bind(CUSTOM_DOMAIN_STATUS_ACTIVE)
     .fetch_optional(pool)
     .await?;
 

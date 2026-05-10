@@ -1,3 +1,4 @@
+use crate::models::tenant::CUSTOM_DOMAIN_STATUS_ACTIVE;
 use crate::services::{
     AuditService, AuthService, CustomerService, DhcpStaticServiceManager, EmailService,
     IspPackageService, ManagedRadiusService, MessageTemplateService, MikrotikService,
@@ -36,6 +37,41 @@ use crate::http::{
 
 type IpBlockMap = HashMap<String, chrono::DateTime<chrono::Utc>>;
 type IpAbuseMap = HashMap<String, (u32, chrono::DateTime<chrono::Utc>)>;
+
+fn build_runtime_cors_origins(
+    static_origins: &std::collections::HashSet<String>,
+    env_origins: &str,
+    custom_domains: &[(String, Option<String>)],
+) -> std::collections::HashSet<String> {
+    let mut origins = static_origins.clone();
+
+    for (domain, status) in custom_domains {
+        if status.as_deref() != Some(CUSTOM_DOMAIN_STATUS_ACTIVE) {
+            continue;
+        }
+
+        let clean = domain.trim().trim_end_matches('/');
+        if clean.is_empty() {
+            continue;
+        }
+
+        let url = if clean.starts_with("http://") || clean.starts_with("https://") {
+            clean.to_string()
+        } else {
+            format!("https://{clean}")
+        };
+        origins.insert(url);
+    }
+
+    for origin in env_origins.split(',') {
+        let clean = origin.trim().trim_end_matches('/');
+        if !clean.is_empty() {
+            origins.insert(clean.to_string());
+        }
+    }
+
+    origins
+}
 
 #[allow(clippy::too_many_arguments)]
 pub async fn start_server_impl(
@@ -237,34 +273,20 @@ pub async fn start_server_impl(
             interval.tick().await;
 
             // Re-fetch custom domains
-            let rows: Result<Vec<(String,)>, _> = sqlx::query_as("SELECT custom_domain FROM tenants WHERE custom_domain IS NOT NULL AND custom_domain != ''")
+            let rows: Result<Vec<(String, Option<String>)>, _> = sqlx::query_as("SELECT custom_domain, custom_domain_status FROM tenants WHERE custom_domain IS NOT NULL AND custom_domain != '' AND is_active = true")
                 .fetch_all(&pool_for_task)
                 .await;
 
             match rows {
                 Ok(domains) => {
                     warned_missing_schema = false;
-                    let mut new_custom_domains = static_origins_for_task.clone();
-                    for (d,) in domains {
-                        let url_str = if d.starts_with("http") {
-                            d
-                        } else {
-                            format!("https://{}", d)
-                        };
-                        let clean_url = url_str.trim().trim_end_matches('/').to_string();
-                        new_custom_domains.insert(clean_url);
-                    }
-
-                    // Re-add env origins from runtime value.
-                    // If env is missing, keep using the static fallback origins.
                     let env_origins_refresh = env::var("CORS_ALLOWED_ORIGINS")
                         .unwrap_or_else(|_| env_origins_str.clone());
-                    for s in env_origins_refresh.split(',') {
-                        if !s.trim().is_empty() {
-                            let clean = s.trim().trim_end_matches('/');
-                            new_custom_domains.insert(clean.to_string());
-                        }
-                    }
+                    let new_custom_domains = build_runtime_cors_origins(
+                        &static_origins_for_task,
+                        &env_origins_refresh,
+                        &domains,
+                    );
 
                     // Update the lock
                     if let Ok(mut lock) = cache_for_task.write() {
@@ -761,6 +783,12 @@ fn router_build_chain_source() -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
+    use crate::models::tenant::{CUSTOM_DOMAIN_STATUS_ACTIVE, CUSTOM_DOMAIN_STATUS_PENDING};
+
+    use super::build_runtime_cors_origins;
+
     fn assert_relative_order(source: &str, first: &str, second: &str) {
         let first_index = source
             .find(first)
@@ -853,5 +881,47 @@ mod tests {
             tail.contains(".await;"),
             "expected start_server invocation in spawn_http_server to be awaited"
         );
+    }
+
+    #[test]
+    fn cors_domain_filters_out_non_active_statuses() {
+        let static_origins = HashSet::from(["https://billing.acme.net".to_string()]);
+        let origins = build_runtime_cors_origins(
+            &static_origins,
+            "",
+            &[
+                (
+                    "portal.customer.net".to_string(),
+                    Some(CUSTOM_DOMAIN_STATUS_ACTIVE.to_string()),
+                ),
+                (
+                    "pending.customer.net".to_string(),
+                    Some(CUSTOM_DOMAIN_STATUS_PENDING.to_string()),
+                ),
+                (
+                    "failed.customer.net".to_string(),
+                    Some("failed".to_string()),
+                ),
+            ],
+        );
+
+        assert!(origins.contains("https://billing.acme.net"));
+        assert!(origins.contains("https://portal.customer.net"));
+        assert!(!origins.contains("https://pending.customer.net"));
+        assert!(!origins.contains("https://failed.customer.net"));
+    }
+
+    #[test]
+    fn cors_domain_preserves_runtime_env_origins() {
+        let static_origins = HashSet::from(["https://billing.acme.net".to_string()]);
+        let origins = build_runtime_cors_origins(
+            &static_origins,
+            "https://ops.acme.net,http://localhost:5173/",
+            &[],
+        );
+
+        assert!(origins.contains("https://billing.acme.net"));
+        assert!(origins.contains("https://ops.acme.net"));
+        assert!(origins.contains("http://localhost:5173"));
     }
 }
