@@ -17,7 +17,6 @@ function isTauriRuntime(): boolean {
 
 export function getApiBaseUrl(): string {
   const configured = normalizeApiBase(import.meta.env.VITE_API_URL);
-  if (configured) return configured;
 
   if (typeof window !== 'undefined' && !isTauriRuntime()) {
     const proto = window.location.protocol;
@@ -25,6 +24,8 @@ export function getApiBaseUrl(): string {
       return `${window.location.origin.replace(/\/+$/, '')}/api`;
     }
   }
+
+  if (configured) return configured;
 
   return 'http://localhost:3000/api';
 }
