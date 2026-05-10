@@ -135,13 +135,13 @@
 
 <style>
   .toolbar-wrapper {
-    padding: 1rem 1.25rem 0.25rem 1.25rem;
+    padding: 0.9rem 1.1rem 0.2rem 1.1rem;
   }
 
   .filters-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
+    gap: 0.65rem;
     align-items: flex-end;
     width: 100%;
   }
@@ -149,25 +149,28 @@
   .field {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.3rem;
     flex: 1;
     min-width: 180px;
   }
 
   .field-label {
-    font-size: 0.78rem;
-    font-weight: 700;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
     color: var(--text-secondary);
   }
 
   .field-input {
     width: 100%;
-    padding: 0.6rem 0.8rem;
+    min-height: 38px;
+    padding: 0.55rem 0.72rem;
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 10px;
     background: var(--bg-surface);
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     transition: border-color 0.2s;
   }
 
@@ -180,7 +183,7 @@
   .quick-row {
     display: inline-flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.4rem;
     align-items: center;
     min-width: 0;
     padding-bottom: 2px;
@@ -190,11 +193,12 @@
     border: 1px solid var(--border-color);
     background: var(--bg-tertiary);
     color: var(--text-secondary);
-    padding: 0.45rem 0.7rem;
-    border-radius: 999px;
+    min-height: 34px;
+    padding: 0.4rem 0.62rem;
+    border-radius: 10px;
     cursor: pointer;
-    font-weight: 650;
-    font-size: 0.82rem;
+    font-weight: 700;
+    font-size: 0.78rem;
     transition: all 0.2s;
     white-space: nowrap;
   }
@@ -219,8 +223,8 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    padding: 0.25rem;
-    border-radius: 12px;
+    padding: 0.24rem;
+    border-radius: 10px;
     border: 1px solid var(--border-color);
     background: var(--bg-tertiary);
   }
@@ -231,9 +235,9 @@
   }
 
   .view-btn {
-    width: 38px;
-    height: 38px;
-    border-radius: 10px;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
     border: none;
     background: transparent;
     color: var(--text-secondary);
@@ -258,5 +262,11 @@
     background: var(--color-primary-subtle);
     border: 1px solid color-mix(in srgb, var(--color-primary) 25%, var(--border-color));
     color: var(--text-primary);
+  }
+
+  @media (max-width: 768px) {
+    .toolbar-wrapper {
+      padding: 0.85rem 0.9rem 0.15rem;
+    }
   }
 </style>

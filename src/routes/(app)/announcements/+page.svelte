@@ -363,20 +363,20 @@
 
   .hero-inner {
     position: relative;
-    padding: 1.15rem 1.2rem 1.2rem;
+    padding: 1rem 1.05rem 1.05rem;
     display: grid;
-    gap: 1rem;
+    gap: 0.85rem;
   }
 
   .kicker {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
     color: var(--text-secondary);
     font-weight: 850;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    font-size: 0.78rem;
+    font-size: 0.72rem;
   }
 
   .kicker .dot {
@@ -389,7 +389,7 @@
 
   .h1 {
     margin-top: 0.25rem;
-    font-size: clamp(1.55rem, 2.2vw, 2rem);
+    font-size: clamp(1.4rem, 2vw, 1.8rem);
     font-weight: 1000;
     letter-spacing: 0.01em;
     color: var(--text-primary);
@@ -401,11 +401,12 @@
     color: var(--text-secondary);
     font-weight: 650;
     max-width: 70ch;
+    font-size: 0.9rem;
   }
 
   .hero-actions {
     display: flex;
-    gap: 0.6rem;
+    gap: 0.55rem;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
@@ -417,8 +418,8 @@
     gap: 0.55rem;
     border: 1px solid var(--border-color);
     background: var(--bg-tertiary);
-    padding: 0.55rem 0.7rem;
-    border-radius: 14px;
+    padding: 0.5rem 0.68rem;
+    border-radius: 10px;
     min-width: min(520px, 100%);
     color: var(--text-secondary);
   }
@@ -436,7 +437,7 @@
     outline: none;
     color: inherit;
     font-weight: 750;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     min-height: 0;
   }
 
@@ -444,15 +445,15 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.8rem;
+    gap: 0.65rem;
     flex-wrap: wrap;
-    padding: 0.2rem 0.1rem 0.9rem;
+    padding: 0.15rem 0.05rem 0.75rem;
   }
 
   .chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.4rem;
     align-items: center;
   }
 
@@ -464,9 +465,10 @@
     border: 1px solid var(--border-color);
     background: var(--bg-tertiary);
     color: var(--text-secondary);
-    padding: 0.5rem 0.75rem;
-    border-radius: 999px;
+    padding: 0.42rem 0.64rem;
+    border-radius: 10px;
     font-weight: 850;
+    font-size: 0.84rem;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -498,7 +500,7 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 0.8rem;
-    margin: 0.2rem 0 0.95rem;
+    margin: 0.15rem 0 0.8rem;
   }
 
   .count {
