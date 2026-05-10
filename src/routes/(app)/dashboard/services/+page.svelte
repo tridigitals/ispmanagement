@@ -1039,9 +1039,9 @@
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     background: var(--bg-surface);
-    padding: 1rem;
+    padding: 0.9rem;
     display: grid;
-    gap: 0.95rem;
+    gap: 0.8rem;
   }
 
   .panel-head {
@@ -1054,20 +1054,20 @@
   .panel-head h2 {
     margin: 0;
     color: var(--text-primary);
-    font-size: 1.12rem;
+    font-size: 1.05rem;
   }
 
   .panel-head p {
-    margin: 0.3rem 0 0;
+    margin: 0.22rem 0 0;
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: 0.86rem;
   }
 
   .count-pill {
     border: 1px solid var(--border-color);
     border-radius: 999px;
-    padding: 0.36rem 0.65rem;
-    font-size: 0.78rem;
+    padding: 0.3rem 0.58rem;
+    font-size: 0.74rem;
     color: var(--text-secondary);
     font-weight: 800;
     align-self: center;
@@ -1076,7 +1076,7 @@
   .list-tools {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.8rem;
+    gap: 0.65rem;
     align-items: center;
   }
 
@@ -1084,12 +1084,12 @@
     display: inline-flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 0.45rem;
+    gap: 0.35rem;
     border: 1px solid var(--border-color);
     background: color-mix(in srgb, var(--bg-surface) 78%, transparent);
-    border-radius: 999px;
-    padding: 0.34rem 0.66rem;
-    font-size: 0.76rem;
+    border-radius: 10px;
+    padding: 0.3rem 0.56rem;
+    font-size: 0.73rem;
     color: var(--text-secondary);
     font-weight: 700;
     width: fit-content;
@@ -1097,14 +1097,14 @@
 
   .chip-clear {
     border: 1px solid var(--border-color);
-    border-radius: 999px;
+    border-radius: 8px;
     background: transparent;
     color: var(--text-primary);
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    padding: 0.15rem 0.48rem;
-    font-size: 0.72rem;
+    padding: 0.12rem 0.42rem;
+    font-size: 0.68rem;
     cursor: pointer;
     font-weight: 700;
   }
@@ -1120,9 +1120,9 @@
     display: grid;
     place-content: center;
     text-align: center;
-    gap: 0.7rem;
+    gap: 0.6rem;
     color: var(--text-secondary);
-    padding: 1.2rem;
+    padding: 1rem;
   }
 
   .state-block.empty {
@@ -1152,7 +1152,7 @@
   }
 
   :global(.desktop-table .search-input-wrapper) {
-    max-width: 360px;
+    max-width: 340px;
   }
 
   .table-status-pill {

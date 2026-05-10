@@ -284,14 +284,15 @@
 
   .title {
     margin: 0;
-    font-size: 1.35rem;
+    font-size: 1.28rem;
     font-weight: 800;
     color: var(--text-primary);
   }
 
   .sub {
-    margin: 0.35rem 0 0 0;
+    margin: 0.25rem 0 0 0;
     color: var(--text-secondary);
+    font-size: 0.9rem;
   }
 
   .btn {
@@ -312,15 +313,15 @@
     align-items: center;
     justify-content: flex-end;
     gap: 0.65rem;
-    margin-bottom: 0.85rem;
+    margin-bottom: 0.75rem;
     flex-wrap: wrap;
   }
 
   .stats {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.65rem;
-    margin: 0.75rem 0 0.85rem 0;
+    gap: 0.6rem;
+    margin: 0.7rem 0 0.8rem 0;
   }
 
   .stat-card {
@@ -329,7 +330,7 @@
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     background: var(--bg-surface);
-    padding: 0.8rem 0.85rem;
+    padding: 0.75rem 0.8rem;
     cursor: pointer;
     transition:
       transform 0.12s ease,
@@ -352,8 +353,8 @@
     justify-content: space-between;
     color: var(--text-secondary);
     font-weight: 800;
-    font-size: 0.85rem;
-    gap: 0.75rem;
+    font-size: 0.78rem;
+    gap: 0.65rem;
   }
 
   .stat-label {
@@ -363,8 +364,8 @@
   }
 
   .stat-value {
-    margin-top: 0.35rem;
-    font-size: 1.55rem;
+    margin-top: 0.3rem;
+    font-size: 1.4rem;
     font-weight: 950;
     letter-spacing: -0.03em;
     color: var(--text-primary);
@@ -388,8 +389,8 @@
     gap: 0.5rem;
     border: 1px solid var(--border-color);
     background: var(--bg-surface);
-    border-radius: 12px;
-    padding: 0.55rem 0.75rem;
+    border-radius: 10px;
+    padding: 0.5rem 0.7rem;
     color: var(--text-secondary);
     min-width: min(360px, 100%);
   }
@@ -408,7 +409,7 @@
     color: var(--text-secondary);
     width: 28px;
     height: 28px;
-    border-radius: 10px;
+    border-radius: 8px;
     cursor: pointer;
   }
 
@@ -441,8 +442,8 @@
   .badge {
     border: 1px solid var(--border-color);
     border-radius: 999px;
-    padding: 0.2rem 0.55rem;
-    font-size: 0.75rem;
+    padding: 0.18rem 0.5rem;
+    font-size: 0.72rem;
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -495,15 +496,16 @@
     gap: 0.35rem;
     border: 1px solid var(--border-color);
     background: rgba(255, 255, 255, 0.03);
-    padding: 0.25rem 0.5rem;
+    padding: 0.22rem 0.46rem;
     border-radius: 999px;
     font-weight: 900;
+    font-size: 0.8rem;
   }
 
   .icon-btn {
     width: 34px;
     height: 34px;
-    border-radius: 10px;
+    border-radius: 8px;
     border: 1px solid var(--border-color);
     background: rgba(255, 255, 255, 0.03);
     color: var(--text-secondary);
