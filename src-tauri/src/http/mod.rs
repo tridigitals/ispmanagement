@@ -18,6 +18,7 @@ pub mod backup;
 pub mod customer_communication;
 pub mod customers;
 pub mod dhcp_static;
+pub mod domain_resolver;
 pub mod email_outbox;
 pub mod install;
 pub mod isp_packages;
