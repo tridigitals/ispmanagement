@@ -1202,16 +1202,16 @@ impl AuthService {
 
             // Get tenant slug and custom_domain
             #[cfg(feature = "postgres")]
-            let tenant_info: Option<(String, Option<String>)> =
-                sqlx::query_as("SELECT slug, custom_domain FROM tenants WHERE id = $1")
+            let tenant_info: Option<(String, Option<String>, Option<String>)> =
+                sqlx::query_as("SELECT slug, custom_domain, custom_domain_status FROM tenants WHERE id = $1")
                     .bind(&tid)
                     .fetch_optional(&self.pool)
                     .await
                     .unwrap_or(None);
 
             #[cfg(feature = "sqlite")]
-            let tenant_info: Option<(String, Option<String>)> =
-                sqlx::query_as("SELECT slug, custom_domain FROM tenants WHERE id = ?")
+            let tenant_info: Option<(String, Option<String>, Option<String>)> =
+                sqlx::query_as("SELECT slug, custom_domain, custom_domain_status FROM tenants WHERE id = ?")
                     .bind(&tid)
                     .fetch_optional(&self.pool)
                     .await
@@ -1624,7 +1624,13 @@ impl AuthService {
         let mut user_response: crate::models::user::UserResponse = user.into();
         user_response.permissions = permissions;
         user_response.tenant_slug = tenant.as_ref().map(|t| t.slug.clone());
-        user_response.tenant_custom_domain = tenant.as_ref().and_then(|t| t.custom_domain.clone());
+        user_response.tenant_custom_domain = tenant.as_ref().and_then(|t| {
+            if t.custom_domain_status.as_deref() == Some(crate::models::tenant::CUSTOM_DOMAIN_STATUS_ACTIVE) {
+                t.custom_domain.clone()
+            } else {
+                None
+            }
+        });
 
         // Override role with tenant role if available
         if let Some(tid) = &tenant_id {

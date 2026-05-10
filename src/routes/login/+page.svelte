@@ -37,6 +37,38 @@
 
   let showPassword = false;
 
+  function normalizeHost(value: string | null | undefined): string {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\.+$/, '');
+  }
+
+  function resolvePlatformHost(): string {
+    return normalizeHost($appSettings.auth?.main_domain) || 'billing.tridigitals.com';
+  }
+
+  function redirectToHost(host: string, path: string) {
+    const cleanHost = normalizeHost(host);
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    if (!cleanHost) {
+      goto(cleanPath);
+      return;
+    }
+
+    if (typeof window === 'undefined') {
+      goto(cleanPath);
+      return;
+    }
+
+    if (normalizeHost(window.location.hostname) === cleanHost) {
+      goto(cleanPath);
+      return;
+    }
+
+    window.location.assign(`${window.location.protocol}//${cleanHost}${cleanPath}`);
+  }
+
   $: appName = $appSettings.app_name || 'Platform Core';
   $: appDescription =
     $appSettings.app_description ||
@@ -74,50 +106,25 @@
 
   async function redirectUser(u: any, t?: any) {
     const slug = u?.tenant_slug;
-    // Prefer tenant object, fallback to user's enriched property
-    const customDomain = t?.custom_domain || u?.tenant_custom_domain;
-    const currentHost = window.location.hostname;
+    const customDomainStatus = t?.custom_domain_status;
+    const activeCustomDomain =
+      (customDomainStatus === 'active' ? t?.custom_domain : null) || u?.tenant_custom_domain || null;
+    const currentHost = normalizeHost(window.location.hostname);
+    const platformHost = resolvePlatformHost();
     // @ts-ignore
     const isTauri = typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__;
-
-    // 1. Super Admin: Can login anywhere
-    if (u.is_super_admin) {
-      // If logged in on a tenant domain/subdomain, go to tenant admin
-      if (slug && currentHost.includes(slug)) {
-        goto('/admin');
-      } else {
-        // Otherwise go to superadmin dashboard
-        goto('/superadmin');
-      }
-      return;
-    }
-
-    // 2. Tenant User with Custom Domain
-    // Skip domain check for localhost (development), main domain, or if no custom domain set
-    const isLocalhost = currentHost === 'localhost' || currentHost === '127.0.0.1';
-    const mainDomain = $appSettings.auth?.main_domain;
-    const isMainDomain =
-      (mainDomain && currentHost === mainDomain) ||
-      currentHost === 'billing.tridigitals.com' ||
-      isPlatformDomain(currentHost);
-    if (!isTauri && !isLocalhost && !isMainDomain && customDomain && currentHost !== customDomain) {
-      // Domain mismatch -> Logout and show error instead of redirecting
-      const { logout } = await import('$lib/stores/auth');
-      logout();
-      error = 'Invalid login credentials or unauthorized domain.';
-      return;
-    }
-
-    // If user logs in from the tenant custom domain, use root tenant routes
-    // and cache domain->slug mapping for reroute consistency.
-    const ctx = resolveTenantContext({
-      hostname: currentHost,
-      userTenantSlug: slug,
-      tenantSlug: t?.slug,
-      routeTenantSlug: $page.params.tenant,
-    });
+    const isLocalhost =
+      currentHost === 'localhost' || currentHost === '127.0.0.1' || currentHost.includes('tauri');
+    const onPlatformHost = isPlatformDomain(currentHost);
 
     const goToRoleHome = () => {
+      const ctx = resolveTenantContext({
+        hostname: currentHost,
+        userTenantSlug: slug,
+        tenantSlug: t?.slug,
+        routeTenantSlug: $page.params.tenant,
+      });
+
       let target = getDefaultTenantLandingPath(u, ctx.tenantPrefix);
       const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/login';
       if (target === currentPath) target = `${ctx.tenantPrefix}/profile`;
@@ -125,7 +132,17 @@
       goto(target);
     };
 
-    if (customDomain && currentHost === customDomain && slug) {
+    if (u.is_super_admin) {
+      if (!isTauri && !isLocalhost && !onPlatformHost) {
+        redirectToHost(platformHost, '/superadmin');
+        return;
+      }
+
+      goto('/superadmin');
+      return;
+    }
+
+    if (activeCustomDomain && currentHost === normalizeHost(activeCustomDomain) && slug) {
       try {
         const { cacheDomainMapping } = await import('$lib/utils/domain');
         cacheDomainMapping(currentHost, slug);
@@ -136,28 +153,24 @@
       return;
     }
 
-    // 3. Tenant User (Subdomain)
-    if (slug) {
-      // Check if we are already on the correct subdomain (slug.basedomain.com)
-      // Or if we are using path-based routing (domain.com/slug/dashboard)
-
-      // NOTE: This assumes standard "slug.basedomain.com" structure OR path-based "/slug/..."
-      // If the current hostname DOES NOT contain the slug, and it's the main domain,
-      // we should probably redirect to the subdomain if that's the architecture.
-      // For now, let's stick to the existing path-based logic but make it robust.
-
-      if ($page.url.hostname.includes(slug) || isMainDomain) {
-        goToRoleHome();
-      } else {
-        goToRoleHome();
-      }
-    } else {
-      // Prevent dashboard<->login redirect loop for users without tenant scope.
+    if (!slug) {
       const { logout } = await import('$lib/stores/auth');
       logout();
       error = 'Akun Anda belum terhubung ke tenant/workspace.';
       return;
     }
+
+    if (!isTauri && !isLocalhost && activeCustomDomain && currentHost !== normalizeHost(activeCustomDomain)) {
+      redirectToHost(activeCustomDomain, getDefaultTenantLandingPath(u, ''));
+      return;
+    }
+
+    if (!isTauri && !isLocalhost && !activeCustomDomain && !onPlatformHost) {
+      redirectToHost(platformHost, getDefaultTenantLandingPath(u, ''));
+      return;
+    }
+
+    goToRoleHome();
   }
 
   async function handleSubmit(e: Event) {
@@ -188,25 +201,6 @@
       }
 
       if (response.user) {
-        // ... (existing domain check)
-        const customDomain = response.tenant?.custom_domain || response.user.tenant_custom_domain;
-        const currentHost = window.location.hostname;
-
-        if (customDomain && currentHost !== customDomain && !response.user.is_super_admin) {
-          error = 'Invalid login credentials or unauthorized domain.';
-          // Clear session immediately
-          token.set(null);
-          user.set(null);
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('auth_token');
-            sessionStorage.removeItem('auth_token');
-            localStorage.removeItem('auth_user');
-            sessionStorage.removeItem('auth_user');
-          }
-          loading = false;
-          return;
-        }
-
         redirectUser(response.user, response.tenant);
       }
     } catch (err) {
