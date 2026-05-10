@@ -3,6 +3,7 @@
   import Input from '$lib/components/ui/Input.svelte';
   import Select from '$lib/components/ui/Select.svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import CustomDomainStatusPanel from '$lib/components/domain/CustomDomainStatusPanel.svelte';
   import { t } from 'svelte-i18n';
 
   let {
@@ -20,6 +21,9 @@
       name: string;
       slug: string;
       customDomain: string;
+      customDomainStatus?: string | null;
+      customDomainVerifiedAt?: string | null;
+      customDomainFailureReason?: string | null;
       ownerEmail: string;
       ownerPassword: string;
       isActive: boolean;
@@ -60,6 +64,15 @@
       bind:value={newTenant.customDomain}
       placeholder={$t('superadmin.tenants.modal.placeholders.custom_domain') || 'e.g. app.acme.com'}
     />
+
+    {#if isEditing}
+      <CustomDomainStatusPanel
+        customDomain={newTenant.customDomain}
+        status={newTenant.customDomainStatus}
+        failureReason={newTenant.customDomainFailureReason}
+        verifiedAt={newTenant.customDomainVerifiedAt}
+      />
+    {/if}
 
     {#if !isEditing}
       <div class="divider">

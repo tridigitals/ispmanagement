@@ -52,6 +52,9 @@ export interface Tenant {
   name: string;
   slug: string;
   custom_domain?: string;
+  custom_domain_status?: string | null;
+  custom_domain_verified_at?: string | null;
+  custom_domain_failure_reason?: string | null;
   logo_url?: string;
   is_active: boolean;
   enforce_2fa: boolean;

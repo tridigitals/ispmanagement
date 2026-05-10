@@ -5,6 +5,9 @@ export type SuperadminTenant = {
   name: string;
   slug: string;
   custom_domain?: string | null;
+  custom_domain_status?: string | null;
+  custom_domain_verified_at?: string | null;
+  custom_domain_failure_reason?: string | null;
   is_active: boolean;
   created_at: string;
 };

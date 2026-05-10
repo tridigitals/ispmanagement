@@ -1,6 +1,7 @@
 <script lang="ts">
   import Table from '$lib/components/ui/Table.svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import CustomDomainStatusBadge from '$lib/components/domain/CustomDomainStatusBadge.svelte';
   import { fly } from 'svelte/transition';
   import { t } from 'svelte-i18n';
   import { appSettings } from '$lib/stores/settings';
@@ -41,6 +42,11 @@
                 <span class="tenant-domain mono">
                   {tenant.custom_domain}
                 </span>
+                <CustomDomainStatusBadge
+                  customDomain={tenant.custom_domain}
+                  status={tenant.custom_domain_status}
+                  failureReason={tenant.custom_domain_failure_reason}
+                />
               {/if}
             </div>
           </div>
@@ -134,7 +140,14 @@
       {#snippet cell({ item, key })}
         {#if key === 'custom_domain'}
           {#if item.custom_domain}
-            <code class="domain-badge">{item.custom_domain}</code>
+            <div class="domain-cell">
+              <code class="domain-badge">{item.custom_domain}</code>
+              <CustomDomainStatusBadge
+                customDomain={item.custom_domain}
+                status={item.custom_domain_status}
+                failureReason={item.custom_domain_failure_reason}
+              />
+            </div>
           {:else}
             <span class="text-muted">-</span>
           {/if}
@@ -241,6 +254,13 @@
 
   .tenant-domain {
     opacity: 0.9;
+  }
+
+  .domain-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
   }
 
   .tenant-meta {

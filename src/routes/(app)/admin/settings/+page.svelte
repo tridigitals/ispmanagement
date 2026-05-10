@@ -12,6 +12,7 @@
   import MobileFabMenu from '$lib/components/ui/MobileFabMenu.svelte';
   import Input from '$lib/components/ui/Input.svelte';
   import Select from '$lib/components/ui/Select.svelte';
+  import CustomDomainStatusPanel from '$lib/components/domain/CustomDomainStatusPanel.svelte';
   import type { EmailVerificationReadiness, Setting } from '$lib/api/client';
   import { toast } from 'svelte-sonner';
   import { get } from 'svelte/store';
@@ -925,6 +926,12 @@
                     {$t('admin.settings.branding.custom_domain_help_suffix') ||
                       '(or configured alias).'}
                   </p>
+                  <CustomDomainStatusPanel
+                    customDomain={tenantInfo?.custom_domain || localSettings['custom_domain'] || null}
+                    status={tenantInfo?.custom_domain_status || 'none'}
+                    failureReason={tenantInfo?.custom_domain_failure_reason || null}
+                    verifiedAt={tenantInfo?.custom_domain_verified_at || null}
+                  />
                 {:else}
                   <div class="upgrade-banner">
                     <div class="icon-box">
