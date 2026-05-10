@@ -31,15 +31,18 @@
     name: '',
     slug: '',
     customDomain: '',
+    savedCustomDomain: '',
     customDomainStatus: 'none',
     customDomainVerifiedAt: null,
     customDomainFailureReason: null,
+    domainStatusReason: '',
     ownerEmail: '',
     ownerPassword: '',
     isActive: true,
     planId: '',
   });
   let creating = $state(false);
+  let domainStatusSaving = $state(false);
 
   // Confirm Dialog State
   let showConfirm = $state(false);
@@ -239,9 +242,11 @@
       name: '',
       slug: '',
       customDomain: '',
+      savedCustomDomain: '',
       customDomainStatus: 'none',
       customDomainVerifiedAt: null,
       customDomainFailureReason: null,
+      domainStatusReason: '',
       ownerEmail: '',
       ownerPassword: '',
       isActive: true,
@@ -258,9 +263,11 @@
       name: tenant.name,
       slug: tenant.slug,
       customDomain: tenant.custom_domain || '',
+      savedCustomDomain: tenant.custom_domain || '',
       customDomainStatus: tenant.custom_domain_status || 'none',
       customDomainVerifiedAt: tenant.custom_domain_verified_at || null,
       customDomainFailureReason: tenant.custom_domain_failure_reason || null,
+      domainStatusReason: tenant.custom_domain_failure_reason || '',
       ownerEmail: '---', // Email cannot be changed here easily in this view
       ownerPassword: '', // Password not needed for update
       isActive: tenant.is_active,
@@ -274,6 +281,39 @@
       await updateTenant();
     } else {
       await createTenant();
+    }
+  }
+
+  async function applyDomainStatus() {
+    if (!isEditing || !editingId || !newTenant.customDomain) return;
+
+    domainStatusSaving = true;
+    try {
+      const nextStatus = (
+        ['pending', 'active', 'failed'].includes(String(newTenant.customDomainStatus))
+          ? newTenant.customDomainStatus
+          : 'pending'
+      ) as 'pending' | 'active' | 'failed';
+
+      const updated = await api.superadmin.updateTenantDomainStatus(
+        editingId,
+        nextStatus,
+        nextStatus === 'failed' ? newTenant.domainStatusReason || null : null,
+      );
+
+      Object.assign(newTenant, {
+        customDomainStatus: updated.custom_domain_status || 'none',
+        customDomainVerifiedAt: updated.custom_domain_verified_at || null,
+        customDomainFailureReason: updated.custom_domain_failure_reason || null,
+        domainStatusReason: updated.custom_domain_failure_reason || '',
+      });
+
+      toast.success('Status domain berhasil diperbarui');
+      await loadTenants();
+    } catch (e: any) {
+      toast.error(e?.message || 'Gagal memperbarui status domain');
+    } finally {
+      domainStatusSaving = false;
     }
   }
 
@@ -609,15 +649,17 @@
 </div>
 
 {#if TenantFormModalComponent}
-  <TenantFormModalComponent
-    bind:show={showCreateModal}
-    {isEditing}
-    bind:newTenant
-    {plans}
-    loading={creating}
-    onSubmit={handleSubmit}
-    onGenerateSlug={generateSlug}
-  />
+      <TenantFormModalComponent
+        bind:show={showCreateModal}
+        {isEditing}
+        bind:newTenant
+        {plans}
+        loading={creating}
+        domainStatusLoading={domainStatusSaving}
+        onSubmit={handleSubmit}
+        onGenerateSlug={generateSlug}
+        onApplyDomainStatus={applyDomainStatus}
+      />
 {/if}
 
 {#if ConfirmDialogComponent}

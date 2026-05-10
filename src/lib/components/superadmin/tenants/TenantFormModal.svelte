@@ -12,8 +12,10 @@
     newTenant = $bindable(),
     plans = [],
     loading = false,
+    domainStatusLoading = false,
     onSubmit,
     onGenerateSlug,
+    onApplyDomainStatus,
   } = $props<{
     show: boolean;
     isEditing: boolean;
@@ -21,9 +23,11 @@
       name: string;
       slug: string;
       customDomain: string;
+      savedCustomDomain?: string;
       customDomainStatus?: string | null;
       customDomainVerifiedAt?: string | null;
       customDomainFailureReason?: string | null;
+      domainStatusReason?: string;
       ownerEmail: string;
       ownerPassword: string;
       isActive: boolean;
@@ -31,11 +35,18 @@
     };
     plans: { label: string; value: string }[];
     loading: boolean;
+    domainStatusLoading: boolean;
     onSubmit: () => void;
     onGenerateSlug: () => void;
+    onApplyDomainStatus?: () => void;
   }>();
 
   let showPassword = $state(false);
+  const hasUnsavedDomainChange = $derived(
+    isEditing &&
+      String(newTenant.customDomain || '').trim() !== String(newTenant.savedCustomDomain || '').trim(),
+  );
+  const statusDomain = $derived(newTenant.savedCustomDomain || newTenant.customDomain || '');
 </script>
 
 <Modal
@@ -67,11 +78,55 @@
 
     {#if isEditing}
       <CustomDomainStatusPanel
-        customDomain={newTenant.customDomain}
+        customDomain={statusDomain}
         status={newTenant.customDomainStatus}
         failureReason={newTenant.customDomainFailureReason}
         verifiedAt={newTenant.customDomainVerifiedAt}
       />
+
+      {#if statusDomain}
+        <div class="domain-status-editor">
+          <Select
+            label="Status Domain"
+            options={[
+              { label: 'Pending', value: 'pending' },
+              { label: 'Active', value: 'active' },
+              { label: 'Failed', value: 'failed' },
+            ]}
+            bind:value={newTenant.customDomainStatus}
+            disabled={hasUnsavedDomainChange || loading || domainStatusLoading}
+          />
+
+          {#if newTenant.customDomainStatus === 'failed'}
+            <Input
+              label="Alasan Gagal"
+              bind:value={newTenant.domainStatusReason}
+              placeholder="Contoh: DNS belum mengarah ke target yang benar"
+              disabled={hasUnsavedDomainChange || loading || domainStatusLoading}
+            />
+          {/if}
+
+          {#if hasUnsavedDomainChange}
+            <div class="domain-status-note">
+              Simpan perubahan custom domain dulu sebelum mengubah status verifikasinya.
+            </div>
+          {/if}
+
+          <div class="domain-status-actions">
+            <button
+              class="btn btn-secondary"
+              type="button"
+              disabled={loading || domainStatusLoading || hasUnsavedDomainChange}
+              onclick={onApplyDomainStatus}
+            >
+              {#if domainStatusLoading}
+                <div class="spinner-sm"></div>
+              {/if}
+              Terapkan Status Domain
+            </button>
+          </div>
+        </div>
+      {/if}
     {/if}
 
     {#if !isEditing}
@@ -203,6 +258,24 @@
     justify-content: flex-end;
     gap: 0.75rem;
     margin-top: 1.5rem;
+  }
+
+  .domain-status-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding-top: 0.25rem;
+  }
+
+  .domain-status-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .domain-status-note {
+    color: var(--text-secondary);
+    font-size: 0.83rem;
+    line-height: 1.45;
   }
 
   .spinner-sm {

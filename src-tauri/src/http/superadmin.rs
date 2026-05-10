@@ -2,7 +2,8 @@ use super::AppState;
 use crate::http::auth::extract_ip;
 use crate::http::domain_resolver::normalize_custom_domain_input;
 use crate::models::tenant::{
-    resolve_custom_domain_lifecycle_transition, CUSTOM_DOMAIN_STATUS_PENDING,
+    apply_manual_custom_domain_status, resolve_custom_domain_lifecycle_transition,
+    CUSTOM_DOMAIN_STATUS_PENDING,
 };
 use crate::models::Tenant;
 use axum::{
@@ -1331,6 +1332,14 @@ pub struct UpdateTenantRequest {
     pub is_active: bool,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct UpdateTenantDomainStatusRequest {
+    pub status: String,
+    pub failure_reason: Option<String>,
+}
+
 pub async fn update_tenant(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -1444,6 +1453,74 @@ pub async fn update_tenant(
             Some(&id),
             "update",
             "tenant",
+            Some(&id),
+            Some(details.as_str()),
+            Some(&ip),
+        )
+        .await;
+
+    Ok(Json(tenant))
+}
+
+pub async fn update_tenant_domain_status(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(id): Path<String>,
+    Json(payload): Json<UpdateTenantDomainStatusRequest>,
+) -> Result<Json<Tenant>, crate::error::AppError> {
+    let claims = check_super_admin(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+
+    let before: Tenant = sqlx::query_as("SELECT * FROM tenants WHERE id = $1")
+        .bind(&id)
+        .fetch_optional(&state.auth_service.pool)
+        .await?
+        .ok_or_else(|| crate::error::AppError::NotFound("Tenant not found".to_string()))?;
+
+    let (next_status, next_verified_at, next_failure_reason) = apply_manual_custom_domain_status(
+        before.custom_domain.as_deref(),
+        &payload.status,
+        payload.failure_reason.as_deref(),
+    )
+    .map_err(crate::error::AppError::Validation)?;
+
+    let mut tx = state.auth_service.pool.begin().await?;
+    state
+        .auth_service
+        .apply_rls_context_tx(&mut tx, &claims)
+        .await?;
+
+    let tenant: Tenant = sqlx::query_as(
+        "UPDATE tenants SET custom_domain_status = $1, custom_domain_verified_at = $2, custom_domain_failure_reason = $3, updated_at = $4 WHERE id = $5 RETURNING *",
+    )
+    .bind(&next_status)
+    .bind(next_verified_at)
+    .bind(next_failure_reason)
+    .bind(chrono::Utc::now())
+    .bind(&id)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    let details = serde_json::json!({
+        "message": "Updated tenant custom domain status",
+        "tenant_id": id,
+        "custom_domain": tenant.custom_domain,
+        "custom_domain_status_before": before.custom_domain_status,
+        "custom_domain_status_after": tenant.custom_domain_status,
+        "custom_domain_failure_reason_before": before.custom_domain_failure_reason,
+        "custom_domain_failure_reason_after": tenant.custom_domain_failure_reason,
+    })
+    .to_string();
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&id),
+            "update",
+            "tenant_custom_domain_status",
             Some(&id),
             Some(details.as_str()),
             Some(&ip),

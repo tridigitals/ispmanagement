@@ -32,6 +32,37 @@ pub fn resolve_custom_domain_lifecycle_transition(
     (CUSTOM_DOMAIN_STATUS_NONE.to_string(), None, None)
 }
 
+pub fn apply_manual_custom_domain_status(
+    current_domain: Option<&str>,
+    next_status: &str,
+    failure_reason: Option<&str>,
+) -> Result<(String, Option<DateTime<Utc>>, Option<String>), String> {
+    if current_domain.is_none() {
+        return Err("Custom domain belum diatur untuk tenant ini".to_string());
+    }
+
+    match next_status.trim().to_lowercase().as_str() {
+        CUSTOM_DOMAIN_STATUS_PENDING => Ok((CUSTOM_DOMAIN_STATUS_PENDING.to_string(), None, None)),
+        CUSTOM_DOMAIN_STATUS_ACTIVE => Ok((
+            CUSTOM_DOMAIN_STATUS_ACTIVE.to_string(),
+            Some(Utc::now()),
+            None,
+        )),
+        CUSTOM_DOMAIN_STATUS_FAILED => {
+            let reason = String::from(failure_reason.unwrap_or(""))
+                .trim()
+                .to_string();
+            if reason.is_empty() {
+                return Err(
+                    "Alasan gagal wajib diisi saat status domain diubah ke failed".to_string(),
+                );
+            }
+            Ok((CUSTOM_DOMAIN_STATUS_FAILED.to_string(), None, Some(reason)))
+        }
+        _ => Err("Status domain tidak valid".to_string()),
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Tenant {
     pub id: String,
@@ -111,8 +142,9 @@ mod tests {
     use chrono::Utc;
 
     use super::{
-        resolve_custom_domain_lifecycle_transition, Tenant, CUSTOM_DOMAIN_STATUS_ACTIVE,
-        CUSTOM_DOMAIN_STATUS_NONE, CUSTOM_DOMAIN_STATUS_PENDING,
+        apply_manual_custom_domain_status, resolve_custom_domain_lifecycle_transition, Tenant,
+        CUSTOM_DOMAIN_STATUS_ACTIVE, CUSTOM_DOMAIN_STATUS_FAILED, CUSTOM_DOMAIN_STATUS_NONE,
+        CUSTOM_DOMAIN_STATUS_PENDING,
     };
 
     #[test]
@@ -173,5 +205,56 @@ mod tests {
         assert_eq!(next.0, CUSTOM_DOMAIN_STATUS_NONE);
         assert!(next.1.is_none());
         assert!(next.2.is_none());
+    }
+
+    #[test]
+    fn manual_status_change_sets_active_timestamp() {
+        let next = apply_manual_custom_domain_status(
+            Some("portal.customer.net"),
+            CUSTOM_DOMAIN_STATUS_ACTIVE,
+            None,
+        )
+        .expect("active transition should succeed");
+
+        assert_eq!(next.0, CUSTOM_DOMAIN_STATUS_ACTIVE);
+        assert!(next.1.is_some());
+        assert!(next.2.is_none());
+    }
+
+    #[test]
+    fn manual_status_change_requires_reason_for_failed() {
+        let err = apply_manual_custom_domain_status(
+            Some("portal.customer.net"),
+            CUSTOM_DOMAIN_STATUS_FAILED,
+            None,
+        )
+        .expect_err("failed transition should require reason");
+
+        assert!(err.contains("Alasan gagal"));
+    }
+
+    #[test]
+    fn manual_status_change_sets_failed_reason() {
+        let next = apply_manual_custom_domain_status(
+            Some("portal.customer.net"),
+            CUSTOM_DOMAIN_STATUS_FAILED,
+            Some("DNS belum mengarah ke target yang benar"),
+        )
+        .expect("failed transition should succeed");
+
+        assert_eq!(next.0, CUSTOM_DOMAIN_STATUS_FAILED);
+        assert!(next.1.is_none());
+        assert_eq!(
+            next.2.as_deref(),
+            Some("DNS belum mengarah ke target yang benar")
+        );
+    }
+
+    #[test]
+    fn manual_status_change_rejects_missing_custom_domain() {
+        let err = apply_manual_custom_domain_status(None, CUSTOM_DOMAIN_STATUS_PENDING, None)
+            .expect_err("status change should fail without custom domain");
+
+        assert!(err.contains("belum diatur"));
     }
 }

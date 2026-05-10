@@ -422,6 +422,10 @@ pub async fn start_server_impl(
             delete(superadmin::delete_tenant).put(superadmin::update_tenant),
         )
         .route(
+            "/api/superadmin/tenants/{id}/domain-status",
+            post(superadmin::update_tenant_domain_status),
+        )
+        .route(
             "/api/superadmin/radius/runtime",
             get(superadmin::get_managed_radius_runtime_status),
         )

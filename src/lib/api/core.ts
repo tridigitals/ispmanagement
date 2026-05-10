@@ -75,6 +75,7 @@ const commandMap: Record<string, { method: string; path: string }> = {
   list_managed_radius_sessions: { method: 'GET', path: '/superadmin/radius/sessions' },
   create_tenant: { method: 'POST', path: '/superadmin/tenants' },
   delete_tenant: { method: 'DELETE', path: '/superadmin/tenants/:id' },
+  update_tenant_domain_status: { method: 'POST', path: '/superadmin/tenants/:id/domain-status' },
   list_audit_logs: { method: 'GET', path: '/superadmin/audit-logs' },
   get_system_health: { method: 'GET', path: '/superadmin/system' },
   get_system_diagnostics: { method: 'GET', path: '/superadmin/diagnostics' },

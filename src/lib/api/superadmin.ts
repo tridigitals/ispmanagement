@@ -262,6 +262,18 @@ export const superadmin = {
       isActive,
     }),
 
+  updateTenantDomainStatus: (
+    id: string,
+    status: 'pending' | 'active' | 'failed',
+    failureReason?: string | null,
+  ): Promise<any> =>
+    safeInvoke('update_tenant_domain_status', {
+      token: getTokenOrThrow(),
+      id,
+      status,
+      failureReason: failureReason ?? null,
+    }),
+
   listAuditLogs: (
     page?: number,
     perPage?: number,
