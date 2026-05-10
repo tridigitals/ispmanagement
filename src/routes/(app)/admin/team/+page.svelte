@@ -623,19 +623,20 @@
   }
 
   .toolbar-wrapper {
-    padding: 1rem 1.75rem 0.5rem;
+    padding: 0.9rem 1.5rem 0.45rem;
     border-bottom: 1px solid var(--border-color);
   }
 
   .status-filter {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.25rem;
-    border-radius: 12px;
+    gap: 0.3rem;
+    padding: 0.24rem;
+    border-radius: 10px;
     border: 1px solid var(--border-color);
     background: var(--bg-surface);
     flex-wrap: wrap;
+    min-height: 38px;
   }
 
   :global([data-theme='light']) .status-filter {
@@ -644,15 +645,19 @@
 
   .filter-chip {
     height: 32px;
-    padding: 0 0.75rem;
-    border-radius: 10px;
+    padding: 0 0.72rem;
+    border-radius: 8px;
     border: 1px solid transparent;
     background: transparent;
     color: var(--text-secondary);
-    font-weight: 650;
-    font-size: 0.85rem;
+    font-weight: 700;
+    font-size: 0.82rem;
     cursor: pointer;
     transition: all 0.2s ease;
+  }
+
+  .filter-dropdown {
+    min-width: 220px;
   }
 
   @media (max-width: 768px) {
@@ -664,6 +669,7 @@
     }
     .filter-dropdown {
       width: 100%;
+      min-width: 0;
     }
   }
 

@@ -66,15 +66,15 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    gap: 0.85rem;
+    margin-bottom: 1rem;
     flex-wrap: wrap;
   }
 
   .search-section {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
     flex: 1;
     min-width: 0;
     flex-wrap: wrap;
@@ -83,13 +83,14 @@
   .search-input-wrapper {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.45rem;
     flex: 1 1 auto;
     min-width: 240px;
-    max-width: 420px;
+    max-width: 400px;
     min-width: 0;
-    padding: 0.55rem 0.75rem;
-    border-radius: 12px;
+    min-height: 38px;
+    padding: 0.48rem 0.68rem;
+    border-radius: 10px;
     border: 1px solid var(--border-color);
     background: var(--bg-surface);
     transition: all 0.2s;
@@ -111,7 +112,7 @@
     border: none;
     background: transparent;
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     outline: none;
   }
 
@@ -123,39 +124,68 @@
 
   .clear-btn {
     background: transparent;
-    border: none;
+    border: 1px solid transparent;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 0.25rem;
+    width: 26px;
+    height: 26px;
+    padding: 0;
     display: flex;
     align-items: center;
-    border-radius: 50%;
+    justify-content: center;
+    border-radius: 8px;
     flex: 0 0 auto;
   }
 
   .clear-btn:hover {
     background: var(--bg-hover);
+    border-color: var(--border-color);
     color: var(--text-primary);
   }
 
   .filters {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.65rem;
     flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: wrap;
   }
 
   .actions {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.6rem;
     margin-left: auto;
+    flex-wrap: wrap;
+  }
+
+  .filters :global(label) {
+    margin: 0;
+  }
+
+  .filters :global(select),
+  .filters :global(input),
+  .filters :global(.select-trigger) {
+    min-height: 38px;
+    border-radius: 10px;
+  }
+
+  .filters :global(.select-trigger) {
+    background: var(--bg-surface);
+  }
+
+  .actions :global(.btn),
+  .actions :global(.btn-primary),
+  .actions :global(.btn-secondary),
+  .actions :global(a.btn) {
+    min-height: 38px;
   }
 
   @media (max-width: 768px) {
     .table-toolbar {
       flex-direction: column;
       align-items: stretch;
-      gap: 1rem;
+      gap: 0.8rem;
       justify-content: flex-start;
       margin-bottom: 0.75rem;
     }
@@ -164,6 +194,7 @@
       flex-direction: column;
       align-items: stretch;
       min-width: 0;
+      gap: 0.65rem;
     }
 
     .filters {
@@ -171,6 +202,8 @@
       justify-content: flex-start;
       flex-direction: column;
       align-items: stretch;
+      flex: 0 0 auto;
+      gap: 0.6rem;
     }
 
     .search-input-wrapper {
@@ -185,10 +218,6 @@
       margin-left: 0;
     }
 
-    .filters {
-      flex: 0 0 auto;
-    }
-
     .actions :global(.btn),
     .actions :global(.btn-primary),
     .actions :global(.btn-secondary),
@@ -200,7 +229,7 @@
 
   @media (max-width: 420px) {
     .search-input-wrapper {
-      padding: 0.5rem 0.65rem;
+      padding: 0.44rem 0.6rem;
     }
   }
 </style>
