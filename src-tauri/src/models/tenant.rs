@@ -3,12 +3,44 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
+pub const CUSTOM_DOMAIN_STATUS_NONE: &str = "none";
+pub const CUSTOM_DOMAIN_STATUS_PENDING: &str = "pending";
+pub const CUSTOM_DOMAIN_STATUS_ACTIVE: &str = "active";
+pub const CUSTOM_DOMAIN_STATUS_FAILED: &str = "failed";
+
+pub fn resolve_custom_domain_lifecycle_transition(
+    current_domain: Option<&str>,
+    current_status: Option<&str>,
+    current_verified_at: Option<DateTime<Utc>>,
+    current_failure_reason: Option<&str>,
+    next_domain: Option<&str>,
+) -> (String, Option<DateTime<Utc>>, Option<String>) {
+    if current_domain == next_domain {
+        return (
+            current_status
+                .unwrap_or(CUSTOM_DOMAIN_STATUS_NONE)
+                .to_string(),
+            current_verified_at,
+            current_failure_reason.map(str::to_string),
+        );
+    }
+
+    if next_domain.is_some() {
+        return (CUSTOM_DOMAIN_STATUS_PENDING.to_string(), None, None);
+    }
+
+    (CUSTOM_DOMAIN_STATUS_NONE.to_string(), None, None)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Tenant {
     pub id: String,
     pub name: String,
     pub slug: String,
     pub custom_domain: Option<String>,
+    pub custom_domain_status: Option<String>,
+    pub custom_domain_verified_at: Option<DateTime<Utc>>,
+    pub custom_domain_failure_reason: Option<String>,
     pub logo_url: Option<String>,
     pub is_active: bool,
     #[serde(default)]
@@ -25,6 +57,9 @@ impl Tenant {
             name,
             slug,
             custom_domain: None,
+            custom_domain_status: Some(CUSTOM_DOMAIN_STATUS_NONE.to_string()),
+            custom_domain_verified_at: None,
+            custom_domain_failure_reason: None,
             logo_url: None,
             is_active: true,
             enforce_2fa: false,
@@ -69,4 +104,74 @@ pub struct TeamMemberWithUser {
     pub role_name: Option<String>,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::Utc;
+
+    use super::{
+        resolve_custom_domain_lifecycle_transition, Tenant, CUSTOM_DOMAIN_STATUS_ACTIVE,
+        CUSTOM_DOMAIN_STATUS_NONE, CUSTOM_DOMAIN_STATUS_PENDING,
+    };
+
+    #[test]
+    fn tenant_new_defaults_to_no_custom_domain_lifecycle() {
+        let tenant = Tenant::new("Acme".to_string(), "acme".to_string());
+
+        assert_eq!(tenant.custom_domain.as_deref(), None);
+        assert_eq!(
+            tenant.custom_domain_status.as_deref(),
+            Some(CUSTOM_DOMAIN_STATUS_NONE)
+        );
+        assert!(tenant.custom_domain_verified_at.is_none());
+        assert!(tenant.custom_domain_failure_reason.is_none());
+    }
+
+    #[test]
+    fn lifecycle_transition_resets_to_pending_when_domain_changes() {
+        let now = Utc::now();
+        let next = resolve_custom_domain_lifecycle_transition(
+            Some("old.example.com"),
+            Some(CUSTOM_DOMAIN_STATUS_ACTIVE),
+            Some(now),
+            Some("old failure"),
+            Some("new.example.com"),
+        );
+
+        assert_eq!(next.0, CUSTOM_DOMAIN_STATUS_PENDING);
+        assert!(next.1.is_none());
+        assert!(next.2.is_none());
+    }
+
+    #[test]
+    fn lifecycle_transition_preserves_state_when_domain_unchanged() {
+        let now = Utc::now();
+        let next = resolve_custom_domain_lifecycle_transition(
+            Some("same.example.com"),
+            Some(CUSTOM_DOMAIN_STATUS_ACTIVE),
+            Some(now),
+            Some("ignored"),
+            Some("same.example.com"),
+        );
+
+        assert_eq!(next.0, CUSTOM_DOMAIN_STATUS_ACTIVE);
+        assert_eq!(next.1, Some(now));
+        assert_eq!(next.2.as_deref(), Some("ignored"));
+    }
+
+    #[test]
+    fn lifecycle_transition_clears_state_when_domain_removed() {
+        let next = resolve_custom_domain_lifecycle_transition(
+            Some("same.example.com"),
+            Some(CUSTOM_DOMAIN_STATUS_ACTIVE),
+            Some(Utc::now()),
+            Some("ignored"),
+            None,
+        );
+
+        assert_eq!(next.0, CUSTOM_DOMAIN_STATUS_NONE);
+        assert!(next.1.is_none());
+        assert!(next.2.is_none());
+    }
 }
