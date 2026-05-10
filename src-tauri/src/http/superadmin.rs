@@ -1,5 +1,9 @@
 use super::AppState;
 use crate::http::auth::extract_ip;
+use crate::http::domain_resolver::normalize_custom_domain_input;
+use crate::models::tenant::{
+    resolve_custom_domain_lifecycle_transition, CUSTOM_DOMAIN_STATUS_PENDING,
+};
 use crate::models::Tenant;
 use axum::{
     extract::ConnectInfo,
@@ -272,6 +276,32 @@ async fn check_super_admin(
     Ok(claims)
 }
 
+async fn ensure_unique_custom_domain(
+    state: &AppState,
+    tenant_id: &str,
+    custom_domain: Option<&str>,
+) -> Result<(), crate::error::AppError> {
+    let Some(custom_domain) = custom_domain else {
+        return Ok(());
+    };
+
+    let owner: Option<String> =
+        sqlx::query_scalar("SELECT id FROM tenants WHERE custom_domain = $1")
+            .bind(custom_domain)
+            .fetch_optional(&state.auth_service.pool)
+            .await?;
+
+    if let Some(owner_id) = owner {
+        if owner_id != tenant_id {
+            return Err(crate::error::AppError::Validation(
+                "Custom domain already used by another tenant".to_string(),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 pub async fn list_tenants(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -321,6 +351,35 @@ pub async fn get_managed_radius_runtime_status(
         advertised_host: status.advertised_host,
         require_message_authenticator: status.require_message_authenticator,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::http::domain_resolver::normalize_custom_domain_input;
+    use crate::models::tenant::{
+        resolve_custom_domain_lifecycle_transition, CUSTOM_DOMAIN_STATUS_ACTIVE,
+        CUSTOM_DOMAIN_STATUS_NONE,
+    };
+
+    #[test]
+    fn superadmin_custom_domain_input_can_be_cleared_with_blank_value() {
+        let normalized = normalize_custom_domain_input(Some("   ")).expect("blank should be valid");
+
+        assert!(normalized.is_none());
+    }
+
+    #[test]
+    fn superadmin_custom_domain_removal_resets_status_to_none() {
+        let next = resolve_custom_domain_lifecycle_transition(
+            Some("portal.customer.net"),
+            Some(CUSTOM_DOMAIN_STATUS_ACTIVE),
+            None,
+            None,
+            None,
+        );
+
+        assert_eq!(next.0, CUSTOM_DOMAIN_STATUS_NONE);
+    }
 }
 
 pub async fn list_managed_radius_servers(
@@ -1115,7 +1174,11 @@ pub async fn create_tenant(
 
     // 1. Create Tenant object
     let mut tenant = Tenant::new(payload.name, payload.slug);
-    tenant.custom_domain = payload.custom_domain;
+    tenant.custom_domain = normalize_custom_domain_input(payload.custom_domain.as_deref())
+        .map_err(crate::error::AppError::Validation)?;
+    if tenant.custom_domain.is_some() {
+        tenant.custom_domain_status = Some(CUSTOM_DOMAIN_STATUS_PENDING.to_string());
+    }
 
     // Check if slug exists
     let exists: bool = sqlx::query_scalar("SELECT count(*) > 0 FROM tenants WHERE slug = $1")
@@ -1128,6 +1191,8 @@ pub async fn create_tenant(
             "Slug already exists".to_string(),
         ));
     }
+
+    ensure_unique_custom_domain(&state, &tenant.id, tenant.custom_domain.as_deref()).await?;
 
     // 2. Hash owner password
     let password_hash = crate::services::AuthService::hash_password(&payload.owner_password)?;
@@ -1154,12 +1219,15 @@ pub async fn create_tenant(
 
     // Insert Tenant
     sqlx::query(
-        "INSERT INTO tenants (id, name, slug, custom_domain, logo_url, is_active, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+        "INSERT INTO tenants (id, name, slug, custom_domain, custom_domain_status, custom_domain_verified_at, custom_domain_failure_reason, logo_url, is_active, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
     )
     .bind(&tenant.id)
     .bind(&tenant.name)
     .bind(&tenant.slug)
     .bind(&tenant.custom_domain)
+    .bind(&tenant.custom_domain_status)
+    .bind(&tenant.custom_domain_verified_at)
+    .bind(&tenant.custom_domain_failure_reason)
     .bind(&tenant.logo_url)
     .bind(tenant.is_active)
     .bind(tenant.created_at)
@@ -1302,6 +1370,33 @@ pub async fn update_tenant(
         }
     }
 
+    let normalized_custom_domain = normalize_custom_domain_input(payload.custom_domain.as_deref())
+        .map_err(crate::error::AppError::Validation)?;
+
+    if before.custom_domain != normalized_custom_domain && normalized_custom_domain.is_some() {
+        let access = state
+            .plan_service
+            .check_feature_access(&id, "custom_domain")
+            .await
+            .map_err(|e| crate::error::AppError::Internal(e.to_string()))?;
+        if !access.has_access {
+            return Err(crate::error::AppError::Forbidden(
+                "This tenant plan does not support Custom Domains".to_string(),
+            ));
+        }
+    }
+
+    ensure_unique_custom_domain(&state, &id, normalized_custom_domain.as_deref()).await?;
+
+    let (next_domain_status, next_verified_at, next_failure_reason) =
+        resolve_custom_domain_lifecycle_transition(
+            before.custom_domain.as_deref(),
+            before.custom_domain_status.as_deref(),
+            before.custom_domain_verified_at,
+            before.custom_domain_failure_reason.as_deref(),
+            normalized_custom_domain.as_deref(),
+        );
+
     // Update
     let mut tx = state.auth_service.pool.begin().await?;
     state
@@ -1310,11 +1405,14 @@ pub async fn update_tenant(
         .await?;
 
     let tenant: Tenant = sqlx::query_as(
-        "UPDATE tenants SET name = $1, slug = $2, custom_domain = $3, is_active = $4, updated_at = $5 WHERE id = $6 RETURNING *"
+        "UPDATE tenants SET name = $1, slug = $2, custom_domain = $3, custom_domain_status = $4, custom_domain_verified_at = $5, custom_domain_failure_reason = $6, is_active = $7, updated_at = $8 WHERE id = $9 RETURNING *"
     )
     .bind(&payload.name)
     .bind(&payload.slug)
-    .bind(&payload.custom_domain)
+    .bind(&normalized_custom_domain)
+    .bind(&next_domain_status)
+    .bind(next_verified_at)
+    .bind(next_failure_reason)
     .bind(payload.is_active)
     .bind(chrono::Utc::now())
     .bind(&id)
@@ -1333,6 +1431,8 @@ pub async fn update_tenant(
         "slug_after": tenant.slug,
         "custom_domain_before": before.custom_domain,
         "custom_domain_after": tenant.custom_domain,
+        "custom_domain_status_before": before.custom_domain_status,
+        "custom_domain_status_after": tenant.custom_domain_status,
         "is_active_before": before.is_active,
         "is_active_after": tenant.is_active,
     })
