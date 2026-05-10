@@ -767,6 +767,11 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
 
       const raw = await response.text();
       if (!raw || !raw.trim()) return undefined as T;
+      if (!isJson && raw.includes('<!doctype html')) {
+        throw new Error(
+          `API route ${path} returned HTML instead of JSON. This usually means /api is not proxied to the backend yet.`,
+        );
+      }
       if (isJson) return JSON.parse(raw) as T;
 
       return raw as T;

@@ -6,6 +6,21 @@ import path from 'node:path';
 
 const host = process.env.TAURI_DEV_HOST;
 
+/**
+ * @param {string | undefined} rawApiUrl
+ */
+function resolveApiProxyTarget(rawApiUrl) {
+  const value = String(rawApiUrl || '').trim();
+  if (!value) return null;
+
+  try {
+    const parsed = new URL(value);
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
 // https://vite.dev/config/
 // @ts-ignore
 export default defineConfig(async ({ mode }) => {
@@ -31,6 +46,7 @@ export default defineConfig(async ({ mode }) => {
     .filter(Boolean);
 
   const explicitAllowedHosts = (env.VITE_ALLOWED_HOSTS || '').split(',').filter(Boolean);
+  const apiProxyTarget = resolveApiProxyTarget(env.VITE_API_URL);
 
   // Combine all sources
   const finalAllowedHosts = [
@@ -55,6 +71,15 @@ export default defineConfig(async ({ mode }) => {
       strictPort: true,
       host: host || false,
       allowedHosts: explicitAllowedHosts.includes('all') ? true : finalAllowedHosts,
+      proxy: apiProxyTarget
+        ? {
+            '/api': {
+              target: apiProxyTarget,
+              changeOrigin: true,
+              secure: false,
+            },
+          }
+        : undefined,
       hmr: host
         ? {
             protocol: 'ws',
