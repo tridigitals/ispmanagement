@@ -3,8 +3,8 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import CompactFilterToolbar from '$lib/components/superadmin/shared/CompactFilterToolbar.svelte';
   import Table from '$lib/components/ui/Table.svelte';
-  import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
   import { toast } from '$lib/stores/toast';
@@ -44,6 +44,7 @@
   let statusFilter = $state<'all' | 'active' | 'inactive'>('all');
   let viewMode = $state<'cards' | 'table'>('cards');
   let isMobile = $state(false);
+  let filtersOpen = $state(false);
 
   let stats = $derived({
     total: plans.length,
@@ -123,6 +124,11 @@
 
   function createPlan() {
     goto('/superadmin/plans/new');
+  }
+
+  function resetFilters() {
+    planSearch = '';
+    statusFilter = 'all';
   }
 
   function editPlan(plan: SuperadminPlan) {
@@ -369,62 +375,28 @@
       </div>
     {:else}
       <div class="toolbar-wrapper">
-        <TableToolbar
+        <CompactFilterToolbar
           bind:searchQuery={planSearch}
           placeholder={$t('superadmin.plans.search') || 'Search plans...'}
+          bind:filterPanelOpen={filtersOpen}
+          activeFilterCount={statusFilter === 'all' ? 0 : 1}
+          onReset={resetFilters}
+          {isMobile}
+          bind:viewMode
         >
-          {#snippet filters()}
-            <div class="filter-row">
-              <div class="status-filter">
-                <button
-                  type="button"
-                  class="filter-chip"
-                  class:active={statusFilter === 'all'}
-                  onclick={() => (statusFilter = 'all')}
-                >
-                  {$t('superadmin.plans.filters.all') || $t('common.all') || 'All'}
-                </button>
-                <button
-                  type="button"
-                  class="filter-chip"
-                  class:active={statusFilter === 'active'}
-                  onclick={() => (statusFilter = 'active')}
-                >
-                  {$t('superadmin.plans.filters.active') || $t('common.active') || 'Active'}
-                </button>
-                <button
-                  type="button"
-                  class="filter-chip"
-                  class:active={statusFilter === 'inactive'}
-                  onclick={() => (statusFilter = 'inactive')}
-                >
-                  {$t('superadmin.plans.filters.inactive') || $t('common.inactive') || 'Inactive'}
-                </button>
-              </div>
-
-              {#if !isMobile}
-                <button
-                  type="button"
-                  class="btn-icon view-btn"
-                  class:active={viewMode === 'cards'}
-                  title={$t('superadmin.plans.view.cards') || 'Cards view'}
-                  onclick={() => (viewMode = 'cards')}
-                >
-                  <Icon name="grid" size={18} />
-                </button>
-                <button
-                  type="button"
-                  class="btn-icon view-btn"
-                  class:active={viewMode === 'table'}
-                  title={$t('superadmin.plans.view.table') || 'Table view'}
-                  onclick={() => (viewMode = 'table')}
-                >
-                  <Icon name="list" size={18} />
-                </button>
-              {/if}
+          {#snippet advancedFilters()}
+            <div class="toolbar-field">
+              <label for="plan-status-filter">
+                {$t('superadmin.plans.filters.status') || 'Status'}
+              </label>
+              <select id="plan-status-filter" bind:value={statusFilter}>
+                <option value="all">{$t('superadmin.plans.filters.all') || $t('common.all') || 'All'}</option>
+                <option value="active">{$t('superadmin.plans.filters.active') || $t('common.active') || 'Active'}</option>
+                <option value="inactive">{$t('superadmin.plans.filters.inactive') || $t('common.inactive') || 'Inactive'}</option>
+              </select>
             </div>
           {/snippet}
-        </TableToolbar>
+        </CompactFilterToolbar>
       </div>
 
       {#if viewMode === 'cards' || isMobile}
@@ -798,64 +770,33 @@
     padding: 1rem 1.25rem 0.5rem 1.25rem;
   }
 
-  .status-filter {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 0.35rem;
+  .toolbar-field {
+    display: grid;
+    gap: 0.32rem;
+    max-width: 240px;
   }
 
-  :global([data-theme='light']) .status-filter {
-    background: rgba(0, 0, 0, 0.02);
-    border-color: rgba(0, 0, 0, 0.06);
-  }
-
-  .filter-chip {
-    border: none;
-    background: transparent;
+  .toolbar-field label {
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
     color: var(--text-secondary);
-    padding: 0.45rem 0.75rem;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 650;
-    font-size: 0.85rem;
-    transition: all 0.2s;
   }
 
-  .filter-chip:hover {
+  .toolbar-field select {
+    min-height: 40px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.05);
+    padding: 0 0.75rem;
+    outline: none;
   }
 
-  :global([data-theme='light']) .filter-chip:hover {
-    background: rgba(0, 0, 0, 0.04);
-  }
-
-  .filter-chip.active {
-    background: rgba(99, 102, 241, 0.18);
-    border: 1px solid rgba(99, 102, 241, 0.25);
-    color: var(--text-primary);
-  }
-
-  .filter-row {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    flex-wrap: wrap;
-  }
-
-  .view-btn {
-    width: 38px;
-    height: 38px;
-  }
-
-  .view-btn.active {
-    background: rgba(99, 102, 241, 0.12);
-    border-color: rgba(99, 102, 241, 0.35);
-    color: var(--text-primary);
+  .toolbar-field select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
   }
 
   .plans-grid {
@@ -1191,11 +1132,6 @@
 
     .plan-price {
       text-align: left;
-    }
-
-    .filter-row {
-      width: 100%;
-      justify-content: space-between;
     }
   }
 </style>

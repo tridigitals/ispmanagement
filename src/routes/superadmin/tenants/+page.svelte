@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
   import { fly } from 'svelte/transition';
   import Icon from '$lib/components/ui/Icon.svelte';
-  import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
+  import CompactFilterToolbar from '$lib/components/superadmin/shared/CompactFilterToolbar.svelte';
   import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
   import { toast } from '$lib/stores/toast';
   import { formatMoney } from '$lib/utils/money';
@@ -56,6 +56,7 @@
 
   let searchQuery = $state('');
   let statusFilter = $state<'all' | 'active' | 'inactive'>('all');
+  let filtersOpen = $state(false);
 
   let TenantTableComponent = $state<any>(null);
   let TenantFormModalComponent = $state<any>(null);
@@ -231,6 +232,11 @@
     } catch (e) {
       console.error('Reload error', e);
     }
+  }
+
+  function resetFilters() {
+    searchQuery = '';
+    statusFilter = 'all';
   }
 
   async function openCreateModal() {
@@ -554,58 +560,26 @@
     </div>
 
     <div class="toolbar-wrapper">
-      <TableToolbar
+      <CompactFilterToolbar
         bind:searchQuery
         placeholder={$t('superadmin.tenants.search') || 'Search tenants...'}
+        bind:filterPanelOpen={filtersOpen}
+        activeFilterCount={statusFilter === 'all' ? 0 : 1}
+        onReset={resetFilters}
+        {isMobile}
+        bind:viewMode
       >
-        {#snippet filters()}
-          <div class="status-filter">
-            <button
-              type="button"
-              class="filter-chip"
-              class:active={statusFilter === 'all'}
-              onclick={() => (statusFilter = 'all')}
-            >
-              {$t('superadmin.tenants.filters.all') || $t('common.all') || 'All'}
-            </button>
-            <button
-              type="button"
-              class="filter-chip"
-              class:active={statusFilter === 'active'}
-              onclick={() => (statusFilter = 'active')}
-            >
-              {$t('superadmin.tenants.filters.active') || $t('common.active') || 'Active'}
-            </button>
-            <button
-              type="button"
-              class="filter-chip"
-              class:active={statusFilter === 'inactive'}
-              onclick={() => (statusFilter = 'inactive')}
-            >
-              {$t('superadmin.tenants.filters.inactive') || $t('common.inactive') || 'Inactive'}
-            </button>
+        {#snippet advancedFilters()}
+          <div class="toolbar-field">
+            <label for="tenant-status-filter">
+              {$t('superadmin.tenants.filters.status') || 'Status'}
+            </label>
+            <select id="tenant-status-filter" bind:value={statusFilter}>
+              <option value="all">{$t('superadmin.tenants.filters.all') || $t('common.all') || 'All'}</option>
+              <option value="active">{$t('superadmin.tenants.filters.active') || $t('common.active') || 'Active'}</option>
+              <option value="inactive">{$t('superadmin.tenants.filters.inactive') || $t('common.inactive') || 'Inactive'}</option>
+            </select>
           </div>
-
-          {#if !isMobile}
-            <button
-              type="button"
-              class="btn-icon view-btn"
-              class:active={viewMode === 'table'}
-              title={$t('superadmin.tenants.view.table') || 'Table view'}
-              onclick={() => (viewMode = 'table')}
-            >
-              <Icon name="list" size={18} />
-            </button>
-            <button
-              type="button"
-              class="btn-icon view-btn"
-              class:active={viewMode === 'cards'}
-              title={$t('superadmin.tenants.view.cards') || 'Cards view'}
-              onclick={() => (viewMode = 'cards')}
-            >
-              <Icon name="grid" size={18} />
-            </button>
-          {/if}
         {/snippet}
         {#snippet actions()}
           <button class="btn btn-primary" onclick={openCreateModal}>
@@ -615,7 +589,7 @@
             </span>
           </button>
         {/snippet}
-      </TableToolbar>
+      </CompactFilterToolbar>
     </div>
 
     {#if error}
@@ -815,52 +789,33 @@
     padding: 1rem 1.25rem 0.25rem 1.25rem;
   }
 
-  .status-filter {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 0.35rem;
+  .toolbar-field {
+    display: grid;
+    gap: 0.32rem;
+    max-width: 240px;
   }
 
-  :global([data-theme='light']) .status-filter {
-    background: var(--bg-tertiary);
-    border-color: var(--border-color);
-  }
-
-  .filter-chip {
-    border: none;
-    background: transparent;
+  .toolbar-field label {
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
     color: var(--text-secondary);
-    padding: 0.45rem 0.75rem;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 650;
-    font-size: 0.85rem;
-    transition: all 0.2s;
   }
 
-  .filter-chip:hover {
+  .toolbar-field select {
+    min-height: 40px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
     color: var(--text-primary);
-    background: var(--bg-hover);
+    padding: 0 0.75rem;
+    outline: none;
   }
 
-  :global([data-theme='light']) .filter-chip:hover {
-    background: var(--bg-hover);
-  }
-
-  .filter-chip.active {
-    background: var(--color-primary-subtle);
-    border: 1px solid color-mix(in srgb, var(--color-primary) 25%, var(--border-color));
-    color: var(--text-primary);
-  }
-
-  :global(.btn-icon.view-btn.active) {
-    background: var(--color-primary-subtle);
-    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
-    color: var(--text-primary);
+  .toolbar-field select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
   }
 
   .error-state {
@@ -906,27 +861,6 @@
 
   .btn-secondary:hover {
     background: var(--bg-hover);
-  }
-
-  .btn-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
-    cursor: pointer;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-  }
-
-  :global([data-theme='light']) .btn-icon {
-    border-color: var(--border-color);
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
   }
 
   @media (max-width: 768px) {

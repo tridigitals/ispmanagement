@@ -2,8 +2,8 @@
   import { onMount } from 'svelte';
   import { api, type Invoice } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import CompactFilterToolbar from '$lib/components/superadmin/shared/CompactFilterToolbar.svelte';
   import Table from '$lib/components/ui/Table.svelte';
-  import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
   import { toast } from '$lib/stores/toast';
   import { appSettings } from '$lib/stores/settings';
   import { formatMoney } from '$lib/utils/money';
@@ -25,6 +25,7 @@
   let statusFilter = $state<InvoiceStatus>('all');
   let viewMode = $state<'cards' | 'table'>('cards');
   let isMobile = $state(false);
+  let filtersOpen = $state(false);
 
   const columns = $derived.by(() => [
     {
@@ -154,6 +155,11 @@
     return tenantNameById[tenantId] || { name: tenantId, slug: '' };
   }
 
+  function resetFilters() {
+    search = '';
+    statusFilter = 'all';
+  }
+
   async function checkStatus(id: string) {
     try {
       const status = await api.payment.checkStatus(id);
@@ -238,70 +244,29 @@
     {/if}
 
     <div class="toolbar-wrapper">
-      <TableToolbar
+      <CompactFilterToolbar
         bind:searchQuery={search}
         placeholder={$t('superadmin.invoices.list.search') || 'Search invoices...'}
+        bind:filterPanelOpen={filtersOpen}
+        activeFilterCount={statusFilter === 'all' ? 0 : 1}
+        onReset={resetFilters}
+        {isMobile}
+        bind:viewMode
       >
-        {#snippet filters()}
-          <div class="filter-row">
-            <div class="status-filter">
-              <button
-                type="button"
-                class="filter-chip"
-                class:active={statusFilter === 'all'}
-                onclick={() => (statusFilter = 'all')}
-              >
-                {$t('superadmin.invoices.list.filters.all') || $t('common.all') || 'All'}
-              </button>
-              <button
-                type="button"
-                class="filter-chip"
-                class:active={statusFilter === 'pending'}
-                onclick={() => (statusFilter = 'pending')}
-              >
-                {$t('superadmin.invoices.list.filters.pending') || 'Pending'}
-              </button>
-              <button
-                type="button"
-                class="filter-chip"
-                class:active={statusFilter === 'paid'}
-                onclick={() => (statusFilter = 'paid')}
-              >
-                {$t('superadmin.invoices.list.filters.paid') || 'Paid'}
-              </button>
-              <button
-                type="button"
-                class="filter-chip"
-                class:active={statusFilter === 'failed'}
-                onclick={() => (statusFilter = 'failed')}
-              >
-                {$t('superadmin.invoices.list.filters.failed') || 'Failed'}
-              </button>
-            </div>
-
-            {#if !isMobile}
-              <button
-                type="button"
-                class="btn-icon view-btn"
-                class:active={viewMode === 'cards'}
-                title={$t('superadmin.invoices.list.view.cards') || 'Cards view'}
-                onclick={() => (viewMode = 'cards')}
-              >
-                <Icon name="grid" size={18} />
-              </button>
-              <button
-                type="button"
-                class="btn-icon view-btn"
-                class:active={viewMode === 'table'}
-                title={$t('superadmin.invoices.list.view.table') || 'Table view'}
-                onclick={() => (viewMode = 'table')}
-              >
-                <Icon name="list" size={18} />
-              </button>
-            {/if}
+        {#snippet advancedFilters()}
+          <div class="toolbar-field">
+            <label for="invoice-status-filter">
+              {$t('superadmin.invoices.list.filters.status') || 'Status'}
+            </label>
+            <select id="invoice-status-filter" bind:value={statusFilter}>
+              <option value="all">{$t('superadmin.invoices.list.filters.all') || $t('common.all') || 'All'}</option>
+              <option value="pending">{$t('superadmin.invoices.list.filters.pending') || 'Pending'}</option>
+              <option value="paid">{$t('superadmin.invoices.list.filters.paid') || 'Paid'}</option>
+              <option value="failed">{$t('superadmin.invoices.list.filters.failed') || 'Failed'}</option>
+            </select>
           </div>
         {/snippet}
-      </TableToolbar>
+      </CompactFilterToolbar>
     </div>
 
     {#if loading}
@@ -533,55 +498,30 @@
   .toolbar-wrapper {
     padding: 1rem 1rem 0.5rem 1rem;
   }
-  .filter-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+  .toolbar-field {
+    display: grid;
+    gap: 0.32rem;
+    max-width: 240px;
   }
-  .status-filter {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-  .filter-chip {
-    padding: 0.45rem 0.9rem;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+  .toolbar-field label {
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
     color: var(--text-secondary);
-    font-weight: 700;
-    cursor: pointer;
-    transition: 0.2s;
   }
-  .filter-chip.active {
-    color: var(--text-primary);
-    border-color: rgba(99, 102, 241, 0.6);
-    background: rgba(99, 102, 241, 0.12);
-  }
-  .btn-icon {
-    width: 40px;
-    height: 40px;
+  .toolbar-field select {
+    min-height: 40px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--text-secondary);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: 0.2s;
-  }
-  .btn-icon:hover {
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
     color: var(--text-primary);
-    border-color: rgba(99, 102, 241, 0.4);
-    background: rgba(99, 102, 241, 0.08);
+    padding: 0 0.75rem;
+    outline: none;
   }
-  .btn-icon.view-btn.active {
-    color: var(--text-primary);
-    border-color: rgba(99, 102, 241, 0.65);
-    background: rgba(99, 102, 241, 0.14);
+  .toolbar-field select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
   }
 
   .loading-state {
@@ -808,12 +748,6 @@
     box-shadow:
       0 10px 28px rgba(0, 0, 0, 0.06),
       0 0 0 1px rgba(255, 255, 255, 0.8);
-  }
-  :global([data-theme='light']) .filter-chip,
-  :global([data-theme='light']) .btn-icon {
-    background: var(--bg-surface);
-    border-color: rgba(0, 0, 0, 0.08);
-    color: var(--text-secondary);
   }
   :global([data-theme='light']) .invoice-card {
     background: var(--bg-surface);
