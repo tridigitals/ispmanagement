@@ -13,6 +13,7 @@
     Tenant,
   } from '$lib/api/types';
   import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
+  import ManagedRadiusFilterToolbar from '$lib/components/superadmin/radius/ManagedRadiusFilterToolbar.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import { toast } from '$lib/stores/toast';
   import {
@@ -74,19 +75,23 @@
   let assignmentSearch = $state('');
   let assignmentTenantFilter = $state('all');
   let assignmentStatusFilter = $state<'all' | 'active' | 'inactive'>('all');
+  let assignmentFiltersOpen = $state(false);
 
   let mappingSearch = $state('');
   let mappingTenantFilter = $state('all');
   let mappingServerFilter = $state('all');
   let mappingStatusFilter = $state<'all' | 'active' | 'inactive'>('all');
+  let mappingFiltersOpen = $state(false);
 
   let userSearch = $state('');
   let tenantFilter = $state('all');
   let routerFilter = $state('all');
   let userStatusFilter = $state<'all' | 'provisioned' | 'not_provisioned'>('all');
+  let userFiltersOpen = $state(false);
   let sessionSearch = $state('');
   let sessionTenantFilter = $state('all');
   let sessionRouterFilter = $state('all');
+  let sessionFiltersOpen = $state(false);
 
   let showAssignmentModal = $state(false);
   let savingAssignment = $state(false);
@@ -216,6 +221,32 @@
   function resetMappingForm() {
     mappingForm = DEFAULT_MAPPING_FORM();
     editingMappingId = null;
+  }
+
+  function resetAssignmentFilters() {
+    assignmentSearch = '';
+    assignmentTenantFilter = 'all';
+    assignmentStatusFilter = 'all';
+  }
+
+  function resetMappingFilters() {
+    mappingSearch = '';
+    mappingTenantFilter = 'all';
+    mappingServerFilter = 'all';
+    mappingStatusFilter = 'all';
+  }
+
+  function resetUserFilters() {
+    userSearch = '';
+    tenantFilter = 'all';
+    routerFilter = 'all';
+    userStatusFilter = 'all';
+  }
+
+  function resetSessionFilters() {
+    sessionSearch = '';
+    sessionTenantFilter = 'all';
+    sessionRouterFilter = 'all';
   }
 
   function openCreateAssignmentModal() {
@@ -503,6 +534,72 @@
       .map((server) => ({ id: server.id, name: server.name })),
   );
 
+  const assignmentPrimaryFilterOptions = $derived.by(() => [
+    {
+      value: 'all',
+      label: $t('superadmin.radius.filters.all_tenants') || 'All tenants',
+    },
+    ...mappingTenantOptions.map((tenant) => ({
+      value: tenant.id,
+      label: tenant.name,
+    })),
+  ]);
+
+  const mappingPrimaryFilterOptions = $derived.by(() => [
+    {
+      value: 'all',
+      label: $t('superadmin.radius.filters.all_tenants') || 'All tenants',
+    },
+    ...mappingTenantOptions.map((tenant) => ({
+      value: tenant.id,
+      label: tenant.name,
+    })),
+  ]);
+
+  const userPrimaryFilterOptions = $derived.by(() => [
+    {
+      value: 'all',
+      label: $t('superadmin.radius.filters.all_tenants') || 'All tenants',
+    },
+    ...tenantOptions.map((tenantName) => ({
+      value: tenantName,
+      label: tenantName,
+    })),
+  ]);
+
+  const sessionPrimaryFilterOptions = $derived.by(() => [
+    {
+      value: 'all',
+      label: $t('superadmin.radius.filters.all_tenants') || 'All tenants',
+    },
+    ...tenantOptions.map((tenantName) => ({
+      value: tenantName,
+      label: tenantName,
+    })),
+  ]);
+
+  const assignmentAdvancedFilterCount = $derived.by(() =>
+    assignmentStatusFilter === 'all' ? 0 : 1,
+  );
+
+  const mappingAdvancedFilterCount = $derived.by(() => {
+    let count = 0;
+    if (mappingServerFilter !== 'all') count += 1;
+    if (mappingStatusFilter !== 'all') count += 1;
+    return count;
+  });
+
+  const userAdvancedFilterCount = $derived.by(() => {
+    let count = 0;
+    if (routerFilter !== 'all') count += 1;
+    if (userStatusFilter !== 'all') count += 1;
+    return count;
+  });
+
+  const sessionAdvancedFilterCount = $derived.by(() =>
+    sessionRouterFilter === 'all' ? 0 : 1,
+  );
+
   const filteredAssignments = $derived.by(() =>
     assignments.filter((assignment) => {
       const q = normalized(assignmentSearch);
@@ -723,26 +820,39 @@
       </div>
 
       {#if activeTab === 'assignments'}
-        <div class="panel-head">
-          <div>
-            <h2>{$t('superadmin.radius.sections.assignments') || 'Tenant Assignments'}</h2>
-            <p>{filteredAssignments.length} / {assignments.length}</p>
-          </div>
-          <div class="filters filters-wide">
-            <input bind:value={assignmentSearch} placeholder={$t('superadmin.radius.filters.search_assignments') || 'Search assignments...'} />
-            <select bind:value={assignmentTenantFilter}>
-              <option value="all">{$t('superadmin.radius.filters.all_tenants') || 'All tenants'}</option>
-              {#each mappingTenantOptions as tenant}
-                <option value={tenant.id}>{tenant.name}</option>
-              {/each}
-            </select>
-            <select bind:value={assignmentStatusFilter}>
-              <option value="all">{$t('superadmin.radius.filters.all_statuses') || 'All statuses'}</option>
-              <option value="active">{$t('superadmin.radius.filters.active') || 'Active'}</option>
-              <option value="inactive">{$t('superadmin.radius.filters.inactive') || 'Inactive'}</option>
-            </select>
-          </div>
-        </div>
+        <ManagedRadiusFilterToolbar
+          title={$t('superadmin.radius.sections.assignments') || 'Tenant Assignments'}
+          countLabel={`${filteredAssignments.length} / ${assignments.length}`}
+          bind:searchQuery={assignmentSearch}
+          searchPlaceholder={$t('superadmin.radius.filters.search_assignments') || 'Search assignments...'}
+          bind:primaryFilterValue={assignmentTenantFilter}
+          primaryFilterOptions={assignmentPrimaryFilterOptions}
+          primaryFilterAriaLabel={$t('superadmin.radius.filters.all_tenants') || 'All tenants'}
+          bind:filterPanelOpen={assignmentFiltersOpen}
+          activeFilterCount={assignmentAdvancedFilterCount}
+          onReset={resetAssignmentFilters}
+        >
+          {#snippet advancedFilters()}
+            <div class="advanced-grid">
+              <div class="advanced-field">
+                <label for="assignment-status-filter"
+                  >{$t('superadmin.radius.filters.all_statuses') || 'All statuses'}</label
+                >
+                <select id="assignment-status-filter" bind:value={assignmentStatusFilter}>
+                  <option value="all">
+                    {$t('superadmin.radius.filters.all_statuses') || 'All statuses'}
+                  </option>
+                  <option value="active">
+                    {$t('superadmin.radius.filters.active') || 'Active'}
+                  </option>
+                  <option value="inactive">
+                    {$t('superadmin.radius.filters.inactive') || 'Inactive'}
+                  </option>
+                </select>
+              </div>
+            </div>
+          {/snippet}
+        </ManagedRadiusFilterToolbar>
 
         {#if filteredAssignments.length === 0}
           <div class="empty-state">
@@ -785,32 +895,53 @@
           </div>
         {/if}
       {:else if activeTab === 'mappings'}
-        <div class="panel-head">
-          <div>
-            <h2>{$t('superadmin.radius.sections.mappings') || 'NAS Mappings'}</h2>
-            <p>{filteredMappings.length} / {mappings.length}</p>
-          </div>
-          <div class="filters filters-wide">
-            <input bind:value={mappingSearch} placeholder={$t('superadmin.radius.filters.search_mappings') || 'Search mappings...'} />
-            <select bind:value={mappingTenantFilter}>
-              <option value="all">{$t('superadmin.radius.filters.all_tenants') || 'All tenants'}</option>
-              {#each mappingTenantOptions as tenant}
-                <option value={tenant.id}>{tenant.name}</option>
-              {/each}
-            </select>
-            <select bind:value={mappingServerFilter}>
-              <option value="all">{$t('superadmin.radius.filters.all_servers') || 'All servers'}</option>
-              {#each mappingServerOptions as server}
-                <option value={server.id}>{server.name}</option>
-              {/each}
-            </select>
-            <select bind:value={mappingStatusFilter}>
-              <option value="all">{$t('superadmin.radius.filters.all_statuses') || 'All statuses'}</option>
-              <option value="active">{$t('superadmin.radius.filters.active') || 'Active'}</option>
-              <option value="inactive">{$t('superadmin.radius.filters.inactive') || 'Inactive'}</option>
-            </select>
-          </div>
-        </div>
+        <ManagedRadiusFilterToolbar
+          title={$t('superadmin.radius.sections.mappings') || 'NAS Mappings'}
+          countLabel={`${filteredMappings.length} / ${mappings.length}`}
+          bind:searchQuery={mappingSearch}
+          searchPlaceholder={$t('superadmin.radius.filters.search_mappings') || 'Search mappings...'}
+          bind:primaryFilterValue={mappingTenantFilter}
+          primaryFilterOptions={mappingPrimaryFilterOptions}
+          primaryFilterAriaLabel={$t('superadmin.radius.filters.all_tenants') || 'All tenants'}
+          bind:filterPanelOpen={mappingFiltersOpen}
+          activeFilterCount={mappingAdvancedFilterCount}
+          onReset={resetMappingFilters}
+        >
+          {#snippet advancedFilters()}
+            <div class="advanced-grid advanced-grid-wide">
+              <div class="advanced-field">
+                <label for="mapping-server-filter"
+                  >{$t('superadmin.radius.filters.all_servers') || 'All servers'}</label
+                >
+                <select id="mapping-server-filter" bind:value={mappingServerFilter}>
+                  <option value="all">
+                    {$t('superadmin.radius.filters.all_servers') || 'All servers'}
+                  </option>
+                  {#each mappingServerOptions as server}
+                    <option value={server.id}>{server.name}</option>
+                  {/each}
+                </select>
+              </div>
+
+              <div class="advanced-field">
+                <label for="mapping-status-filter"
+                  >{$t('superadmin.radius.filters.all_statuses') || 'All statuses'}</label
+                >
+                <select id="mapping-status-filter" bind:value={mappingStatusFilter}>
+                  <option value="all">
+                    {$t('superadmin.radius.filters.all_statuses') || 'All statuses'}
+                  </option>
+                  <option value="active">
+                    {$t('superadmin.radius.filters.active') || 'Active'}
+                  </option>
+                  <option value="inactive">
+                    {$t('superadmin.radius.filters.inactive') || 'Inactive'}
+                  </option>
+                </select>
+              </div>
+            </div>
+          {/snippet}
+        </ManagedRadiusFilterToolbar>
 
         {#if filteredMappings.length === 0}
           <div class="empty-state">
@@ -869,33 +1000,54 @@
             </Table>
           </div>
         {/if}
-      {:else if activeTab === 'users'}
-        <div class="panel-head">
-          <div>
-            <h2>{$t('superadmin.radius.sections.users') || 'Users'}</h2>
-            <p>{filteredUsers.length} / {users.length}</p>
-          </div>
-          <div class="filters filters-wide">
-            <input bind:value={userSearch} placeholder={$t('superadmin.radius.filters.search_users') || 'Search users...'} />
-            <select bind:value={tenantFilter}>
-              <option value="all">{$t('superadmin.radius.filters.all_tenants') || 'All tenants'}</option>
-              {#each tenantOptions as tenantName}
-                <option value={tenantName}>{tenantName}</option>
-              {/each}
-            </select>
-            <select bind:value={routerFilter}>
-              <option value="all">{$t('superadmin.radius.filters.all_routers') || 'All routers'}</option>
-              {#each routerOptions as routerName}
-                <option value={routerName}>{routerName}</option>
-              {/each}
-            </select>
-            <select bind:value={userStatusFilter}>
-              <option value="all">{$t('superadmin.radius.filters.all_users') || 'All users'}</option>
-              <option value="provisioned">{$t('superadmin.radius.filters.provisioned') || 'Provisioned'}</option>
-              <option value="not_provisioned">{$t('superadmin.radius.filters.not_provisioned') || 'Not provisioned'}</option>
-            </select>
-          </div>
-        </div>
+        {:else if activeTab === 'users'}
+        <ManagedRadiusFilterToolbar
+          title={$t('superadmin.radius.sections.users') || 'Users'}
+          countLabel={`${filteredUsers.length} / ${users.length}`}
+          bind:searchQuery={userSearch}
+          searchPlaceholder={$t('superadmin.radius.filters.search_users') || 'Search users...'}
+          bind:primaryFilterValue={tenantFilter}
+          primaryFilterOptions={userPrimaryFilterOptions}
+          primaryFilterAriaLabel={$t('superadmin.radius.filters.all_tenants') || 'All tenants'}
+          bind:filterPanelOpen={userFiltersOpen}
+          activeFilterCount={userAdvancedFilterCount}
+          onReset={resetUserFilters}
+        >
+          {#snippet advancedFilters()}
+            <div class="advanced-grid advanced-grid-wide">
+              <div class="advanced-field">
+                <label for="user-router-filter"
+                  >{$t('superadmin.radius.filters.all_routers') || 'All routers'}</label
+                >
+                <select id="user-router-filter" bind:value={routerFilter}>
+                  <option value="all">
+                    {$t('superadmin.radius.filters.all_routers') || 'All routers'}
+                  </option>
+                  {#each routerOptions as routerName}
+                    <option value={routerName}>{routerName}</option>
+                  {/each}
+                </select>
+              </div>
+
+              <div class="advanced-field">
+                <label for="user-status-filter"
+                  >{$t('superadmin.radius.filters.all_users') || 'All users'}</label
+                >
+                <select id="user-status-filter" bind:value={userStatusFilter}>
+                  <option value="all">
+                    {$t('superadmin.radius.filters.all_users') || 'All users'}
+                  </option>
+                  <option value="provisioned">
+                    {$t('superadmin.radius.filters.provisioned') || 'Provisioned'}
+                  </option>
+                  <option value="not_provisioned">
+                    {$t('superadmin.radius.filters.not_provisioned') || 'Not provisioned'}
+                  </option>
+                </select>
+              </div>
+            </div>
+          {/snippet}
+        </ManagedRadiusFilterToolbar>
 
         {#if filteredUsers.length === 0}
           <div class="empty-state">
@@ -938,27 +1090,36 @@
           </div>
         {/if}
       {:else}
-        <div class="panel-head">
-          <div>
-            <h2>{$t('superadmin.radius.sections.sessions') || 'Sessions'}</h2>
-            <p>{filteredSessions.length} / {sessions.length}</p>
-          </div>
-          <div class="filters filters-wide">
-            <input bind:value={sessionSearch} placeholder={$t('superadmin.radius.filters.search_sessions') || 'Search sessions...'} />
-            <select bind:value={sessionTenantFilter}>
-              <option value="all">{$t('superadmin.radius.filters.all_tenants') || 'All tenants'}</option>
-              {#each tenantOptions as tenantName}
-                <option value={tenantName}>{tenantName}</option>
-              {/each}
-            </select>
-            <select bind:value={sessionRouterFilter}>
-              <option value="all">{$t('superadmin.radius.filters.all_routers') || 'All routers'}</option>
-              {#each routerOptions as routerName}
-                <option value={routerName}>{routerName}</option>
-              {/each}
-            </select>
-          </div>
-        </div>
+        <ManagedRadiusFilterToolbar
+          title={$t('superadmin.radius.sections.sessions') || 'Sessions'}
+          countLabel={`${filteredSessions.length} / ${sessions.length}`}
+          bind:searchQuery={sessionSearch}
+          searchPlaceholder={$t('superadmin.radius.filters.search_sessions') || 'Search sessions...'}
+          bind:primaryFilterValue={sessionTenantFilter}
+          primaryFilterOptions={sessionPrimaryFilterOptions}
+          primaryFilterAriaLabel={$t('superadmin.radius.filters.all_tenants') || 'All tenants'}
+          bind:filterPanelOpen={sessionFiltersOpen}
+          activeFilterCount={sessionAdvancedFilterCount}
+          onReset={resetSessionFilters}
+        >
+          {#snippet advancedFilters()}
+            <div class="advanced-grid">
+              <div class="advanced-field">
+                <label for="session-router-filter"
+                  >{$t('superadmin.radius.filters.all_routers') || 'All routers'}</label
+                >
+                <select id="session-router-filter" bind:value={sessionRouterFilter}>
+                  <option value="all">
+                    {$t('superadmin.radius.filters.all_routers') || 'All routers'}
+                  </option>
+                  {#each routerOptions as routerName}
+                    <option value={routerName}>{routerName}</option>
+                  {/each}
+                </select>
+              </div>
+            </div>
+          {/snippet}
+        </ManagedRadiusFilterToolbar>
 
         {#if filteredSessions.length === 0}
           <div class="empty-state">
@@ -1101,9 +1262,7 @@
     justify-content: flex-end;
   }
 
-  .refresh-btn,
-  .filters input,
-  .filters select {
+  .refresh-btn {
     border-radius: 12px;
     border: 1px solid var(--border-color);
     background: var(--bg-primary);
@@ -1133,14 +1292,6 @@
 
   .state-card.error {
     color: var(--color-danger, #dc2626);
-  }
-
-  .panel-head {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: flex-start;
-    margin-bottom: 1rem;
   }
 
   .tabs {
@@ -1180,29 +1331,42 @@
     border-color: color-mix(in srgb, var(--color-primary, #2563eb) 45%, var(--border-color));
   }
 
-  .panel-head h2 {
-    margin: 0 0 0.25rem;
-  }
-
-  .panel-head p {
-    margin: 0;
-    color: var(--text-secondary);
-  }
-
-  .filters {
-    display: flex;
-    flex-wrap: wrap;
+  .advanced-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 280px);
     gap: 0.75rem;
-    justify-content: flex-end;
   }
 
-  .filters input,
-  .filters select {
+  .advanced-grid-wide {
+    grid-template-columns: repeat(2, minmax(0, 240px));
+  }
+
+  .advanced-field {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .advanced-field label {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .advanced-field select {
+    min-height: 40px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
     padding: 0 0.85rem;
+    outline: none;
   }
 
-  .filters-wide input {
-    min-width: 220px;
+  .advanced-field select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
   }
 
   .table-wrap {
@@ -1288,23 +1452,23 @@
   }
 
   @media (max-width: 900px) {
-    .hero,
-    .panel-head {
+    .hero {
       flex-direction: column;
     }
 
-    .filters,
-    .filters-wide,
     .hero-actions {
       width: 100%;
       justify-content: stretch;
     }
 
-    .filters input,
-    .filters select,
     .refresh-btn,
     .hero-actions .btn {
       width: 100%;
+    }
+
+    .advanced-grid,
+    .advanced-grid-wide {
+      grid-template-columns: 1fr;
     }
   }
 </style>
