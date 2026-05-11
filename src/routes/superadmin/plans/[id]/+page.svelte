@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import ResponsiveTabs from '$lib/components/ui/ResponsiveTabs.svelte';
   import { toast } from '$lib/stores/toast';
   import { appSettings } from '$lib/stores/settings';
   import { formatMoney } from '$lib/utils/money';
@@ -15,6 +16,7 @@
   let isNew = $state(true);
   let loading = $state(true);
   let saving = $state(false);
+  let isMobile = $state(false);
 
   // Data Models
   let planData = $state<any>({
@@ -32,39 +34,53 @@
   let planFeatures = $state<Record<string, string>>({}); // feature_id -> value
 
   let activeTab = $state('general');
+  const planEditorTabs = $derived.by(() => [
+    { id: 'general', label: $t('superadmin.plans.editor.tabs.general') || 'General' },
+    { id: 'features', label: $t('superadmin.plans.editor.tabs.features') || 'Features & Limits' },
+  ]);
 
   $effect(() => {
     id = $page.params.id as string;
     isNew = id === 'new';
   });
 
-  onMount(async () => {
-    try {
-      // Load all available features definition
-      features = await api.plans.listFeatures();
+  onMount(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const updateViewport = () => {
+      isMobile = mq.matches;
+    };
+    updateViewport();
+    mq.addEventListener('change', updateViewport);
 
-      if (!isNew) {
-        const plan = await api.plans.get(id);
-        planData = plan;
+    void (async () => {
+      try {
+        features = await api.plans.listFeatures();
 
-        // Map plan features to simple key-value
-        if (plan.features) {
-          plan.features.forEach((f: any) => {
-            planFeatures[f.feature_id] = f.value;
+        if (!isNew) {
+          const plan = await api.plans.get(id);
+          planData = plan;
+
+          if (plan.features) {
+            plan.features.forEach((f: any) => {
+              planFeatures[f.feature_id] = f.value;
+            });
+          }
+        } else {
+          features.forEach((f) => {
+            planFeatures[f.id] = f.default_value;
           });
         }
-      } else {
-        // Set defaults for new plan
-        features.forEach((f) => {
-          planFeatures[f.id] = f.default_value;
-        });
+      } catch (e: any) {
+        toast.error(e.message || 'Failed to load plan data');
+        goto('/superadmin/plans');
+      } finally {
+        loading = false;
       }
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to load plan data');
-      goto('/superadmin/plans');
-    } finally {
-      loading = false;
-    }
+    })();
+
+    return () => {
+      mq.removeEventListener('change', updateViewport);
+    };
   });
 
   function upsertPlanCache(savedPlan: any) {
@@ -191,30 +207,13 @@
   {#if loading}
     <div class="loading">{$t('common.loading') || 'Loading...'}</div>
   {:else}
-    <div
-      class="tabs"
-      role="tablist"
-      aria-label={$t('superadmin.plans.editor.aria.tabs') || 'Plan editor tabs'}
-    >
-      <button
-        class="tab {activeTab === 'general' ? 'active' : ''}"
-        onclick={() => (activeTab = 'general')}
-        type="button"
-        role="tab"
-        aria-selected={activeTab === 'general'}
-      >
-        {$t('superadmin.plans.editor.tabs.general') || 'General'}
-      </button>
-      <button
-        class="tab {activeTab === 'features' ? 'active' : ''}"
-        onclick={() => (activeTab = 'features')}
-        type="button"
-        role="tab"
-        aria-selected={activeTab === 'features'}
-      >
-        {$t('superadmin.plans.editor.tabs.features') || 'Features & Limits'}
-      </button>
-    </div>
+    <ResponsiveTabs
+      items={planEditorTabs}
+      bind:activeId={activeTab}
+      {isMobile}
+      priorityCount={2}
+      ariaLabel={$t('superadmin.plans.editor.aria.tabs') || 'Plan editor tabs'}
+    />
 
     <div class="glass-card" role="tabpanel">
       {#if activeTab === 'general'}
@@ -398,37 +397,6 @@
   .actions {
     display: flex;
     gap: 1rem;
-  }
-
-  .tabs {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .tabs::-webkit-scrollbar {
-    height: 0;
-  }
-
-  .tab {
-    background: none;
-    border: none;
-    padding: 0.8rem 1rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-
-  .tab.active {
-    color: var(--color-primary);
-    border-bottom-color: var(--color-primary);
   }
 
   .glass-card {

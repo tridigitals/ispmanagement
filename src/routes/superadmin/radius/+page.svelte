@@ -14,6 +14,8 @@
   } from '$lib/api/types';
   import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
   import ManagedRadiusFilterToolbar from '$lib/components/superadmin/radius/ManagedRadiusFilterToolbar.svelte';
+  import MobileOverflowActions from '$lib/components/ui/MobileOverflowActions.svelte';
+  import ResponsiveTabs from '$lib/components/ui/ResponsiveTabs.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import { toast } from '$lib/stores/toast';
   import {
@@ -71,6 +73,7 @@
   let refreshing = $state(false);
   let error = $state('');
   let activeTab = $state<ManagedRadiusTabId>('assignments');
+  let isMobile = $state(false);
 
   let assignmentSearch = $state('');
   let assignmentTenantFilter = $state('all');
@@ -116,7 +119,16 @@
   let MappingSecretDialogComponent = $state<any>(null);
 
   onMount(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const updateViewport = () => {
+      isMobile = mq.matches;
+    };
+    updateViewport();
+    mq.addEventListener('change', updateViewport);
     void loadData();
+    return () => {
+      mq.removeEventListener('change', updateViewport);
+    };
   });
 
   async function ensureSuperadminRadiusDialogsLoaded() {
@@ -727,11 +739,60 @@
   ]);
 
   const tabs = $derived.by(() => buildManagedRadiusTabs(stats, activeTab));
+  const radiusActionItems = $derived.by(() => [
+    {
+      id: 'new-assignment',
+      label: $t('superadmin.radius.actions.new_assignment') || 'New assignment',
+      icon: 'layers',
+    },
+    {
+      id: 'new-mapping',
+      label: $t('superadmin.radius.actions.new_mapping') || 'New mapping',
+      icon: 'network',
+      tone: 'primary' as const,
+    },
+    {
+      id: 'refresh',
+      label: refreshing
+        ? $t('common.loading') || 'Loading...'
+        : $t('superadmin.radius.refresh') || 'Refresh',
+      icon: 'refresh-cw',
+      disabled: refreshing,
+    },
+  ]);
+  const radiusTabItems = $derived.by(() =>
+    tabs.map((tab) => ({
+      id: tab.id,
+      label:
+        tab.id === 'assignments'
+          ? $t('superadmin.radius.sections.assignments') || 'Tenant Assignments'
+          : tab.id === 'mappings'
+            ? $t('superadmin.radius.sections.mappings') || 'NAS Mappings'
+            : tab.id === 'sessions'
+              ? $t('superadmin.radius.sections.sessions') || 'Sessions'
+              : $t('superadmin.radius.sections.users') || 'Users',
+      count: tab.count,
+    })),
+  );
 
   $effect(() => {
     if (!showAssignmentModal && !showMappingModal && !showSecretDialog) return;
     void ensureSuperadminRadiusDialogsLoaded();
   });
+
+  function handleRadiusActionSelect(actionId: string) {
+    if (actionId === 'new-assignment') {
+      openCreateAssignmentModal();
+      return;
+    }
+    if (actionId === 'new-mapping') {
+      openCreateMappingModal();
+      return;
+    }
+    if (actionId === 'refresh') {
+      void loadData({ silent: true });
+    }
+  }
 </script>
 
 <div class="page-shell">
@@ -764,19 +825,12 @@
     </div>
 
     <div class="hero-actions">
-      <button class="btn btn-secondary" type="button" onclick={openCreateAssignmentModal}>
-        {$t('superadmin.radius.actions.new_assignment') || 'New assignment'}
-      </button>
-      <button class="btn btn-primary" type="button" onclick={openCreateMappingModal}>
-        {$t('superadmin.radius.actions.new_mapping') || 'New mapping'}
-      </button>
-      <button class="refresh-btn" onclick={() => loadData({ silent: true })} disabled={refreshing}>
-        {#if refreshing}
-          {$t('common.loading') || 'Loading...'}
-        {:else}
-          {$t('superadmin.radius.refresh') || 'Refresh'}
-        {/if}
-      </button>
+      <MobileOverflowActions
+        items={radiusActionItems}
+        primaryIds={['new-mapping', 'refresh']}
+        {isMobile}
+        on:select={(event) => handleRadiusActionSelect(event.detail)}
+      />
     </div>
   </div>
 
@@ -794,30 +848,13 @@
     </div>
 
     <section class="panel">
-      <div class="tabs" role="tablist" aria-label={$t('superadmin.radius.title') || 'Managed RADIUS tabs'}>
-        {#each tabs as tab}
-          <button
-            type="button"
-            role="tab"
-            class:active={tab.active}
-            aria-selected={tab.active}
-            onclick={() => (activeTab = tab.id)}
-          >
-            <span>
-              {#if tab.id === 'assignments'}
-                {$t('superadmin.radius.sections.assignments') || 'Tenant Assignments'}
-              {:else if tab.id === 'mappings'}
-                {$t('superadmin.radius.sections.mappings') || 'NAS Mappings'}
-              {:else if tab.id === 'sessions'}
-                {$t('superadmin.radius.sections.sessions') || 'Sessions'}
-              {:else}
-                {$t('superadmin.radius.sections.users') || 'Users'}
-              {/if}
-            </span>
-            <strong>{tab.count}</strong>
-          </button>
-        {/each}
-      </div>
+      <ResponsiveTabs
+        items={radiusTabItems}
+        bind:activeId={activeTab}
+        {isMobile}
+        priorityCount={3}
+        ariaLabel={$t('superadmin.radius.title') || 'Managed RADIUS tabs'}
+      />
 
       {#if activeTab === 'assignments'}
         <ManagedRadiusFilterToolbar
@@ -861,7 +898,7 @@
           </div>
         {:else}
           <div class="table-wrap">
-            <Table columns={assignmentColumns} data={filteredAssignments} keyField="id" pagination={true} pageSize={10} mobileView="scroll">
+            <Table columns={assignmentColumns} data={filteredAssignments} keyField="id" pagination={true} pageSize={10} mobileView="card">
               {#snippet cell({ item, key })}
                 {#if key === 'tenant'}
                   {item.tenant_name}
@@ -950,7 +987,7 @@
           </div>
         {:else}
           <div class="table-wrap">
-            <Table columns={mappingColumns} data={filteredMappings} keyField="id" pagination={true} pageSize={10} mobileView="scroll">
+            <Table columns={mappingColumns} data={filteredMappings} keyField="id" pagination={true} pageSize={10} mobileView="card">
               {#snippet cell({ item, key })}
                 {#if key === 'tenant'}
                   {item.tenant_name}
@@ -1056,7 +1093,7 @@
           </div>
         {:else}
           <div class="table-wrap">
-            <Table columns={userColumns} data={filteredUsers} keyField="id" pagination={true} pageSize={10} mobileView="scroll">
+            <Table columns={userColumns} data={filteredUsers} keyField="id" pagination={true} pageSize={10} mobileView="card">
               {#snippet cell({ item, key })}
                 {#if key === 'tenant'}
                   {item.tenant_name}
@@ -1128,7 +1165,7 @@
           </div>
         {:else}
           <div class="table-wrap">
-            <Table columns={sessionColumns} data={filteredSessions} keyField="id" pagination={true} pageSize={10} mobileView="scroll">
+            <Table columns={sessionColumns} data={filteredSessions} keyField="id" pagination={true} pageSize={10} mobileView="card">
               {#snippet cell({ item, key })}
                 {#if key === 'tenant'}
                   {item.tenant_name}
@@ -1262,19 +1299,6 @@
     justify-content: flex-end;
   }
 
-  .refresh-btn {
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    min-height: 42px;
-  }
-
-  .refresh-btn {
-    padding: 0 1rem;
-    cursor: pointer;
-  }
-
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -1292,43 +1316,6 @@
 
   .state-card.error {
     color: var(--color-danger, #dc2626);
-  }
-
-  .tabs {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    margin-bottom: 1rem;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 0.75rem;
-  }
-
-  .tabs button {
-    border: 1px solid var(--border-color);
-    background: var(--bg-primary);
-    color: var(--text-secondary);
-    border-radius: 999px;
-    min-height: 42px;
-    padding: 0.6rem 1rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    cursor: pointer;
-    transition:
-      background 0.2s ease,
-      color 0.2s ease,
-      border-color 0.2s ease;
-  }
-
-  .tabs button strong {
-    color: var(--text-primary);
-    font-size: 0.85rem;
-  }
-
-  .tabs button.active {
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--bg-primary));
-    color: var(--text-primary);
-    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 45%, var(--border-color));
   }
 
   .advanced-grid {
@@ -1456,19 +1443,40 @@
       flex-direction: column;
     }
 
+    .page-shell {
+      padding: 16px;
+      gap: 1rem;
+    }
+
     .hero-actions {
       width: 100%;
       justify-content: stretch;
     }
 
-    .refresh-btn,
-    .hero-actions .btn {
-      width: 100%;
-    }
-
     .advanced-grid,
     .advanced-grid-wide {
       grid-template-columns: 1fr;
+    }
+
+    .row-actions {
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 0.45rem 0.75rem;
+    }
+
+    .error-text {
+      max-width: none;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+
+    code {
+      max-width: 100%;
+      white-space: normal;
     }
   }
 </style>

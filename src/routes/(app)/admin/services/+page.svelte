@@ -922,7 +922,7 @@
   }
 
   .filters-wrap {
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
 
   .btn {
@@ -961,7 +961,7 @@
     padding: 10px 12px;
     border-radius: 12px;
     border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface), transparent 10%);
+    background: var(--bg-tertiary);
   }
 
   .search-wrap input {
@@ -1144,6 +1144,16 @@
   @media (max-width: 768px) {
     .page-content {
       padding: 16px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .page-content {
+      padding: 16px;
+    }
+
+    .table-top {
+      justify-content: flex-start;
     }
   }
 </style>

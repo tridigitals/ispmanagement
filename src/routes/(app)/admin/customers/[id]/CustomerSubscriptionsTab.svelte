@@ -34,7 +34,7 @@
   <div class="section-head">
     <div>
       <h3>{$t('admin.customers.subscriptions.title') || 'Layanan'}</h3>
-      <p class="subtitle">Daftar layanan pelanggan.</p>
+      <p class="subtitle">Layanan pelanggan.</p>
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingSubscriptions}>
@@ -282,7 +282,7 @@
 
   .summary-strip {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.75rem;
     margin-bottom: 1rem;
   }
@@ -382,7 +382,7 @@
   .policy-card {
     display: grid;
     gap: 0.55rem;
-    min-width: 240px;
+    min-width: 0;
     padding: 0.8rem 0.85rem;
     border-radius: 12px;
     border: 1px solid var(--border-color);
@@ -487,6 +487,7 @@
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
+    flex-wrap: wrap;
   }
 
   .btn,
@@ -503,6 +504,7 @@
 
   .btn {
     border-radius: 12px;
+    min-height: 42px;
     padding: 0.55rem 0.9rem;
     display: inline-flex;
     align-items: center;
@@ -526,7 +528,9 @@
 
   .btn-icon {
     border-radius: 10px;
-    padding: 0.4rem 0.45rem;
+    width: 38px;
+    height: 38px;
+    padding: 0;
   }
 
   .btn-icon:disabled,
@@ -552,7 +556,24 @@
       justify-content: stretch;
     }
 
-    .summary-strip {
+    .header-actions .btn {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    .summary-strip,
+    .observability-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .row-actions {
+      justify-content: flex-start;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .summary-strip,
+    .observability-grid {
       grid-template-columns: 1fr;
     }
   }

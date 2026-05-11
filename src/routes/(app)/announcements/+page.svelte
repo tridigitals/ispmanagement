@@ -4,6 +4,7 @@
   import { t } from 'svelte-i18n';
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import ResponsiveTabs from '$lib/components/ui/ResponsiveTabs.svelte';
   import { formatDateTime } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
   import { goto } from '$app/navigation';
@@ -20,11 +21,24 @@
 
   let loading = $state(true);
   let loadingMore = $state(false);
+  let isMobile = $state(false);
   let q = $state('');
   let sev = $state<'all' | 'info' | 'success' | 'warning' | 'error'>('all');
   let mode = $state<'all' | 'post' | 'banner'>('all');
 
   let hasMore = $derived(rows.length < total);
+  const severityTabs = $derived.by(() => [
+    { id: 'all', label: $t('common.all') || 'All' },
+    { id: 'info', label: badgeLabel('info') },
+    { id: 'success', label: badgeLabel('success') },
+    { id: 'warning', label: badgeLabel('warning') },
+    { id: 'error', label: badgeLabel('error') },
+  ]);
+  const modeTabs = $derived.by(() => [
+    { id: 'all', label: $t('common.all') || 'All' },
+    { id: 'post', label: $t('announcements.modes.post') || 'Post' },
+    { id: 'banner', label: $t('announcements.modes.banner') || 'Banner' },
+  ]);
 
   function snippet(body: string) {
     const s = stripHtmlToText(body || '');
@@ -95,10 +109,20 @@
   }
 
   onMount(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const updateViewport = () => {
+      isMobile = mq.matches;
+    };
+    updateViewport();
+    mq.addEventListener('change', updateViewport);
+
     void load(true);
     const onChange = () => void load(true);
     window.addEventListener('announcements_changed', onChange);
-    return () => window.removeEventListener('announcements_changed', onChange);
+    return () => {
+      mq.removeEventListener('change', updateViewport);
+      window.removeEventListener('announcements_changed', onChange);
+    };
   });
 
   $effect(() => {
@@ -173,69 +197,26 @@
   </section>
 
   <div class="filters">
-    <div class="chips">
-      <button
-        class="chip {sev === 'all' ? 'active' : ''}"
-        type="button"
-        onclick={() => (sev = 'all')}
-      >
-        {$t('common.all') || 'All'}
-      </button>
-      <button
-        class="chip {sev === 'info' ? 'active' : ''}"
-        type="button"
-        onclick={() => (sev = 'info')}
-      >
-        {badgeLabel('info')}
-      </button>
-      <button
-        class="chip {sev === 'success' ? 'active' : ''}"
-        type="button"
-        onclick={() => (sev = 'success')}
-      >
-        {badgeLabel('success')}
-      </button>
-      <button
-        class="chip {sev === 'warning' ? 'active' : ''}"
-        type="button"
-        onclick={() => (sev = 'warning')}
-      >
-        {badgeLabel('warning')}
-      </button>
-      <button
-        class="chip {sev === 'error' ? 'active' : ''}"
-        type="button"
-        onclick={() => (sev = 'error')}
-      >
-        {badgeLabel('error')}
-      </button>
+    <div class="filter-group">
+      <ResponsiveTabs
+        items={severityTabs}
+        bind:activeId={sev}
+        {isMobile}
+        priorityCount={2}
+        ariaLabel="Announcement severity filters"
+      />
     </div>
 
-    <div class="chips right">
-      <button
-        class="chip {mode === 'all' ? 'active' : ''}"
-        type="button"
-        onclick={() => (mode = 'all')}
-      >
-        {$t('common.all') || 'All'}
-      </button>
-      <button
-        class="chip {mode === 'post' ? 'active' : ''}"
-        type="button"
-        onclick={() => (mode = 'post')}
-      >
-        {$t('announcements.modes.post') || 'Post'}
-      </button>
-      <button
-        class="chip {mode === 'banner' ? 'active' : ''}"
-        type="button"
-        onclick={() => (mode = 'banner')}
-      >
-        {$t('announcements.modes.banner') || 'Banner'}
-      </button>
-
+    <div class="filter-group align-end">
+      <ResponsiveTabs
+        items={modeTabs}
+        bind:activeId={mode}
+        {isMobile}
+        priorityCount={2}
+        ariaLabel="Announcement mode filters"
+      />
       {#if q.trim() || sev !== 'all' || mode !== 'all'}
-        <button class="chip subtle" type="button" onclick={clearFilters}>
+        <button class="filter-clear" type="button" onclick={clearFilters}>
           <Icon name="x" size={16} />
           {$t('common.clear') || 'Clear'}
         </button>
@@ -337,6 +318,15 @@
   @media (max-width: 640px) {
     .page-content {
       padding: 1rem;
+    }
+
+    .filters {
+      grid-template-columns: 1fr;
+    }
+
+    .filter-group,
+    .align-end {
+      justify-content: stretch;
     }
   }
 
@@ -442,57 +432,40 @@
   }
 
   .filters {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
     gap: 0.65rem;
-    flex-wrap: wrap;
     padding: 0.15rem 0.05rem 0.75rem;
   }
 
-  .chips {
+  .filter-group {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
     align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
   }
 
-  .chips.right {
+  .align-end {
     justify-content: flex-end;
   }
 
-  .chip {
+  .filter-clear {
     border: 1px solid var(--border-color);
-    background: var(--bg-tertiary);
+    background: var(--bg-surface);
     color: var(--text-secondary);
-    padding: 0.42rem 0.64rem;
-    border-radius: 10px;
-    font-weight: 850;
-    font-size: 0.84rem;
+    padding: 0.52rem 0.76rem;
+    border-radius: 999px;
+    font-weight: 700;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.4rem;
+    flex: 0 0 auto;
   }
 
-  :global([data-theme='light']) .chip {
-    border-color: var(--border-color);
-    background: var(--bg-tertiary);
-  }
-
-  .chip:hover {
-    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
+  .filter-clear:hover {
     color: var(--text-primary);
-  }
-
-  .chip.active {
-    border-color: color-mix(in srgb, var(--color-primary) 55%, var(--border-color));
-    background: var(--color-primary-subtle);
-    color: var(--text-primary);
-  }
-
-  .chip.subtle {
-    border-style: dashed;
+    background: var(--bg-hover);
   }
 
   .summary {

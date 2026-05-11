@@ -931,9 +931,29 @@
   }
 
   @media (max-width: 900px) {
+    .page-content {
+      padding: 1rem;
+    }
+
+    .hero {
+      padding: 0.9rem;
+    }
+
+    .hero-left {
+      min-width: 0;
+      align-items: flex-start;
+    }
+
     .hero-right {
       justify-items: stretch;
       width: 100%;
+    }
+
+    .actions {
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.65rem;
     }
 
     .actions {
@@ -946,6 +966,50 @@
 
     .stats {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .filter {
+      width: 100%;
+      justify-content: stretch;
+      flex-wrap: wrap;
+    }
+
+    .filter button {
+      flex: 1 1 calc(50% - 0.35rem);
+      text-align: center;
+    }
+
+    .actions .btn-primary {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .stats {
+      grid-template-columns: 1fr;
+    }
+
+    .card-top,
+    .card-bottom {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.6rem;
+    }
+
+    .meta,
+    .count {
+      justify-content: flex-start;
+    }
+
+    .modal-actions {
+      flex-direction: column-reverse;
+    }
+
+    .modal-actions .btn,
+    .modal-actions .btn-primary {
+      width: 100%;
+      justify-content: center;
     }
   }
 </style>

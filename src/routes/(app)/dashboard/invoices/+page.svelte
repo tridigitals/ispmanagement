@@ -160,6 +160,7 @@
     border: 1px solid var(--border-color);
     border-radius: 12px;
     overflow: hidden;
+    box-shadow: var(--shadow-sm);
   }
 
   .status-pill {
@@ -246,6 +247,10 @@
 
     .content-card {
       border-radius: var(--radius-lg);
+    }
+
+    .actions {
+      justify-content: flex-start;
     }
   }
 </style>

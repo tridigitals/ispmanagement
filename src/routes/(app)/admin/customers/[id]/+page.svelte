@@ -44,7 +44,9 @@
   } from '$lib/utils/customerLocationCoordinates';
 
   import Icon from '$lib/components/ui/Icon.svelte';
+  import MobileOverflowActions from '$lib/components/ui/MobileOverflowActions.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import ResponsiveTabs from '$lib/components/ui/ResponsiveTabs.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import { loadCustomerDetailDialogsOverlay } from './customerDetailModules';
   import { createCustomerDetailResourceLoader } from './customerDetailResourceLoader';
@@ -73,6 +75,7 @@
   const customersPath = $derived(customerNav.customersPath);
 
   let activeTab = $state<CustomerDetailTab>('overview');
+  let isMobile = $state(false);
   let CustomerDetailDialogsComponent = $state<DeferredComponent | null>(null);
   let SubscriptionsTabComponent = $state<DeferredComponent | null>(null);
   let BillingTabComponent = $state<DeferredComponent | null>(null);
@@ -321,6 +324,89 @@
       canReadAudit,
     }),
   );
+  const customerActionItems = $derived.by(() => {
+    const items: Array<{
+      id: string;
+      label: string;
+      icon: string;
+      tone?: 'default' | 'primary' | 'warning' | 'danger';
+      disabled?: boolean;
+    }> = [
+      {
+        id: 'refresh',
+        label: $t('common.refresh') || 'Refresh',
+        icon: 'refresh-cw',
+      },
+    ];
+
+    if (canCreateOrders && customer) {
+      items.push({
+        id: 'create-order',
+        label: 'Create Order',
+        icon: 'file-text',
+      });
+    }
+
+    if (canManageCustomers && customer) {
+      items.push({
+        id: customer.is_active ? 'suspend' : 'activate',
+        label: customer.is_active ? 'Suspend' : 'Activate',
+        icon: customer.is_active ? 'pause' : 'play',
+        tone: customer.is_active ? 'warning' : 'primary',
+        disabled: togglingCustomerStatus,
+      });
+      items.push({
+        id: 'whatsapp',
+        label: 'WhatsApp',
+        icon: 'message-circle',
+        disabled: !customer.phone || !whatsappGatewayReady,
+      });
+      items.push({
+        id: 'email',
+        label: 'Email',
+        icon: 'mail',
+        disabled: !customer.email,
+      });
+      items.push({
+        id: 'delete',
+        label: $t('common.delete') || 'Delete',
+        icon: 'trash-2',
+        tone: 'danger',
+      });
+    }
+
+    return items;
+  });
+  const customerTabItems = $derived.by(() => {
+    const items: Array<{ id: CustomerDetailTab; label: string }> = [
+      { id: 'overview', label: $t('admin.customers.tabs.overview') || 'Overview' },
+    ];
+    if (visibleTabs.includes('billing')) {
+      items.push({ id: 'billing', label: $t('admin.customers.tabs.billing') || 'Billing' });
+    }
+    if (visibleTabs.includes('subscriptions')) {
+      items.push({
+        id: 'subscriptions',
+        label: $t('admin.customers.tabs.subscriptions') || 'Subscriptions',
+      });
+    }
+    if (visibleTabs.includes('locations')) {
+      items.push({ id: 'locations', label: $t('admin.customers.tabs.locations') || 'Locations' });
+    }
+    if (visibleTabs.includes('pppoe')) {
+      items.push({ id: 'pppoe', label: $t('admin.customers.tabs.pppoe') || 'PPPoE' });
+    }
+    if (visibleTabs.includes('dhcp_static')) {
+      items.push({
+        id: 'dhcp_static',
+        label: $t('admin.customers.tabs.dhcp_static') || 'DHCP Static',
+      });
+    }
+    if (visibleTabs.includes('timeline')) {
+      items.push({ id: 'timeline', label: 'Timeline' });
+    }
+    return items;
+  });
   const customerDetailAccess = $derived.by(() => ({
     canReadCustomerLocations,
     canReadBilling,
@@ -391,22 +477,65 @@
     };
   });
 
-  onMount(async () => {
-    if (!canReadCustomers) {
-      goto('/unauthorized');
+  onMount(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const updateViewport = () => {
+      isMobile = mq.matches;
+    };
+    updateViewport();
+    mq.addEventListener('change', updateViewport);
+
+    void (async () => {
+      if (!canReadCustomers) {
+        goto('/unauthorized');
+        return;
+      }
+      const fromUrl = readActiveTabFromUrl();
+      if (fromUrl) activeTab = fromUrl;
+      await Promise.all([
+        loadCustomer(),
+        canManageCustomers ? loadCommunicationReadiness() : Promise.resolve(),
+        canManageCustomers ? loadCommunicationTemplates() : Promise.resolve(),
+      ]);
+      if (canReadCustomerLocations) {
+        await loadLocations({ force: true });
+      }
+    })();
+
+    return () => {
+      mq.removeEventListener('change', updateViewport);
+    };
+  });
+
+  function handleCustomerActionSelect(actionId: string) {
+    if (actionId === 'refresh') {
+      void refreshCurrent();
       return;
     }
-    const fromUrl = readActiveTabFromUrl();
-    if (fromUrl) activeTab = fromUrl;
-    await Promise.all([
-      loadCustomer(),
-      canManageCustomers ? loadCommunicationReadiness() : Promise.resolve(),
-      canManageCustomers ? loadCommunicationTemplates() : Promise.resolve(),
-    ]);
-    if (canReadCustomerLocations) {
-      await loadLocations({ force: true });
+    if (actionId === 'create-order') {
+      openCreateOrderForCustomer();
+      return;
     }
-  });
+    if (actionId === 'suspend') {
+      void setCustomerActive(false);
+      return;
+    }
+    if (actionId === 'activate') {
+      void setCustomerActive(true);
+      return;
+    }
+    if (actionId === 'whatsapp') {
+      openWhatsAppCompose();
+      return;
+    }
+    if (actionId === 'email') {
+      openEmailCompose();
+      return;
+    }
+    if (actionId === 'delete') {
+      void openDeleteCustomerConfirm();
+    }
+  }
 
   async function ensureCustomerDetailDialogsLoaded() {
     if (CustomerDetailDialogsComponent) return;
@@ -1631,66 +1760,12 @@
         {$t('common.back') || 'Back'}
       </button>
       <div class="header-actions hero-actions">
-        {#if canManageCustomers && customer}
-          {#if customer.is_active}
-            <button
-              class="btn btn-warning"
-              onclick={() => setCustomerActive(false)}
-              disabled={togglingCustomerStatus}
-            >
-              <Icon name="pause" size={16} />
-              Suspend
-            </button>
-          {:else}
-            <button
-              class="btn btn-primary"
-              onclick={() => setCustomerActive(true)}
-              disabled={togglingCustomerStatus}
-            >
-              <Icon name="play" size={16} />
-              Activate
-            </button>
-          {/if}
-        {/if}
-        <button class="btn btn-secondary" onclick={refreshCurrent}>
-          <Icon name="refresh-cw" size={16} />
-          {$t('common.refresh') || 'Refresh'}
-        </button>
-        {#if canCreateOrders && customer}
-          <button
-            class="btn btn-secondary"
-            onclick={openCreateOrderForCustomer}
-          >
-            <Icon name="file-text" size={16} />
-            Create Order
-          </button>
-        {/if}
-        {#if canManageCustomers}
-          <button
-            class="btn btn-secondary"
-            title={whatsappActionTitle()}
-            disabled={!customer?.phone || !whatsappGatewayReady}
-            onclick={openWhatsAppCompose}
-          >
-            <Icon name="message-circle" size={16} />
-            WhatsApp
-          </button>
-          <button
-            class="btn btn-secondary"
-            title={customer?.email
-              ? $t('admin.customers.communication.actions.send_email')
-              : $t('admin.customers.communication.email_not_set')}
-            disabled={!customer?.email}
-            onclick={openEmailCompose}
-          >
-            <Icon name="mail" size={16} />
-            Email
-          </button>
-          <button class="btn btn-danger" onclick={() => void openDeleteCustomerConfirm()}>
-            <Icon name="trash-2" size={16} />
-            {$t('common.delete') || 'Delete'}
-          </button>
-        {/if}
+        <MobileOverflowActions
+          items={customerActionItems}
+          primaryIds={['refresh', 'create-order']}
+          {isMobile}
+          on:select={(event) => handleCustomerActionSelect(event.detail)}
+        />
       </div>
     </div>
 
@@ -1724,44 +1799,13 @@
     </div>
   </div>
 
-  <div class="tabs">
-    <button class:active={activeTab === 'overview'} onclick={() => (activeTab = 'overview')}>
-      {$t('admin.customers.tabs.overview') || 'Overview'}
-    </button>
-    {#if visibleTabs.includes('locations')}
-      <button class:active={activeTab === 'locations'} onclick={() => (activeTab = 'locations')}>
-        {$t('admin.customers.tabs.locations') || 'Locations'}
-      </button>
-    {/if}
-    {#if visibleTabs.includes('subscriptions')}
-      <button
-        class:active={activeTab === 'subscriptions'}
-        onclick={() => (activeTab = 'subscriptions')}
-      >
-        {$t('admin.customers.tabs.subscriptions') || 'Subscriptions'}
-      </button>
-    {/if}
-    {#if visibleTabs.includes('billing')}
-      <button class:active={activeTab === 'billing'} onclick={() => (activeTab = 'billing')}>
-        {$t('admin.customers.tabs.billing') || 'Billing'}
-      </button>
-    {/if}
-    {#if visibleTabs.includes('pppoe')}
-      <button class:active={activeTab === 'pppoe'} onclick={() => (activeTab = 'pppoe')}>
-        {$t('admin.customers.tabs.pppoe') || 'PPPoE'}
-      </button>
-    {/if}
-    {#if visibleTabs.includes('dhcp_static')}
-      <button class:active={activeTab === 'dhcp_static'} onclick={() => (activeTab = 'dhcp_static')}>
-        {$t('admin.customers.tabs.dhcp_static') || 'DHCP Static'}
-      </button>
-    {/if}
-    {#if visibleTabs.includes('timeline')}
-      <button class:active={activeTab === 'timeline'} onclick={() => (activeTab = 'timeline')}>
-        Timeline
-      </button>
-    {/if}
-  </div>
+  <ResponsiveTabs
+    items={customerTabItems}
+    bind:activeId={activeTab}
+    {isMobile}
+    priorityCount={2}
+    ariaLabel={$t('admin.customers.detail.title') || 'Customer detail tabs'}
+  />
 
   {#if loadingCustomer}
     <div class="card loading-card">
@@ -1774,7 +1818,7 @@
         <div class="section-head">
           <div>
             <h3>{$t('admin.customers.overview.title') || 'Customer profile'}</h3>
-            <p class="subtitle">Data profil dan kontak.</p>
+            <p class="subtitle">Profil dan kontak.</p>
           </div>
           {#if canManageCustomers}
             <button
@@ -1789,7 +1833,7 @@
         </div>
 
         <div class="overview-grid">
-          <div class="form">
+          <div class="form overview-form">
             <label>
               <span>{$t('admin.customers.fields.name') || 'Name'}</span>
               <input class="input" bind:value={name} disabled={!canManageCustomers} />
@@ -1838,7 +1882,7 @@
         <div class="section-head">
           <div>
             <h3>{$t('admin.customers.locations.title') || 'Locations'}</h3>
-            <p class="subtitle">Lokasi layanan pelanggan.</p>
+            <p class="subtitle">Lokasi layanan.</p>
           </div>
           {#if canManageCustomerLocations}
             <button class="btn btn-primary" onclick={() => void openCreateLocation()}>
@@ -1997,8 +2041,7 @@
           <div>
             <h3>{$t('admin.customers.tabs.dhcp_static') || 'DHCP Static'}</h3>
             <p class="muted">
-              {$t('admin.customers.dhcp_static.subtitle') ||
-                'Static lease and queue status for this customer.'}
+              {$t('admin.customers.dhcp_static.subtitle') || 'Lease statis dan status queue.'}
             </p>
           </div>
           <button class="btn ghost" onclick={() => loadDhcpStaticServices({ force: true })}>
@@ -2024,16 +2067,22 @@
               <tbody>
                 {#each dhcpStaticServices as row}
                   <tr>
-                    <td>{row.dhcp_server_name}</td>
-                    <td>{row.mac_address}</td>
-                    <td>{row.ip_address}</td>
-                    <td>
+                    <td data-label={$t('admin.customers.dhcp_static.columns.server') || 'Server'}>
+                      {row.dhcp_server_name}
+                    </td>
+                    <td data-label={$t('admin.customers.dhcp_static.columns.mac') || 'MAC'}>
+                      {row.mac_address}
+                    </td>
+                    <td data-label={$t('admin.customers.dhcp_static.columns.ip') || 'IP'}>
+                      {row.ip_address}
+                    </td>
+                    <td data-label={$t('admin.customers.dhcp_static.columns.lease') || 'Lease'}>
                       {row.lease_present
                         ? $t('admin.customers.dhcp_static.sync.present') || 'Present'
                         : row.lease_last_error ||
                           ($t('admin.customers.dhcp_static.sync.missing') || 'Missing')}
                     </td>
-                    <td>
+                    <td data-label={$t('admin.customers.dhcp_static.columns.queue') || 'Queue'}>
                       {row.queue_mode === 'none'
                         ? $t('admin.customers.dhcp_static.sync.none') || 'None'
                         : row.queue_present
@@ -2372,15 +2421,12 @@
     justify-content: flex-end;
   }
 
-  .hero-actions .btn {
-    padding-inline: 0.8rem;
-  }
-
   .btn {
     border: 1px solid var(--border-color);
     background: var(--bg-surface);
     color: var(--text-primary);
     border-radius: 12px;
+    min-height: 42px;
     padding: 0.55rem 0.9rem;
     cursor: pointer;
     display: inline-flex;
@@ -2441,29 +2487,6 @@
 
   .btn-warning:hover {
     background: color-mix(in srgb, var(--color-warning) 16%, transparent);
-  }
-
-  .tabs {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-bottom: 1rem;
-  }
-
-  .tabs button {
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    border-radius: 999px;
-    padding: 0.4rem 0.78rem;
-    cursor: pointer;
-    font-weight: 650;
-    font-size: 0.86rem;
-  }
-
-  .tabs button.active {
-    border-color: color-mix(in srgb, var(--color-primary) 52%, var(--border-color));
-    box-shadow: 0 0 0 3px var(--color-primary-subtle);
   }
 
   .section {
@@ -2600,6 +2623,13 @@
   .form {
     display: grid;
     gap: 0.9rem;
+  }
+
+  .overview-form {
+    padding: 1rem;
+    border: 1px solid color-mix(in srgb, var(--border-color), transparent 18%);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg-surface), transparent 4%);
   }
 
   .overview-grid {
@@ -2749,6 +2779,52 @@
     margin-top: 0.5rem;
   }
 
+  .section-card {
+    padding: 1.1rem;
+    background: var(--bg-surface);
+  }
+
+  .table-wrap {
+    overflow: auto;
+    border: 1px solid color-mix(in srgb, var(--border-color), transparent 14%);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg-surface), transparent 4%);
+  }
+
+  .table-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table-wrap th,
+  .table-wrap td {
+    padding: 0.85rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color), transparent 22%);
+    vertical-align: top;
+  }
+
+  .table-wrap th {
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .table-wrap tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .muted {
+    color: var(--text-secondary);
+  }
+
+  .ghost {
+    background: var(--bg-surface);
+  }
+
   .inline-filter {
     display: grid;
     gap: 0.3rem;
@@ -2817,7 +2893,9 @@
     background: var(--bg-surface);
     color: var(--text-primary);
     border-radius: 10px;
-    padding: 0.4rem 0.45rem;
+    width: 38px;
+    height: 38px;
+    padding: 0;
     cursor: pointer;
   }
 
@@ -2942,14 +3020,6 @@
     .hero-actions {
       width: 100%;
     }
-    .hero-actions .btn {
-      flex: 1 1 calc(50% - 0.55rem);
-      min-width: 0;
-    }
-    .header-actions .btn {
-      flex: 1 1 11rem;
-      min-width: 0;
-    }
     .section-head {
       flex-direction: column;
       align-items: stretch;
@@ -2979,6 +3049,59 @@
     .actions {
       justify-content: stretch;
       flex-wrap: wrap;
+    }
+    .table-wrap {
+      overflow: visible;
+      border: none;
+      background: transparent;
+    }
+    .table-wrap table,
+    .table-wrap tbody,
+    .table-wrap tr,
+    .table-wrap td {
+      display: block;
+      width: 100%;
+    }
+    .table-wrap thead {
+      display: none;
+    }
+    .table-wrap tr {
+      margin-bottom: 0.8rem;
+      border: 1px solid color-mix(in srgb, var(--border-color), transparent 14%);
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--bg-surface), transparent 4%);
+      overflow: hidden;
+    }
+    .table-wrap td {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.8rem 0.9rem;
+      text-align: right;
+    }
+    .table-wrap td::before {
+      content: attr(data-label);
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      text-align: left;
+    }
+    .table-wrap td:last-child {
+      border-bottom: none;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .hero-badges,
+    .row-actions,
+    .actions {
+      flex-wrap: wrap;
+    }
+    .actions .btn,
+    .section-head .btn {
+      width: 100%;
     }
   }
 </style>

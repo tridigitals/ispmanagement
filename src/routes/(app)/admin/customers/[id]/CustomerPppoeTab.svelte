@@ -29,7 +29,7 @@
   <div class="section-head">
     <div>
       <h3>{$t('admin.customers.pppoe.title') || 'PPPoE accounts'}</h3>
-      <p class="subtitle">Akun PPPoE pelanggan.</p>
+      <p class="subtitle">Akun akses pelanggan.</p>
     </div>
     <div class="pppoe-toolbar">
       {#if pppoeToolbar.showSearch}
@@ -146,7 +146,11 @@
     flex-wrap: wrap;
     justify-content: flex-end;
     align-items: center;
-    width: min(100%, 28rem);
+    width: min(100%, 36rem);
+    padding: 0.85rem;
+    border: 1px solid color-mix(in srgb, var(--border-color), transparent 16%);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg-surface), transparent 5%);
   }
   .pppoe-search {
     display: flex;
@@ -206,6 +210,7 @@
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
+    flex-wrap: wrap;
   }
 
   .access-state {
@@ -253,6 +258,7 @@
   }
   .btn {
     border-radius: 12px;
+    min-height: 42px;
     padding: 0.55rem 0.9rem;
     display: inline-flex;
     align-items: center;
@@ -263,7 +269,9 @@
   }
   .btn-icon {
     border-radius: 10px;
-    padding: 0.4rem 0.45rem;
+    width: 38px;
+    height: 38px;
+    padding: 0;
   }
   .btn-icon.danger {
     border-color: rgba(239, 68, 68, 0.35);
@@ -281,6 +289,12 @@
     .pppoe-search {
       min-width: 0;
       width: 100%;
+    }
+    .pppoe-toolbar .btn {
+      width: 100%;
+    }
+    .row-actions {
+      justify-content: flex-start;
     }
   }
 </style>

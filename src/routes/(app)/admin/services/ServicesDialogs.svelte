@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import ResponsiveTabs from '$lib/components/ui/ResponsiveTabs.svelte';
   import Select2 from '$lib/components/ui/Select2.svelte';
   import Toggle from '$lib/components/ui/Toggle.svelte';
 
@@ -57,6 +59,29 @@
     loadingMeta,
     saveMapping,
   } = $props();
+
+  let isMobile = $state(false);
+  const packageTabs = $derived.by(() => [
+    { id: 'details', label: $t('admin.network.packages.tabs.details') || 'Details' },
+    {
+      id: 'features',
+      label: $t('admin.network.packages.tabs.features') || 'Features',
+      count: pkgFeatures.length,
+    },
+  ]);
+
+  onMount(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const updateViewport = () => {
+      isMobile = mq.matches;
+    };
+    updateViewport();
+    mq.addEventListener('change', updateViewport);
+
+    return () => {
+      mq.removeEventListener('change', updateViewport);
+    };
+  });
 </script>
 
 <Modal
@@ -103,24 +128,13 @@
   onclose={() => (showPkgModal = false)}
 >
   <div class="form">
-    <div class="form-tabs" role="tablist" aria-label="Package tabs">
-      <button
-        class="tab-btn"
-        class:active={pkgFormTab === 'details'}
-        type="button"
-        onclick={() => (pkgFormTab = 'details')}
-      >
-        {$t('admin.network.packages.tabs.details') || 'Details'}
-      </button>
-      <button
-        class="tab-btn"
-        class:active={pkgFormTab === 'features'}
-        type="button"
-        onclick={() => (pkgFormTab = 'features')}
-      >
-        {$t('admin.network.packages.tabs.features') || 'Features'} ({pkgFeatures.length})
-      </button>
-    </div>
+    <ResponsiveTabs
+      items={packageTabs}
+      bind:activeId={pkgFormTab}
+      {isMobile}
+      priorityCount={2}
+      ariaLabel="Package tabs"
+    />
 
     {#if pkgFormTab === 'details'}
       <div class="selected-type-banner">
@@ -715,25 +729,6 @@
     color: var(--text-primary);
     font-size: 0.85rem;
   }
-  .form-tabs {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.2rem;
-  }
-  .tab-btn {
-    border: 1px solid var(--border-color);
-    background: transparent;
-    color: var(--text-secondary);
-    border-radius: 10px;
-    padding: 0.5rem 0.85rem;
-    font-weight: 800;
-    cursor: pointer;
-  }
-  .tab-btn.active {
-    color: var(--text-primary);
-    border-color: rgba(99, 102, 241, 0.45);
-    background: rgba(99, 102, 241, 0.12);
-  }
   .selected-type-banner {
     display: flex;
     align-items: center;
@@ -935,6 +930,10 @@
     .selected-type-banner {
       flex-direction: column;
       align-items: stretch;
+    }
+    .selected-type-main {
+      width: 100%;
+      flex-wrap: wrap;
     }
   }
 </style>

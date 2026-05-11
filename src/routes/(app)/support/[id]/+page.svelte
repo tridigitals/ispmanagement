@@ -472,7 +472,7 @@
     gap: 0.75rem;
     padding: 0.95rem 1rem;
     border-bottom: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.02);
+    background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
   }
 
   .thread-title {
@@ -518,13 +518,13 @@
     place-items: center;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--bg-tertiary);
     color: rgba(255, 255, 255, 0.85);
   }
 
   .avatar.mine {
     border-color: rgba(99, 102, 241, 0.28);
-    background: rgba(99, 102, 241, 0.12);
+    background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-surface));
     color: rgba(99, 102, 241, 0.95);
   }
 

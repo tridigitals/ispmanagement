@@ -1086,7 +1086,7 @@
   }
 
   .filters-wrap {
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
 
   .btn {
@@ -1125,7 +1125,7 @@
     padding: 10px 12px;
     border-radius: 12px;
     border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface), transparent 10%);
+    background: var(--bg-tertiary);
   }
 
   .search-wrap input {
@@ -1176,7 +1176,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 12px;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
   }
 
   .stat-card {
@@ -1372,6 +1372,10 @@
       padding: 16px;
     }
 
+    .table-wrap {
+      border-radius: 14px;
+    }
+
     .error-line {
       max-width: 100%;
     }
@@ -1381,8 +1385,13 @@
     .stats {
       grid-template-columns: 1fr;
     }
-  }
 
-  @media (max-width: 1100px) {
+    .table-top {
+      justify-content: flex-start;
+    }
+
+    .row-actions {
+      flex-wrap: wrap;
+    }
   }
 </style>

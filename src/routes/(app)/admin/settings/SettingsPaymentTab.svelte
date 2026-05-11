@@ -478,7 +478,7 @@
   }
 
   .method-card {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-surface);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
     overflow: hidden;
@@ -494,7 +494,7 @@
     align-items: center;
     gap: 1rem;
     border-bottom: 1px solid var(--glass-border);
-    background: rgba(255, 255, 255, 0.015);
+    background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
   }
 
   .m-icon {
@@ -548,7 +548,7 @@
 
   .method-config {
     padding: 1.25rem;
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-surface);
   }
 
   :global([data-theme='light']) .method-config {
@@ -629,7 +629,7 @@
     padding: 1rem;
     border-radius: var(--radius-lg);
     border: 1px solid var(--glass-border);
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-surface);
     margin-bottom: 1rem;
   }
 
@@ -655,7 +655,7 @@
   }
 
   .bank-card-item {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-surface);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
     padding: 1.1rem 1.15rem;
@@ -673,11 +673,11 @@
   .bank-card-item:hover {
     border-color: rgba(99, 102, 241, 0.25);
     transform: translateY(-1px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+    box-shadow: var(--shadow-sm);
   }
 
   :global([data-theme='light']) .bank-card-item:hover {
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-sm);
   }
 
   .bc-icon {

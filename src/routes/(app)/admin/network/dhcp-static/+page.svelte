@@ -1256,6 +1256,7 @@
     gap: 8px;
     align-items: end;
     flex-wrap: wrap;
+    padding-top: 2px;
   }
 
   .modal-form {
@@ -1468,6 +1469,7 @@
 
   .table-wrap {
     overflow-x: auto;
+    border-radius: inherit;
   }
 
   table {
@@ -1514,6 +1516,25 @@
     .context-grid,
     .form-grid {
       grid-template-columns: 1fr;
+    }
+
+    .filter-actions {
+      align-items: stretch;
+    }
+
+    .filter-actions .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+    }
+
+    .actions {
+      flex-direction: column;
+      align-items: stretch;
     }
   }
 </style>

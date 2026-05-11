@@ -18,6 +18,7 @@
     shouldShowManagedRadiusUpgrade,
   } from '$lib/utils/managedRadiusSetup';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import ResponsiveTabs from '$lib/components/ui/ResponsiveTabs.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
@@ -160,6 +161,12 @@
 
   let activeTab = $state<'overview' | 'interfaces' | 'ip' | 'metrics'>('overview');
   let ifFilter = $state<'all' | 'running' | 'down' | 'disabled'>('all');
+  const routerTabItems = $derived.by(() => [
+    { id: 'overview', label: 'Overview' },
+    { id: 'interfaces', label: 'Interfaces', count: snapshot?.interfaces?.length || 0 },
+    { id: 'ip', label: 'IP Addresses', count: snapshot?.ip_addresses?.length || 0 },
+    { id: 'metrics', label: 'Metrics' },
+  ]);
 
   let watchSearch = $state('');
   let watched = $state<string[]>([]);
@@ -997,46 +1004,13 @@
       </div>
     </div>
 
-    <div class="tabs">
-      <button
-        type="button"
-        class="tab {activeTab === 'overview' ? 'active' : ''}"
-        onclick={() => (activeTab = 'overview')}
-      >
-        <Icon name="activity" size={16} />
-        Overview
-      </button>
-      <button
-        type="button"
-        class="tab {activeTab === 'interfaces' ? 'active' : ''}"
-        onclick={() => (activeTab = 'interfaces')}
-      >
-        <Icon name="router" size={16} />
-        Interfaces
-        {#if snapshot?.interfaces?.length}
-          <span class="tab-count">{snapshot.interfaces.length}</span>
-        {/if}
-      </button>
-      <button
-        type="button"
-        class="tab {activeTab === 'ip' ? 'active' : ''}"
-        onclick={() => (activeTab = 'ip')}
-      >
-        <Icon name="map-pin" size={16} />
-        IP Addresses
-        {#if snapshot?.ip_addresses?.length}
-          <span class="tab-count">{snapshot.ip_addresses.length}</span>
-        {/if}
-      </button>
-      <button
-        type="button"
-        class="tab {activeTab === 'metrics' ? 'active' : ''}"
-        onclick={() => (activeTab = 'metrics')}
-      >
-        <Icon name="trending-up" size={16} />
-        Metrics
-      </button>
-    </div>
+    <ResponsiveTabs
+      items={routerTabItems}
+      bind:activeId={activeTab}
+      {isMobile}
+      priorityCount={3}
+      ariaLabel="Router detail tabs"
+    />
 
     {#if activeTab === 'overview'}
       <div class="grid">
@@ -1559,58 +1533,6 @@
     grid-template-columns: 1fr 1fr;
     gap: 12px;
     margin-top: 12px;
-  }
-
-  .tabs {
-    margin-top: 12px;
-    margin-bottom: 12px;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .tab {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 14px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    font-weight: 900;
-    cursor: pointer;
-    transition:
-      background 0.15s ease,
-      border-color 0.15s ease,
-      color 0.15s ease;
-  }
-
-  .tab:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-  }
-
-  .tab.active {
-    border-color: rgba(99, 102, 241, 0.35);
-    background: rgba(99, 102, 241, 0.12);
-    color: var(--text-primary);
-  }
-
-  .tab-count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 28px;
-    height: 22px;
-    padding: 0 8px;
-    border-radius: 999px;
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface), transparent 8%);
-    color: var(--text-secondary);
-    font-size: 0.78rem;
-    font-weight: 900;
-    margin-left: 2px;
   }
 
   .seg {

@@ -73,5 +73,12 @@
       width: 100%;
       justify-content: stretch;
     }
+
+    .network-page-actions :global(.btn),
+    .network-page-actions :global(a.btn) {
+      flex: 1 1 calc(50% - 0.4rem);
+      justify-content: center;
+      min-width: 0;
+    }
   }
 </style>

@@ -8,12 +8,14 @@
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import ResponsiveTabs from '$lib/components/ui/ResponsiveTabs.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import { formatDateTime } from '$lib/utils/date';
 
   let loading = $state(true);
   let loadingMore = $state(false);
   let busyId = $state<string | null>(null);
+  let isMobile = $state(false);
 
   let items = $state<EmailOutboxItem[]>([]);
   let stats = $state<EmailOutboxStats>({ all: 0, queued: 0, sending: 0, sent: 0, failed: 0 });
@@ -27,6 +29,14 @@
   let detailLoading = $state(false);
   let detailItem = $state<EmailOutboxItem | null>(null);
   let detailTab = $state<'text' | 'html'>('text');
+  const detailTabs = $derived.by(() => [
+    { id: 'text', label: $t('admin.email_outbox.details.text') || 'Text' },
+    {
+      id: 'html',
+      label: $t('admin.email_outbox.details.html') || 'HTML',
+      disabled: !detailItem?.body_html,
+    },
+  ]);
 
   let total = $state(0);
   let pageNum = $state(1);
@@ -47,14 +57,27 @@
     { key: 'actions', label: '', align: 'right' as const, width: '156px' },
   ]);
 
-  onMount(async () => {
-    if (!$can('read', 'email_outbox')) {
-      goto('/unauthorized');
-      return;
-    }
-    await refreshStats();
-    await load(true);
-    ready = true;
+  onMount(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const updateViewport = () => {
+      isMobile = mq.matches;
+    };
+    updateViewport();
+    mq.addEventListener('change', updateViewport);
+
+    void (async () => {
+      if (!$can('read', 'email_outbox')) {
+        goto('/unauthorized');
+        return;
+      }
+      await refreshStats();
+      await load(true);
+      ready = true;
+    })();
+
+    return () => {
+      mq.removeEventListener('change', updateViewport);
+    };
   });
 
   $effect(() => {
@@ -557,26 +580,13 @@
           {/if}
         </div>
 
-        <div class="tabs">
-          <button
-            type="button"
-            class:active={detailTab === 'text'}
-            onclick={() => (detailTab = 'text')}
-          >
-            {$t('admin.email_outbox.details.text') || 'Text'}
-          </button>
-          <button
-            type="button"
-            class:active={detailTab === 'html'}
-            onclick={() => (detailTab = 'html')}
-            disabled={!detailItem.body_html}
-            title={!detailItem.body_html
-              ? $t('admin.email_outbox.details.no_html') || 'No HTML'
-              : ''}
-          >
-            {$t('admin.email_outbox.details.html') || 'HTML'}
-          </button>
-        </div>
+        <ResponsiveTabs
+          items={detailTabs}
+          bind:activeId={detailTab}
+          {isMobile}
+          priorityCount={2}
+          ariaLabel={$t('admin.email_outbox.details.subject') || 'Email content tabs'}
+        />
 
         {#if detailTab === 'html' && detailItem.body_html}
           <div class="viewer">
@@ -598,6 +608,15 @@
 </Modal>
 
 <style>
+  .page-content {
+    padding: clamp(16px, 2.8vw, 28px);
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
+  }
+
   .head {
     display: flex;
     align-items: flex-start;
@@ -686,6 +705,10 @@
     gap: 1rem;
     flex-wrap: wrap;
     margin: 0.15rem 0 0.9rem;
+  }
+
+  :global(.page-content .table-container) {
+    min-width: 0;
   }
 
   .toolbar-left {
@@ -923,38 +946,6 @@
     white-space: pre-wrap;
   }
 
-  .tabs {
-    display: inline-flex;
-    gap: 0.35rem;
-    padding: 0.3rem;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.03);
-    width: fit-content;
-  }
-
-  .tabs button {
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--text-secondary);
-    padding: 0.45rem 0.7rem;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 800;
-    font-size: 0.85rem;
-  }
-
-  .tabs button.active {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.35);
-    color: var(--text-primary);
-  }
-
-  .tabs button:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-
   .pre {
     border: 1px solid var(--border-color);
     background: rgba(0, 0, 0, 0.2);
@@ -1025,6 +1016,10 @@
   }
 
   @media (max-width: 980px) {
+    .page-content {
+      padding: 1rem;
+    }
+
     .stats {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1033,6 +1028,42 @@
     }
     .meta {
       grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 720px) {
+    .head,
+    .filters,
+    .toolbar {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .toolbar-left,
+    .bulkbar,
+    .bulk-actions {
+      width: 100%;
+    }
+
+    .scope {
+      width: 100%;
+      justify-content: stretch;
+    }
+
+    .scope button {
+      flex: 1 1 0;
+      text-align: center;
+    }
+
+    .toolbar-left .btn,
+    .bulk-actions .btn,
+    .head .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .bulkbar {
+      padding: 0.75rem;
     }
   }
 </style>

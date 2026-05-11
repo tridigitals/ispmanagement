@@ -29,49 +29,53 @@
   <div class="section-head">
     <div>
       <h3>{$t('admin.customers.billing.title') || 'Billing'}</h3>
-      <p class="subtitle">Riwayat invoice pelanggan.</p>
+      <p class="subtitle">Invoice pelanggan.</p>
     </div>
-    <div class="header-actions">
-      <label class="inline-filter">
-        <span>{$t('admin.customers.billing.filters.status') || 'Status'}</span>
-        <select class="input" bind:value={billingStatus}>
-          <option value="all">{$t('admin.customers.billing.filters.all') || 'All'}</option>
-          <option value="pending">{$t('admin.package_invoices.statuses.pending') || 'Pending'}</option>
-          <option value="verification_pending">{$t('admin.package_invoices.statuses.verification_pending') || 'Verification pending'}</option>
-          <option value="paid">{$t('admin.package_invoices.statuses.paid') || 'Paid'}</option>
-          <option value="failed">{$t('admin.package_invoices.statuses.failed') || 'Failed'}</option>
-        </select>
-      </label>
-      <div class="quick-ranges">
-        <button class="btn btn-secondary btn-quick" class:active={billingQuickRange === 'today'} onclick={() => onApplyQuickRange('today')}>
-          {$t('admin.customers.billing.filters.today') || 'Today'}
+    <div class="billing-toolbar">
+      <div class="billing-toolbar-grid">
+        <label class="inline-filter">
+          <span>{$t('admin.customers.billing.filters.status') || 'Status'}</span>
+          <select class="input" bind:value={billingStatus}>
+            <option value="all">{$t('admin.customers.billing.filters.all') || 'All'}</option>
+            <option value="pending">{$t('admin.package_invoices.statuses.pending') || 'Pending'}</option>
+            <option value="verification_pending">{$t('admin.package_invoices.statuses.verification_pending') || 'Verification pending'}</option>
+            <option value="paid">{$t('admin.package_invoices.statuses.paid') || 'Paid'}</option>
+            <option value="failed">{$t('admin.package_invoices.statuses.failed') || 'Failed'}</option>
+          </select>
+        </label>
+        <div class="quick-ranges">
+          <button class="btn btn-secondary btn-quick" class:active={billingQuickRange === 'today'} onclick={() => onApplyQuickRange('today')}>
+            {$t('admin.customers.billing.filters.today') || 'Today'}
+          </button>
+          <button class="btn btn-secondary btn-quick" class:active={billingQuickRange === '7d'} onclick={() => onApplyQuickRange('7d')}>
+            {$t('admin.customers.billing.filters.last_7d') || '7D'}
+          </button>
+          <button class="btn btn-secondary btn-quick" class:active={billingQuickRange === '30d'} onclick={() => onApplyQuickRange('30d')}>
+            {$t('admin.customers.billing.filters.last_30d') || '30D'}
+          </button>
+          <button class="btn btn-secondary btn-quick" class:active={billingQuickRange === 'month'} onclick={() => onApplyQuickRange('month')}>
+            {$t('admin.customers.billing.filters.this_month') || 'This Month'}
+          </button>
+        </div>
+        <label class="inline-filter">
+          <span>{$t('admin.customers.billing.filters.from') || 'From'}</span>
+          <input class="input" type="date" bind:value={billingDateFrom} oninput={onBillingDateChange} />
+        </label>
+        <label class="inline-filter">
+          <span>{$t('admin.customers.billing.filters.to') || 'To'}</span>
+          <input class="input" type="date" bind:value={billingDateTo} oninput={onBillingDateChange} />
+        </label>
+      </div>
+      <div class="billing-toolbar-actions">
+        <button class="btn btn-secondary" onclick={onClearFilters} disabled={billingStatus === 'all' && !billingDateFrom && !billingDateTo}>
+          <Icon name="eraser" size={16} />
+          {$t('admin.customers.billing.filters.clear') || 'Clear'}
         </button>
-        <button class="btn btn-secondary btn-quick" class:active={billingQuickRange === '7d'} onclick={() => onApplyQuickRange('7d')}>
-          {$t('admin.customers.billing.filters.last_7d') || '7D'}
-        </button>
-        <button class="btn btn-secondary btn-quick" class:active={billingQuickRange === '30d'} onclick={() => onApplyQuickRange('30d')}>
-          {$t('admin.customers.billing.filters.last_30d') || '30D'}
-        </button>
-        <button class="btn btn-secondary btn-quick" class:active={billingQuickRange === 'month'} onclick={() => onApplyQuickRange('month')}>
-          {$t('admin.customers.billing.filters.this_month') || 'This Month'}
+        <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingBilling}>
+          <Icon name="refresh-cw" size={16} />
+          {$t('common.refresh') || 'Refresh'}
         </button>
       </div>
-      <label class="inline-filter">
-        <span>{$t('admin.customers.billing.filters.from') || 'From'}</span>
-        <input class="input" type="date" bind:value={billingDateFrom} oninput={onBillingDateChange} />
-      </label>
-      <label class="inline-filter">
-        <span>{$t('admin.customers.billing.filters.to') || 'To'}</span>
-        <input class="input" type="date" bind:value={billingDateTo} oninput={onBillingDateChange} />
-      </label>
-      <button class="btn btn-secondary" onclick={onClearFilters} disabled={billingStatus === 'all' && !billingDateFrom && !billingDateTo}>
-        <Icon name="eraser" size={16} />
-        {$t('admin.customers.billing.filters.clear') || 'Clear'}
-      </button>
-      <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingBilling}>
-        <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
-      </button>
     </div>
   </div>
 
@@ -136,8 +140,7 @@
     padding: 1.1rem;
     background: var(--bg-surface);
   }
-  .section-head,
-  .header-actions {
+  .section-head {
     display: flex;
     gap: 1rem;
   }
@@ -146,9 +149,27 @@
     align-items: flex-start;
     margin-bottom: 1rem;
   }
-  .header-actions {
-    flex-wrap: wrap;
+  .billing-toolbar {
+    display: grid;
+    gap: 0.85rem;
+    width: min(100%, 860px);
+    margin-left: auto;
+    padding: 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--border-color), transparent 16%);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg-surface), transparent 5%);
+  }
+  .billing-toolbar-grid {
+    display: grid;
+    grid-template-columns: minmax(160px, 190px) minmax(0, 1fr) repeat(2, minmax(150px, 180px));
+    gap: 0.75rem;
+    align-items: end;
+  }
+  .billing-toolbar-actions {
+    display: flex;
     justify-content: flex-end;
+    gap: 0.65rem;
+    flex-wrap: wrap;
   }
   .subtitle,
   .sub,
@@ -178,7 +199,8 @@
   }
   .quick-ranges {
     display: flex;
-    align-items: flex-end;
+    align-items: stretch;
+    flex-wrap: wrap;
     gap: 0.45rem;
   }
   .btn,
@@ -190,6 +212,7 @@
   }
   .btn {
     border-radius: 12px;
+    min-height: 42px;
     padding: 0.55rem 0.9rem;
     display: inline-flex;
     align-items: center;
@@ -250,7 +273,9 @@
   }
   .btn-icon {
     border-radius: 10px;
-    padding: 0.4rem 0.45rem;
+    width: 38px;
+    height: 38px;
+    padding: 0;
   }
   .badge.danger {
     border-color: rgba(239, 68, 68, 0.35);
@@ -262,16 +287,37 @@
       flex-direction: column;
       align-items: stretch;
     }
-    .header-actions {
-      justify-content: stretch;
+    .billing-toolbar {
+      width: 100%;
+      margin-left: 0;
+      padding: 0.85rem;
+    }
+    .billing-toolbar-grid {
+      grid-template-columns: 1fr;
     }
     .billing-stats {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .quick-ranges {
       width: 100%;
-      justify-content: flex-start;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .btn-quick,
+    .billing-toolbar-actions .btn {
+      width: 100%;
+    }
+    .billing-toolbar-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 560px) {
+    .billing-stats,
+    .quick-ranges,
+    .billing-toolbar-actions {
+      grid-template-columns: 1fr;
     }
   }
 </style>

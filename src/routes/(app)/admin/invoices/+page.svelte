@@ -678,7 +678,7 @@
   .select-input {
     min-height: 40px;
     border: 1px solid var(--border-color);
-    background: var(--bg-surface);
+    background: var(--bg-tertiary);
     color: var(--text-primary);
     border-radius: 8px;
     padding: 0 0.75rem;
@@ -694,6 +694,7 @@
     gap: 0.75rem;
     padding: 0.85rem;
     border-bottom: 1px solid var(--border-color);
+    background: var(--bg-surface);
   }
   .subtitle {
     color: var(--text-secondary);
@@ -809,6 +810,9 @@
     }
     .filter-row {
       grid-template-columns: 1fr;
+    }
+    .actions {
+      justify-content: flex-start;
     }
     .section-heading {
       align-items: stretch;

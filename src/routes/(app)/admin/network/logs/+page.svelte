@@ -502,10 +502,10 @@
     grid-template-columns: repeat(6, minmax(140px, 1fr));
     gap: 0.65rem;
     margin-bottom: 0.9rem;
-    padding: 0.8rem;
+    padding: 0.9rem;
     border: 1px solid var(--border-color);
     border-radius: 14px;
-    background: color-mix(in srgb, var(--bg-surface) 82%, var(--bg-tertiary));
+    background: var(--bg-surface);
   }
   .filter-field {
     display: grid;
@@ -535,7 +535,11 @@
     box-shadow: 0 0 0 3px var(--color-primary-subtle);
   }
   .table-wrap {
-    margin-top: 0.4rem;
+    margin-top: 0.45rem;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 0.2rem 0.75rem 0.6rem;
+    background: var(--bg-surface);
   }
 
   .pager {
@@ -663,6 +667,7 @@
     .head { flex-direction: column; }
     .filters { grid-template-columns: 1fr; }
     .search-field { grid-column: span 1; }
+    .table-wrap { padding-inline: 0.35rem; }
     .retention-panel {
       flex-direction: column;
       align-items: stretch;

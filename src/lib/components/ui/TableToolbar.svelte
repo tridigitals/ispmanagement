@@ -65,10 +65,14 @@
   .table-toolbar {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.85rem;
     margin-bottom: 1rem;
     flex-wrap: wrap;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    background: var(--bg-surface);
   }
 
   .search-section {
@@ -92,7 +96,7 @@
     padding: 0.48rem 0.68rem;
     border-radius: 10px;
     border: 1px solid var(--border-color);
-    background: var(--bg-surface);
+    background: var(--bg-tertiary);
     transition: all 0.2s;
   }
 
@@ -171,7 +175,7 @@
   }
 
   .filters :global(.select-trigger) {
-    background: var(--bg-surface);
+    background: var(--bg-tertiary);
   }
 
   .actions :global(.btn),
@@ -188,6 +192,7 @@
       gap: 0.8rem;
       justify-content: flex-start;
       margin-bottom: 0.75rem;
+      padding: 0.65rem;
     }
 
     .search-section {

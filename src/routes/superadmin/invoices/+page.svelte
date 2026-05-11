@@ -468,8 +468,8 @@
     text-align: left;
     padding: 0.9rem 1rem;
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
     color: var(--text-primary);
     cursor: pointer;
     transition: 0.2s;
@@ -514,7 +514,7 @@
     min-height: 40px;
     border-radius: 12px;
     border: 1px solid var(--border-color);
-    background: var(--bg-surface);
+    background: var(--bg-tertiary);
     color: var(--text-primary);
     padding: 0 0.75rem;
     outline: none;
@@ -733,6 +733,9 @@
     .stats-row {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+    .table-wrapper {
+      padding: 0 0.75rem 0.85rem 0.75rem;
+    }
     .invoices-grid {
       padding: 0.75rem;
       grid-template-columns: 1fr;
@@ -745,9 +748,7 @@
   :global([data-theme='light']) .stat-btn {
     background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.06);
-    box-shadow:
-      0 10px 28px rgba(0, 0, 0, 0.06),
-      0 0 0 1px rgba(255, 255, 255, 0.8);
+    box-shadow: var(--shadow-sm);
   }
   :global([data-theme='light']) .invoice-card {
     background: var(--bg-surface);

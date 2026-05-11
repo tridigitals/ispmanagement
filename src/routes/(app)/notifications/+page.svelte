@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import ResponsiveTabs from '$lib/components/ui/ResponsiveTabs.svelte';
   import { user, tenant } from '$lib/stores/auth';
   import { timeAgo } from '$lib/utils/date';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
@@ -26,6 +27,7 @@
   let filter = $state<'all' | 'unread'>('all');
   let searchQuery = $state('');
   let portalInvoiceIds = $state<string[]>([]);
+  let isMobile = $state(false);
 
   let tenantCtx = $derived.by(() =>
     resolveTenantContext({
@@ -37,18 +39,31 @@
   );
   let tenantPrefix = $derived(tenantCtx.tenantPrefix);
 
-  onMount(async () => {
-    await loadNotifications(1);
-    if (!hasInternalAppAccess($user)) {
-      try {
-        const invoiceRows = await api.payment.listInvoices();
-        portalInvoiceIds = (invoiceRows || []).map((inv) => inv.id).filter(Boolean);
-      } catch (e) {
-        console.warn('Failed to load portal invoice ids for notifications:', e);
-        portalInvoiceIds = [];
+  onMount(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const updateViewport = () => {
+      isMobile = mq.matches;
+    };
+    updateViewport();
+    mq.addEventListener('change', updateViewport);
+
+    void (async () => {
+      await loadNotifications(1);
+      if (!hasInternalAppAccess($user)) {
+        try {
+          const invoiceRows = await api.payment.listInvoices();
+          portalInvoiceIds = (invoiceRows || []).map((inv) => inv.id).filter(Boolean);
+        } catch (e) {
+          console.warn('Failed to load portal invoice ids for notifications:', e);
+          portalInvoiceIds = [];
+        }
       }
-    }
-    await refreshUnreadCount(true);
+      await refreshUnreadCount(true);
+    })();
+
+    return () => {
+      mq.removeEventListener('change', updateViewport);
+    };
   });
 
   let visibleNotifications = $derived(
@@ -72,6 +87,14 @@
 
   let hasMore = $derived(!!$pagination.hasMore);
   let canMarkAllRead = $derived(visibleUnreadCount > 0);
+  let filterTabs = $derived.by(() => [
+    { id: 'all', label: $t('notifications_page.filters.all') || 'All' },
+    {
+      id: 'unread',
+      label: $t('notifications_page.filters.unread') || 'Unread',
+      count: visibleUnreadCount > 0 ? (visibleUnreadCount > 99 ? '99+' : visibleUnreadCount) : null,
+    },
+  ]);
 
   async function loadMore() {
     if ($loading || !hasMore) return;
@@ -209,32 +232,14 @@
         {/if}
       </div>
 
-      <div
-        class="filters"
-        role="tablist"
-        aria-label={$t('notifications_page.filters.aria') || 'Filters'}
-      >
-        <button
-          class="chip"
-          class:active={filter === 'all'}
-          onclick={() => (filter = 'all')}
-          role="tab"
-          aria-selected={filter === 'all'}
-        >
-          {$t('notifications_page.filters.all') || 'All'}
-        </button>
-        <button
-          class="chip"
-          class:active={filter === 'unread'}
-          onclick={() => (filter = 'unread')}
-          role="tab"
-          aria-selected={filter === 'unread'}
-        >
-          {$t('notifications_page.filters.unread') || 'Unread'}
-          {#if visibleUnreadCount > 0}
-            <span class="chip-badge">{visibleUnreadCount > 99 ? '99+' : visibleUnreadCount}</span>
-          {/if}
-        </button>
+      <div class="filters">
+        <ResponsiveTabs
+          items={filterTabs}
+          bind:activeId={filter}
+          {isMobile}
+          priorityCount={2}
+          ariaLabel={$t('notifications_page.filters.aria') || 'Filters'}
+        />
       </div>
     </div>
   </div>
@@ -474,36 +479,6 @@
     flex-wrap: wrap;
   }
 
-  .chip {
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    border-radius: 10px;
-    padding: 0.5rem 0.68rem;
-    font-weight: 700;
-    font-size: 0.84rem;
-    cursor: pointer;
-    display: inline-flex;
-    gap: 0.45rem;
-    align-items: center;
-  }
-
-  .chip.active {
-    background: rgba(99, 102, 241, 0.16);
-    border-color: rgba(99, 102, 241, 0.35);
-    color: var(--text-primary);
-  }
-
-  .chip-badge {
-    background: rgba(239, 68, 68, 0.2);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #fecaca;
-    border-radius: 999px;
-    padding: 0.1rem 0.45rem;
-    font-size: 0.72rem;
-    font-weight: 800;
-  }
-
   .list {
     padding: 0.25rem;
     overflow: hidden;
@@ -716,6 +691,14 @@
   }
 
   @media (max-width: 600px) {
+    .page-content {
+      padding: 1rem;
+    }
+
+    .sticky-header {
+      padding-top: 0;
+    }
+
     .page-header {
       flex-direction: column;
       align-items: flex-start;
@@ -726,8 +709,38 @@
       justify-content: flex-start;
     }
 
+    .actions-col .btn {
+      flex: 1 1 0;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .toolbar {
+      padding: 0.7rem;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .search {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .filters {
+      width: 100%;
+    }
+
     .hide-xs {
       display: none;
+    }
+
+    .item {
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .item-main {
+      padding: 0.7rem;
     }
 
     .row {
@@ -738,6 +751,16 @@
 
     .time {
       font-size: 0.78rem;
+    }
+
+    .right {
+      width: 100%;
+      justify-content: flex-end;
+      padding: 0 0.7rem 0.7rem;
+    }
+
+    .footer {
+      padding: 0.7rem;
     }
   }
 

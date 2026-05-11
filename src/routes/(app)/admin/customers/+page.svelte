@@ -1603,12 +1603,17 @@
     align-items: center;
     gap: 0.6rem;
     flex-wrap: wrap;
+    padding: 0.35rem;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--bg-surface);
   }
 
   .customer-filter-field {
     display: grid;
     gap: 0.25rem;
     min-width: 150px;
+    padding: 0.25rem 0.3rem;
   }
 
   .customer-filter-field span {
@@ -1622,7 +1627,7 @@
     min-height: 38px;
     border: 1px solid var(--border-color);
     border-radius: 10px;
-    background: var(--bg-surface);
+    background: var(--bg-tertiary);
     color: var(--text-primary);
     padding: 0.45rem 2rem 0.45rem 0.7rem;
     font-size: 0.86rem;
@@ -2010,6 +2015,7 @@
     }
     .toolbar-filters {
       width: 100%;
+      padding: 0.45rem;
     }
     .customer-filter-field {
       flex: 1 1 180px;

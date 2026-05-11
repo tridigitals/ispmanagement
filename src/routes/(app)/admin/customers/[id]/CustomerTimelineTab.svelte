@@ -16,18 +16,20 @@
   <div class="section-head">
     <div>
       <h3>Timeline</h3>
-      <p class="subtitle">Aktivitas terbaru pelanggan.</p>
+      <p class="subtitle">Aktivitas pelanggan.</p>
     </div>
-    <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingTimeline}>
-      <Icon name="refresh-cw" size={16} />
-      Refresh
-    </button>
-  </div>
-  <div class="timeline-filters">
-    <button class:active={timelineType === 'all'} onclick={() => (timelineType = 'all')}>All</button>
-    <button class:active={timelineType === 'customer'} onclick={() => (timelineType = 'customer')}>Profile</button>
-    <button class:active={timelineType === 'location'} onclick={() => (timelineType = 'location')}>Location</button>
-    <button class:active={timelineType === 'subscription'} onclick={() => (timelineType = 'subscription')}>Subscription</button>
+    <div class="timeline-toolbar">
+      <div class="timeline-filters">
+        <button class:active={timelineType === 'all'} onclick={() => (timelineType = 'all')}>All</button>
+        <button class:active={timelineType === 'customer'} onclick={() => (timelineType = 'customer')}>Profile</button>
+        <button class:active={timelineType === 'location'} onclick={() => (timelineType = 'location')}>Location</button>
+        <button class:active={timelineType === 'subscription'} onclick={() => (timelineType = 'subscription')}>Subscription</button>
+      </div>
+      <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingTimeline}>
+        <Icon name="refresh-cw" size={16} />
+        Refresh
+      </button>
+    </div>
   </div>
   <Table
     columns={timelineColumns}
@@ -37,7 +39,7 @@
     pagination
     searchable
     searchPlaceholder="Search timeline..."
-    mobileView="scroll"
+    mobileView="card"
   >
     {#snippet cell({ item, key })}
       {#if key === 'created_at'}
@@ -85,6 +87,7 @@
     background: var(--bg-surface);
     color: var(--text-primary);
     border-radius: 12px;
+    min-height: 42px;
     padding: 0.55rem 0.9rem;
     cursor: pointer;
     display: inline-flex;
@@ -98,7 +101,17 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.45rem;
+  }
+  .timeline-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.85rem;
     margin-bottom: 0.75rem;
+    padding: 0.85rem;
+    border: 1px solid color-mix(in srgb, var(--border-color), transparent 16%);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg-surface), transparent 5%);
   }
   .timeline-filters button {
     border: 1px solid var(--border-color);
@@ -139,6 +152,13 @@
     .section-head {
       flex-direction: column;
       align-items: stretch;
+    }
+    .timeline-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .timeline-toolbar .btn {
+      width: 100%;
     }
   }
 </style>

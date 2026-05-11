@@ -311,10 +311,14 @@
   .filters {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: stretch;
     gap: 0.65rem;
     margin-bottom: 0.75rem;
     flex-wrap: wrap;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--bg-surface);
   }
 
   .stats {
@@ -388,11 +392,12 @@
     align-items: center;
     gap: 0.5rem;
     border: 1px solid var(--border-color);
-    background: var(--bg-surface);
+    background: var(--bg-tertiary);
     border-radius: 10px;
     padding: 0.5rem 0.7rem;
     color: var(--text-secondary);
-    min-width: min(360px, 100%);
+    width: min(420px, 100%);
+    max-width: 100%;
   }
 
   .search-input {
@@ -401,6 +406,7 @@
     background: transparent;
     color: var(--text-primary);
     outline: none;
+    min-width: 0;
   }
 
   .clear {
@@ -411,6 +417,11 @@
     height: 28px;
     border-radius: 8px;
     cursor: pointer;
+  }
+
+  .clear:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
   }
 
   .link {
@@ -533,6 +544,16 @@
     gap: 0.9rem;
     padding: 1.1rem 0.25rem 0.25rem;
     color: var(--text-secondary);
+  }
+
+  @media (max-width: 720px) {
+    .filters {
+      padding: 0.65rem;
+    }
+
+    .search {
+      width: 100%;
+    }
   }
 
   .btn-more {

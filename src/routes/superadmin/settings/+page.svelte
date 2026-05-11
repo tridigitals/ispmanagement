@@ -1396,6 +1396,14 @@
       margin-right: -1rem;
       margin-bottom: -1rem;
       width: calc(100% + 2rem);
+      flex-direction: column-reverse;
+      align-items: stretch;
+      gap: 0.75rem;
+    }
+
+    .actions-footer .btn {
+      width: 100%;
+      min-width: 0;
     }
   }
 
@@ -1466,6 +1474,10 @@
 
     .header-mobile h1 {
       font-size: 1.5rem;
+    }
+
+    .card {
+      margin-bottom: 1rem;
     }
   }
 </style>

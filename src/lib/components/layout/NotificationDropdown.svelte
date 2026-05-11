@@ -363,11 +363,14 @@
     color: var(--color-primary);
     font-size: 0.8rem;
     cursor: pointer;
-    padding: 0;
+    padding: 0.2rem 0.35rem;
+    border-radius: 8px;
+    white-space: nowrap;
   }
 
   .text-btn:hover {
-    text-decoration: underline;
+    background: var(--bg-tertiary);
+    text-decoration: none;
   }
 
   .icon-btn-sm {
@@ -594,6 +597,24 @@
       max-height: calc(100vh - 88px);
     }
 
+    .header {
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.9rem;
+    }
+
+    .header h3 {
+      min-width: 0;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 0.4rem;
+      width: 100%;
+    }
+
     .content {
       max-height: none;
     }
@@ -605,7 +626,16 @@
     }
 
     .text-btn {
-      display: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 0.35rem 0.55rem;
+      font-size: 0.78rem;
+    }
+
+    .footer {
+      padding: 0.7rem 0.9rem;
     }
   }
 </style>

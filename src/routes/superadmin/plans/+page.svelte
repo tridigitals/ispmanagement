@@ -675,8 +675,8 @@
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
-      }
+    box-shadow: var(--shadow-md);
+  }
 
   :global([data-theme='light']) .glass-card {
     background: var(--bg-surface);
@@ -699,6 +699,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.75rem;
+    flex-wrap: wrap;
   }
 
   .refresh-pill {
@@ -1120,9 +1121,17 @@
       align-items: stretch;
     }
 
+    .header-actions {
+      width: 100%;
+    }
+
     .btn-primary {
       width: 100%;
       justify-content: center;
+    }
+
+    .table-wrapper {
+      padding: 0 0.75rem 0.85rem 0.75rem;
     }
 
     .plan-top {

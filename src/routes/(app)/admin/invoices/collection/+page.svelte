@@ -14,6 +14,7 @@
   import { can, user, tenant } from '$lib/stores/auth';
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import ResponsiveTabs from '$lib/components/ui/ResponsiveTabs.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
@@ -22,6 +23,7 @@
   type ActiveTab = 'collection' | 'reminders';
 
   let activeTab = $state<ActiveTab>('collection');
+  let isMobile = $state(false);
   let loadingCollection = $state(true);
   let loadingReminders = $state(true);
   let runningNow = $state(false);
@@ -45,6 +47,18 @@
   let reminderFrom = $state('');
   let reminderTo = $state('');
   let reminderLimit = $state(200);
+  const collectionTabs = $derived.by(() => [
+    {
+      id: 'collection',
+      label: $t('admin.billing_collection.tabs.collection') || 'Collection Logs',
+      count: collectionRows.length,
+    },
+    {
+      id: 'reminders',
+      label: $t('admin.billing_collection.tabs.reminders') || 'Reminder Logs',
+      count: reminderRows.length,
+    },
+  ]);
 
   const tenantCtx = $derived.by(() =>
     resolveTenantContext({
@@ -162,13 +176,26 @@
   const currentLoading = $derived(
     activeTab === 'collection' ? loadingCollection : loadingReminders,
   );
-  onMount(async () => {
-    if (!$can('read', 'billing') && !$can('manage', 'billing')) {
-      goto('/unauthorized');
-      return;
-    }
-    await Promise.all([loadCollection(), loadReminders()]);
-    ready = true;
+  onMount(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const updateViewport = () => {
+      isMobile = mq.matches;
+    };
+    updateViewport();
+    mq.addEventListener('change', updateViewport);
+
+    void (async () => {
+      if (!$can('read', 'billing') && !$can('manage', 'billing')) {
+        goto('/unauthorized');
+        return;
+      }
+      await Promise.all([loadCollection(), loadReminders()]);
+      ready = true;
+    })();
+
+    return () => {
+      mq.removeEventListener('change', updateViewport);
+    };
   });
 
   $effect(() => {
@@ -518,26 +545,14 @@
   {/if}
 
   <div class="card content-card">
-    <div class="tabs">
-      <button
-        class="tab-btn"
-        class:active={activeTab === 'collection'}
-        type="button"
-        onclick={() => switchTab('collection')}
-      >
-        {$t('admin.billing_collection.tabs.collection') || 'Collection Logs'}
-        <span>{collectionRows.length}</span>
-      </button>
-      <button
-        class="tab-btn"
-        class:active={activeTab === 'reminders'}
-        type="button"
-        onclick={() => switchTab('reminders')}
-      >
-        {$t('admin.billing_collection.tabs.reminders') || 'Reminder Logs'}
-        <span>{reminderRows.length}</span>
-      </button>
-    </div>
+    <ResponsiveTabs
+      items={collectionTabs}
+      bind:activeId={activeTab}
+      {isMobile}
+      priorityCount={2}
+      ariaLabel={$t('admin.billing_collection.title') || 'Billing collection tabs'}
+      on:change={(event) => switchTab(event.detail as ActiveTab)}
+    />
 
     {#if activeTab === 'collection'}
       <div class="filter-row">
@@ -815,37 +830,6 @@
     border-radius: 12px;
     background: var(--bg-surface);
     overflow: hidden;
-  }
-
-  .tabs {
-    display: flex;
-    gap: 0.5rem;
-    padding: 0.9rem;
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  .tab-btn {
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    border-radius: 9px;
-    padding: 0.55rem 0.9rem;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-  }
-
-  .tab-btn span {
-    font-size: 0.78rem;
-    color: var(--text-tertiary);
-  }
-
-  .tab-btn.active {
-    background: color-mix(in srgb, var(--color-primary) 14%, var(--bg-surface) 86%);
-    color: var(--text-primary);
-    border-color: color-mix(in srgb, var(--color-primary) 48%, var(--border-color) 52%);
   }
 
   .filter-row {

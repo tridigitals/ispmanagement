@@ -293,7 +293,7 @@
     align-items: center;
     gap: 1rem;
     padding: 1.1rem 1.15rem;
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-surface);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
     text-align: left;
@@ -311,7 +311,7 @@
   .provider-card.selected {
     border-color: rgba(99, 102, 241, 0.42);
     background: var(--bg-surface);
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+    box-shadow: var(--shadow-sm);
   }
 
   :global([data-theme='light']) .provider-card {
@@ -324,7 +324,7 @@
 
   :global([data-theme='light']) .provider-card.selected {
     background: var(--bg-surface);
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-sm);
   }
 
   .p-icon {
@@ -379,7 +379,7 @@
   }
 
   .config-panel {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-surface);
     padding: 1.25rem;
     border-radius: var(--radius-lg);
     border: 1px solid var(--glass-border);

@@ -33,20 +33,28 @@
     display: inline-flex;
     align-items: center;
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 999px;
     background: color-mix(in srgb, var(--bg-surface) 75%, transparent);
-    padding: 3px;
-    gap: 2px;
+    padding: 4px;
+    gap: 4px;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .view-switch::-webkit-scrollbar {
+    display: none;
   }
   .switch-btn {
     border: 0;
     background: transparent;
     color: var(--text-secondary);
     font-weight: 800;
-    border-radius: 9px;
-    padding: 8px 12px;
+    border-radius: 999px;
+    padding: 8px 14px;
     cursor: pointer;
     text-decoration: none;
+    white-space: nowrap;
+    flex: 0 0 auto;
   }
   .switch-btn.active {
     background: color-mix(in srgb, var(--accent) 16%, var(--bg-surface));
@@ -55,5 +63,15 @@
   .switch-btn:hover:not(.active) {
     color: var(--text-primary);
     background: var(--bg-hover);
+  }
+
+  @media (max-width: 640px) {
+    .view-switch {
+      width: 100%;
+    }
+
+    .switch-btn {
+      padding-inline: 12px;
+    }
   }
 </style>

@@ -1856,7 +1856,7 @@
         emptyText={tr('admin.network.installations.empty', 'No installation work orders')}
         pagination={true}
         pageSize={12}
-        mobileView="scroll"
+        mobileView="card"
         sortKey={
           sortKey === 'customer_name'
             ? 'customer'
@@ -2390,6 +2390,11 @@
   }
   .table-wrap :global(.responsive-table) {
     min-width: 1180px;
+  }
+  @media (max-width: 1024px) {
+    .table-wrap :global(.responsive-table.mobile-card) {
+      min-width: 0;
+    }
   }
   .actions {
     display: flex;

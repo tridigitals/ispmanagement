@@ -5,6 +5,7 @@
   import { api, type TenantSubscriptionDetails, type Invoice } from '$lib/api/client';
   import { goto } from '$app/navigation';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import ResponsiveTabs from '$lib/components/ui/ResponsiveTabs.svelte';
   import { fade } from 'svelte/transition';
   import { toast } from 'svelte-sonner';
   import Table from '$lib/components/ui/Table.svelte';
@@ -20,6 +21,7 @@
   let invoices = $state<Invoice[]>([]);
   let upgrading = $state(false);
   let activeTab = $state<'overview' | 'plans' | 'history'>('overview');
+  let isMobile = $state(false);
   let baseCurrencyCode = $state('IDR');
   let baseLocale = $state('en-US');
   let fxRate = $state<number | null>(null);
@@ -43,40 +45,56 @@
 
   // Derived state for current plan details (price, description)
   let currentPlanInfo = $derived(availablePlans.find((p) => p.slug === subscription?.plan_slug));
+  const subscriptionTabItems = $derived.by(() => [
+    { id: 'overview', label: $t('admin.subscription.tabs.overview') || 'Overview' },
+    { id: 'plans', label: $t('admin.subscription.tabs.plans') || 'Available Plans' },
+    { id: 'history', label: $t('admin.subscription.tabs.history') || 'Payment History' },
+  ]);
 
-  onMount(async () => {
-    if (!$can('read', 'billing') && !$can('manage', 'billing')) {
-      goto('/unauthorized');
-      return;
-    }
-    try {
-      const [subRes, plansRes, invoicesRes, publicSettings] = await Promise.all([
-        api.plans.getSubscriptionDetails(),
-        api.plans.list(),
-        api.payment.listInvoices(),
-        api.settings.getPublicSettings(),
-      ]);
-      subscription = subRes;
-      availablePlans = plansRes.filter((p) => p.is_active);
-      invoices = invoicesRes;
+  onMount(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const updateViewport = () => {
+      isMobile = mq.matches;
+    };
+    updateViewport();
+    mq.addEventListener('change', updateViewport);
 
-      // Plans/invoices are stored in base currency; tenant currency is the display currency.
-      // Fallback order keeps backward compatibility with older servers.
-      if (publicSettings?.base_currency_code || publicSettings?.currency_code) {
-        baseCurrencyCode = String(
-          publicSettings.base_currency_code || publicSettings.currency_code,
-        ).toUpperCase();
+    void (async () => {
+      if (!$can('read', 'billing') && !$can('manage', 'billing')) {
+        goto('/unauthorized');
+        return;
       }
-      if (publicSettings?.default_locale) {
-        baseLocale = String(publicSettings.default_locale);
+      try {
+        const [subRes, plansRes, invoicesRes, publicSettings] = await Promise.all([
+          api.plans.getSubscriptionDetails(),
+          api.plans.list(),
+          api.payment.listInvoices(),
+          api.settings.getPublicSettings(),
+        ]);
+        subscription = subRes;
+        availablePlans = plansRes.filter((p) => p.is_active);
+        invoices = invoicesRes;
+
+        if (publicSettings?.base_currency_code || publicSettings?.currency_code) {
+          baseCurrencyCode = String(
+            publicSettings.base_currency_code || publicSettings.currency_code,
+          ).toUpperCase();
+        }
+        if (publicSettings?.default_locale) {
+          baseLocale = String(publicSettings.default_locale);
+        }
+      } catch (e: any) {
+        toast.error(
+          $t('admin.subscription.errors.load_failed') || 'Failed to load subscription details',
+        );
+      } finally {
+        loading = false;
       }
-    } catch (e: any) {
-      toast.error(
-        $t('admin.subscription.errors.load_failed') || 'Failed to load subscription details',
-      );
-    } finally {
-      loading = false;
-    }
+    })();
+
+    return () => {
+      mq.removeEventListener('change', updateViewport);
+    };
   });
 
   $effect(() => {
@@ -292,29 +310,13 @@
     </div>
   </div>
 
-  <div class="tabs">
-    <button
-      class="tab-btn"
-      class:active={activeTab === 'overview'}
-      onclick={() => (activeTab = 'overview')}
-    >
-      {$t('admin.subscription.tabs.overview') || 'Overview'}
-    </button>
-    <button
-      class="tab-btn"
-      class:active={activeTab === 'plans'}
-      onclick={() => (activeTab = 'plans')}
-    >
-      {$t('admin.subscription.tabs.plans') || 'Available Plans'}
-    </button>
-    <button
-      class="tab-btn"
-      class:active={activeTab === 'history'}
-      onclick={() => (activeTab = 'history')}
-    >
-      {$t('admin.subscription.tabs.history') || 'Payment History'}
-    </button>
-  </div>
+  <ResponsiveTabs
+    items={subscriptionTabItems}
+    bind:activeId={activeTab}
+    {isMobile}
+    priorityCount={3}
+    ariaLabel={$t('admin.subscription.title') || 'Subscription tabs'}
+  />
 
   {#if loading}
     <div class="loading-state">
@@ -619,7 +621,6 @@
     padding: 1.5rem;
     max-width: 1400px;
     margin: 0 auto;
-    --glass: rgba(255, 255, 255, 0.04);
     --glass-border: rgba(255, 255, 255, 0.08);
     --accent-indigo: #6366f1;
     --accent-emerald: #10b981;
@@ -635,7 +636,7 @@
     border-radius: var(--radius-lg);
     border: 1px solid var(--glass-border);
     background: var(--bg-surface);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-sm);
   }
 
   .context-copy {
@@ -673,46 +674,13 @@
     justify-content: flex-end;
   }
 
-  /* Tabs */
-  .tabs {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1.5rem;
-    padding: 0.4rem;
-    border-radius: 14px;
-    border: 1px solid var(--glass-border);
-    background: var(--bg-surface);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
-    flex-wrap: wrap;
-  }
-  .tab-btn {
-    padding: 0.65rem 1rem;
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 12px;
-    color: var(--text-secondary);
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-  .tab-btn:hover {
-    color: var(--text-primary);
-    background: rgba(99, 102, 241, 0.08);
-  }
-  .tab-btn.active {
-    color: var(--text-primary);
-    background: var(--bg-surface);
-    border-color: rgba(99, 102, 241, 0.35);
-  }
-
   /* Plan Detail Card */
   .plan-detail-card {
     background: var(--bg-surface);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-sm);
   }
 
   .detail-header {
@@ -721,7 +689,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(255, 255, 255, 0.015);
+    background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
   }
 
   .plan-title-row {
@@ -924,12 +892,12 @@
     display: flex;
     flex-direction: column;
     transition: all 0.2s;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+    box-shadow: var(--shadow-sm);
   }
   .plan-option:hover {
     transform: translateY(-2px);
     border-color: rgba(99, 102, 241, 0.35);
-    box-shadow: 0 14px 32px rgba(99, 102, 241, 0.18);
+    box-shadow: var(--shadow-md);
   }
   .plan-option.active {
     border-color: rgba(99, 102, 241, 0.35);
@@ -1082,28 +1050,10 @@
     }
   }
 
-  /* Light theme adjustments */
-  :global([data-theme='light']) .tabs {
-    background: var(--bg-surface);
-    border-color: rgba(0, 0, 0, 0.06);
-    box-shadow:
-      0 10px 28px rgba(0, 0, 0, 0.08),
-      0 0 0 1px rgba(255, 255, 255, 0.8);
-  }
-  :global([data-theme='light']) .tab-btn:hover {
-    background: rgba(99, 102, 241, 0.1);
-  }
-  :global([data-theme='light']) .tab-btn.active {
-    background: rgba(99, 102, 241, 0.12);
-    border-color: rgba(99, 102, 241, 0.25);
-    color: #111827;
-  }
   :global([data-theme='light']) .plan-detail-card {
     background: var(--bg-surface);
     border-color: rgba(0, 0, 0, 0.06);
-    box-shadow:
-      0 12px 32px rgba(0, 0, 0, 0.08),
-      0 0 0 1px rgba(255, 255, 255, 0.8);
+    box-shadow: var(--shadow-sm);
   }
   :global([data-theme='light']) .detail-header {
     background: rgba(0, 0, 0, 0.02);

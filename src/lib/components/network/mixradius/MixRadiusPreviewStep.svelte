@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import ResponsiveTabs from '$lib/components/ui/ResponsiveTabs.svelte';
   import {
     buildMixradiusPreviewCounts,
     getMixradiusConflictBadge,
@@ -28,6 +30,25 @@
     'auto_matched',
     'skipped',
   ];
+  let isMobile = $state(false);
+  const tabItems = $derived.by(() =>
+    tabs.map((tab) => ({
+      id: tab,
+      label: tab === 'all' ? 'All' : getMixradiusConflictBadge(tab).label,
+      count:
+        tab === 'all'
+          ? counts.total
+          : tab === 'blocked'
+            ? counts.blocked
+            : tab === 'conflict'
+              ? counts.conflicts
+              : tab === 'needs_review'
+                ? counts.needsReview
+                : tab === 'auto_matched'
+                  ? counts.autoMatched
+                  : counts.skipped,
+    }))
+  );
   const filteredRows = $derived.by(() =>
     (preview?.rows ?? []).filter((row) => activeTab === 'all' || row.conflictState === activeTab)
   );
@@ -36,6 +57,19 @@
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([sourceKind, total]) => ({ sourceKind, total }))
   );
+
+  onMount(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const updateViewport = () => {
+      isMobile = mq.matches;
+    };
+    updateViewport();
+    mq.addEventListener('change', updateViewport);
+
+    return () => {
+      mq.removeEventListener('change', updateViewport);
+    };
+  });
 </script>
 
 <section class="mix-step">
@@ -65,17 +99,13 @@
     </div>
   {/if}
 
-  <div class="tabs">
-    {#each tabs as tab}
-      <button
-        class:active={activeTab === tab}
-        type="button"
-        onclick={() => (activeTab = tab)}
-      >
-        {tab === 'all' ? 'All' : getMixradiusConflictBadge(tab).label}
-      </button>
-    {/each}
-  </div>
+  <ResponsiveTabs
+    items={tabItems}
+    bind:activeId={activeTab}
+    {isMobile}
+    priorityCount={2}
+    ariaLabel="MixRadius preview filters"
+  />
 
   <div class="rows">
     {#if filteredRows.length === 0}
@@ -177,25 +207,6 @@
     font-size: 1.3rem;
   }
 
-  .tabs {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .tabs button {
-    border-radius: 999px;
-    border: 1px solid var(--border-color, rgba(148, 163, 184, 0.22));
-    background: transparent;
-    color: var(--text-secondary);
-    padding: 8px 12px;
-  }
-
-  .tabs button.active {
-    background: rgba(14, 165, 233, 0.18);
-    color: var(--text-primary);
-  }
-
   .badge.success {
     color: #86efac;
   }
@@ -210,5 +221,12 @@
 
   .badge.muted {
     color: #cbd5e1;
+  }
+
+  @media (max-width: 640px) {
+    .step-actions {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
   }
 </style>

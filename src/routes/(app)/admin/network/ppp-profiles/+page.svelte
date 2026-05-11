@@ -432,7 +432,7 @@
         pageSize={10}
         searchable={true}
         searchPlaceholder={$t('admin.network.routers.ppp_profiles.search') || 'Search profiles...'}
-        mobileView="scroll"
+        mobileView="card"
       >
         {#snippet cell({ item, key }: any)}
           {#if key === 'state'}

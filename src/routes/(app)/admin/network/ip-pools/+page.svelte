@@ -374,7 +374,7 @@
         pageSize={10}
         searchable={true}
         searchPlaceholder={$t('admin.network.routers.ip_pools.search') || 'Search pools...'}
-        mobileView="scroll"
+        mobileView="card"
       >
         {#snippet cell({ item, key }: any)}
           {#if key === 'state'}

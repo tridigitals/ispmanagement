@@ -344,7 +344,7 @@
           pageSize={12}
           searchable={true}
           searchPlaceholder={$t('admin.network.pppoe.import.search') || 'Search username...'}
-          mobileView="scroll"
+          mobileView="card"
         >
           {#snippet cell({ item, key }: any)}
             {#if key === 'pick'}

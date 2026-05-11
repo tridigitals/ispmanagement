@@ -325,6 +325,8 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
+    gap: 1rem;
+    flex-wrap: wrap;
   }
 
   .glass-card {
@@ -332,14 +334,16 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
-      }
+    box-shadow: var(--shadow-md);
+  }
 
   .card-header {
     padding: 1.25rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 
@@ -502,5 +506,47 @@
     display: flex;
     justify-content: center;
     gap: 0.75rem;
+  }
+
+  @media (max-width: 720px) {
+    .header-section {
+      align-items: stretch;
+      margin-bottom: 1.25rem;
+    }
+
+    .header-section :global(.btn) {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .card-header {
+      align-items: flex-start;
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: 0.85rem 0.95rem;
+    }
+
+    .text-right {
+      text-align: left;
+    }
+
+    .justify-end {
+      justify-content: flex-start;
+    }
+
+    .empty-state.fancy {
+      padding: 1.5rem 1rem;
+    }
+
+    .empty-actions {
+      width: 100%;
+    }
+
+    .empty-actions :global(.btn) {
+      width: 100%;
+      justify-content: center;
+    }
   }
 </style>

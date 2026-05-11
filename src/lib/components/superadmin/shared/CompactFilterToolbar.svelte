@@ -118,7 +118,7 @@
     min-height: 40px;
     border-radius: 12px;
     border: 1px solid var(--border-color);
-    background: var(--bg-surface);
+    background: var(--bg-tertiary);
     color: var(--text-primary);
   }
 
@@ -236,6 +236,7 @@
     padding: 0.9rem 1rem;
     display: grid;
     gap: 0.85rem;
+    box-shadow: var(--shadow-sm);
   }
 
   .filter-panel-body {
@@ -282,6 +283,10 @@
     .toolbar-actions :global(.btn-secondary) {
       width: 100%;
       justify-content: center;
+    }
+
+    .filter-toggle {
+      justify-content: space-between;
     }
   }
 </style>
