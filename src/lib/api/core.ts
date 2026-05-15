@@ -496,6 +496,31 @@ const commandMap: Record<string, { method: string; path: string }> = {
     method: 'POST',
     path: '/admin/isp-packages/router-mappings',
   },
+  list_network_assets: { method: 'GET', path: '/admin/network-assets' },
+  get_network_asset: { method: 'GET', path: '/admin/network-assets/:id' },
+  create_network_asset: { method: 'POST', path: '/admin/network-assets' },
+  update_network_asset: { method: 'PATCH', path: '/admin/network-assets/:id' },
+  delete_network_asset: { method: 'DELETE', path: '/admin/network-assets/:id' },
+  assign_network_asset_customer: {
+    method: 'POST',
+    path: '/admin/network-assets/:id/customer',
+  },
+  assign_network_asset_location: {
+    method: 'POST',
+    path: '/admin/network-assets/:id/location',
+  },
+  assign_network_asset_work_order: {
+    method: 'POST',
+    path: '/admin/network-assets/:id/work-order',
+  },
+  link_network_asset_parent: {
+    method: 'POST',
+    path: '/admin/network-assets/:id/parent',
+  },
+  list_customer_network_assets: {
+    method: 'GET',
+    path: '/admin/network-assets/customer/:customer_id',
+  },
   list_network_nodes: { method: 'GET', path: '/admin/network-mapping/nodes' },
   create_network_node: { method: 'POST', path: '/admin/network-mapping/nodes' },
   update_network_node: { method: 'PATCH', path: '/admin/network-mapping/nodes/:id' },

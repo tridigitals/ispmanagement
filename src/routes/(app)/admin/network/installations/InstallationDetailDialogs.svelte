@@ -79,6 +79,27 @@
     installationDhcpQueueRateLimit = $bindable(),
     installationDhcpQueueRateLimitError = $bindable(),
     installationDhcpQueueRateLimitPresets = [],
+    loadingInstallationAssets,
+    savingInstallationAssets,
+    installationTerminalAssetId = $bindable(),
+    installationParentAssetId = $bindable(),
+    installationTerminalAssetOptions,
+    installationParentAssetOptions,
+    installationAssetBindingError,
+    selectedTerminalAssetLabel,
+    selectedParentAssetLabel,
+    handleInstallationTerminalAssetChange,
+    handleInstallationParentAssetChange,
+    installationQuickAssetOpen = $bindable(),
+    creatingInstallationQuickAsset,
+    installationQuickAssetDraft = $bindable(),
+    installationQuickAssetDuplicates = {},
+    installationQuickAssetCanSubmit = true,
+    openInstallationQuickAsset,
+    closeInstallationQuickAsset,
+    createInstallationQuickAsset,
+    updateInstallationQuickAssetField,
+    continueToFinishStep,
     installationPppoeTargetOptions,
     installationManagedRadiusHint,
     installationManagedRadiusLoadError,
@@ -162,12 +183,14 @@
           <div class:done-step={checkOnt} class:active-step={!checkOnt && onsiteActiveIndex === 1}>4. ONT</div>
           <div class:done-step={checkPppoe} class:active-step={!checkPppoe && onsiteActiveIndex === 2}>5. PPPoE</div>
           <div class:done-step={checkSpeed} class:active-step={!checkSpeed && onsiteActiveIndex === 3}>6. Speed Test</div>
-          <div class:active-step={checklistDoneCount === checklistTotal}>7. {tr('admin.network.installations.step_activate', 'Activate')}</div>
+          <div class:active-step={effectiveStep >= 4}>7. {tr('admin.network.installations.step_assets', 'Asset Binding')}</div>
+          <div class:active-step={effectiveStep >= 5}>8. {tr('admin.network.installations.step_activate', 'Activate')}</div>
         {:else}
           <div class:active-step={effectiveStep >= 1}>1. {tr('admin.network.installations.step_assign', 'Assign')}</div>
           <div class:active-step={effectiveStep >= 2}>2. {tr('admin.network.installations.step_schedule', 'Schedule')}</div>
           <div class:active-step={effectiveStep >= 3}>3. {tr('admin.network.installations.step_onsite', 'On-site & Test')}</div>
-          <div class:active-step={effectiveStep >= 4}>4. {tr('admin.network.installations.step_activate', 'Finish')}</div>
+          <div class:active-step={effectiveStep >= 4}>4. {tr('admin.network.installations.step_assets', 'Asset Binding')}</div>
+          <div class:active-step={effectiveStep >= 5}>5. {tr('admin.network.installations.step_activate', 'Finish')}</div>
         {/if}
       </div>
 
@@ -655,11 +678,186 @@
               <button class="btn ghost" onclick={savePlan} disabled={busyId === activeRow.id}>{tr('admin.network.installations.save_plan', 'Save Plan')}</button>
             </div>
           {:else if activeRow.status === 'in_progress' && effectiveStep === 4}
+            <h3>{tr('admin.network.installations.step_assets', 'Asset Binding')}</h3>
+            <p class="step-help">{tr('admin.network.installations.step_assets_help', 'Select the terminal asset installed on site, then optionally connect the upstream parent asset for audit traceability.')}</p>
+            {#if loadingInstallationAssets}
+              <p class="helper-text">{tr('common.loading', 'Loading...')}</p>
+            {:else}
+              <div class="form-grid two-col compact">
+                <label class="summary-field">
+                  {tr('admin.network.installations.terminal_asset', 'Terminal Asset (ONT/ONU)')}
+                  <select
+                    class:error={!!installationAssetBindingError}
+                    class="input"
+                    bind:value={installationTerminalAssetId}
+                    onchange={(event) => handleInstallationTerminalAssetChange((event.currentTarget as HTMLSelectElement).value)}
+                  >
+                    <option value="">{tr('admin.network.installations.select_terminal_asset', 'Select ONT/ONU asset')}</option>
+                    {#each installationTerminalAssetOptions as option}
+                      <option value={option.value}>{option.label}</option>
+                    {/each}
+                  </select>
+                  {#if installationAssetBindingError}
+                    <span class="field-error">{installationAssetBindingError}</span>
+                  {/if}
+                </label>
+                <label class="summary-field">
+                  {tr('admin.network.installations.parent_asset_optional', 'Parent Asset (Optional)')}
+                  <select
+                    class="input"
+                    bind:value={installationParentAssetId}
+                    onchange={(event) => handleInstallationParentAssetChange((event.currentTarget as HTMLSelectElement).value)}
+                  >
+                    <option value="">{tr('admin.network.installations.no_parent_asset', 'No parent asset')}</option>
+                    {#each installationParentAssetOptions as option}
+                      <option value={option.value}>{option.label}</option>
+                    {/each}
+                  </select>
+                </label>
+              </div>
+              <div class="modal-actions">
+                <button class="btn ghost" type="button" onclick={openInstallationQuickAsset}>
+                  <Icon name="plus" size={14} />
+                  {tr('admin.network.installations.quick_create_terminal_asset', 'Create ONT/ONU')}
+                </button>
+              </div>
+              {#if installationQuickAssetOpen}
+                <section class="quick-asset-card">
+                  <div class="quick-asset-head">
+                    <strong>{tr('admin.network.installations.quick_create_title', 'Quick Create Terminal Asset')}</strong>
+                    <button class="btn ghost mini" type="button" onclick={closeInstallationQuickAsset}>
+                      {tr('common.close', 'Close')}
+                    </button>
+                  </div>
+                  <div class="form-grid two-col compact">
+                    <label class="summary-field">
+                      {tr('admin.network.installations.quick_asset_type', 'Type')}
+                      <select
+                        class="input"
+                        value={installationQuickAssetDraft.asset_type}
+                        onchange={(event) =>
+                          updateInstallationQuickAssetField(
+                            'asset_type',
+                            (event.currentTarget as HTMLSelectElement).value,
+                          )}
+                      >
+                        <option value="ont">ONT</option>
+                        <option value="onu">ONU</option>
+                      </select>
+                    </label>
+                    <label class="summary-field">
+                      {tr('admin.network.installations.quick_asset_name', 'Asset Name')}
+                      <input
+                        class="input"
+                        value={installationQuickAssetDraft.name}
+                        oninput={(event) =>
+                          updateInstallationQuickAssetField(
+                            'name',
+                            (event.currentTarget as HTMLInputElement).value,
+                          )}
+                        placeholder="ONT Customer A"
+                      />
+                    </label>
+                    <label class="summary-field">
+                      {tr('admin.network.installations.quick_asset_serial', 'Serial Number')}
+                      <input
+                        class="input"
+                        value={installationQuickAssetDraft.serial_number}
+                        oninput={(event) =>
+                          updateInstallationQuickAssetField(
+                            'serial_number',
+                            (event.currentTarget as HTMLInputElement).value,
+                        )}
+                        placeholder="SN-123456"
+                      />
+                      {#if installationQuickAssetDuplicates.serial_number}
+                        <span class="field-error">{installationQuickAssetDuplicates.serial_number}</span>
+                      {/if}
+                    </label>
+                    <label class="summary-field">
+                      {tr('admin.network.installations.quick_asset_code', 'Code')}
+                      <input
+                        class="input"
+                        value={installationQuickAssetDraft.code}
+                        oninput={(event) =>
+                          updateInstallationQuickAssetField(
+                            'code',
+                            (event.currentTarget as HTMLInputElement).value,
+                        )}
+                        placeholder="ONT-001"
+                      />
+                      {#if installationQuickAssetDuplicates.code}
+                        <span class="field-error">{installationQuickAssetDuplicates.code}</span>
+                      {/if}
+                    </label>
+                    <label class="summary-field">
+                      {tr('admin.network.installations.quick_asset_vendor', 'Vendor')}
+                      <input
+                        class="input"
+                        value={installationQuickAssetDraft.vendor}
+                        oninput={(event) =>
+                          updateInstallationQuickAssetField(
+                            'vendor',
+                            (event.currentTarget as HTMLInputElement).value,
+                          )}
+                        placeholder="ZTE"
+                      />
+                    </label>
+                    <label class="summary-field">
+                      {tr('admin.network.installations.quick_asset_model', 'Model')}
+                      <input
+                        class="input"
+                        value={installationQuickAssetDraft.model}
+                        oninput={(event) =>
+                          updateInstallationQuickAssetField(
+                            'model',
+                            (event.currentTarget as HTMLInputElement).value,
+                          )}
+                        placeholder="F670L"
+                      />
+                    </label>
+                  </div>
+                  <div class="modal-actions">
+                    <button class="btn ghost" type="button" onclick={closeInstallationQuickAsset}>
+                      {tr('common.cancel', 'Cancel')}
+                    </button>
+                    <button
+                      class="btn"
+                      type="button"
+                      onclick={createInstallationQuickAsset}
+                      disabled={!installationQuickAssetCanSubmit}
+                    >
+                      {creatingInstallationQuickAsset
+                        ? tr('common.loading', 'Loading...')
+                        : tr('admin.network.installations.quick_create_submit', 'Create & Select')}
+                    </button>
+                  </div>
+                </section>
+              {/if}
+              <div class="activation-ready">
+                <div>{tr('admin.network.installations.terminal_asset_selected', 'Terminal asset')}: <strong>{selectedTerminalAssetLabel || '-'}</strong></div>
+                <div>{tr('admin.network.installations.parent_asset_selected', 'Parent asset')}: <strong>{selectedParentAssetLabel || '-'}</strong></div>
+              </div>
+              <div class="modal-actions stage-actions">
+                <button
+                  class="btn"
+                  type="button"
+                  onclick={continueToFinishStep}
+                  disabled={!installationTerminalAssetId || savingInstallationAssets}
+                >
+                  {savingInstallationAssets
+                    ? tr('common.loading', 'Loading...')
+                    : tr('admin.network.installations.continue_finish', 'Continue to Finish')}
+                </button>
+              </div>
+            {/if}
+          {:else if activeRow.status === 'in_progress' && effectiveStep === 5}
             <h3>{tr('admin.network.installations.step_activate', 'Finish')}</h3>
             <p class="step-help">{tr('admin.network.installations.step_active_help', 'Checklist complete. Finish installation to start the service state flow.')}</p>
             <div class="activation-ready">
               <div>{tr('admin.network.installations.checklist', 'Installation Checklist')}: <strong>{checklistDoneCount}/{checklistTotal}</strong></div>
               <div>{tr('common.schedule', 'Schedule')}: <strong>{activeRow.scheduled_at ? formatDateTime(activeRow.scheduled_at) : '-'}</strong></div>
+              <div>{tr('admin.network.installations.terminal_asset_selected', 'Terminal asset')}: <strong>{selectedTerminalAssetLabel || '-'}</strong></div>
             </div>
             <label class="notes">
               {tr('common.notes', 'Notes')}
@@ -685,6 +883,12 @@
               <div class="activation-ready">
                 <div>{tr('admin.network.installations.grace_deadline', 'Grace active until')}: <strong>{subscriptionGraceDeadlineLabel}</strong></div>
                 <div>{tr('admin.network.installations.grace_followup', 'If the first invoice is still unpaid after this deadline, service will be suspended automatically.')}</div>
+              </div>
+            {/if}
+            {#if selectedTerminalAssetLabel || selectedParentAssetLabel}
+              <div class="activation-ready">
+                <div>{tr('admin.network.installations.terminal_asset_selected', 'Terminal asset')}: <strong>{selectedTerminalAssetLabel || '-'}</strong></div>
+                <div>{tr('admin.network.installations.parent_asset_selected', 'Parent asset')}: <strong>{selectedParentAssetLabel || '-'}</strong></div>
               </div>
             {/if}
             {#if canCreateMissingInvoice}
@@ -954,6 +1158,8 @@
   .checklist.single-step { padding: 12px; }
   .progress-inline { margin-left: 8px; font-size: 0.78rem; color: var(--color-primary); font-weight: 700; }
   .activation-ready { border: 1px dashed var(--border-color); border-radius: 12px; padding: 12px; display: grid; gap: 8px; color: var(--text-primary); font-size: 0.9rem; background: var(--bg-surface); }
+  .quick-asset-card { border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-surface); padding: 12px; display: grid; gap: 12px; }
+  .quick-asset-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .check-item { border: 1px solid var(--border-color); background: var(--bg-surface); border-radius: 10px; padding: 10px; cursor: pointer; gap: 10px !important; align-items: flex-start !important; transition: border-color 140ms ease, background 140ms ease; display: flex; }
   .check-item:hover { border-color: var(--color-primary); background: var(--bg-hover); }
   .check-item input[type='checkbox'] { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }

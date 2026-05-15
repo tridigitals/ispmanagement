@@ -1239,6 +1239,8 @@ pub async fn complete_installation_work_order(
     token: String,
     id: String,
     notes: Option<String>,
+    terminal_asset_id: Option<String>,
+    parent_asset_id: Option<String>,
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<InstallationWorkOrder, String> {
@@ -1253,7 +1255,15 @@ pub async fn complete_installation_work_order(
     require_permission(&auth, &claims, &tenant_id, "work_orders", "manage").await?;
 
     customers
-        .complete_installation_work_order(&claims.sub, &tenant_id, &id, notes, Some("127.0.0.1"))
+        .complete_installation_work_order(
+            &claims.sub,
+            &tenant_id,
+            &id,
+            notes,
+            terminal_asset_id,
+            parent_asset_id,
+            Some("127.0.0.1"),
+        )
         .await
         .map_err(|e| e.to_string())
 }

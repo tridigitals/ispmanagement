@@ -5,7 +5,8 @@
   import { onDestroy, onMount, type Component } from 'svelte';
   import { t } from 'svelte-i18n';
   import { customers } from '$lib/api/customers';
-  import type { PaginatedResponse } from '$lib/api/types';
+  import { networkAssets } from '$lib/api/networkAssets';
+  import type { NetworkAssetListItem } from '$lib/api/types';
   import { can, tenant, user } from '$lib/stores/auth';
   import { toast } from '$lib/stores/toast';
   import {
@@ -21,6 +22,17 @@
     saveNetworkNode,
     saveNetworkZone,
   } from '$lib/components/network/networkMapActions';
+  import {
+    buildTopologyAssetAutoLinkFeatureCollection,
+    buildTopologyAssetRows,
+    topologyAssetsToFeatureCollection,
+    type TopologyAssetRow,
+  } from '$lib/components/network/networkMapAssets';
+  import {
+    buildTopologyAssetConnectionOperations,
+    buildTopologyAssetConnectDraft,
+    findTopologyAssetNodeId,
+  } from '$lib/components/network/networkMapAssetConnect';
   import {
     buildDefaultLineGeometry,
     buildDeleteConfirmCopy,
@@ -70,6 +82,7 @@
     emitWorkOrderUpdatedToParent,
     resolveInstallationTargetMarker,
   } from '$lib/components/network/networkMapInstallation';
+  import { parseNetworkAssetMapTarget } from '../assets/networkAssetMapNavigation';
   import {
     asNumber,
     customersToFeatureCollection,
@@ -127,6 +140,8 @@
   const SOURCE_LINKS = 'nm-links';
   const SOURCE_ZONES = 'nm-zones';
   const SOURCE_ROUTERS = 'nm-routers';
+  const SOURCE_TOPOLOGY_ASSETS = 'nm-topology-assets';
+  const SOURCE_TOPOLOGY_ASSET_LINKS = 'nm-topology-asset-links';
   const SOURCE_LINK_DRAFT = 'nm-link-draft';
   const SOURCE_LINK_DRAFT_POINTS = 'nm-link-draft-points';
   const SOURCE_SELECTION_POINTS = 'nm-selection-points';
@@ -156,6 +171,7 @@
   let zonesVisible = $state(true);
   let routersVisible = $state(true);
   let customersVisible = $state(true);
+  let topologyAssetsVisible = $state(true);
   let viewMode = $state<'standard' | 'satellite'>('standard');
   let controlsHidden = $state(true);
 
@@ -173,6 +189,8 @@
   let linkRows = $state<NMLink[]>([]);
   let zoneRows = $state<NMZone[]>([]);
   let routerRows = $state<NMRouter[]>([]);
+  let topologyAssetRows = $state<TopologyAssetRow[]>([]);
+  let topologyAssetItems = $state<NetworkAssetListItem[]>([]);
   let customerRows = $state<NMNode[]>([]);
   let serviceRows = $state<NMNode[]>([]);
   let savingNode = $state(false);
@@ -227,6 +245,7 @@
     priority: '100',
     geometryText: '',
   });
+  let activeAssetConnectSourceId = $state<string | null>(null);
 
   let workspaceState = $state<NetworkMapWorkspaceState>(
     createNetworkMapWorkspaceState({
@@ -249,6 +268,7 @@
   let backgroundAssetSyncPromise: Promise<boolean> | null = null;
   let didInitialFitToMarkers = false;
   let initialExtentLoaded = false;
+  let assetFocusApplied = false;
   let lastAssetSyncAt = 0;
   let lastMapDataLoadedAt = $state(0);
   let lastMapDataSource = $state<'live' | 'cache' | 'none'>('none');
@@ -257,7 +277,10 @@
   const dataCacheTtlMs = 20_000;
   const dataCacheMaxEntries = 40;
   const assetSyncTtlMs = 45_000;
+  const topologyAssetsCacheTtlMs = 60_000;
   const mapTilerKey = (import.meta.env.VITE_MAPTILER_KEY as string | undefined)?.trim();
+  let lastTopologyAssetsLoadedAt = 0;
+  let refreshingTopologyAssets = false;
   const hasHiResSatellite = Boolean(mapTilerKey);
   const standardMaxZoom = 19;
   const satelliteMaxZoom = hasHiResSatellite ? 21 : 18;
@@ -373,6 +396,7 @@
   const sourceWorkOrderId = $derived($page.url.searchParams.get('work_order_id') || '');
   const sourceCustomerId = $derived($page.url.searchParams.get('customer_id') || '');
   const sourceLocationId = $derived($page.url.searchParams.get('location_id') || '');
+  const assetMapTarget = $derived.by(() => parseNetworkAssetMapTarget($page.url.searchParams));
   const installationReturnUrl = $derived.by(() => {
     if (!fromInstallation) return '';
     const params = new URLSearchParams();
@@ -491,6 +515,19 @@
     });
   }
 
+  function applyAssetMapTargetFocus() {
+    if (assetFocusApplied) return;
+    if (!assetMapTarget) return;
+
+    const matchedRow = topologyAssetRows.find((row) => row.id === assetMapTarget.assetId);
+    const lng = matchedRow?.longitude ?? assetMapTarget.longitude;
+    const lat = matchedRow?.latitude ?? assetMapTarget.latitude;
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+
+    focusMapOnCoordinates(lng, lat, 15);
+    assetFocusApplied = true;
+  }
+
   function coordinateFromGeometry(geometry: Geometry | null | undefined): [number, number] | null {
     if (!geometry) return null;
     switch (geometry.type) {
@@ -533,6 +570,91 @@
     }
   }
 
+  function escapePopupValue(input: unknown): string {
+    return String(input ?? '-')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function popupToneForAssetStatus(status: string): 'ok' | 'warn' | 'muted' {
+    if (status === 'installed' || status === 'available') return 'ok';
+    if (status === 'reserved' || status === 'faulty') return 'warn';
+    return 'muted';
+  }
+
+  function buildTopologyAssetPopupHtml(
+    row: TopologyAssetRow,
+    closeBtnId: string,
+    connectBtnId: string,
+  ) {
+    const subtitle = [row.assetTypeLabel, row.locationLabel].filter(Boolean).join(' • ') || row.assetTypeLabel;
+    const detailRows = [
+      row.code ? { label: 'Code', value: row.code } : null,
+      row.serialNumber ? { label: 'Serial', value: row.serialNumber } : null,
+      row.customerName ? { label: 'Customer', value: row.customerName } : null,
+      row.locationLabel ? { label: 'Location', value: row.locationLabel } : null,
+      {
+        label: 'Upstream',
+        value: row.hasUpstreamRelation ? 'Linked to parent asset' : 'Not linked yet',
+      },
+      row.assetType === 'odp'
+        ? {
+            label: 'Customer Drop',
+            value: row.hasCustomerRelation ? 'Linked to customer/service side' : 'Not linked yet',
+          }
+        : null,
+      row.portCapacity != null ? { label: 'Port Capacity', value: String(row.portCapacity) } : null,
+      row.portsUsed != null ? { label: 'Ports Used', value: String(row.portsUsed) } : null,
+      row.portsAvailable != null
+        ? { label: 'Ports Available', value: String(row.portsAvailable) }
+        : null,
+    ].filter(Boolean) as Array<{ label: string; value: string }>;
+
+    return `
+      <div class="nm-popup-card nm-popup-card-link">
+        <div class="nm-popup-head">
+          <div>
+            <div class="nm-popup-kicker">FTTH Asset</div>
+            <div class="nm-popup-title">${escapePopupValue(row.name)}</div>
+            <div class="nm-popup-subtitle">${escapePopupValue(subtitle)}</div>
+          </div>
+          <span class="nm-popup-badge ${popupToneForAssetStatus(row.status)}">${escapePopupValue(row.status)}</span>
+        </div>
+        <div class="nm-popup-summary nm-popup-summary-link">
+          <div class="nm-popup-summary-item">
+            <div class="nm-popup-summary-label">Marker</div>
+            <div class="nm-popup-summary-value">${escapePopupValue(row.markerLabel)}</div>
+          </div>
+          <div class="nm-popup-summary-item">
+            <div class="nm-popup-summary-label">Type</div>
+            <div class="nm-popup-summary-value">${escapePopupValue(row.assetTypeLabel)}</div>
+          </div>
+        </div>
+        ${
+          detailRows.length
+            ? `<div class="nm-popup-grid">${detailRows
+                .map(
+                  (item) => `
+                    <div>
+                      <div class="nm-popup-label">${escapePopupValue(item.label)}</div>
+                      <div class="nm-popup-value">${escapePopupValue(item.value)}</div>
+                    </div>
+                  `,
+                )
+                .join('')}</div>`
+            : ''
+        }
+        <div class="nm-popup-actions nm-popup-actions-link">
+          <button id="${connectBtnId}" class="nm-popup-btn primary" type="button">Connect</button>
+          <button id="${closeBtnId}" class="nm-popup-btn nm-popup-btn-close" type="button">Close</button>
+        </div>
+      </div>
+    `;
+  }
+
   function applyQuickMode(nextMode: NetworkMapQuickMode) {
     quickMode = nextMode;
     if (nextMode === 'all') {
@@ -541,6 +663,7 @@
       zonesVisible = true;
       routersVisible = true;
       customersVisible = true;
+      topologyAssetsVisible = true;
       return;
     }
 
@@ -550,6 +673,7 @@
       zonesVisible = true;
       routersVisible = canReadRouterInventory;
       customersVisible = false;
+      topologyAssetsVisible = true;
       return;
     }
 
@@ -559,6 +683,7 @@
       zonesVisible = false;
       routersVisible = false;
       customersVisible = true;
+      topologyAssetsVisible = false;
       return;
     }
 
@@ -568,6 +693,7 @@
       zonesVisible = false;
       routersVisible = false;
       customersVisible = true;
+      topologyAssetsVisible = true;
       return;
     }
 
@@ -577,6 +703,7 @@
       zonesVisible = true;
       routersVisible = canReadRouterInventory;
       customersVisible = false;
+      topologyAssetsVisible = true;
       return;
     }
 
@@ -585,6 +712,7 @@
     zonesVisible = true;
     routersVisible = false;
     customersVisible = true;
+    topologyAssetsVisible = true;
   }
 
   function handleWorkspaceSearchSelect(item: NetworkMapSearchResultItem) {
@@ -740,6 +868,102 @@
     });
   }
 
+  async function handleTopologyAssetLayerClick(e: any) {
+    const clickedFeature = snapshotMapFeature(e.features?.[0]);
+    if (!map || !clickedFeature || !maplibre) return;
+    const assetId = String(clickedFeature.properties?.id || '');
+    const row = topologyAssetRows.find((candidate) => candidate.id === assetId);
+    const coords = coordinateFromGeometry(clickedFeature.feature.geometry as Geometry);
+    if (!row || !coords) return;
+    if (linkPickMode) {
+      const nodeId = await ensureTopologyAssetNodeId(assetId);
+      if (!nodeId) {
+        toast.error('FTTH asset node belum tersinkron ke topology map.');
+        return;
+      }
+      handleLinkPickNode(nodeId);
+      return;
+    }
+    const mapInstance = map;
+    const { bindPopupNavigationDismiss } = await loadNetworkMapPopupModule();
+
+    activeNodePopup?.remove();
+    const closeBtnId = `nm-topology-asset-close-${Math.random().toString(36).slice(2, 10)}`;
+    const connectBtnId = `nm-topology-asset-connect-${Math.random().toString(36).slice(2, 10)}`;
+    const popup = new maplibre.Popup({
+      closeButton: false,
+      closeOnClick: true,
+      anchor: 'bottom',
+      offset: 14,
+    })
+      .setLngLat(coords)
+      .setHTML(buildTopologyAssetPopupHtml(row, closeBtnId, connectBtnId));
+    let cleanupNavigationDismiss: (() => void) | null = null;
+
+    popup.on('open', () => {
+      requestAnimationFrame(() => {
+        const popupElement =
+          typeof (popup as any).getElement === 'function'
+            ? ((popup as any).getElement() as HTMLElement)
+            : null;
+        popupElement?.classList.add('nm-popup-link-shell');
+      });
+      cleanupNavigationDismiss = bindPopupNavigationDismiss({
+        map: mapInstance,
+        popup,
+      });
+      const closeBtn = document.getElementById(closeBtnId) as HTMLButtonElement | null;
+      const connectBtn = document.getElementById(connectBtnId) as HTMLButtonElement | null;
+      connectBtn?.addEventListener('click', () => {
+        popup.remove();
+        void startConnectFromTopologyAsset(assetId);
+      });
+      closeBtn?.addEventListener('click', () => popup.remove());
+    });
+    popup.on('close', () => {
+      cleanupNavigationDismiss?.();
+      cleanupNavigationDismiss = null;
+      activeNodePopup = null;
+    });
+
+    activeNodePopup = popup;
+    popup.addTo(mapInstance);
+  }
+
+  async function refreshTopologyAssets(force = false) {
+    const now = Date.now();
+    const isStale = now - lastTopologyAssetsLoadedAt >= topologyAssetsCacheTtlMs;
+    if (!force && !topologyAssetsVisible && topologyAssetRows.length) {
+      return;
+    }
+    if (!force && !isStale && topologyAssetRows.length) {
+      replaceTopologyAssetOverlay(topologyAssetsToFeatureCollection(topologyAssetRows));
+      syncTopologyAssetLinkOverlay();
+      syncLayerVisibility();
+      return;
+    }
+    if (refreshingTopologyAssets) return;
+
+    refreshingTopologyAssets = true;
+    try {
+      const response = await networkAssets.list({
+        page: 1,
+        per_page: 500,
+      });
+      topologyAssetItems = (response.data || []) as NetworkAssetListItem[];
+      topologyAssetRows = buildTopologyAssetRows(topologyAssetItems);
+      lastTopologyAssetsLoadedAt = Date.now();
+      replaceTopologyAssetOverlay(topologyAssetsToFeatureCollection(topologyAssetRows));
+      syncTopologyAssetLinkOverlay();
+      syncLayerVisibility();
+      applyAssetMapTargetFocus();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      refreshingTopologyAssets = false;
+    }
+  }
+
   async function getInteractionModule() {
     if (interactionModule) return interactionModule;
     interactionModule = await loadNetworkMapInteractionModule();
@@ -784,6 +1008,7 @@
           map,
           onNodeClick: handleNodeLayerClick,
           onRouterClick: handleRouterLayerClick,
+          onTopologyAssetClick: handleTopologyAssetLayerClick,
           onLinkClick: handleLinkLayerClick,
           onCustomerClusterClick: async (e) => {
             if (!map || !maplibre || !e.features?.[0]) return;
@@ -1007,6 +1232,7 @@
           },
           fitToMarkers: fitMapToAllMarkersOnFirstLoad,
         });
+        await refreshTopologyAssets(force);
         if (isInitialExtentRequest) initialExtentLoaded = true;
         return;
       }
@@ -1063,6 +1289,8 @@
         },
         fitToMarkers: fitMapToAllMarkersOnFirstLoad,
       });
+      await refreshTopologyAssets(force);
+      syncTopologyAssetLinkOverlay();
       if (isInitialExtentRequest) initialExtentLoaded = true;
     } catch (e: any) {
       if ((e?.message || '').includes('Request canceled')) return;
@@ -1081,6 +1309,7 @@
       didInitialFitToMarkers,
       nodes,
       routers,
+      topologyAssets: topologyAssetRows,
       installationTargetCoord,
     });
     if (didFit) didInitialFitToMarkers = true;
@@ -1091,6 +1320,96 @@
     if (!map.getSource(sourceId)) return;
     const source = map.getSource(sourceId) as import('maplibre-gl').GeoJSONSource | undefined;
     source?.setData(data as any);
+  }
+
+  function syncTopologyAssetLinkOverlay() {
+    setSourceData(
+      SOURCE_TOPOLOGY_ASSET_LINKS,
+      buildTopologyAssetAutoLinkFeatureCollection({
+        assets: topologyAssetItems,
+        topologyRows: topologyAssetRows,
+        customerNodes: nodeRows,
+        nodeRows,
+        linkRows,
+      }),
+    );
+  }
+
+  function replaceTopologyAssetOverlay(data: GeoJSON.FeatureCollection) {
+    if (!map) return;
+    for (const layerId of [
+      'nm-topology-assets-label',
+      'nm-topology-assets-icon',
+      'nm-topology-assets-circle',
+      'nm-topology-assets-halo',
+    ]) {
+      if (map.getLayer(layerId)) {
+        map.removeLayer(layerId);
+      }
+    }
+
+    if (map.getSource(SOURCE_TOPOLOGY_ASSETS)) {
+      map.removeSource(SOURCE_TOPOLOGY_ASSETS);
+    }
+
+    map.addSource(SOURCE_TOPOLOGY_ASSETS, {
+      type: 'geojson',
+      data: JSON.parse(JSON.stringify(data)),
+    });
+
+    map.addLayer({
+      id: 'nm-topology-assets-halo',
+      type: 'circle',
+      source: SOURCE_TOPOLOGY_ASSETS,
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 8, 11, 10.5, 14, 13],
+        'circle-color': ['coalesce', ['get', 'marker_color'], '#64748b'],
+        'circle-opacity': 0.16,
+        'circle-blur': 0.08,
+        'circle-stroke-width': 0,
+      },
+    });
+
+    map.addLayer({
+      id: 'nm-topology-assets-circle',
+      type: 'circle',
+      source: SOURCE_TOPOLOGY_ASSETS,
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 6.2, 11, 8, 14, 9.6],
+        'circle-color': ['coalesce', ['get', 'marker_color'], '#64748b'],
+        'circle-opacity': 0.38,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#e2e8f0',
+      },
+    });
+
+    map.addLayer({
+      id: 'nm-topology-assets-icon',
+      type: 'symbol',
+      source: SOURCE_TOPOLOGY_ASSETS,
+      layout: {
+        'icon-image': [
+          'match',
+          ['get', 'asset_type'],
+          'olt',
+          'nm-node-icon-olt',
+          'odc',
+          'nm-node-icon-odc',
+          'odp',
+          'nm-node-icon-odp',
+          'fat',
+          'nm-node-icon-odp',
+          'nap',
+          'nm-node-icon-odp',
+          'switch',
+          'nm-node-icon-switch',
+          'nm-node-icon-router',
+        ],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 0.78, 11, 0.96, 14, 1.14],
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+    });
   }
 
   function syncWorkspaceHighlights() {
@@ -1123,10 +1442,15 @@
     setLayerVisibility('nm-zones-outline', zonesVisible);
     setLayerVisibility('nm-links-line', linksVisible);
     setLayerVisibility('nm-links-line-dashed', linksVisible);
+    setLayerVisibility('nm-topology-asset-links-parent', linksVisible && topologyAssetsVisible);
+    setLayerVisibility('nm-topology-asset-links-customer', linksVisible && topologyAssetsVisible);
     setLayerVisibility('nm-nodes-circle', nodesVisible);
     setLayerVisibility('nm-nodes-icons', nodesVisible);
     setLayerVisibility('nm-routers-circle', routersVisible);
     setLayerVisibility('nm-routers-icon', routersVisible);
+    setLayerVisibility('nm-topology-assets-halo', topologyAssetsVisible);
+    setLayerVisibility('nm-topology-assets-circle', topologyAssetsVisible);
+    setLayerVisibility('nm-topology-assets-icon', topologyAssetsVisible);
     setLayerVisibility('nm-customers-cluster-circle', customersVisible);
     setLayerVisibility('nm-customers-cluster-count', customersVisible);
     setLayerVisibility('nm-customers-point', customersVisible);
@@ -1150,6 +1474,14 @@
   function setCustomersVisible(checked: boolean) {
     customersVisible = checked;
     syncLayerVisibility();
+  }
+
+  function setTopologyAssetsVisible(checked: boolean) {
+    topologyAssetsVisible = checked;
+    syncLayerVisibility();
+    if (checked) {
+      void refreshTopologyAssets();
+    }
   }
 
   function setRoutersVisible(checked: boolean) {
@@ -1275,6 +1607,7 @@
   }
 
   function openCreateLinkModal() {
+    activeAssetConnectSourceId = null;
     editingLinkId = null;
     linkPickMode = false;
     linkPickStep = 'from';
@@ -1286,6 +1619,7 @@
   }
 
   function openEditLinkModal(row: NMLink) {
+    activeAssetConnectSourceId = null;
     linkPickMode = false;
     linkPickStep = 'from';
     linkPickDrawMode = 'quick';
@@ -1319,6 +1653,7 @@
 
   function closeLinkModal() {
     showLinkModal = false;
+    activeAssetConnectSourceId = null;
     linkPickMode = false;
     linkPickStep = 'from';
     linkPickDrawMode = 'quick';
@@ -1360,6 +1695,7 @@
 
   function cancelLinkPicking() {
     if (!linkPickMode) return;
+    activeAssetConnectSourceId = null;
     linkPickMode = false;
     linkPickStep = 'from';
     linkPathBendPoints = [];
@@ -1410,6 +1746,7 @@
 
   async function startConnectFromNode(nodeId: string) {
     activeNodePopup?.remove();
+    activeAssetConnectSourceId = null;
     const next = buildConnectFromNodeResult(nodeId, nodeRows);
     const nodeRow = nodeRows.find((row) => row.id === nodeId);
     await updateWorkspaceSelection(
@@ -1430,6 +1767,78 @@
     refreshLinkGeometryDraft();
     syncLinkDraftPreview();
     toast.info(next.toastMessage);
+  }
+
+  async function ensureTopologyAssetNodeId(assetId: string) {
+    let nodeId = findTopologyAssetNodeId(nodeRows, assetId);
+    if (nodeId) return nodeId;
+    await syncTopologyAssets(true);
+    invalidateMapDataCache();
+    await refreshMapData(true, { skipAutoSync: true });
+    nodeId = findTopologyAssetNodeId(nodeRows, assetId);
+    return nodeId;
+  }
+
+  async function startConnectFromTopologyAsset(assetId: string) {
+    activeNodePopup?.remove();
+    const nodeId = await ensureTopologyAssetNodeId(assetId);
+    if (!nodeId) {
+      toast.error('FTTH asset node belum tersedia di topology map.');
+      return;
+    }
+    activeAssetConnectSourceId = assetId;
+    const next = buildConnectFromNodeResult(nodeId, nodeRows);
+    const assetRow = topologyAssetRows.find((row) => row.id === assetId);
+    await updateWorkspaceSelection(
+      buildSelectedMapObject({
+        kind: 'node',
+        id: nodeId,
+        label: assetRow?.name || assetId,
+        nodeType: assetRow?.assetType || undefined,
+      }),
+    );
+    editingLinkId = next.editingLinkId;
+    showLinkModal = next.showLinkModal;
+    linkPickDrawMode = next.linkPickDrawMode;
+    linkPickMode = next.linkPickMode;
+    linkPickStep = next.linkPickStep;
+    linkPathBendPoints = next.linkPathBendPoints;
+    linkForm = next.linkForm;
+    refreshLinkGeometryDraft();
+    syncLinkDraftPreview();
+    toast.info(next.toastMessage);
+  }
+
+  async function syncAssetRelationsFromSavedLink(sourceAssetId: string, targetNodeId: string) {
+    const sourceAsset = topologyAssetItems.find((item) => item.id === sourceAssetId);
+    const targetNode = nodeRows.find((row) => row.id === targetNodeId);
+    if (!sourceAsset || !targetNode) return;
+
+    const operations = buildTopologyAssetConnectionOperations({
+      sourceAsset,
+      targetNode,
+    });
+    for (const operation of operations) {
+      const currentAsset = topologyAssetItems.find((item) => item.id === operation.assetId);
+      if (!currentAsset) continue;
+      const currentDraft = buildTopologyAssetConnectDraft(currentAsset);
+      const nextParentAssetId =
+        operation.parentAssetId === undefined ? currentDraft.parentAssetId : String(operation.parentAssetId || '').trim();
+      const nextCustomerId =
+        operation.customerId === undefined ? currentDraft.customerId : String(operation.customerId || '').trim();
+      const nextLocationId =
+        operation.locationId === undefined ? currentDraft.locationId : String(operation.locationId || '').trim();
+
+      if (nextParentAssetId !== currentDraft.parentAssetId) {
+        await networkAssets.linkParentAsset(operation.assetId, nextParentAssetId || null);
+      }
+      if (nextCustomerId !== currentDraft.customerId) {
+        await networkAssets.assignCustomer(operation.assetId, nextCustomerId || null);
+      }
+      if (nextLocationId !== currentDraft.locationId) {
+        await networkAssets.assignLocation(operation.assetId, nextLocationId || null);
+      }
+    }
   }
 
   function useLinkFromNodePoints() {
@@ -1453,6 +1862,9 @@
           hasExistingLinkBetweenNodes(linkRows, fromNodeId, toNodeId, excludeLinkId),
       });
       if (!ok) return;
+      if (activeAssetConnectSourceId) {
+        await syncAssetRelationsFromSavedLink(activeAssetConnectSourceId, linkForm.to_node_id);
+      }
       emitInstallationRefreshSignal({
         fromInstallation,
         sourceWorkOrderId,
@@ -1653,6 +2065,7 @@
             nodes: $t('admin.network.map.stats.nodes') || 'Nodes',
             links: $t('admin.network.map.stats.links') || 'Links',
             zones: $t('admin.network.map.stats.zones') || 'Zones',
+            assets: $t('admin.network.map.layers.assets') || 'FTTH Assets',
             routers: $t('admin.network.map.layers.routers') || 'Routers',
             customers: $t('admin.network.map.layers.customers') || 'Customers',
           }}
@@ -1663,6 +2076,7 @@
           {zonesVisible}
           {routersVisible}
           {customersVisible}
+          {topologyAssetsVisible}
           canShowRouters={canReadRouterInventory}
           onViewModeChange={(mode: 'standard' | 'satellite') => (viewMode = mode)}
           onNodesVisibleChange={setNodesVisible}
@@ -1670,6 +2084,7 @@
           onZonesVisibleChange={setZonesVisible}
           onRoutersVisibleChange={setRoutersVisible}
           onCustomersVisibleChange={setCustomersVisible}
+          onTopologyAssetsVisibleChange={setTopologyAssetsVisible}
           onToggleHidden={() => (controlsHidden = !controlsHidden)}
         />
       {/if}
@@ -2580,5 +2995,6 @@
     .page-content :global(.network-page-actions) {
       grid-template-columns: 1fr;
     }
+
   }
 </style>

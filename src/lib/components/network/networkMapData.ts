@@ -201,7 +201,7 @@ export async function syncTopologyAssetsIfNeeded({
     const lastSyncedAt = Date.now();
     if (manual) {
       toast.success(
-        `Topology sync selesai. Router: ${result.router_nodes_created + result.router_nodes_updated}, Customer: ${result.customer_nodes_created + result.customer_nodes_updated}.`,
+        `Topology sync selesai. Router: ${result.router_nodes_created + result.router_nodes_updated}, Asset: ${result.asset_nodes_created + result.asset_nodes_updated}, Customer: ${result.customer_nodes_created + result.customer_nodes_updated}.`,
       );
     }
     return {

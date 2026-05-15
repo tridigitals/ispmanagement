@@ -363,6 +363,12 @@
             show: $can('read', 'dhcp_static') || $can('manage', 'dhcp_static'),
           },
           {
+            label: $t('sidebar.ftth_assets') || 'FTTH Assets',
+            icon: 'box',
+            href: `${tenantPrefix}/admin/network/assets`,
+            show: $can('read', 'ftth_assets') || $can('manage', 'ftth_assets'),
+          },
+          {
             label: $t('sidebar.imports') || 'Imports',
             icon: 'download',
             href: `${tenantPrefix}/admin/network/import`,

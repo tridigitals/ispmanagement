@@ -1,0 +1,889 @@
+[     695ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:1420/api/auth/settings:0
+[     697ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:1420/api/settings/logo:0
+[     783ms] [ERROR] API Error (get_auth_settings): Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.allSettled (index 0)
+    at async http://127.0.0.1:1420/src/lib/stores/settings.ts:43:100 @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[     785ms] [ERROR] API Error (get_logo): Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.refresh (http://127.0.0.1:1420/src/lib/stores/logo.ts:54:22) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[     785ms] [ERROR] [LogoStore] Failed to load logo: Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.refresh (http://127.0.0.1:1420/src/lib/stores/logo.ts:54:22) @ http://127.0.0.1:1420/src/lib/stores/logo.ts:61
+[     800ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:1420/api/settings:0
+[     802ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:1420/api/settings/public:0
+[     804ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:1420/api/version:0
+[     809ms] [ERROR] API Error (get_all_settings): Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.allSettled (index 2)
+    at async http://127.0.0.1:1420/src/lib/stores/settings.ts:43:100 @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[     810ms] [ERROR] API Error (get_public_settings): Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.allSettled (index 1)
+    at async http://127.0.0.1:1420/src/lib/stores/settings.ts:43:100 @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[     812ms] [ERROR] API Error (get_app_version): Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.getAppVersion (http://127.0.0.1:1420/src/lib/api/settings.ts:16:17)
+    at async Promise.allSettled (index 3)
+    at async http://127.0.0.1:1420/src/lib/stores/settings.ts:43:100 @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[     901ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:1420/api/install/check:0
+[     908ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:1420/api/auth/validate:0
+[     915ms] [ERROR] API Error (is_installed): Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.checkIsInstalled (http://127.0.0.1:1420/src/lib/api/install.ts:4:17)
+    at async Promise.all (index 1)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async http://127.0.0.1:1420/src/routes/+layout.svelte:345:35 @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[     917ms] [ERROR] Critical Error during app initialization in +layout.svelte: Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.checkIsInstalled (http://127.0.0.1:1420/src/lib/api/install.ts:4:17)
+    at async Promise.all (index 1)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async http://127.0.0.1:1420/src/routes/+layout.svelte:345:35 @ http://127.0.0.1:1420/src/routes/+layout.svelte:374
+[    1100ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:1420/api/notifications?page=1&per_page=20:0
+[    1113ms] [ERROR] API Error (validate_token): Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async run (http://127.0.0.1:1420/src/lib/stores/auth.ts:208:21) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[    1148ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:1420/api/announcements/active:0
+[    1153ms] [ERROR] API Error (list_notifications): Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.loadNotifications (http://127.0.0.1:1420/src/lib/stores/notifications.ts:36:17)
+    at async http://127.0.0.1:1420/src/lib/bootstrap/rootRealtimeController.ts:19:9
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncRealtimeConnections (http://127.0.0.1:1420/src/routes/+layout.svelte:270:4) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[    1154ms] [ERROR] Failed to load notifications: Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.loadNotifications (http://127.0.0.1:1420/src/lib/stores/notifications.ts:36:17)
+    at async http://127.0.0.1:1420/src/lib/bootstrap/rootRealtimeController.ts:19:9
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncRealtimeConnections (http://127.0.0.1:1420/src/routes/+layout.svelte:270:4) @ http://127.0.0.1:1420/src/lib/stores/notifications.ts:50
+[    1157ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[    1356ms] [ERROR] API Error (list_active_announcements): Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async loadActiveAnnouncements (http://127.0.0.1:1420/src/lib/stores/announcements.ts:8:18) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[    1357ms] [WARNING] Failed to load announcements: Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async loadActiveAnnouncements (http://127.0.0.1:1420/src/lib/stores/announcements.ts:8:18) @ http://127.0.0.1:1420/node_modules/@sveltejs/kit/src/runtime/client/client.js?v=a1ff02f4:3208
+[    1359ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[    1366ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:1420/api/notifications/unread-count:0
+[    1427ms] [ERROR] API Error (get_unread_count): Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.refreshUnreadCount (http://127.0.0.1:1420/src/lib/stores/notifications.ts:60:17) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[    1428ms] [ERROR] Failed to get unread count: Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.refreshUnreadCount (http://127.0.0.1:1420/src/lib/stores/notifications.ts:60:17) @ http://127.0.0.1:1420/src/lib/stores/notifications.ts:65
+[    3018ms] [ERROR] API Error (sync_network_mapping_assets): TypeError: Failed to fetch
+    at window.fetch (http://127.0.0.1:1420/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:685:26)
+    at Object.sync (http://127.0.0.1:1420/src/lib/api/networkMapping.ts:28:17)
+    at syncTopologyAssetsIfNeeded (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts:111:48)
+    at syncTopologyAssets (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778726088301:1413:50)
+    at queueBackgroundTopologySync (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778726088301:1432:32)
+    at refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778726088301:1472:6)
+    at t.Map.<anonymous> (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778726088301:1321:36)
+    at t.Map.fire (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:362:39)
+    at t.Map._render (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17275:1088) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[    3018ms] [ERROR] TypeError: Failed to fetch
+    at window.fetch (http://127.0.0.1:1420/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:685:26)
+    at Object.sync (http://127.0.0.1:1420/src/lib/api/networkMapping.ts:28:17)
+    at syncTopologyAssetsIfNeeded (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts:111:48)
+    at syncTopologyAssets (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778726088301:1413:50)
+    at queueBackgroundTopologySync (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778726088301:1432:32)
+    at refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778726088301:1472:6)
+    at t.Map.<anonymous> (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778726088301:1321:36)
+    at t.Map.fire (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:362:39)
+    at t.Map._render (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17275:1088) @ http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts:125
+[    3019ms] [ERROR] TypeError: Failed to fetch
+    at window.fetch (http://127.0.0.1:1420/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:280:34
+    at Generator.next (<anonymous>)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:55:46
+    at new Promise (<anonymous>)
+    at e (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:34:18)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:277:22
+    at Object.O [as m] (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:291:15)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:9389:44
+    at Generator.next (<anonymous>) @ http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366
+[    3019ms] [ERROR] TypeError: Failed to fetch
+    at window.fetch (http://127.0.0.1:1420/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:280:34
+    at Generator.next (<anonymous>)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:55:46
+    at new Promise (<anonymous>)
+    at e (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:34:18)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:277:22
+    at Object.O [as m] (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:291:15)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:9389:44
+    at Generator.next (<anonymous>) @ http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366
+[    3020ms] [ERROR] TypeError: Failed to fetch
+    at window.fetch (http://127.0.0.1:1420/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:280:34
+    at Generator.next (<anonymous>)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:55:46
+    at new Promise (<anonymous>)
+    at e (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:34:18)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:277:22
+    at Object.O [as m] (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:291:15)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:9389:44
+    at Generator.next (<anonymous>) @ http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366
+[    3021ms] [ERROR] TypeError: Failed to fetch
+    at window.fetch (http://127.0.0.1:1420/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:280:34
+    at Generator.next (<anonymous>)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:55:46
+    at new Promise (<anonymous>)
+    at e (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:34:18)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:277:22
+    at Object.O [as m] (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:291:15)
+    at http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:9389:44
+    at Generator.next (<anonymous>) @ http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366
+[    3021ms] [ERROR] TypeError: Failed to fetch @ http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366
+[    3024ms] [ERROR] TypeError: Failed to fetch @ http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366
+[ 1506566ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 1506567ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 1889451ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 1889452ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 1899380ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 1899380ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 1916084ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/auth/validate:0
+[ 1916090ms] [ERROR] API Error (validate_token): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async run (http://127.0.0.1:1420/src/lib/stores/auth.ts:208:21)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async keepSessionAliveIfActive (http://127.0.0.1:1420/src/routes/+layout.svelte?t=1778727967790:135:5) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 1929919ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 1929919ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 1934237ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/admin/network-mapping/assets/sync:0
+[ 1934238ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/admin/network-mapping/nodes?bbox=-180%2C-85%2C180%2C85&page=1&per_page=1000:0
+[ 1934245ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/admin/network-mapping/zones?bbox=-180%2C-85%2C180%2C85&page=1&per_page=1000:0
+[ 1934247ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/admin/network-mapping/links?bbox=-180%2C-85%2C180%2C85&page=1&per_page=1000:0
+[ 1934248ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/admin/mikrotik/routers:0
+[ 1934340ms] [ERROR] API Error (sync_network_mapping_assets): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async syncTopologyAssetsIfNeeded (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts?t=1778727967823:111:20)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncTopologyAssets (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728043753:1270:20) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 1934341ms] [ERROR] Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async syncTopologyAssetsIfNeeded (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts?t=1778727967823:111:20)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncTopologyAssets (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728043753:1270:20) @ http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts?t=1778727967823:125
+[ 1934343ms] [ERROR] API Error (list_network_nodes): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 0)
+    at async fetchNetworkMapData (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts?t=1778727967823:61:54)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728043753:1396:20)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async t.Map.<anonymous> (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728043753:1178:6) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 1934344ms] [ERROR] Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 0)
+    at async fetchNetworkMapData (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts?t=1778727967823:61:54)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728043753:1396:20)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async t.Map.<anonymous> (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728043753:1178:6) @ http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728043753:1453
+[ 1934345ms] [ERROR] API Error (list_service_zones): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 2) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 1934346ms] [ERROR] API Error (list_network_links): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 1) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 1934347ms] [ERROR] API Error (list_mikrotik_routers): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 3) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 1960384ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 1960384ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 1976088ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/auth/validate:0
+[ 1976092ms] [ERROR] API Error (validate_token): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async run (http://127.0.0.1:1420/src/lib/stores/auth.ts:208:21)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async keepSessionAliveIfActive (http://127.0.0.1:1420/src/routes/+layout.svelte?t=1778727967790:135:5) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 1990794ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 1990794ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2017935ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/admin/network-mapping/assets/sync:0
+[ 2017935ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/admin/network-mapping/nodes?bbox=-180%2C-85%2C180%2C85&page=1&per_page=1000:0
+[ 2017936ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/admin/network-mapping/zones?bbox=-180%2C-85%2C180%2C85&page=1&per_page=1000:0
+[ 2017937ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/admin/network-mapping/links?bbox=-180%2C-85%2C180%2C85&page=1&per_page=1000:0
+[ 2017937ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/admin/mikrotik/routers:0
+[ 2018026ms] [ERROR] API Error (sync_network_mapping_assets): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async syncTopologyAssetsIfNeeded (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts?t=1778727967823:111:20)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncTopologyAssets (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728127913:1270:20) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2018027ms] [ERROR] Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async syncTopologyAssetsIfNeeded (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts?t=1778727967823:111:20)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncTopologyAssets (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728127913:1270:20) @ http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts?t=1778727967823:125
+[ 2018029ms] [ERROR] API Error (list_network_nodes): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 0)
+    at async fetchNetworkMapData (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts?t=1778727967823:61:54)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728127913:1396:20)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async t.Map.<anonymous> (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728127913:1178:6) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2018030ms] [ERROR] Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 0)
+    at async fetchNetworkMapData (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts?t=1778727967823:61:54)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728127913:1396:20)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async t.Map.<anonymous> (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728127913:1178:6) @ http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728127913:1453
+[ 2018031ms] [ERROR] API Error (list_service_zones): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 2) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2018033ms] [ERROR] API Error (list_network_links): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 1) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2018035ms] [ERROR] API Error (list_mikrotik_routers): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 3) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2020918ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2020918ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2030107ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/settings/logo:0
+[ 2030108ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/auth/settings:0
+[ 2030111ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/settings:0
+[ 2030112ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/settings/public:0
+[ 2030114ms] [ERROR] API Error (get_logo): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.refresh (http://127.0.0.1:1420/src/lib/stores/logo.ts:54:22) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2030115ms] [ERROR] [LogoStore] Failed to load logo: Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.refresh (http://127.0.0.1:1420/src/lib/stores/logo.ts:54:22) @ http://127.0.0.1:1420/src/lib/stores/logo.ts:61
+[ 2030115ms] [ERROR] API Error (get_auth_settings): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.allSettled (index 0)
+    at async http://127.0.0.1:1420/src/lib/stores/settings.ts:43:100 @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2030116ms] [ERROR] API Error (get_all_settings): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.allSettled (index 2)
+    at async http://127.0.0.1:1420/src/lib/stores/settings.ts:43:100 @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2030116ms] [ERROR] API Error (get_public_settings): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.allSettled (index 1)
+    at async http://127.0.0.1:1420/src/lib/stores/settings.ts:43:100 @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2030126ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/version:0
+[ 2030131ms] [ERROR] API Error (get_app_version): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.getAppVersion (http://127.0.0.1:1420/src/lib/api/settings.ts:16:17)
+    at async Promise.allSettled (index 3)
+    at async http://127.0.0.1:1420/src/lib/stores/settings.ts:43:100 @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2030168ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/auth/validate:0
+[ 2030172ms] [ERROR] API Error (validate_token): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async run (http://127.0.0.1:1420/src/lib/stores/auth.ts:208:21)
+    at async Promise.all (index 0)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async http://127.0.0.1:1420/src/routes/+layout.svelte?t=1778727967790:345:35 @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2030240ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2030241ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2030244ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/install/check:0
+[ 2030249ms] [ERROR] API Error (is_installed): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.checkIsInstalled (http://127.0.0.1:1420/src/lib/api/install.ts:4:17)
+    at async Promise.all (index 1)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async http://127.0.0.1:1420/src/routes/+layout.svelte?t=1778727967790:345:35 @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2030251ms] [ERROR] Critical Error during app initialization in +layout.svelte: Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.checkIsInstalled (http://127.0.0.1:1420/src/lib/api/install.ts:4:17)
+    at async Promise.all (index 1)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async http://127.0.0.1:1420/src/routes/+layout.svelte?t=1778727967790:345:35 @ http://127.0.0.1:1420/src/routes/+layout.svelte?t=1778727967790:374
+[ 2030350ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/notifications?page=1&per_page=20:0
+[ 2030380ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/announcements/active:0
+[ 2030694ms] [ERROR] API Error (list_notifications): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.loadNotifications (http://127.0.0.1:1420/src/lib/stores/notifications.ts?t=1778727967790:36:17)
+    at async http://127.0.0.1:1420/src/lib/bootstrap/rootRealtimeController.ts:19:9
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncRealtimeConnections (http://127.0.0.1:1420/src/routes/+layout.svelte?t=1778727967790:270:4) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2030695ms] [ERROR] Failed to load notifications: Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.loadNotifications (http://127.0.0.1:1420/src/lib/stores/notifications.ts?t=1778727967790:36:17)
+    at async http://127.0.0.1:1420/src/lib/bootstrap/rootRealtimeController.ts:19:9
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncRealtimeConnections (http://127.0.0.1:1420/src/routes/+layout.svelte?t=1778727967790:270:4) @ http://127.0.0.1:1420/src/lib/stores/notifications.ts?t=1778727967790:50
+[ 2030701ms] [ERROR] API Error (list_active_announcements): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async loadActiveAnnouncements (http://127.0.0.1:1420/src/lib/stores/announcements.ts?t=1778727967790:8:18) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2030701ms] [WARNING] Failed to load announcements: Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async loadActiveAnnouncements (http://127.0.0.1:1420/src/lib/stores/announcements.ts?t=1778727967790:8:18) @ http://127.0.0.1:1420/node_modules/@sveltejs/kit/src/runtime/client/client.js?v=a1ff02f4:3208
+[ 2031015ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/notifications/unread-count:0
+[ 2031322ms] [ERROR] API Error (get_unread_count): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.refreshUnreadCount (http://127.0.0.1:1420/src/lib/stores/notifications.ts?t=1778727967790:60:17) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2031323ms] [ERROR] Failed to get unread count: Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Object.refreshUnreadCount (http://127.0.0.1:1420/src/lib/stores/notifications.ts?t=1778727967790:60:17) @ http://127.0.0.1:1420/src/lib/stores/notifications.ts?t=1778727967790:65
+[ 2031699ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/admin/network-mapping/nodes?bbox=-180%2C-85%2C180%2C85&page=1&per_page=1000:0
+[ 2031700ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/admin/network-mapping/assets/sync:0
+[ 2031701ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/admin/network-mapping/links?bbox=-180%2C-85%2C180%2C85&page=1&per_page=1000:0
+[ 2031703ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/admin/network-mapping/zones?bbox=-180%2C-85%2C180%2C85&page=1&per_page=1000:0
+[ 2031703ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/admin/mikrotik/routers:0
+[ 2031849ms] [ERROR] API Error (list_network_nodes): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 0)
+    at async fetchNetworkMapData (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts?t=1778727967823:61:54)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728127913:1396:20)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async t.Map.<anonymous> (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728127913:1178:6) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2031850ms] [ERROR] Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 0)
+    at async fetchNetworkMapData (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts?t=1778727967823:61:54)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728127913:1396:20)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async t.Map.<anonymous> (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728127913:1178:6) @ http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728127913:1453
+[ 2031856ms] [ERROR] API Error (sync_network_mapping_assets): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async syncTopologyAssetsIfNeeded (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts?t=1778727967823:111:20)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncTopologyAssets (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728127913:1270:20) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2031857ms] [ERROR] Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async syncTopologyAssetsIfNeeded (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts?t=1778727967823:111:20)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncTopologyAssets (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778728127913:1270:20) @ http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts?t=1778727967823:125
+[ 2031857ms] [ERROR] API Error (list_network_links): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 1) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2031858ms] [ERROR] API Error (list_service_zones): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 2) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2031859ms] [ERROR] API Error (list_mikrotik_routers): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 3) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2032653ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2032653ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2035150ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2035151ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2037651ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2037652ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2040153ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2040153ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2042656ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2042656ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2045161ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2045161ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2047654ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2047654ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2050160ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2050160ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2052656ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2052656ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2055166ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2055166ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2057654ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2057655ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2060177ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2060178ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2062666ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2062667ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2065210ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2065210ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2067721ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2067721ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2070231ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2070232ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2072727ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2072727ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2075283ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2075283ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2077807ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2077808ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2080527ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2080528ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2082880ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2082880ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2085905ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2085905ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2088769ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2088770ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2090123ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://127.0.0.1:1420/api/auth/validate:0
+[ 2090126ms] [ERROR] API Error (validate_token): Error: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async run (http://127.0.0.1:1420/src/lib/stores/auth.ts:208:21)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async keepSessionAliveIfActive (http://127.0.0.1:1420/src/routes/+layout.svelte?t=1778727967790:135:5) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2091873ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2091873ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[ 2094764ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Error during WebSocket handshake: Unexpected response code: 502 @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[ 2094765ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108

@@ -11,6 +11,7 @@ import { ispPackages } from './ispPackages';
 import { messageTemplates } from './messageTemplates';
 import { mikrotik } from './mikrotik';
 import { mixradiusImport } from './mixradiusImport';
+import { networkAssets } from './networkAssets';
 import { networkMapping } from './networkMapping';
 import { notifications } from './notifications';
 import { payment } from './payment';
@@ -40,6 +41,7 @@ export { ispPackages } from './ispPackages';
 export { messageTemplates } from './messageTemplates';
 export { mikrotik } from './mikrotik';
 export { mixradiusImport } from './mixradiusImport';
+export { networkAssets } from './networkAssets';
 export { networkMapping } from './networkMapping';
 export { notifications } from './notifications';
 export { payment } from './payment';
@@ -71,6 +73,7 @@ export const api = {
   dhcpStatic,
   ispPackages,
   messageTemplates,
+  networkAssets,
   networkMapping,
   superadmin,
   audit,

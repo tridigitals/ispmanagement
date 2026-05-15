@@ -1,0 +1,313 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e6]:
+        - img [ref=e8]
+        - generic [ref=e9]: ISP Management
+      - navigation [ref=e611]:
+        - button "Workspace" [ref=e612] [cursor=pointer]:
+          - generic [ref=e613]: Workspace
+          - img [ref=e615]
+        - button "Network" [expanded] [ref=e616] [cursor=pointer]:
+          - generic [ref=e617]: Network
+          - img [ref=e619]
+        - button "NOC" [ref=e620] [cursor=pointer]:
+          - img [ref=e621]
+          - generic [ref=e622]: NOC
+        - button "Topology Map" [ref=e623] [cursor=pointer]:
+          - img [ref=e624]
+          - generic [ref=e625]: Topology Map
+        - button "Wallboard" [ref=e626] [cursor=pointer]:
+          - img [ref=e627]
+          - generic [ref=e628]: Wallboard
+        - button "Alerts" [ref=e629] [cursor=pointer]:
+          - img [ref=e630]
+          - generic [ref=e631]: Alerts
+        - button "Incidents" [ref=e632] [cursor=pointer]:
+          - img [ref=e633]
+          - generic [ref=e634]: Incidents
+        - button "Installations" [ref=e635] [cursor=pointer]:
+          - img [ref=e636]
+          - generic [ref=e637]: Installations
+        - button "Logs" [ref=e638] [cursor=pointer]:
+          - img [ref=e639]
+          - generic [ref=e640]: Logs
+        - button "Routers" [ref=e641] [cursor=pointer]:
+          - img [ref=e642]
+          - generic [ref=e643]: Routers
+        - button "PPP Profiles" [ref=e644] [cursor=pointer]:
+          - img [ref=e645]
+          - generic [ref=e646]: PPP Profiles
+        - button "IP Pools" [ref=e647] [cursor=pointer]:
+          - img [ref=e648]
+          - generic [ref=e649]: IP Pools
+        - button "Services" [ref=e650] [cursor=pointer]:
+          - img [ref=e651]
+          - generic [ref=e652]: Services
+        - button "PPPoE" [ref=e653] [cursor=pointer]:
+          - img [ref=e654]
+          - generic [ref=e655]: PPPoE
+        - button "DHCP Static" [ref=e656] [cursor=pointer]:
+          - img [ref=e657]
+          - generic [ref=e658]: DHCP Static
+        - button "FTTH Assets" [ref=e659] [cursor=pointer]:
+          - img [ref=e660]
+          - generic [ref=e661]: FTTH Assets
+        - button "Imports" [ref=e662] [cursor=pointer]:
+          - img [ref=e663]
+          - generic [ref=e664]: Imports
+        - button "Access" [ref=e665] [cursor=pointer]:
+          - generic [ref=e666]: Access
+          - img [ref=e668]
+        - button "Compliance" [ref=e669] [cursor=pointer]:
+          - generic [ref=e670]: Compliance
+          - img [ref=e672]
+        - button "Operations" [ref=e673] [cursor=pointer]:
+          - generic [ref=e674]: Operations
+          - img [ref=e676]
+        - button "Billing" [ref=e677] [cursor=pointer]:
+          - generic [ref=e678]: Billing
+          - img [ref=e680]
+        - button "Configuration" [ref=e681] [cursor=pointer]:
+          - generic [ref=e682]: Configuration
+          - img [ref=e684]
+      - generic [ref=e84]:
+        - button "Super Admin" [ref=e85] [cursor=pointer]:
+          - img [ref=e86]
+          - generic [ref=e87]: Super Admin
+        - button "User View" [ref=e88] [cursor=pointer]:
+          - img [ref=e89]
+          - generic [ref=e90]: User View
+        - button "S Super Admin Owner" [ref=e92] [cursor=pointer]:
+          - generic [ref=e93]: S
+          - generic [ref=e94]:
+            - generic [ref=e95]: Super Admin
+            - generic [ref=e96]: Owner
+          - img [ref=e97]
+    - generic [ref=e99]:
+      - banner [ref=e100]:
+        - generic [ref=e101]:
+          - button "Collapse sidebar" [ref=e102] [cursor=pointer]:
+            - img [ref=e103]
+          - heading "Admin Overview" [level=2] [ref=e104]
+        - button "Notifications" [ref=e107] [cursor=pointer]:
+          - img [ref=e108]
+          - generic [ref=e109]: "4"
+      - generic [ref=e110]:
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - generic [ref=e113]:
+              - heading "Installation Work Orders" [level=1] [ref=e114]
+              - paragraph [ref=e115]: Pipeline instalasi hingga layanan aktif.
+            - generic [ref=e116]:
+              - button "Work Order Visibility" [ref=e117] [cursor=pointer]:
+                - img [ref=e118]
+                - text: Work Order Visibility
+              - button "Refresh" [ref=e119] [cursor=pointer]:
+                - img [ref=e120]
+                - text: Refresh
+          - generic [ref=e121]:
+            - article [ref=e122]:
+              - generic [ref=e123]: Total
+              - generic [ref=e124]: "1"
+            - article [ref=e125]:
+              - generic [ref=e126]: Pending
+              - generic [ref=e127]: "0"
+            - article [ref=e128]:
+              - generic [ref=e129]: In Progress
+              - generic [ref=e130]: "1"
+            - article [ref=e131]:
+              - generic [ref=e132]: Completed
+              - generic [ref=e133]: "0"
+            - article [ref=e134]:
+              - generic [ref=e135]: Cancelled
+              - generic [ref=e136]: "0"
+          - generic "Technicians only see a work order after admin assigns it to them." [ref=e137]:
+            - generic [ref=e138]: Work Order Visibility
+            - strong [ref=e139]: Admin only
+          - generic [ref=e140]:
+            - generic [ref=e141]:
+              - button "All 1" [ref=e142] [cursor=pointer]:
+                - text: All
+                - generic [ref=e143]: "1"
+              - button "Pending 0" [ref=e144] [cursor=pointer]:
+                - text: Pending
+                - generic [ref=e145]: "0"
+              - button "In Progress 1" [ref=e146] [cursor=pointer]:
+                - text: In Progress
+                - generic [ref=e147]: "1"
+              - button "Completed 0" [ref=e148] [cursor=pointer]:
+                - text: Completed
+                - generic [ref=e149]: "0"
+              - button "Cancelled 0" [ref=e150] [cursor=pointer]:
+                - text: Cancelled
+                - generic [ref=e151]: "0"
+            - generic [ref=e152]:
+              - generic [ref=e153]:
+                - generic [ref=e154]: Search
+                - generic [ref=e155]:
+                  - img
+                  - textbox "Search" [ref=e156]:
+                    - /placeholder: Search work orders...
+              - generic [ref=e157]:
+                - generic [ref=e158]: Status
+                - combobox "Status" [ref=e159]:
+                  - option "All" [selected]
+                  - option "Pending"
+                  - option "In Progress"
+                  - option "Completed"
+                  - option "Cancelled"
+              - generic [ref=e160]:
+                - generic [ref=e161]: Assignment
+                - combobox "Assignment" [ref=e162]:
+                  - option "All work orders" [selected]
+                  - option "Assigned only"
+                  - option "Unassigned only"
+              - generic [ref=e163]:
+                - generic [ref=e164]: Assignee
+                - button "Assignee" [ref=e166] [cursor=pointer]:
+                  - generic [ref=e167]: All assignees
+                  - img [ref=e169]
+              - generic [ref=e170]:
+                - generic [ref=e171]: Sort by
+                - combobox "Sort by" [ref=e172]:
+                  - option "Latest updated" [selected]
+                  - option "Oldest updated"
+                  - option "Scheduled earliest"
+                  - option "Scheduled latest"
+                  - option "Customer A-Z"
+                  - option "Customer Z-A"
+                  - option "Assignee A-Z"
+                  - option "Assignee Z-A"
+          - generic [ref=e539]:
+            - table [ref=e540]:
+              - rowgroup [ref=e541]:
+                - 'row "Customer QA Customer Binding in_progress QA Package Binding pending_installation Location Rumah Router pending Zone / node not selected Workflow PPPoE Invoice: Missing WO #wo_qa_bi Assignee Super Admin superadmin@local Schedule May 12, 2026, 10:57 PM Created: May 12, 2026, 10:57 PM Completed: - Updated May 12, 2026, 11:00 PM No assignment status Actions View Cancel" [ref=e542]':
+                  - cell "Customer QA Customer Binding in_progress QA Package Binding pending_installation" [ref=e543]:
+                    - text: Customer
+                    - button "QA Customer Binding in_progress QA Package Binding pending_installation" [ref=e544] [cursor=pointer]:
+                      - generic [ref=e545]:
+                        - generic [ref=e546]: QA Customer Binding
+                        - generic [ref=e547]: in_progress
+                      - generic [ref=e548]: QA Package Binding
+                      - generic [ref=e549]: pending_installation
+                  - cell "Location Rumah Router pending Zone / node not selected" [ref=e550]:
+                    - text: Location
+                    - generic [ref=e551]:
+                      - generic [ref=e552]: Rumah
+                      - generic [ref=e553]: Router pending
+                      - generic [ref=e554]: Zone / node not selected
+                  - 'cell "Workflow PPPoE Invoice: Missing WO #wo_qa_bi" [ref=e555]':
+                    - text: Workflow
+                    - generic [ref=e556]:
+                      - generic [ref=e557]: PPPoE
+                      - generic [ref=e558]: "Invoice: Missing"
+                      - generic [ref=e559]: "WO #wo_qa_bi"
+                  - cell "Assignee Super Admin superadmin@local" [ref=e560]:
+                    - text: Assignee
+                    - generic [ref=e561]:
+                      - generic [ref=e562]: Super Admin
+                      - generic [ref=e563]: superadmin@local
+                  - 'cell "Schedule May 12, 2026, 10:57 PM Created: May 12, 2026, 10:57 PM Completed: -" [ref=e564]':
+                    - text: Schedule
+                    - generic [ref=e565]:
+                      - generic [ref=e566]: May 12, 2026, 10:57 PM
+                      - generic [ref=e567]: "Created: May 12, 2026, 10:57 PM"
+                      - generic [ref=e568]: "Completed: -"
+                  - cell "Updated May 12, 2026, 11:00 PM No assignment status" [ref=e569]:
+                    - text: Updated
+                    - generic [ref=e570]:
+                      - generic [ref=e571]: May 12, 2026, 11:00 PM
+                      - generic [ref=e572]: No assignment status
+                  - cell "Actions View Cancel" [ref=e573]:
+                    - text: Actions
+                    - generic [ref=e574]:
+                      - button "View" [ref=e575] [cursor=pointer]
+                      - button "Cancel" [ref=e576] [cursor=pointer]
+            - generic [ref=e577]:
+              - generic [ref=e578]:
+                - generic [ref=e579]: "Rows per page:"
+                - button "Select option" [ref=e582] [cursor=pointer]:
+                  - generic [ref=e583]: Select option
+                  - img [ref=e585]
+              - generic [ref=e586]:
+                - generic [ref=e587]: 1-1 of 1
+                - generic [ref=e588]:
+                  - button "Previous page" [disabled] [ref=e589]:
+                    - img [ref=e590]
+                  - button "Next page" [disabled] [ref=e591]:
+                    - img [ref=e592]
+        - 'button "Installation Details Close 1. Assign 2. Schedule 3. Cable 4. ONT 5. PPPoE 6. Speed Test 7. Asset Binding 8. Finish Current Focus Complete onsite installation tasks Move through one onsite task at a time so handover and proof stay clean. Installation Checklist 2/4 On-site & Test Complete physical installation, confirm internet test, and record onsite proof. Current Step4/4 Installation Photos Add Photos No installation photos uploaded yet. Notes qa work order [2026-05-12 16:00:05 UTC] 656d5d93-fcb2-4f5f-8b32-2bac42de2df7: qa work order [2026-05-12 16:00:18 UTC] 656d5d93-fcb2-4f5f-8b32-2bac42de2df7: qa work order [2026-05-12 16:00:05 UTC] 656d5d93-fcb2-4f5f-8b32-2bac42de2df7: qa work order Previous Next Mark done Save Plan Work Order Timeline No data" [ref=e685]':
+          - generic [ref=e304]:
+            - generic [ref=e305]:
+              - heading "Installation Details" [level=2] [ref=e306]
+              - button "Close" [ref=e307] [cursor=pointer]:
+                - img [ref=e308]
+            - generic [ref=e309]:
+              - generic [ref=e310]: 1. Assign
+              - generic [ref=e311]: 2. Schedule
+              - generic [ref=e312]: 3. Cable
+              - generic [ref=e313]: 4. ONT
+              - generic [ref=e314]: 5. PPPoE
+              - generic [ref=e315]: 6. Speed Test
+              - generic [ref=e316]: 7. Asset Binding
+              - generic [ref=e317]: 8. Finish
+            - generic [ref=e318]:
+              - article [ref=e319]:
+                - generic [ref=e320]: Customer
+                - strong [ref=e321]: QA Customer Binding
+              - article [ref=e322]:
+                - generic [ref=e323]: Location
+                - strong [ref=e324]: Rumah
+              - article [ref=e325]:
+                - generic [ref=e326]: Package
+                - strong [ref=e327]: QA Package Binding
+              - article [ref=e328]:
+                - generic [ref=e329]: Status
+                - generic [ref=e331]: in_progress
+              - article [ref=e332]:
+                - generic [ref=e333]: Service Status
+                - strong [ref=e334]: Pending Installation
+              - article [ref=e335]:
+                - generic [ref=e336]: Assignee
+                - strong [ref=e337]: Super Admin
+            - generic [ref=e338]:
+              - generic [ref=e339]:
+                - generic [ref=e340]: Current Focus
+                - strong [ref=e341]: Complete onsite installation tasks
+                - paragraph [ref=e342]: Move through one onsite task at a time so handover and proof stay clean.
+              - generic [ref=e343]:
+                - generic [ref=e344]: Installation Checklist
+                - strong [ref=e345]: 2/4
+            - generic [ref=e346]:
+              - heading "On-site & Test" [level=3] [ref=e347]
+              - paragraph [ref=e348]: Complete physical installation, confirm internet test, and record onsite proof.
+              - group "Current Step4/4" [ref=e686]:
+                - generic [ref=e356]: Current Step4/4
+                - generic [ref=e357] [cursor=pointer]:
+                  - checkbox "Speed test passed Measured speed meets package threshold."
+                  - generic [ref=e359]:
+                    - strong [ref=e360]: Speed test passed
+                    - generic [ref=e361]: Measured speed meets package threshold.
+              - generic [ref=e362]:
+                - generic [ref=e363]:
+                  - strong [ref=e364]: Installation Photos
+                  - generic [ref=e365] [cursor=pointer]:
+                    - img [ref=e366]
+                    - text: Add Photos
+                    - button "Add Photos" [ref=e367]
+                - paragraph [ref=e368]: No installation photos uploaded yet.
+              - generic [ref=e369]:
+                - text: Notes
+                - textbox "Notes" [ref=e370]:
+                  - /placeholder: Technician notes and onsite findings
+                  - text: "qa work order [2026-05-12 16:00:05 UTC] 656d5d93-fcb2-4f5f-8b32-2bac42de2df7: qa work order [2026-05-12 16:00:18 UTC] 656d5d93-fcb2-4f5f-8b32-2bac42de2df7: qa work order [2026-05-12 16:00:05 UTC] 656d5d93-fcb2-4f5f-8b32-2bac42de2df7: qa work order"
+              - generic [ref=e371]:
+                - button "Previous" [ref=e530] [cursor=pointer]
+                - button "Next" [disabled]
+                - button "Mark done" [ref=e373] [cursor=pointer]
+                - button "Save Plan" [ref=e374] [cursor=pointer]
+            - generic [ref=e375]:
+              - heading "Work Order Timeline" [level=3] [ref=e376]
+              - paragraph [ref=e610]: No data

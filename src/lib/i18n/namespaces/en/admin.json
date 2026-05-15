@@ -841,6 +841,90 @@
       "delete_failed": "Failed to delete customer: {message}"
     }
   },
+  "ftth_assets": {
+    "page": {
+      "subtitle": "Manage tenant FTTH assets such as OLT, ODP, splitter, ONT, and related devices."
+    },
+    "stats": {
+      "total": "Total",
+      "installed": "Installed",
+      "available": "Available",
+      "faulty": "Faulty"
+    },
+    "filters": {
+      "search_placeholder": "Search asset, code, or serial...",
+      "all_types": "All types",
+      "all_statuses": "All statuses"
+    },
+    "table": {
+      "asset": "Asset",
+      "type": "Type",
+      "status": "Status",
+      "serial": "Serial",
+      "customer": "Customer",
+      "location": "Location",
+      "updated": "Updated",
+      "empty": "No FTTH assets yet."
+    },
+    "fields": {
+      "type": "Type",
+      "status": "Status",
+      "name": "Name",
+      "code": "Code",
+      "serial_number": "Serial Number",
+      "vendor": "Vendor",
+      "model": "Model",
+      "customer": "Customer",
+      "location": "Location",
+      "work_order_scope": "Work order scope",
+      "work_order": "Work Order",
+      "parent_asset": "Parent Asset",
+      "notes": "Notes"
+    },
+    "placeholders": {
+      "name": "ODP-Cluster A",
+      "code": "ODP-001",
+      "serial_number": "SN-123",
+      "vendor": "ZTE",
+      "model": "F670L",
+      "search_customer": "Search customer...",
+      "search_parent_asset": "Search parent asset..."
+    },
+    "options": {
+      "no_customer": "No customer",
+      "select_customer_first": "Select customer first",
+      "loading_locations": "Loading locations...",
+      "no_location": "No location",
+      "show_all_work_orders": "Show all tenant work orders",
+      "no_work_order": "No work order",
+      "no_parent_asset": "No parent asset"
+    },
+    "actions": {
+      "new_asset": "New asset",
+      "create_asset": "Create asset",
+      "save_changes": "Save changes",
+      "cancel": "Cancel",
+      "saving": "Saving..."
+    },
+    "modal": {
+      "title_create": "New FTTH Asset",
+      "title_edit": "Edit FTTH Asset"
+    },
+    "details": {
+      "title": "Asset-specific details",
+      "subtitle": "These fields adjust to the selected asset type."
+    },
+    "hints": {
+      "selected": "Selected:"
+    },
+    "status": {
+      "available": "Available",
+      "reserved": "Reserved",
+      "installed": "Installed",
+      "faulty": "Faulty",
+      "retired": "Retired"
+    }
+  },
   "services": {
     "title": "Services",
     "subtitle": "Create services and configure service-specific options.",
@@ -1690,6 +1774,7 @@
         "nodes": "Nodes",
         "links": "Links",
         "zones": "Zones",
+        "assets": "FTTH Assets",
         "routers": "Routers",
         "customers": "Customers"
       },
@@ -1983,11 +2068,13 @@
       "step_assign": "Assign",
       "step_schedule": "Schedule",
       "step_onsite": "On-site & Test",
+      "step_assets": "Asset Binding",
       "step_activate": "Finish",
       "step_assign_help": "Choose technician first, then continue to scheduling.",
       "step_take_help": "Take this work order first, then continue to scheduling.",
       "step_schedule_help": "Set installation date/time, then start work order.",
       "step_onsite_help": "Complete physical installation, confirm internet test, and record onsite proof.",
+      "step_assets_help": "Select the terminal asset installed at the customer site, then optionally link the FTTH parent asset for cleaner inventory traceability.",
       "step_active_help": "Checklist complete. Finish installation to trigger the final service state.",
       "subscription_status": "Service Status",
       "status_grace_active": "Grace Active",
@@ -2001,6 +2088,8 @@
       "focus_onsite_hint": "Move through one onsite task at a time so handover and proof stay clean.",
       "focus_test_title": "Test customer internet access",
       "focus_test_hint": "Use the package mapping values automatically, then verify the account really connects.",
+      "focus_asset_title": "Bind the terminal asset",
+      "focus_asset_hint": "Choose the ONT or ONU actually installed on site, then optionally pick the FTTH parent asset from the last-mile path.",
       "focus_finish_title": "Finish and confirm service outcome",
       "focus_finish_hint": "Once completed, the service will either enter grace-active or become fully active depending on payment state.",
       "focus_grace_title": "Service is temporarily active",
@@ -2034,6 +2123,22 @@
       "internet_test_help": "Technician only enters username and password. Router, profile, and pool follow the active internet package mapping.",
       "internet_test_configured": "Configured",
       "target_managed_radius": "Managed RADIUS",
+      "terminal_asset": "Terminal Asset (ONT/ONU)",
+      "select_terminal_asset": "Select ONT/ONU asset",
+      "parent_asset_optional": "Parent Asset (Optional)",
+      "no_parent_asset": "No parent asset",
+      "terminal_asset_selected": "Terminal asset",
+      "parent_asset_selected": "Parent asset",
+      "continue_finish": "Continue to Finish",
+      "quick_create_terminal_asset": "Create ONT/ONU",
+      "quick_create_title": "Quick Create Terminal Asset",
+      "quick_asset_type": "Type",
+      "quick_asset_name": "Asset Name",
+      "quick_asset_serial": "Serial Number",
+      "quick_asset_code": "Code",
+      "quick_asset_vendor": "Vendor",
+      "quick_asset_model": "Model",
+      "quick_create_submit": "Create & Select",
       "pppoe_username": "Username",
       "pppoe_password": "Password",
       "pppoe_comment": "Comment",

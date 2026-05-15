@@ -5,6 +5,8 @@ export const SOURCE_CUSTOMERS = 'nm-customers';
 export const SOURCE_LINKS = 'nm-links';
 export const SOURCE_ZONES = 'nm-zones';
 export const SOURCE_ROUTERS = 'nm-routers';
+export const SOURCE_TOPOLOGY_ASSETS = 'nm-topology-assets';
+export const SOURCE_TOPOLOGY_ASSET_LINKS = 'nm-topology-asset-links';
 export const SOURCE_LINK_DRAFT = 'nm-link-draft';
 export const SOURCE_LINK_DRAFT_POINTS = 'nm-link-draft-points';
 export const SOURCE_SELECTION_POINTS = 'nm-selection-points';
@@ -28,6 +30,7 @@ export function buildBaseMapStyle({
 }) {
   return {
     version: 8 as const,
+    glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
     sources: {
       osm: {
         type: 'raster' as const,
@@ -60,11 +63,101 @@ export function buildBaseMapStyle({
   };
 }
 
+function addTopologyAssetLayers(map: import('maplibre-gl').Map) {
+  map.addLayer({
+    id: 'nm-topology-assets-halo',
+    type: 'circle',
+    source: SOURCE_TOPOLOGY_ASSETS,
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 8, 11, 10.5, 14, 13],
+      'circle-color': ['coalesce', ['get', 'marker_color'], '#64748b'],
+      'circle-opacity': 0.16,
+      'circle-blur': 0.08,
+      'circle-stroke-width': 0,
+    },
+  });
+
+  map.addLayer({
+    id: 'nm-topology-assets-circle',
+    type: 'circle',
+    source: SOURCE_TOPOLOGY_ASSETS,
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 6.2, 11, 8, 14, 9.6],
+      'circle-color': ['coalesce', ['get', 'marker_color'], '#64748b'],
+      'circle-opacity': 0.38,
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#e2e8f0',
+    },
+  });
+
+  map.addLayer({
+    id: 'nm-topology-assets-icon',
+    type: 'symbol',
+    source: SOURCE_TOPOLOGY_ASSETS,
+    layout: {
+      'icon-image': [
+        'match',
+        ['get', 'asset_type'],
+        'olt',
+        'nm-node-icon-olt',
+        'odc',
+        'nm-node-icon-odc',
+        'odp',
+        'nm-node-icon-odp',
+        'fat',
+        'nm-node-icon-odp',
+        'nap',
+        'nm-node-icon-odp',
+        'switch',
+        'nm-node-icon-switch',
+        'nm-node-icon-router',
+      ],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 0.78, 11, 0.96, 14, 1.14],
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+    },
+  });
+}
+
+export function ensureTopologyAssetSourceAndLayers(map: import('maplibre-gl').Map) {
+  if (!map.getSource(SOURCE_TOPOLOGY_ASSETS)) {
+    map.addSource(SOURCE_TOPOLOGY_ASSETS, { type: 'geojson', data: emptyFeatureCollection() });
+  }
+  if (!map.getLayer('nm-topology-assets-circle')) {
+    addTopologyAssetLayers(map);
+  }
+}
+
+export function replaceTopologyAssetSourceData(
+  map: import('maplibre-gl').Map,
+  data: FeatureCollection = emptyFeatureCollection(),
+) {
+  for (const layerId of [
+    'nm-topology-assets-label',
+    'nm-topology-assets-icon',
+    'nm-topology-assets-circle',
+    'nm-topology-assets-halo',
+  ]) {
+    if (map.getLayer(layerId)) map.removeLayer(layerId);
+  }
+
+  if (map.getSource(SOURCE_TOPOLOGY_ASSETS)) {
+    map.removeSource(SOURCE_TOPOLOGY_ASSETS);
+  }
+
+  map.addSource(SOURCE_TOPOLOGY_ASSETS, {
+    type: 'geojson',
+    data: JSON.parse(JSON.stringify(data)),
+  });
+  addTopologyAssetLayers(map);
+}
+
 export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
   map.addSource(SOURCE_ZONES, { type: 'geojson', data: emptyFeatureCollection() });
   map.addSource(SOURCE_LINKS, { type: 'geojson', data: emptyFeatureCollection() });
   map.addSource(SOURCE_NODES, { type: 'geojson', data: emptyFeatureCollection() });
   map.addSource(SOURCE_ROUTERS, { type: 'geojson', data: emptyFeatureCollection() });
+  map.addSource(SOURCE_TOPOLOGY_ASSET_LINKS, { type: 'geojson', data: emptyFeatureCollection() });
   map.addSource(SOURCE_CUSTOMERS, {
     type: 'geojson',
     data: emptyFeatureCollection(),
@@ -292,6 +385,34 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
       'icon-ignore-placement': true,
     },
   });
+
+  map.addLayer({
+    id: 'nm-topology-asset-links-parent',
+    type: 'line',
+    source: SOURCE_TOPOLOGY_ASSET_LINKS,
+    filter: ['==', ['get', 'link_kind'], 'asset_parent'],
+    paint: {
+      'line-color': '#60a5fa',
+      'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1.8, 11, 2.2, 14, 2.8],
+      'line-opacity': 0.88,
+      'line-dasharray': [2.1, 1.2],
+    },
+  });
+
+  map.addLayer({
+    id: 'nm-topology-asset-links-customer',
+    type: 'line',
+    source: SOURCE_TOPOLOGY_ASSET_LINKS,
+    filter: ['==', ['get', 'link_kind'], 'customer_drop'],
+    paint: {
+      'line-color': '#14b8a6',
+      'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1.8, 11, 2.2, 14, 2.8],
+      'line-opacity': 0.88,
+      'line-dasharray': [1.1, 1.1],
+    },
+  });
+
+  ensureTopologyAssetSourceAndLayers(map);
 
   map.addLayer({
     id: 'nm-link-draft-line',

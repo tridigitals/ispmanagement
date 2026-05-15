@@ -50,11 +50,18 @@ export const workOrders = {
       notes: notes ?? undefined,
     }),
 
-  complete: (id: string, notes?: string) =>
+  complete: (
+    id: string,
+    payload?: {
+      notes?: string;
+      terminal_asset_id?: string | null;
+      parent_asset_id?: string | null;
+    },
+  ) =>
     safeInvoke('complete_installation_work_order', {
       token: getTokenOrThrow(),
       id,
-      notes: notes ?? undefined,
+      ...(payload || {}),
     }),
 
   cancel: (id: string, notes?: string) =>

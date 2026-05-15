@@ -1,0 +1,210 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e186]:
+    - complementary [ref=e187]:
+      - generic [ref=e189]:
+        - img [ref=e191]
+        - generic [ref=e192]: ISP Management
+      - navigation [ref=e193]:
+        - button "Workspace" [expanded] [ref=e194] [cursor=pointer]:
+          - generic [ref=e195]: Workspace
+          - img [ref=e197]
+        - button "Overview" [ref=e198] [cursor=pointer]:
+          - img [ref=e199]
+          - generic [ref=e200]: Overview
+        - button "Customers" [ref=e201] [cursor=pointer]:
+          - img [ref=e202]
+          - generic [ref=e203]: Customers
+        - button "Network" [ref=e205] [cursor=pointer]:
+          - generic [ref=e206]: Network
+          - img [ref=e208]
+        - button "Access" [ref=e210] [cursor=pointer]:
+          - generic [ref=e211]: Access
+          - img [ref=e213]
+        - button "Compliance" [ref=e215] [cursor=pointer]:
+          - generic [ref=e216]: Compliance
+          - img [ref=e218]
+        - button "Operations" [ref=e220] [cursor=pointer]:
+          - generic [ref=e221]: Operations
+          - img [ref=e223]
+        - button "Billing" [ref=e225] [cursor=pointer]:
+          - generic [ref=e226]: Billing
+          - img [ref=e228]
+        - button "Configuration" [ref=e230] [cursor=pointer]:
+          - generic [ref=e231]: Configuration
+          - img [ref=e233]
+      - generic [ref=e234]:
+        - button "Super Admin" [ref=e235] [cursor=pointer]:
+          - img [ref=e236]
+          - generic [ref=e237]: Super Admin
+        - button "User View" [ref=e238] [cursor=pointer]:
+          - img [ref=e239]
+          - generic [ref=e240]: User View
+        - button "S Super Admin Owner" [ref=e242] [cursor=pointer]:
+          - generic [ref=e243]: S
+          - generic [ref=e244]:
+            - generic [ref=e245]: Super Admin
+            - generic [ref=e246]: Owner
+          - img [ref=e247]
+    - generic [ref=e249]:
+      - banner [ref=e250]:
+        - generic [ref=e251]:
+          - button "Collapse sidebar" [ref=e252] [cursor=pointer]:
+            - img [ref=e253]
+          - heading "Admin Overview" [level=2] [ref=e254]
+        - generic [ref=e255]:
+          - generic [ref=e256]:
+            - img [ref=e257]
+            - textbox "Search..." [ref=e258]
+          - button "Notifications" [ref=e260] [cursor=pointer]:
+            - img [ref=e261]
+            - generic [ref=e262]: "4"
+      - generic [ref=e264]:
+        - generic [ref=e265]:
+          - generic [ref=e266]:
+            - heading "Tenant control room" [level=1] [ref=e267]
+            - paragraph [ref=e268]: Keep access, billing, customer growth, and cross-team workload in one view.
+          - generic [ref=e269]:
+            - generic [ref=e270]:
+              - img [ref=e271]
+              - generic [ref=e272]: Only modules you can access are shown here
+            - button "Refresh" [ref=e273] [cursor=pointer]:
+              - img [ref=e274]
+              - generic [ref=e275]: Refresh
+            - generic [ref=e276]: "Last updated: 5/12/2026, 10:11:34 PM"
+        - generic [ref=e277]:
+          - heading "Selected KPIs" [level=2] [ref=e280]
+          - generic [ref=e281]:
+            - button "Customers 1 0 awaiting activation" [ref=e282] [cursor=pointer]:
+              - img [ref=e285]
+              - generic [ref=e286]: Customers
+              - generic [ref=e287]: "1"
+              - generic [ref=e288]:
+                - strong [ref=e289]: "0"
+                - generic [ref=e290]: awaiting activation
+            - button "Invoices needing follow-up 0 0 overdue" [ref=e291] [cursor=pointer]:
+              - img [ref=e294]
+              - generic [ref=e295]: Invoices needing follow-up
+              - generic [ref=e296]: "0"
+              - generic [ref=e297]:
+                - strong [ref=e298]: "0"
+                - generic [ref=e299]: overdue
+            - button "Team members 2" [ref=e300] [cursor=pointer]:
+              - img [ref=e303]
+              - generic [ref=e304]: Team members
+              - generic [ref=e305]: "2"
+            - button "inactive Subscription plan Free" [ref=e306] [cursor=pointer]:
+              - generic [ref=e307]:
+                - img [ref=e309]
+                - generic [ref=e310]: inactive
+              - generic [ref=e311]: Subscription plan
+              - generic [ref=e312]: Free
+        - generic [ref=e313]:
+          - heading "My Focus Today" [level=2] [ref=e316]
+          - generic [ref=e317]:
+            - button "Billing follow-up 0 Overdue and pending invoices that still need action today. Open area" [ref=e318] [cursor=pointer]:
+              - generic [ref=e319]:
+                - generic [ref=e320]: Billing follow-up
+                - generic [ref=e321]: "0"
+              - paragraph [ref=e322]: Overdue and pending invoices that still need action today.
+              - generic [ref=e323]:
+                - generic [ref=e324]: Open area
+                - img [ref=e325]
+            - button "Customers awaiting activation 0 Customers who are close to service activation or payment handoff. Open area" [ref=e326] [cursor=pointer]:
+              - generic [ref=e327]:
+                - generic [ref=e328]: Customers awaiting activation
+                - generic [ref=e329]: "0"
+              - paragraph [ref=e330]: Customers who are close to service activation or payment handoff.
+              - generic [ref=e331]:
+                - generic [ref=e332]: Open area
+                - img [ref=e333]
+            - button "Network watchlist 0 Alerts and incidents that need NOC review before they escalate. Open area" [ref=e334] [cursor=pointer]:
+              - generic [ref=e335]:
+                - generic [ref=e336]: Network watchlist
+                - generic [ref=e337]: "0"
+              - paragraph [ref=e338]: Alerts and incidents that need NOC review before they escalate.
+              - generic [ref=e339]:
+                - generic [ref=e340]: Open area
+                - img [ref=e341]
+            - button "Support queue 0 Open and pending tickets that need a coordinated response. Open area" [ref=e342] [cursor=pointer]:
+              - generic [ref=e343]:
+                - generic [ref=e344]: Support queue
+                - generic [ref=e345]: "0"
+              - paragraph [ref=e346]: Open and pending tickets that need a coordinated response.
+              - generic [ref=e347]:
+                - generic [ref=e348]: Open area
+                - img [ref=e349]
+        - generic [ref=e350]:
+          - generic [ref=e351]:
+            - heading "Quick Actions" [level=2] [ref=e354]
+            - generic [ref=e355]:
+              - button "Customers Open customer records, service history, and read-only field context." [ref=e356] [cursor=pointer]:
+                - img [ref=e358]
+                - generic [ref=e359]:
+                  - strong [ref=e360]: Customers
+                  - generic [ref=e361]: Open customer records, service history, and read-only field context.
+                - img [ref=e362]
+              - button "Invoices Review outstanding invoices and retry collections when needed." [ref=e363] [cursor=pointer]:
+                - img [ref=e365]
+                - generic [ref=e366]:
+                  - strong [ref=e367]: Invoices
+                  - generic [ref=e368]: Review outstanding invoices and retry collections when needed.
+                - img [ref=e369]
+              - button "Team Review members, invitations, and responsibilities." [ref=e370] [cursor=pointer]:
+                - img [ref=e372]
+                - generic [ref=e373]:
+                  - strong [ref=e374]: Team
+                  - generic [ref=e375]: Review members, invitations, and responsibilities.
+                - img [ref=e376]
+              - button "Roles & permissions Adjust granular access without opening unrelated modules." [ref=e377] [cursor=pointer]:
+                - img [ref=e379]
+                - generic [ref=e380]:
+                  - strong [ref=e381]: Roles & permissions
+                  - generic [ref=e382]: Adjust granular access without opening unrelated modules.
+                - img [ref=e383]
+              - button "Settings Update tenant-level policies, defaults, and network behavior." [ref=e384] [cursor=pointer]:
+                - img [ref=e386]
+                - generic [ref=e387]:
+                  - strong [ref=e388]: Settings
+                  - generic [ref=e389]: Update tenant-level policies, defaults, and network behavior.
+                - img [ref=e390]
+              - button "Support Open the shared ticket queue and continue customer replies." [ref=e391] [cursor=pointer]:
+                - img [ref=e393]
+                - generic [ref=e394]:
+                  - strong [ref=e395]: Support
+                  - generic [ref=e396]: Open the shared ticket queue and continue customer replies.
+                - img [ref=e397]
+          - generic [ref=e398]:
+            - heading "Compact trends" [level=2] [ref=e401]
+            - generic [ref=e402]:
+              - button "Invoice status distribution Overdue 0 Pending 0 Paid 0" [ref=e403] [cursor=pointer]:
+                - generic [ref=e404]: Invoice status distribution
+                - generic [ref=e405]:
+                  - generic [ref=e407]:
+                    - generic [ref=e408]: Overdue
+                    - strong [ref=e409]: "0"
+                  - generic [ref=e412]:
+                    - generic [ref=e413]: Pending
+                    - strong [ref=e414]: "0"
+                  - generic [ref=e417]:
+                    - generic [ref=e418]: Paid
+                    - strong [ref=e419]: "0"
+              - button "Incident severity Critical 0 Warning 0" [ref=e421] [cursor=pointer]:
+                - generic [ref=e422]: Incident severity
+                - generic [ref=e423]:
+                  - generic [ref=e425]:
+                    - generic [ref=e426]: Critical
+                    - strong [ref=e427]: "0"
+                  - generic [ref=e430]:
+                    - generic [ref=e431]: Warning
+                    - strong [ref=e432]: "0"
+              - button "Alert severity Critical 0 Warning 0" [ref=e434] [cursor=pointer]:
+                - generic [ref=e435]: Alert severity
+                - generic [ref=e436]:
+                  - generic [ref=e438]:
+                    - generic [ref=e439]: Critical
+                    - strong [ref=e440]: "0"
+                  - generic [ref=e443]:
+                    - generic [ref=e444]: Warning
+                    - strong [ref=e445]: "0"
+  - generic [ref=e30]: Admin | ISP Management

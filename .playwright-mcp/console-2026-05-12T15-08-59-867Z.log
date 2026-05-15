@@ -1,0 +1,37 @@
+[    2510ms] [WARNING] Failed to load portal invoice ids for dropdown: Error: Authentication required
+    at getTokenOrThrow (http://127.0.0.1:1420/src/lib/api/core.ts?t=1778490414527:770:21)
+    at Object.listInvoices (http://127.0.0.1:1420/src/lib/api/payment.ts?t=1778490414527:23:60)
+    at loadPortalInvoiceIds (http://127.0.0.1:1420/src/lib/components/layout/NotificationDropdown.svelte?t=1778596326358:115:67)
+    at http://127.0.0.1:1420/src/lib/components/layout/NotificationDropdown.svelte?t=1778596326358:110:8
+    at untrack (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3830:12)
+    at $effect (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-JE4MGW45.js?v=a1ff02f4:4431:23)
+    at update_reaction (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3535:18)
+    at update_effect (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3673:21)
+    at flush_queued_effects (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:2652:7)
+    at _Batch.process (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:2311:7) @ http://127.0.0.1:1420/node_modules/@sveltejs/kit/src/runtime/client/client.js?v=a1ff02f4:3208
+[    2512ms] [WARNING] Failed to load announcements: Error: Authentication required
+    at getTokenOrThrow (http://127.0.0.1:1420/src/lib/api/core.ts?t=1778490414527:770:21)
+    at Object.listActive (http://127.0.0.1:1420/src/lib/api/announcements.ts?t=1778490414527:3:70)
+    at loadActiveAnnouncements (http://127.0.0.1:1420/src/lib/stores/announcements.ts?t=1778512707851:8:42)
+    at http://127.0.0.1:1420/src/lib/components/layout/AnnouncementBanner.svelte?t=1778596326358:80:8
+    at untrack (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3830:12)
+    at $effect (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-JE4MGW45.js?v=a1ff02f4:4431:23)
+    at update_reaction (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3535:18)
+    at update_effect (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3673:21)
+    at flush_queued_effects (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:2652:7)
+    at _Batch.process (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:2311:7) @ http://127.0.0.1:1420/node_modules/@sveltejs/kit/src/runtime/client/client.js?v=a1ff02f4:3208
+[    3068ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://127.0.0.1:1420/login:0
+[   74569ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:142
+[   74569ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:108
+[   89569ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:142
+[   89569ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:108
+[  104569ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:142
+[  104569ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:108
+[  119569ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:142
+[  119569ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:108
+[  134569ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:142
+[  134570ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:108
+[  149569ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:142
+[  149569ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:108
+[  164569ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:142
+[  164569ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:108

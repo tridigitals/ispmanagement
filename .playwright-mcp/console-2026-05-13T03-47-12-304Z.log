@@ -1,0 +1,58 @@
+[    2238ms] [WARNING] [.WebGL-0x240c027b3c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ http://127.0.0.1:1420/admin/network/map:0
+[    2251ms] [WARNING] [.WebGL-0x240c027b3c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ http://127.0.0.1:1420/admin/network/map:0
+[    2322ms] [WARNING] [.WebGL-0x240c027b3c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ http://127.0.0.1:1420/admin/network/map:0
+[    2415ms] [WARNING] [.WebGL-0x240c027b3c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat) @ http://127.0.0.1:1420/admin/network/map:0
+[    3725ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[   48745ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[   48746ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[   73669ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[   98880ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[  111934ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[  165470ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[  360989ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[  360992ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[  663475ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[  663475ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[  762582ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[  805664ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[  878405ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[  920034ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[ 1404195ms] ReferenceError: topologyAssetLegend is not defined
+
+	in <unknown>
+	in MapCanvasShell.svelte
+	in +page.svelte
+	in +layout.svelte
+	in +layout.svelte
+	in root.svelte
+
+    at http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778645434718:2359:46
+    at http://127.0.0.1:1420/node_modules/.vite/deps/chunk-JE4MGW45.js?v=a1ff02f4:840:5
+    at update_reaction (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3535:18)
+    at update_effect (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3673:21)
+    at create_effect (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3023:7)
+    at block (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3185:17)
+    at Module.if_block (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-JE4MGW45.js?v=a1ff02f4:838:3)
+    at http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778645434718:2358:19
+    at Module.add_svelte_meta (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:581:12)
+    at overlay (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778645434718:2357:10)
+[ 1513608ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[ 1563503ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 1563504ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 2170983ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:1420/api/auth/validate:0
+[ 2170987ms] [ERROR] API Error (validate_token): Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async run (http://127.0.0.1:1420/src/lib/stores/auth.ts:208:21)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async keepSessionAliveIfActive (http://127.0.0.1:1420/src/routes/+layout.svelte:135:5) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[ 2170989ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 2170989ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 2495995ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 2495995ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 2780903ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[ 3070381ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[ 3104994ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[ 3147204ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[ 3563598ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[ 3575030ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[ 3614650ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0

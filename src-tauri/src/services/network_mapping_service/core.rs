@@ -323,6 +323,14 @@ impl NetworkMappingService {
         }
     }
 
+    pub(super) fn network_asset_to_node_status(status: &str) -> &'static str {
+        match status.trim().to_lowercase().as_str() {
+            "faulty" => "maintenance",
+            "retired" => "inactive",
+            _ => "active",
+        }
+    }
+
     pub(super) fn customer_pppoe_visual_state(
         customer_is_active: bool,
         subscription_status: &str,

@@ -212,6 +212,8 @@ pub struct UpdateZoneOfferRequest {
 pub struct SyncTopologyAssetsResponse {
     pub router_nodes_created: i64,
     pub router_nodes_updated: i64,
+    pub asset_nodes_created: i64,
+    pub asset_nodes_updated: i64,
     pub customer_nodes_created: i64,
     pub customer_nodes_updated: i64,
     pub total_nodes_touched: i64,

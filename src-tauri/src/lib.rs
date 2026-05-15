@@ -489,6 +489,17 @@ pub fn run() {
                                     delete_isp_package,
                                     list_isp_package_router_mappings,
                                     upsert_isp_package_router_mapping,
+                                    // FTTH assets
+                                    list_network_assets,
+                                    get_network_asset,
+                                    create_network_asset,
+                                    update_network_asset,
+                                    delete_network_asset,
+                                    assign_network_asset_customer,
+                                    assign_network_asset_location,
+                                    assign_network_asset_work_order,
+                                    link_network_asset_parent,
+                                    list_customer_network_assets,
                                     // MikroTik / Routers
                                     list_mikrotik_routers,
                                     list_mikrotik_noc,

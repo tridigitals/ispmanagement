@@ -28,7 +28,7 @@ use crate::models::{
     CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionOption,
     CustomerSubscriptionView, CustomerSummary, CustomerUser, InstallationWorkOrder,
     InstallationWorkOrderView, IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest,
-    TeamMemberWithUser, UpdateCustomerLocationRequest,
+    TeamMemberWithUser, UpdateCustomerLocationRequest, NetworkAsset,
     UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
     UpdateCustomerSubscriptionRequest, WorkOrderRescheduleDecisionRequest,
     WorkOrderRescheduleRequestView,

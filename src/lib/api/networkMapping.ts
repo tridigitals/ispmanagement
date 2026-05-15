@@ -92,6 +92,8 @@ export const networkMapping = {
     sync: (): Promise<{
       router_nodes_created: number;
       router_nodes_updated: number;
+      asset_nodes_created: number;
+      asset_nodes_updated: number;
       customer_nodes_created: number;
       customer_nodes_updated: number;
       total_nodes_touched: number;

@@ -1,0 +1,76 @@
+[      76ms] [ERROR] API Error (sync_network_mapping_assets): TypeError: Failed to fetch
+    at window.fetch (http://127.0.0.1:1420/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:685:26)
+    at Object.sync (http://127.0.0.1:1420/src/lib/api/networkMapping.ts:28:17)
+    at syncTopologyAssetsIfNeeded (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts:111:48)
+    at syncTopologyAssets (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685302999:1240:50)
+    at queueBackgroundTopologySync (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685302999:1259:32)
+    at refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685302999:1299:6)
+    at t.Map.<anonymous> (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685302999:1148:36)
+    at t.Map.fire (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:362:39)
+    at t.Map._render (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17275:1088) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[      78ms] [ERROR] TypeError: Failed to fetch
+    at window.fetch (http://127.0.0.1:1420/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:685:26)
+    at Object.sync (http://127.0.0.1:1420/src/lib/api/networkMapping.ts:28:17)
+    at syncTopologyAssetsIfNeeded (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts:111:48)
+    at syncTopologyAssets (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685302999:1240:50)
+    at queueBackgroundTopologySync (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685302999:1259:32)
+    at refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685302999:1299:6)
+    at t.Map.<anonymous> (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685302999:1148:36)
+    at t.Map.fire (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:362:39)
+    at t.Map._render (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17275:1088) @ http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts:125
+[      80ms] [ERROR] TypeError: Failed to fetch @ http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366
+[      81ms] [ERROR] TypeError: Failed to fetch @ http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366
+[  816831ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[  816832ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 1416831ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 1416831ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 1716834ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 1716835ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 2316830ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 2316831ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 2616833ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 2616834ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 2916818ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 2916818ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 3216818ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 3216818ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 3516832ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 3516833ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 3816831ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 3816831ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 4116830ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 4116830ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 4416840ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 4416840ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 4716833ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 4716833ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[ 5016829ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[ 5016830ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[11619332ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[11619332ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[11921859ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[11921859ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[13421832ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[13421833ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[13721831ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[13721831ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[14321836ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[14321836ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[19124332ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[19124332ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[23624329ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[23624329ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[26024328ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[26024328ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[33824330ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[33824331ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[34426828ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[34426828ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[34726829ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[34726829ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[40140971ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[40140972ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[40440874ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[40440874ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108

@@ -1,4 +1,4 @@
-use super::dto::{SyncCustomerLocationRow, SyncRouterRow, UuidTextRow};
+use super::dto::{SyncCustomerLocationRow, SyncNetworkAssetRow, SyncRouterRow, UuidTextRow};
 use super::NetworkMappingService;
 use crate::error::{AppError, AppResult};
 use crate::models::{
@@ -454,10 +454,39 @@ impl NetworkMappingService {
         .await
         .map_err(AppError::Database)?;
 
+        let network_assets: Vec<SyncNetworkAssetRow> = sqlx::query_as(
+            r#"
+            SELECT
+              id::text AS id,
+              asset_type,
+              name,
+              status,
+              code,
+              customer_id::text AS customer_id,
+              location_id::text AS location_id,
+              parent_asset_id::text AS parent_asset_id,
+              latitude::float8 AS latitude,
+              longitude::float8 AS longitude
+            FROM network_assets
+            WHERE tenant_id = $1::text
+              AND asset_type IN ('olt', 'odc', 'odp', 'fat', 'nap', 'switch')
+              AND latitude IS NOT NULL
+              AND longitude IS NOT NULL
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
         let eligible_customer_location_ids: Vec<String> = customer_locations
             .iter()
             .map(|row| row.location_id.clone())
             .collect();
+        let eligible_asset_ids: Vec<String> = network_assets.iter().map(|row| row.id.clone()).collect();
+        let pruned_asset_nodes = self
+            .prune_system_managed_nodes_not_in_assets(tenant_id, "network_asset", &eligible_asset_ids)
+            .await?;
         let pruned_customer_nodes = self
             .prune_system_managed_nodes_not_in_assets(
                 tenant_id,
@@ -468,6 +497,8 @@ impl NetworkMappingService {
 
         let mut router_nodes_created = 0_i64;
         let mut router_nodes_updated = 0_i64;
+        let mut asset_nodes_created = 0_i64;
+        let mut asset_nodes_updated = 0_i64;
         let mut customer_nodes_created = 0_i64;
         let mut customer_nodes_updated = 0_i64;
 
@@ -495,6 +526,37 @@ impl NetworkMappingService {
                 router_nodes_created += 1;
             } else {
                 router_nodes_updated += 1;
+            }
+        }
+
+        for row in network_assets {
+            let created = self
+                .upsert_system_managed_node(
+                    tenant_id,
+                    "network_asset",
+                    &row.id,
+                    row.name.trim(),
+                    &row.asset_type,
+                    Self::network_asset_to_node_status(&row.status),
+                    row.latitude,
+                    row.longitude,
+                    serde_json::json!({
+                        "system_managed": true,
+                        "asset_source": "network_asset",
+                        "asset_type": row.asset_type,
+                        "asset_id": row.id,
+                        "asset_status": row.status,
+                        "code": row.code,
+                        "customer_id": row.customer_id,
+                        "location_id": row.location_id,
+                        "parent_asset_id": row.parent_asset_id,
+                    }),
+                )
+                .await?;
+            if created {
+                asset_nodes_created += 1;
+            } else {
+                asset_nodes_updated += 1;
             }
         }
 
@@ -527,12 +589,17 @@ impl NetworkMappingService {
         Ok(SyncTopologyAssetsResponse {
             router_nodes_created,
             router_nodes_updated,
+            asset_nodes_created,
+            asset_nodes_updated,
             customer_nodes_created,
             customer_nodes_updated,
             total_nodes_touched: router_nodes_created
                 + router_nodes_updated
+                + asset_nodes_created
+                + asset_nodes_updated
                 + customer_nodes_created
                 + customer_nodes_updated
+                + pruned_asset_nodes as i64
                 + pruned_customer_nodes as i64,
         })
     }

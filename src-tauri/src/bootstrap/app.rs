@@ -8,7 +8,7 @@ use crate::services::metrics_service::MetricsService;
 use crate::services::{
     AnnouncementScheduler, AuditService, AuthService, BackupService, CustomerService,
     DhcpStaticServiceManager, EmailOutboxService, EmailService, IspPackageService,
-    ManagedRadiusService, MikrotikService, NetworkMappingService, NotificationService,
+    ManagedRadiusService, MikrotikService, NetworkAssetService, NetworkMappingService, NotificationService,
     PaymentService, PlanService, PppoeService, RadiusRuntimeConfig, RadiusService, RoleService,
     SettingsService, SystemService, TeamService, UserService,
 };
@@ -89,6 +89,8 @@ pub async fn initialize_backend<R: tauri::Runtime>(
         DhcpStaticServiceManager::new(pool.clone(), auth_service.clone(), audit_service.clone());
     let isp_package_service =
         IspPackageService::new(pool.clone(), auth_service.clone(), audit_service.clone());
+    let network_asset_service =
+        NetworkAssetService::new(pool.clone(), auth_service.clone(), audit_service.clone());
     let network_mapping_service = NetworkMappingService::new(pool.clone(), auth_service.clone());
     let team_service = TeamService::new(
         pool.clone(),
@@ -180,6 +182,7 @@ pub async fn initialize_backend<R: tauri::Runtime>(
     app_handle.manage(pppoe_service.clone());
     app_handle.manage(dhcp_static_service.clone());
     app_handle.manage(isp_package_service.clone());
+    app_handle.manage(network_asset_service.clone());
     app_handle.manage(network_mapping_service.clone());
     app_handle.manage(settings_service.clone());
     app_handle.manage(email_service.clone());
@@ -222,6 +225,7 @@ pub async fn initialize_backend<R: tauri::Runtime>(
         pppoe_service,
         dhcp_static_service,
         isp_package_service,
+        network_asset_service,
         network_mapping_service,
         backup_service,
         radius_service,

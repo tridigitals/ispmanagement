@@ -1,0 +1,3 @@
+[    1577ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://127.0.0.1:1420/login:0
+[   46303ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[   46304ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108

@@ -1517,6 +1517,26 @@ mod tests {
     }
 
     #[test]
+    fn network_asset_status_mapping_contract() {
+        assert_eq!(
+            NetworkMappingService::network_asset_to_node_status("available"),
+            "active"
+        );
+        assert_eq!(
+            NetworkMappingService::network_asset_to_node_status("installed"),
+            "active"
+        );
+        assert_eq!(
+            NetworkMappingService::network_asset_to_node_status("faulty"),
+            "maintenance"
+        );
+        assert_eq!(
+            NetworkMappingService::network_asset_to_node_status("retired"),
+            "inactive"
+        );
+    }
+
+    #[test]
     fn customer_pppoe_visual_state_contract() {
         assert_eq!(
             NetworkMappingService::customer_pppoe_visual_state(

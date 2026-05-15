@@ -14,6 +14,7 @@ pub mod mixradius_import_executor;
 pub mod mixradius_import_mapper;
 pub mod mixradius_import_service;
 pub mod mixradius_sql_parser;
+pub mod network_asset_service;
 pub mod network_mapping_service;
 pub mod radius_service;
 pub mod rate_limiter;
@@ -54,6 +55,7 @@ pub use managed_radius_service::ManagedRadiusService;
 pub use message_template_service::MessageTemplateService;
 pub use mikrotik_service::MikrotikService;
 pub use mixradius_import_service::MixradiusImportService;
+pub use network_asset_service::NetworkAssetService;
 pub use network_mapping_service::NetworkMappingService;
 pub use notification_service::NotificationService;
 pub use payment_service::{

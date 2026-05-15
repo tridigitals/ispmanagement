@@ -9,7 +9,9 @@ import {
 import {
   buildBaseMapStyle,
   emptyFeatureCollection,
+  ensureTopologyAssetSourceAndLayers,
   registerMapSourcesAndLayers,
+  replaceTopologyAssetSourceData,
 } from './networkMapLayers';
 import { fitMapToMarkers } from './networkMapRuntime';
 import type { NetworkMapWorkspaceSelectedObject } from './networkMapWorkspaceState';
@@ -27,12 +29,14 @@ import {
 
 export { buildBaseMapStyle };
 export { ensureNodeTypeIconsRegistered };
+export { ensureTopologyAssetSourceAndLayers };
 export { expandCustomerCluster };
 export { fitMapToMarkers };
 export { handleCanvasMapClick };
 export { registerInteractiveLayerHover };
 export { registerMapSourcesAndLayers };
 export { registerPrimaryLayerClicks };
+export { replaceTopologyAssetSourceData };
 
 export function buildSelectionFeatureCollections(args: {
   selectedObject: NetworkMapWorkspaceSelectedObject | null;

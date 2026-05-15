@@ -1,0 +1,16 @@
+[   10663ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:142
+[   10664ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:108
+[   25663ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:142
+[   25663ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:108
+[   40663ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:142
+[   40663ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:108
+[   55663ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:142
+[   55664ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:108
+[   70663ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:142
+[   70663ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:108
+[   85663ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:142
+[   85663ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:108
+[  100663ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:142
+[  100663ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:108
+[  115663ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:142
+[  115663ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778596326358:108

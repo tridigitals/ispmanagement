@@ -386,6 +386,96 @@ export interface CustomerLocation {
   updated_at: string;
 }
 
+export type NetworkAssetType =
+  | 'olt'
+  | 'odc'
+  | 'odp'
+  | 'splitter'
+  | 'ont'
+  | 'onu'
+  | 'fat'
+  | 'nap'
+  | 'switch'
+  | 'router'
+  | 'media_converter'
+  | 'odf'
+  | 'ups';
+
+export type NetworkAssetGroup = 'access_fiber' | 'infrastructure' | string;
+
+export type NetworkAssetStatus =
+  | 'available'
+  | 'reserved'
+  | 'installed'
+  | 'faulty'
+  | 'retired';
+
+export interface NetworkAsset {
+  id: string;
+  tenant_id: string;
+  asset_group: NetworkAssetGroup;
+  asset_type: NetworkAssetType | string;
+  name: string;
+  code: string | null;
+  vendor: string | null;
+  model: string | null;
+  serial_number: string | null;
+  status: NetworkAssetStatus | string;
+  customer_id: string | null;
+  location_id: string | null;
+  work_order_id: string | null;
+  parent_asset_id: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  notes: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NetworkAssetListItem extends NetworkAsset {
+  customer_name: string | null;
+  location_label: string | null;
+  work_order_status: string | null;
+  parent_asset_name: string | null;
+}
+
+export interface CreateNetworkAssetRequest {
+  asset_type: NetworkAssetType | string;
+  name: string;
+  code?: string | null;
+  vendor?: string | null;
+  model?: string | null;
+  serial_number?: string | null;
+  status?: NetworkAssetStatus | string;
+  customer_id?: string | null;
+  location_id?: string | null;
+  work_order_id?: string | null;
+  parent_asset_id?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  notes?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface UpdateNetworkAssetRequest {
+  asset_type?: NetworkAssetType | string;
+  name?: string;
+  code?: string | null;
+  vendor?: string | null;
+  model?: string | null;
+  serial_number?: string | null;
+  status?: NetworkAssetStatus | string;
+  customer_id?: string | null;
+  location_id?: string | null;
+  work_order_id?: string | null;
+  parent_asset_id?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  notes?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
 export interface CustomerPortalUser {
   customer_user_id: string;
   user_id: string;

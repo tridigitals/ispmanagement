@@ -1,0 +1,122 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e6]:
+        - img [ref=e8]
+        - generic [ref=e9]: ISP Management
+      - navigation [ref=e10]:
+        - button "Workspace" [ref=e11] [cursor=pointer]:
+          - generic [ref=e12]: Workspace
+          - img [ref=e14]
+        - button "Network" [expanded] [ref=e15] [cursor=pointer]:
+          - generic [ref=e16]: Network
+          - img [ref=e18]
+        - button "NOC" [ref=e19] [cursor=pointer]:
+          - img [ref=e20]
+          - generic [ref=e21]: NOC
+        - button "Topology Map" [ref=e22] [cursor=pointer]:
+          - img [ref=e23]
+          - generic [ref=e24]: Topology Map
+        - button "Wallboard" [ref=e25] [cursor=pointer]:
+          - img [ref=e26]
+          - generic [ref=e27]: Wallboard
+        - button "Alerts" [ref=e28] [cursor=pointer]:
+          - img [ref=e29]
+          - generic [ref=e30]: Alerts
+        - button "Incidents" [ref=e31] [cursor=pointer]:
+          - img [ref=e32]
+          - generic [ref=e33]: Incidents
+        - button "Installations" [ref=e34] [cursor=pointer]:
+          - img [ref=e35]
+          - generic [ref=e36]: Installations
+        - button "Logs" [ref=e37] [cursor=pointer]:
+          - img [ref=e38]
+          - generic [ref=e39]: Logs
+        - button "Routers" [ref=e40] [cursor=pointer]:
+          - img [ref=e41]
+          - generic [ref=e42]: Routers
+        - button "PPP Profiles" [ref=e43] [cursor=pointer]:
+          - img [ref=e44]
+          - generic [ref=e45]: PPP Profiles
+        - button "IP Pools" [ref=e46] [cursor=pointer]:
+          - img [ref=e47]
+          - generic [ref=e48]: IP Pools
+        - button "Services" [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+          - generic [ref=e51]: Services
+        - button "PPPoE" [ref=e52] [cursor=pointer]:
+          - img [ref=e53]
+          - generic [ref=e54]: PPPoE
+        - button "DHCP Static" [ref=e55] [cursor=pointer]:
+          - img [ref=e56]
+          - generic [ref=e57]: DHCP Static
+        - button "FTTH Assets" [ref=e58] [cursor=pointer]:
+          - img [ref=e59]
+          - generic [ref=e60]: FTTH Assets
+        - button "Imports" [ref=e61] [cursor=pointer]:
+          - img [ref=e62]
+          - generic [ref=e63]: Imports
+        - button "Access" [ref=e64] [cursor=pointer]:
+          - generic [ref=e65]: Access
+          - img [ref=e67]
+        - button "Compliance" [ref=e68] [cursor=pointer]:
+          - generic [ref=e69]: Compliance
+          - img [ref=e71]
+        - button "Operations" [ref=e72] [cursor=pointer]:
+          - generic [ref=e73]: Operations
+          - img [ref=e75]
+        - button "Billing" [ref=e76] [cursor=pointer]:
+          - generic [ref=e77]: Billing
+          - img [ref=e79]
+        - button "Configuration" [ref=e80] [cursor=pointer]:
+          - generic [ref=e81]: Configuration
+          - img [ref=e83]
+      - generic [ref=e84]:
+        - button "Super Admin" [ref=e85] [cursor=pointer]:
+          - img [ref=e86]
+          - generic [ref=e87]: Super Admin
+        - button "User View" [ref=e88] [cursor=pointer]:
+          - img [ref=e89]
+          - generic [ref=e90]: User View
+        - button "X X-Trabit Owner" [ref=e92] [cursor=pointer]:
+          - generic [ref=e93]: X
+          - generic [ref=e94]:
+            - generic [ref=e95]: X-Trabit
+            - generic [ref=e96]: Owner
+          - img [ref=e97]
+    - generic [ref=e99]:
+      - banner [ref=e100]:
+        - generic [ref=e101]:
+          - button "Collapse sidebar" [ref=e102] [cursor=pointer]:
+            - img [ref=e103]
+          - heading "Admin Overview" [level=2] [ref=e104]
+        - button "Notifications" [ref=e107] [cursor=pointer]:
+          - img [ref=e108]
+          - generic [ref=e109]: "1"
+      - generic [ref=e111]:
+        - generic [ref=e113]:
+          - generic [ref=e114]:
+            - heading "Network Topology Map" [level=1] [ref=e115]
+            - paragraph [ref=e116]: Visualize nodes, links, service zones, and operational context from the current viewport. Viewport data updated 10s ago.
+          - generic [ref=e117]:
+            - link "Back to NOC" [ref=e118] [cursor=pointer]:
+              - /url: /admin/network/noc
+              - img [ref=e119]
+              - text: Back to NOC
+            - button "Sync" [ref=e120] [cursor=pointer]:
+              - img [ref=e121]
+              - text: Sync
+        - generic [ref=e124]:
+          - generic [ref=e125]:
+            - region "Map" [ref=e126]
+            - group [ref=e127]:
+              - generic "Toggle attribution" [ref=e128] [cursor=pointer]
+              - generic [ref=e129]:
+                - text: © OpenStreetMap contributors |
+                - link "MapLibre" [ref=e130] [cursor=pointer]:
+                  - /url: https://maplibre.org/
+          - button "Search map assets" [ref=e132] [cursor=pointer]:
+            - img [ref=e133]
+          - button "Show map controls" [ref=e134] [cursor=pointer]:
+            - generic [ref=e135]: Controls

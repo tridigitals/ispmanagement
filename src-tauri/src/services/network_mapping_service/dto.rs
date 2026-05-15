@@ -69,6 +69,20 @@ pub(super) struct SyncRouterRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+pub(super) struct SyncNetworkAssetRow {
+    pub(super) id: String,
+    pub(super) asset_type: String,
+    pub(super) name: String,
+    pub(super) status: String,
+    pub(super) code: Option<String>,
+    pub(super) customer_id: Option<String>,
+    pub(super) location_id: Option<String>,
+    pub(super) parent_asset_id: Option<String>,
+    pub(super) latitude: f64,
+    pub(super) longitude: f64,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub(super) struct SyncCustomerLocationRow {
     pub(super) location_id: String,
     pub(super) customer_id: String,

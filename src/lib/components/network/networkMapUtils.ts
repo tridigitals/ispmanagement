@@ -467,10 +467,15 @@ export function isSystemManagedNode(row: NMNode | null | undefined) {
   return !!row?.metadata?.system_managed;
 }
 
+export function isSyncedTopologyAssetNode(row: NMNode | null | undefined) {
+  return String(row?.metadata?.asset_source || row?.metadata?.asset_type || '').trim() === 'network_asset';
+}
+
 export function systemManagedNodeSourceLabel(row: NMNode | null | undefined) {
   const source = String(row?.metadata?.asset_source || row?.metadata?.asset_type || '').trim();
   if (source === 'mikrotik_router') return 'Router map';
   if (source === 'customer_location') return 'Customer location map';
+  if (source === 'network_asset') return 'FTTH asset map';
   return source ? 'Synced asset' : '';
 }
 
@@ -1177,18 +1182,20 @@ export function computeLinkHealth(row: NMLink): { score: number; tone: 'good' | 
 export function nodesToFeatureCollection(rows: NMNode[]): FeatureCollection {
   return {
     type: 'FeatureCollection',
-    features: (rows || []).map((row) => ({
-      type: 'Feature',
-      geometry: { type: 'Point', coordinates: [row.lng, row.lat] },
-      properties: {
-        id: row.id,
-        name: row.name,
-        node_type: row.node_type,
-        status: row.status,
-        system_managed: !!row.metadata?.system_managed,
-        asset_source: String(row.metadata?.asset_source || ''),
-      },
-    })),
+    features: (rows || [])
+      .filter((row) => !isSyncedTopologyAssetNode(row))
+      .map((row) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [row.lng, row.lat] },
+        properties: {
+          id: row.id,
+          name: row.name,
+          node_type: row.node_type,
+          status: row.status,
+          system_managed: !!row.metadata?.system_managed,
+          asset_source: String(row.metadata?.asset_source || ''),
+        },
+      })),
   };
 }
 

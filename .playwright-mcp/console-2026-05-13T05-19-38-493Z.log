@@ -1,0 +1,55 @@
+[    3474ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[   47570ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[   64599ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[   64603ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[   64886ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[   64886ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[   65607ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[   69623ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[  364947ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[  364950ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[  365034ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  365034ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  365954ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[  371066ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[  440767ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[  459443ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[  499678ms] [ERROR] API Error (list_active_announcements): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:685:26)
+    at Object.listActive (https://billing.tridigitals.com/src/lib/api/announcements.ts:3:21)
+    at loadActiveAnnouncements (https://billing.tridigitals.com/src/lib/stores/announcements.ts:8:42)
+    at https://billing.tridigitals.com/src/lib/components/layout/AnnouncementBanner.svelte:80:8
+    at untrack (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3830:12)
+    at $effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-JE4MGW45.js?v=a1ff02f4:4431:23)
+    at update_reaction (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3535:18)
+    at update_effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3673:21)
+    at flush_queued_effects (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:2652:7) @ https://billing.tridigitals.com/src/lib/api/core.ts:761
+[  499679ms] [ERROR] API Error (get_unread_count): TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:685:26)
+    at Object.getUnreadCount (https://billing.tridigitals.com/src/lib/api/notifications.ts:4:25)
+    at Object.refreshUnreadCount (https://billing.tridigitals.com/src/lib/stores/notifications.ts:60:27)
+    at https://billing.tridigitals.com/src/lib/bootstrap/rootRealtimeController.ts:20:17
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncRealtimeConnections (https://billing.tridigitals.com/src/routes/+layout.svelte:270:4) @ https://billing.tridigitals.com/src/lib/api/core.ts:761
+[  499679ms] [WARNING] Failed to load announcements: TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:685:26)
+    at Object.listActive (https://billing.tridigitals.com/src/lib/api/announcements.ts:3:21)
+    at loadActiveAnnouncements (https://billing.tridigitals.com/src/lib/stores/announcements.ts:8:42)
+    at https://billing.tridigitals.com/src/lib/components/layout/AnnouncementBanner.svelte:80:8
+    at untrack (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3830:12)
+    at $effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-JE4MGW45.js?v=a1ff02f4:4431:23)
+    at update_reaction (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3535:18)
+    at update_effect (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:3673:21)
+    at flush_queued_effects (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:2652:7) @ https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/client.js?v=a1ff02f4:3208
+[  499680ms] [ERROR] Failed to get unread count: TypeError: Failed to fetch
+    at window.fetch (https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/fetcher.js?v=a1ff02f4:66:10)
+    at safeInvoke (https://billing.tridigitals.com/src/lib/api/core.ts:685:26)
+    at Object.getUnreadCount (https://billing.tridigitals.com/src/lib/api/notifications.ts:4:25)
+    at Object.refreshUnreadCount (https://billing.tridigitals.com/src/lib/stores/notifications.ts:60:27)
+    at https://billing.tridigitals.com/src/lib/bootstrap/rootRealtimeController.ts:20:17
+    at async Module.track_reactivity_loss (https://billing.tridigitals.com/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async syncRealtimeConnections (https://billing.tridigitals.com/src/routes/+layout.svelte:270:4) @ https://billing.tridigitals.com/src/lib/stores/notifications.ts:65
+[  503420ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0

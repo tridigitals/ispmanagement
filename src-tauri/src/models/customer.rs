@@ -408,6 +408,8 @@ pub struct AssignInstallationWorkOrderRequest {
 #[serde(deny_unknown_fields)]
 pub struct UpdateInstallationWorkOrderStatusRequest {
     pub notes: Option<String>,
+    pub terminal_asset_id: Option<String>,
+    pub parent_asset_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]

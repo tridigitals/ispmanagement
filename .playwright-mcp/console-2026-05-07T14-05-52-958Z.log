@@ -1,5 +1,0 @@
-[    1955ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ https://billing.tridigitals.com/login:0
-[   27925ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
-[   27956ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
-[   28960ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
-[   30589ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ https://billing.tridigitals.com/login:0

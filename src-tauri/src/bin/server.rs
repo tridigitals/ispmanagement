@@ -5,9 +5,10 @@ use saas_tauri_lib::{
     services::{
         metrics_service::MetricsService, AnnouncementScheduler, AuditService, AuthService,
         BackupService, CustomerService, DhcpStaticServiceManager, EmailOutboxService, EmailService,
-        IspPackageService, MikrotikService, NetworkMappingService, NotificationService,
-        PaymentService, PlanService, PppoeService, RadiusRuntimeConfig, RadiusService, RoleService,
-        SettingsService, StorageService, SystemService, TeamService, UserService,
+        IspPackageService, MikrotikService, NetworkAssetService, NetworkMappingService,
+        NotificationService, PaymentService, PlanService, PppoeService, RadiusRuntimeConfig,
+        RadiusService, RoleService, SettingsService, StorageService, SystemService, TeamService,
+        UserService,
     },
 };
 use std::env;
@@ -89,6 +90,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         DhcpStaticServiceManager::new(pool.clone(), auth_service.clone(), audit_service.clone());
     let isp_package_service =
         IspPackageService::new(pool.clone(), auth_service.clone(), audit_service.clone());
+    let network_asset_service =
+        NetworkAssetService::new(pool.clone(), auth_service.clone(), audit_service.clone());
     let network_mapping_service = NetworkMappingService::new(pool.clone(), auth_service.clone());
     let team_service = TeamService::new(
         pool.clone(),
@@ -186,6 +189,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         pppoe_service,
         dhcp_static_service,
         isp_package_service,
+        network_asset_service,
         network_mapping_service,
         backup_service,
         radius_service,

@@ -2,9 +2,9 @@ use crate::models::tenant::CUSTOM_DOMAIN_STATUS_ACTIVE;
 use crate::services::{
     AuditService, AuthService, CustomerService, DhcpStaticServiceManager, EmailService,
     IspPackageService, ManagedRadiusService, MessageTemplateService, MikrotikService,
-    MixradiusImportService, NetworkMappingService, NotificationService, PaymentService,
-    PlanService, PppoeService, RadiusService, RoleService, SettingsService, StorageService,
-    SystemService, TeamService, UserService,
+    MixradiusImportService, NetworkAssetService, NetworkMappingService, NotificationService,
+    PaymentService, PlanService, PppoeService, RadiusService, RoleService, SettingsService,
+    StorageService, SystemService, TeamService, UserService,
 };
 use axum::{
     extract::DefaultBodyLimit,
@@ -30,7 +30,7 @@ use std::{collections::HashMap, time::Instant};
 use crate::http::{
     announcements, audit, auth, backup, customer_communication, customers, dhcp_static,
     email_outbox, install, isp_packages, message_templates, middleware, mikrotik, mixradius_import,
-    network_mapping, notifications, payment, plans, pppoe, public, roles, settings, storage,
+    network_assets, network_mapping, notifications, payment, plans, pppoe, public, roles, settings, storage,
     superadmin, support, system, team, tenant, users, websocket, whatsapp, work_orders, AppState,
     SecurityRuntimeConfig, WsHub,
 };
@@ -92,6 +92,7 @@ pub async fn start_server_impl(
     pppoe_service: PppoeService,
     dhcp_static_service: DhcpStaticServiceManager,
     isp_package_service: IspPackageService,
+    network_asset_service: NetworkAssetService,
     network_mapping_service: NetworkMappingService,
     backup_service: crate::services::BackupService,
     radius_service: RadiusService,
@@ -230,6 +231,7 @@ pub async fn start_server_impl(
         pppoe_service: Arc::new(pppoe_service),
         dhcp_static_service: Arc::new(dhcp_static_service),
         isp_package_service: Arc::new(isp_package_service),
+        network_asset_service: Arc::new(network_asset_service),
         network_mapping_service: Arc::new(network_mapping_service),
         backup_service: Arc::new(backup_service),
         ws_hub,
@@ -547,6 +549,8 @@ pub async fn start_server_impl(
         .nest("/api/admin/pppoe/mixradius", mixradius_import::router())
         // ISP packages + router mapping (tenant scoped)
         .nest("/api/admin/isp-packages", isp_packages::router())
+        // FTTH network assets (tenant scoped)
+        .nest("/api/admin/network-assets", network_assets::router())
         // Network topology mapping (tenant scoped)
         .nest("/api/admin/network-mapping", network_mapping::router())
         // Settings Routes
@@ -725,6 +729,7 @@ pub fn spawn_http_server(
     pppoe_service: crate::services::PppoeService,
     dhcp_static_service: crate::services::DhcpStaticServiceManager,
     isp_package_service: crate::services::IspPackageService,
+    network_asset_service: crate::services::NetworkAssetService,
     network_mapping_service: crate::services::NetworkMappingService,
     backup_service: crate::services::BackupService,
     radius_service: crate::services::RadiusService,
@@ -753,6 +758,7 @@ pub fn spawn_http_server(
             pppoe_service,
             dhcp_static_service,
             isp_package_service,
+            network_asset_service,
             network_mapping_service,
             backup_service,
             radius_service,
@@ -857,6 +863,7 @@ mod tests {
             ".nest(\"/api/plans\", plans::plan_routes())",
             ".nest(\"/api/payment\", payment::router())",
             ".nest(\"/api/notifications\", notifications::router())",
+            ".nest(\"/api/admin/network-assets\", network_assets::router())",
             ".nest(\"/api/admin/network-mapping\", network_mapping::router())",
             ".nest(\"/api/backups\", backup::router())",
         ] {

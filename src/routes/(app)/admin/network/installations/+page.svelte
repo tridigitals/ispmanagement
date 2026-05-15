@@ -13,6 +13,7 @@
     type IspPackageRouterMappingView,
     type InstallationWorkOrderView,
     type ManagedRadiusRouterSetup,
+    type NetworkAssetListItem,
     type PppoeAccountPublic,
     type TeamMember,
     type WorkOrderRescheduleRequestView,
@@ -47,6 +48,23 @@
     type InstallationAssignmentFilter,
     type InstallationSortKey,
   } from './installationTableState';
+  import {
+    buildInstallationParentAssetOptions,
+    buildInstallationTerminalAssetOptions,
+    resolveInstallationAssetBinding,
+    validateInstallationAssetBinding,
+  } from './installationAssetBinding';
+  import { buildInstallationAssetSyncUpdates } from './installationAssetSync';
+  import {
+    applyInstallationQuickAssetInputChange,
+    buildDefaultInstallationQuickAssetDraft,
+    buildInstallationQuickAssetPayload,
+    buildInstallationQuickAssetSuggestedName,
+    findInstallationQuickAssetDuplicates,
+    syncInstallationQuickAssetDraftOnTypeChange,
+    validateInstallationQuickAssetDraft,
+    type InstallationQuickAssetDraft,
+  } from './installationQuickAsset';
   import { loadInstallationDetailDialogs } from './installationsPageModules';
 
   let loading = $state(true);
@@ -111,6 +129,17 @@
   let installationDhcpMacAddressError = $state<string | null>(null);
   let installationDhcpIpAddressError = $state<string | null>(null);
   let installationDhcpQueueRateLimitError = $state<string | null>(null);
+  let installationAssetRows = $state<NetworkAssetListItem[]>([]);
+  let loadingInstallationAssets = $state(false);
+  let savingInstallationAssets = $state(false);
+  let installationTerminalAssetId = $state('');
+  let installationParentAssetId = $state('');
+  let installationAssetStepComplete = $state(false);
+  let installationQuickAssetOpen = $state(false);
+  let creatingInstallationQuickAsset = $state(false);
+  let installationQuickAssetDraft = $state<InstallationQuickAssetDraft>(
+    buildDefaultInstallationQuickAssetDraft(),
+  );
   let onsiteFocusIndex = $state<number | null>(null);
   let canManageWorkOrders = $derived($can('manage', 'work_orders'));
   let canReadAuditLogs = $derived($can('read', 'audit_logs'));
@@ -143,6 +172,17 @@
       description: null,
       features: [],
     }),
+  );
+  const installationQuickAssetDuplicates = $derived.by(() =>
+    findInstallationQuickAssetDuplicates(installationQuickAssetDraft, installationAssetRows),
+  );
+  const installationQuickAssetCanSubmit = $derived.by(
+    () =>
+      !creatingInstallationQuickAsset &&
+      !!installationQuickAssetDraft.name.trim() &&
+      !!installationQuickAssetDraft.serial_number.trim() &&
+      !installationQuickAssetDuplicates.serial_number &&
+      !installationQuickAssetDuplicates.code,
   );
   const CANCEL_REASON_MIN = 10;
   const INSTALLATION_REFRESH_SIGNAL_KEY = 'nm_installation_work_order_refresh';
@@ -457,7 +497,13 @@
     busyId = row.id;
     try {
       if (action === 'start') await api.workOrders.start(row.id, notes);
-      if (action === 'complete') await api.workOrders.complete(row.id, notes);
+      if (action === 'complete') {
+        await api.workOrders.complete(row.id, {
+          notes,
+          terminal_asset_id: installationTerminalAssetId || undefined,
+          parent_asset_id: installationParentAssetId || undefined,
+        });
+      }
       if (action === 'cancel') await api.workOrders.cancel(row.id, notes);
       if (action === 'reopen') await api.workOrders.reopen(row.id, notes);
 
@@ -573,6 +619,13 @@
       created_at: '',
       updated_at: '',
     }));
+    installationAssetRows = [];
+    loadingInstallationAssets = false;
+    installationTerminalAssetId = '';
+    installationParentAssetId = '';
+    installationAssetStepComplete = false;
+    installationQuickAssetOpen = false;
+    installationQuickAssetDraft = buildDefaultInstallationQuickAssetDraft();
     onsiteFocusIndex = null;
     rescheduleRequest = null;
     rescheduleLoading = false;
@@ -582,6 +635,7 @@
     void loadWorkOrderTimeline(row.id);
     void loadRescheduleRequest(row.id);
     void loadInstallationPppoeContext(row);
+    void loadInstallationAssetContext(row);
   }
 
   $effect(() => {
@@ -630,6 +684,14 @@
     installationDhcpMacAddressError = null;
     installationDhcpIpAddressError = null;
     installationDhcpQueueRateLimitError = null;
+    installationAssetRows = [];
+    loadingInstallationAssets = false;
+    installationTerminalAssetId = '';
+    installationParentAssetId = '';
+    installationAssetStepComplete = false;
+    installationQuickAssetOpen = false;
+    creatingInstallationQuickAsset = false;
+    installationQuickAssetDraft = buildDefaultInstallationQuickAssetDraft();
     onsiteFocusIndex = null;
   }
 
@@ -851,6 +913,140 @@
     }
   }
 
+  async function loadInstallationAssetContext(row: InstallationWorkOrderView) {
+    loadingInstallationAssets = true;
+    installationAssetRows = [];
+    installationTerminalAssetId = '';
+    installationParentAssetId = '';
+    installationAssetStepComplete = false;
+    try {
+      const result = await api.networkAssets.list({ page: 1, per_page: 500 });
+      installationAssetRows = result.data || [];
+      const binding = resolveInstallationAssetBinding(installationAssetRows, row.id);
+      installationTerminalAssetId = binding.terminal_asset_id;
+      installationParentAssetId = binding.parent_asset_id;
+      installationAssetStepComplete =
+        !validateInstallationAssetBinding(row, {
+          terminal_asset_id: binding.terminal_asset_id,
+          parent_asset_id: binding.parent_asset_id,
+        });
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to load installation asset registry');
+    } finally {
+      loadingInstallationAssets = false;
+    }
+  }
+
+  function handleInstallationTerminalAssetChange(value: string) {
+    installationTerminalAssetId = value;
+    installationAssetStepComplete = false;
+  }
+
+  function handleInstallationParentAssetChange(value: string) {
+    installationParentAssetId = value;
+    installationAssetStepComplete = false;
+  }
+
+  async function persistInstallationAssetBinding(row: InstallationWorkOrderView) {
+    const validationError = validateInstallationAssetBinding(row, {
+      terminal_asset_id: installationTerminalAssetId,
+      parent_asset_id: installationParentAssetId,
+    });
+    if (validationError) {
+      throw new Error(validationError);
+    }
+
+    const updates = buildInstallationAssetSyncUpdates({
+      assets: installationAssetRows,
+      row,
+      binding: {
+        terminal_asset_id: installationTerminalAssetId,
+        parent_asset_id: installationParentAssetId,
+      },
+    });
+
+    if (updates.length === 0) return false;
+
+    for (const update of updates) {
+      await api.networkAssets.update(update.id, update.payload);
+    }
+
+    await loadInstallationAssetContext(row);
+    return true;
+  }
+
+  function openInstallationQuickAsset() {
+    installationQuickAssetOpen = true;
+    installationQuickAssetDraft = {
+      ...buildDefaultInstallationQuickAssetDraft(),
+      name: buildInstallationQuickAssetSuggestedName({
+        assetType: 'ont',
+        customerName: activeRow?.customer_name || '',
+        locationLabel: activeRow?.location_label || '',
+      }),
+    };
+  }
+
+  function closeInstallationQuickAsset() {
+    installationQuickAssetOpen = false;
+    installationQuickAssetDraft = buildDefaultInstallationQuickAssetDraft();
+  }
+
+  async function createInstallationQuickAsset() {
+    if (!activeRow) return;
+    const validationError = validateInstallationQuickAssetDraft(installationQuickAssetDraft);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+    const duplicateError =
+      installationQuickAssetDuplicates.serial_number || installationQuickAssetDuplicates.code;
+    if (duplicateError) {
+      toast.error(duplicateError);
+      return;
+    }
+    creatingInstallationQuickAsset = true;
+    try {
+      const created = await api.networkAssets.create(
+        buildInstallationQuickAssetPayload({
+          draft: installationQuickAssetDraft,
+          customer_id: activeRow.customer_id,
+          location_id: activeRow.location_id,
+          work_order_id: activeRow.id,
+          notes: `Created from installation work order ${activeRow.id}`,
+        }),
+      );
+      await loadInstallationAssetContext(activeRow);
+      installationTerminalAssetId = created.id;
+      installationAssetStepComplete = false;
+      installationQuickAssetOpen = false;
+      toast.success('Terminal asset created');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to create terminal asset');
+    } finally {
+      creatingInstallationQuickAsset = false;
+    }
+  }
+
+  function updateInstallationQuickAssetField(
+    field: keyof InstallationQuickAssetDraft,
+    value: string,
+  ) {
+    if (field === 'asset_type' && (value === 'ont' || value === 'onu')) {
+      installationQuickAssetDraft = syncInstallationQuickAssetDraftOnTypeChange({
+        draft: installationQuickAssetDraft,
+        nextAssetType: value,
+        customerName: activeRow?.customer_name || '',
+        locationLabel: activeRow?.location_label || '',
+      });
+      return;
+    }
+    installationQuickAssetDraft = {
+      ...installationQuickAssetDraft,
+      [field]: applyInstallationQuickAssetInputChange(field, value),
+    };
+  }
+
   const installationPppoeMapping = $derived.by(() => {
     const subscription = installationSubscription;
     const packageId =
@@ -914,6 +1110,36 @@
     () =>
       installationPppoeTargetOptions.find((option) => option.value === installationPppoeTarget)?.label ||
       'Router',
+  );
+  const installationTerminalAssetOptions = $derived.by(() =>
+    activeRow
+      ? buildInstallationTerminalAssetOptions(
+          installationAssetRows,
+          activeRow,
+          installationTerminalAssetId,
+        )
+      : [],
+  );
+  const installationParentAssetOptions = $derived.by(() =>
+    buildInstallationParentAssetOptions(installationAssetRows, installationParentAssetId),
+  );
+  const installationAssetBindingError = $derived.by(() =>
+    activeRow
+      ? validateInstallationAssetBinding(activeRow, {
+          terminal_asset_id: installationTerminalAssetId,
+          parent_asset_id: installationParentAssetId,
+        })
+      : null,
+  );
+  const selectedTerminalAssetLabel = $derived.by(
+    () =>
+      installationTerminalAssetOptions.find((item) => item.value === installationTerminalAssetId)
+        ?.label || '',
+  );
+  const selectedParentAssetLabel = $derived.by(
+    () =>
+      installationParentAssetOptions.find((item) => item.value === installationParentAssetId)?.label ||
+      '',
   );
 
   const installationManagedRadiusHint = $derived.by(() =>
@@ -1399,7 +1625,12 @@
   });
   const onsiteActiveTask = $derived.by(() => onsiteTaskDefs[onsiteActiveIndex]);
   const isClosedState = $derived(activeRow?.status === 'completed' || activeRow?.status === 'cancelled');
-  const canCompleteActive = $derived(activeRow?.status === 'in_progress' && checklistDoneCount === checklistTotal);
+  const canCompleteActive = $derived(
+    activeRow?.status === 'in_progress' &&
+      checklistDoneCount === checklistTotal &&
+      installationAssetStepComplete &&
+      !installationAssetBindingError,
+  );
   const canSaveAssignStep = $derived(activeRow?.status === 'pending' && hasAssignee(formAssignee));
   const canSaveScheduleStep = $derived(activeRow?.status === 'pending' && isPlanReady(formAssignee, formSchedule));
   const canStartActive = $derived(
@@ -1407,7 +1638,14 @@
   );
   const effectiveStep = $derived.by(() => {
     if (!activeRow) return 1;
-    if (activeRow.status === 'completed' || activeRow.status === 'cancelled') return 4;
+    if (activeRow.status === 'completed' || activeRow.status === 'cancelled') return 5;
+    if (
+      activeRow.status === 'in_progress' &&
+      checklistDoneCount === checklistTotal &&
+      installationAssetStepComplete
+    ) {
+      return 5;
+    }
     if (activeRow.status === 'in_progress' && checklistDoneCount === checklistTotal) return 4;
     if (activeRow.status === 'in_progress') return 3;
     if (!hasAssignee(formAssignee)) return 1;
@@ -1458,6 +1696,9 @@
       return tr('admin.network.installations.focus_test_title', 'Test customer internet access');
     }
     if (activeRow.status === 'in_progress' && effectiveStep === 4) {
+      return tr('admin.network.installations.focus_asset_title', 'Bind terminal asset to this installation');
+    }
+    if (activeRow.status === 'in_progress' && effectiveStep === 5) {
       return tr('admin.network.installations.focus_finish_title', 'Finish and confirm service outcome');
     }
     return tr('admin.network.installations.focus_onsite_title', 'Complete onsite installation tasks');
@@ -1482,6 +1723,9 @@
       return tr('admin.network.installations.focus_test_hint', 'Use the package mapping values automatically, then verify the account really connects.');
     }
     if (activeRow.status === 'in_progress' && effectiveStep === 4) {
+      return tr('admin.network.installations.focus_asset_hint', 'Choose the ONT or ONU installed at the customer site, then optionally link the upstream parent asset.');
+    }
+    if (activeRow.status === 'in_progress' && effectiveStep === 5) {
       return tr('admin.network.installations.focus_finish_hint', 'Once completed, the service will either enter grace-active or become fully active depending on payment state.');
     }
     return tr('admin.network.installations.focus_onsite_hint', 'Move through one onsite task at a time so handover and proof stay clean.');
@@ -1506,7 +1750,37 @@
       toast.error(tr('admin.network.installations.checklist_required', 'Complete all checklist items before activation.'));
       return;
     }
+    if (installationAssetBindingError) {
+      toast.error(installationAssetBindingError);
+      return;
+    }
     await setStatus(activeRow, 'complete', formNotes);
+  }
+
+  async function continueToFinishStep() {
+    if (!activeRow || savingInstallationAssets) return;
+    if (installationAssetBindingError) {
+      toast.error(installationAssetBindingError);
+      return;
+    }
+
+    savingInstallationAssets = true;
+    try {
+      const changed = await persistInstallationAssetBinding(activeRow);
+      if (changed) {
+        toast.success(
+          tr(
+            'admin.network.installations.asset_binding_saved',
+            'Asset binding saved. ODP occupancy is updated.',
+          ),
+        );
+      }
+      installationAssetStepComplete = true;
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to save installation asset binding');
+    } finally {
+      savingInstallationAssets = false;
+    }
   }
 
   async function saveAssignStep() {
@@ -2077,6 +2351,27 @@
       bind:installationDhcpIpAddressError
       bind:installationDhcpQueueRateLimitError
       {installationDhcpQueueRateLimitPresets}
+      {loadingInstallationAssets}
+      {savingInstallationAssets}
+      bind:installationTerminalAssetId
+      bind:installationParentAssetId
+      {installationTerminalAssetOptions}
+      {installationParentAssetOptions}
+      {installationAssetBindingError}
+      {selectedTerminalAssetLabel}
+      {selectedParentAssetLabel}
+      {handleInstallationTerminalAssetChange}
+      {handleInstallationParentAssetChange}
+      bind:installationQuickAssetOpen
+      {creatingInstallationQuickAsset}
+      bind:installationQuickAssetDraft
+      {installationQuickAssetDuplicates}
+      {installationQuickAssetCanSubmit}
+      {openInstallationQuickAsset}
+      {closeInstallationQuickAsset}
+      {createInstallationQuickAsset}
+      {updateInstallationQuickAssetField}
+      {continueToFinishStep}
       {installationPppoeTargetOptions}
       {installationManagedRadiusHint}
       {installationManagedRadiusLoadError}

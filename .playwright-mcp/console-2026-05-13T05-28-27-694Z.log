@@ -1,0 +1,13 @@
+[    3170ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[   77044ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[   91336ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[  132177ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://billing.tridigitals.com/src/lib/utils/networkAssetTypes.ts:0
+[  132178ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://billing.tridigitals.com/src/lib/components/network/networkMapLayers.ts?t=1778650014041:0
+[  132180ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://billing.tridigitals.com/src/lib/api/mikrotik.ts:0
+[  132384ms] [WARNING] The next HMR update will cause the page to reload @ https://billing.tridigitals.com/node_modules/@sveltejs/kit/src/runtime/client/client.js?v=a1ff02f4:3208
+[  132384ms] [ERROR] TypeError: Failed to fetch dynamically imported module: https://billing.tridigitals.com/.svelte-kit/generated/client/nodes/2.js?t=1778650238734 @ https://billing.tridigitals.com/@fs/home/xtrabit/ISPMANAGEMENT/.svelte-kit/generated/client/app.js:181
+[  132503ms] Failed to fetch dynamically imported module: https://billing.tridigitals.com/src/lib/stores/notifications.ts
+[  155731ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[  155737ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[  156742ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[  161173ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0

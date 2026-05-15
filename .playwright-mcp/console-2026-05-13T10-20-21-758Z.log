@@ -1,0 +1,11 @@
+[    1887ms] [ERROR] Error: layers.nm-topology-asset-links.paint.line-dasharray: data expressions not supported
+    at Object.xi [as t] (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:3005:67)
+    at ce (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12124:34)
+    at de._validate (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12663:54)
+    at de.addLayer (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12446:152)
+    at t.Map.addLayer (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17133:59)
+    at Module.registerMapSourcesAndLayers (https://billing.tridigitals.com/src/lib/components/network/networkMapLayers.ts?t=1778667382322:342:7)
+    at t.Map.<anonymous> (https://billing.tridigitals.com/src/routes/(app)/admin/network/map/+page.svelte?t=1778667382322:1085:29)
+    at t.Map.fire (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:362:39)
+    at t.Map._render (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17275:1088)
+    at https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17292:63 @ https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366

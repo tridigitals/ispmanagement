@@ -9,6 +9,8 @@ export const INTERACTIVE_LAYER_IDS = [
   'nm-nodes-icons',
   'nm-routers-circle',
   'nm-routers-icon',
+  'nm-topology-assets-circle',
+  'nm-topology-assets-icon',
   'nm-customers-cluster-circle',
   'nm-customers-cluster-count',
   'nm-customers-point',
@@ -59,6 +61,7 @@ export function registerPrimaryLayerClicks(args: {
   map: import('maplibre-gl').Map;
   onNodeClick: (e: any) => void;
   onRouterClick: (e: any) => void;
+  onTopologyAssetClick: (e: any) => void;
   onLinkClick: (e: any) => void;
   onCustomerClusterClick: (e: any) => void;
 }) {
@@ -66,6 +69,8 @@ export function registerPrimaryLayerClicks(args: {
   args.map.on('click', 'nm-nodes-icons', args.onNodeClick);
   args.map.on('click', 'nm-routers-circle', args.onRouterClick);
   args.map.on('click', 'nm-routers-icon', args.onRouterClick);
+  args.map.on('click', 'nm-topology-assets-circle', args.onTopologyAssetClick);
+  args.map.on('click', 'nm-topology-assets-icon', args.onTopologyAssetClick);
   args.map.on('click', 'nm-customers-point', args.onNodeClick);
   args.map.on('click', 'nm-customers-cluster-circle', args.onCustomerClusterClick);
   args.map.on('click', 'nm-links-line', args.onLinkClick);

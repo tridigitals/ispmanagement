@@ -1,0 +1,65 @@
+[  198127ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[  198128ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[  498133ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[  498133ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108
+[  797713ms] [ERROR] Error: Source "nm-topology-assets" cannot be removed while layer "nm-topology-assets-halo" is using it.
+    at de.removeSource (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12424:105)
+    at t.Map.removeSource (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17089:31)
+    at replaceTopologyAssetOverlay (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1479:15)
+    at refreshTopologyAssets (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1040:4)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1417:5)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async t.Map.<anonymous> (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1148:6) @ http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366
+[  797715ms] [ERROR] Error: Source "nm-topology-assets" already exists.
+    at de.addSource (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12415:78)
+    at t.Map.addSource (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17051:59)
+    at replaceTopologyAssetOverlay (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1482:14)
+    at refreshTopologyAssets (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1040:4)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1417:5)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async t.Map.<anonymous> (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1148:6) @ http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1044
+[  799035ms] [ERROR] Error: Source "nm-topology-assets" cannot be removed while layer "nm-topology-assets-halo" is using it.
+    at de.removeSource (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12424:105)
+    at t.Map.removeSource (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17089:31)
+    at replaceTopologyAssetOverlay (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1479:15)
+    at refreshTopologyAssets (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1023:4)
+    at refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1417:35) @ http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366
+[  799037ms] [ERROR] Error: Source "nm-topology-assets" already exists.
+    at de.addSource (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12415:78)
+    at t.Map.addSource (http://127.0.0.1:1420/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17051:59)
+    at replaceTopologyAssetOverlay (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1482:14)
+    at refreshTopologyAssets (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1023:4)
+    at refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1417:35) @ http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1423
+[  799603ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:1420/api/admin/network-mapping/links?bbox=106.32933738%2C-7.84110260%2C110.92240962%2C-5.67559320&page=1&per_page=1000:0
+[  799605ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:1420/api/admin/network-mapping/nodes?bbox=106.32933738%2C-7.84110260%2C110.92240962%2C-5.67559320&page=1&per_page=1000:0
+[  799632ms] [ERROR] API Error (list_network_links): Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 1)
+    at async fetchNetworkMapData (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts:61:54)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1366:20)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1263:5 @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[  799632ms] [ERROR] Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 1)
+    at async fetchNetworkMapData (http://127.0.0.1:1420/src/lib/components/network/networkMapData.ts:61:54)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async refreshMapData (http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1366:20)
+    at async Module.track_reactivity_loss (http://127.0.0.1:1420/node_modules/.vite/deps/chunk-EUQQR2VU.js?v=a1ff02f4:1642:15)
+    at async http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1263:5 @ http://127.0.0.1:1420/src/routes/(app)/admin/network/map/+page.svelte?t=1778685282953:1423
+[  799634ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:1420/api/admin/mikrotik/routers:0
+[  799636ms] [ERROR] API Error (list_network_nodes): Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 0) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[  799637ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:1420/api/admin/network-mapping/zones?bbox=106.32933738%2C-7.84110260%2C110.92240962%2C-5.67559320&page=1&per_page=1000:0
+[  799669ms] [ERROR] API Error (list_mikrotik_routers): Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 3) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[  799670ms] [ERROR] API Error (list_service_zones): Error: HTTP Error 500
+    at safeInvoke (http://127.0.0.1:1420/src/lib/api/core.ts:719:23)
+    at async Promise.all (index 2) @ http://127.0.0.1:1420/src/lib/api/core.ts:761
+[  800182ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:89
+[  800182ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts:108

@@ -1,0 +1,56 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e31]:
+    - complementary [ref=e32]:
+      - generic [ref=e34]:
+        - img [ref=e36]
+        - generic [ref=e37]: ISP Management
+      - navigation [ref=e38]:
+        - button "Platform" [expanded] [ref=e39] [cursor=pointer]:
+          - generic [ref=e40]: Platform
+          - img [ref=e42]
+        - button "Dashboard" [ref=e43] [cursor=pointer]:
+          - img [ref=e44]
+          - generic [ref=e45]: Dashboard
+        - button "Tenants" [ref=e46] [cursor=pointer]:
+          - img [ref=e47]
+          - generic [ref=e48]: Tenants
+        - button "Users" [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+          - generic [ref=e51]: Users
+        - button "RADIUS" [ref=e52] [cursor=pointer]:
+          - img [ref=e53]
+          - generic [ref=e54]: RADIUS
+        - button "Billing" [ref=e55] [cursor=pointer]:
+          - generic [ref=e56]: Billing
+          - img [ref=e58]
+        - button "Operations" [ref=e59] [cursor=pointer]:
+          - generic [ref=e60]: Operations
+          - img [ref=e62]
+        - button "Security" [ref=e63] [cursor=pointer]:
+          - generic [ref=e64]: Security
+          - img [ref=e66]
+      - generic [ref=e67]:
+        - button "Admin Panel" [ref=e68] [cursor=pointer]:
+          - img [ref=e69]
+          - generic [ref=e70]: Admin Panel
+        - button "Exit" [ref=e71] [cursor=pointer]:
+          - img [ref=e72]
+          - generic [ref=e73]: Exit
+        - button "S Super Admin Owner" [ref=e75] [cursor=pointer]:
+          - generic [ref=e76]: S
+          - generic [ref=e77]:
+            - generic [ref=e78]: Super Admin
+            - generic [ref=e79]: Owner
+          - img [ref=e80]
+    - generic [ref=e82]:
+      - banner [ref=e83]:
+        - generic [ref=e84]:
+          - button "Collapse sidebar" [ref=e85] [cursor=pointer]:
+            - img [ref=e86]
+          - heading "Super Admin" [level=2] [ref=e87]
+        - button "Notifications" [ref=e90] [cursor=pointer]:
+          - img [ref=e91]
+          - generic [ref=e92]: "4"
+      - paragraph [ref=e97]: Loading system data...
+  - generic [ref=e30]: Superadmin | ISP Management

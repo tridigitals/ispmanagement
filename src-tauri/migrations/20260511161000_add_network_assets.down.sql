@@ -1,0 +1,10 @@
+DROP TRIGGER IF EXISTS trg_network_assets_set_updated_at ON public.network_assets;
+DROP INDEX IF EXISTS idx_network_assets_tenant_updated;
+DROP INDEX IF EXISTS idx_network_assets_tenant_parent;
+DROP INDEX IF EXISTS idx_network_assets_tenant_location;
+DROP INDEX IF EXISTS idx_network_assets_tenant_customer;
+DROP INDEX IF EXISTS idx_network_assets_tenant_status;
+DROP INDEX IF EXISTS idx_network_assets_tenant_type;
+DROP INDEX IF EXISTS uq_network_assets_tenant_serial;
+DROP INDEX IF EXISTS uq_network_assets_tenant_code;
+DROP TABLE IF EXISTS public.network_assets;

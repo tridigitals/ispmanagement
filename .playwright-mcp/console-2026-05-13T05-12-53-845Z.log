@@ -1,0 +1,3 @@
+[      74ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://billing.tridigitals.com/isp-management/admin/network/map?asset_id=0462e99d-26a3-4d9c-ba11-747b8dd2cca9&asset_lat=-7.2665442&asset_lng=110.3840926:0
+[  111163ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0
+[  144207ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://demotiles.maplibre.org/font/Open%20Sans%20Semibold,Arial%20Unicode%20MS%20Bold/0-255.pbf:0

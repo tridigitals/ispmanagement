@@ -46,6 +46,246 @@ impl CustomerService {
         Ok(())
     }
 
+    async fn load_network_asset(
+        &self,
+        tenant_id: &str,
+        asset_id: &str,
+    ) -> AppResult<NetworkAsset> {
+        #[cfg(feature = "postgres")]
+        let query = r#"
+            SELECT
+              id, tenant_id, asset_group, asset_type, name, code, vendor, model, serial_number, status,
+              customer_id, location_id, work_order_id, parent_asset_id, notes, metadata, created_at, updated_at
+            FROM network_assets
+            WHERE tenant_id = $1 AND id = $2
+            LIMIT 1
+        "#;
+
+        #[cfg(feature = "sqlite")]
+        let query = r#"
+            SELECT
+              id, tenant_id, asset_group, asset_type, name, code, vendor, model, serial_number, status,
+              customer_id, location_id, work_order_id, parent_asset_id, notes, metadata, created_at, updated_at
+            FROM network_assets
+            WHERE tenant_id = ?1 AND id = ?2
+            LIMIT 1
+        "#;
+
+        sqlx::query_as::<_, NetworkAsset>(query)
+            .bind(tenant_id)
+            .bind(asset_id)
+            .fetch_optional(&self.pool)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Network asset not found".into()))
+    }
+
+    async fn bind_assets_to_completed_installation(
+        &self,
+        tenant_id: &str,
+        work_order: &InstallationWorkOrder,
+        terminal_asset_id: &str,
+        parent_asset_id: Option<&str>,
+    ) -> AppResult<()> {
+        let terminal_asset = self.load_network_asset(tenant_id, terminal_asset_id).await?;
+        if !matches!(terminal_asset.asset_type.as_str(), "ont" | "onu") {
+            return Err(AppError::Validation(
+                "Terminal asset must be ONT or ONU".into(),
+            ));
+        }
+        if matches!(terminal_asset.status.as_str(), "faulty" | "retired") {
+            return Err(AppError::Validation(
+                "Selected terminal asset is not usable".into(),
+            ));
+        }
+        if terminal_asset.customer_id.as_deref().is_some()
+            && terminal_asset.customer_id.as_deref() != Some(work_order.customer_id.as_str())
+        {
+            return Err(AppError::Conflict(
+                "Selected terminal asset is already assigned to another customer".into(),
+            ));
+        }
+
+        if let Some(parent_asset_id) = parent_asset_id {
+            let parent_asset = self.load_network_asset(tenant_id, parent_asset_id).await?;
+            if !matches!(
+                parent_asset.asset_type.as_str(),
+                "olt" | "odc" | "odp" | "splitter" | "fat" | "nap" | "odf"
+            ) {
+                return Err(AppError::Validation(
+                    "Parent asset must be an FTTH upstream asset".into(),
+                ));
+            }
+            if matches!(parent_asset.status.as_str(), "faulty" | "retired") {
+                return Err(AppError::Validation(
+                    "Selected parent asset is not usable".into(),
+                ));
+            }
+        }
+
+        #[cfg(feature = "postgres")]
+        {
+            sqlx::query(
+                r#"
+                UPDATE network_assets
+                SET customer_id = NULL,
+                    location_id = NULL,
+                    work_order_id = NULL,
+                    parent_asset_id = NULL,
+                    status = 'available',
+                    updated_at = NOW()
+                WHERE tenant_id = $1
+                  AND work_order_id = $2
+                  AND asset_type IN ('ont', 'onu')
+                  AND id <> $3
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(&work_order.id)
+            .bind(terminal_asset_id)
+            .execute(&self.pool)
+            .await?;
+
+            sqlx::query(
+                r#"
+                UPDATE network_assets
+                SET work_order_id = NULL,
+                    updated_at = NOW()
+                WHERE tenant_id = $1
+                  AND work_order_id = $2
+                  AND asset_type IN ('olt', 'odc', 'odp', 'splitter', 'fat', 'nap', 'odf')
+                  AND ($3::text IS NULL OR id <> $3)
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(&work_order.id)
+            .bind(parent_asset_id)
+            .execute(&self.pool)
+            .await?;
+
+            sqlx::query(
+                r#"
+                UPDATE network_assets
+                SET customer_id = $3,
+                    location_id = $4,
+                    work_order_id = $5,
+                    parent_asset_id = $6,
+                    status = 'installed',
+                    updated_at = NOW()
+                WHERE tenant_id = $1 AND id = $2
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(terminal_asset_id)
+            .bind(&work_order.customer_id)
+            .bind(&work_order.location_id)
+            .bind(&work_order.id)
+            .bind(parent_asset_id)
+            .execute(&self.pool)
+            .await?;
+
+            if let Some(parent_asset_id) = parent_asset_id {
+                sqlx::query(
+                    r#"
+                    UPDATE network_assets
+                    SET work_order_id = $3,
+                        updated_at = NOW()
+                    WHERE tenant_id = $1 AND id = $2
+                    "#,
+                )
+                .bind(tenant_id)
+                .bind(parent_asset_id)
+                .bind(&work_order.id)
+                .execute(&self.pool)
+                .await?;
+            }
+        }
+
+        #[cfg(feature = "sqlite")]
+        {
+            let now = Utc::now().to_rfc3339();
+            sqlx::query(
+                r#"
+                UPDATE network_assets
+                SET customer_id = NULL,
+                    location_id = NULL,
+                    work_order_id = NULL,
+                    parent_asset_id = NULL,
+                    status = 'available',
+                    updated_at = ?4
+                WHERE tenant_id = ?1
+                  AND work_order_id = ?2
+                  AND asset_type IN ('ont', 'onu')
+                  AND id <> ?3
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(&work_order.id)
+            .bind(terminal_asset_id)
+            .bind(&now)
+            .execute(&self.pool)
+            .await?;
+
+            sqlx::query(
+                r#"
+                UPDATE network_assets
+                SET work_order_id = NULL,
+                    updated_at = ?4
+                WHERE tenant_id = ?1
+                  AND work_order_id = ?2
+                  AND asset_type IN ('olt', 'odc', 'odp', 'splitter', 'fat', 'nap', 'odf')
+                  AND (?3 IS NULL OR id <> ?3)
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(&work_order.id)
+            .bind(parent_asset_id)
+            .bind(&now)
+            .execute(&self.pool)
+            .await?;
+
+            sqlx::query(
+                r#"
+                UPDATE network_assets
+                SET customer_id = ?3,
+                    location_id = ?4,
+                    work_order_id = ?5,
+                    parent_asset_id = ?6,
+                    status = 'installed',
+                    updated_at = ?7
+                WHERE tenant_id = ?1 AND id = ?2
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(terminal_asset_id)
+            .bind(&work_order.customer_id)
+            .bind(&work_order.location_id)
+            .bind(&work_order.id)
+            .bind(parent_asset_id)
+            .bind(&now)
+            .execute(&self.pool)
+            .await?;
+
+            if let Some(parent_asset_id) = parent_asset_id {
+                sqlx::query(
+                    r#"
+                    UPDATE network_assets
+                    SET work_order_id = ?3,
+                        updated_at = ?4
+                    WHERE tenant_id = ?1 AND id = ?2
+                    "#,
+                )
+                .bind(tenant_id)
+                .bind(parent_asset_id)
+                .bind(&work_order.id)
+                .bind(&now)
+                .execute(&self.pool)
+                .await?;
+            }
+        }
+
+        Ok(())
+    }
+
     pub async fn list_installation_work_orders(
         &self,
         actor_id: &str,
@@ -577,6 +817,8 @@ impl CustomerService {
         tenant_id: &str,
         work_order_id: &str,
         notes: Option<String>,
+        terminal_asset_id: Option<String>,
+        parent_asset_id: Option<String>,
         ip_address: Option<&str>,
     ) -> AppResult<InstallationWorkOrder> {
         self.auth_service
@@ -596,6 +838,16 @@ impl CustomerService {
             }
         }
 
+        let terminal_asset_id = terminal_asset_id
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| {
+                AppError::Validation("Terminal asset must be selected before completion".into())
+            })?;
+        let parent_asset_id = parent_asset_id
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+
         let row = self
             .set_installation_work_order_status_internal(
                 actor_id,
@@ -611,6 +863,14 @@ impl CustomerService {
                 "Completed installation work order",
             )
             .await?;
+
+        self.bind_assets_to_completed_installation(
+            tenant_id,
+            &row,
+            &terminal_asset_id,
+            parent_asset_id.as_deref(),
+        )
+        .await?;
 
         #[cfg(feature = "postgres")]
         let sub: Option<CustomerSubscription> = sqlx::query_as(

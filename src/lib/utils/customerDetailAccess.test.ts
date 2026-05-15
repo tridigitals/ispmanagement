@@ -12,6 +12,7 @@ import {
 const technicianAccess: CustomerDetailAccessState = {
   canReadCustomerLocations: true,
   canReadBilling: false,
+  canReadFtthAssets: true,
   canReadPppoe: true,
   canReadDhcpStatic: true,
   canReadAudit: false,
@@ -22,6 +23,7 @@ describe('customer detail access helpers', () => {
     expect(getVisibleCustomerDetailTabs(technicianAccess)).toEqual([
       'overview',
       'locations',
+      'assets',
       'pppoe',
       'dhcp_static',
     ]);
@@ -32,6 +34,7 @@ describe('customer detail access helpers', () => {
       getVisibleCustomerDetailTabs({
         canReadCustomerLocations: true,
         canReadBilling: true,
+        canReadFtthAssets: true,
         canReadPppoe: true,
         canReadDhcpStatic: true,
         canReadAudit: true,
@@ -41,6 +44,7 @@ describe('customer detail access helpers', () => {
       'locations',
       'subscriptions',
       'billing',
+      'assets',
       'pppoe',
       'dhcp_static',
       'timeline',
@@ -50,6 +54,7 @@ describe('customer detail access helpers', () => {
   it('normalizes forbidden tabs back to overview', () => {
     expect(normalizeCustomerDetailTab('subscriptions', technicianAccess)).toBe('overview');
     expect(normalizeCustomerDetailTab('billing', technicianAccess)).toBe('overview');
+    expect(normalizeCustomerDetailTab('assets', technicianAccess)).toBe('assets');
     expect(normalizeCustomerDetailTab('pppoe', technicianAccess)).toBe('pppoe');
     expect(normalizeCustomerDetailTab('dhcp_static', technicianAccess)).toBe('dhcp_static');
   });
@@ -61,6 +66,7 @@ describe('customer detail access helpers', () => {
   });
 
   it('marks pppoe as an auto-loading tab when access is available', () => {
+    expect(shouldAutoLoadCustomerDetailTab('assets', technicianAccess)).toBe(true);
     expect(shouldAutoLoadCustomerDetailTab('pppoe', technicianAccess)).toBe(true);
     expect(shouldAutoLoadCustomerDetailTab('dhcp_static', technicianAccess)).toBe(true);
     expect(shouldAutoLoadCustomerDetailTab('timeline', technicianAccess)).toBe(false);
@@ -77,6 +83,9 @@ describe('customer detail access helpers', () => {
     );
     expect(getCustomerDetailAutoLoadKey('dhcp_static', 'customer-1', technicianAccess)).toBe(
       'dhcp_static:customer-1',
+    );
+    expect(getCustomerDetailAutoLoadKey('assets', 'customer-1', technicianAccess)).toBe(
+      'assets:customer-1',
     );
     expect(getCustomerDetailAutoLoadKey('billing', 'customer-1', technicianAccess)).toBeNull();
     expect(getCustomerDetailAutoLoadKey('pppoe', '', technicianAccess)).toBeNull();

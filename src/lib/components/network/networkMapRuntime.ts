@@ -1,3 +1,4 @@
+import type { TopologyAssetRow } from './networkMapAssets';
 import type { NMNode, NMRouter } from './networkMapUtils';
 
 export function fitMapToMarkers(args: {
@@ -6,6 +7,7 @@ export function fitMapToMarkers(args: {
   didInitialFitToMarkers: boolean;
   nodes: NMNode[];
   routers: NMRouter[];
+  topologyAssets: TopologyAssetRow[];
   installationTargetCoord: [number, number] | null;
 }) {
   if (args.didInitialFitToMarkers) return false;
@@ -19,6 +21,12 @@ export function fitMapToMarkers(args: {
 
   for (const row of args.routers || []) {
     if (row.longitude == null || row.latitude == null) continue;
+    if (Number.isFinite(row.longitude) && Number.isFinite(row.latitude)) {
+      points.push([row.longitude, row.latitude]);
+    }
+  }
+
+  for (const row of args.topologyAssets || []) {
     if (Number.isFinite(row.longitude) && Number.isFinite(row.latitude)) {
       points.push([row.longitude, row.latitude]);
     }

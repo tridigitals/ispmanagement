@@ -192,7 +192,15 @@ async fn complete_work_order(
     tracing::info!(request_id = correlation_id.as_str(), work_order_id = %id, "Complete installation work order request");
     let row = state
         .customer_service
-        .complete_installation_work_order(&claims.sub, &tenant_id, &id, dto.notes, Some(&ip))
+        .complete_installation_work_order(
+            &claims.sub,
+            &tenant_id,
+            &id,
+            dto.notes,
+            dto.terminal_asset_id,
+            dto.parent_asset_id,
+            Some(&ip),
+        )
         .await?;
     Ok(Json(row))
 }

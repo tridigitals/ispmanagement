@@ -595,6 +595,90 @@
       "delete_failed": "Gagal menghapus pelanggan: {message}"
     }
   },
+  "ftth_assets": {
+    "page": {
+      "subtitle": "Kelola aset FTTH tenant seperti OLT, ODP, splitter, ONT, dan perangkat terkait."
+    },
+    "stats": {
+      "total": "Total",
+      "installed": "Terpasang",
+      "available": "Tersedia",
+      "faulty": "Bermasalah"
+    },
+    "filters": {
+      "search_placeholder": "Cari aset, kode, atau serial...",
+      "all_types": "Semua tipe",
+      "all_statuses": "Semua status"
+    },
+    "table": {
+      "asset": "Aset",
+      "type": "Tipe",
+      "status": "Status",
+      "serial": "Serial",
+      "customer": "Pelanggan",
+      "location": "Lokasi",
+      "updated": "Diperbarui",
+      "empty": "Belum ada aset FTTH."
+    },
+    "fields": {
+      "type": "Tipe",
+      "status": "Status",
+      "name": "Nama",
+      "code": "Kode",
+      "serial_number": "Nomor Serial",
+      "vendor": "Vendor",
+      "model": "Model",
+      "customer": "Pelanggan",
+      "location": "Lokasi",
+      "work_order_scope": "Cakupan work order",
+      "work_order": "Work Order",
+      "parent_asset": "Aset Induk",
+      "notes": "Catatan"
+    },
+    "placeholders": {
+      "name": "ODP-Cluster A",
+      "code": "ODP-001",
+      "serial_number": "SN-123",
+      "vendor": "ZTE",
+      "model": "F670L",
+      "search_customer": "Cari pelanggan...",
+      "search_parent_asset": "Cari aset induk..."
+    },
+    "options": {
+      "no_customer": "Tanpa pelanggan",
+      "select_customer_first": "Pilih pelanggan terlebih dahulu",
+      "loading_locations": "Memuat lokasi...",
+      "no_location": "Tanpa lokasi",
+      "show_all_work_orders": "Tampilkan semua work order tenant",
+      "no_work_order": "Tanpa work order",
+      "no_parent_asset": "Tanpa aset induk"
+    },
+    "actions": {
+      "new_asset": "Aset baru",
+      "create_asset": "Buat aset",
+      "save_changes": "Simpan perubahan",
+      "cancel": "Batal",
+      "saving": "Menyimpan..."
+    },
+    "modal": {
+      "title_create": "Aset FTTH Baru",
+      "title_edit": "Edit Aset FTTH"
+    },
+    "details": {
+      "title": "Detail khusus asset",
+      "subtitle": "Field ini menyesuaikan tipe asset yang sedang dipilih."
+    },
+    "hints": {
+      "selected": "Dipilih:"
+    },
+    "status": {
+      "available": "Tersedia",
+      "reserved": "Dicadangkan",
+      "installed": "Terpasang",
+      "faulty": "Bermasalah",
+      "retired": "Pensiun"
+    }
+  },
   "services": {
     "title": "Layanan",
     "subtitle": "Buat layanan dan atur opsi sesuai tipe layanan.",
@@ -1444,6 +1528,7 @@
         "nodes": "Node",
         "links": "Link",
         "zones": "Zona",
+        "assets": "Aset FTTH",
         "routers": "Router",
         "customers": "Customer"
       },
@@ -1737,11 +1822,13 @@
       "step_assign": "Assign",
       "step_schedule": "Jadwal",
       "step_onsite": "On-site & Tes",
+      "step_assets": "Binding Asset",
       "step_activate": "Selesai",
       "step_assign_help": "Pilih teknisi terlebih dahulu, lalu lanjut ke jadwal.",
       "step_take_help": "Ambil work order ini terlebih dahulu, lalu lanjut ke jadwal.",
       "step_schedule_help": "Tentukan tanggal/waktu instalasi, lalu mulai pekerjaan.",
       "step_onsite_help": "Selesaikan instalasi fisik, pastikan tes internet berhasil, lalu simpan bukti lapangan.",
+      "step_assets_help": "Pilih asset terminal yang terpasang di lokasi pelanggan, lalu opsional hubungkan asset parent agar jejak inventaris tetap rapi.",
       "step_active_help": "Checklist lengkap. Selesaikan instalasi untuk memicu status layanan akhir.",
       "subscription_status": "Status Layanan",
       "status_grace_active": "Aktif Sementara",
@@ -1755,6 +1842,8 @@
       "focus_onsite_hint": "Kerjakan satu tugas onsite per langkah agar handover dan bukti kerja tetap rapi.",
       "focus_test_title": "Tes akses internet pelanggan",
       "focus_test_hint": "Gunakan nilai mapping paket secara otomatis, lalu pastikan akun benar-benar bisa terkoneksi.",
+      "focus_asset_title": "Hubungkan asset terminal",
+      "focus_asset_hint": "Pilih ONT atau ONU yang benar-benar dipasang, lalu opsional pilih asset parent FTTH di jalur terakhir.",
       "focus_finish_title": "Selesaikan dan konfirmasi hasil layanan",
       "focus_finish_hint": "Setelah selesai, layanan akan masuk aktif sementara atau aktif penuh tergantung status pembayaran.",
       "focus_grace_title": "Layanan aktif sementara",
@@ -1788,6 +1877,22 @@
       "internet_test_help": "Teknisi hanya mengisi username dan password. Router, profile, dan pool mengikuti mapping paket internet aktif.",
       "internet_test_configured": "Terkonfigurasi",
       "target_managed_radius": "Managed RADIUS",
+      "terminal_asset": "Asset Terminal (ONT/ONU)",
+      "select_terminal_asset": "Pilih asset ONT/ONU",
+      "parent_asset_optional": "Asset Parent (Opsional)",
+      "no_parent_asset": "Tanpa asset parent",
+      "terminal_asset_selected": "Asset terminal",
+      "parent_asset_selected": "Asset parent",
+      "continue_finish": "Lanjut ke Selesai",
+      "quick_create_terminal_asset": "Buat ONT/ONU",
+      "quick_create_title": "Buat Cepat Asset Terminal",
+      "quick_asset_type": "Tipe",
+      "quick_asset_name": "Nama Asset",
+      "quick_asset_serial": "Nomor Serial",
+      "quick_asset_code": "Kode",
+      "quick_asset_vendor": "Vendor",
+      "quick_asset_model": "Model",
+      "quick_create_submit": "Buat & Pilih",
       "pppoe_username": "Username",
       "pppoe_password": "Password",
       "pppoe_comment": "Komentar",

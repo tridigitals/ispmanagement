@@ -15,6 +15,7 @@
     type CustomerLifecycleObservability,
     type DhcpStaticServicePublic,
     type CustomerLocation,
+    type NetworkAssetListItem,
     type CustomerSubscriptionView,
     type Invoice,
     type IspPackageRouterMappingView,
@@ -57,6 +58,7 @@
     type CustomerTimelineHelperModule,
   } from './customerDetailDeferredModules';
   import {
+    loadCustomerAssetsTab,
     loadCustomerBillingTab,
     loadCustomerPppoeTab,
     loadCustomerSubscriptionsTab,
@@ -79,6 +81,7 @@
   let CustomerDetailDialogsComponent = $state<DeferredComponent | null>(null);
   let SubscriptionsTabComponent = $state<DeferredComponent | null>(null);
   let BillingTabComponent = $state<DeferredComponent | null>(null);
+  let AssetsTabComponent = $state<DeferredComponent | null>(null);
   let PppoeTabComponent = $state<DeferredComponent | null>(null);
   let TimelineTabComponent = $state<DeferredComponent | null>(null);
   let pppoeHelperModule = $state<CustomerPppoeHelperModule | null>(null);
@@ -128,6 +131,8 @@
   // PPPoE
   let pppoeAccounts = $state<PppoeAccountPublic[]>([]);
   let dhcpStaticServices = $state<DhcpStaticServicePublic[]>([]);
+  let customerAssets = $state<NetworkAssetListItem[]>([]);
+  let loadingCustomerAssets = $state(false);
   let loadingPppoe = $state(false);
   let pppoeQuery = $state('');
   let pppoeRouters = $state<any[]>([]);
@@ -233,6 +238,7 @@
     lifecycle: CustomerLifecycleObservability | null;
   }>();
   const billingResourceLoader = createCustomerDetailResourceLoader<Invoice[]>();
+  const customerAssetsResourceLoader = createCustomerDetailResourceLoader<NetworkAssetListItem[]>();
   const pppoeResourceLoader = createCustomerDetailResourceLoader<PppoeAccountPublic[]>();
   const dhcpStaticResourceLoader = createCustomerDetailResourceLoader<DhcpStaticServicePublic[]>();
   const timelineResourceLoader = createCustomerDetailResourceLoader<AuditLog[]>();
@@ -304,6 +310,7 @@
   );
   const canManageCustomerLocations = $derived($can('manage', 'customer_locations'));
   const canReadBilling = $derived($can('read', 'billing') || $can('manage', 'billing'));
+  const canReadFtthAssets = $derived($can('read', 'ftth_assets') || $can('manage', 'ftth_assets'));
   const canReadAudit = $derived($can('read', 'audit_logs'));
   const canReadPppoe = $derived($can('read', 'pppoe') || $can('manage', 'pppoe'));
   const canReadDhcpStatic = $derived($can('read', 'dhcp_static') || $can('manage', 'dhcp_static'));
@@ -319,6 +326,7 @@
     getVisibleCustomerDetailTabs({
       canReadCustomerLocations,
       canReadBilling,
+      canReadFtthAssets,
       canReadPppoe,
       canReadDhcpStatic,
       canReadAudit,
@@ -393,6 +401,9 @@
     if (visibleTabs.includes('locations')) {
       items.push({ id: 'locations', label: $t('admin.customers.tabs.locations') || 'Locations' });
     }
+    if (visibleTabs.includes('assets')) {
+      items.push({ id: 'assets', label: $t('admin.customers.tabs.assets') || 'FTTH Assets' });
+    }
     if (visibleTabs.includes('pppoe')) {
       items.push({ id: 'pppoe', label: $t('admin.customers.tabs.pppoe') || 'PPPoE' });
     }
@@ -410,6 +421,7 @@
   const customerDetailAccess = $derived.by(() => ({
     canReadCustomerLocations,
     canReadBilling,
+    canReadFtthAssets,
     canReadPppoe,
     canReadDhcpStatic,
     canReadAudit,
@@ -561,6 +573,14 @@
       activeDeferredTabLoading = null;
       return;
     }
+    if (tab === 'assets') {
+      if (AssetsTabComponent) return;
+      activeDeferredTabLoading = tab;
+      const module = await loadCustomerAssetsTab();
+      AssetsTabComponent = module.default;
+      activeDeferredTabLoading = null;
+      return;
+    }
     if (tab === 'pppoe') {
       if (PppoeTabComponent) return;
       activeDeferredTabLoading = tab;
@@ -604,6 +624,7 @@
     if (
       activeTab === 'subscriptions' ||
       activeTab === 'billing' ||
+      activeTab === 'assets' ||
       activeTab === 'pppoe' ||
       activeTab === 'dhcp_static' ||
       activeTab === 'timeline'
@@ -612,6 +633,16 @@
         void ensureCustomerDeferredTabComponent(activeTab);
       });
     }
+  });
+
+  $effect(() => {
+    const autoLoadKey = getCustomerDetailAutoLoadKey(activeTab, customerId, customerDetailAccess);
+    if (!autoLoadKey) return;
+    if (activeTab !== 'assets') return;
+    if (!canReadFtthAssets) return;
+    untrack(() => {
+      void loadCustomerAssets({ force: true });
+    });
   });
 
   $effect(() => {
@@ -1073,6 +1104,7 @@
       canReadBilling,
       canReadPppoe,
       canReadDhcpStatic,
+      canReadFtthAssets,
       canReadAudit,
     });
   }
@@ -1436,6 +1468,26 @@
       }
     } catch (e: any) {
       toast.error(`Failed to load DHCP static services: ${e?.message || e}`);
+    }
+  }
+
+  async function loadCustomerAssets(options: { force?: boolean } = {}) {
+    const key = `${customerId}:${activeTab}:assets`;
+    if (!options.force && customerAssetsResourceLoader.hasLoaded(key)) return;
+    loadingCustomerAssets = true;
+    try {
+      const result = await customerAssetsResourceLoader.load(
+        key,
+        async () => await api.networkAssets.listCustomerAssets(customerId),
+        options,
+      );
+      if (result.status === 'loaded') {
+        customerAssets = result.value;
+      }
+    } catch (e: any) {
+      toast.error(`Failed to load FTTH assets: ${e?.message || e}`);
+    } finally {
+      loadingCustomerAssets = false;
     }
   }
 
@@ -2002,6 +2054,15 @@
           onOpenInvoiceDetail={openInvoiceDetail}
         />
       {:else if activeDeferredTabLoading === 'billing'}
+        <div class="card loading-card">
+          <div class="spinner"></div>
+          <p>{$t('common.loading') || 'Loading...'}</p>
+        </div>
+      {/if}
+    {:else if activeTab === 'assets'}
+      {#if AssetsTabComponent}
+        <AssetsTabComponent assets={customerAssets} loading={loadingCustomerAssets} />
+      {:else if activeDeferredTabLoading === 'assets'}
         <div class="card loading-card">
           <div class="spinner"></div>
           <p>{$t('common.loading') || 'Loading...'}</p>

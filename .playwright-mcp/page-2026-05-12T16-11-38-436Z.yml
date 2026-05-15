@@ -1,0 +1,257 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e6]:
+        - img [ref=e8]
+        - generic [ref=e9]: ISP Management
+      - navigation [ref=e10]:
+        - button "Workspace" [ref=e11] [cursor=pointer]:
+          - generic [ref=e12]: Workspace
+          - img [ref=e14]
+        - button "Network" [expanded] [ref=e15] [cursor=pointer]:
+          - generic [ref=e16]: Network
+          - img [ref=e18]
+        - button "NOC" [ref=e19] [cursor=pointer]:
+          - img [ref=e20]
+          - generic [ref=e21]: NOC
+        - button "Topology Map" [ref=e22] [cursor=pointer]:
+          - img [ref=e23]
+          - generic [ref=e24]: Topology Map
+        - button "Wallboard" [ref=e25] [cursor=pointer]:
+          - img [ref=e26]
+          - generic [ref=e27]: Wallboard
+        - button "Alerts" [ref=e28] [cursor=pointer]:
+          - img [ref=e29]
+          - generic [ref=e30]: Alerts
+        - button "Incidents" [ref=e31] [cursor=pointer]:
+          - img [ref=e32]
+          - generic [ref=e33]: Incidents
+        - button "Installations" [ref=e34] [cursor=pointer]:
+          - img [ref=e35]
+          - generic [ref=e36]: Installations
+        - button "Logs" [ref=e37] [cursor=pointer]:
+          - img [ref=e38]
+          - generic [ref=e39]: Logs
+        - button "Routers" [ref=e40] [cursor=pointer]:
+          - img [ref=e41]
+          - generic [ref=e42]: Routers
+        - button "PPP Profiles" [ref=e43] [cursor=pointer]:
+          - img [ref=e44]
+          - generic [ref=e45]: PPP Profiles
+        - button "IP Pools" [ref=e46] [cursor=pointer]:
+          - img [ref=e47]
+          - generic [ref=e48]: IP Pools
+        - button "Services" [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+          - generic [ref=e51]: Services
+        - button "PPPoE" [ref=e52] [cursor=pointer]:
+          - img [ref=e53]
+          - generic [ref=e54]: PPPoE
+        - button "DHCP Static" [ref=e55] [cursor=pointer]:
+          - img [ref=e56]
+          - generic [ref=e57]: DHCP Static
+        - button "FTTH Assets" [ref=e58] [cursor=pointer]:
+          - img [ref=e59]
+          - generic [ref=e60]: FTTH Assets
+        - button "Imports" [ref=e61] [cursor=pointer]:
+          - img [ref=e62]
+          - generic [ref=e63]: Imports
+        - button "Access" [ref=e64] [cursor=pointer]:
+          - generic [ref=e65]: Access
+          - img [ref=e67]
+        - button "Compliance" [ref=e68] [cursor=pointer]:
+          - generic [ref=e69]: Compliance
+          - img [ref=e71]
+        - button "Operations" [ref=e72] [cursor=pointer]:
+          - generic [ref=e73]: Operations
+          - img [ref=e75]
+        - button "Billing" [ref=e76] [cursor=pointer]:
+          - generic [ref=e77]: Billing
+          - img [ref=e79]
+        - button "Configuration" [ref=e80] [cursor=pointer]:
+          - generic [ref=e81]: Configuration
+          - img [ref=e83]
+      - generic [ref=e84]:
+        - button "Super Admin" [ref=e85] [cursor=pointer]:
+          - img [ref=e86]
+          - generic [ref=e87]: Super Admin
+        - button "User View" [ref=e88] [cursor=pointer]:
+          - img [ref=e89]
+          - generic [ref=e90]: User View
+        - button "S Super Admin Owner" [ref=e92] [cursor=pointer]:
+          - generic [ref=e93]: S
+          - generic [ref=e94]:
+            - generic [ref=e95]: Super Admin
+            - generic [ref=e96]: Owner
+          - img [ref=e97]
+    - generic [ref=e99]:
+      - banner [ref=e100]:
+        - generic [ref=e101]:
+          - button "Collapse sidebar" [ref=e102] [cursor=pointer]:
+            - img [ref=e103]
+          - heading "Admin Overview" [level=2] [ref=e104]
+        - generic [ref=e105]:
+          - generic [ref=e106]:
+            - img [ref=e107]
+            - textbox "Search..." [ref=e108]
+          - button "Notifications" [ref=e110] [cursor=pointer]:
+            - img [ref=e111]
+            - generic [ref=e112]: "4"
+      - generic [ref=e114]:
+        - generic [ref=e115]:
+          - generic [ref=e116]:
+            - heading "Installation Work Orders" [level=1] [ref=e117]
+            - paragraph [ref=e118]: Pipeline instalasi hingga layanan aktif.
+          - generic [ref=e119]:
+            - button "Work Order Visibility" [ref=e120] [cursor=pointer]:
+              - img [ref=e121]
+              - text: Work Order Visibility
+            - button "Refresh" [ref=e122] [cursor=pointer]:
+              - img [ref=e123]
+              - text: Refresh
+        - generic [ref=e124]:
+          - article [ref=e125]:
+            - generic [ref=e126]: Total
+            - generic [ref=e127]: "1"
+          - article [ref=e128]:
+            - generic [ref=e129]: Pending
+            - generic [ref=e130]: "0"
+          - article [ref=e131]:
+            - generic [ref=e132]: In Progress
+            - generic [ref=e133]: "1"
+          - article [ref=e134]:
+            - generic [ref=e135]: Completed
+            - generic [ref=e136]: "0"
+          - article [ref=e137]:
+            - generic [ref=e138]: Cancelled
+            - generic [ref=e139]: "0"
+        - generic "Technicians only see a work order after admin assigns it to them." [ref=e140]:
+          - generic [ref=e141]: Work Order Visibility
+          - strong [ref=e142]: Admin only
+        - generic [ref=e143]:
+          - generic [ref=e144]:
+            - button "All 1" [ref=e145] [cursor=pointer]:
+              - text: All
+              - generic [ref=e146]: "1"
+            - button "Pending 0" [ref=e147] [cursor=pointer]:
+              - text: Pending
+              - generic [ref=e148]: "0"
+            - button "In Progress 1" [ref=e149] [cursor=pointer]:
+              - text: In Progress
+              - generic [ref=e150]: "1"
+            - button "Completed 0" [ref=e151] [cursor=pointer]:
+              - text: Completed
+              - generic [ref=e152]: "0"
+            - button "Cancelled 0" [ref=e153] [cursor=pointer]:
+              - text: Cancelled
+              - generic [ref=e154]: "0"
+          - generic [ref=e155]:
+            - generic [ref=e156]:
+              - generic [ref=e157]: Search
+              - generic [ref=e158]:
+                - img
+                - textbox "Search" [ref=e159]:
+                  - /placeholder: Search work orders...
+            - generic [ref=e160]:
+              - generic [ref=e161]: Status
+              - combobox "Status" [ref=e162]:
+                - option "All" [selected]
+                - option "Pending"
+                - option "In Progress"
+                - option "Completed"
+                - option "Cancelled"
+            - generic [ref=e163]:
+              - generic [ref=e164]: Assignment
+              - combobox "Assignment" [ref=e165]:
+                - option "All work orders" [selected]
+                - option "Assigned only"
+                - option "Unassigned only"
+            - generic [ref=e166]:
+              - generic [ref=e167]: Assignee
+              - button "Assignee" [ref=e169] [cursor=pointer]:
+                - generic [ref=e170]: All assignees
+                - img [ref=e172]
+            - generic [ref=e173]:
+              - generic [ref=e174]: Sort by
+              - combobox "Sort by" [ref=e175]:
+                - option "Latest updated" [selected]
+                - option "Oldest updated"
+                - option "Scheduled earliest"
+                - option "Scheduled latest"
+                - option "Customer A-Z"
+                - option "Customer Z-A"
+                - option "Assignee A-Z"
+                - option "Assignee Z-A"
+        - generic [ref=e177]:
+          - table [ref=e178]:
+            - rowgroup [ref=e179]:
+              - row "Sort by Customer Location Workflow Sort by Assignee Sort by Schedule Sort by Updated Actions" [ref=e180]:
+                - columnheader "Sort by Customer" [ref=e181]:
+                  - button "Sort by Customer" [ref=e182] [cursor=pointer]:
+                    - generic [ref=e183]: Customer
+                    - generic [ref=e184]: ↕
+                - columnheader "Location" [ref=e185]
+                - columnheader "Workflow" [ref=e186]
+                - columnheader "Sort by Assignee" [ref=e187]:
+                  - button "Sort by Assignee" [ref=e188] [cursor=pointer]:
+                    - generic [ref=e189]: Assignee
+                    - generic [ref=e190]: ↕
+                - columnheader "Sort by Schedule" [ref=e191]:
+                  - button "Sort by Schedule" [ref=e192] [cursor=pointer]:
+                    - generic [ref=e193]: Schedule
+                    - generic [ref=e194]: ↕
+                - columnheader "Sort by Updated" [ref=e195]:
+                  - button "Sort by Updated" [ref=e196] [cursor=pointer]:
+                    - generic [ref=e197]: Updated
+                    - img [ref=e198]
+                - columnheader "Actions" [ref=e199]
+            - rowgroup [ref=e200]:
+              - 'row "QA Customer Binding in_progress QA Package Binding pending_installation Rumah Router pending Zone / node not selected PPPoE Invoice: Missing WO #wo_qa_bi Super Admin superadmin@local May 12, 2026, 10:57 PM Created: May 12, 2026, 10:57 PM Completed: - May 12, 2026, 11:01 PM No assignment status View Cancel" [ref=e201]':
+                - cell "QA Customer Binding in_progress QA Package Binding pending_installation" [ref=e202]:
+                  - button "QA Customer Binding in_progress QA Package Binding pending_installation" [ref=e203] [cursor=pointer]:
+                    - generic [ref=e204]:
+                      - generic [ref=e205]: QA Customer Binding
+                      - generic [ref=e206]: in_progress
+                    - generic [ref=e207]: QA Package Binding
+                    - generic [ref=e208]: pending_installation
+                - cell "Rumah Router pending Zone / node not selected" [ref=e209]:
+                  - generic [ref=e210]:
+                    - generic [ref=e211]: Rumah
+                    - generic [ref=e212]: Router pending
+                    - generic [ref=e213]: Zone / node not selected
+                - 'cell "PPPoE Invoice: Missing WO #wo_qa_bi" [ref=e214]':
+                  - generic [ref=e215]:
+                    - generic [ref=e216]: PPPoE
+                    - generic [ref=e217]: "Invoice: Missing"
+                    - generic [ref=e218]: "WO #wo_qa_bi"
+                - cell "Super Admin superadmin@local" [ref=e219]:
+                  - generic [ref=e220]:
+                    - generic [ref=e221]: Super Admin
+                    - generic [ref=e222]: superadmin@local
+                - 'cell "May 12, 2026, 10:57 PM Created: May 12, 2026, 10:57 PM Completed: -" [ref=e223]':
+                  - generic [ref=e224]:
+                    - generic [ref=e225]: May 12, 2026, 10:57 PM
+                    - generic [ref=e226]: "Created: May 12, 2026, 10:57 PM"
+                    - generic [ref=e227]: "Completed: -"
+                - cell "May 12, 2026, 11:01 PM No assignment status" [ref=e228]:
+                  - generic [ref=e229]:
+                    - generic [ref=e230]: May 12, 2026, 11:01 PM
+                    - generic [ref=e231]: No assignment status
+                - cell "View Cancel" [ref=e232]:
+                  - generic [ref=e233]:
+                    - button "View" [ref=e234] [cursor=pointer]
+                    - button "Cancel" [ref=e235] [cursor=pointer]
+          - generic [ref=e236]:
+            - generic [ref=e237]:
+              - generic [ref=e238]: "Rows per page:"
+              - button "Select option" [ref=e241] [cursor=pointer]:
+                - generic [ref=e242]: Select option
+                - img [ref=e244]
+            - generic [ref=e245]:
+              - generic [ref=e246]: 1-1 of 1
+              - generic [ref=e247]:
+                - button "Previous page" [disabled] [ref=e248]:
+                  - img [ref=e249]
+                - button "Next page" [disabled] [ref=e250]:
+                  - img [ref=e251]

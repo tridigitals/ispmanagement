@@ -1,0 +1,159 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e6]:
+        - img [ref=e8]
+        - generic [ref=e9]: ISP Management
+      - navigation [ref=e211]:
+        - button "Workspace" [ref=e212] [cursor=pointer]:
+          - generic [ref=e213]: Workspace
+          - img [ref=e215]
+        - button "Network" [expanded] [ref=e216] [cursor=pointer]:
+          - generic [ref=e217]: Network
+          - img [ref=e219]
+        - button "NOC" [ref=e220] [cursor=pointer]:
+          - img [ref=e221]
+          - generic [ref=e222]: NOC
+        - button "Topology Map" [ref=e223] [cursor=pointer]:
+          - img [ref=e224]
+          - generic [ref=e225]: Topology Map
+        - button "Wallboard" [ref=e226] [cursor=pointer]:
+          - img [ref=e227]
+          - generic [ref=e228]: Wallboard
+        - button "Alerts" [ref=e229] [cursor=pointer]:
+          - img [ref=e230]
+          - generic [ref=e231]: Alerts
+        - button "Incidents" [ref=e232] [cursor=pointer]:
+          - img [ref=e233]
+          - generic [ref=e234]: Incidents
+        - button "Installations" [ref=e235] [cursor=pointer]:
+          - img [ref=e236]
+          - generic [ref=e237]: Installations
+        - button "Logs" [ref=e238] [cursor=pointer]:
+          - img [ref=e239]
+          - generic [ref=e240]: Logs
+        - button "Routers" [ref=e241] [cursor=pointer]:
+          - img [ref=e242]
+          - generic [ref=e243]: Routers
+        - button "PPP Profiles" [ref=e244] [cursor=pointer]:
+          - img [ref=e245]
+          - generic [ref=e246]: PPP Profiles
+        - button "IP Pools" [ref=e247] [cursor=pointer]:
+          - img [ref=e248]
+          - generic [ref=e249]: IP Pools
+        - button "Services" [ref=e250] [cursor=pointer]:
+          - img [ref=e251]
+          - generic [ref=e252]: Services
+        - button "PPPoE" [ref=e253] [cursor=pointer]:
+          - img [ref=e254]
+          - generic [ref=e255]: PPPoE
+        - button "DHCP Static" [ref=e256] [cursor=pointer]:
+          - img [ref=e257]
+          - generic [ref=e258]: DHCP Static
+        - button "FTTH Assets" [ref=e259] [cursor=pointer]:
+          - img [ref=e260]
+          - generic [ref=e261]: FTTH Assets
+        - button "Imports" [ref=e262] [cursor=pointer]:
+          - img [ref=e263]
+          - generic [ref=e264]: Imports
+        - button "Access" [ref=e265] [cursor=pointer]:
+          - generic [ref=e266]: Access
+          - img [ref=e268]
+        - button "Compliance" [ref=e269] [cursor=pointer]:
+          - generic [ref=e270]: Compliance
+          - img [ref=e272]
+        - button "Operations" [ref=e273] [cursor=pointer]:
+          - generic [ref=e274]: Operations
+          - img [ref=e276]
+        - button "Billing" [ref=e277] [cursor=pointer]:
+          - generic [ref=e278]: Billing
+          - img [ref=e280]
+        - button "Configuration" [ref=e281] [cursor=pointer]:
+          - generic [ref=e282]: Configuration
+          - img [ref=e284]
+      - generic [ref=e84]:
+        - button "Super Admin" [ref=e85] [cursor=pointer]:
+          - img [ref=e86]
+          - generic [ref=e87]: Super Admin
+        - button "User View" [ref=e88] [cursor=pointer]:
+          - img [ref=e89]
+          - generic [ref=e90]: User View
+        - button "X X-Trabit Owner" [ref=e92] [cursor=pointer]:
+          - generic [ref=e93]: X
+          - generic [ref=e94]:
+            - generic [ref=e95]: X-Trabit
+            - generic [ref=e96]: Owner
+          - img [ref=e97]
+    - generic [ref=e99]:
+      - banner [ref=e100]:
+        - generic [ref=e101]:
+          - button "Collapse sidebar" [ref=e102] [cursor=pointer]:
+            - img [ref=e103]
+          - heading "Admin Overview" [level=2] [ref=e104]
+        - button "Notifications" [ref=e107] [cursor=pointer]:
+          - img [ref=e108]
+          - generic [ref=e109]: "7"
+      - generic [ref=e111]:
+        - generic [ref=e113]:
+          - generic [ref=e114]:
+            - heading "Network Topology Map" [level=1] [ref=e115]
+            - paragraph [ref=e116]: Visualize nodes, links, service zones, and operational context from the current viewport. Viewport data updated 3m ago.
+          - generic [ref=e117]:
+            - link "Back to NOC" [ref=e118] [cursor=pointer]:
+              - /url: /admin/network/noc
+              - img [ref=e119]
+              - text: Back to NOC
+            - button "Sync" [ref=e120] [cursor=pointer]:
+              - img [ref=e121]
+              - text: Sync
+        - generic [ref=e124]:
+          - generic [ref=e125]:
+            - region "Map" [ref=e126] [cursor=pointer]
+            - group [ref=e127]:
+              - generic "Toggle attribution" [ref=e128] [cursor=pointer]
+              - generic [ref=e129]:
+                - text: © OpenStreetMap contributors |
+                - link "MapLibre" [ref=e130] [cursor=pointer]:
+                  - /url: https://maplibre.org/
+            - generic [ref=e286]:
+              - generic [ref=e287]:
+                - generic [ref=e288]:
+                  - generic [ref=e289]: FTTH Asset
+                  - generic [ref=e290]: odp1
+                  - generic [ref=e291]: ODP
+                - generic [ref=e292]: available
+              - generic [ref=e293]:
+                - generic [ref=e294]:
+                  - generic [ref=e295]: Marker
+                  - generic [ref=e296]: ODP
+                - generic [ref=e297]:
+                  - generic [ref=e298]: Type
+                  - generic [ref=e299]: ODP
+              - generic [ref=e300]:
+                - generic [ref=e301]:
+                  - generic [ref=e302]: Code
+                  - generic [ref=e303]: sdasd
+                - generic [ref=e304]:
+                  - generic [ref=e305]: Serial
+                  - generic [ref=e306]: asdasd
+                - generic [ref=e307]:
+                  - generic [ref=e308]: Upstream
+                  - generic [ref=e309]: Not linked yet
+                - generic [ref=e310]:
+                  - generic [ref=e311]: Customer Drop
+                  - generic [ref=e312]: Not linked yet
+                - generic [ref=e313]:
+                  - generic [ref=e314]: Port Capacity
+                  - generic [ref=e315]: "8"
+                - generic [ref=e316]:
+                  - generic [ref=e317]: Ports Used
+                  - generic [ref=e318]: "0"
+                - generic [ref=e319]:
+                  - generic [ref=e320]: Ports Available
+                  - generic [ref=e321]: "8"
+              - button "Close" [active] [ref=e323] [cursor=pointer]
+          - button "Search map assets" [ref=e132] [cursor=pointer]:
+            - img [ref=e133]
+          - button "Show map controls" [ref=e134] [cursor=pointer]:
+            - generic [ref=e135]: Controls

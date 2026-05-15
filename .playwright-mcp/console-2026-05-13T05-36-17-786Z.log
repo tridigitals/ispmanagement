@@ -1,0 +1,319 @@
+[  299541ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[  299558ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[  299963ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  299964ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  300562ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[  599211ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[  599214ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[  599970ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  599970ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  600218ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[  899281ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[  899292ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[  899726ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[  899727ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[  900295ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 1200547ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 1200565ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 1201570ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 1501675ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 1501678ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 1502681ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 1802333ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 1802336ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 1803339ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 2103055ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 2103059ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 2104063ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 2403077ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 2403097ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 2403535ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 2403535ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 2404100ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 2703125ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 2703129ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 2703532ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 2703532ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 2704132ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 3003108ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 3003112ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_RESET @ https://billing.tridigitals.com/@vite/client:1034
+[ 3003558ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 3003558ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 3004116ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 3302898ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 3302902ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 3303680ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 3303680ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 3303905ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 3602909ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 3602947ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 3603369ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 3603369ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 3603951ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 3902965ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 3903008ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 3903428ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 3903428ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 3904013ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 4202924ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 4202928ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 4203401ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 4203401ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 4203932ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 4502975ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 4502990ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 4503326ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 4503326ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 4803137ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 4803159ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 4804200ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 5103834ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 5103837ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 5104872ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 5403160ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 5403164ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 5404167ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 5703108ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 5703137ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 5703590ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 5703590ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 5704141ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 6002969ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 6002973ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 6003525ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 6003525ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 6003976ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 6304053ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 6304082ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 6305085ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 6604752ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 6604758ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 6605762ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 6904770ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 6904792ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 6905267ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 6905267ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 6905795ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 7204546ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 7204569ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 7205318ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 7205318ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 7205574ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 7504693ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 7504696ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 7505167ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 7505167ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 7505700ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 7804480ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 7804486ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 7805093ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 7805093ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 7805489ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 8104644ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 8104668ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 8105026ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 8105026ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 8105672ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 8404521ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 8404544ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 8405063ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 8405063ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 8405547ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 8704528ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 8704532ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 8704984ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 8704984ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 8705535ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 9004512ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 9004515ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 9004994ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[ 9004994ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[ 9005519ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 9305960ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 9305996ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 9307000ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 9607140ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 9607157ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 9608160ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 9910493ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[ 9910497ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[ 9911501ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[10210188ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[10210210ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[10210964ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[10210964ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[10211214ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[10510322ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[10510326ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[10510739ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[10510740ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[10511330ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[10810224ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[10810228ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[10810791ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[10810791ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[10811232ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[11110176ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[11110179ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[11110803ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[11110803ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[11111183ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[11410362ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[11410365ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[11410731ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[11410731ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[11411368ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[11710151ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[11710158ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[11710947ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[11710947ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[11711162ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[12010365ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[12010382ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[12010644ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[12010644ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[12011386ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[12310135ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[12310155ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[12310924ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[12310924ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[12311158ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[12614884ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[12614900ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[12615549ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[12615549ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[12615904ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[12914520ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[12914524ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[12915344ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[12915344ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[12915528ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[13214465ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[13214483ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[13215107ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[13215107ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[13215487ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[13514572ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[13514577ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[13514852ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[13514852ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[13515582ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[13814649ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[13814652ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[13815004ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[13815004ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[13815656ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[14114536ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[14114552ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[14115141ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[14115141ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[14115557ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[14414623ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[14414643ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[14415061ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[14415061ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[14415648ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[14714564ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[14714568ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[14715052ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[14715052ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[14715573ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[15024020ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[15024036ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[15025040ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[15025064ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[15025065ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[15323941ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[15323945ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[15324524ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[15324524ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[15324948ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[15623999ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[15624013ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[15624281ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[15624282ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[15625016ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[15924041ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[15924059ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[15924543ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[15924544ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[15925063ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[16224278ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[16224301ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[16224470ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[16224471ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[16225304ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[16537172ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[16537176ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[16537260ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/api/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:89
+[16537261ms] [ERROR] [WS] Error: Event @ https://billing.tridigitals.com/src/lib/stores/websocket.ts:108
+[16538185ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[16805407ms] [ERROR] Error: layers.nm-topology-asset-links.paint.line-dasharray: data expressions not supported
+    at Object.xi [as t] (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:3005:67)
+    at ce (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12124:34)
+    at de._validate (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12663:54)
+    at de.addLayer (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12446:152)
+    at t.Map.addLayer (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17133:59)
+    at Module.registerMapSourcesAndLayers (https://billing.tridigitals.com/src/lib/components/network/networkMapLayers.ts?t=1778667382322:342:7)
+    at t.Map.<anonymous> (https://billing.tridigitals.com/src/routes/(app)/admin/network/map/+page.svelte?t=1778667382322:1085:29)
+    at t.Map.fire (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:362:39)
+    at t.Map._render (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17275:1088)
+    at https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17292:63 @ https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366
+[16831197ms] [ERROR] Error: layers.nm-topology-asset-links.paint.line-dasharray: data expressions not supported
+    at Object.xi [as t] (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:3005:67)
+    at ce (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12124:34)
+    at de._validate (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12663:54)
+    at de.addLayer (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12446:152)
+    at t.Map.addLayer (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17133:59)
+    at Module.registerMapSourcesAndLayers (https://billing.tridigitals.com/src/lib/components/network/networkMapLayers.ts?t=1778667382322:342:7)
+    at t.Map.<anonymous> (https://billing.tridigitals.com/src/routes/(app)/admin/network/map/+page.svelte?t=1778667382322:1085:29)
+    at t.Map.fire (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:362:39)
+    at t.Map._render (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17275:1088)
+    at https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17292:63 @ https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366
+[16876451ms] [ERROR] Error: layers.nm-topology-asset-links.paint.line-dasharray: data expressions not supported
+    at Object.xi [as t] (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:3005:67)
+    at ce (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12124:34)
+    at de._validate (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12663:54)
+    at de.addLayer (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12446:152)
+    at t.Map.addLayer (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17133:59)
+    at Module.registerMapSourcesAndLayers (https://billing.tridigitals.com/src/lib/components/network/networkMapLayers.ts?t=1778667382322:342:7)
+    at t.Map.<anonymous> (https://billing.tridigitals.com/src/routes/(app)/admin/network/map/+page.svelte?t=1778667382322:1085:29)
+    at t.Map.fire (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:362:39)
+    at t.Map._render (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17275:1088)
+    at https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17292:63 @ https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366
+[16898008ms] [LOG] [vite] server connection lost. Polling for restart... @ https://billing.tridigitals.com/@vite/client:963
+[16898011ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[16899017ms] [ERROR] WebSocket connection to 'wss://billing.tridigitals.com/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ https://billing.tridigitals.com/@vite/client:1034
+[16902041ms] [ERROR] Error: layers.nm-topology-asset-links.paint.line-dasharray: data expressions not supported
+    at Object.xi [as t] (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:3005:67)
+    at ce (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12124:34)
+    at de._validate (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12663:54)
+    at de.addLayer (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12446:152)
+    at t.Map.addLayer (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17133:59)
+    at Module.registerMapSourcesAndLayers (https://billing.tridigitals.com/src/lib/components/network/networkMapLayers.ts?t=1778667382322:342:7)
+    at t.Map.<anonymous> (https://billing.tridigitals.com/src/routes/(app)/admin/network/map/+page.svelte?t=1778667382322:1085:29)
+    at t.Map.fire (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:362:39)
+    at t.Map._render (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17275:1088)
+    at https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17292:63 @ https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366
+[16954649ms] [ERROR] Error: layers.nm-topology-asset-links.paint.line-dasharray: data expressions not supported
+    at Object.xi [as t] (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:3005:67)
+    at ce (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12124:34)
+    at de._validate (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12663:54)
+    at de.addLayer (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12446:152)
+    at t.Map.addLayer (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17133:59)
+    at Module.registerMapSourcesAndLayers (https://billing.tridigitals.com/src/lib/components/network/networkMapLayers.ts?t=1778667382322:342:7)
+    at t.Map.<anonymous> (https://billing.tridigitals.com/src/routes/(app)/admin/network/map/+page.svelte?t=1778667382322:1085:29)
+    at t.Map.fire (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:362:39)
+    at t.Map._render (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17275:1088)
+    at https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17292:63 @ https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366
+[16999591ms] [ERROR] Error: layers.nm-topology-asset-links.paint.line-dasharray: data expressions not supported
+    at Object.xi [as t] (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:3005:67)
+    at ce (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12124:34)
+    at de._validate (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12663:54)
+    at de.addLayer (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:12446:152)
+    at t.Map.addLayer (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17133:59)
+    at Module.registerMapSourcesAndLayers (https://billing.tridigitals.com/src/lib/components/network/networkMapLayers.ts?t=1778667382322:342:7)
+    at t.Map.<anonymous> (https://billing.tridigitals.com/src/routes/(app)/admin/network/map/+page.svelte?t=1778667382322:1085:29)
+    at t.Map.fire (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:362:39)
+    at t.Map._render (https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17275:1088)
+    at https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:17292:63 @ https://billing.tridigitals.com/node_modules/.vite/deps/maplibre-gl.js?v=a1ff02f4:366

@@ -19,6 +19,10 @@ export const loadCustomerBillingTab = createCachedLoader(() =>
   import('./CustomerBillingTab.svelte'),
 );
 
+export const loadCustomerAssetsTab = createCachedLoader(() =>
+  import('./CustomerAssetsTab.svelte'),
+);
+
 export const loadCustomerPppoeTab = createCachedLoader(() =>
   import('./CustomerPppoeTab.svelte'),
 );

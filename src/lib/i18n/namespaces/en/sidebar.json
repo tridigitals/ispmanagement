@@ -30,6 +30,7 @@
   "logs": "Logs",
   "pppoe": "PPPoE",
   "dhcp_static": "DHCP Static",
+  "ftth_assets": "FTTH Assets",
   "imports": "Imports",
   "ppp_profiles": "PPP Profiles",
   "ip_pools": "IP Pools",

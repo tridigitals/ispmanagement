@@ -12,6 +12,7 @@
     zones: string;
     routers: string;
     customers: string;
+    assets: string;
   };
 
   let {
@@ -23,6 +24,7 @@
     zonesVisible,
     routersVisible,
     customersVisible,
+    topologyAssetsVisible,
     canShowRouters,
     onViewModeChange,
     onNodesVisibleChange,
@@ -30,6 +32,7 @@
     onZonesVisibleChange,
     onRoutersVisibleChange,
     onCustomersVisibleChange,
+    onTopologyAssetsVisibleChange,
     onToggleHidden,
   }: {
     labels: NetworkMapFloatingLabels;
@@ -40,6 +43,7 @@
     zonesVisible: boolean;
     routersVisible: boolean;
     customersVisible: boolean;
+    topologyAssetsVisible: boolean;
     canShowRouters: boolean;
     onViewModeChange: (mode: 'standard' | 'satellite') => void;
     onNodesVisibleChange: (checked: boolean) => void;
@@ -47,6 +51,7 @@
     onZonesVisibleChange: (checked: boolean) => void;
     onRoutersVisibleChange: (checked: boolean) => void;
     onCustomersVisibleChange: (checked: boolean) => void;
+    onTopologyAssetsVisibleChange: (checked: boolean) => void;
     onToggleHidden: () => void;
   } = $props();
 
@@ -135,6 +140,15 @@
             onchange={(e) => onZonesVisibleChange((e.currentTarget as HTMLInputElement).checked)}
           />
           <span>{labels.zones}</span>
+        </label>
+        <label class="toggle-chip">
+          <input
+            type="checkbox"
+            checked={topologyAssetsVisible}
+            onchange={(e) =>
+              onTopologyAssetsVisibleChange((e.currentTarget as HTMLInputElement).checked)}
+          />
+          <span>{labels.assets}</span>
         </label>
         <label class="toggle-chip">
           <input
