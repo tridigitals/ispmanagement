@@ -1537,6 +1537,56 @@ mod tests {
     }
 
     #[test]
+    fn system_managed_asset_reference_matching_contract() {
+        let network_asset = serde_json::json!({
+            "system_managed": true,
+            "asset_source": "network_asset",
+            "asset_type": "odp",
+            "asset_id": "asset-1",
+        });
+        assert!(NetworkMappingService::system_managed_node_matches_asset_reference(
+            &network_asset,
+            "network_asset",
+            "asset-1"
+        ));
+        assert!(NetworkMappingService::system_managed_node_matches_asset_source(
+            &network_asset,
+            "network_asset"
+        ));
+        assert!(!NetworkMappingService::system_managed_node_matches_asset_reference(
+            &network_asset,
+            "network_asset",
+            "asset-2"
+        ));
+
+        let customer_location = serde_json::json!({
+            "system_managed": true,
+            "asset_source": "customer_location",
+            "asset_type": "customer_location",
+            "asset_id": "loc-1",
+            "location_id": "loc-1",
+        });
+        assert!(NetworkMappingService::system_managed_node_matches_asset_reference(
+            &customer_location,
+            "customer_location",
+            "loc-1"
+        ));
+
+        let router = serde_json::json!({
+            "system_managed": true,
+            "asset_source": "mikrotik_router",
+            "asset_type": "mikrotik_router",
+            "asset_id": "router-1",
+            "router_id": "router-1",
+        });
+        assert!(NetworkMappingService::system_managed_node_matches_asset_reference(
+            &router,
+            "mikrotik_router",
+            "router-1"
+        ));
+    }
+
+    #[test]
     fn customer_pppoe_visual_state_contract() {
         assert_eq!(
             NetworkMappingService::customer_pppoe_visual_state(

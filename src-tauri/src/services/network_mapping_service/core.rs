@@ -315,6 +315,90 @@ impl NetworkMappingService {
             .or_else(|| metadata.get("asset_type").and_then(|v| v.as_str()))
     }
 
+    #[cfg(test)]
+    pub(super) fn system_managed_node_matches_asset_source(
+        metadata: &serde_json::Value,
+        asset_source: &str,
+    ) -> bool {
+        let normalized_source = asset_source.trim();
+        if normalized_source.is_empty() {
+            return false;
+        }
+
+        if matches!(
+            normalized_source,
+            "network_asset" | "mikrotik_router" | "customer_location"
+        ) {
+            return metadata
+                .get("asset_source")
+                .and_then(|v| v.as_str())
+                .map(str::trim)
+                == Some(normalized_source);
+        }
+
+        metadata
+            .get("asset_type")
+            .and_then(|v| v.as_str())
+            .map(str::trim)
+            == Some(normalized_source)
+    }
+
+    #[cfg(test)]
+    pub(super) fn system_managed_node_matches_asset_reference(
+        metadata: &serde_json::Value,
+        asset_source: &str,
+        asset_id: &str,
+    ) -> bool {
+        let normalized_asset_id = asset_id.trim();
+        if normalized_asset_id.is_empty()
+            || !Self::system_managed_node_matches_asset_source(metadata, asset_source)
+        {
+            return false;
+        }
+
+        match asset_source.trim() {
+            "mikrotik_router" => {
+                for key in [
+                    "router_id",
+                    "routerId",
+                    "mikrotik_router_id",
+                    "mikrotikRouterId",
+                    "asset_id",
+                ] {
+                    if metadata.get(key).and_then(|v| v.as_str()).map(str::trim)
+                        == Some(normalized_asset_id)
+                    {
+                        return true;
+                    }
+                }
+                false
+            }
+            "customer_location" => {
+                for key in [
+                    "location_id",
+                    "locationId",
+                    "customer_location_id",
+                    "customerLocationId",
+                    "asset_id",
+                ] {
+                    if metadata.get(key).and_then(|v| v.as_str()).map(str::trim)
+                        == Some(normalized_asset_id)
+                    {
+                        return true;
+                    }
+                }
+                false
+            }
+            _ => {
+                metadata
+                    .get("asset_id")
+                    .and_then(|v| v.as_str())
+                    .map(str::trim)
+                    == Some(normalized_asset_id)
+            }
+        }
+    }
+
     pub(super) fn customer_subscription_to_node_status(status: &str) -> &'static str {
         match status.trim().to_lowercase().as_str() {
             "suspended" => "maintenance",

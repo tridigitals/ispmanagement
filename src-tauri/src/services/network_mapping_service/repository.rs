@@ -29,6 +29,13 @@ impl NetworkMappingService {
             WHERE tenant_id = $1::uuid
               AND (
                 (
+                  $2::text = 'network_asset'
+                  AND metadata->>'asset_source' = $2::text
+                  AND metadata->>'asset_id' = $3::text
+                )
+                OR (
+                  $2::text NOT IN ('network_asset', 'mikrotik_router', 'customer_location')
+                  AND
                   metadata->>'asset_type' = $2::text
                   AND metadata->>'asset_id' = $3::text
                 )
@@ -61,6 +68,47 @@ impl NetworkMappingService {
         .fetch_optional(&self.pool)
         .await
         .map_err(AppError::Database)
+    }
+
+    pub(super) async fn dedupe_system_managed_nodes_by_asset_source(
+        &self,
+        tenant_id: &str,
+        asset_source: &str,
+    ) -> AppResult<u64> {
+        let rows_affected = if asset_source == "network_asset" {
+            sqlx::query(
+                r#"
+                DELETE FROM network_nodes n
+                USING (
+                  SELECT id
+                  FROM (
+                    SELECT
+                      id,
+                      ROW_NUMBER() OVER (
+                        PARTITION BY metadata->>'asset_source', metadata->>'asset_id'
+                        ORDER BY updated_at DESC, created_at DESC, id DESC
+                      ) AS row_num
+                    FROM network_nodes
+                    WHERE tenant_id = $1::uuid
+                      AND metadata->>'asset_source' = $2::text
+                      AND COALESCE((metadata->>'system_managed')::boolean, false)
+                  ) ranked
+                  WHERE ranked.row_num > 1
+                ) duplicates
+                WHERE n.id = duplicates.id::uuid
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(asset_source)
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+            .rows_affected()
+        } else {
+            0
+        };
+
+        Ok(rows_affected)
     }
 
     pub(super) async fn upsert_system_managed_node(
@@ -146,7 +194,41 @@ impl NetworkMappingService {
         asset_type: &str,
         asset_ids: &[String],
     ) -> AppResult<u64> {
-        let rows_affected = if asset_ids.is_empty() {
+        let rows_affected = if asset_type == "network_asset" {
+            if asset_ids.is_empty() {
+                sqlx::query(
+                    r#"
+                    DELETE FROM network_nodes
+                    WHERE tenant_id = $1::uuid
+                      AND metadata->>'asset_source' = $2::text
+                      AND COALESCE((metadata->>'system_managed')::boolean, false)
+                    "#,
+                )
+                .bind(tenant_id)
+                .bind(asset_type)
+                .execute(&self.pool)
+                .await
+                .map_err(AppError::Database)?
+                .rows_affected()
+            } else {
+                sqlx::query(
+                    r#"
+                    DELETE FROM network_nodes
+                    WHERE tenant_id = $1::uuid
+                      AND metadata->>'asset_source' = $2::text
+                      AND COALESCE((metadata->>'system_managed')::boolean, false)
+                      AND NOT (metadata->>'asset_id' = ANY($3))
+                    "#,
+                )
+                .bind(tenant_id)
+                .bind(asset_type)
+                .bind(asset_ids)
+                .execute(&self.pool)
+                .await
+                .map_err(AppError::Database)?
+                .rows_affected()
+            }
+        } else if asset_ids.is_empty() {
             sqlx::query(
                 r#"
                 DELETE FROM network_nodes

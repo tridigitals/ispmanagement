@@ -487,6 +487,9 @@ impl NetworkMappingService {
         let pruned_asset_nodes = self
             .prune_system_managed_nodes_not_in_assets(tenant_id, "network_asset", &eligible_asset_ids)
             .await?;
+        let deduped_asset_nodes = self
+            .dedupe_system_managed_nodes_by_asset_source(tenant_id, "network_asset")
+            .await?;
         let pruned_customer_nodes = self
             .prune_system_managed_nodes_not_in_assets(
                 tenant_id,
@@ -600,6 +603,7 @@ impl NetworkMappingService {
                 + customer_nodes_created
                 + customer_nodes_updated
                 + pruned_asset_nodes as i64
+                + deduped_asset_nodes as i64
                 + pruned_customer_nodes as i64,
         })
     }
