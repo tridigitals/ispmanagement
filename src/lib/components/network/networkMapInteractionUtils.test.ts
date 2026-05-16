@@ -43,7 +43,7 @@ describe('computePopupPlacement', () => {
     expect(result.offset).toBe(14);
   });
 
-  it('prefers a bottom anchor when the point is near the top edge', () => {
+  it('prefers a top anchor when the point is near the top edge', () => {
     const result = computePopupPlacement({
       point: { x: 180, y: 28 },
       mapSize: { width: 400, height: 320 },
@@ -51,8 +51,30 @@ describe('computePopupPlacement', () => {
       padding: 16,
     });
 
-    expect(result.anchor).toBe('bottom');
+    expect(result.anchor).toBe('top');
     expect(result.offset).toBe(14);
+  });
+
+  it('prefers a bottom anchor when there is more room above the point than below', () => {
+    const result = computePopupPlacement({
+      point: { x: 220, y: 260 },
+      mapSize: { width: 440, height: 420 },
+      popupSize: { width: 280, height: 220 },
+      padding: 16,
+    });
+
+    expect(result.anchor).toBe('bottom');
+  });
+
+  it('prefers a top anchor when there is more room below the point than above', () => {
+    const result = computePopupPlacement({
+      point: { x: 220, y: 120 },
+      mapSize: { width: 440, height: 420 },
+      popupSize: { width: 280, height: 220 },
+      padding: 16,
+    });
+
+    expect(result.anchor).toBe('top');
   });
 });
 

@@ -8,7 +8,17 @@ import {
 import { getNetworkAssetTypeLabel } from '$lib/utils/networkAssetTypes';
 import { isCustomerNodeType, type NMLink, type NMNode } from './networkMapUtils';
 
-const TOPOLOGY_ASSET_TYPES = ['olt', 'odc', 'odp', 'fat', 'nap', 'switch'] as const;
+const TOPOLOGY_ASSET_TYPES = ['olt', 'odf', 'odc', 'splitter', 'fat', 'nap', 'odp', 'switch'] as const;
+const UPSTREAM_RANK: Record<string, number> = {
+  olt: 0,
+  odf: 1,
+  switch: 2,
+  odc: 3,
+  splitter: 4,
+  fat: 5,
+  nap: 6,
+  odp: 7,
+};
 
 export type TopologyAssetType = (typeof TOPOLOGY_ASSET_TYPES)[number];
 
@@ -52,8 +62,14 @@ export function getTopologyAssetMarkerSpec(assetType: string): TopologyAssetMark
   if (assetType === 'olt') {
     return { assetType, label: 'OLT', legendLabel: 'OLT', color: '#b45309' };
   }
+  if (assetType === 'odf') {
+    return { assetType, label: 'ODF', legendLabel: 'ODF', color: '#1d4ed8' };
+  }
   if (assetType === 'odc') {
     return { assetType, label: 'ODC', legendLabel: 'ODC', color: '#2563eb' };
+  }
+  if (assetType === 'splitter') {
+    return { assetType, label: 'SPL', legendLabel: 'Splitter', color: '#7c3aed' };
   }
   if (assetType === 'odp') {
     return { assetType, label: 'ODP', legendLabel: 'ODP', color: '#0f766e' };
@@ -88,6 +104,7 @@ export function buildTopologyAssetRows(
       const assetType = String(asset.asset_type || '').trim();
       const marker = getTopologyAssetMarkerSpec(assetType);
       const occupancy = getNetworkAssetPortOccupancy(asset, assets, topology);
+      const hasUpstreamRelation = hasTopologyAssetUpstreamRelation(asset, assets, topology);
       const hasCustomerRelation = hasTopologyAssetCustomerRelation(asset, assets, topology);
       return {
         id: asset.id,
@@ -110,7 +127,7 @@ export function buildTopologyAssetRows(
         portCapacity: occupancy?.total ?? null,
         portsUsed: occupancy?.used ?? null,
         portsAvailable: occupancy?.available ?? null,
-        hasUpstreamRelation: Boolean(asset.parent_asset_id),
+        hasUpstreamRelation,
         hasCustomerRelation,
       };
     });
@@ -422,7 +439,7 @@ function pushLineFeature(
 }
 
 function hasTopologyAssetCustomerRelation(
-  asset: Pick<NetworkAssetListItem, 'id' | 'customer_id' | 'location_id'>,
+  asset: Pick<NetworkAssetListItem, 'id' | 'asset_type' | 'customer_id' | 'location_id'>,
   allAssets: Pick<
     NetworkAssetListItem,
     'id' | 'asset_type' | 'parent_asset_id' | 'status' | 'customer_id' | 'location_id'
@@ -459,7 +476,52 @@ function hasTopologyAssetCustomerRelation(
     if (!otherNodeId) return false;
 
     const otherNode = (topology?.nodeRows || []).find((node) => node.id === otherNodeId);
-    return isLinkedCustomerLocationNode(otherNode);
+    return isLinkedCustomerNode(otherNode);
+  });
+}
+
+function hasTopologyAssetUpstreamRelation(
+  asset: Pick<NetworkAssetListItem, 'id' | 'asset_type' | 'parent_asset_id'>,
+  allAssets: Pick<NetworkAssetListItem, 'id' | 'asset_type'>[],
+  topology?: NetworkAssetOccupancyTopologyArgs,
+): boolean {
+  if (String(asset.parent_asset_id || '').trim()) {
+    return true;
+  }
+
+  const assetType = String(asset.asset_type || '').trim();
+  const assetRank = UPSTREAM_RANK[assetType];
+  if (!Number.isFinite(assetRank)) return false;
+
+  const sourceNodeId =
+    topology?.assetNodeIdsByAssetId?.get(asset.id) ||
+    (topology?.nodeRows || []).find((node) => {
+      const source = String(node.metadata?.asset_source || node.metadata?.asset_type || '').trim();
+      const assetId = String(node.metadata?.asset_id || '').trim();
+      return source === 'network_asset' && assetId === asset.id;
+    })?.id;
+  if (!sourceNodeId) return false;
+
+  return (topology?.linkRows || []).some((link) => {
+    const fromNodeId = String(link.from_node_id || '').trim();
+    const toNodeId = String(link.to_node_id || '').trim();
+    let otherNodeId = '';
+    if (fromNodeId === sourceNodeId) otherNodeId = toNodeId;
+    else if (toNodeId === sourceNodeId) otherNodeId = fromNodeId;
+    if (!otherNodeId) return false;
+
+    const otherNode = (topology?.nodeRows || []).find((node) => node.id === otherNodeId);
+    const otherSource = String(
+      otherNode?.metadata?.asset_source || otherNode?.metadata?.asset_type || '',
+    ).trim();
+    if (otherSource !== 'network_asset') return false;
+
+    const otherAssetId = String(otherNode?.metadata?.asset_id || '').trim();
+    const otherAssetType =
+      String(otherNode?.metadata?.asset_type || '').trim() ||
+      String(allAssets.find((item) => item.id === otherAssetId)?.asset_type || '').trim();
+    const otherRank = UPSTREAM_RANK[otherAssetType];
+    return Number.isFinite(otherRank) && otherRank < assetRank;
   });
 }
 
@@ -472,6 +534,12 @@ function isLinkedCustomerLocationNode(
   node: Pick<NMNode, 'node_type' | 'metadata'> | undefined,
 ) {
   return isCustomerLocationNode(node) && String(node?.node_type || '').trim() === 'customer_premise';
+}
+
+function isLinkedCustomerNode(
+  node: Pick<NMNode, 'node_type' | 'metadata'> | undefined,
+) {
+  return isCustomerLocationNode(node) && isCustomerNodeType(String(node?.node_type || '').trim());
 }
 
 function isActiveCustomerNode(node: Pick<NMNode, 'status'> | undefined) {

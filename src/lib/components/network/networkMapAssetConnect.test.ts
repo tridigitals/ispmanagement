@@ -94,7 +94,7 @@ describe('networkMapAssetConnect', () => {
       ],
     });
 
-    expect(options.map((option) => option.value)).toEqual(['odc-1', 'nap-1', 'switch-1', 'olt-1']);
+    expect(options.map((option) => option.value)).toEqual(['nap-1', 'odc-1', 'switch-1', 'olt-1']);
   });
 
   it('keeps the currently linked parent available even if it is outside the preferred hierarchy', () => {
@@ -114,6 +114,8 @@ describe('networkMapAssetConnect', () => {
   it('marks mapped FTTH assets as upstream-link capable except terminal-like roots', () => {
     expect(assetSupportsUpstreamLink('odp')).toBe(true);
     expect(assetSupportsUpstreamLink('odc')).toBe(true);
+    expect(assetSupportsUpstreamLink('splitter')).toBe(true);
+    expect(assetSupportsUpstreamLink('odf')).toBe(true);
     expect(assetSupportsUpstreamLink('olt')).toBe(false);
   });
 
@@ -242,6 +244,31 @@ describe('networkMapAssetConnect', () => {
       {
         assetId: 'odp-1',
         parentAssetId: 'odc-1',
+      },
+    ]);
+  });
+
+  it('assigns ODP upstream to splitter assets when connected on the topology map', () => {
+    expect(
+      buildTopologyAssetConnectionOperations({
+        sourceAsset: asset({
+          id: 'odp-1',
+          asset_type: 'odp',
+        }),
+        targetNode: node({
+          id: 'splitter-node-1',
+          node_type: 'splitter',
+          metadata: {
+            asset_source: 'network_asset',
+            asset_type: 'splitter',
+            asset_id: 'splitter-1',
+          },
+        }),
+      }),
+    ).toEqual([
+      {
+        assetId: 'odp-1',
+        parentAssetId: 'splitter-1',
       },
     ]);
   });

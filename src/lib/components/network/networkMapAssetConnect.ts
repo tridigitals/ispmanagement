@@ -38,17 +38,21 @@ export type ResolveTopologyAssetNodeIdArgs = {
 const CUSTOMER_DROP_TYPES = new Set(['odp', 'fat', 'nap']);
 const UPSTREAM_RANK: Record<string, number> = {
   olt: 0,
-  switch: 1,
-  odc: 2,
-  fat: 3,
-  nap: 4,
-  odp: 5,
+  odf: 1,
+  switch: 2,
+  odc: 3,
+  splitter: 4,
+  fat: 5,
+  nap: 6,
+  odp: 7,
 };
 const PREFERRED_PARENT_TYPES: Record<string, string[]> = {
-  odc: ['olt', 'switch'],
-  fat: ['odc', 'switch', 'olt'],
-  nap: ['fat', 'odc', 'switch', 'olt'],
-  odp: ['odc', 'fat', 'nap', 'switch', 'olt'],
+  odf: ['olt', 'switch'],
+  odc: ['odf', 'olt', 'switch'],
+  splitter: ['odc', 'odf', 'switch', 'olt'],
+  fat: ['splitter', 'odc', 'odf', 'switch', 'olt'],
+  nap: ['fat', 'splitter', 'odc', 'odf', 'switch', 'olt'],
+  odp: ['nap', 'fat', 'splitter', 'odc', 'odf', 'switch', 'olt'],
 };
 const TOPOLOGY_ASSET_NODE_SOURCE = 'network_asset';
 

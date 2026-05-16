@@ -108,6 +108,7 @@
     filterRoutersForOverlay,
     getLinkFieldConfig,
     isCustomerNodeType,
+    isLegacyFtthDistributionNode,
     isSystemManagedNode,
     linkStatusOptions,
     linkTypeOptions,
@@ -285,6 +286,13 @@
         })
       : [],
   );
+  const activeAssetSourceCoordOverride = $derived.by<[number, number] | null>(() => {
+    if (!activeAssetConnectSourceId) return null;
+    const assetRow = topologyAssetRows.find((row) => row.id === activeAssetConnectSourceId);
+    if (!assetRow) return null;
+    if (!Number.isFinite(assetRow.longitude) || !Number.isFinite(assetRow.latitude)) return null;
+    return [assetRow.longitude, assetRow.latitude];
+  });
 
   let workspaceState = $state<NetworkMapWorkspaceState>(
     createNetworkMapWorkspaceState({
@@ -392,11 +400,12 @@
       'Visualize nodes, links, service zones, and operational context from the current viewport.';
     return `${base} ${workspaceStatusNotes[0] || ''}`.trim();
   });
+  const visibleNodeRows = $derived.by(() => nodeRows.filter((row) => !isLegacyFtthDistributionNode(row)));
   const workspaceSearchGroups = $derived.by(() =>
     buildNetworkMapOverviewSearchGroups({
       query: workspaceSearchQuery,
       quickMode,
-      nodes: nodeRows,
+      nodes: visibleNodeRows,
       links: linkRows,
       zones: zoneRows,
       routers: routerRows,
@@ -407,7 +416,7 @@
   const workspaceSearchSummary = $derived.by(() => {
     const query = workspaceSearchQuery.trim();
     if (!query) {
-      const total = nodeRows.length + linkRows.length + zoneRows.length + routerRows.length;
+      const total = visibleNodeRows.length + linkRows.length + zoneRows.length + routerRows.length;
       return (
         $t('admin.network.map.search.summary_idle', {
           values: { count: total },
@@ -984,6 +993,7 @@
       activePopup: activeNodePopup,
       setActivePopup: (popup) => (activeNodePopup = popup),
       onClose: clearMapPopupSelection,
+      onConnect: startConnectFromNode,
       onOpenRouter: (routerId) => void goto(`${tenantPrefix}/admin/network/routers/${routerId}`),
     });
   }
@@ -1010,18 +1020,19 @@
       return;
     }
     const mapInstance = map;
-    const { bindPopupNavigationDismiss } = await loadNetworkMapPopupModule();
+    const { bindPopupNavigationDismiss, nudgePopupElementIntoView, popupOptionsForMap } =
+      await loadNetworkMapPopupModule();
 
     activeNodePopup?.remove();
     const closeBtnId = `nm-topology-asset-close-${Math.random().toString(36).slice(2, 10)}`;
     const connectBtnId = `nm-topology-asset-connect-${Math.random().toString(36).slice(2, 10)}`;
     const editBtnId = `nm-topology-asset-edit-${Math.random().toString(36).slice(2, 10)}`;
-    const popup = new maplibre.Popup({
-      closeButton: false,
-      closeOnClick: true,
-      anchor: 'bottom',
-      offset: 14,
-    })
+    const popup = new maplibre.Popup(
+      popupOptionsForMap(mapInstance, coords, {
+        width: 296,
+        height: 280,
+      }),
+    )
       .setLngLat(coords)
       .setHTML(buildTopologyAssetPopupHtml(row, closeBtnId, connectBtnId, editBtnId));
     let cleanupNavigationDismiss: (() => void) | null = null;
@@ -1033,6 +1044,11 @@
             ? ((popup as any).getElement() as HTMLElement)
             : null;
         popupElement?.classList.add('nm-popup-link-shell');
+        nudgePopupElementIntoView({
+          popupElement,
+          mapElement: mapInstance.getContainer(),
+          padding: 18,
+        });
       });
       cleanupNavigationDismiss = bindPopupNavigationDismiss({
         map: mapInstance,
@@ -1579,11 +1595,12 @@
 
   function fitMapToAllMarkersOnFirstLoad(nodes: NMNode[], routers: NMRouter[]) {
     if (!map || !maplibre || !interactionModule) return;
+    const visibleNodes = nodes.filter((row) => !isLegacyFtthDistributionNode(row));
     const didFit = interactionModule.fitMapToMarkers({
       map,
       maplibre,
       didInitialFitToMarkers,
-      nodes,
+      nodes: visibleNodes,
       routers,
       topologyAssets: topologyAssetRows,
       installationTargetCoord,
@@ -1808,6 +1825,7 @@
       nodeRows,
       linkForm,
       linkPathBendPoints,
+      sourceCoordOverride: activeAssetSourceCoordOverride,
     });
   }
 
@@ -1818,6 +1836,7 @@
       nodeRows,
       linkForm,
       linkPathBendPoints,
+      sourceCoordOverride: activeAssetSourceCoordOverride,
     });
 
     setSourceData(SOURCE_LINK_DRAFT, lineFc);

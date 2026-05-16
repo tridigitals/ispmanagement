@@ -112,6 +112,116 @@ describe('networkMapAssets', () => {
     });
   });
 
+  it('treats saved topology links from an upstream FTTH asset as an upstream relation even without parent_asset_id', () => {
+    const rows = buildTopologyAssetRows(
+      [
+        asset({
+          id: 'odc-1',
+          asset_type: 'odc',
+          name: 'ODC-1',
+          latitude: -7.2,
+          longitude: 110.3,
+        }),
+        asset({
+          id: 'odp-1',
+          asset_type: 'odp',
+          name: 'ODP-1',
+          latitude: -7.21,
+          longitude: 110.31,
+          metadata: { total_port_capacity: '8' },
+        }),
+      ],
+      {
+        nodeRows: [
+          node({
+            id: 'odc-node-1',
+            node_type: 'odc',
+            metadata: {
+              asset_source: 'network_asset',
+              asset_type: 'odc',
+              asset_id: 'odc-1',
+            },
+          }),
+          node({
+            id: 'odp-node-1',
+            node_type: 'odp',
+            metadata: {
+              asset_source: 'network_asset',
+              asset_type: 'odp',
+              asset_id: 'odp-1',
+            },
+          }),
+        ],
+        linkRows: [
+          link({
+            id: 'uplink-1',
+            from_node_id: 'odc-node-1',
+            to_node_id: 'odp-node-1',
+          }),
+        ],
+      },
+    );
+
+    expect(rows.find((row) => row.id === 'odp-1')).toMatchObject({
+      hasUpstreamRelation: true,
+    });
+  });
+
+  it('treats saved topology links from a splitter asset as an upstream relation for ODP', () => {
+    const rows = buildTopologyAssetRows(
+      [
+        asset({
+          id: 'splitter-1',
+          asset_type: 'splitter',
+          name: 'Splitter-1',
+          latitude: -7.2,
+          longitude: 110.3,
+        }),
+        asset({
+          id: 'odp-1',
+          asset_type: 'odp',
+          name: 'ODP-1',
+          latitude: -7.21,
+          longitude: 110.31,
+          metadata: { total_port_capacity: '8' },
+        }),
+      ],
+      {
+        nodeRows: [
+          node({
+            id: 'splitter-node-1',
+            node_type: 'splitter',
+            metadata: {
+              asset_source: 'network_asset',
+              asset_type: 'splitter',
+              asset_id: 'splitter-1',
+            },
+          }),
+          node({
+            id: 'odp-node-1',
+            node_type: 'odp',
+            metadata: {
+              asset_source: 'network_asset',
+              asset_type: 'odp',
+              asset_id: 'odp-1',
+            },
+          }),
+        ],
+        linkRows: [
+          link({
+            id: 'uplink-1',
+            from_node_id: 'splitter-node-1',
+            to_node_id: 'odp-node-1',
+          }),
+        ],
+      },
+    );
+
+    expect(rows.find((row) => row.id === 'odp-1')).toMatchObject({
+      hasUpstreamRelation: true,
+    });
+  });
+
   it('builds auto links between parent assets and customer endpoints', () => {
     const assets = [
       asset({
@@ -251,6 +361,56 @@ describe('networkMapAssets', () => {
       portCapacity: 8,
       portsUsed: 1,
       portsAvailable: 7,
+      hasCustomerRelation: true,
+    });
+  });
+
+  it('treats saved customer endpoint links as a customer relation for ODP popup state', () => {
+    const rows = buildTopologyAssetRows(
+      [
+        asset({
+          id: 'odp-1',
+          asset_type: 'odp',
+          name: 'ODP-1',
+          latitude: -7.21,
+          longitude: 110.31,
+          metadata: { total_port_capacity: '8' },
+        }),
+      ],
+      {
+        nodeRows: [
+          node({
+            id: 'odp-node-1',
+            node_type: 'odp',
+            metadata: {
+              asset_source: 'network_asset',
+              asset_type: 'odp',
+              asset_id: 'odp-1',
+            },
+          }),
+          node({
+            id: 'customer-endpoint-1',
+            node_type: 'customer_endpoint',
+            status: 'active',
+            metadata: {
+              asset_source: 'customer_location',
+              asset_type: 'customer_location',
+              customer_id: 'cust-1',
+              location_id: 'loc-1',
+            },
+          }),
+        ],
+        linkRows: [
+          link({
+            id: 'drop-link-1',
+            from_node_id: 'odp-node-1',
+            to_node_id: 'customer-endpoint-1',
+          }),
+        ],
+      },
+    );
+
+    expect(rows.find((row) => row.id === 'odp-1')).toMatchObject({
       hasCustomerRelation: true,
     });
   });

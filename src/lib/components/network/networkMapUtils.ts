@@ -471,6 +471,22 @@ export function isSyncedTopologyAssetNode(row: NMNode | null | undefined) {
   return String(row?.metadata?.asset_source || row?.metadata?.asset_type || '').trim() === 'network_asset';
 }
 
+const LEGACY_FTTH_DISTRIBUTION_NODE_TYPES = new Set([
+  'olt',
+  'odc',
+  'odp',
+  'fat',
+  'nap',
+  'splitter',
+]);
+
+export function isLegacyFtthDistributionNode(row: NMNode | null | undefined) {
+  const source = String(row?.metadata?.asset_source || row?.metadata?.asset_type || '').trim();
+  if (source) return false;
+  const nodeType = String(row?.node_type || '').trim().toLowerCase();
+  return LEGACY_FTTH_DISTRIBUTION_NODE_TYPES.has(nodeType);
+}
+
 export function systemManagedNodeSourceLabel(row: NMNode | null | undefined) {
   const source = String(row?.metadata?.asset_source || row?.metadata?.asset_type || '').trim();
   if (source === 'mikrotik_router') return 'Router map';
@@ -1050,6 +1066,10 @@ export function buildRouterPopupModel(router: NMRouter): NetworkMapPopupModel {
         tone,
       },
       {
+        label: 'Address',
+        value: normalizePopupValue(router.host),
+      },
+      {
         label: 'Latency',
         value: router.latency_ms != null ? `${router.latency_ms} ms` : '-',
         tone,
@@ -1066,7 +1086,7 @@ export function buildRouterPopupModel(router: NMRouter): NetworkMapPopupModel {
       { label: 'Identity', value: normalizePopupValue(router.identity || router.name) },
       { label: 'Inventory', value: normalizePopupValue(router.name) },
     ],
-    actions: [popupAction('open-router', 'Open Router', 'primary')],
+    actions: [popupAction('connect', 'Connect', 'primary'), popupAction('open-router', 'Open Router')],
   };
 }
 
@@ -1184,6 +1204,7 @@ export function nodesToFeatureCollection(rows: NMNode[]): FeatureCollection {
     type: 'FeatureCollection',
     features: (rows || [])
       .filter((row) => !isSyncedTopologyAssetNode(row))
+      .filter((row) => !isLegacyFtthDistributionNode(row))
       .map((row) => ({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [row.lng, row.lat] },

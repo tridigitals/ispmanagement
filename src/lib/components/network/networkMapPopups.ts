@@ -24,7 +24,9 @@ type PopupInstance = import('maplibre-gl').Popup;
 type MaplibreLike = Pick<typeof import('maplibre-gl'), 'Popup'>;
 type PopupDismissEvent = 'movestart' | 'zoomstart' | 'dragstart';
 
-function popupOptionsForMap(
+export { nudgePopupElementIntoView } from './networkMapInteractionUtils';
+
+export function popupOptionsForMap(
   map: import('maplibre-gl').Map,
   coords: [number, number],
   popupSize: { width: number; height: number } = { width: 288, height: 320 },
@@ -214,6 +216,7 @@ export function openRouterPopup(args: {
   activePopup: PopupInstance | null;
   setActivePopup: (popup: PopupInstance | null) => void;
   onClose?: () => void;
+  onConnect: (routerId: string) => void;
   onOpenRouter: (routerId: string) => void;
 }) {
   const props = args.feature.properties || {};
@@ -256,7 +259,15 @@ export function openRouterPopup(args: {
     const openBtn = openBtnMeta
       ? (document.getElementById(openBtnMeta.buttonId) as HTMLButtonElement | null)
       : null;
+    const connectBtnMeta = popupContent.actionButtons.find((button) => button.key === 'connect');
+    const connectBtn = connectBtnMeta
+      ? (document.getElementById(connectBtnMeta.buttonId) as HTMLButtonElement | null)
+      : null;
     const closeBtn = document.getElementById(popupContent.closeBtnId) as HTMLButtonElement | null;
+    connectBtn?.addEventListener('click', () => {
+      popup.remove();
+      args.onConnect(routerId);
+    });
     openBtn?.addEventListener('click', () => {
       popup.remove();
       args.onOpenRouter(routerId);

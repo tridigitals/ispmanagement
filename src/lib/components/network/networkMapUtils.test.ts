@@ -9,6 +9,7 @@ import {
   customersToFeatureCollection,
   getCustomerNodeIconId,
   getCustomerPppoeVisualState,
+  nodesToFeatureCollection,
   type NMLink,
   type NMNode,
   type NMRouter,
@@ -45,6 +46,31 @@ describe('network map popup models', () => {
       ]),
     );
     expect(model.actions.map((action) => action.key)).toEqual(['connect', 'edit']);
+  });
+
+  it('hides legacy FTTH distribution nodes from the generic node marker layer', () => {
+    const fc = nodesToFeatureCollection([
+      {
+        id: 'splitter-node-1',
+        name: 'Legacy Splitter Node',
+        node_type: 'splitter',
+        status: 'active',
+        lat: -7.2,
+        lng: 110.3,
+        metadata: {},
+      },
+      {
+        id: 'router-node-1',
+        name: 'Edge Router',
+        node_type: 'router',
+        status: 'active',
+        lat: -7.21,
+        lng: 110.31,
+        metadata: {},
+      },
+    ]);
+
+    expect(fc.features.map((feature) => feature.properties?.id)).toEqual(['router-node-1']);
   });
 
   it('builds customer service popups with package and account details', () => {
@@ -263,9 +289,10 @@ describe('network map popup models', () => {
       expect.arrayContaining([
         expect.objectContaining({ label: 'Connectivity', value: 'Live' }),
         expect.objectContaining({ label: 'Access', value: 'Enabled' }),
+        expect.objectContaining({ label: 'Address', value: '10.10.10.1' }),
       ]),
     );
-    expect(model.actions.map((action) => action.key)).toEqual(['open-router']);
+    expect(model.actions.map((action) => action.key)).toEqual(['connect', 'open-router']);
   });
 
   it('builds synced router node popups from live router inventory status', () => {

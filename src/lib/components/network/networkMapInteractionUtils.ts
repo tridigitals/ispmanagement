@@ -78,9 +78,12 @@ export function currentDraftPathCoords(
   linkForm: { from_node_id: string; to_node_id: string },
   linkPathBendPoints: Array<[number, number]>,
   includeToNode = false,
+  fromCoordOverride?: [number, number] | null,
 ): Array<[number, number]> {
   const coords: Array<[number, number]> = [];
-  const fromCoord = linkForm.from_node_id ? getNodeCoord(nodeRows, linkForm.from_node_id) : null;
+  const fromCoord =
+    fromCoordOverride ||
+    (linkForm.from_node_id ? getNodeCoord(nodeRows, linkForm.from_node_id) : null);
   if (fromCoord) coords.push(fromCoord);
   if (linkPathBendPoints.length > 0) coords.push(...linkPathBendPoints);
   if (includeToNode && linkForm.to_node_id) {
@@ -306,6 +309,8 @@ export function computePopupPlacement(args: {
   const spaceRight = args.mapSize.width - args.point.x - padding;
   const spaceTop = args.point.y - padding;
   const spaceBottom = args.mapSize.height - args.point.y - padding;
+  const requiresWidth = args.popupSize.width + offset;
+  const requiresHeight = args.popupSize.height + offset;
 
   if (spaceRight < args.popupSize.width * 0.65 && spaceLeft > args.popupSize.width * 0.45) {
     return { anchor: 'left', offset };
@@ -315,15 +320,29 @@ export function computePopupPlacement(args: {
     return { anchor: 'right', offset };
   }
 
-  if (spaceTop < args.popupSize.height * 0.45 && spaceBottom > args.popupSize.height * 0.45) {
+  const topFits = spaceTop >= requiresHeight;
+  const bottomFits = spaceBottom >= requiresHeight;
+  const leftFits = spaceLeft >= requiresWidth;
+  const rightFits = spaceRight >= requiresWidth;
+
+  if (topFits && !bottomFits) {
     return { anchor: 'bottom', offset };
   }
 
-  if (spaceBottom < args.popupSize.height * 0.35 && spaceTop > args.popupSize.height * 0.45) {
+  if (bottomFits && !topFits) {
     return { anchor: 'top', offset };
   }
 
-  return { anchor: 'top', offset };
+  if (leftFits || rightFits) {
+    if (spaceRight < args.popupSize.width * 0.5 && spaceLeft > spaceRight) {
+      return { anchor: 'left', offset };
+    }
+    if (spaceLeft < args.popupSize.width * 0.5 && spaceRight > spaceLeft) {
+      return { anchor: 'right', offset };
+    }
+  }
+
+  return { anchor: spaceTop >= spaceBottom ? 'bottom' : 'top', offset };
 }
 
 export function computePopupViewportNudge(args: {
