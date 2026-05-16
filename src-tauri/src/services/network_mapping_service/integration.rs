@@ -6,7 +6,15 @@ use crate::models::{
 };
 use std::collections::{HashMap, HashSet};
 
+const TOPOLOGY_SYNC_NETWORK_ASSET_TYPES: &[&str] =
+    &["olt", "odc", "odp", "fat", "nap", "switch", "splitter", "odf"];
+
 impl NetworkMappingService {
+    #[cfg(test)]
+    pub(super) fn is_sync_topology_asset_type(asset_type: &str) -> bool {
+        TOPOLOGY_SYNC_NETWORK_ASSET_TYPES.contains(&asset_type.trim().to_lowercase().as_str())
+    }
+
     pub(super) fn build_customer_location_metadata(
         row: &SyncCustomerLocationRow,
     ) -> serde_json::Map<String, serde_json::Value> {
@@ -469,12 +477,13 @@ impl NetworkMappingService {
               longitude::float8 AS longitude
             FROM network_assets
             WHERE tenant_id = $1::text
-              AND asset_type IN ('olt', 'odc', 'odp', 'fat', 'nap', 'switch')
+              AND asset_type = ANY($2)
               AND latitude IS NOT NULL
               AND longitude IS NOT NULL
             "#,
         )
         .bind(tenant_id)
+        .bind(TOPOLOGY_SYNC_NETWORK_ASSET_TYPES)
         .fetch_all(&self.pool)
         .await
         .map_err(AppError::Database)?;
@@ -783,6 +792,16 @@ impl NetworkMappingService {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sync_topology_asset_type_covers_current_ftth_assets() {
+        assert!(NetworkMappingService::is_sync_topology_asset_type("olt"));
+        assert!(NetworkMappingService::is_sync_topology_asset_type("splitter"));
+        assert!(NetworkMappingService::is_sync_topology_asset_type("odf"));
+        assert!(NetworkMappingService::is_sync_topology_asset_type("switch"));
+        assert!(!NetworkMappingService::is_sync_topology_asset_type("ont"));
+        assert!(!NetworkMappingService::is_sync_topology_asset_type("router"));
+    }
 
     #[test]
     fn merge_customer_location_metadata_overrides_stale_pppoe_state() {

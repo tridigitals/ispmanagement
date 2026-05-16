@@ -2,6 +2,23 @@ use super::NetworkMappingService;
 use crate::error::{AppError, AppResult};
 
 impl NetworkMappingService {
+    pub(super) fn is_legacy_ftth_distribution_node_type(node_type: &str) -> bool {
+        matches!(
+            node_type.trim().to_lowercase().as_str(),
+            "olt" | "odc" | "odp" | "splitter"
+        )
+    }
+
+    pub(super) fn validate_manual_node_type(node_type: &str) -> AppResult<()> {
+        if Self::is_legacy_ftth_distribution_node_type(node_type) {
+            return Err(AppError::Validation(
+                "FTTH distribution nodes are now managed from FTTH assets. Create or edit the asset instead."
+                    .into(),
+            ));
+        }
+        Ok(())
+    }
+
     pub(super) fn validate_lat_lng(lat: f64, lng: f64, field: &str) -> AppResult<()> {
         if !(-90.0..=90.0).contains(&lat) {
             return Err(AppError::Validation(format!(
@@ -71,5 +88,25 @@ impl NetworkMappingService {
                     .into(),
             )),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::NetworkMappingService;
+
+    #[test]
+    fn flags_legacy_ftth_distribution_node_types() {
+        assert!(NetworkMappingService::is_legacy_ftth_distribution_node_type("olt"));
+        assert!(NetworkMappingService::is_legacy_ftth_distribution_node_type("ODP"));
+        assert!(NetworkMappingService::is_legacy_ftth_distribution_node_type("splitter"));
+        assert!(!NetworkMappingService::is_legacy_ftth_distribution_node_type("router"));
+        assert!(!NetworkMappingService::is_legacy_ftth_distribution_node_type("switch"));
+    }
+
+    #[test]
+    fn rejects_manual_legacy_ftth_distribution_nodes() {
+        assert!(NetworkMappingService::validate_manual_node_type("odc").is_err());
+        assert!(NetworkMappingService::validate_manual_node_type("router").is_ok());
     }
 }

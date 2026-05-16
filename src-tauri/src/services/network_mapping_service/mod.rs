@@ -275,6 +275,7 @@ impl NetworkMappingService {
         if dto.name.trim().is_empty() {
             return Err(AppError::Validation("name is required".into()));
         }
+        Self::validate_manual_node_type(&dto.node_type)?;
         Self::validate_lat_lng(dto.lat, dto.lng, "node")?;
         let id = Uuid::new_v4().to_string();
         let status = dto.status.unwrap_or_else(|| "active".to_string());
@@ -325,6 +326,7 @@ impl NetworkMappingService {
         }
         let name = dto.name.unwrap_or(current.name);
         let node_type = dto.node_type.unwrap_or(current.node_type);
+        Self::validate_manual_node_type(&node_type)?;
         let status = dto.status.unwrap_or(current.status);
         let lat = dto.lat.unwrap_or(current.lat);
         let lng = dto.lng.unwrap_or(current.lng);

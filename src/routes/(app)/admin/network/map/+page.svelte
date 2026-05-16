@@ -112,7 +112,7 @@
     isSystemManagedNode,
     linkStatusOptions,
     linkTypeOptions,
-    nodeTypeOptions,
+    manualNodeTypeOptions,
     nodesToFeatureCollection,
     parseGeometryText,
     prettyGeometry,
@@ -2485,7 +2485,7 @@
           {nodePickMode}
           {savingNode}
           {nodeForm}
-          {nodeTypeOptions}
+          nodeTypeOptions={manualNodeTypeOptions}
           onClose={closeNodeModal}
           onSubmit={() => void submitNode()}
         />

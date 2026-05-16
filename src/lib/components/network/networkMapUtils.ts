@@ -480,6 +480,14 @@ const LEGACY_FTTH_DISTRIBUTION_NODE_TYPES = new Set([
   'splitter',
 ]);
 
+export function isLegacyFtthDistributionNodeType(value: string | null | undefined): boolean {
+  return LEGACY_FTTH_DISTRIBUTION_NODE_TYPES.has(String(value || '').trim().toLowerCase());
+}
+
+export const manualNodeTypeOptions = nodeTypeOptions.filter(
+  (option) => !isLegacyFtthDistributionNodeType(option.value),
+);
+
 export function isLegacyFtthDistributionNode(row: NMNode | null | undefined) {
   const source = String(row?.metadata?.asset_source || row?.metadata?.asset_type || '').trim();
   if (source) return false;

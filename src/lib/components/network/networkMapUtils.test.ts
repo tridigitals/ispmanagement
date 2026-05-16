@@ -9,6 +9,7 @@ import {
   customersToFeatureCollection,
   getCustomerNodeIconId,
   getCustomerPppoeVisualState,
+  manualNodeTypeOptions,
   nodesToFeatureCollection,
   type NMLink,
   type NMNode,
@@ -71,6 +72,19 @@ describe('network map popup models', () => {
     ]);
 
     expect(fc.features.map((feature) => feature.properties?.id)).toEqual(['router-node-1']);
+  });
+
+  it('keeps manual node picker focused on non-ftth topology node types', () => {
+    expect(manualNodeTypeOptions.map((option) => option.value)).toEqual([
+      'core',
+      'pop',
+      'router',
+      'switch',
+      'tower',
+      'ap',
+      'junction',
+      'customer_premise',
+    ]);
   });
 
   it('builds customer service popups with package and account details', () => {
