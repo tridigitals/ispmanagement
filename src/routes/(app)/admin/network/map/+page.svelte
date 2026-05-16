@@ -11,6 +11,7 @@
   import { can, tenant, user } from '$lib/stores/auth';
   import { toast } from '$lib/stores/toast';
   import {
+    buildNetworkMapAssetCreateState,
     buildNetworkMapAssetEditorState,
     type NetworkMapAssetDraft,
   } from '$lib/components/network/networkMapAssetEditorState';
@@ -100,7 +101,6 @@
   import { parseNetworkAssetMapTarget } from '../assets/networkAssetMapNavigation';
   import { loadNetworkAssetFormModal } from '../assets/networkAssetsPageModules';
   import { parseNetworkAssetCoordinates } from '../assets/networkAssetCoordinates';
-  import { buildNetworkAssetConnectionItems } from '../assets/networkAssetConnections';
   import { buildNetworkAssetSavePayload } from '../assets/networkAssetsPageState';
   import {
     asNumber,
@@ -267,24 +267,13 @@
     geometryText: '',
   });
   let activeAssetConnectSourceId = $state<string | null>(null);
+  let assetCreatePickMode = $state(false);
   let showAssetFormModal = $state(false);
   let savingAssetForm = $state(false);
   let editingAsset = $state<NetworkAssetListItem | null>(null);
-  let assetDraft = $state<NetworkMapAssetDraft>({
-    asset_type: 'odp',
-    name: '',
-    code: '',
-    vendor: '',
-    model: '',
-    serial_number: '',
-    status: 'available',
-    latitude: '',
-    longitude: '',
-    notes: '',
-  });
-  let assetDetailDraft = $state<NetworkAssetDetailDraft>(
-    createNetworkAssetDetailDraft('odp', {}),
-  );
+  const initialAssetCreateState = buildNetworkMapAssetCreateState();
+  let assetDraft = $state<NetworkMapAssetDraft>(initialAssetCreateState.draft);
+  let assetDetailDraft = $state<NetworkAssetDetailDraft>(initialAssetCreateState.detailDraft);
   const editingAssetConnectionItems = $derived.by(() =>
     editingAsset
       ? buildTopologyAssetConnectionItems({
@@ -501,6 +490,13 @@
   });
 
   $effect(() => {
+    if (!map) return;
+    const canvas = map.getCanvas?.();
+    if (!canvas) return;
+    canvas.style.cursor = assetCreatePickMode ? 'crosshair' : '';
+  });
+
+  $effect(() => {
     if (showCreateNodePanel || showLinkModal || showZoneModal || showDeleteConfirm) {
       void ensureDialogComponentsLoaded();
     }
@@ -564,6 +560,23 @@
       center: [lng, lat],
       zoom: Math.max(currentZoom, zoomFloor),
       essential: true,
+    });
+  }
+
+  function focusMapForPopup(lng: number, lat: number, zoomFloor = 13) {
+    if (!map || !Number.isFinite(lng) || !Number.isFinite(lat)) return;
+    const currentZoom = Number.isFinite(map.getZoom()) ? map.getZoom() : zoomFloor;
+    map.easeTo({
+      center: [lng, lat],
+      zoom: Math.max(currentZoom, zoomFloor),
+      duration: 260,
+      essential: true,
+      padding: {
+        top: 156,
+        right: 28,
+        bottom: 28,
+        left: 28,
+      },
     });
   }
 
@@ -869,6 +882,13 @@
   async function handleNodeLayerClick(e: any) {
     const clickedFeature = snapshotMapFeature(e.features?.[0]);
     if (!map || !clickedFeature || !maplibre) return;
+    if (assetCreatePickMode && e.lngLat) {
+      await openCreateTopologyAssetModalAt(Number(e.lngLat.lng), Number(e.lngLat.lat));
+      return;
+    }
+    if (e.lngLat) {
+      focusMapForPopup(Number(e.lngLat.lng), Number(e.lngLat.lat), 13);
+    }
     const props = clickedFeature.properties || {};
     const nodeId = String(props.id || '');
     await updateWorkspaceSelection(
@@ -907,6 +927,13 @@
   async function handleLinkLayerClick(e: any) {
     const clickedFeature = snapshotMapFeature(e.features?.[0]);
     if (!map || !clickedFeature || !maplibre || linkPickMode) return;
+    if (assetCreatePickMode && e.lngLat) {
+      await openCreateTopologyAssetModalAt(Number(e.lngLat.lng), Number(e.lngLat.lat));
+      return;
+    }
+    if (e.lngLat) {
+      focusMapForPopup(Number(e.lngLat.lng), Number(e.lngLat.lat), 13);
+    }
     const props = clickedFeature.properties || {};
     const linkId = String(props.id || '');
     await updateWorkspaceSelection(
@@ -933,6 +960,13 @@
   async function handleRouterLayerClick(e: any) {
     const clickedFeature = snapshotMapFeature(e.features?.[0]);
     if (!map || !clickedFeature || !maplibre) return;
+    if (assetCreatePickMode && e.lngLat) {
+      await openCreateTopologyAssetModalAt(Number(e.lngLat.lng), Number(e.lngLat.lat));
+      return;
+    }
+    if (e.lngLat) {
+      focusMapForPopup(Number(e.lngLat.lng), Number(e.lngLat.lat), 13);
+    }
     const props = clickedFeature.properties || {};
     const routerId = String(props.id || '');
     await updateWorkspaceSelection(
@@ -957,10 +991,15 @@
   async function handleTopologyAssetLayerClick(e: any) {
     const clickedFeature = snapshotMapFeature(e.features?.[0]);
     if (!map || !clickedFeature || !maplibre) return;
+    if (assetCreatePickMode && e.lngLat) {
+      await openCreateTopologyAssetModalAt(Number(e.lngLat.lng), Number(e.lngLat.lat));
+      return;
+    }
     const assetId = String(clickedFeature.properties?.id || '');
     const row = topologyAssetRows.find((candidate) => candidate.id === assetId);
     const coords = coordinateFromGeometry(clickedFeature.feature.geometry as Geometry);
     if (!row || !coords) return;
+    focusMapForPopup(coords[0], coords[1], 14);
     if (linkPickMode) {
       const nodeId = await ensureTopologyAssetNodeId(assetId);
       if (!nodeId) {
@@ -1068,6 +1107,7 @@
 
   async function openEditTopologyAssetModal(assetId: string) {
     if (!canManageFtthAssets) return;
+    assetCreatePickMode = false;
     const asset = topologyAssetItems.find((item) => item.id === assetId);
     if (!asset) {
       toast.error('FTTH asset data tidak ditemukan.');
@@ -1084,6 +1124,42 @@
   function closeAssetFormModal() {
     showAssetFormModal = false;
     editingAsset = null;
+    assetCreatePickMode = false;
+  }
+
+  function toggleAssetCreatePickMode() {
+    if (!canManageFtthAssets) return;
+    activeNodePopup?.remove();
+    if (assetCreatePickMode) {
+      assetCreatePickMode = false;
+      toast.info('Add asset dibatalkan.');
+      return;
+    }
+    showAssetFormModal = false;
+    editingAsset = null;
+    assetCreatePickMode = true;
+    if (linkPickMode) {
+      activeAssetConnectSourceId = null;
+      linkPickMode = false;
+      linkPickStep = 'from';
+      linkPathBendPoints = [];
+      syncLinkDraftPreview();
+    }
+    toast.info('Klik titik di map untuk menambah FTTH asset baru.');
+  }
+
+  async function openCreateTopologyAssetModalAt(lng: number, lat: number) {
+    if (!canManageFtthAssets) return;
+    await ensureAssetFormModalLoaded();
+    editingAsset = null;
+    const next = buildNetworkMapAssetCreateState({
+      latitude: Number(lat.toFixed(7)),
+      longitude: Number(lng.toFixed(7)),
+    });
+    assetDraft = next.draft;
+    assetDetailDraft = next.detailDraft;
+    assetCreatePickMode = false;
+    showAssetFormModal = true;
   }
 
   function handleAssetTypeChange(value: string) {
@@ -1091,10 +1167,10 @@
     assetDetailDraft = createNetworkAssetDetailDraft(value, editingAsset?.metadata || {});
   }
 
-  async function saveTopologyAssetEdit() {
-    if (!editingAsset) return;
+  async function saveTopologyAssetForm() {
     savingAssetForm = true;
     try {
+      const wasEditing = Boolean(editingAsset);
       const detailErrors = validateNetworkAssetDetailDraft(assetDraft.asset_type, assetDetailDraft);
       if (detailErrors.length > 0) {
         throw new Error(detailErrors[0]);
@@ -1125,22 +1201,28 @@
         metadata: buildNetworkAssetMetadata(
           assetDraft.asset_type,
           assetDetailDraft,
-          editingAsset.metadata || {},
+          editingAsset?.metadata || {},
         ),
-        existingRelations: {
-          customer_id: editingAsset.customer_id,
-          location_id: editingAsset.location_id,
-          work_order_id: editingAsset.work_order_id,
-          parent_asset_id: editingAsset.parent_asset_id,
-        },
+        existingRelations: editingAsset
+          ? {
+              customer_id: editingAsset.customer_id,
+              location_id: editingAsset.location_id,
+              work_order_id: editingAsset.work_order_id,
+              parent_asset_id: editingAsset.parent_asset_id,
+            }
+          : undefined,
       });
 
-      await networkAssets.update(editingAsset.id, payload);
+      if (editingAsset) {
+        await networkAssets.update(editingAsset.id, payload);
+      } else {
+        await networkAssets.create(payload);
+      }
       closeAssetFormModal();
       await refreshTopologyAssets(true);
       invalidateMapDataCache();
       await refreshMapData(true);
-      toast.success('FTTH asset updated');
+      toast.success(wasEditing ? 'FTTH asset updated' : 'FTTH asset created');
     } catch (error: any) {
       toast.error(error?.message || 'Failed to save FTTH asset');
     } finally {
@@ -1227,6 +1309,9 @@
             onApplyPickedNodeCoordinates: applyPickedNodeCoordinates,
           });
           if (result.handled) return;
+          if (assetCreatePickMode) {
+            void openCreateTopologyAssetModalAt(Number(e.lngLat.lng), Number(e.lngLat.lat));
+          }
         });
 
         loadedInteractionModule.registerInteractiveLayerHover(map);
@@ -2354,6 +2439,26 @@
         />
       {/if}
 
+      {#if canManageFtthAssets}
+        <button
+          type="button"
+          class="map-add-asset-btn"
+          class:active={assetCreatePickMode}
+          class:controls-open={!controlsHidden}
+          onclick={toggleAssetCreatePickMode}
+        >
+          <Icon name={assetCreatePickMode ? 'x-circle' : 'plus'} size={14} />
+          <span>{assetCreatePickMode ? 'Cancel Add' : 'Add Asset'}</span>
+        </button>
+      {/if}
+
+      {#if assetCreatePickMode}
+        <div class="map-asset-create-hint">
+          <Icon name="map-pin" size={14} />
+          <span>Klik titik lokasi asset baru di map.</span>
+        </div>
+      {/if}
+
       {#if NodePanelComponent}
         <NodePanelComponent
           show={showCreateNodePanel}
@@ -2432,7 +2537,7 @@
     detailDraft={assetDetailDraft}
     onassettypechange={handleAssetTypeChange}
     onclose={closeAssetFormModal}
-    onsave={() => void saveTopologyAssetEdit()}
+    onsave={() => void saveTopologyAssetForm()}
   />
 {/if}
 
@@ -2668,6 +2773,57 @@
     border: 1px solid var(--border-color, #24304a);
     background: var(--panel-bg, #0f1422);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+  }
+
+  .map-add-asset-btn {
+    position: absolute;
+    top: 62px;
+    right: 14px;
+    z-index: 7;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 16px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.92);
+    color: #f8fafc;
+    font-size: 0.82rem;
+    font-weight: 800;
+    box-shadow: 0 14px 28px rgba(2, 6, 23, 0.24);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .map-add-asset-btn.controls-open {
+    top: 66px;
+  }
+
+  .map-add-asset-btn.active {
+    border-color: color-mix(in srgb, var(--color-primary) 52%, rgba(255, 255, 255, 0.18));
+    background: color-mix(in srgb, var(--color-primary) 55%, #0f172a 45%);
+    color: #f8fafc;
+  }
+
+  .map-asset-create-hint {
+    position: absolute;
+    top: 12px;
+    left: 58px;
+    z-index: 8;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid rgba(14, 116, 144, 0.2);
+    border-radius: 12px;
+    background: rgba(248, 250, 252, 0.96);
+    color: #0f172a;
+    font-size: 0.76rem;
+    font-weight: 760;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    backdrop-filter: blur(8px);
   }
 
   @keyframes spin {
@@ -3336,6 +3492,23 @@
       width: calc(100vw - 82px);
     }
 
+    .map-add-asset-btn {
+      top: 58px;
+      right: 12px;
+    }
+
+    .map-add-asset-btn.controls-open {
+      top: calc(min(46vh, 420px) + 22px + max(14px, env(safe-area-inset-top, 0px)) + 44px);
+    }
+
+    .map-asset-create-hint {
+      top: 58px;
+      left: 12px;
+      right: 12px;
+      width: auto;
+      justify-content: center;
+    }
+
     .page-content :global(.network-page-title) {
       font-size: 1.35rem;
     }
@@ -3375,5 +3548,19 @@
       grid-template-columns: 1fr;
     }
 
+    .map-add-asset-btn {
+      right: 10px;
+      min-height: 38px;
+      padding: 0 12px;
+      font-size: 0.74rem;
+    }
+
+    .map-asset-create-hint {
+      top: 56px;
+      left: 10px;
+      right: 10px;
+      font-size: 0.72rem;
+      padding: 9px 10px;
+    }
   }
 </style>

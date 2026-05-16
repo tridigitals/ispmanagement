@@ -1,8 +1,36 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildNetworkMapAssetEditorState } from './networkMapAssetEditorState';
+import {
+  buildNetworkMapAssetCreateState,
+  buildNetworkMapAssetEditorState,
+} from './networkMapAssetEditorState';
 
 describe('buildNetworkMapAssetEditorState', () => {
+  it('builds a default create draft from picked map coordinates', () => {
+    const result = buildNetworkMapAssetCreateState({
+      latitude: -7.2665442,
+      longitude: 110.3840926,
+    });
+
+    expect(result.draft).toEqual({
+      asset_type: 'odp',
+      name: '',
+      code: '',
+      vendor: '',
+      model: '',
+      serial_number: '',
+      status: 'available',
+      latitude: '-7.2665442',
+      longitude: '110.3840926',
+      notes: '',
+    });
+    expect(result.detailDraft).toEqual({
+      total_port_capacity: '',
+      splitter_ratio: '',
+      coverage_area: '',
+    });
+  });
+
   it('builds an edit draft and detail draft from a topology asset row source item', () => {
     const result = buildNetworkMapAssetEditorState({
       id: 'asset-1',

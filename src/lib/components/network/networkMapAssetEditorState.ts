@@ -3,6 +3,7 @@ import {
   createNetworkAssetDetailDraft,
   type NetworkAssetDetailDraft,
 } from '$lib/utils/networkAssetDetails';
+import { getDefaultNetworkAssetStatus } from '$lib/utils/networkAssetTypes';
 
 export type NetworkMapAssetDraft = {
   asset_type: string;
@@ -16,6 +17,36 @@ export type NetworkMapAssetDraft = {
   longitude: string;
   notes: string;
 };
+
+export function buildNetworkMapAssetCreateState(coordinates?: {
+  latitude?: number | null;
+  longitude?: number | null;
+}): {
+  draft: NetworkMapAssetDraft;
+  detailDraft: NetworkAssetDetailDraft;
+} {
+  return {
+    draft: {
+      asset_type: 'odp',
+      name: '',
+      code: '',
+      vendor: '',
+      model: '',
+      serial_number: '',
+      status: getDefaultNetworkAssetStatus(),
+      latitude:
+        coordinates?.latitude != null && Number.isFinite(coordinates.latitude)
+          ? String(coordinates.latitude)
+          : '',
+      longitude:
+        coordinates?.longitude != null && Number.isFinite(coordinates.longitude)
+          ? String(coordinates.longitude)
+          : '',
+      notes: '',
+    },
+    detailDraft: createNetworkAssetDetailDraft('odp', {}),
+  };
+}
 
 export function buildNetworkMapAssetEditorState(asset: NetworkAssetListItem): {
   draft: NetworkMapAssetDraft;
