@@ -7,7 +7,7 @@ use crate::models::{
 use std::collections::{HashMap, HashSet};
 
 const TOPOLOGY_SYNC_NETWORK_ASSET_TYPES: &[&str] =
-    &["olt", "odc", "odp", "fat", "nap", "switch", "splitter", "odf"];
+    &["olt", "odc", "odp", "fat", "nap", "switch", "splitter"];
 
 impl NetworkMappingService {
     #[cfg(test)]
@@ -797,8 +797,8 @@ mod tests {
     fn sync_topology_asset_type_covers_current_ftth_assets() {
         assert!(NetworkMappingService::is_sync_topology_asset_type("olt"));
         assert!(NetworkMappingService::is_sync_topology_asset_type("splitter"));
-        assert!(NetworkMappingService::is_sync_topology_asset_type("odf"));
         assert!(NetworkMappingService::is_sync_topology_asset_type("switch"));
+        assert!(!NetworkMappingService::is_sync_topology_asset_type("odf"));
         assert!(!NetworkMappingService::is_sync_topology_asset_type("ont"));
         assert!(!NetworkMappingService::is_sync_topology_asset_type("router"));
     }

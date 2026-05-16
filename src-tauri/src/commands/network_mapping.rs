@@ -59,6 +59,7 @@ fn list_query(
     status: Option<String>,
     kind: Option<String>,
     bbox: Option<String>,
+    include_legacy_ftth: Option<bool>,
 ) -> Result<ListQuery, String> {
     Ok(ListQuery {
         q,
@@ -67,6 +68,7 @@ fn list_query(
         status,
         kind,
         bbox: parse_bbox(bbox)?,
+        include_legacy_ftth: include_legacy_ftth.unwrap_or(false),
     })
 }
 
@@ -79,6 +81,7 @@ pub async fn list_network_nodes(
     status: Option<String>,
     kind: Option<String>,
     bbox: Option<String>,
+    include_legacy_ftth: Option<bool>,
     auth: State<'_, AuthService>,
     network_mapping: State<'_, NetworkMappingService>,
 ) -> Result<PaginatedResponse<NetworkNode>, String> {
@@ -87,7 +90,7 @@ pub async fn list_network_nodes(
         .list_nodes(
             &claims.sub,
             &tenant_id,
-            list_query(q, page, per_page, status, kind, bbox)?,
+            list_query(q, page, per_page, status, kind, bbox, include_legacy_ftth)?,
         )
         .await
         .map_err(|e| e.to_string())
@@ -194,7 +197,7 @@ pub async fn list_network_links(
         .list_links(
             &claims.sub,
             &tenant_id,
-            list_query(q, page, per_page, status, kind, bbox)?,
+            list_query(q, page, per_page, status, kind, bbox, None)?,
         )
         .await
         .map_err(|e| e.to_string())
@@ -444,7 +447,7 @@ pub async fn list_service_zones(
         .list_zones(
             &claims.sub,
             &tenant_id,
-            list_query(q, page, per_page, status, kind, bbox)?,
+            list_query(q, page, per_page, status, kind, bbox, None)?,
         )
         .await
         .map_err(|e| e.to_string())

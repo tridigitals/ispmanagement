@@ -2115,6 +2115,7 @@
           bbox,
           page: 1,
           per_page: 50,
+          include_legacy_ftth: true,
         });
         const fetchedRows = ((response.data || []) as NMNode[]).filter(
           (row) => String(row.metadata?.asset_source || row.metadata?.asset_type || '').trim() === 'network_asset',

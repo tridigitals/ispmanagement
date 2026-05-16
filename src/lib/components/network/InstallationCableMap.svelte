@@ -256,7 +256,7 @@
 
   async function fetchTopologyData() {
     const [nodesRes, linksRes] = await Promise.all([
-      api.networkMapping.nodes.list({ page: 1, per_page: 1000 }),
+      api.networkMapping.nodes.list({ page: 1, per_page: 1000, include_legacy_ftth: true }),
       api.networkMapping.links.list({ page: 1, per_page: 1000 }),
     ]);
     return {

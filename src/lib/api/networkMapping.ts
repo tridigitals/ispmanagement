@@ -17,6 +17,7 @@ export const networkMapping = {
         status?: string;
         kind?: string;
         bbox?: string;
+        include_legacy_ftth?: boolean;
       },
       options?: { signal?: AbortSignal },
     ): Promise<PaginatedResponse<any>> =>

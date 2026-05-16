@@ -182,6 +182,7 @@ impl NetworkMappingService {
         let offset = (page - 1) * per_page;
         let (min_lng, min_lat, max_lng, max_lat) = q.bbox.unwrap_or((0.0, 0.0, 0.0, 0.0));
         let has_bbox = q.bbox.is_some();
+        let include_legacy_ftth = q.include_legacy_ftth;
 
         let total: i64 = sqlx::query_scalar(
             r#"
@@ -195,6 +196,10 @@ impl NetworkMappingService {
                 $5::bool = false
                 OR ST_Intersects(n.geom, ST_MakeEnvelope($6, $7, $8, $9, 4326))
               )
+              AND (
+                $10::bool = true
+                OR LOWER(n.node_type) NOT IN ('olt', 'odc', 'odp', 'fat', 'nap', 'splitter')
+              )
             "#,
         )
         .bind(tenant_id)
@@ -206,6 +211,7 @@ impl NetworkMappingService {
         .bind(min_lat)
         .bind(max_lng)
         .bind(max_lat)
+        .bind(include_legacy_ftth)
         .fetch_one(&self.pool)
         .await
         .map_err(AppError::Database)?;
@@ -234,8 +240,12 @@ impl NetworkMappingService {
                 $5::bool = false
                 OR ST_Intersects(n.geom, ST_MakeEnvelope($6, $7, $8, $9, 4326))
               )
+              AND (
+                $10::bool = true
+                OR LOWER(n.node_type) NOT IN ('olt', 'odc', 'odp', 'fat', 'nap', 'splitter')
+              )
             ORDER BY n.updated_at DESC
-            LIMIT $10 OFFSET $11
+            LIMIT $11 OFFSET $12
             "#,
         )
         .bind(tenant_id)
@@ -247,6 +257,7 @@ impl NetworkMappingService {
         .bind(min_lat)
         .bind(max_lng)
         .bind(max_lat)
+        .bind(include_legacy_ftth)
         .bind(per_page as i64)
         .bind(offset as i64)
         .fetch_all(&self.pool)

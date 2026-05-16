@@ -58,7 +58,10 @@ describe('fetchNetworkMapData', () => {
       includeRouters: false,
     });
 
-    expect(listNodes).toHaveBeenCalledOnce();
+    expect(listNodes).toHaveBeenCalledWith(
+      expect.objectContaining({ include_legacy_ftth: true }),
+      expect.anything(),
+    );
     expect(listLinks).toHaveBeenCalledOnce();
     expect(listZones).toHaveBeenCalledOnce();
     expect(listRouters).not.toHaveBeenCalled();

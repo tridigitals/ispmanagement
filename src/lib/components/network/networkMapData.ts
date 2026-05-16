@@ -25,6 +25,7 @@ export type NetworkMapQueryParams = {
   bbox: string;
   page: number;
   per_page: number;
+  include_legacy_ftth?: boolean;
 };
 
 export type NetworkMapCacheEntry = {
@@ -179,7 +180,13 @@ export async function fetchNetworkMapData(
 ): Promise<NetworkMapFetchResult> {
   const includeRouters = options.includeRouters ?? true;
   const [nodesRes, linksRes, zonesRes, routersRes] = await Promise.all([
-    networkMapping.nodes.list(params, { signal }),
+    networkMapping.nodes.list(
+      {
+        ...params,
+        include_legacy_ftth: params.include_legacy_ftth ?? true,
+      },
+      { signal },
+    ),
     networkMapping.links.list(params, { signal }),
     networkMapping.zones.list(params, { signal }),
     includeRouters ? mikrotik.routers.list() : Promise.resolve([]),

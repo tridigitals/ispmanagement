@@ -55,6 +55,7 @@ struct ListParams {
     status: Option<String>,
     kind: Option<String>,
     bbox: Option<String>,
+    include_legacy_ftth: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -130,6 +131,7 @@ fn to_list_query(q: ListParams) -> AppResult<ListQuery> {
         status: q.status,
         kind: q.kind,
         bbox: parse_bbox(q.bbox)?,
+        include_legacy_ftth: q.include_legacy_ftth.unwrap_or(false),
     })
 }
 

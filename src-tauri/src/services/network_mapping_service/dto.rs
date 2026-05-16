@@ -6,6 +6,7 @@ pub struct ListQuery {
     pub status: Option<String>,
     pub kind: Option<String>,
     pub bbox: Option<(f64, f64, f64, f64)>,
+    pub include_legacy_ftth: bool,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
