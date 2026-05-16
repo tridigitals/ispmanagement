@@ -46,6 +46,7 @@ export function buildLinkGeometryDraftText(args: {
   nodeRows: NMNode[];
   linkForm: NetworkMapLinkForm;
   linkPathBendPoints: Array<[number, number]>;
+  sourceCoordOverride?: [number, number] | null;
 }) {
   const coords =
     args.linkPickDrawMode === 'path'
@@ -54,6 +55,7 @@ export function buildLinkGeometryDraftText(args: {
           args.linkForm,
           args.linkPathBendPoints,
           Boolean(args.linkForm.to_node_id),
+          args.sourceCoordOverride,
         )
       : ((buildDefaultLineGeometry(
           args.nodeRows,
@@ -71,6 +73,7 @@ export function buildLinkDraftPreviewCollections(args: {
   nodeRows: NMNode[];
   linkForm: NetworkMapLinkForm;
   linkPathBendPoints: Array<[number, number]>;
+  sourceCoordOverride?: [number, number] | null;
 }) {
   const lineFc: FeatureCollection = emptyFeatureCollection();
   const pointsFc: FeatureCollection = emptyFeatureCollection();
@@ -86,12 +89,14 @@ export function buildLinkDraftPreviewCollections(args: {
           args.linkForm,
           args.linkPathBendPoints,
           false,
+          args.sourceCoordOverride,
         )
       : currentDraftPathCoords(
           args.nodeRows,
           args.linkForm,
           args.linkPathBendPoints,
           Boolean(args.linkForm.to_node_id),
+          args.sourceCoordOverride,
         );
 
   if (lineCoords.length >= 2) {
