@@ -2,6 +2,7 @@ import type {
   CreateNetworkAssetRequest,
   NetworkAssetListItem,
 } from '$lib/api/client';
+import { buildNetworkAssetOccupancyLabel } from '$lib/utils/networkAssetOccupancy';
 
 export type SelectOption = {
   value: string;
@@ -56,6 +57,43 @@ export function buildNetworkAssetStats(assets: NetworkAssetListItem[]) {
   };
 }
 
+const DISTRIBUTION_ASSET_TYPES = new Set(['olt', 'odc', 'odp', 'fat', 'nap', 'switch']);
+
+export function isDistributionAssetType(assetType: string): boolean {
+  return DISTRIBUTION_ASSET_TYPES.has(String(assetType || '').trim());
+}
+
+export function buildNetworkAssetRelationText(
+  asset: Pick<NetworkAssetListItem, 'asset_type' | 'customer_name' | 'parent_asset_name'>,
+): string {
+  if (isDistributionAssetType(asset.asset_type)) {
+    const upstream = String(asset.parent_asset_name || '').trim();
+    return upstream ? `Upstream: ${upstream}` : 'Topology-managed';
+  }
+
+  return String(asset.customer_name || '').trim() || '—';
+}
+
+export function buildNetworkAssetTopologyText(
+  asset: Pick<
+    NetworkAssetListItem,
+    'asset_type' | 'location_label' | 'parent_asset_name' | 'id' | 'metadata'
+  >,
+  allAssets: Pick<
+    NetworkAssetListItem,
+    'id' | 'asset_type' | 'parent_asset_id' | 'status' | 'customer_id' | 'location_id' | 'metadata'
+  >[],
+): string {
+  if (isDistributionAssetType(asset.asset_type)) {
+    const occupancy = buildNetworkAssetOccupancyLabel(asset, allAssets);
+    if (occupancy) return occupancy;
+    const upstream = String(asset.parent_asset_name || '').trim();
+    return upstream ? 'Linked upstream' : 'No topology link yet';
+  }
+
+  return String(asset.location_label || '').trim() || '—';
+}
+
 export function buildNetworkAssetSavePayload(args: {
   draft: {
     asset_type: string;
@@ -65,10 +103,6 @@ export function buildNetworkAssetSavePayload(args: {
     model: string;
     serial_number: string;
     status: string;
-    customer_id: string;
-    location_id: string;
-    work_order_id: string;
-    parent_asset_id: string;
     latitude: string;
     longitude: string;
     notes: string;

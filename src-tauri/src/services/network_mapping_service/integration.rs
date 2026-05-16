@@ -497,6 +497,9 @@ impl NetworkMappingService {
                 &eligible_customer_location_ids,
             )
             .await?;
+        let deduped_customer_nodes = self
+            .dedupe_system_managed_nodes_by_asset_source(tenant_id, "customer_location")
+            .await?;
 
         let mut router_nodes_created = 0_i64;
         let mut router_nodes_updated = 0_i64;
@@ -604,7 +607,8 @@ impl NetworkMappingService {
                 + customer_nodes_updated
                 + pruned_asset_nodes as i64
                 + deduped_asset_nodes as i64
-                + pruned_customer_nodes as i64,
+                + pruned_customer_nodes as i64
+                + deduped_customer_nodes as i64,
         })
     }
 

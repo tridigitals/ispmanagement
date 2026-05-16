@@ -192,4 +192,44 @@ describe('api client auth-expired handling', () => {
     vi.runAllTimers();
     expect(assign).not.toHaveBeenCalled();
   });
+
+  it('does not log aborted external requests as API errors', async () => {
+    setupBrowser('/admin/network/map');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_input, init) => {
+        const signal = (init as RequestInit | undefined)?.signal;
+        await new Promise((_, reject) => {
+          if (signal?.aborted) {
+            reject(new DOMException('The operation was aborted.', 'AbortError'));
+            return;
+          }
+          signal?.addEventListener(
+            'abort',
+            () => reject(new DOMException('The operation was aborted.', 'AbortError')),
+            { once: true },
+          );
+        });
+        return new Response('{}', {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }),
+    );
+
+    const controller = new AbortController();
+    const { safeInvoke } = await import('./core');
+    const request = safeInvoke('list_network_nodes', {
+      token: 'token-1',
+      page: 1,
+      per_page: 10,
+      __signal: controller.signal,
+    });
+    controller.abort();
+
+    await expect(request).rejects.toThrow('Request canceled');
+    expect(consoleError).not.toHaveBeenCalled();
+  });
 });

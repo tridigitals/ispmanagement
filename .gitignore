@@ -18,3 +18,5 @@ target-radius-*/
 .worktrees/
 MixRadiusDB_Gasal_2026-04-11_101103.sql.gz
 target/
+.playwright-mcp/
+src-tauri/target*/

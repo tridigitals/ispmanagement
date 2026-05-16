@@ -75,7 +75,7 @@ impl NetworkMappingService {
         tenant_id: &str,
         asset_source: &str,
     ) -> AppResult<u64> {
-        let rows_affected = if asset_source == "network_asset" {
+        let rows_affected = if asset_source == "network_asset" || asset_source == "customer_location" {
             sqlx::query(
                 r#"
                 DELETE FROM network_nodes n

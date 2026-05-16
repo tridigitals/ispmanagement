@@ -152,6 +152,29 @@ export function buildConnectFromNodeResult(nodeId: string, nodeRows: NMNode[]) {
   };
 }
 
+export function resolveCanonicalCustomerNodeId(
+  nodeId: string,
+  nodeRows: NMNode[],
+  customerRows: NMNode[],
+) {
+  const selected = nodeRows.find((row) => row.id === nodeId);
+  if (!selected || !isCustomerNodeLike(selected)) return nodeId;
+
+  const selectedLocationId = String(selected.metadata?.location_id || '').trim();
+  const selectedCustomerId = String(selected.metadata?.customer_id || '').trim();
+  if (!selectedLocationId && !selectedCustomerId) return nodeId;
+
+  const preferred = (customerRows || []).find((row) => {
+    if (!isCustomerNodeLike(row)) return false;
+    const locationId = String(row.metadata?.location_id || '').trim();
+    if (selectedLocationId && locationId === selectedLocationId) return true;
+    const customerId = String(row.metadata?.customer_id || '').trim();
+    return !!selectedCustomerId && customerId === selectedCustomerId;
+  });
+
+  return preferred?.id || nodeId;
+}
+
 export function buildHandlePickedLinkNodeResult(args: {
   nodeId: string;
   linkPickMode: boolean;
@@ -220,4 +243,8 @@ export function buildHandlePickedLinkNodeResult(args: {
     showLinkModal: true,
     toastMessage: 'Endpoints selected from map.',
   };
+}
+
+function isCustomerNodeLike(row: NMNode | null | undefined) {
+  return row?.node_type === 'customer_premise' || row?.node_type === 'customer_endpoint';
 }

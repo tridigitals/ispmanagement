@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildNetworkAssetRelationText,
   buildNetworkAssetStats,
+  buildNetworkAssetTopologyText,
   buildNetworkAssetSavePayload,
   filterNetworkAssets,
   normalizeNetworkAssetSearch,
@@ -83,6 +85,37 @@ describe('network assets page state', () => {
     });
   });
 
+  it('renders distribution assets with upstream relation text instead of a single customer binding', () => {
+    expect(
+      buildNetworkAssetRelationText({
+        ...rows[0],
+        parent_asset_name: 'ODC Metro A',
+      }),
+    ).toBe('Upstream: ODC Metro A');
+
+    expect(buildNetworkAssetRelationText(rows[1])).toBe('Andi');
+  });
+
+  it('renders topology text for distribution assets from occupancy before location labels', () => {
+    expect(
+      buildNetworkAssetTopologyText(
+        {
+          ...rows[0],
+          metadata: { total_port_capacity: '8' },
+        },
+        [
+          rows[0],
+          {
+            ...rows[1],
+            parent_asset_id: '1',
+          },
+        ],
+      ),
+    ).toBe('1/8 used');
+
+    expect(buildNetworkAssetTopologyText(rows[1], rows as any)).toBe('Rumah');
+  });
+
   it('builds a create payload without operational relations from the manual form', () => {
     expect(
       buildNetworkAssetSavePayload({
@@ -94,10 +127,6 @@ describe('network assets page state', () => {
           model: '',
           serial_number: '',
           status: 'available',
-          customer_id: '',
-          location_id: '',
-          work_order_id: '',
-          parent_asset_id: '',
           latitude: '-7.2647003',
           longitude: '110.3861725',
           notes: '',
@@ -127,10 +156,6 @@ describe('network assets page state', () => {
           model: '',
           serial_number: 'SN-123',
           status: 'reserved',
-          customer_id: 'ignored-in-ui',
-          location_id: 'ignored-in-ui',
-          work_order_id: 'ignored-in-ui',
-          parent_asset_id: 'ignored-in-ui',
           latitude: '',
           longitude: '',
           notes: '',

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildStraightLinkGeometryText,
+  resolveCanonicalCustomerNodeId,
   resolveLinkGeometryTextForSubmit,
   type NetworkMapLinkForm,
 } from './networkMapLinkPicking';
@@ -61,5 +62,46 @@ describe('resolveLinkGeometryTextForSubmit', () => {
     const resolved = resolveLinkGeometryTextForSubmit(makeLinkForm(emptyGeometry), nodes);
 
     expect(resolved).toBe(buildStraightLinkGeometryText(nodes, 'node-a', 'node-b'));
+  });
+});
+
+describe('resolveCanonicalCustomerNodeId', () => {
+  it('prefers the visible deduped customer marker node for the same location', () => {
+    const nodeRows: NMNode[] = [
+      {
+        id: 'customer-duplicate-a',
+        name: 'Handono - Lokasi Utama',
+        node_type: 'customer_premise',
+        status: 'active',
+        lat: -7.264948,
+        lng: 110.383801,
+        metadata: {
+          customer_id: 'cust-1',
+          location_id: 'loc-1',
+        },
+      },
+      {
+        id: 'customer-duplicate-b',
+        name: 'Handono - Lokasi Utama',
+        node_type: 'customer_premise',
+        status: 'active',
+        lat: -7.264948,
+        lng: 110.383801,
+        metadata: {
+          customer_id: 'cust-1',
+          location_id: 'loc-1',
+        },
+      },
+    ];
+
+    const customerRows: NMNode[] = [
+      {
+        ...nodeRows[1],
+      },
+    ];
+
+    expect(resolveCanonicalCustomerNodeId('customer-duplicate-a', nodeRows, customerRows)).toBe(
+      'customer-duplicate-b',
+    );
   });
 });

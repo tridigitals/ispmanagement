@@ -1,19 +1,39 @@
 import type { NetworkAssetGroup, NetworkAssetStatus, NetworkAssetType } from '$lib/api/client';
 
+export type NetworkAssetTypeGroup = {
+  label: string;
+  types: NetworkAssetType[];
+};
+
 export const NETWORK_ASSET_TYPES: NetworkAssetType[] = [
   'olt',
   'odc',
+  'fat',
   'odp',
+  'nap',
   'splitter',
+  'odf',
   'ont',
   'onu',
-  'fat',
-  'nap',
+  'media_converter',
   'switch',
   'router',
-  'media_converter',
-  'odf',
   'ups',
+];
+
+export const NETWORK_ASSET_TYPE_GROUPS: NetworkAssetTypeGroup[] = [
+  {
+    label: 'FTTH Distribution',
+    types: ['olt', 'odc', 'fat', 'odp', 'nap', 'splitter', 'odf'],
+  },
+  {
+    label: 'Customer Endpoint',
+    types: ['ont', 'onu', 'media_converter'],
+  },
+  {
+    label: 'Infrastructure Device',
+    types: ['switch', 'router', 'ups'],
+  },
 ];
 
 export const NETWORK_ASSET_STATUSES: NetworkAssetStatus[] = [

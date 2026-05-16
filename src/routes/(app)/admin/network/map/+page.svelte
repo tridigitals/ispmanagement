@@ -5,10 +5,16 @@
   import { onDestroy, onMount, type Component } from 'svelte';
   import { t } from 'svelte-i18n';
   import { customers } from '$lib/api/customers';
+  import { networkMapping } from '$lib/api/networkMapping';
   import { networkAssets } from '$lib/api/networkAssets';
   import type { NetworkAssetListItem } from '$lib/api/types';
   import { can, tenant, user } from '$lib/stores/auth';
   import { toast } from '$lib/stores/toast';
+  import {
+    buildNetworkMapAssetEditorState,
+    type NetworkMapAssetDraft,
+  } from '$lib/components/network/networkMapAssetEditorState';
+  import { buildTopologyAssetConnectionItems } from '$lib/components/network/networkMapAssetConnections';
   import {
     buildLinkDraftForm,
     buildZoneDraftForm,
@@ -31,7 +37,7 @@
   import {
     buildTopologyAssetConnectionOperations,
     buildTopologyAssetConnectDraft,
-    findTopologyAssetNodeId,
+    resolveTopologyAssetNodeId,
   } from '$lib/components/network/networkMapAssetConnect';
   import {
     buildDefaultLineGeometry,
@@ -56,6 +62,7 @@
   import {
     buildConnectFromNodeResult,
     buildHandlePickedLinkNodeResult,
+    resolveCanonicalCustomerNodeId,
     buildSetLinkDrawModeResult,
     buildStraightLinkGeometryText,
     buildToggleLinkPickResult,
@@ -64,6 +71,8 @@
     resolveLinkGeometryTextForSubmit,
     type LinkPickDrawMode,
   } from '$lib/components/network/networkMapLinkPicking';
+  import { shouldShowManualEndpointSection } from '$lib/components/network/networkMapLinkModalState';
+  import { buildLinkLayerVisibilityState } from '$lib/components/network/networkMapLinkVisibility';
   import {
     applyCachedMapData,
     applyFetchedMapData,
@@ -82,7 +91,17 @@
     emitWorkOrderUpdatedToParent,
     resolveInstallationTargetMarker,
   } from '$lib/components/network/networkMapInstallation';
+  import {
+    buildNetworkAssetMetadata,
+    createNetworkAssetDetailDraft,
+    validateNetworkAssetDetailDraft,
+    type NetworkAssetDetailDraft,
+  } from '$lib/utils/networkAssetDetails';
   import { parseNetworkAssetMapTarget } from '../assets/networkAssetMapNavigation';
+  import { loadNetworkAssetFormModal } from '../assets/networkAssetsPageModules';
+  import { parseNetworkAssetCoordinates } from '../assets/networkAssetCoordinates';
+  import { buildNetworkAssetConnectionItems } from '../assets/networkAssetConnections';
+  import { buildNetworkAssetSavePayload } from '../assets/networkAssetsPageState';
   import {
     asNumber,
     customersToFeatureCollection,
@@ -93,6 +112,7 @@
     linkStatusOptions,
     linkTypeOptions,
     nodeTypeOptions,
+    nodesToFeatureCollection,
     parseGeometryText,
     prettyGeometry,
     systemManagedNodeSourceLabel,
@@ -163,6 +183,7 @@
   let FloatingControlsComponent = $state<Component | null>(null);
   let NodePanelComponent = $state<Component | null>(null);
   let LinkModalComponent = $state<Component | null>(null);
+  let AssetFormModalComponent = $state<Component | null>(null);
   let ZoneModalComponent = $state<Component | null>(null);
   let ConfirmDialogComponent = $state<Component | null>(null);
 
@@ -246,6 +267,35 @@
     geometryText: '',
   });
   let activeAssetConnectSourceId = $state<string | null>(null);
+  let showAssetFormModal = $state(false);
+  let savingAssetForm = $state(false);
+  let editingAsset = $state<NetworkAssetListItem | null>(null);
+  let assetDraft = $state<NetworkMapAssetDraft>({
+    asset_type: 'odp',
+    name: '',
+    code: '',
+    vendor: '',
+    model: '',
+    serial_number: '',
+    status: 'available',
+    latitude: '',
+    longitude: '',
+    notes: '',
+  });
+  let assetDetailDraft = $state<NetworkAssetDetailDraft>(
+    createNetworkAssetDetailDraft('odp', {}),
+  );
+  const editingAssetConnectionItems = $derived.by(() =>
+    editingAsset
+      ? buildTopologyAssetConnectionItems({
+          asset: editingAsset,
+          topologyAssets: topologyAssetItems,
+          assetNodeIdsByAssetId: topologyAssetNodeIdCache,
+          nodeRows,
+          linkRows,
+        })
+      : [],
+  );
 
   let workspaceState = $state<NetworkMapWorkspaceState>(
     createNetworkMapWorkspaceState({
@@ -266,6 +316,7 @@
   let activeNodePopup: import('maplibre-gl').Popup | null = null;
   let activeDataAbortController: AbortController | null = null;
   let backgroundAssetSyncPromise: Promise<boolean> | null = null;
+  const topologyAssetNodeIdCache = new Map<string, string>();
   let didInitialFitToMarkers = false;
   let initialExtentLoaded = false;
   let assetFocusApplied = false;
@@ -286,6 +337,7 @@
   const satelliteMaxZoom = hasHiResSatellite ? 21 : 18;
 
   const canManageTopology = $derived($can('manage', 'network_topology'));
+  const canManageFtthAssets = $derived($can('manage', 'ftth_assets'));
   const canReadRouterInventory = $derived(
     $can('read', 'router_inventory') || $can('manage', 'router_inventory'),
   );
@@ -589,29 +641,48 @@
     row: TopologyAssetRow,
     closeBtnId: string,
     connectBtnId: string,
+    editBtnId: string,
   ) {
-    const subtitle = [row.assetTypeLabel, row.locationLabel].filter(Boolean).join(' • ') || row.assetTypeLabel;
-    const detailRows = [
-      row.code ? { label: 'Code', value: row.code } : null,
-      row.serialNumber ? { label: 'Serial', value: row.serialNumber } : null,
-      row.customerName ? { label: 'Customer', value: row.customerName } : null,
-      row.locationLabel ? { label: 'Location', value: row.locationLabel } : null,
+    const subtitle = row.locationLabel || row.assetTypeLabel;
+    const portUsage =
+      row.portCapacity != null && row.portCapacity > 0
+        ? {
+            total: row.portCapacity,
+            used: Math.max(row.portsUsed ?? 0, 0),
+            available: Math.max(row.portsAvailable ?? row.portCapacity - (row.portsUsed ?? 0), 0),
+          }
+        : null;
+    const usagePercent = portUsage ? Math.min((portUsage.used / portUsage.total) * 100, 100) : 0;
+    const portTone =
+      !portUsage || portUsage.used <= 0
+        ? 'muted'
+        : portUsage.available <= 0
+          ? 'danger'
+          : usagePercent >= 75
+            ? 'warn'
+            : 'ok';
+    const portStatusLabel =
+      !portUsage
+        ? ''
+        : portUsage.available <= 0
+          ? 'Full'
+          : portUsage.used <= 0
+            ? 'Ready'
+            : `${portUsage.available} port left`;
+    const relationRows = [
       {
         label: 'Upstream',
-        value: row.hasUpstreamRelation ? 'Linked to parent asset' : 'Not linked yet',
+        tone: row.hasUpstreamRelation ? 'ok' : 'muted',
+        value: row.hasUpstreamRelation ? 'Linked' : 'Not linked',
       },
       row.assetType === 'odp'
         ? {
             label: 'Customer Drop',
-            value: row.hasCustomerRelation ? 'Linked to customer/service side' : 'Not linked yet',
+            tone: row.hasCustomerRelation ? 'ok' : 'muted',
+            value: row.hasCustomerRelation ? 'Linked' : 'Not linked',
           }
         : null,
-      row.portCapacity != null ? { label: 'Port Capacity', value: String(row.portCapacity) } : null,
-      row.portsUsed != null ? { label: 'Ports Used', value: String(row.portsUsed) } : null,
-      row.portsAvailable != null
-        ? { label: 'Ports Available', value: String(row.portsAvailable) }
-        : null,
-    ].filter(Boolean) as Array<{ label: string; value: string }>;
+    ].filter(Boolean) as Array<{ label: string; tone: string; value: string }>;
 
     return `
       <div class="nm-popup-card nm-popup-card-link">
@@ -623,24 +694,34 @@
           </div>
           <span class="nm-popup-badge ${popupToneForAssetStatus(row.status)}">${escapePopupValue(row.status)}</span>
         </div>
-        <div class="nm-popup-summary nm-popup-summary-link">
-          <div class="nm-popup-summary-item">
-            <div class="nm-popup-summary-label">Marker</div>
-            <div class="nm-popup-summary-value">${escapePopupValue(row.markerLabel)}</div>
-          </div>
-          <div class="nm-popup-summary-item">
-            <div class="nm-popup-summary-label">Type</div>
-            <div class="nm-popup-summary-value">${escapePopupValue(row.assetTypeLabel)}</div>
-          </div>
-        </div>
         ${
-          detailRows.length
-            ? `<div class="nm-popup-grid">${detailRows
+          portUsage
+            ? `<div class="nm-popup-usage-card">
+                <div class="nm-popup-usage-head">
+                  <div>
+                    <div class="nm-popup-usage-label">Port Usage</div>
+                    <div class="nm-popup-usage-value">${portUsage.used}/${portUsage.total} used</div>
+                  </div>
+                  <span class="nm-popup-badge ${portTone}">${escapePopupValue(portStatusLabel)}</span>
+                </div>
+                <div class="nm-popup-usage-bar" aria-hidden="true">
+                  <span class="nm-popup-usage-fill ${portTone}" style="width: ${usagePercent}%"></span>
+                </div>
+                <div class="nm-popup-usage-meta">
+                  <span>${portUsage.available} available</span>
+                  <span>${portUsage.total} total</span>
+                </div>
+              </div>`
+            : ''
+        }
+        ${
+          relationRows.length
+            ? `<div class="nm-popup-relation-list">${relationRows
                 .map(
                   (item) => `
-                    <div>
+                    <div class="nm-popup-relation-row">
                       <div class="nm-popup-label">${escapePopupValue(item.label)}</div>
-                      <div class="nm-popup-value">${escapePopupValue(item.value)}</div>
+                      <span class="nm-popup-badge ${escapePopupValue(item.tone)}">${escapePopupValue(item.value)}</span>
                     </div>
                   `,
                 )
@@ -648,6 +729,11 @@
             : ''
         }
         <div class="nm-popup-actions nm-popup-actions-link">
+          ${
+            canManageFtthAssets
+              ? `<button id="${editBtnId}" class="nm-popup-btn" type="button">Edit</button>`
+              : ''
+          }
           <button id="${connectBtnId}" class="nm-popup-btn primary" type="button">Connect</button>
           <button id="${closeBtnId}" class="nm-popup-btn nm-popup-btn-close" type="button">Close</button>
         </div>
@@ -890,6 +976,7 @@
     activeNodePopup?.remove();
     const closeBtnId = `nm-topology-asset-close-${Math.random().toString(36).slice(2, 10)}`;
     const connectBtnId = `nm-topology-asset-connect-${Math.random().toString(36).slice(2, 10)}`;
+    const editBtnId = `nm-topology-asset-edit-${Math.random().toString(36).slice(2, 10)}`;
     const popup = new maplibre.Popup({
       closeButton: false,
       closeOnClick: true,
@@ -897,7 +984,7 @@
       offset: 14,
     })
       .setLngLat(coords)
-      .setHTML(buildTopologyAssetPopupHtml(row, closeBtnId, connectBtnId));
+      .setHTML(buildTopologyAssetPopupHtml(row, closeBtnId, connectBtnId, editBtnId));
     let cleanupNavigationDismiss: (() => void) | null = null;
 
     popup.on('open', () => {
@@ -914,9 +1001,14 @@
       });
       const closeBtn = document.getElementById(closeBtnId) as HTMLButtonElement | null;
       const connectBtn = document.getElementById(connectBtnId) as HTMLButtonElement | null;
+      const editBtn = document.getElementById(editBtnId) as HTMLButtonElement | null;
       connectBtn?.addEventListener('click', () => {
         popup.remove();
         void startConnectFromTopologyAsset(assetId);
+      });
+      editBtn?.addEventListener('click', () => {
+        popup.remove();
+        void openEditTopologyAssetModal(assetId);
       });
       closeBtn?.addEventListener('click', () => popup.remove());
     });
@@ -951,7 +1043,11 @@
         per_page: 500,
       });
       topologyAssetItems = (response.data || []) as NetworkAssetListItem[];
-      topologyAssetRows = buildTopologyAssetRows(topologyAssetItems);
+      topologyAssetRows = buildTopologyAssetRows(topologyAssetItems, {
+        assetNodeIdsByAssetId: topologyAssetNodeIdCache,
+        nodeRows,
+        linkRows,
+      });
       lastTopologyAssetsLoadedAt = Date.now();
       replaceTopologyAssetOverlay(topologyAssetsToFeatureCollection(topologyAssetRows));
       syncTopologyAssetLinkOverlay();
@@ -961,6 +1057,94 @@
       console.error(error);
     } finally {
       refreshingTopologyAssets = false;
+    }
+  }
+
+  async function ensureAssetFormModalLoaded() {
+    if (AssetFormModalComponent) return;
+    const module = await loadNetworkAssetFormModal();
+    AssetFormModalComponent = module.NetworkAssetFormModalComponent;
+  }
+
+  async function openEditTopologyAssetModal(assetId: string) {
+    if (!canManageFtthAssets) return;
+    const asset = topologyAssetItems.find((item) => item.id === assetId);
+    if (!asset) {
+      toast.error('FTTH asset data tidak ditemukan.');
+      return;
+    }
+    await ensureAssetFormModalLoaded();
+    editingAsset = asset;
+    const next = buildNetworkMapAssetEditorState(asset);
+    assetDraft = next.draft;
+    assetDetailDraft = next.detailDraft;
+    showAssetFormModal = true;
+  }
+
+  function closeAssetFormModal() {
+    showAssetFormModal = false;
+    editingAsset = null;
+  }
+
+  function handleAssetTypeChange(value: string) {
+    assetDraft.asset_type = value;
+    assetDetailDraft = createNetworkAssetDetailDraft(value, editingAsset?.metadata || {});
+  }
+
+  async function saveTopologyAssetEdit() {
+    if (!editingAsset) return;
+    savingAssetForm = true;
+    try {
+      const detailErrors = validateNetworkAssetDetailDraft(assetDraft.asset_type, assetDetailDraft);
+      if (detailErrors.length > 0) {
+        throw new Error(detailErrors[0]);
+      }
+      const parsedCoordinates = parseNetworkAssetCoordinates(
+        assetDraft.latitude,
+        assetDraft.longitude,
+      );
+      if (parsedCoordinates.error === 'pair') {
+        throw new Error('Latitude and longitude must be filled together.');
+      }
+      if (parsedCoordinates.error === 'invalid') {
+        throw new Error('Latitude and longitude must be valid numbers.');
+      }
+      if (parsedCoordinates.error === 'latitude_range') {
+        throw new Error('Latitude must be between -90 and 90.');
+      }
+      if (parsedCoordinates.error === 'longitude_range') {
+        throw new Error('Longitude must be between -180 and 180.');
+      }
+
+      const payload = buildNetworkAssetSavePayload({
+        draft: {
+          ...assetDraft,
+          latitude: parsedCoordinates.latitude != null ? String(parsedCoordinates.latitude) : '',
+          longitude: parsedCoordinates.longitude != null ? String(parsedCoordinates.longitude) : '',
+        },
+        metadata: buildNetworkAssetMetadata(
+          assetDraft.asset_type,
+          assetDetailDraft,
+          editingAsset.metadata || {},
+        ),
+        existingRelations: {
+          customer_id: editingAsset.customer_id,
+          location_id: editingAsset.location_id,
+          work_order_id: editingAsset.work_order_id,
+          parent_asset_id: editingAsset.parent_asset_id,
+        },
+      });
+
+      await networkAssets.update(editingAsset.id, payload);
+      closeAssetFormModal();
+      await refreshTopologyAssets(true);
+      invalidateMapDataCache();
+      await refreshMapData(true);
+      toast.success('FTTH asset updated');
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to save FTTH asset');
+    } finally {
+      savingAssetForm = false;
     }
   }
 
@@ -1289,6 +1473,13 @@
         },
         fitToMarkers: fitMapToAllMarkersOnFirstLoad,
       });
+      if (topologyAssetItems.length) {
+        topologyAssetRows = buildTopologyAssetRows(topologyAssetItems, {
+          assetNodeIdsByAssetId: topologyAssetNodeIdCache,
+          nodeRows,
+          linkRows,
+        });
+      }
       await refreshTopologyAssets(force);
       syncTopologyAssetLinkOverlay();
       if (isInitialExtentRequest) initialExtentLoaded = true;
@@ -1323,12 +1514,19 @@
   }
 
   function syncTopologyAssetLinkOverlay() {
+    if (topologyAssetItems.length) {
+      topologyAssetRows = buildTopologyAssetRows(topologyAssetItems, {
+        assetNodeIdsByAssetId: topologyAssetNodeIdCache,
+        nodeRows,
+        linkRows,
+      });
+    }
     setSourceData(
       SOURCE_TOPOLOGY_ASSET_LINKS,
       buildTopologyAssetAutoLinkFeatureCollection({
         assets: topologyAssetItems,
         topologyRows: topologyAssetRows,
-        customerNodes: nodeRows,
+        customerNodes: customerRows,
         nodeRows,
         linkRows,
       }),
@@ -1438,12 +1636,24 @@
 
   function syncLayerVisibility() {
     if (!map || !mapReady) return;
+    const linkLayerVisibility = buildLinkLayerVisibilityState({
+      linksVisible,
+      topologyAssetsVisible,
+      linkPickMode,
+      activeAssetConnectSourceId,
+    });
     setLayerVisibility('nm-zones-fill', zonesVisible);
     setLayerVisibility('nm-zones-outline', zonesVisible);
-    setLayerVisibility('nm-links-line', linksVisible);
-    setLayerVisibility('nm-links-line-dashed', linksVisible);
-    setLayerVisibility('nm-topology-asset-links-parent', linksVisible && topologyAssetsVisible);
-    setLayerVisibility('nm-topology-asset-links-customer', linksVisible && topologyAssetsVisible);
+    setLayerVisibility('nm-links-line', linkLayerVisibility.mainLinksVisible);
+    setLayerVisibility('nm-links-line-dashed', linkLayerVisibility.mainLinksVisible);
+    setLayerVisibility(
+      'nm-topology-asset-links-parent',
+      linkLayerVisibility.topologyAssetLinksVisible,
+    );
+    setLayerVisibility(
+      'nm-topology-asset-links-customer',
+      linkLayerVisibility.topologyAssetLinksVisible,
+    );
     setLayerVisibility('nm-nodes-circle', nodesVisible);
     setLayerVisibility('nm-nodes-icons', nodesVisible);
     setLayerVisibility('nm-routers-circle', routersVisible);
@@ -1527,6 +1737,7 @@
 
     setSourceData(SOURCE_LINK_DRAFT, lineFc);
     setSourceData(SOURCE_LINK_DRAFT_POINTS, pointsFc);
+    syncLayerVisibility();
     setLayerVisibility('nm-link-draft-line', linkPickMode);
     setLayerVisibility('nm-link-draft-points', linkPickMode);
   }
@@ -1704,8 +1915,9 @@
   }
 
   function handleLinkPickNode(nodeId: string) {
+    const resolvedNodeId = resolveCanonicalCustomerNodeId(nodeId, nodeRows, customerRows);
     const result = buildHandlePickedLinkNodeResult({
-      nodeId,
+      nodeId: resolvedNodeId,
       linkPickMode,
       linkPickStep,
       linkPickDrawMode,
@@ -1770,12 +1982,53 @@
   }
 
   async function ensureTopologyAssetNodeId(assetId: string) {
-    let nodeId = findTopologyAssetNodeId(nodeRows, assetId);
-    if (nodeId) return nodeId;
-    await syncTopologyAssets(true);
-    invalidateMapDataCache();
-    await refreshMapData(true, { skipAutoSync: true });
-    nodeId = findTopologyAssetNodeId(nodeRows, assetId);
+    const assetRow = topologyAssetRows.find((row) => row.id === assetId);
+    const nodeId = await resolveTopologyAssetNodeId({
+      assetId,
+      assetType: String(assetRow?.assetType || '').trim(),
+      latitude: assetRow?.latitude,
+      longitude: assetRow?.longitude,
+      nodeRows,
+      cachedNodeId: topologyAssetNodeIdCache.get(assetId) || '',
+      syncNodes: async () => {
+        await syncTopologyAssets(true);
+        invalidateMapDataCache();
+      },
+      refreshNodeRows: async () => {
+        await refreshMapData(true, { skipAutoSync: true });
+        return nodeRows;
+      },
+      fetchNearbyNodeRows: async ({ assetType, latitude, longitude }) => {
+        const delta = 0.0015;
+        const bbox = [
+          longitude - delta,
+          latitude - delta,
+          longitude + delta,
+          latitude + delta,
+        ].join(',');
+        const response = await networkMapping.nodes.list({
+          kind: assetType || undefined,
+          bbox,
+          page: 1,
+          per_page: 50,
+        });
+        const fetchedRows = ((response.data || []) as NMNode[]).filter(
+          (row) => String(row.metadata?.asset_source || row.metadata?.asset_type || '').trim() === 'network_asset',
+        );
+        if (fetchedRows.length) {
+          const nextById = new Map(nodeRows.map((row) => [row.id, row] as const));
+          for (const row of fetchedRows) {
+            nextById.set(row.id, row);
+            const fetchedAssetId = String(row.metadata?.asset_id || '').trim();
+            if (fetchedAssetId) topologyAssetNodeIdCache.set(fetchedAssetId, row.id);
+          }
+          nodeRows = Array.from(nextById.values());
+          setSourceData(SOURCE_NODES, nodesToFeatureCollection(nodeRows));
+        }
+        return fetchedRows;
+      },
+    });
+    if (nodeId) topologyAssetNodeIdCache.set(assetId, nodeId);
     return nodeId;
   }
 
@@ -1853,6 +2106,18 @@
   async function submitLink() {
     savingLink = true;
     try {
+      if (activeAssetConnectSourceId) {
+        const sourceNodeId = await ensureTopologyAssetNodeId(activeAssetConnectSourceId);
+        if (!sourceNodeId) {
+          toast.error('Node ODP sumber belum tersedia di topology map.');
+          return;
+        }
+        linkForm = {
+          ...linkForm,
+          from_node_id: sourceNodeId,
+          to_node_id: resolveCanonicalCustomerNodeId(linkForm.to_node_id, nodeRows, customerRows),
+        };
+      }
       linkForm.geometryText = resolveLinkGeometryTextForSubmit(linkForm, nodeRows);
       const ok = await submitLinkCrud({
         editingLinkId,
@@ -2140,6 +2405,7 @@
     {linkTypeOptions}
     {linkStatusOptions}
     {linkFieldConfig}
+    showManualEndpointSection={shouldShowManualEndpointSection(activeAssetConnectSourceId)}
     hasExistingLinkBetweenNodes={(
       fromNodeId: string,
       toNodeId: string,
@@ -2153,6 +2419,20 @@
     onClearPathPoints={clearLinkPathPoints}
     onUseStraightLine={useLinkFromNodePoints}
     onToggleSnap={() => (linkSnapToNodeEnabled = !linkSnapToNodeEnabled)}
+  />
+{/if}
+
+{#if AssetFormModalComponent}
+  <AssetFormModalComponent
+    show={showAssetFormModal}
+    saving={savingAssetForm}
+    editing={editingAsset}
+    connectedItems={editingAssetConnectionItems}
+    draft={assetDraft}
+    detailDraft={assetDetailDraft}
+    onassettypechange={handleAssetTypeChange}
+    onclose={closeAssetFormModal}
+    onsave={() => void saveTopologyAssetEdit()}
   />
 {/if}
 
@@ -2546,6 +2826,105 @@
     color: #94a3b8;
     background: rgba(148, 163, 184, 0.14);
     border-color: rgba(148, 163, 184, 0.3);
+  }
+
+  :global(.nm-popup-badge.danger) {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.14);
+    border-color: rgba(248, 113, 113, 0.32);
+  }
+
+  :global(.nm-popup-usage-card) {
+    display: grid;
+    gap: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 14px;
+    padding: 10px 12px;
+    background:
+      linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.76)),
+      rgba(15, 23, 42, 0.86);
+  }
+
+  :global(.nm-popup-usage-head) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  :global(.nm-popup-usage-label) {
+    color: #93c5fd;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  :global(.nm-popup-usage-value) {
+    margin-top: 2px;
+    color: #f8fafc;
+    font-size: 0.92rem;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  :global(.nm-popup-usage-bar) {
+    position: relative;
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(30, 41, 59, 0.9);
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+  }
+
+  :global(.nm-popup-usage-fill) {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    transition: width 0.2s ease;
+  }
+
+  :global(.nm-popup-usage-fill.ok) {
+    background: linear-gradient(90deg, #14b8a6, #22c55e);
+  }
+
+  :global(.nm-popup-usage-fill.warn) {
+    background: linear-gradient(90deg, #f59e0b, #f97316);
+  }
+
+  :global(.nm-popup-usage-fill.danger) {
+    background: linear-gradient(90deg, #fb7185, #ef4444);
+  }
+
+  :global(.nm-popup-usage-fill.muted) {
+    background: linear-gradient(90deg, #64748b, #94a3b8);
+  }
+
+  :global(.nm-popup-usage-meta) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: #cbd5e1;
+    font-size: 0.74rem;
+    font-weight: 600;
+  }
+
+  :global(.nm-popup-relation-list) {
+    display: grid;
+    gap: 8px;
+    padding-top: 2px;
+  }
+
+  :global(.nm-popup-relation-row) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  :global(.nm-popup-relation-row .nm-popup-label) {
+    margin-bottom: 0;
   }
 
   :global(.nm-popup-grid) {

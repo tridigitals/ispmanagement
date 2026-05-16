@@ -827,13 +827,19 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
   } catch (error: any) {
     const status = Number((error as any)?.status ?? (error as any)?.response?.status ?? NaN);
     const normalizedMessage = String(error?.message || error || '').toLowerCase();
+    const isCanceledRequest =
+      normalizedMessage === 'request canceled' ||
+      normalizedMessage === 'request aborted' ||
+      normalizedMessage.includes('aborterror');
     const isAuthError =
       status === 401 ||
       error.message?.includes('401') ||
       normalizedMessage.includes('invalid token') ||
       normalizedMessage.includes('missing token');
 
-    if (isAuthError) {
+    if (isCanceledRequest) {
+      // AbortController cancellation is expected during rapid UI refreshes.
+    } else if (isAuthError) {
       handleAuthExpired(`Auth error from ${command}: ${error.message || error}`);
       console.warn(`API Warning (${command}):`, error.message);
     } else if (!args?.__suppress_error_log) {

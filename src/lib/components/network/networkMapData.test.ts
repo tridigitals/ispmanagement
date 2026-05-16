@@ -117,6 +117,69 @@ describe('fetchNetworkMapData', () => {
     ]);
     expect(result.routerRows).toEqual([{ id: 'router-1', name: 'Router 1' }]);
   });
+
+  it('dedupes customer placeholder rows by location and prefers the node already used by a saved link', () => {
+    const result = extractMapRows({
+      nodesRes: {
+        data: [
+          {
+            id: 'customer-node-stale',
+            name: 'Customer Premise',
+            node_type: 'customer_premise',
+            status: 'active',
+            lat: -6.2,
+            lng: 106.8,
+            metadata: {
+              asset_source: 'customer_location',
+              customer_id: 'cust-1',
+              location_id: 'loc-1',
+              pppoe_visual_state: 'neutral',
+            },
+          },
+          {
+            id: 'customer-node-linked',
+            name: 'Customer Premise',
+            node_type: 'customer_premise',
+            status: 'active',
+            lat: -6.2,
+            lng: 106.8,
+            metadata: {
+              asset_source: 'customer_location',
+              customer_id: 'cust-1',
+              location_id: 'loc-1',
+              pppoe_visual_state: 'connected',
+            },
+          },
+        ],
+        total: 2,
+        page: 1,
+        per_page: 1000,
+      },
+      linksRes: {
+        data: [
+          {
+            id: 'link-1',
+            from_node_id: 'asset-node-1',
+            to_node_id: 'customer-node-linked',
+            name: 'Link 1',
+            link_type: 'fiber',
+            status: 'up',
+            geometry: { type: 'LineString', coordinates: [] },
+          },
+        ],
+        total: 1,
+        page: 1,
+        per_page: 1000,
+      },
+      zonesRes: { data: [], total: 0, page: 1, per_page: 1000 },
+      routersRes: [],
+    });
+
+    expect(result.customerRows).toEqual([
+      expect.objectContaining({ id: 'customer-node-linked' }),
+    ]);
+    expect(result.nodeRows).toHaveLength(2);
+  });
 });
 
 describe('resolveNetworkMapFetchBbox', () => {

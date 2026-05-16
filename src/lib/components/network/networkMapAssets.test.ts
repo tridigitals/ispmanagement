@@ -203,6 +203,189 @@ describe('networkMapAssets', () => {
     expect(fc.features[0]?.properties?.link_kind).toBe('customer_drop');
   });
 
+  it('uses active saved customer topology links to enrich ODP occupancy without requiring direct customer fields on the ODP', () => {
+    const assets = [
+      asset({
+        id: 'odp-1',
+        asset_type: 'odp',
+        name: 'ODP-1',
+        latitude: -7.21,
+        longitude: 110.31,
+        metadata: { total_port_capacity: '8' },
+      }),
+    ];
+
+    const rows = buildTopologyAssetRows(assets, {
+      nodeRows: [
+        node({
+          id: 'odp-node-1',
+          node_type: 'odp',
+          metadata: {
+            asset_source: 'network_asset',
+            asset_type: 'odp',
+            asset_id: 'odp-1',
+          },
+        }),
+        node({
+          id: 'cust-node-1',
+          node_type: 'customer_premise',
+          status: 'active',
+          metadata: {
+            asset_source: 'customer_location',
+            asset_type: 'customer_location',
+            customer_id: 'cust-1',
+            location_id: 'loc-1',
+          },
+        }),
+      ],
+      linkRows: [
+        link({
+          id: 'drop-link-1',
+          from_node_id: 'odp-node-1',
+          to_node_id: 'cust-node-1',
+        }),
+      ],
+    });
+
+    expect(rows.find((row) => row.id === 'odp-1')).toMatchObject({
+      portCapacity: 8,
+      portsUsed: 1,
+      portsAvailable: 7,
+      hasCustomerRelation: true,
+    });
+  });
+
+  it('keeps popup occupancy updated from a cached asset node id even when current node rows omit the ODP node', () => {
+    const assets = [
+      asset({
+        id: 'odp-1',
+        asset_type: 'odp',
+        name: 'ODP-1',
+        latitude: -7.21,
+        longitude: 110.31,
+        metadata: { total_port_capacity: '8' },
+      }),
+    ];
+
+    const rows = buildTopologyAssetRows(assets, {
+      assetNodeIdsByAssetId: new Map([['odp-1', 'odp-node-cached']]),
+      nodeRows: [
+        node({
+          id: 'cust-node-1',
+          node_type: 'customer_premise',
+          status: 'active',
+          metadata: {
+            asset_source: 'customer_location',
+            asset_type: 'customer_location',
+            customer_id: 'cust-1',
+            location_id: 'loc-1',
+          },
+        }),
+      ],
+      linkRows: [
+        link({
+          id: 'drop-link-1',
+          from_node_id: 'odp-node-cached',
+          to_node_id: 'cust-node-1',
+        }),
+      ],
+    });
+
+    expect(rows.find((row) => row.id === 'odp-1')).toMatchObject({
+      portsUsed: 1,
+      portsAvailable: 7,
+      hasCustomerRelation: true,
+    });
+  });
+
+  it('treats saved customer-drop links as occupied even when the linked customer node is suspended or maintenance', () => {
+    const assets = [
+      asset({
+        id: 'odp-1',
+        asset_type: 'odp',
+        name: 'ODP-1',
+        latitude: -7.21,
+        longitude: 110.31,
+        metadata: { total_port_capacity: '8' },
+      }),
+    ];
+
+    const rows = buildTopologyAssetRows(assets, {
+      nodeRows: [
+        node({
+          id: 'odp-node-1',
+          node_type: 'odp',
+          metadata: {
+            asset_source: 'network_asset',
+            asset_type: 'odp',
+            asset_id: 'odp-1',
+          },
+        }),
+        node({
+          id: 'cust-node-1',
+          node_type: 'customer_premise',
+          status: 'maintenance',
+          metadata: {
+            asset_source: 'customer_location',
+            asset_type: 'customer_location',
+            customer_id: 'cust-1',
+            location_id: 'loc-1',
+          },
+        }),
+      ],
+      linkRows: [
+        link({
+          id: 'drop-link-1',
+          from_node_id: 'odp-node-1',
+          to_node_id: 'cust-node-1',
+        }),
+      ],
+    });
+
+    expect(rows.find((row) => row.id === 'odp-1')).toMatchObject({
+      portsUsed: 1,
+      portsAvailable: 7,
+      hasCustomerRelation: true,
+    });
+  });
+
+  it('does not create customer helper drops for inactive customer location nodes', () => {
+    const assets = [
+      asset({
+        id: 'odp-1',
+        asset_type: 'odp',
+        name: 'ODP-1',
+        customer_id: 'cust-1',
+        location_id: 'loc-1',
+        latitude: -7.21,
+        longitude: 110.31,
+        metadata: { total_port_capacity: '8' },
+      }),
+    ];
+
+    const rows = buildTopologyAssetRows(assets);
+    const fc = buildTopologyAssetAutoLinkFeatureCollection({
+      assets,
+      topologyRows: rows,
+      customerNodes: [
+        node({
+          id: 'cust-node-1',
+          lat: -7.215,
+          lng: 110.315,
+          status: 'inactive',
+          metadata: {
+            customer_id: 'cust-1',
+            location_id: 'loc-1',
+          },
+        }),
+      ],
+      nodeRows: [],
+      linkRows: [],
+    });
+
+    expect(fc.features).toHaveLength(0);
+  });
+
   it('skips helper auto-links when a real saved topology link already exists', () => {
     const assets = [
       asset({
@@ -270,6 +453,162 @@ describe('networkMapAssets', () => {
           id: 'link-drop-1',
           from_node_id: 'odp-node-1',
           to_node_id: 'cust-node-1',
+        }),
+      ],
+    });
+
+    expect(fc.features).toHaveLength(0);
+  });
+
+  it('skips customer helper auto-links when a real link already exists to another node for the same location', () => {
+    const assets = [
+      asset({
+        id: 'odp-1',
+        asset_type: 'odp',
+        name: 'ODP-1',
+        customer_id: 'cust-1',
+        location_id: 'loc-1',
+        latitude: -7.21,
+        longitude: 110.31,
+        metadata: { total_port_capacity: '8' },
+      }),
+    ];
+
+    const rows = buildTopologyAssetRows(assets);
+    const fc = buildTopologyAssetAutoLinkFeatureCollection({
+      assets,
+      topologyRows: rows,
+      customerNodes: [
+        node({
+          id: 'customer-location-node',
+          name: 'Customer Location',
+          node_type: 'customer_premise',
+          metadata: {
+            customer_id: 'cust-1',
+            location_id: 'loc-1',
+          },
+        }),
+        node({
+          id: 'customer-service-node',
+          name: 'Customer Service',
+          node_type: 'customer_endpoint',
+          metadata: {
+            customer_id: 'cust-1',
+            location_id: 'loc-1',
+          },
+        }),
+      ],
+      nodeRows: [
+        node({
+          id: 'odp-node-1',
+          node_type: 'odp',
+          metadata: {
+            asset_source: 'network_asset',
+            asset_type: 'odp',
+            asset_id: 'odp-1',
+          },
+        }),
+        node({
+          id: 'customer-location-node',
+          name: 'Customer Location',
+          node_type: 'customer_premise',
+          metadata: {
+            customer_id: 'cust-1',
+            location_id: 'loc-1',
+          },
+        }),
+        node({
+          id: 'customer-service-node',
+          name: 'Customer Service',
+          node_type: 'customer_endpoint',
+          metadata: {
+            customer_id: 'cust-1',
+            location_id: 'loc-1',
+          },
+        }),
+      ],
+      linkRows: [
+        link({
+          id: 'link-drop-1',
+          from_node_id: 'odp-node-1',
+          to_node_id: 'customer-service-node',
+        }),
+      ],
+    });
+
+    expect(fc.features).toHaveLength(0);
+  });
+
+  it('skips customer helper auto-links when a drawn real link geometry already connects the ODP and customer marker', () => {
+    const assets = [
+      asset({
+        id: 'odp-1',
+        asset_type: 'odp',
+        name: 'ODP-1',
+        customer_id: 'cust-1',
+        location_id: 'loc-1',
+        latitude: -7.2665442,
+        longitude: 110.3840926,
+        metadata: { total_port_capacity: '8' },
+      }),
+    ];
+
+    const rows = buildTopologyAssetRows(assets);
+    const fc = buildTopologyAssetAutoLinkFeatureCollection({
+      assets,
+      topologyRows: rows,
+      customerNodes: [
+        node({
+          id: 'customer-node-visible',
+          name: 'Handono - Lokasi Utama',
+          node_type: 'customer_premise',
+          lat: -7.264948,
+          lng: 110.383801,
+          metadata: {
+            customer_id: 'cust-1',
+            location_id: 'loc-1',
+          },
+        }),
+      ],
+      nodeRows: [
+        node({
+          id: 'customer-node-a',
+          name: 'Handono - Lokasi Utama',
+          node_type: 'customer_premise',
+          lat: -7.264948,
+          lng: 110.383801,
+          metadata: {
+            customer_id: 'cust-1',
+            location_id: 'loc-1',
+          },
+        }),
+        node({
+          id: 'customer-node-b',
+          name: 'Handono - Lokasi Utama',
+          node_type: 'customer_premise',
+          lat: -7.264948,
+          lng: 110.383801,
+          metadata: {
+            customer_id: 'cust-1',
+            location_id: 'loc-1',
+          },
+        }),
+      ],
+      linkRows: [
+        link({
+          id: 'link-drawn-1',
+          from_node_id: 'customer-node-a',
+          to_node_id: 'customer-node-b',
+          geometry: {
+            type: 'MultiLineString',
+            coordinates: [
+              [
+                [110.3840926, -7.2665442],
+                [110.38395, -7.2658],
+                [110.383801, -7.264948],
+              ],
+            ],
+          },
         }),
       ],
     });

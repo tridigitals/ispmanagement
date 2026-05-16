@@ -7,6 +7,7 @@ import {
   getNetworkAssetPortOccupancy,
   getNetworkAssetPortOccupancySummary,
 } from './networkAssetOccupancy';
+import type { NMLink, NMNode } from '$lib/components/network/networkMapUtils';
 
 function asset(overrides: Partial<NetworkAssetListItem>): NetworkAssetListItem {
   return {
@@ -34,6 +35,38 @@ function asset(overrides: Partial<NetworkAssetListItem>): NetworkAssetListItem {
     location_label: null,
     work_order_status: null,
     parent_asset_name: null,
+    ...overrides,
+  };
+}
+
+function node(overrides: Partial<NMNode>): NMNode {
+  return {
+    id: 'node-1',
+    name: 'Node 1',
+    node_type: 'customer_premise',
+    status: 'active',
+    lat: -7.2,
+    lng: 110.3,
+    metadata: {},
+    ...overrides,
+  };
+}
+
+function link(overrides: Partial<NMLink>): NMLink {
+  return {
+    id: 'link-1',
+    name: 'Link 1',
+    link_type: 'fiber',
+    status: 'up',
+    from_node_id: 'node-a',
+    to_node_id: 'node-b',
+    geometry: {
+      type: 'LineString',
+      coordinates: [
+        [110.3, -7.2],
+        [110.31, -7.21],
+      ],
+    },
     ...overrides,
   };
 }
@@ -160,6 +193,196 @@ describe('networkAssetOccupancy', () => {
       total: 8,
       used: 2,
       available: 6,
+      state: 'partial',
+    });
+  });
+
+  it('counts saved customer topology links as used ODP ports without double counting linked ONT endpoints', () => {
+    const odp = asset({
+      id: 'odp-1',
+      metadata: {
+        total_port_capacity: '8',
+      },
+    });
+
+    expect(
+      getNetworkAssetPortOccupancy(
+        odp,
+        [
+          odp,
+          asset({
+            id: 'ont-1',
+            asset_type: 'ont',
+            parent_asset_id: 'odp-1',
+            customer_id: 'cust-1',
+            location_id: 'loc-1',
+            status: 'installed',
+          }),
+        ],
+        {
+          nodeRows: [
+            node({
+              id: 'odp-node-1',
+              node_type: 'odp',
+              metadata: {
+                asset_source: 'network_asset',
+                asset_type: 'odp',
+                asset_id: 'odp-1',
+              },
+            }),
+            node({
+              id: 'customer-node-1',
+              node_type: 'customer_premise',
+              status: 'active',
+              metadata: {
+                asset_source: 'customer_location',
+                asset_type: 'customer_location',
+                customer_id: 'cust-1',
+                location_id: 'loc-1',
+              },
+            }),
+            node({
+              id: 'customer-node-2',
+              node_type: 'customer_premise',
+              status: 'active',
+              metadata: {
+                asset_source: 'customer_location',
+                asset_type: 'customer_location',
+                customer_id: 'cust-2',
+                location_id: 'loc-2',
+              },
+            }),
+            node({
+              id: 'customer-node-3',
+              node_type: 'customer_premise',
+              status: 'inactive',
+              metadata: {
+                asset_source: 'customer_location',
+                asset_type: 'customer_location',
+                customer_id: 'cust-3',
+                location_id: 'loc-3',
+              },
+            }),
+          ],
+          linkRows: [
+            link({
+              id: 'link-cust-1',
+              from_node_id: 'odp-node-1',
+              to_node_id: 'customer-node-1',
+            }),
+            link({
+              id: 'link-cust-2',
+              from_node_id: 'odp-node-1',
+              to_node_id: 'customer-node-2',
+            }),
+            link({
+              id: 'link-cust-3',
+              from_node_id: 'odp-node-1',
+              to_node_id: 'customer-node-3',
+            }),
+          ],
+        },
+      ),
+    ).toEqual({
+      total: 8,
+      used: 3,
+      available: 5,
+      state: 'partial',
+    });
+  });
+
+  it('counts maintenance or suspended customer-location links as used ports because the physical drop is still occupied', () => {
+    const odp = asset({
+      id: 'odp-1',
+      metadata: {
+        total_port_capacity: '8',
+      },
+    });
+
+    expect(
+      getNetworkAssetPortOccupancy(
+        odp,
+        [odp],
+        {
+          nodeRows: [
+            node({
+              id: 'odp-node-1',
+              node_type: 'odp',
+              metadata: {
+                asset_source: 'network_asset',
+                asset_type: 'odp',
+                asset_id: 'odp-1',
+              },
+            }),
+            node({
+              id: 'customer-node-1',
+              node_type: 'customer_premise',
+              status: 'maintenance',
+              metadata: {
+                asset_source: 'customer_location',
+                asset_type: 'customer_location',
+                customer_id: 'cust-1',
+                location_id: 'loc-1',
+              },
+            }),
+          ],
+          linkRows: [
+            link({
+              id: 'link-cust-1',
+              from_node_id: 'odp-node-1',
+              to_node_id: 'customer-node-1',
+            }),
+          ],
+        },
+      ),
+    ).toEqual({
+      total: 8,
+      used: 1,
+      available: 7,
+      state: 'partial',
+    });
+  });
+
+  it('counts active customer topology links by using a cached ODP node id when the asset node is absent from current node rows', () => {
+    const odp = asset({
+      id: 'odp-1',
+      metadata: {
+        total_port_capacity: '8',
+      },
+    });
+
+    expect(
+      getNetworkAssetPortOccupancy(
+        odp,
+        [odp],
+        {
+          assetNodeIdsByAssetId: new Map([['odp-1', 'odp-node-cached']]),
+          nodeRows: [
+            node({
+              id: 'customer-node-1',
+              node_type: 'customer_premise',
+              status: 'active',
+              metadata: {
+                asset_source: 'customer_location',
+                asset_type: 'customer_location',
+                customer_id: 'cust-1',
+                location_id: 'loc-1',
+              },
+            }),
+          ],
+          linkRows: [
+            link({
+              id: 'link-cust-1',
+              from_node_id: 'odp-node-cached',
+              to_node_id: 'customer-node-1',
+            }),
+          ],
+        },
+      ),
+    ).toEqual({
+      total: 8,
+      used: 1,
+      available: 7,
       state: 'partial',
     });
   });

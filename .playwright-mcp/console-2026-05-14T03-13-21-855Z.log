@@ -3909,3 +3909,17 @@
 [133180626ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
 [133380666ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
 [133380667ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[133680661ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[133680661ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[133980680ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[133980681ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[134280658ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[134280659ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[134580697ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[134580697ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[134880658ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[134880658ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[135180663ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[135180663ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108
+[135480666ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:1420/api/ws' failed: Connection closed before receiving a handshake response @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:89
+[135480666ms] [ERROR] [WS] Error: Event @ http://127.0.0.1:1420/src/lib/stores/websocket.ts?t=1778727967790:108

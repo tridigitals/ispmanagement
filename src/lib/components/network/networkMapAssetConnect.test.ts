@@ -9,6 +9,7 @@ import {
   buildTopologyAssetConnectDraft,
   buildTopologyAssetParentOptions,
   findTopologyAssetNodeId,
+  resolveTopologyAssetNodeId,
 } from './networkMapAssetConnect';
 import type { NMNode } from './networkMapUtils';
 
@@ -135,7 +136,70 @@ describe('networkMapAssetConnect', () => {
     ).toBe('ftth-node-1');
   });
 
-  it('maps FTTH-to-customer links back into asset customer and location relations', () => {
+  it('falls back to nearby fetched rows when the current map page does not include the FTTH node', async () => {
+    const syncCalls: string[] = [];
+    const refreshCalls: string[] = [];
+    const nearbyCalls: string[] = [];
+
+    await expect(
+      resolveTopologyAssetNodeId({
+        assetId: 'odp-1',
+        assetType: 'odp',
+        latitude: -7.2,
+        longitude: 110.3,
+        nodeRows: [],
+        syncNodes: async () => {
+          syncCalls.push('sync');
+        },
+        refreshNodeRows: async () => {
+          refreshCalls.push('refresh');
+          return [];
+        },
+        fetchNearbyNodeRows: async () => {
+          nearbyCalls.push('nearby');
+          return [
+            node({
+              id: 'ftth-node-nearby',
+              metadata: {
+                system_managed: true,
+                asset_source: 'network_asset',
+                asset_type: 'odp',
+                asset_id: 'odp-1',
+              },
+            }),
+          ];
+        },
+      }),
+    ).resolves.toBe('ftth-node-nearby');
+
+    expect(syncCalls).toEqual(['sync']);
+    expect(refreshCalls).toEqual(['refresh']);
+    expect(nearbyCalls).toEqual(['nearby']);
+  });
+
+  it('reuses a previously resolved FTTH node id before forcing another sync cycle', async () => {
+    const syncCalls: string[] = [];
+
+    await expect(
+      resolveTopologyAssetNodeId({
+        assetId: 'odp-1',
+        assetType: 'odp',
+        latitude: -7.2,
+        longitude: 110.3,
+        nodeRows: [],
+        cachedNodeId: 'ftth-node-cached',
+        syncNodes: async () => {
+          syncCalls.push('sync');
+        },
+        refreshNodeRows: async () => [],
+        fetchNearbyNodeRows: async () => [],
+      }),
+    ).resolves.toBe('ftth-node-cached');
+
+    expect(syncCalls).toEqual([]);
+  });
+
+  it('does not collapse ODP customer-drop links back into a single customer/location relation on the source asset', () => {
     expect(
       buildTopologyAssetConnectionOperations({
         sourceAsset: asset({
@@ -154,13 +218,7 @@ describe('networkMapAssetConnect', () => {
           },
         }),
       }),
-    ).toEqual([
-      {
-        assetId: 'odp-1',
-        customerId: 'cust-1',
-        locationId: 'loc-1',
-      },
-    ]);
+    ).toEqual([]);
   });
 
   it('assigns the downstream FTTH asset to the upstream parent regardless of draw direction', () => {

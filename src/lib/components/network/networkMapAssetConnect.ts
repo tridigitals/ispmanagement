@@ -19,6 +19,22 @@ export type TopologyAssetConnectionOperation = {
   locationId?: string | null;
 };
 
+export type ResolveTopologyAssetNodeIdArgs = {
+  assetId: string;
+  assetType: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  nodeRows: Pick<NMNode, 'id' | 'metadata'>[];
+  cachedNodeId?: string | null;
+  syncNodes: () => Promise<void>;
+  refreshNodeRows: () => Promise<Pick<NMNode, 'id' | 'metadata'>[]>;
+  fetchNearbyNodeRows: (args: {
+    assetType: string;
+    latitude: number;
+    longitude: number;
+  }) => Promise<Pick<NMNode, 'id' | 'metadata'>[]>;
+};
+
 const CUSTOMER_DROP_TYPES = new Set(['odp', 'fat', 'nap']);
 const UPSTREAM_RANK: Record<string, number> = {
   olt: 0,
@@ -99,6 +115,31 @@ export function findTopologyAssetNodeId(
   return matched?.id || '';
 }
 
+export async function resolveTopologyAssetNodeId(
+  args: ResolveTopologyAssetNodeIdArgs,
+): Promise<string> {
+  const cachedNodeId = String(args.cachedNodeId || '').trim();
+  if (cachedNodeId) return cachedNodeId;
+
+  let nodeId = findTopologyAssetNodeId(args.nodeRows, args.assetId);
+  if (nodeId) return nodeId;
+
+  await args.syncNodes();
+  nodeId = findTopologyAssetNodeId(await args.refreshNodeRows(), args.assetId);
+  if (nodeId) return nodeId;
+
+  if (!Number.isFinite(args.latitude) || !Number.isFinite(args.longitude)) return '';
+  nodeId = findTopologyAssetNodeId(
+    await args.fetchNearbyNodeRows({
+      assetType: args.assetType,
+      latitude: Number(args.latitude),
+      longitude: Number(args.longitude),
+    }),
+    args.assetId,
+  );
+  return nodeId;
+}
+
 export function buildTopologyAssetConnectionOperations(args: {
   sourceAsset: Pick<
     NetworkAssetListItem,
@@ -117,18 +158,7 @@ export function buildTopologyAssetConnectionOperations(args: {
   const targetAssetId = String(targetNode.metadata?.asset_id || '').trim();
 
   if (targetAssetSource === 'customer_location' && assetSupportsCustomerDrop(sourceAssetType)) {
-    const customerId = String(targetNode.metadata?.customer_id || '').trim();
-    const locationId = String(
-      targetNode.metadata?.location_id || targetNode.metadata?.asset_id || '',
-    ).trim();
-    if (!customerId || !locationId) return [];
-    return [
-      {
-        assetId: args.sourceAsset.id,
-        customerId,
-        locationId,
-      },
-    ];
+    return [];
   }
 
   if (targetAssetSource !== TOPOLOGY_ASSET_NODE_SOURCE || !targetAssetId) return [];

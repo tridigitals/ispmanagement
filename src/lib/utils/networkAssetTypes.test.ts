@@ -4,6 +4,7 @@ import {
   getNetworkAssetGroup,
   getNetworkAssetGroupLabel,
   NETWORK_ASSET_STATUSES,
+  NETWORK_ASSET_TYPE_GROUPS,
   NETWORK_ASSET_TYPES,
   getDefaultNetworkAssetStatus,
   getNetworkAssetStatusLabel,
@@ -15,16 +16,16 @@ describe('network asset type helpers', () => {
     expect(NETWORK_ASSET_TYPES).toEqual([
       'olt',
       'odc',
+      'fat',
       'odp',
+      'nap',
       'splitter',
+      'odf',
       'ont',
       'onu',
-      'fat',
-      'nap',
+      'media_converter',
       'switch',
       'router',
-      'media_converter',
-      'odf',
       'ups',
     ]);
   });
@@ -45,6 +46,23 @@ describe('network asset type helpers', () => {
     expect(getNetworkAssetTypeLabel('media_converter')).toBe('Media Converter');
     expect(getNetworkAssetStatusLabel('faulty')).toBe('Faulty');
     expect(getNetworkAssetStatusLabel('custom')).toBe('custom');
+  });
+
+  it('exposes grouped asset types for contextual dropdowns', () => {
+    expect(NETWORK_ASSET_TYPE_GROUPS).toEqual([
+      {
+        label: 'FTTH Distribution',
+        types: ['olt', 'odc', 'fat', 'odp', 'nap', 'splitter', 'odf'],
+      },
+      {
+        label: 'Customer Endpoint',
+        types: ['ont', 'onu', 'media_converter'],
+      },
+      {
+        label: 'Infrastructure Device',
+        types: ['switch', 'router', 'ups'],
+      },
+    ]);
   });
 
   it('derives the asset group from the asset type', () => {

@@ -6,7 +6,7 @@
   import MapCanvasShell from '$lib/components/network/MapCanvasShell.svelte';
   import {
     NETWORK_ASSET_STATUSES,
-    NETWORK_ASSET_TYPES,
+    NETWORK_ASSET_TYPE_GROUPS,
     getNetworkAssetTypeLabel
   } from '$lib/utils/networkAssetTypes';
   import {
@@ -14,6 +14,7 @@
     type NetworkAssetDetailDraft,
   } from '$lib/utils/networkAssetDetails';
   import type { NetworkAssetListItem } from '$lib/api/client';
+  import { getNetworkAssetFormProfile } from './networkAssetFormProfile';
   import 'maplibre-gl/dist/maplibre-gl.css';
 
   type AssetDraft = {
@@ -24,10 +25,6 @@
     model: string;
     serial_number: string;
     status: string;
-    customer_id: string;
-    location_id: string;
-    work_order_id: string;
-    parent_asset_id: string;
     latitude: string;
     longitude: string;
     notes: string;
@@ -37,9 +34,9 @@
     show: boolean;
     saving?: boolean;
     editing?: NetworkAssetListItem | null;
+    connectedItems?: Array<{ label: string; value: string }>;
     draft: AssetDraft;
     detailDraft: NetworkAssetDetailDraft;
-    onclearcoordinates?: () => void;
     onassettypechange?: (value: string) => void;
     onclose?: () => void;
     onsave?: () => void;
@@ -49,9 +46,9 @@
     show = $bindable(false),
     saving = false,
     editing = null,
+    connectedItems = [],
     draft,
     detailDraft,
-    onclearcoordinates,
     onassettypechange,
     onclose,
     onsave,
@@ -73,6 +70,7 @@
   const pickerSatelliteMaxZoom = pickerMapTilerKey ? 21 : 18;
 
   const detailFields = $derived.by(() => getNetworkAssetDetailFields(draft.asset_type));
+  const formProfile = $derived.by(() => getNetworkAssetFormProfile(draft.asset_type));
   const coordinateLabel = $derived.by(() =>
     draft.latitude.trim() && draft.longitude.trim()
       ? `${Number(draft.latitude).toFixed(6)}, ${Number(draft.longitude).toFixed(6)}`
@@ -81,6 +79,24 @@
   const showMapPriorityHint = $derived.by(() =>
     ['odp', 'odc', 'fat', 'nap', 'olt', 'switch', 'router', 'odf', 'ups'].includes(draft.asset_type),
   );
+
+  const fieldLabels = {
+    type: () => $t('admin.ftth_assets.fields.type') || 'Type',
+    status: () => $t('admin.ftth_assets.fields.status') || 'Status',
+    name: () => $t('admin.ftth_assets.fields.name') || 'Name',
+    code: () => $t('admin.ftth_assets.fields.code') || 'Code',
+    serial_number: () => $t('admin.ftth_assets.fields.serial_number') || 'Serial Number',
+    vendor: () => $t('admin.ftth_assets.fields.vendor') || 'Vendor',
+    model: () => $t('admin.ftth_assets.fields.model') || 'Model',
+  };
+
+  const fieldPlaceholders = {
+    name: () => $t('admin.ftth_assets.placeholders.name') || 'ODP-Cluster A',
+    code: () => $t('admin.ftth_assets.placeholders.code') || 'ODP-001',
+    serial_number: () => $t('admin.ftth_assets.placeholders.serial_number') || 'SN-123',
+    vendor: () => $t('admin.ftth_assets.placeholders.vendor') || 'ZTE',
+    model: () => $t('admin.ftth_assets.placeholders.model') || 'F670L',
+  };
 
   $effect(() => {
     pickerViewMode;
@@ -273,21 +289,25 @@
         </div>
         <div class="form-grid">
           <label>
-            <span>{$t('admin.ftth_assets.fields.type') || 'Type'}</span>
+            <span>{fieldLabels.type()}</span>
             <select
               class="input"
               bind:value={draft.asset_type}
               disabled={saving}
               onchange={(event) => onassettypechange?.(event.currentTarget.value)}
             >
-              {#each NETWORK_ASSET_TYPES as type}
-                <option value={type}>{getNetworkAssetTypeLabel(type)}</option>
+              {#each NETWORK_ASSET_TYPE_GROUPS as group}
+                <optgroup label={group.label}>
+                  {#each group.types as type}
+                    <option value={type}>{getNetworkAssetTypeLabel(type)}</option>
+                  {/each}
+                </optgroup>
               {/each}
             </select>
           </label>
 
           <label>
-            <span>{$t('admin.ftth_assets.fields.status') || 'Status'}</span>
+            <span>{fieldLabels.status()}</span>
             <select class="input" bind:value={draft.status} disabled={saving}>
               {#each NETWORK_ASSET_STATUSES as status}
                 <option value={status}>{$t(`admin.ftth_assets.status.${status}`) || status}</option>
@@ -296,54 +316,56 @@
           </label>
 
           <label class="full">
-            <span>{$t('admin.ftth_assets.fields.name') || 'Name'}</span>
+            <span>{fieldLabels.name()}</span>
             <input
               class="input"
               bind:value={draft.name}
               disabled={saving}
-              placeholder={$t('admin.ftth_assets.placeholders.name') || 'ODP-Cluster A'}
+              placeholder={fieldPlaceholders.name()}
             />
           </label>
 
           <label>
-            <span>{$t('admin.ftth_assets.fields.code') || 'Code'}</span>
+            <span>{fieldLabels.code()}</span>
             <input
               class="input"
               bind:value={draft.code}
               disabled={saving}
-              placeholder={$t('admin.ftth_assets.placeholders.code') || 'ODP-001'}
+              placeholder={fieldPlaceholders.code()}
             />
           </label>
 
-          <label>
-            <span>{$t('admin.ftth_assets.fields.serial_number') || 'Serial Number'}</span>
-            <input
-              class="input"
-              bind:value={draft.serial_number}
-              disabled={saving}
-              placeholder={$t('admin.ftth_assets.placeholders.serial_number') || 'SN-123'}
-            />
-          </label>
+          {#if formProfile.hardwareFieldsInline.length > 0}
+            <label>
+              <span>{fieldLabels.serial_number()}</span>
+              <input
+                class="input"
+                bind:value={draft.serial_number}
+                disabled={saving}
+                placeholder={fieldPlaceholders.serial_number()}
+              />
+            </label>
 
-          <label>
-            <span>{$t('admin.ftth_assets.fields.vendor') || 'Vendor'}</span>
-            <input
-              class="input"
-              bind:value={draft.vendor}
-              disabled={saving}
-              placeholder={$t('admin.ftth_assets.placeholders.vendor') || 'ZTE'}
-            />
-          </label>
+            <label>
+              <span>{fieldLabels.vendor()}</span>
+              <input
+                class="input"
+                bind:value={draft.vendor}
+                disabled={saving}
+                placeholder={fieldPlaceholders.vendor()}
+              />
+            </label>
 
-          <label>
-            <span>{$t('admin.ftth_assets.fields.model') || 'Model'}</span>
-            <input
-              class="input"
-              bind:value={draft.model}
-              disabled={saving}
-              placeholder={$t('admin.ftth_assets.placeholders.model') || 'F670L'}
-            />
-          </label>
+            <label>
+              <span>{fieldLabels.model()}</span>
+              <input
+                class="input"
+                bind:value={draft.model}
+                disabled={saving}
+                placeholder={fieldPlaceholders.model()}
+              />
+            </label>
+          {/if}
         </div>
       </section>
 
@@ -351,8 +373,8 @@
         <section class="panel-section full detail-section">
           <div class="detail-section__head">
             <div>
-              <span class="section-kicker">Asset Detail & Capacity</span>
-              <strong>{$t('admin.ftth_assets.details.title') || 'Detail khusus asset'}</strong>
+              <span class="section-kicker">{formProfile.detailSectionKicker}</span>
+              <strong>{formProfile.detailSectionTitle}</strong>
             </div>
             <p class="field-hint">
               {$t('admin.ftth_assets.details.subtitle') ||
@@ -373,6 +395,54 @@
               </label>
             {/each}
           </div>
+        </section>
+      {/if}
+
+      {#if formProfile.hardwareFieldsOptional.length > 0}
+        <section class="panel-section full optional-hardware-section">
+          <details class="optional-card">
+            <summary class="optional-card__summary">
+              <div>
+                <span class="section-kicker">Optional Hardware Reference</span>
+                <strong>Brand, model, and serial</strong>
+              </div>
+              <span class="optional-card__hint">Open if needed</span>
+            </summary>
+            <div class="optional-card__body">
+              <p class="field-hint">
+                Untuk asset distribusi seperti ODP/ODC/FAT/NAP, isi bagian ini hanya jika memang dibutuhkan untuk inventaris fisik atau audit.
+              </p>
+              <div class="detail-grid hardware-grid">
+                <label>
+                  <span>{fieldLabels.serial_number()}</span>
+                  <input
+                    class="input"
+                    bind:value={draft.serial_number}
+                    disabled={saving}
+                    placeholder={fieldPlaceholders.serial_number()}
+                  />
+                </label>
+                <label>
+                  <span>{fieldLabels.vendor()}</span>
+                  <input
+                    class="input"
+                    bind:value={draft.vendor}
+                    disabled={saving}
+                    placeholder={fieldPlaceholders.vendor()}
+                  />
+                </label>
+                <label>
+                  <span>{fieldLabels.model()}</span>
+                  <input
+                    class="input"
+                    bind:value={draft.model}
+                    disabled={saving}
+                    placeholder={fieldPlaceholders.model()}
+                  />
+                </label>
+              </div>
+            </div>
+          </details>
         </section>
       {/if}
 
@@ -404,26 +474,14 @@
           Koordinat ini adalah posisi fisik asset dan akan dipakai untuk topology map. Tidak harus sama dengan lokasi customer.
         </p>
 
-        <div class="map-preview-card">
-          <div class="map-preview-title">
-            <span>{coordinateLabel || 'No map point selected yet'}</span>
-          </div>
-          <div class="map-preview-body">
-            <div class="map-preview-placeholder">
-              <Icon name="map" size={18} />
-              <span>Pick a standalone map point for this asset.</span>
-            </div>
-          </div>
-        </div>
-
         <div class="coordinate-grid">
           <label>
             <span>Latitude</span>
             <input
               class="input mono-input"
               bind:value={draft.latitude}
+              readonly
               disabled={saving}
-              inputmode="decimal"
               placeholder="-6.214620"
             />
           </label>
@@ -432,8 +490,8 @@
             <input
               class="input mono-input"
               bind:value={draft.longitude}
+              readonly
               disabled={saving}
-              inputmode="decimal"
               placeholder="106.845130"
             />
           </label>
@@ -444,17 +502,30 @@
             <Icon name="map-pin" size={16} />
             {coordinateLabel ? 'Update Map Point' : 'Pick on Map'}
           </button>
-          <button
-            class="btn ghost danger-ghost"
-            type="button"
-            onclick={onclearcoordinates}
-            disabled={saving || (!draft.latitude.trim() && !draft.longitude.trim())}
-          >
-            <Icon name="x" size={16} />
-            Clear Point
-          </button>
         </div>
       </section>
+
+      {#if connectedItems.length > 0}
+        <section class="panel-section connection-section">
+          <div class="detail-section__head">
+            <div>
+              <span class="section-kicker">Connected To</span>
+              <strong>Current relation summary</strong>
+            </div>
+            <p class="field-hint">
+              Ringkasan ini membantu melihat keterhubungan asset tanpa keluar dari form.
+            </p>
+          </div>
+          <div class="connection-list">
+            {#each connectedItems as item}
+              <div class="connection-row">
+                <span class="connection-label">{item.label}</span>
+                <span class="connection-value">{item.value}</span>
+              </div>
+            {/each}
+          </div>
+        </section>
+      {/if}
     </aside>
   </div>
 
@@ -513,6 +584,8 @@
     gap: 1rem;
   }
   .map-column {
+    display: grid;
+    gap: 0.8rem;
     position: sticky;
     top: 0;
   }
@@ -615,50 +688,88 @@
     }
   }
   .map-section {
-    gap: 1rem;
+    gap: 0.85rem;
   }
-  .map-preview-card {
-    border: 1px dashed color-mix(in srgb, var(--border-subtle) 82%, #deceb6 18%);
-    border-radius: 18px;
-    overflow: hidden;
-    background:
-      linear-gradient(
-        160deg,
-        color-mix(in srgb, var(--bg-surface, #0f172a) 80%, #f0e6d5 20%) 0%,
-        color-mix(in srgb, var(--bg-surface, #0f172a) 91%, transparent) 100%
-      );
+  .map-column .panel-section {
+    padding: 0.95rem 1rem;
   }
-  .map-preview-title {
-    padding: 0.78rem 0.92rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 88%, #e8dcc9 12%);
-    font-weight: 600;
+  .map-column .section-kicker {
+    margin-bottom: 0.14rem;
   }
-  .map-preview-body {
-    min-height: 140px;
-    padding: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .map-preview-placeholder {
-    display: grid;
-    gap: 0.5rem;
-    justify-items: center;
-    text-align: center;
-    color: var(--text-secondary);
+  .map-column .field-hint {
+    font-size: 0.77rem;
+    line-height: 1.3;
   }
   .coordinate-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.85rem;
+    gap: 0.75rem;
+  }
+  .map-column .coordinate-grid .input {
+    min-height: 40px;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.92rem;
   }
   .map-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.65rem;
   }
-  .danger-ghost {
-    color: var(--color-danger-700, #b91c1c);
+  .map-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .connection-list {
+    display: grid;
+    gap: 0.55rem;
+  }
+  .connection-row {
+    display: grid;
+    gap: 0.24rem;
+    padding: 0.65rem 0.78rem;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--bg-surface, #111827) 82%, #fff 18%);
+    border: 1px solid color-mix(in srgb, var(--border-color) 84%, #e9dbc6 16%);
+  }
+  .connection-label {
+    color: var(--text-secondary);
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .connection-value {
+    color: var(--text-primary);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  .optional-card {
+    display: grid;
+    gap: 0.8rem;
+  }
+  .optional-card[open] {
+    gap: 1rem;
+  }
+  .optional-card__summary {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.8rem;
+    cursor: pointer;
+    list-style: none;
+  }
+  .optional-card__summary::-webkit-details-marker {
+    display: none;
+  }
+  .optional-card__hint {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .optional-card__body {
+    display: grid;
+    gap: 0.9rem;
   }
   .map-picker-shell {
     display: grid;
@@ -686,6 +797,7 @@
       grid-template-columns: 1fr;
     }
     .map-column {
+      gap: 1rem;
       position: static;
     }
   }

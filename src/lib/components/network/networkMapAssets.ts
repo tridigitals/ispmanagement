@@ -1,7 +1,10 @@
 import type { FeatureCollection, Point } from 'geojson';
 
 import type { NetworkAssetListItem } from '$lib/api/types';
-import { getNetworkAssetPortOccupancy } from '$lib/utils/networkAssetOccupancy';
+import {
+  getNetworkAssetPortOccupancy,
+  type NetworkAssetOccupancyTopologyArgs,
+} from '$lib/utils/networkAssetOccupancy';
 import { getNetworkAssetTypeLabel } from '$lib/utils/networkAssetTypes';
 import { isCustomerNodeType, type NMLink, type NMNode } from './networkMapUtils';
 
@@ -72,7 +75,10 @@ export function getTopologyAssetMarkerSpec(assetType: string): TopologyAssetMark
   };
 }
 
-export function buildTopologyAssetRows(assets: NetworkAssetListItem[]): TopologyAssetRow[] {
+export function buildTopologyAssetRows(
+  assets: NetworkAssetListItem[],
+  topology?: NetworkAssetOccupancyTopologyArgs,
+): TopologyAssetRow[] {
   return (assets || [])
     .filter((asset) => isTopologyAssetType(String(asset.asset_type || '').trim()))
     .filter(
@@ -81,8 +87,8 @@ export function buildTopologyAssetRows(assets: NetworkAssetListItem[]): Topology
     .map((asset) => {
       const assetType = String(asset.asset_type || '').trim();
       const marker = getTopologyAssetMarkerSpec(assetType);
-      const occupancy = getNetworkAssetPortOccupancy(asset, assets);
-      const hasCustomerRelation = hasTopologyAssetCustomerRelation(asset, assets);
+      const occupancy = getNetworkAssetPortOccupancy(asset, assets, topology);
+      const hasCustomerRelation = hasTopologyAssetCustomerRelation(asset, assets, topology);
       return {
         id: asset.id,
         name: asset.name,
@@ -154,7 +160,9 @@ export function buildTopologyAssetAutoLinkFeatureCollection(args: {
   linkRows: NMLink[];
 }): FeatureCollection {
   const rowsById = new Map(args.topologyRows.map((row) => [row.id, row]));
-  const customerNodes = (args.customerNodes || []).filter((node) => isCustomerNodeType(node.node_type));
+  const customerNodes = (args.customerNodes || []).filter(
+    (node) => isCustomerNodeType(node.node_type) && isActiveCustomerNode(node),
+  );
   const assetNodeIds = new Map<string, string>();
   const existingPairs = new Set<string>();
   const features: FeatureCollection['features'] = [];
@@ -203,7 +211,15 @@ export function buildTopologyAssetAutoLinkFeatureCollection(args: {
     if (directCustomerNode) {
       const endpointKey = `${row.id}:${String(row.locationId || row.customerId || row.id)}`;
       endpointKeys.add(endpointKey);
-      if (!hasExistingRealLink(existingPairs, sourceNodeId, directCustomerNode.id)) {
+      if (
+        !hasExistingRealLink(existingPairs, sourceNodeId, directCustomerNode.id) &&
+        !hasExistingCustomerSemanticLink(args.linkRows, args.nodeRows, sourceNodeId, row.locationId, row.customerId) &&
+        !hasExistingCustomerDropGeometry(
+          args.linkRows,
+          [row.longitude, row.latitude],
+          [directCustomerNode.lng, directCustomerNode.lat],
+        )
+      ) {
         pushLineFeature(features, linkIds, {
           id: `customer-drop:${row.id}:${directCustomerNode.id}`,
           name: `${row.name} -> ${directCustomerNode.name}`,
@@ -222,7 +238,21 @@ export function buildTopologyAssetAutoLinkFeatureCollection(args: {
       const endpointKey = `${row.id}:${String(asset.location_id || asset.customer_id || asset.id)}`;
       if (endpointKeys.has(endpointKey)) continue;
       endpointKeys.add(endpointKey);
-      if (!hasExistingRealLink(existingPairs, sourceNodeId, customerNode.id)) {
+      if (
+        !hasExistingRealLink(existingPairs, sourceNodeId, customerNode.id) &&
+        !hasExistingCustomerSemanticLink(
+          args.linkRows,
+          args.nodeRows,
+          sourceNodeId,
+          asset.location_id,
+          asset.customer_id,
+        ) &&
+        !hasExistingCustomerDropGeometry(
+          args.linkRows,
+          [row.longitude, row.latitude],
+          [customerNode.lng, customerNode.lat],
+        )
+      ) {
         pushLineFeature(features, linkIds, {
           id: `customer-drop:${row.id}:${customerNode.id}`,
           name: `${row.name} -> ${customerNode.name}`,
@@ -275,6 +305,94 @@ function hasExistingRealLink(existingPairs: Set<string>, a?: string | null, b?: 
   return existingPairs.has(buildNodePairKey(from, to));
 }
 
+function hasExistingCustomerSemanticLink(
+  linkRows: NMLink[],
+  nodeRows: NMNode[],
+  sourceNodeId: string | undefined,
+  locationId: string | null,
+  customerId: string | null,
+) {
+  const normalizedSourceNodeId = String(sourceNodeId || '').trim();
+  const normalizedLocationId = String(locationId || '').trim();
+  const normalizedCustomerId = String(customerId || '').trim();
+  if (!normalizedSourceNodeId || (!normalizedLocationId && !normalizedCustomerId)) return false;
+
+  return (linkRows || []).some((row) => {
+    const fromNodeId = String(row.from_node_id || '').trim();
+    const toNodeId = String(row.to_node_id || '').trim();
+    let otherNodeId = '';
+    if (fromNodeId === normalizedSourceNodeId) {
+      otherNodeId = toNodeId;
+    } else if (toNodeId === normalizedSourceNodeId) {
+      otherNodeId = fromNodeId;
+    }
+    if (!otherNodeId) return false;
+
+    const otherNode = (nodeRows || []).find((node) => node.id === otherNodeId);
+    if (!otherNode || !isCustomerNodeType(otherNode.node_type)) return false;
+
+    const otherLocationId = String(otherNode.metadata?.location_id || '').trim();
+    if (normalizedLocationId && otherLocationId === normalizedLocationId) return true;
+
+    const otherCustomerId = String(otherNode.metadata?.customer_id || '').trim();
+    return !!normalizedCustomerId && otherCustomerId === normalizedCustomerId;
+  });
+}
+
+function hasExistingCustomerDropGeometry(
+  linkRows: NMLink[],
+  sourceCoord: [number, number],
+  targetCoord: [number, number],
+) {
+  return (linkRows || []).some((row) => {
+    const endpoints = extractLinkEndpoints(row.geometry);
+    if (!endpoints) return false;
+    return (
+      (coordsAlmostEqual(endpoints.from, sourceCoord) && coordsAlmostEqual(endpoints.to, targetCoord)) ||
+      (coordsAlmostEqual(endpoints.from, targetCoord) && coordsAlmostEqual(endpoints.to, sourceCoord))
+    );
+  });
+}
+
+function extractLinkEndpoints(geometry: GeoJSON.Geometry | null | undefined) {
+  if (!geometry) return null;
+
+  if (geometry.type === 'LineString') {
+    const coordinates = geometry.coordinates;
+    if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
+    const from = toLngLatTuple(coordinates[0]);
+    const to = toLngLatTuple(coordinates[coordinates.length - 1]);
+    if (!from || !to) return null;
+    return { from, to };
+  }
+
+  if (geometry.type === 'MultiLineString') {
+    const segments = geometry.coordinates;
+    if (!Array.isArray(segments) || segments.length === 0) return null;
+    const firstSegment = segments.find((segment) => Array.isArray(segment) && segment.length > 0);
+    const lastSegment = [...segments].reverse().find((segment) => Array.isArray(segment) && segment.length > 0);
+    if (!firstSegment || !lastSegment) return null;
+    const from = toLngLatTuple(firstSegment[0]);
+    const to = toLngLatTuple(lastSegment[lastSegment.length - 1]);
+    if (!from || !to) return null;
+    return { from, to };
+  }
+
+  return null;
+}
+
+function toLngLatTuple(value: unknown): [number, number] | null {
+  if (!Array.isArray(value) || value.length < 2) return null;
+  const lng = Number(value[0]);
+  const lat = Number(value[1]);
+  if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
+  return [lng, lat];
+}
+
+function coordsAlmostEqual(a: [number, number], b: [number, number], epsilon = 0.00001) {
+  return Math.abs(a[0] - b[0]) <= epsilon && Math.abs(a[1] - b[1]) <= epsilon;
+}
+
 function pushLineFeature(
   features: FeatureCollection['features'],
   linkIds: Set<string>,
@@ -309,6 +427,7 @@ function hasTopologyAssetCustomerRelation(
     NetworkAssetListItem,
     'id' | 'asset_type' | 'parent_asset_id' | 'status' | 'customer_id' | 'location_id'
   >[],
+  topology?: NetworkAssetOccupancyTopologyArgs,
 ): boolean {
   if (String(asset.location_id || '').trim() || String(asset.customer_id || '').trim()) {
     return true;
@@ -322,5 +441,40 @@ function hasTopologyAssetCustomerRelation(
     }
   }
 
-  return false;
+  const sourceNodeId =
+    topology?.assetNodeIdsByAssetId?.get(asset.id) ||
+    (topology?.nodeRows || []).find((node) => {
+      const source = String(node.metadata?.asset_source || node.metadata?.asset_type || '').trim();
+      const assetId = String(node.metadata?.asset_id || '').trim();
+      return source === 'network_asset' && assetId === asset.id;
+    })?.id;
+  if (!sourceNodeId) return false;
+
+  return (topology?.linkRows || []).some((link) => {
+    const fromNodeId = String(link.from_node_id || '').trim();
+    const toNodeId = String(link.to_node_id || '').trim();
+    let otherNodeId = '';
+    if (fromNodeId === sourceNodeId) otherNodeId = toNodeId;
+    else if (toNodeId === sourceNodeId) otherNodeId = fromNodeId;
+    if (!otherNodeId) return false;
+
+    const otherNode = (topology?.nodeRows || []).find((node) => node.id === otherNodeId);
+    return isLinkedCustomerLocationNode(otherNode);
+  });
+}
+
+function isCustomerLocationNode(node: Pick<NMNode, 'metadata'> | undefined) {
+  const source = String(node?.metadata?.asset_source || node?.metadata?.asset_type || '').trim();
+  return source === 'customer_location';
+}
+
+function isLinkedCustomerLocationNode(
+  node: Pick<NMNode, 'node_type' | 'metadata'> | undefined,
+) {
+  return isCustomerLocationNode(node) && String(node?.node_type || '').trim() === 'customer_premise';
+}
+
+function isActiveCustomerNode(node: Pick<NMNode, 'status'> | undefined) {
+  const status = String(node?.status || '').trim().toLowerCase();
+  return status === 'active' || status === 'up';
 }

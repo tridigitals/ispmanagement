@@ -13,16 +13,20 @@
   import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import {
-    buildNetworkAssetStats,
+    buildNetworkAssetRelationText,
     buildNetworkAssetSavePayload,
+    buildNetworkAssetStats,
+    buildNetworkAssetTopologyText,
     filterNetworkAssets,
   } from './networkAssetsPageState';
+  import { buildNetworkAssetConnectionItems } from './networkAssetConnections';
   import {
     formatNetworkAssetCoordinates,
     parseNetworkAssetCoordinates,
   } from './networkAssetCoordinates';
   import {
     NETWORK_ASSET_TYPES,
+    NETWORK_ASSET_TYPE_GROUPS,
     getDefaultNetworkAssetStatus,
     getNetworkAssetGroupLabel,
     getNetworkAssetStatusLabel,
@@ -49,10 +53,6 @@
     model: string;
     serial_number: string;
     status: string;
-    customer_id: string;
-    location_id: string;
-    work_order_id: string;
-    parent_asset_id: string;
     latitude: string;
     longitude: string;
     notes: string;
@@ -69,6 +69,9 @@
   let status = $state('all');
   let editing = $state<NetworkAssetListItem | null>(null);
   let draft = $state<AssetDraft>(emptyDraft());
+  const editingConnectionItems = $derived.by(() =>
+    editing ? buildNetworkAssetConnectionItems(editing, rows) : [],
+  );
 
   const stats = $derived.by(() => buildNetworkAssetStats(rows));
   const filteredRows = $derived.by(() => filterNetworkAssets(rows, { q, assetType, status }));
@@ -93,8 +96,8 @@
     { key: 'asset_type', label: $t('admin.ftth_assets.table.type') || 'Type' },
     { key: 'status', label: $t('admin.ftth_assets.table.status') || 'Status' },
     { key: 'serial_number', label: $t('admin.ftth_assets.table.serial') || 'Serial' },
-    { key: 'customer_name', label: $t('admin.ftth_assets.table.customer') || 'Customer' },
-    { key: 'location_label', label: $t('admin.ftth_assets.table.location') || 'Location' },
+    { key: 'customer_name', label: $t('admin.ftth_assets.table.relation') || 'Relation' },
+    { key: 'location_label', label: $t('admin.ftth_assets.table.topology') || 'Topology' },
     { key: 'updated_at', label: $t('admin.ftth_assets.table.updated') || 'Updated' },
     { key: 'actions', label: '', align: 'right' as const },
   ]);
@@ -116,10 +119,6 @@
       model: '',
       serial_number: '',
       status: getDefaultNetworkAssetStatus(),
-      customer_id: '',
-      location_id: '',
-      work_order_id: '',
-      parent_asset_id: '',
       latitude: '',
       longitude: '',
       notes: '',
@@ -161,10 +160,6 @@
       model: row.model || '',
       serial_number: row.serial_number || '',
       status: row.status,
-      customer_id: row.customer_id || '',
-      location_id: row.location_id || '',
-      work_order_id: row.work_order_id || '',
-      parent_asset_id: row.parent_asset_id || '',
       latitude: row.latitude != null ? String(row.latitude) : '',
       longitude: row.longitude != null ? String(row.longitude) : '',
       notes: row.notes || '',
@@ -176,11 +171,6 @@
   function handleAssetTypeChange(value: string) {
     draft.asset_type = value;
     detailDraft = createNetworkAssetDetailDraft(value, editing?.metadata || {});
-  }
-
-  function clearAssetCoordinates() {
-    draft.latitude = '';
-    draft.longitude = '';
   }
 
   async function save() {
@@ -333,8 +323,12 @@
         />
         <select class="input" bind:value={assetType}>
           <option value="all">{$t('admin.ftth_assets.filters.all_types') || 'All types'}</option>
-          {#each NETWORK_ASSET_TYPES as type}
-            <option value={type}>{getNetworkAssetTypeLabel(type)}</option>
+          {#each NETWORK_ASSET_TYPE_GROUPS as group}
+            <optgroup label={group.label}>
+              {#each group.types as type}
+                <option value={type}>{getNetworkAssetTypeLabel(type)}</option>
+              {/each}
+            </optgroup>
           {/each}
         </select>
         <select class="input" bind:value={status}>
@@ -379,9 +373,9 @@
           {:else if key === 'serial_number'}
             {item.serial_number || '—'}
           {:else if key === 'customer_name'}
-            {item.customer_name || '—'}
+            <span class="relation-text">{buildNetworkAssetRelationText(item)}</span>
           {:else if key === 'location_label'}
-            {item.location_label || '—'}
+            <span class="topology-text">{buildNetworkAssetTopologyText(item, rows)}</span>
           {:else if key === 'updated_at'}
             <span class="mono">{item.updated_at}</span>
           {:else if key === 'actions'}
@@ -412,17 +406,17 @@
 </div>
 
 {#if FormModalComponent}
-  <FormModalComponent
-    bind:show={showModal}
-    {saving}
-    {editing}
-    {draft}
-    {detailDraft}
-    onclearcoordinates={clearAssetCoordinates}
-    onassettypechange={handleAssetTypeChange}
-    onclose={() => (showModal = false)}
-    onsave={save}
-  />
+      <FormModalComponent
+        bind:show={showModal}
+        {saving}
+        {editing}
+        connectedItems={editingConnectionItems}
+        {draft}
+        {detailDraft}
+        onassettypechange={handleAssetTypeChange}
+        onclose={() => (showModal = false)}
+        onsave={save}
+      />
 {/if}
 
 <style>
@@ -454,6 +448,17 @@
     color: var(--text-secondary);
     font-size: 0.78rem;
     line-height: 1.35;
+  }
+  .relation-text,
+  .topology-text {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.8rem;
+    color: var(--text-primary);
+  }
+  .topology-text {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
   }
   .stats {
     display: grid;

@@ -35,6 +35,7 @@
     showLoss: boolean;
     helper: string;
   };
+  export let showManualEndpointSection = true;
   export let hasExistingLinkBetweenNodes: (
     fromNodeId: string,
     toNodeId: string,
@@ -151,11 +152,11 @@
         <h4>Identity</h4>
       </div>
       <div class="form-grid identity-grid">
-        <label class="field span-6">
+        <label class="field span-5">
           <span>Name</span>
           <input class="input" bind:value={linkForm.name} placeholder="e.g. POP A to ODP 1" />
         </label>
-        <label class="field span-3">
+        <label class="field span-2">
           <span>Type</span>
           <Select2
             bind:value={linkForm.link_type}
@@ -166,7 +167,7 @@
             noResultsText="No type found"
           />
         </label>
-        <label class="field span-3">
+        <label class="field span-2">
           <span>Status</span>
           <Select2
             bind:value={linkForm.status}
@@ -177,50 +178,52 @@
             noResultsText="No status found"
           />
         </label>
-      </div>
-    </section>
-
-    <section class="form-section">
-      <div class="section-head endpoints-head">
-        <div>
-          <h4>Endpoints</h4>
-        </div>
-        <button class="inline-link-action" type="button" onclick={onUseStraightLine}>
-          <Icon name="link" size={15} />
-          Use straight line
-        </button>
-      </div>
-      <div class="form-grid endpoints-grid">
-        <label class="field span-5">
-          <span>From Node</span>
-          <select class="input select-input" bind:value={linkForm.from_node_id}>
-            <option value="">Select node</option>
-            {#each nodeRows as n}
-              <option value={n.id}>{n.name}</option>
-            {/each}
-          </select>
-        </label>
-        <label class="field span-5">
-          <span>To Node</span>
-          <select class="input select-input" bind:value={linkForm.to_node_id}>
-            <option value="">Select node</option>
-            {#each nodeRows as n}
-              <option
-                value={n.id}
-                disabled={n.id === linkForm.from_node_id ||
-                  hasExistingLinkBetweenNodes(linkForm.from_node_id, n.id, editingLinkId)}
-              >
-                {n.name}
-              </option>
-            {/each}
-          </select>
-        </label>
-        <label class="field span-2">
+        <label class="field span-3">
           <span>Priority</span>
           <input class="input" type="number" min="1" bind:value={linkForm.priority} />
         </label>
       </div>
     </section>
+
+    {#if showManualEndpointSection}
+      <section class="form-section">
+        <div class="section-head endpoints-head">
+          <div>
+            <h4>Endpoints</h4>
+          </div>
+          <button class="inline-link-action" type="button" onclick={onUseStraightLine}>
+            <Icon name="link" size={15} />
+            Use straight line
+          </button>
+        </div>
+        <div class="form-grid endpoints-grid">
+          <label class="field span-6">
+            <span>From Node</span>
+            <select class="input select-input" bind:value={linkForm.from_node_id}>
+              <option value="">Select node</option>
+              {#each nodeRows as n}
+                <option value={n.id}>{n.name}</option>
+              {/each}
+            </select>
+          </label>
+          <label class="field span-6">
+            <span>To Node</span>
+            <select class="input select-input" bind:value={linkForm.to_node_id}>
+              <option value="">Select node</option>
+              {#each nodeRows as n}
+                <option
+                  value={n.id}
+                  disabled={n.id === linkForm.from_node_id ||
+                    hasExistingLinkBetweenNodes(linkForm.from_node_id, n.id, editingLinkId)}
+                >
+                  {n.name}
+                </option>
+              {/each}
+            </select>
+          </label>
+        </div>
+      </section>
+    {/if}
 
     <section class="form-section">
       <div class="section-head with-helper">

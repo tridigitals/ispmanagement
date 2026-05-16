@@ -56,11 +56,61 @@ export type NetworkMapExtractedRows = {
 
 export const NETWORK_MAP_WORLD_BBOX = '-180,-85,180,85';
 
-function buildDerivedRows(nodeRows: NMNode[]) {
+function buildDerivedRows(nodeRows: NMNode[], linkRows: NMLink[]) {
   return {
-    customerRows: (nodeRows || []).filter((row) => isCustomerNodeType(row.node_type)),
+    customerRows: dedupeCustomerRows((nodeRows || []).filter((row) => isCustomerNodeType(row.node_type)), linkRows),
     serviceRows: (nodeRows || []).filter((row) => hasServiceMetadata(row)),
   };
+}
+
+function dedupeCustomerRows(customerRows: NMNode[], linkRows: NMLink[]) {
+  const byKey = new Map<string, NMNode[]>();
+  for (const row of customerRows || []) {
+    const key = customerDedupKey(row);
+    const bucket = byKey.get(key);
+    if (bucket) {
+      bucket.push(row);
+    } else {
+      byKey.set(key, [row]);
+    }
+  }
+
+  return Array.from(byKey.values()).map((rows) =>
+    rows
+      .slice()
+      .sort((a, b) => compareCustomerNodePriority(a, b, linkRows))[0],
+  );
+}
+
+function customerDedupKey(row: NMNode) {
+  const locationId = String(row.metadata?.location_id || '').trim();
+  if (locationId) return `location:${locationId}`;
+  const customerId = String(row.metadata?.customer_id || '').trim();
+  if (customerId) return `customer:${customerId}`;
+  return `node:${row.id}`;
+}
+
+function compareCustomerNodePriority(a: NMNode, b: NMNode, linkRows: NMLink[]) {
+  const linkDelta = linkedEdgeCount(b.id, linkRows) - linkedEdgeCount(a.id, linkRows);
+  if (linkDelta !== 0) return linkDelta;
+
+  const stateDelta = customerStateRank(b) - customerStateRank(a);
+  if (stateDelta !== 0) return stateDelta;
+
+  return a.id.localeCompare(b.id);
+}
+
+function linkedEdgeCount(nodeId: string, linkRows: NMLink[]) {
+  return (linkRows || []).reduce((count, row) => {
+    return row.from_node_id === nodeId || row.to_node_id === nodeId ? count + 1 : count;
+  }, 0);
+}
+
+function customerStateRank(row: NMNode) {
+  const state = String(row.metadata?.pppoe_visual_state || '').trim().toLowerCase();
+  if (state === 'connected') return 2;
+  if (state === 'disconnected') return 1;
+  return 0;
 }
 
 export function resolveNetworkMapFetchBbox({
@@ -222,7 +272,7 @@ export function extractMapRows(result: NetworkMapFetchResult): NetworkMapExtract
   const nodeRows = (result.nodesRes.data || []) as NMNode[];
   const linkRows = (result.linksRes.data || []) as NMLink[];
   const zoneRows = (result.zonesRes.data || []) as NMZone[];
-  const derivedRows = buildDerivedRows(nodeRows);
+  const derivedRows = buildDerivedRows(nodeRows, linkRows);
 
   return {
     nodeRows,
@@ -255,7 +305,7 @@ export function applyCachedMapData(args: {
   const linkRows = (args.cached.links.data || []) as NMLink[];
   const zoneRows = (args.cached.zones.data || []) as NMZone[];
   const routerRows = (args.cached.routers || []) as NMRouter[];
-  const derivedRows = buildDerivedRows(nodeRows);
+  const derivedRows = buildDerivedRows(nodeRows, linkRows);
   const routerOverlayRows = filterRoutersForOverlay(routerRows, nodeRows);
 
   args.setRows({
@@ -270,7 +320,7 @@ export function applyCachedMapData(args: {
   });
 
   args.setSourceData(args.sourceIds.nodes, nodesToFeatureCollection(nodeRows));
-  args.setSourceData(args.sourceIds.customers, customersToFeatureCollection(nodeRows));
+  args.setSourceData(args.sourceIds.customers, customersToFeatureCollection(derivedRows.customerRows));
   args.setSourceData(args.sourceIds.links, linksToFeatureCollection(linkRows));
   args.setSourceData(args.sourceIds.zones, zonesToFeatureCollection(zoneRows));
   args.setSourceData(args.sourceIds.routers, routersToFeatureCollection(routerOverlayRows));
@@ -295,7 +345,7 @@ export function applyFetchedMapData(args: {
 
   args.setRows(rows);
   args.setSourceData(args.sourceIds.nodes, nodesToFeatureCollection(rows.nodeRows));
-  args.setSourceData(args.sourceIds.customers, customersToFeatureCollection(rows.nodeRows));
+  args.setSourceData(args.sourceIds.customers, customersToFeatureCollection(rows.customerRows));
   args.setSourceData(args.sourceIds.links, linksToFeatureCollection(rows.linkRows));
   args.setSourceData(args.sourceIds.zones, zonesToFeatureCollection(rows.zoneRows));
   args.setSourceData(args.sourceIds.routers, routersToFeatureCollection(routerOverlayRows));
