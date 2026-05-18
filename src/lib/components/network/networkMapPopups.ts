@@ -26,6 +26,44 @@ type PopupDismissEvent = 'movestart' | 'zoomstart' | 'dragstart';
 
 export { nudgePopupElementIntoView } from './networkMapInteractionUtils';
 
+export function focusMapForPopupViewport(
+  map: Pick<import('maplibre-gl').Map, 'getZoom' | 'easeTo' | 'on' | 'off'>,
+  lng: number,
+  lat: number,
+  zoomFloor = 13,
+) {
+  if (!Number.isFinite(lng) || !Number.isFinite(lat)) return Promise.resolve();
+
+  const currentZoom = Number.isFinite(map.getZoom()) ? map.getZoom() : zoomFloor;
+
+  return new Promise<void>((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      map.off('moveend', handleMoveEnd);
+      resolve();
+    };
+    const handleMoveEnd = () => finish();
+
+    map.on('moveend', handleMoveEnd);
+    map.easeTo({
+      center: [lng, lat],
+      zoom: Math.max(currentZoom, zoomFloor),
+      duration: 260,
+      essential: true,
+      padding: {
+        top: 156,
+        right: 28,
+        bottom: 28,
+        left: 28,
+      },
+    });
+
+    setTimeout(finish, 320);
+  });
+}
+
 export function popupOptionsForMap(
   map: import('maplibre-gl').Map,
   coords: [number, number],

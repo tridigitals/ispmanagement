@@ -583,23 +583,6 @@
     });
   }
 
-  function focusMapForPopup(lng: number, lat: number, zoomFloor = 13) {
-    if (!map || !Number.isFinite(lng) || !Number.isFinite(lat)) return;
-    const currentZoom = Number.isFinite(map.getZoom()) ? map.getZoom() : zoomFloor;
-    map.easeTo({
-      center: [lng, lat],
-      zoom: Math.max(currentZoom, zoomFloor),
-      duration: 260,
-      essential: true,
-      padding: {
-        top: 156,
-        right: 28,
-        bottom: 28,
-        left: 28,
-      },
-    });
-  }
-
   function applyAssetMapTargetFocus() {
     if (assetFocusApplied) return;
     if (!assetMapTarget) return;
@@ -914,7 +897,8 @@
       return;
     }
     if (e.lngLat) {
-      focusMapForPopup(Number(e.lngLat.lng), Number(e.lngLat.lat), 13);
+      const { focusMapForPopupViewport } = await loadNetworkMapPopupModule();
+      await focusMapForPopupViewport(map, Number(e.lngLat.lng), Number(e.lngLat.lat), 13);
     }
     await updateWorkspaceSelection(
       buildSelectedMapObject({
@@ -953,7 +937,8 @@
       return;
     }
     if (e.lngLat) {
-      focusMapForPopup(Number(e.lngLat.lng), Number(e.lngLat.lat), 13);
+      const { focusMapForPopupViewport } = await loadNetworkMapPopupModule();
+      await focusMapForPopupViewport(map, Number(e.lngLat.lng), Number(e.lngLat.lat), 13);
     }
     const props = clickedFeature.properties || {};
     const linkId = String(props.id || '');
@@ -999,7 +984,8 @@
       return;
     }
     if (e.lngLat) {
-      focusMapForPopup(Number(e.lngLat.lng), Number(e.lngLat.lat), 13);
+      const { focusMapForPopupViewport } = await loadNetworkMapPopupModule();
+      await focusMapForPopupViewport(map, Number(e.lngLat.lng), Number(e.lngLat.lat), 13);
     }
     await updateWorkspaceSelection(
       buildSelectedMapObject({
@@ -1059,10 +1045,14 @@
       handleLinkPickNode(nodeId);
       return;
     }
-    focusMapForPopup(coords[0], coords[1], 14);
     const mapInstance = map;
-    const { bindPopupNavigationDismiss, nudgePopupElementIntoView, popupOptionsForMap } =
-      await loadNetworkMapPopupModule();
+    const {
+      bindPopupNavigationDismiss,
+      focusMapForPopupViewport,
+      nudgePopupElementIntoView,
+      popupOptionsForMap,
+    } = await loadNetworkMapPopupModule();
+    await focusMapForPopupViewport(mapInstance, coords[0], coords[1], 14);
 
     activeNodePopup?.remove();
     const closeBtnId = `nm-topology-asset-close-${Math.random().toString(36).slice(2, 10)}`;
@@ -1503,14 +1493,37 @@
     }
   }
 
+  async function refreshAfterTopologySync() {
+    invalidateMapDataCache();
+    await refreshTopologyAssetContext(true);
+    await refreshTopologyAssets(true);
+    await refreshMapData(true, { skipAutoSync: true });
+  }
+
   function queueBackgroundTopologySync() {
     if (backgroundAssetSyncPromise || syncingAssetNodes) return;
     backgroundAssetSyncPromise = syncTopologyAssets(false)
       .then(async (changed) => {
         if (!changed) return false;
-        invalidateMapDataCache();
-        await refreshMapData(true, { skipAutoSync: true });
+        await refreshAfterTopologySync();
         return true;
+      })
+      .finally(() => {
+        backgroundAssetSyncPromise = null;
+      });
+  }
+
+  function queueManualTopologySync() {
+    if (backgroundAssetSyncPromise || syncingAssetNodes) return;
+    backgroundAssetSyncPromise = syncTopologyAssets(true)
+      .then(async (changed) => {
+        if (!changed) return false;
+        await refreshAfterTopologySync();
+        return true;
+      })
+      .catch((error) => {
+        console.error(error);
+        return false;
       })
       .finally(() => {
         backgroundAssetSyncPromise = null;
@@ -2456,11 +2469,8 @@
         syncing: 'Syncing...',
         sync: 'Sync',
       }}
-      onSyncAssets={async () => {
-        if (await syncTopologyAssets(true)) {
-          invalidateMapDataCache();
-        }
-        await refreshMapData(true);
+      onSyncAssets={() => {
+        queueManualTopologySync();
       }}
     />
   {/if}
@@ -2507,52 +2517,55 @@
         {/if}
       </div>
 
-      {#if FloatingControlsComponent}
-        <FloatingControlsComponent
-          labels={{
-            title: $t('admin.network.map.floating.title') || 'Map controls',
-            layers: $t('admin.network.map.floating.layers') || 'Layers',
-            view: $t('admin.network.map.floating.view') || 'View',
-            standard: $t('admin.network.map.view.standard') || 'Standard',
-            satellite: $t('admin.network.map.view.satellite') || 'Satellite',
-            nodes: $t('admin.network.map.stats.nodes') || 'Nodes',
-            links: $t('admin.network.map.stats.links') || 'Links',
-            zones: $t('admin.network.map.stats.zones') || 'Zones',
-            assets: $t('admin.network.map.layers.assets') || 'FTTH Assets',
-            routers: $t('admin.network.map.layers.routers') || 'Routers',
-            customers: $t('admin.network.map.layers.customers') || 'Customers',
-          }}
-          hidden={controlsHidden}
-          {viewMode}
-          {nodesVisible}
-          {linksVisible}
-          {zonesVisible}
-          {routersVisible}
-          {customersVisible}
-          {topologyAssetsVisible}
-          canShowRouters={canReadRouterInventory}
-          onViewModeChange={(mode: 'standard' | 'satellite') => (viewMode = mode)}
-          onNodesVisibleChange={setNodesVisible}
-          onLinksVisibleChange={setLinksVisible}
-          onZonesVisibleChange={setZonesVisible}
-          onRoutersVisibleChange={setRoutersVisible}
-          onCustomersVisibleChange={setCustomersVisible}
-          onTopologyAssetsVisibleChange={setTopologyAssetsVisible}
-          onToggleHidden={() => (controlsHidden = !controlsHidden)}
-        />
-      {/if}
+      {#if FloatingControlsComponent || canManageFtthAssets}
+        <div class="map-controls-stack" class:controls-open={!controlsHidden}>
+          {#if FloatingControlsComponent}
+            <FloatingControlsComponent
+              labels={{
+                title: $t('admin.network.map.floating.title') || 'Map controls',
+                layers: $t('admin.network.map.floating.layers') || 'Layers',
+                view: $t('admin.network.map.floating.view') || 'View',
+                standard: $t('admin.network.map.view.standard') || 'Standard',
+                satellite: $t('admin.network.map.view.satellite') || 'Satellite',
+                nodes: $t('admin.network.map.stats.nodes') || 'Nodes',
+                links: $t('admin.network.map.stats.links') || 'Links',
+                zones: $t('admin.network.map.stats.zones') || 'Zones',
+                assets: $t('admin.network.map.layers.assets') || 'FTTH Assets',
+                routers: $t('admin.network.map.layers.routers') || 'Routers',
+                customers: $t('admin.network.map.layers.customers') || 'Customers',
+              }}
+              hidden={controlsHidden}
+              {viewMode}
+              {nodesVisible}
+              {linksVisible}
+              {zonesVisible}
+              {routersVisible}
+              {customersVisible}
+              {topologyAssetsVisible}
+              canShowRouters={canReadRouterInventory}
+              onViewModeChange={(mode: 'standard' | 'satellite') => (viewMode = mode)}
+              onNodesVisibleChange={setNodesVisible}
+              onLinksVisibleChange={setLinksVisible}
+              onZonesVisibleChange={setZonesVisible}
+              onRoutersVisibleChange={setRoutersVisible}
+              onCustomersVisibleChange={setCustomersVisible}
+              onTopologyAssetsVisibleChange={setTopologyAssetsVisible}
+              onToggleHidden={() => (controlsHidden = !controlsHidden)}
+            />
+          {/if}
 
-      {#if canManageFtthAssets}
-        <button
-          type="button"
-          class="map-add-asset-btn"
-          class:active={assetCreatePickMode}
-          class:controls-open={!controlsHidden}
-          onclick={toggleAssetCreatePickMode}
-        >
-          <Icon name={assetCreatePickMode ? 'x-circle' : 'plus'} size={14} />
-          <span>{assetCreatePickMode ? 'Cancel Add' : 'Add Asset'}</span>
-        </button>
+          {#if canManageFtthAssets}
+            <button
+              type="button"
+              class="map-add-asset-btn"
+              class:active={assetCreatePickMode}
+              onclick={toggleAssetCreatePickMode}
+            >
+              <Icon name={assetCreatePickMode ? 'x-circle' : 'plus'} size={14} />
+              <span>{assetCreatePickMode ? 'Cancel Add' : 'Add Asset'}</span>
+            </button>
+          {/if}
+        </div>
       {/if}
 
       {#if assetCreatePickMode}
@@ -2878,10 +2891,27 @@
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
   }
 
-  .map-add-asset-btn {
+  .map-controls-stack {
     position: absolute;
-    top: 62px;
-    right: 14px;
+    top: 12px;
+    right: 12px;
+    z-index: 7;
+    display: grid;
+    justify-items: end;
+    gap: 10px;
+    pointer-events: none;
+  }
+
+  .map-controls-stack :global(.floating-controls),
+  .map-controls-stack :global(.floating-controls-toggle) {
+    position: static;
+    top: auto;
+    right: auto;
+    pointer-events: auto;
+  }
+
+  .map-add-asset-btn {
+    position: static;
     z-index: 7;
     display: inline-flex;
     align-items: center;
@@ -2898,10 +2928,7 @@
     box-shadow: 0 14px 28px rgba(2, 6, 23, 0.24);
     cursor: pointer;
     white-space: nowrap;
-  }
-
-  .map-add-asset-btn.controls-open {
-    top: 66px;
+    pointer-events: auto;
   }
 
   .map-add-asset-btn.active {
@@ -3606,13 +3633,15 @@
       width: calc(100vw - 82px);
     }
 
-    .map-add-asset-btn {
-      top: 58px;
+    .map-controls-stack {
+      top: max(12px, env(safe-area-inset-top, 0px));
       right: 12px;
+      gap: 8px;
     }
 
-    .map-add-asset-btn.controls-open {
-      top: calc(min(46vh, 420px) + 22px + max(14px, env(safe-area-inset-top, 0px)) + 44px);
+    .map-add-asset-btn {
+      min-height: 38px;
+      padding: 0 14px;
     }
 
     .map-asset-create-hint {
@@ -3663,7 +3692,6 @@
     }
 
     .map-add-asset-btn {
-      right: 10px;
       min-height: 38px;
       padding: 0 12px;
       font-size: 0.74rem;
