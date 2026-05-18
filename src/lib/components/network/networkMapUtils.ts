@@ -419,6 +419,19 @@ function buildNodeIconImage(bg: string, type: string): ImageData {
   return ctx.getImageData(0, 0, size, size);
 }
 
+function buildNodeGlyphImage(type: string): ImageData {
+  const size = 64;
+  const c = document.createElement('canvas');
+  c.width = size;
+  c.height = size;
+  const ctx = c.getContext('2d');
+  if (!ctx) return new ImageData(size, size);
+
+  ctx.clearRect(0, 0, size, size);
+  drawNodePictogram(ctx, type, size / 2, size / 2, size * 0.56);
+  return ctx.getImageData(0, 0, size, size);
+}
+
 export function ensureNodeTypeIconsRegistered(map: import('maplibre-gl').Map | null) {
   if (!map) return;
   const defs: Array<{ id: string; bg: string; type: string }> = [
@@ -431,6 +444,8 @@ export function ensureNodeTypeIconsRegistered(map: import('maplibre-gl').Map | n
     { id: 'nm-node-icon-ap', bg: '#ef4444', type: 'ap' },
     { id: 'nm-node-icon-odc', bg: '#0f766e', type: 'odc' },
     { id: 'nm-node-icon-odp', bg: '#14b8a6', type: 'odp' },
+    { id: 'nm-node-icon-odp-warn', bg: '#eab308', type: 'odp' },
+    { id: 'nm-node-icon-odp-full', bg: '#ef4444', type: 'odp' },
     { id: 'nm-node-icon-splitter', bg: '#a855f7', type: 'splitter' },
     { id: 'nm-node-icon-junction', bg: '#f97316', type: 'junction' },
     { id: 'nm-node-icon-customer', bg: '#111827', type: 'customer_premise' },
@@ -441,6 +456,21 @@ export function ensureNodeTypeIconsRegistered(map: import('maplibre-gl').Map | n
   for (const d of defs) {
     if (!map.hasImage(d.id)) {
       map.addImage(d.id, buildNodeIconImage(d.bg, d.type), { pixelRatio: 2 });
+    }
+  }
+
+  const glyphDefs: Array<{ id: string; type: string }> = [
+    { id: 'nm-node-glyph-olt', type: 'olt' },
+    { id: 'nm-node-glyph-odf', type: 'odc' },
+    { id: 'nm-node-glyph-odc', type: 'odc' },
+    { id: 'nm-node-glyph-odp', type: 'odp' },
+    { id: 'nm-node-glyph-splitter', type: 'splitter' },
+    { id: 'nm-node-glyph-switch', type: 'switch' },
+    { id: 'nm-node-glyph-router', type: 'router' },
+  ];
+  for (const d of glyphDefs) {
+    if (!map.hasImage(d.id)) {
+      map.addImage(d.id, buildNodeGlyphImage(d.type), { pixelRatio: 2 });
     }
   }
 }
@@ -1113,6 +1143,35 @@ export function findLiveRouterForNode(node: NMNode, routerRows: NMRouter[]): NMR
     routerRows.find((row) => String(row.identity || '').trim().toLowerCase() === nodeName) ||
     null
   );
+}
+
+export function resolveRouterTopologyNodeId(args: {
+  routerId: string;
+  routerName?: string | null;
+  routerIdentity?: string | null;
+  nodeRows: NMNode[];
+}) {
+  const normalizedRouterId = String(args.routerId || '').trim();
+  const normalizedName = String(args.routerName || '').trim().toLowerCase();
+  const normalizedIdentity = String(args.routerIdentity || '').trim().toLowerCase();
+
+  const matched = (args.nodeRows || []).find((row) => {
+    if (String(row.node_type || '').trim() !== 'router') return false;
+
+    const assetSource = String(row.metadata?.asset_source || row.metadata?.asset_type || '').trim();
+    const assetId = String(row.metadata?.asset_id || '').trim();
+    const rowId = String(row.id || '').trim();
+    const rowName = String(row.name || '').trim().toLowerCase();
+
+    if (assetSource === 'mikrotik_router' && normalizedRouterId && assetId === normalizedRouterId) {
+      return true;
+    }
+    if (normalizedRouterId && rowId === normalizedRouterId) return true;
+    if (normalizedName && rowName === normalizedName) return true;
+    return !!normalizedIdentity && rowName === normalizedIdentity;
+  });
+
+  return matched?.id || normalizedRouterId;
 }
 
 export function buildRouterPopupModelFromNode(

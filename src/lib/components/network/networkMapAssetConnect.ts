@@ -56,6 +56,16 @@ const PREFERRED_PARENT_TYPES: Record<string, string[]> = {
 };
 const TOPOLOGY_ASSET_NODE_SOURCE = 'network_asset';
 
+export function canTopologyAssetAcceptConnection(args: {
+  assetType: string;
+  portCapacity?: number | null;
+  portsAvailable?: number | null;
+}) {
+  if (String(args.assetType || '').trim() !== 'odp') return true;
+  if (!Number.isFinite(args.portCapacity) || Number(args.portCapacity) <= 0) return true;
+  return Number(args.portsAvailable ?? 0) > 0;
+}
+
 export function assetSupportsCustomerDrop(assetType: string): boolean {
   return CUSTOMER_DROP_TYPES.has(String(assetType || '').trim());
 }

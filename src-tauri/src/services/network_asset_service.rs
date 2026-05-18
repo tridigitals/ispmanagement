@@ -4,6 +4,7 @@ use crate::models::{
     CreateNetworkAssetRequest, ListNetworkAssetsParams, NetworkAsset, NetworkAssetListItem,
     PaginatedResponse, UpdateNetworkAssetRequest,
 };
+use crate::services::network_asset_port_cache::refresh_port_usage_cache_for_tenant;
 use crate::services::{AuditService, AuthService};
 use std::net::IpAddr;
 
@@ -338,6 +339,7 @@ impl NetworkAssetService {
         params: ListNetworkAssetsParams,
     ) -> AppResult<PaginatedResponse<NetworkAssetListItem>> {
         self.require_read(actor_id, tenant_id).await?;
+        refresh_port_usage_cache_for_tenant(&self.pool, tenant_id).await?;
 
         let q = params.q.unwrap_or_default().trim().to_string();
         let page = params.page.unwrap_or(1).max(1);
@@ -687,6 +689,7 @@ impl NetworkAssetService {
             )
             .await;
 
+        refresh_port_usage_cache_for_tenant(&self.pool, tenant_id).await?;
         self.load_asset(tenant_id, &asset.id).await
     }
 
@@ -905,6 +908,7 @@ impl NetworkAssetService {
             )
             .await;
 
+        refresh_port_usage_cache_for_tenant(&self.pool, tenant_id).await?;
         self.load_asset(tenant_id, id).await
     }
 
@@ -979,6 +983,7 @@ impl NetworkAssetService {
             )
             .await;
 
+        refresh_port_usage_cache_for_tenant(&self.pool, tenant_id).await?;
         Ok(())
     }
 
@@ -1028,6 +1033,7 @@ impl NetworkAssetService {
             )
             .await;
 
+        refresh_port_usage_cache_for_tenant(&self.pool, tenant_id).await?;
         self.load_asset(tenant_id, id).await
     }
 

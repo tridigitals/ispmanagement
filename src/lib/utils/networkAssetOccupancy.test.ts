@@ -7,7 +7,7 @@ import {
   getNetworkAssetPortOccupancy,
   getNetworkAssetPortOccupancySummary,
 } from './networkAssetOccupancy';
-import type { NMLink, NMNode } from '$lib/components/network/networkMapUtils';
+import type { NMLink, NMNode, NMRouter } from '$lib/components/network/networkMapUtils';
 
 function asset(overrides: Partial<NetworkAssetListItem>): NetworkAssetListItem {
   return {
@@ -67,6 +67,21 @@ function link(overrides: Partial<NMLink>): NMLink {
         [110.31, -7.21],
       ],
     },
+    ...overrides,
+  };
+}
+
+function router(overrides: Partial<NMRouter>): NMRouter {
+  return {
+    id: 'router-1',
+    name: 'Router 1',
+    host: '10.10.10.1',
+    port: 8728,
+    is_online: true,
+    enabled: true,
+    identity: 'RTR-1',
+    ros_version: '7.18.2',
+    latency_ms: 3,
     ...overrides,
   };
 }
@@ -291,6 +306,91 @@ describe('networkAssetOccupancy', () => {
     });
   });
 
+  it('counts router uplink and downstream/customer links, but excludes splitter upstream, as used ODP ports', () => {
+    const odp = asset({
+      id: 'odp-1',
+      asset_type: 'odp',
+      metadata: {
+        total_port_capacity: '8',
+      },
+    });
+
+    expect(
+      getNetworkAssetPortOccupancy(
+        odp,
+        [odp],
+        {
+          nodeRows: [
+            node({
+              id: 'odp-node-1',
+              node_type: 'odp',
+              metadata: {
+                asset_source: 'network_asset',
+                asset_type: 'odp',
+                asset_id: 'odp-1',
+              },
+            }),
+            node({
+              id: 'customer-node-1',
+              node_type: 'customer_premise',
+              metadata: {
+                asset_source: 'customer_location',
+                customer_id: 'cust-1',
+                location_id: 'loc-1',
+              },
+            }),
+            node({
+              id: 'downstream-odp-node-1',
+              node_type: 'odp',
+              metadata: {
+                asset_source: 'network_asset',
+                asset_type: 'odp',
+                asset_id: 'odp-2',
+              },
+            }),
+            node({
+              id: 'splitter-node-1',
+              node_type: 'splitter',
+              metadata: {
+                asset_source: 'network_asset',
+                asset_type: 'splitter',
+                asset_id: 'splitter-1',
+              },
+            }),
+          ],
+          linkRows: [
+            link({
+              from_node_id: 'odp-node-1',
+              to_node_id: 'customer-node-1',
+            }),
+            link({
+              from_node_id: 'odp-node-1',
+              to_node_id: 'downstream-odp-node-1',
+            }),
+            link({
+              from_node_id: 'splitter-node-1',
+              to_node_id: 'odp-node-1',
+            }),
+            link({
+              from_node_id: 'router-1',
+              to_node_id: 'odp-node-1',
+            }),
+          ],
+          routerRows: [
+            router({
+              id: 'router-1',
+            }),
+          ],
+        },
+      ),
+    ).toEqual({
+      total: 8,
+      used: 3,
+      available: 5,
+      state: 'partial',
+    });
+  });
+
   it('counts maintenance or suspended customer-location links as used ports because the physical drop is still occupied', () => {
     const odp = asset({
       id: 'odp-1',
@@ -383,6 +483,111 @@ describe('networkAssetOccupancy', () => {
       total: 8,
       used: 1,
       available: 7,
+      state: 'partial',
+    });
+  });
+
+  it('counts router uplink plus customer-side/downstream topology links as used ODP capacity', () => {
+    const odp = asset({
+      id: 'odp-1',
+      metadata: {
+        total_port_capacity: '8',
+      },
+    });
+
+    expect(
+      getNetworkAssetPortOccupancy(
+        odp,
+        [
+          odp,
+          asset({
+            id: 'ont-1',
+            asset_type: 'ont',
+            parent_asset_id: 'odp-1',
+            customer_id: 'cust-1',
+            location_id: 'loc-1',
+            status: 'installed',
+          }),
+        ],
+        {
+          nodeRows: [
+            node({
+              id: 'odp-node-1',
+              node_type: 'odp',
+              metadata: {
+                asset_source: 'network_asset',
+                asset_type: 'odp',
+                asset_id: 'odp-1',
+              },
+            }),
+            node({
+              id: 'customer-node-1',
+              node_type: 'customer_premise',
+              status: 'active',
+              metadata: {
+                asset_source: 'customer_location',
+                asset_type: 'customer_location',
+                customer_id: 'cust-1',
+                location_id: 'loc-1',
+              },
+            }),
+            node({
+              id: 'customer-node-2',
+              node_type: 'customer_premise',
+              status: 'active',
+              metadata: {
+                asset_source: 'customer_location',
+                asset_type: 'customer_location',
+                customer_id: 'cust-2',
+                location_id: 'loc-2',
+              },
+            }),
+            node({
+              id: 'splitter-node-1',
+              node_type: 'splitter',
+              status: 'active',
+              metadata: {
+                asset_source: 'network_asset',
+                asset_type: 'splitter',
+                asset_id: 'splitter-1',
+              },
+            }),
+          ],
+          linkRows: [
+            link({
+              id: 'link-upstream-router',
+              from_node_id: 'router-legacy-1',
+              to_node_id: 'odp-node-1',
+            }),
+            link({
+              id: 'link-upstream-splitter',
+              from_node_id: 'splitter-node-1',
+              to_node_id: 'odp-node-1',
+            }),
+            link({
+              id: 'link-cust-1',
+              from_node_id: 'odp-node-1',
+              to_node_id: 'customer-node-1',
+            }),
+            link({
+              id: 'link-cust-2',
+              from_node_id: 'customer-node-2',
+              to_node_id: 'odp-node-1',
+            }),
+          ],
+          routerRows: [
+            router({
+              id: 'router-legacy-1',
+              name: 'Core Router',
+              identity: 'CORE-ROUTER',
+            }),
+          ],
+        },
+      ),
+    ).toEqual({
+      total: 8,
+      used: 3,
+      available: 5,
       state: 'partial',
     });
   });

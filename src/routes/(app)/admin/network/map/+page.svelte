@@ -5,6 +5,7 @@
   import { onDestroy, onMount, type Component } from 'svelte';
   import { t } from 'svelte-i18n';
   import { customers } from '$lib/api/customers';
+  import { mikrotik } from '$lib/api/mikrotik';
   import { networkMapping } from '$lib/api/networkMapping';
   import { networkAssets } from '$lib/api/networkAssets';
   import type { NetworkAssetListItem } from '$lib/api/types';
@@ -38,6 +39,7 @@
   import {
     buildTopologyAssetConnectionOperations,
     buildTopologyAssetConnectDraft,
+    canTopologyAssetAcceptConnection,
     resolveTopologyAssetNodeId,
   } from '$lib/components/network/networkMapAssetConnect';
   import {
@@ -74,7 +76,9 @@
   } from '$lib/components/network/networkMapLinkPicking';
   import { shouldShowManualEndpointSection } from '$lib/components/network/networkMapLinkModalState';
   import { buildLinkLayerVisibilityState } from '$lib/components/network/networkMapLinkVisibility';
+  import { shouldSuppressPopupOnTargetPick } from '$lib/components/network/networkMapClickGuards';
   import {
+    NETWORK_MAP_WORLD_BBOX,
     applyCachedMapData,
     applyFetchedMapData,
     buildMapDataCacheKey,
@@ -116,6 +120,7 @@
     nodesToFeatureCollection,
     parseGeometryText,
     prettyGeometry,
+    resolveRouterTopologyNodeId,
     systemManagedNodeSourceLabel,
     type LinkFieldConfig,
     type NMLink,
@@ -213,6 +218,9 @@
   let routerRows = $state<NMRouter[]>([]);
   let topologyAssetRows = $state<TopologyAssetRow[]>([]);
   let topologyAssetItems = $state<NetworkAssetListItem[]>([]);
+  let topologyAssetContextNodeRows = $state<NMNode[]>([]);
+  let topologyAssetContextLinkRows = $state<NMLink[]>([]);
+  let topologyAssetContextRouterRows = $state<NMRouter[]>([]);
   let customerRows = $state<NMNode[]>([]);
   let serviceRows = $state<NMNode[]>([]);
   let savingNode = $state(false);
@@ -283,6 +291,7 @@
           assetNodeIdsByAssetId: topologyAssetNodeIdCache,
           nodeRows,
           linkRows,
+          routerRows,
         })
       : [],
   );
@@ -326,8 +335,10 @@
   const dataCacheMaxEntries = 40;
   const assetSyncTtlMs = 45_000;
   const topologyAssetsCacheTtlMs = 60_000;
+  const topologyAssetContextCacheTtlMs = 60_000;
   const mapTilerKey = (import.meta.env.VITE_MAPTILER_KEY as string | undefined)?.trim();
   let lastTopologyAssetsLoadedAt = 0;
+  let lastTopologyAssetContextLoadedAt = 0;
   let refreshingTopologyAssets = false;
   const hasHiResSatellite = Boolean(mapTilerKey);
   const standardMaxZoom = 19;
@@ -691,6 +702,7 @@
           : portUsage.used <= 0
             ? 'Ready'
             : `${portUsage.available} port left`;
+    const canConnectAsset = row.canAcceptConnections;
     const relationRows = [
       {
         label: 'Upstream',
@@ -756,7 +768,7 @@
               ? `<button id="${editBtnId}" class="nm-popup-btn" type="button">Edit</button>`
               : ''
           }
-          <button id="${connectBtnId}" class="nm-popup-btn primary" type="button">Connect</button>
+          <button id="${connectBtnId}" class="nm-popup-btn primary" type="button" ${canConnectAsset ? '' : 'disabled'}>${canConnectAsset ? 'Connect' : 'Full'}</button>
           <button id="${closeBtnId}" class="nm-popup-btn nm-popup-btn-close" type="button">Close</button>
         </div>
       </div>
@@ -895,11 +907,15 @@
       await openCreateTopologyAssetModalAt(Number(e.lngLat.lng), Number(e.lngLat.lat));
       return;
     }
+    const props = clickedFeature.properties || {};
+    const nodeId = String(props.id || '');
+    if (shouldSuppressPopupOnTargetPick(linkPickMode, 'node')) {
+      handleLinkPickNode(nodeId);
+      return;
+    }
     if (e.lngLat) {
       focusMapForPopup(Number(e.lngLat.lng), Number(e.lngLat.lat), 13);
     }
-    const props = clickedFeature.properties || {};
-    const nodeId = String(props.id || '');
     await updateWorkspaceSelection(
       buildSelectedMapObject({
         kind: 'node',
@@ -908,10 +924,6 @@
         nodeType: props.node_type || props.nodeType || undefined,
       }),
     );
-    if (linkPickMode) {
-      handleLinkPickNode(nodeId);
-      return;
-    }
     const { openNodePopup } = await loadNetworkMapPopupModule();
     openNodePopup({
       map,
@@ -973,11 +985,22 @@
       await openCreateTopologyAssetModalAt(Number(e.lngLat.lng), Number(e.lngLat.lat));
       return;
     }
+    const props = clickedFeature.properties || {};
+    const routerId = String(props.id || '');
+    if (shouldSuppressPopupOnTargetPick(linkPickMode, 'router')) {
+      handleLinkPickNode(
+        resolveRouterTopologyNodeId({
+          routerId,
+          routerName: String(props.name || ''),
+          routerIdentity: String(props.identity || ''),
+          nodeRows,
+        }),
+      );
+      return;
+    }
     if (e.lngLat) {
       focusMapForPopup(Number(e.lngLat.lng), Number(e.lngLat.lat), 13);
     }
-    const props = clickedFeature.properties || {};
-    const routerId = String(props.id || '');
     await updateWorkspaceSelection(
       buildSelectedMapObject({
         kind: 'router',
@@ -993,7 +1016,15 @@
       activePopup: activeNodePopup,
       setActivePopup: (popup) => (activeNodePopup = popup),
       onClose: clearMapPopupSelection,
-      onConnect: startConnectFromNode,
+      onConnect: (routerId) =>
+        void startConnectFromNode(
+          resolveRouterTopologyNodeId({
+            routerId,
+            routerName: String(props.name || ''),
+            routerIdentity: String(props.identity || ''),
+            nodeRows,
+          }),
+        ),
       onOpenRouter: (routerId) => void goto(`${tenantPrefix}/admin/network/routers/${routerId}`),
     });
   }
@@ -1009,8 +1040,17 @@
     const row = topologyAssetRows.find((candidate) => candidate.id === assetId);
     const coords = coordinateFromGeometry(clickedFeature.feature.geometry as Geometry);
     if (!row || !coords) return;
-    focusMapForPopup(coords[0], coords[1], 14);
-    if (linkPickMode) {
+    if (shouldSuppressPopupOnTargetPick(linkPickMode, 'topology_asset')) {
+      if (
+        !canTopologyAssetAcceptConnection({
+          assetType: row.assetType,
+          portCapacity: row.portCapacity,
+          portsAvailable: row.portsAvailable,
+        })
+      ) {
+        toast.error(`${row.name} sudah penuh dan tidak bisa dipakai untuk koneksi baru.`);
+        return;
+      }
       const nodeId = await ensureTopologyAssetNodeId(assetId);
       if (!nodeId) {
         toast.error('FTTH asset node belum tersinkron ke topology map.');
@@ -1019,6 +1059,7 @@
       handleLinkPickNode(nodeId);
       return;
     }
+    focusMapForPopup(coords[0], coords[1], 14);
     const mapInstance = map;
     const { bindPopupNavigationDismiss, nudgePopupElementIntoView, popupOptionsForMap } =
       await loadNetworkMapPopupModule();
@@ -1058,6 +1099,7 @@
       const connectBtn = document.getElementById(connectBtnId) as HTMLButtonElement | null;
       const editBtn = document.getElementById(editBtnId) as HTMLButtonElement | null;
       connectBtn?.addEventListener('click', () => {
+        if (!row.canAcceptConnections) return;
         popup.remove();
         void startConnectFromTopologyAsset(assetId);
       });
@@ -1077,6 +1119,39 @@
     popup.addTo(mapInstance);
   }
 
+  async function refreshTopologyAssetContext(force = false) {
+    const now = Date.now();
+    const isStale = now - lastTopologyAssetContextLoadedAt >= topologyAssetContextCacheTtlMs;
+    if (!force && !isStale && topologyAssetContextNodeRows.length && topologyAssetContextLinkRows.length) {
+      return;
+    }
+
+    const [nodesRes, linksRes, routersRes] = await Promise.all([
+      networkMapping.nodes.list({
+        bbox: NETWORK_MAP_WORLD_BBOX,
+        page: 1,
+        per_page: 5000,
+        include_legacy_ftth: true,
+      }),
+      networkMapping.links.list({
+        bbox: NETWORK_MAP_WORLD_BBOX,
+        page: 1,
+        per_page: 5000,
+      }),
+      shouldFetchRouterOverlay({
+        canReadRouterInventory,
+        routersVisible: true,
+      })
+        ? mikrotik.routers.list()
+        : Promise.resolve(routerRows),
+    ]);
+
+    topologyAssetContextNodeRows = (nodesRes.data || []) as NMNode[];
+    topologyAssetContextLinkRows = (linksRes.data || []) as NMLink[];
+    topologyAssetContextRouterRows = (routersRes || []) as NMRouter[];
+    lastTopologyAssetContextLoadedAt = Date.now();
+  }
+
   async function refreshTopologyAssets(force = false) {
     const now = Date.now();
     const isStale = now - lastTopologyAssetsLoadedAt >= topologyAssetsCacheTtlMs;
@@ -1093,6 +1168,7 @@
 
     refreshingTopologyAssets = true;
     try {
+      await refreshTopologyAssetContext(force);
       const response = await networkAssets.list({
         page: 1,
         per_page: 500,
@@ -1100,8 +1176,9 @@
       topologyAssetItems = (response.data || []) as NetworkAssetListItem[];
       topologyAssetRows = buildTopologyAssetRows(topologyAssetItems, {
         assetNodeIdsByAssetId: topologyAssetNodeIdCache,
-        nodeRows,
-        linkRows,
+        nodeRows: topologyAssetContextNodeRows,
+        linkRows: topologyAssetContextLinkRows,
+        routerRows: topologyAssetContextRouterRows,
       });
       lastTopologyAssetsLoadedAt = Date.now();
       replaceTopologyAssetOverlay(topologyAssetsToFeatureCollection(topologyAssetRows));
@@ -1577,8 +1654,9 @@
       if (topologyAssetItems.length) {
         topologyAssetRows = buildTopologyAssetRows(topologyAssetItems, {
           assetNodeIdsByAssetId: topologyAssetNodeIdCache,
-          nodeRows,
-          linkRows,
+          nodeRows: topologyAssetContextNodeRows,
+          linkRows: topologyAssetContextLinkRows,
+          routerRows: topologyAssetContextRouterRows,
         });
       }
       await refreshTopologyAssets(force);
@@ -1619,8 +1697,9 @@
     if (topologyAssetItems.length) {
       topologyAssetRows = buildTopologyAssetRows(topologyAssetItems, {
         assetNodeIdsByAssetId: topologyAssetNodeIdCache,
-        nodeRows,
-        linkRows,
+        nodeRows: topologyAssetContextNodeRows,
+        linkRows: topologyAssetContextLinkRows,
+        routerRows: topologyAssetContextRouterRows,
       });
     }
     setSourceData(
@@ -1662,7 +1741,7 @@
       type: 'circle',
       source: SOURCE_TOPOLOGY_ASSETS,
       paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 8, 11, 10.5, 14, 13],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 9.5, 11, 12, 14, 14.5],
         'circle-color': ['coalesce', ['get', 'marker_color'], '#64748b'],
         'circle-opacity': 0.16,
         'circle-blur': 0.08,
@@ -1675,7 +1754,7 @@
       type: 'circle',
       source: SOURCE_TOPOLOGY_ASSETS,
       paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 6.2, 11, 8, 14, 9.6],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 7.4, 11, 9.2, 14, 11.2],
         'circle-color': ['coalesce', ['get', 'marker_color'], '#64748b'],
         'circle-opacity': 0.38,
         'circle-stroke-width': 2,
@@ -1692,20 +1771,24 @@
           'match',
           ['get', 'asset_type'],
           'olt',
-          'nm-node-icon-olt',
+          'nm-node-glyph-olt',
+          'odf',
+          'nm-node-glyph-odf',
           'odc',
-          'nm-node-icon-odc',
+          'nm-node-glyph-odc',
           'odp',
-          'nm-node-icon-odp',
+          'nm-node-glyph-odp',
           'fat',
-          'nm-node-icon-odp',
+          'nm-node-glyph-odp',
           'nap',
-          'nm-node-icon-odp',
+          'nm-node-glyph-odp',
+          'splitter',
+          'nm-node-glyph-splitter',
           'switch',
-          'nm-node-icon-switch',
-          'nm-node-icon-router',
+          'nm-node-glyph-switch',
+          'nm-node-glyph-router',
         ],
-        'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 0.78, 11, 0.96, 14, 1.14],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 1.14, 11, 1.3, 14, 1.46],
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,
       },
@@ -3365,6 +3448,17 @@
 
   :global(.nm-popup-btn:hover) {
     background: #131d30;
+  }
+
+  :global(.nm-popup-btn:disabled) {
+    opacity: 0.55;
+    cursor: not-allowed;
+    background: #111827;
+    color: #94a3b8;
+  }
+
+  :global(.nm-popup-btn:disabled:hover) {
+    background: #111827;
   }
 
   :global(.nm-popup-btn.primary) {

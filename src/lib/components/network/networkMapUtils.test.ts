@@ -11,6 +11,7 @@ import {
   getCustomerPppoeVisualState,
   manualNodeTypeOptions,
   nodesToFeatureCollection,
+  resolveRouterTopologyNodeId,
   type NMLink,
   type NMNode,
   type NMRouter,
@@ -355,6 +356,33 @@ describe('network map popup models', () => {
         { label: 'Zone', value: 'Semarang Barat' },
       ]),
     );
+  });
+
+  it('resolves router overlay ids to synced topology router node ids', () => {
+    const nodeRows: NMNode[] = [
+      {
+        id: 'node-router-1',
+        name: 'Solikin',
+        node_type: 'router',
+        status: 'active',
+        lat: -6.2,
+        lng: 106.8,
+        metadata: {
+          asset_source: 'mikrotik_router',
+          asset_type: 'mikrotik_router',
+          asset_id: 'router-live-1',
+        },
+      },
+    ];
+
+    expect(
+      resolveRouterTopologyNodeId({
+        routerId: 'router-live-1',
+        routerName: 'Solikin',
+        routerIdentity: 'SOLIKIN-EDGE',
+        nodeRows,
+      }),
+    ).toBe('node-router-1');
   });
 });
 

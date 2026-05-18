@@ -48,6 +48,7 @@ describe('fitMapToMarkers', () => {
           portCapacity: 8,
           portsUsed: 1,
           portsAvailable: 7,
+          canAcceptConnections: true,
           hasUpstreamRelation: false,
           hasCustomerRelation: true,
         },

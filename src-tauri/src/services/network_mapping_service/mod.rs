@@ -19,6 +19,7 @@ use crate::models::{
     UpdateNetworkNodeRequest, UpdateServiceZoneRequest, UpdateZoneOfferRequest, ZoneNodeBinding,
     ZoneOffer,
 };
+use crate::services::network_asset_port_cache::refresh_port_usage_cache_for_tenant;
 use crate::services::AuthService;
 use uuid::Uuid;
 
@@ -548,6 +549,7 @@ impl NetworkMappingService {
         .await
         .map_err(|e| Self::map_geometry_db_error(e, "geometry"))?;
 
+        refresh_port_usage_cache_for_tenant(&self.pool, tenant_id).await?;
         self.get_link_by_id(tenant_id, &id).await
     }
 
@@ -761,6 +763,7 @@ impl NetworkMappingService {
         .map_err(|e| Self::map_geometry_db_error(e, "geometry"))?;
 
         tx.commit().await.map_err(AppError::Database)?;
+        refresh_port_usage_cache_for_tenant(&self.pool, tenant_id).await?;
 
         Ok(ConnectNodeToLinkResponse {
             junction_node: self.get_node_by_id(tenant_id, &junction_id).await?,
@@ -836,6 +839,7 @@ impl NetworkMappingService {
         .await
         .map_err(|e| Self::map_geometry_db_error(e, "geometry"))?;
 
+        refresh_port_usage_cache_for_tenant(&self.pool, tenant_id).await?;
         self.get_link_by_id(tenant_id, id).await
     }
 
@@ -851,6 +855,7 @@ impl NetworkMappingService {
         if res.rows_affected() == 0 {
             return Err(AppError::NotFound("Link not found".into()));
         }
+        refresh_port_usage_cache_for_tenant(&self.pool, tenant_id).await?;
         Ok(())
     }
 

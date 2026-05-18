@@ -6,6 +6,7 @@ import {
   type NetworkAssetOccupancyTopologyArgs,
 } from '$lib/utils/networkAssetOccupancy';
 import { getNetworkAssetTypeLabel } from '$lib/utils/networkAssetTypes';
+import { canTopologyAssetAcceptConnection } from './networkMapAssetConnect';
 import { isCustomerNodeType, type NMLink, type NMNode } from './networkMapUtils';
 
 const TOPOLOGY_ASSET_TYPES = ['olt', 'odf', 'odc', 'splitter', 'fat', 'nap', 'odp', 'switch'] as const;
@@ -50,6 +51,7 @@ export type TopologyAssetRow = {
   portCapacity: number | null;
   portsUsed: number | null;
   portsAvailable: number | null;
+  canAcceptConnections: boolean;
   hasUpstreamRelation: boolean;
   hasCustomerRelation: boolean;
 };
@@ -58,36 +60,40 @@ export function isTopologyAssetType(assetType: string): assetType is TopologyAss
   return TOPOLOGY_ASSET_TYPES.includes(assetType as TopologyAssetType);
 }
 
-export function getTopologyAssetMarkerSpec(assetType: string): TopologyAssetMarkerSpec {
+export function getTopologyAssetMarkerSpec(
+  assetType: string,
+  occupancy?: { total: number; used: number; available: number } | null,
+): TopologyAssetMarkerSpec {
+  const occupancyColor = resolveTopologyAssetOccupancyMarkerColor(assetType, occupancy);
   if (assetType === 'olt') {
-    return { assetType, label: 'OLT', legendLabel: 'OLT', color: '#b45309' };
+    return { assetType, label: 'OLT', legendLabel: 'OLT', color: occupancyColor || '#b45309' };
   }
   if (assetType === 'odf') {
-    return { assetType, label: 'ODF', legendLabel: 'ODF', color: '#1d4ed8' };
+    return { assetType, label: 'ODF', legendLabel: 'ODF', color: occupancyColor || '#1d4ed8' };
   }
   if (assetType === 'odc') {
-    return { assetType, label: 'ODC', legendLabel: 'ODC', color: '#2563eb' };
+    return { assetType, label: 'ODC', legendLabel: 'ODC', color: occupancyColor || '#2563eb' };
   }
   if (assetType === 'splitter') {
-    return { assetType, label: 'SPL', legendLabel: 'Splitter', color: '#7c3aed' };
+    return { assetType, label: 'SPL', legendLabel: 'Splitter', color: occupancyColor || '#7c3aed' };
   }
   if (assetType === 'odp') {
-    return { assetType, label: 'ODP', legendLabel: 'ODP', color: '#0f766e' };
+    return { assetType, label: 'ODP', legendLabel: 'ODP', color: occupancyColor || '#0f766e' };
   }
   if (assetType === 'fat') {
-    return { assetType, label: 'FAT', legendLabel: 'FAT', color: '#c2410c' };
+    return { assetType, label: 'FAT', legendLabel: 'FAT', color: occupancyColor || '#c2410c' };
   }
   if (assetType === 'nap') {
-    return { assetType, label: 'NAP', legendLabel: 'NAP', color: '#be123c' };
+    return { assetType, label: 'NAP', legendLabel: 'NAP', color: occupancyColor || '#be123c' };
   }
   if (assetType === 'switch') {
-    return { assetType, label: 'SW', legendLabel: 'Switch', color: '#475569' };
+    return { assetType, label: 'SW', legendLabel: 'Switch', color: occupancyColor || '#475569' };
   }
   return {
     assetType,
     label: 'AS',
     legendLabel: getNetworkAssetTypeLabel(assetType),
-    color: '#64748b',
+    color: occupancyColor || '#64748b',
   };
 }
 
@@ -102,8 +108,17 @@ export function buildTopologyAssetRows(
     )
     .map((asset) => {
       const assetType = String(asset.asset_type || '').trim();
-      const marker = getTopologyAssetMarkerSpec(assetType);
       const occupancy = getNetworkAssetPortOccupancy(asset, assets, topology);
+      const marker = getTopologyAssetMarkerSpec(
+        assetType,
+        occupancy
+          ? {
+              total: occupancy.total,
+              used: occupancy.used,
+              available: occupancy.available,
+            }
+          : null,
+      );
       const hasUpstreamRelation = hasTopologyAssetUpstreamRelation(asset, assets, topology);
       const hasCustomerRelation = hasTopologyAssetCustomerRelation(asset, assets, topology);
       return {
@@ -127,10 +142,25 @@ export function buildTopologyAssetRows(
         portCapacity: occupancy?.total ?? null,
         portsUsed: occupancy?.used ?? null,
         portsAvailable: occupancy?.available ?? null,
+        canAcceptConnections: canTopologyAssetAcceptConnection({
+          assetType,
+          portCapacity: occupancy?.total ?? null,
+          portsAvailable: occupancy?.available ?? null,
+        }),
         hasUpstreamRelation,
         hasCustomerRelation,
       };
     });
+}
+
+function resolveTopologyAssetOccupancyMarkerColor(
+  assetType: string,
+  occupancy?: { total: number; used: number; available: number } | null,
+) {
+  if (String(assetType || '').trim() !== 'odp' || !occupancy || occupancy.total <= 0) return '';
+  if (occupancy.available <= 0) return '#ef4444';
+  if ((occupancy.used / occupancy.total) * 100 >= 75) return '#eab308';
+  return '';
 }
 
 export function topologyAssetsToFeatureCollection(
@@ -514,7 +544,13 @@ function hasTopologyAssetUpstreamRelation(
     const otherSource = String(
       otherNode?.metadata?.asset_source || otherNode?.metadata?.asset_type || '',
     ).trim();
-    if (otherSource !== 'network_asset') return false;
+    if (otherSource !== 'network_asset') {
+      if ((topology?.routerRows || []).some((router) => String(router.id || '').trim() === otherNodeId)) {
+        return true;
+      }
+      const otherNodeType = String(otherNode?.node_type || '').trim().toLowerCase();
+      return !!otherNodeType && !isCustomerNodeType(otherNodeType);
+    }
 
     const otherAssetId = String(otherNode?.metadata?.asset_id || '').trim();
     const otherAssetType =

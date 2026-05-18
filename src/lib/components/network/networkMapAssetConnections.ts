@@ -1,5 +1,5 @@
 import type { NetworkAssetListItem } from '$lib/api/client';
-import type { NMLink, NMNode } from './networkMapUtils';
+import { isCustomerNodeType, type NMLink, type NMNode } from './networkMapUtils';
 
 export function buildTopologyAssetConnectionItems(args: {
   asset: Pick<
@@ -10,6 +10,7 @@ export function buildTopologyAssetConnectionItems(args: {
   assetNodeIdsByAssetId: Map<string, string>;
   nodeRows: NMNode[];
   linkRows: NMLink[];
+  routerRows?: Array<{ id: string; name?: string | null; identity?: string | null }>;
 }) {
   const sourceNodeId =
     args.assetNodeIdsByAssetId.get(args.asset.id) ||
@@ -32,6 +33,13 @@ export function buildTopologyAssetConnectionItems(args: {
     else if (toNodeId === sourceNodeId) otherNodeId = fromNodeId;
     if (!otherNodeId) continue;
 
+    const linkedRouter = (args.routerRows || []).find((router) => String(router.id || '').trim() === otherNodeId);
+    if (linkedRouter) {
+      const name = String(linkedRouter.identity || linkedRouter.name || '').trim();
+      if (name) upstreamNames.add(name);
+      continue;
+    }
+
     const otherNode = (args.nodeRows || []).find((node) => node.id === otherNodeId);
     if (!otherNode) continue;
 
@@ -43,6 +51,12 @@ export function buildTopologyAssetConnectionItems(args: {
       const name =
         args.topologyAssets.find((asset) => asset.id === assetId)?.name ||
         String(otherNode.name || '').trim();
+      if (name) upstreamNames.add(name);
+      continue;
+    }
+
+    if (source !== 'customer_location' && !isCustomerNodeType(String(otherNode.node_type || '').trim())) {
+      const name = String(otherNode.name || '').trim();
       if (name) upstreamNames.add(name);
       continue;
     }

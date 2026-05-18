@@ -7,6 +7,7 @@ import {
   assetSupportsUpstreamLink,
   buildTopologyAssetConnectionOperations,
   buildTopologyAssetConnectDraft,
+  canTopologyAssetAcceptConnection,
   buildTopologyAssetParentOptions,
   findTopologyAssetNodeId,
   resolveTopologyAssetNodeId,
@@ -117,6 +118,30 @@ describe('networkMapAssetConnect', () => {
     expect(assetSupportsUpstreamLink('splitter')).toBe(true);
     expect(assetSupportsUpstreamLink('odf')).toBe(true);
     expect(assetSupportsUpstreamLink('olt')).toBe(false);
+  });
+
+  it('rejects full ODP assets as connection targets while allowing non-capacity assets', () => {
+    expect(
+      canTopologyAssetAcceptConnection({
+        assetType: 'odp',
+        portCapacity: 8,
+        portsAvailable: 0,
+      }),
+    ).toBe(false);
+    expect(
+      canTopologyAssetAcceptConnection({
+        assetType: 'odp',
+        portCapacity: 8,
+        portsAvailable: 2,
+      }),
+    ).toBe(true);
+    expect(
+      canTopologyAssetAcceptConnection({
+        assetType: 'odc',
+        portCapacity: null,
+        portsAvailable: null,
+      }),
+    ).toBe(true);
   });
 
   it('finds the synced topology node for an FTTH asset marker', () => {

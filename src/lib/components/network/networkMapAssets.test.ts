@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { NetworkAssetListItem } from '$lib/api/types';
 
-import type { NMLink, NMNode } from './networkMapUtils';
+import type { NMLink, NMNode, NMRouter } from './networkMapUtils';
 import {
   buildTopologyAssetAutoLinkFeatureCollection,
   buildTopologyAssetRows,
@@ -70,6 +70,21 @@ function link(overrides: Partial<NMLink>): NMLink {
   };
 }
 
+function router(overrides: Partial<NMRouter>): NMRouter {
+  return {
+    id: 'router-1',
+    name: 'Core Router',
+    host: '10.10.10.1',
+    port: 8728,
+    is_online: true,
+    enabled: true,
+    identity: 'CORE-ROUTER',
+    ros_version: '7.18.2',
+    latency_ms: 3,
+    ...overrides,
+  };
+}
+
 describe('networkMapAssets', () => {
   it('enriches ODP rows with occupancy data', () => {
     const rows = buildTopologyAssetRows([
@@ -92,8 +107,57 @@ describe('networkMapAssets', () => {
       portCapacity: 8,
       portsUsed: 1,
       portsAvailable: 7,
+      canAcceptConnections: true,
       hasUpstreamRelation: false,
       hasCustomerRelation: true,
+    });
+  });
+
+  it('marks nearly full ODP rows with a warning marker while keeping connections enabled', () => {
+    const rows = buildTopologyAssetRows([
+      asset({
+        id: 'odp-1',
+        asset_type: 'odp',
+        metadata: { total_port_capacity: '8' },
+      }),
+      asset({ id: 'ont-1', asset_type: 'ont', parent_asset_id: 'odp-1', status: 'installed' }),
+      asset({ id: 'ont-2', asset_type: 'ont', parent_asset_id: 'odp-1', status: 'installed' }),
+      asset({ id: 'ont-3', asset_type: 'ont', parent_asset_id: 'odp-1', status: 'installed' }),
+      asset({ id: 'ont-4', asset_type: 'ont', parent_asset_id: 'odp-1', status: 'installed' }),
+      asset({ id: 'ont-5', asset_type: 'ont', parent_asset_id: 'odp-1', status: 'installed' }),
+      asset({ id: 'ont-6', asset_type: 'ont', parent_asset_id: 'odp-1', status: 'installed' }),
+    ]);
+
+    expect(rows.find((row) => row.id === 'odp-1')).toMatchObject({
+      portsUsed: 6,
+      portsAvailable: 2,
+      markerColor: '#eab308',
+      canAcceptConnections: true,
+    });
+  });
+
+  it('marks full ODP rows in red and disables new connections', () => {
+    const rows = buildTopologyAssetRows([
+      asset({
+        id: 'odp-1',
+        asset_type: 'odp',
+        metadata: { total_port_capacity: '8' },
+      }),
+      asset({ id: 'ont-1', asset_type: 'ont', parent_asset_id: 'odp-1', status: 'installed' }),
+      asset({ id: 'ont-2', asset_type: 'ont', parent_asset_id: 'odp-1', status: 'installed' }),
+      asset({ id: 'ont-3', asset_type: 'ont', parent_asset_id: 'odp-1', status: 'installed' }),
+      asset({ id: 'ont-4', asset_type: 'ont', parent_asset_id: 'odp-1', status: 'installed' }),
+      asset({ id: 'ont-5', asset_type: 'ont', parent_asset_id: 'odp-1', status: 'installed' }),
+      asset({ id: 'ont-6', asset_type: 'ont', parent_asset_id: 'odp-1', status: 'installed' }),
+      asset({ id: 'ont-7', asset_type: 'ont', parent_asset_id: 'odp-1', status: 'installed' }),
+      asset({ id: 'ont-8', asset_type: 'ont', parent_asset_id: 'odp-1', status: 'installed' }),
+    ]);
+
+    expect(rows.find((row) => row.id === 'odp-1')).toMatchObject({
+      portsUsed: 8,
+      portsAvailable: 0,
+      markerColor: '#ef4444',
+      canAcceptConnections: false,
     });
   });
 
@@ -212,6 +276,95 @@ describe('networkMapAssets', () => {
             id: 'uplink-1',
             from_node_id: 'splitter-node-1',
             to_node_id: 'odp-node-1',
+          }),
+        ],
+      },
+    );
+
+    expect(rows.find((row) => row.id === 'odp-1')).toMatchObject({
+      hasUpstreamRelation: true,
+    });
+  });
+
+  it('treats saved topology links from a router node as an upstream relation for ODP', () => {
+    const rows = buildTopologyAssetRows(
+      [
+        asset({
+          id: 'odp-1',
+          asset_type: 'odp',
+          name: 'ODP-1',
+          latitude: -7.21,
+          longitude: 110.31,
+          metadata: { total_port_capacity: '8' },
+        }),
+      ],
+      {
+        nodeRows: [
+          node({
+            id: 'router-node-1',
+            node_type: 'router',
+            name: 'Core Router',
+          }),
+          node({
+            id: 'odp-node-1',
+            node_type: 'odp',
+            metadata: {
+              asset_source: 'network_asset',
+              asset_type: 'odp',
+              asset_id: 'odp-1',
+            },
+          }),
+        ],
+        linkRows: [
+          link({
+            id: 'uplink-router-1',
+            from_node_id: 'router-node-1',
+            to_node_id: 'odp-node-1',
+          }),
+        ],
+      },
+    );
+
+    expect(rows.find((row) => row.id === 'odp-1')).toMatchObject({
+      hasUpstreamRelation: true,
+    });
+  });
+
+  it('treats legacy saved links from router inventory ids as an upstream relation for ODP', () => {
+    const rows = buildTopologyAssetRows(
+      [
+        asset({
+          id: 'odp-1',
+          asset_type: 'odp',
+          name: 'ODP-1',
+          latitude: -7.21,
+          longitude: 110.31,
+          metadata: { total_port_capacity: '8' },
+        }),
+      ],
+      {
+        nodeRows: [
+          node({
+            id: 'odp-node-1',
+            node_type: 'odp',
+            metadata: {
+              asset_source: 'network_asset',
+              asset_type: 'odp',
+              asset_id: 'odp-1',
+            },
+          }),
+        ],
+        linkRows: [
+          link({
+            id: 'uplink-router-legacy-1',
+            from_node_id: 'router-live-1',
+            to_node_id: 'odp-node-1',
+          }),
+        ],
+        routerRows: [
+          router({
+            id: 'router-live-1',
+            name: 'Core Router',
           }),
         ],
       },
