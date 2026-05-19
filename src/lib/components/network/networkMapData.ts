@@ -200,6 +200,23 @@ export async function fetchNetworkMapData(
   };
 }
 
+export async function fetchAllPaginatedRows<T>(
+  fetchPage: (page: number) => Promise<{ data?: T[]; total?: number; page?: number; per_page?: number }>,
+) {
+  const first = await fetchPage(1);
+  const rows = [...(first.data || [])];
+  const total = Math.max(Number(first.total || rows.length), rows.length);
+  const perPage = Math.max(Number(first.per_page || rows.length || 1), 1);
+  const maxPage = Math.max(Math.ceil(total / perPage), 1);
+
+  for (let page = 2; page <= maxPage && rows.length < total; page += 1) {
+    const next = await fetchPage(page);
+    rows.push(...(next.data || []));
+  }
+
+  return rows;
+}
+
 export function getTopologySyncStrategy({
   canManageTopology,
   syncingAssetNodes,

@@ -16,7 +16,11 @@
     buildNetworkMapAssetEditorState,
     type NetworkMapAssetDraft,
   } from '$lib/components/network/networkMapAssetEditorState';
-  import { buildTopologyAssetConnectionItems } from '$lib/components/network/networkMapAssetConnections';
+  import {
+    buildTopologyAssetConnectionItems,
+    buildTopologyAssetCustomerDropItems,
+    type TopologyAssetCustomerDropItem,
+  } from '$lib/components/network/networkMapAssetConnections';
   import {
     buildLinkDraftForm,
     buildZoneDraftForm,
@@ -83,6 +87,7 @@
     applyFetchedMapData,
     buildMapDataCacheKey,
     fetchNetworkMapData,
+    fetchAllPaginatedRows,
     getCachedMapData,
     getTopologySyncStrategy,
     resolveNetworkMapFetchBbox,
@@ -280,6 +285,9 @@
   let showAssetFormModal = $state(false);
   let savingAssetForm = $state(false);
   let editingAsset = $state<NetworkAssetListItem | null>(null);
+  let showAssetCustomerDropModal = $state(false);
+  let assetCustomerDropModalTitle = $state('');
+  let assetCustomerDropItems = $state<TopologyAssetCustomerDropItem[]>([]);
   const initialAssetCreateState = buildNetworkMapAssetCreateState();
   let assetDraft = $state<NetworkMapAssetDraft>(initialAssetCreateState.draft);
   let assetDetailDraft = $state<NetworkAssetDetailDraft>(initialAssetCreateState.detailDraft);
@@ -653,11 +661,56 @@
     return 'muted';
   }
 
+  function formatPopupStatusLabel(value: string) {
+    const normalized = String(value || '').trim();
+    if (!normalized) return '-';
+    return normalized
+      .replaceAll('_', ' ')
+      .split(/\s+/)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }
+
+  async function openTopologyAssetCustomerDropModal(assetId: string) {
+    await refreshTopologyAssetContext();
+    const asset = topologyAssetItems.find((item) => item.id === assetId);
+    if (!asset) {
+      toast.error('FTTH asset data tidak ditemukan.');
+      return;
+    }
+
+    const customerContextNodeRows = Array.from(
+      new Map(
+        [...topologyAssetContextNodeRows, ...customerRows, ...serviceRows].map((row) => [row.id, row] as const),
+      ).values(),
+    );
+    const customerContextLinkRows = Array.from(
+      new Map([...topologyAssetContextLinkRows, ...linkRows].map((row) => [row.id, row] as const)).values(),
+    );
+
+    assetCustomerDropItems = buildTopologyAssetCustomerDropItems({
+      assetId,
+      assets: topologyAssetItems,
+      assetNodeIdsByAssetId: topologyAssetNodeIdCache,
+      nodeRows: customerContextNodeRows,
+      linkRows: customerContextLinkRows,
+    });
+    assetCustomerDropModalTitle = asset.name || 'Connected Customers';
+    showAssetCustomerDropModal = true;
+  }
+
+  function closeTopologyAssetCustomerDropModal() {
+    showAssetCustomerDropModal = false;
+    assetCustomerDropModalTitle = '';
+    assetCustomerDropItems = [];
+  }
+
   function buildTopologyAssetPopupHtml(
     row: TopologyAssetRow,
     closeBtnId: string,
     connectBtnId: string,
     editBtnId: string,
+    customerDropBtnId: string,
   ) {
     const subtitle = row.locationLabel || row.assetTypeLabel;
     const portUsage =
@@ -686,20 +739,15 @@
             ? 'Ready'
             : `${portUsage.available} port left`;
     const canConnectAsset = row.canAcceptConnections;
-    const relationRows = [
-      {
-        label: 'Upstream',
-        tone: row.hasUpstreamRelation ? 'ok' : 'muted',
-        value: row.hasUpstreamRelation ? 'Linked' : 'Not linked',
-      },
-      row.assetType === 'odp'
-        ? {
-            label: 'Customer Drop',
-            tone: row.hasCustomerRelation ? 'ok' : 'muted',
-            value: row.hasCustomerRelation ? 'Linked' : 'Not linked',
-          }
-        : null,
-    ].filter(Boolean) as Array<{ label: string; tone: string; value: string }>;
+    const usedPorts = row.portsUsed ?? 0;
+    const customerDropLabel =
+      row.assetType !== 'odp'
+        ? ''
+        : usedPorts > 0
+          ? `${usedPorts} linked`
+          : row.hasCustomerRelation
+            ? 'Linked'
+            : 'Empty';
 
     return `
       <div class="nm-popup-card nm-popup-card-link">
@@ -732,17 +780,13 @@
             : ''
         }
         ${
-          relationRows.length
-            ? `<div class="nm-popup-relation-list">${relationRows
-                .map(
-                  (item) => `
-                    <div class="nm-popup-relation-row">
-                      <div class="nm-popup-label">${escapePopupValue(item.label)}</div>
-                      <span class="nm-popup-badge ${escapePopupValue(item.tone)}">${escapePopupValue(item.value)}</span>
-                    </div>
-                  `,
-                )
-                .join('')}</div>`
+          row.assetType === 'odp'
+            ? `<div class="nm-popup-relation-list">
+                <button id="${customerDropBtnId}" class="nm-popup-relation-action" type="button">
+                  <div class="nm-popup-label">View Customer</div>
+                  <span class="nm-popup-badge ${row.hasCustomerRelation ? 'ok' : 'muted'}">${escapePopupValue(customerDropLabel)}</span>
+                </button>
+              </div>`
             : ''
         }
         <div class="nm-popup-actions nm-popup-actions-link">
@@ -1058,6 +1102,7 @@
     const closeBtnId = `nm-topology-asset-close-${Math.random().toString(36).slice(2, 10)}`;
     const connectBtnId = `nm-topology-asset-connect-${Math.random().toString(36).slice(2, 10)}`;
     const editBtnId = `nm-topology-asset-edit-${Math.random().toString(36).slice(2, 10)}`;
+    const customerDropBtnId = `nm-topology-asset-customer-drop-${Math.random().toString(36).slice(2, 10)}`;
     const popup = new maplibre.Popup(
       popupOptionsForMap(mapInstance, coords, {
         width: 296,
@@ -1065,7 +1110,15 @@
       }),
     )
       .setLngLat(coords)
-      .setHTML(buildTopologyAssetPopupHtml(row, closeBtnId, connectBtnId, editBtnId));
+      .setHTML(
+        buildTopologyAssetPopupHtml(
+          row,
+          closeBtnId,
+          connectBtnId,
+          editBtnId,
+          customerDropBtnId,
+        ),
+      );
     let cleanupNavigationDismiss: (() => void) | null = null;
 
     popup.on('open', () => {
@@ -1088,6 +1141,7 @@
       const closeBtn = document.getElementById(closeBtnId) as HTMLButtonElement | null;
       const connectBtn = document.getElementById(connectBtnId) as HTMLButtonElement | null;
       const editBtn = document.getElementById(editBtnId) as HTMLButtonElement | null;
+      const customerDropBtn = document.getElementById(customerDropBtnId) as HTMLButtonElement | null;
       connectBtn?.addEventListener('click', () => {
         if (!row.canAcceptConnections) return;
         popup.remove();
@@ -1096,6 +1150,10 @@
       editBtn?.addEventListener('click', () => {
         popup.remove();
         void openEditTopologyAssetModal(assetId);
+      });
+      customerDropBtn?.addEventListener('click', () => {
+        popup.remove();
+        void openTopologyAssetCustomerDropModal(assetId);
       });
       closeBtn?.addEventListener('click', () => popup.remove());
     });
@@ -1116,18 +1174,22 @@
       return;
     }
 
-    const [nodesRes, linksRes, routersRes] = await Promise.all([
-      networkMapping.nodes.list({
-        bbox: NETWORK_MAP_WORLD_BBOX,
-        page: 1,
-        per_page: 5000,
-        include_legacy_ftth: true,
-      }),
-      networkMapping.links.list({
-        bbox: NETWORK_MAP_WORLD_BBOX,
-        page: 1,
-        per_page: 5000,
-      }),
+    const [nodeRowsAll, linkRowsAll, routersRes] = await Promise.all([
+      fetchAllPaginatedRows<NMNode>((page) =>
+        networkMapping.nodes.list({
+          bbox: NETWORK_MAP_WORLD_BBOX,
+          page,
+          per_page: 200,
+          include_legacy_ftth: true,
+        }),
+      ),
+      fetchAllPaginatedRows<NMLink>((page) =>
+        networkMapping.links.list({
+          bbox: NETWORK_MAP_WORLD_BBOX,
+          page,
+          per_page: 200,
+        }),
+      ),
       shouldFetchRouterOverlay({
         canReadRouterInventory,
         routersVisible: true,
@@ -1136,8 +1198,8 @@
         : Promise.resolve(routerRows),
     ]);
 
-    topologyAssetContextNodeRows = (nodesRes.data || []) as NMNode[];
-    topologyAssetContextLinkRows = (linksRes.data || []) as NMLink[];
+    topologyAssetContextNodeRows = nodeRowsAll;
+    topologyAssetContextLinkRows = linkRowsAll;
     topologyAssetContextRouterRows = (routersRes || []) as NMRouter[];
     lastTopologyAssetContextLoadedAt = Date.now();
   }
@@ -2668,6 +2730,96 @@
   />
 {/if}
 
+{#if showAssetCustomerDropModal}
+  <div
+    class="asset-customer-drop-modal-backdrop"
+    role="presentation"
+    tabindex="-1"
+    onclick={closeTopologyAssetCustomerDropModal}
+    onkeydown={(event) => {
+      if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        closeTopologyAssetCustomerDropModal();
+      }
+    }}
+  >
+    <div
+      class="asset-customer-drop-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="asset-customer-drop-modal-title"
+      tabindex="0"
+      onclick={(event) => event.stopPropagation()}
+      onkeydown={(event) => event.stopPropagation()}
+    >
+      <div class="asset-customer-drop-modal-head">
+        <div>
+          <div class="asset-customer-drop-modal-kicker">Connected Customers</div>
+          <h3 id="asset-customer-drop-modal-title">{assetCustomerDropModalTitle}</h3>
+        </div>
+        <button
+          class="asset-customer-drop-modal-close"
+          type="button"
+          onclick={closeTopologyAssetCustomerDropModal}
+        >
+          <Icon name="x" size={16} />
+        </button>
+      </div>
+
+      {#if assetCustomerDropItems.length > 0}
+        <div class="asset-customer-drop-list">
+          {#each assetCustomerDropItems as item (item.key)}
+            <article class="asset-customer-drop-card">
+              <div class="asset-customer-drop-card-main">
+                <div class="asset-customer-drop-card-copy">
+                  <div class="asset-customer-drop-card-head">
+                    <div class="asset-customer-drop-name">{item.customerName}</div>
+                    <span class="asset-customer-drop-status">{formatPopupStatusLabel(item.status)}</span>
+                  </div>
+                  {#if item.locationLabel}
+                    <div class="asset-customer-drop-location">{item.locationLabel}</div>
+                  {/if}
+                  {#if item.serviceName}
+                    <div class="asset-customer-drop-service">{item.serviceName}</div>
+                  {/if}
+                </div>
+                <div class="asset-customer-drop-actions">
+                  {#if item.customerId}
+                    <button
+                      class="btn ghost btn-xs"
+                      type="button"
+                      onclick={() => void goto(`${tenantPrefix}/admin/customers/${item.customerId}`)}
+                    >
+                      Customer
+                    </button>
+                  {/if}
+                  {#if item.customerId && item.serviceId}
+                    <button
+                      class="btn btn-primary btn-xs"
+                      type="button"
+                      onclick={() =>
+                        void goto(
+                          `${tenantPrefix}/admin/customers/${item.customerId}?tab=subscriptions&service_id=${encodeURIComponent(item.serviceId)}`,
+                        )}
+                    >
+                      Service
+                    </button>
+                  {/if}
+                </div>
+              </div>
+            </article>
+          {/each}
+        </div>
+      {:else}
+        <div class="asset-customer-drop-empty">
+          <Icon name="users" size={18} />
+          <span>Belum ada customer yang terhubung ke asset ini.</span>
+        </div>
+      {/if}
+    </div>
+  </div>
+{/if}
+
 {#if ConfirmDialogComponent}
   <ConfirmDialogComponent
     show={showDeleteConfirm}
@@ -3202,6 +3354,20 @@
     padding-top: 2px;
   }
 
+  :global(.nm-popup-relation-action) {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
   :global(.nm-popup-relation-row) {
     display: flex;
     align-items: center;
@@ -3234,6 +3400,151 @@
     border-color: rgba(56, 189, 248, 0.2);
     color: #dbeafe;
     font-weight: 600;
+  }
+
+  .asset-customer-drop-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.48);
+    backdrop-filter: blur(6px);
+  }
+
+  .asset-customer-drop-modal {
+    width: min(460px, calc(100vw - 24px));
+    max-height: min(72vh, 680px);
+    overflow: auto;
+    border-radius: 18px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(15, 23, 42, 0.97);
+    box-shadow: 0 24px 64px rgba(2, 6, 23, 0.4);
+    padding: 14px;
+    color: #e2e8f0;
+  }
+
+  .asset-customer-drop-modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .asset-customer-drop-modal-kicker {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #93c5fd;
+    margin-bottom: 4px;
+  }
+
+  .asset-customer-drop-modal-head h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #f8fafc;
+  }
+
+  .asset-customer-drop-modal-close {
+    width: 34px;
+    height: 34px;
+    display: inline-grid;
+    place-items: center;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 999px;
+    background: rgba(30, 41, 59, 0.84);
+    color: #cbd5e1;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .asset-customer-drop-list {
+    display: grid;
+    gap: 8px;
+  }
+
+  .asset-customer-drop-card {
+    padding: 11px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(59, 130, 246, 0.12);
+    background: rgba(15, 23, 42, 0.72);
+  }
+
+  .asset-customer-drop-card-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .asset-customer-drop-card-copy {
+    min-width: 0;
+    display: grid;
+    gap: 4px;
+  }
+
+  .asset-customer-drop-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .asset-customer-drop-name {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: #f8fafc;
+    line-height: 1.2;
+  }
+
+  .asset-customer-drop-location {
+    font-size: 0.76rem;
+    color: rgba(226, 232, 240, 0.72);
+    line-height: 1.25;
+  }
+
+  .asset-customer-drop-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(251, 191, 36, 0.28);
+    background: rgba(30, 41, 59, 0.82);
+    color: #f8fafc;
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .asset-customer-drop-service {
+    font-size: 0.77rem;
+    color: #cbd5e1;
+    line-height: 1.25;
+  }
+
+  .asset-customer-drop-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .asset-customer-drop-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 140px;
+    border-radius: 16px;
+    border: 1px dashed rgba(148, 163, 184, 0.22);
+    color: rgba(226, 232, 240, 0.78);
+    text-align: center;
   }
 
   :global(.nm-popup-status-chips) {

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildTopologyAssetConnectionItems } from './networkMapAssetConnections';
+import {
+  buildTopologyAssetConnectionItems,
+  buildTopologyAssetCustomerDropItems,
+} from './networkMapAssetConnections';
 import type { NMLink, NMNode } from './networkMapUtils';
 
 function node(overrides: Partial<NMNode>): NMNode {
@@ -110,6 +113,203 @@ describe('networkMapAssetConnections', () => {
       { label: 'Upstream', value: 'ODC-1' },
       { label: 'Ports Used', value: '2 endpoint linked' },
       { label: 'Connected', value: 'Andi, Budi' },
+    ]);
+  });
+
+  it('builds deduplicated customer drop detail items for an ODP asset', () => {
+    expect(
+      buildTopologyAssetCustomerDropItems({
+        assetId: 'odp-1',
+        assets: [],
+        assetNodeIdsByAssetId: new Map([['odp-1', 'odp-node-1']]),
+        nodeRows: [
+          node({
+            id: 'odp-node-1',
+            node_type: 'odp',
+            metadata: {
+              asset_source: 'network_asset',
+              asset_id: 'odp-1',
+            },
+          }),
+          node({
+            id: 'cust-node-1',
+            node_type: 'customer_premise',
+            name: 'Andi Home',
+            status: 'active',
+            metadata: {
+              asset_source: 'customer_location',
+              customer_id: 'cust-1',
+              location_id: 'loc-1',
+              customer_name: 'Andi',
+              location_label: 'Rumah Andi',
+              service_id: 'svc-1',
+              service_name: 'Home 20 Mbps',
+              subscription_status: 'active',
+            },
+          }),
+          node({
+            id: 'cust-node-2',
+            node_type: 'customer_premise',
+            name: 'Andi Home Dup',
+            status: 'active',
+            metadata: {
+              asset_source: 'customer_location',
+              customer_id: 'cust-1',
+              location_id: 'loc-1',
+              customer_name: 'Andi',
+              service_id: 'svc-1',
+              service_name: 'Home 20 Mbps',
+              subscription_status: 'active',
+            },
+          }),
+          node({
+            id: 'cust-node-3',
+            node_type: 'customer_premise',
+            name: 'Budi Home',
+            status: 'suspended',
+            metadata: {
+              asset_source: 'customer_location',
+              customer_id: 'cust-2',
+              location_id: 'loc-2',
+              customer_name: 'Budi',
+              service_id: 'svc-2',
+              service_name: 'Home 30 Mbps',
+              subscription_status: 'suspended',
+            },
+          }),
+        ],
+        linkRows: [
+          link({
+            id: 'customer-link-1',
+            from_node_id: 'odp-node-1',
+            to_node_id: 'cust-node-1',
+          }),
+          link({
+            id: 'customer-link-dup',
+            from_node_id: 'odp-node-1',
+            to_node_id: 'cust-node-2',
+          }),
+          link({
+            id: 'customer-link-2',
+            from_node_id: 'odp-node-1',
+            to_node_id: 'cust-node-3',
+          }),
+        ],
+      }),
+    ).toEqual([
+      {
+        key: 'loc-1',
+        customerId: 'cust-1',
+        serviceId: 'svc-1',
+        customerName: 'Andi',
+        serviceName: 'Home 20 Mbps',
+        locationLabel: 'Rumah Andi',
+        status: 'active',
+        nodeId: 'cust-node-1',
+      },
+      {
+        key: 'loc-2',
+        customerId: 'cust-2',
+        serviceId: 'svc-2',
+        customerName: 'Budi',
+        serviceName: 'Home 30 Mbps',
+        locationLabel: '',
+        status: 'suspended',
+        nodeId: 'cust-node-3',
+      },
+    ]);
+  });
+
+  it('includes direct and child asset customer relations even without saved topology links', () => {
+    expect(
+      buildTopologyAssetCustomerDropItems({
+        assetId: 'odp-1',
+        assets: [
+          {
+            id: 'odp-1',
+            parent_asset_id: null,
+            customer_id: 'cust-1',
+            location_id: 'loc-1',
+            customer_name: 'Andi',
+            location_label: 'Rumah Andi',
+            status: 'available',
+          } as any,
+          {
+            id: 'ont-1',
+            parent_asset_id: 'odp-1',
+            customer_id: 'cust-2',
+            location_id: 'loc-2',
+            customer_name: 'Budi',
+            location_label: 'Rumah Budi',
+            status: 'installed',
+          } as any,
+        ],
+        assetNodeIdsByAssetId: new Map([['odp-1', 'odp-node-1']]),
+        nodeRows: [
+          node({
+            id: 'odp-node-1',
+            node_type: 'odp',
+            metadata: {
+              asset_source: 'network_asset',
+              asset_id: 'odp-1',
+            },
+          }),
+          node({
+            id: 'cust-node-1',
+            node_type: 'customer_premise',
+            name: 'Andi Home',
+            status: 'active',
+            metadata: {
+              asset_source: 'customer_location',
+              customer_id: 'cust-1',
+              location_id: 'loc-1',
+              customer_name: 'Andi',
+              location_label: 'Rumah Andi',
+              service_id: 'svc-1',
+              service_name: 'Home 20 Mbps',
+              subscription_status: 'active',
+            },
+          }),
+          node({
+            id: 'cust-node-2',
+            node_type: 'customer_premise',
+            name: 'Budi Home',
+            status: 'suspended',
+            metadata: {
+              asset_source: 'customer_location',
+              customer_id: 'cust-2',
+              location_id: 'loc-2',
+              customer_name: 'Budi',
+              location_label: 'Rumah Budi',
+              service_id: 'svc-2',
+              service_name: 'Home 30 Mbps',
+              subscription_status: 'suspended',
+            },
+          }),
+        ],
+        linkRows: [],
+      }),
+    ).toEqual([
+      {
+        key: 'loc-1',
+        customerId: 'cust-1',
+        serviceId: 'svc-1',
+        customerName: 'Andi',
+        serviceName: 'Home 20 Mbps',
+        locationLabel: 'Rumah Andi',
+        status: 'active',
+        nodeId: 'cust-node-1',
+      },
+      {
+        key: 'loc-2',
+        customerId: 'cust-2',
+        serviceId: 'svc-2',
+        customerName: 'Budi',
+        serviceName: 'Home 30 Mbps',
+        locationLabel: 'Rumah Budi',
+        status: 'suspended',
+        nodeId: 'cust-node-2',
+      },
     ]);
   });
 });

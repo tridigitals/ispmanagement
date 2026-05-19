@@ -24,6 +24,7 @@ vi.mock('$lib/api/mikrotik', () => ({
 import {
   buildMapDataCacheKey,
   extractMapRows,
+  fetchAllPaginatedRows,
   fetchNetworkMapData,
   NETWORK_MAP_WORLD_BBOX,
   getTopologySyncStrategy,
@@ -182,6 +183,30 @@ describe('fetchNetworkMapData', () => {
       expect.objectContaining({ id: 'customer-node-linked' }),
     ]);
     expect(result.nodeRows).toHaveLength(2);
+  });
+});
+
+describe('fetchAllPaginatedRows', () => {
+  it('loads subsequent pages until the declared total is satisfied', async () => {
+    const fetchPage = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: [{ id: 'n-1' }, { id: 'n-2' }],
+        total: 3,
+        page: 1,
+        per_page: 2,
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 'n-3' }],
+        total: 3,
+        page: 2,
+        per_page: 2,
+      });
+
+    const result = await fetchAllPaginatedRows(fetchPage);
+
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+    expect(result).toEqual([{ id: 'n-1' }, { id: 'n-2' }, { id: 'n-3' }]);
   });
 });
 
