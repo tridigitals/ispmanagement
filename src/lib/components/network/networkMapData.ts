@@ -57,10 +57,24 @@ export type NetworkMapExtractedRows = {
 
 export const NETWORK_MAP_WORLD_BBOX = '-180,-85,180,85';
 
+function isVisibleCustomerLifecycle(row: NMNode) {
+  const subscriptionStatus = String(
+    row.metadata?.subscription_status || row.metadata?.service_status || row.status || '',
+  )
+    .trim()
+    .toLowerCase();
+  return subscriptionStatus !== 'pending_installation';
+}
+
 function buildDerivedRows(nodeRows: NMNode[], linkRows: NMLink[]) {
   return {
-    customerRows: dedupeCustomerRows((nodeRows || []).filter((row) => isCustomerNodeType(row.node_type)), linkRows),
-    serviceRows: (nodeRows || []).filter((row) => hasServiceMetadata(row)),
+    customerRows: dedupeCustomerRows(
+      (nodeRows || []).filter(
+        (row) => isCustomerNodeType(row.node_type) && isVisibleCustomerLifecycle(row),
+      ),
+      linkRows,
+    ),
+    serviceRows: (nodeRows || []).filter((row) => hasServiceMetadata(row) && isVisibleCustomerLifecycle(row)),
   };
 }
 

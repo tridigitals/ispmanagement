@@ -116,6 +116,7 @@
     customersToFeatureCollection,
     filterRoutersForOverlay,
     getLinkFieldConfig,
+    hasServiceMetadata,
     isCustomerNodeType,
     isLegacyFtthDistributionNode,
     isSystemManagedNode,
@@ -669,6 +670,67 @@
       .split(/\s+/)
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(' ');
+  }
+
+  function customerDropStateLabel(state: TopologyAssetCustomerDropItem['visualState']) {
+    if (state === 'suspended') return 'Suspended';
+    if (state === 'internet_disconnected') return 'Internet Off';
+    return 'Normal';
+  }
+
+  async function closeCustomerDropModalAndFocus(item: TopologyAssetCustomerDropItem) {
+    closeTopologyAssetCustomerDropModal();
+    if (!map || !maplibre) return;
+    if (!Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) return;
+
+    const targetRow =
+      customerRows.find((row) => row.id === item.nodeId) ||
+      serviceRows.find((row) => row.id === item.nodeId) ||
+      nodeRows.find((row) => row.id === item.nodeId) ||
+      topologyAssetContextNodeRows.find((row) => row.id === item.nodeId);
+    if (!targetRow) {
+      focusMapOnCoordinates(item.longitude, item.latitude, 16);
+      return;
+    }
+
+    const { focusMapForPopupViewport, openNodePopup } = await loadNetworkMapPopupModule();
+    await focusMapForPopupViewport(map, item.longitude, item.latitude, 16);
+    await updateWorkspaceSelection(
+      buildSelectedMapObject({
+        kind: hasServiceMetadata(targetRow) ? 'service' : 'customer',
+        id: targetRow.id,
+        label: targetRow.name,
+        nodeType: targetRow.node_type,
+      }),
+    );
+    openNodePopup({
+      map,
+      maplibre,
+      feature: {
+        properties: {
+          id: targetRow.id,
+          name: targetRow.name,
+          node_type: targetRow.node_type,
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [targetRow.lng, targetRow.lat],
+        } as Geometry,
+      },
+      nodeRows,
+      routerRows,
+      activePopup: activeNodePopup,
+      setActivePopup: (popup) => (activeNodePopup = popup),
+      onClose: clearMapPopupSelection,
+      onOpenCustomer: (customerId) => void goto(`${tenantPrefix}/admin/customers/${customerId}`),
+      onOpenService: (customerId, serviceId) =>
+        void goto(
+          `${tenantPrefix}/admin/customers/${customerId}?tab=subscriptions&service_id=${encodeURIComponent(serviceId)}`,
+        ),
+      onConnect: startConnectFromNode,
+      onEdit: openEditNodeModal,
+      onOpenRouter: (routerId) => void goto(`${tenantPrefix}/admin/network/routers/${routerId}`),
+    });
   }
 
   async function openTopologyAssetCustomerDropModal(assetId: string) {
@@ -1433,6 +1495,30 @@
               console.error(error);
             }
           },
+          onRouterClusterClick: async (e) => {
+            if (!map || !maplibre || !e.features?.[0]) return;
+            try {
+              await loadedInteractionModule.expandCustomerCluster({
+                map,
+                feature: e.features[0],
+                sourceId: SOURCE_ROUTERS,
+              });
+            } catch (error) {
+              console.error(error);
+            }
+          },
+          onTopologyAssetClusterClick: async (e) => {
+            if (!map || !maplibre || !e.features?.[0]) return;
+            try {
+              await loadedInteractionModule.expandCustomerCluster({
+                map,
+                feature: e.features[0],
+                sourceId: SOURCE_TOPOLOGY_ASSETS,
+              });
+            } catch (error) {
+              console.error(error);
+            }
+          },
         });
 
         map.on('click', (e) => {
@@ -1793,6 +1879,8 @@
     if (!map) return;
     for (const layerId of [
       'nm-topology-assets-label',
+      'nm-topology-assets-cluster-count',
+      'nm-topology-assets-cluster-circle',
       'nm-topology-assets-icon',
       'nm-topology-assets-circle',
       'nm-topology-assets-halo',
@@ -1809,12 +1897,47 @@
     map.addSource(SOURCE_TOPOLOGY_ASSETS, {
       type: 'geojson',
       data: JSON.parse(JSON.stringify(data)),
+      cluster: true,
+      clusterMaxZoom: 14,
+      clusterRadius: 56,
     });
+
+    map.addLayer({
+      id: 'nm-topology-assets-cluster-circle',
+      type: 'circle',
+      source: SOURCE_TOPOLOGY_ASSETS,
+      filter: ['has', 'point_count'],
+      paint: {
+        'circle-color': ['step', ['get', 'point_count'], '#0f766e', 12, '#0f766e', 36, '#155e75'],
+        'circle-radius': ['step', ['get', 'point_count'], 17, 12, 21, 36, 25],
+        'circle-opacity': 0.92,
+        'circle-stroke-width': 1.8,
+        'circle-stroke-color': '#e2e8f0',
+      },
+    });
+
+    if (map.getStyle()?.glyphs) {
+      map.addLayer({
+        id: 'nm-topology-assets-cluster-count',
+        type: 'symbol',
+        source: SOURCE_TOPOLOGY_ASSETS,
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': ['to-string', ['get', 'point_count_abbreviated']],
+          'text-size': 11,
+          'text-allow-overlap': true,
+        },
+        paint: {
+          'text-color': '#f8fafc',
+        },
+      });
+    }
 
     map.addLayer({
       id: 'nm-topology-assets-halo',
       type: 'circle',
       source: SOURCE_TOPOLOGY_ASSETS,
+      filter: ['!', ['has', 'point_count']],
       paint: {
         'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 9.5, 11, 12, 14, 14.5],
         'circle-color': ['coalesce', ['get', 'marker_color'], '#64748b'],
@@ -1828,6 +1951,7 @@
       id: 'nm-topology-assets-circle',
       type: 'circle',
       source: SOURCE_TOPOLOGY_ASSETS,
+      filter: ['!', ['has', 'point_count']],
       paint: {
         'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 7.4, 11, 9.2, 14, 11.2],
         'circle-color': ['coalesce', ['get', 'marker_color'], '#64748b'],
@@ -1841,6 +1965,7 @@
       id: 'nm-topology-assets-icon',
       type: 'symbol',
       source: SOURCE_TOPOLOGY_ASSETS,
+      filter: ['!', ['has', 'point_count']],
       layout: {
         'icon-image': [
           'match',
@@ -1916,8 +2041,12 @@
     );
     setLayerVisibility('nm-nodes-circle', nodesVisible);
     setLayerVisibility('nm-nodes-icons', nodesVisible);
+    setLayerVisibility('nm-routers-cluster-circle', routersVisible);
+    setLayerVisibility('nm-routers-cluster-count', routersVisible);
     setLayerVisibility('nm-routers-circle', routersVisible);
     setLayerVisibility('nm-routers-icon', routersVisible);
+    setLayerVisibility('nm-topology-assets-cluster-circle', topologyAssetsVisible);
+    setLayerVisibility('nm-topology-assets-cluster-count', topologyAssetsVisible);
     setLayerVisibility('nm-topology-assets-halo', topologyAssetsVisible);
     setLayerVisibility('nm-topology-assets-circle', topologyAssetsVisible);
     setLayerVisibility('nm-topology-assets-icon', topologyAssetsVisible);
@@ -2774,7 +2903,9 @@
                 <div class="asset-customer-drop-card-copy">
                   <div class="asset-customer-drop-card-head">
                     <div class="asset-customer-drop-name">{item.customerName}</div>
-                    <span class="asset-customer-drop-status">{formatPopupStatusLabel(item.status)}</span>
+                    <span class={`asset-customer-drop-status ${item.visualState}`}>
+                      {customerDropStateLabel(item.visualState)}
+                    </span>
                   </div>
                   {#if item.locationLabel}
                     <div class="asset-customer-drop-location">{item.locationLabel}</div>
@@ -2784,27 +2915,13 @@
                   {/if}
                 </div>
                 <div class="asset-customer-drop-actions">
-                  {#if item.customerId}
-                    <button
-                      class="btn ghost btn-xs"
-                      type="button"
-                      onclick={() => void goto(`${tenantPrefix}/admin/customers/${item.customerId}`)}
-                    >
-                      Customer
-                    </button>
-                  {/if}
-                  {#if item.customerId && item.serviceId}
-                    <button
-                      class="btn btn-primary btn-xs"
-                      type="button"
-                      onclick={() =>
-                        void goto(
-                          `${tenantPrefix}/admin/customers/${item.customerId}?tab=subscriptions&service_id=${encodeURIComponent(item.serviceId)}`,
-                        )}
-                    >
-                      Service
-                    </button>
-                  {/if}
+                  <button
+                    class="btn ghost btn-xs"
+                    type="button"
+                    onclick={() => void closeCustomerDropModalAndFocus(item)}
+                  >
+                    View
+                  </button>
                 </div>
               </div>
             </article>
@@ -3521,6 +3638,24 @@
     text-transform: uppercase;
     white-space: nowrap;
     flex-shrink: 0;
+  }
+
+  .asset-customer-drop-status.normal {
+    color: #22c55e;
+    border-color: rgba(34, 197, 94, 0.34);
+    background: rgba(34, 197, 94, 0.12);
+  }
+
+  .asset-customer-drop-status.suspended {
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.12);
+  }
+
+  .asset-customer-drop-status.internet_disconnected {
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.32);
+    background: rgba(248, 113, 113, 0.12);
   }
 
   .asset-customer-drop-service {

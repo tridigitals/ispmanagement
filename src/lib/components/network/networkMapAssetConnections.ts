@@ -9,7 +9,10 @@ export type TopologyAssetCustomerDropItem = {
   serviceName: string;
   locationLabel: string;
   status: string;
+  visualState: 'normal' | 'suspended' | 'internet_disconnected';
   nodeId: string;
+  latitude: number;
+  longitude: number;
 };
 
 function resolveCustomerNode(nodes: NMNode[], locationId?: string | null, customerId?: string | null) {
@@ -56,6 +59,14 @@ function pushCustomerDropItem(
   const status = String(
     otherNode.metadata?.subscription_status || otherNode.metadata?.service_status || otherNode.status || '',
   ).trim();
+  const normalizedStatus = status.toLowerCase();
+  const pppoeVisualState = String(otherNode.metadata?.pppoe_visual_state || '').trim().toLowerCase();
+  const visualState =
+    normalizedStatus === 'suspended' || normalizedStatus === 'inactive' || normalizedStatus === 'cancelled'
+      ? 'suspended'
+      : pppoeVisualState === 'disconnected'
+        ? 'internet_disconnected'
+        : 'normal';
   const key =
     String(otherNode.metadata?.location_id || '').trim() ||
     customerId ||
@@ -73,7 +84,10 @@ function pushCustomerDropItem(
     serviceName,
     locationLabel,
     status: status || '-',
+    visualState,
     nodeId: otherNode.id,
+    latitude: Number(otherNode.lat),
+    longitude: Number(otherNode.lng),
   });
 }
 

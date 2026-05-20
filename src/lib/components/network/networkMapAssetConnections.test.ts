@@ -205,7 +205,10 @@ describe('networkMapAssetConnections', () => {
         serviceName: 'Home 20 Mbps',
         locationLabel: 'Rumah Andi',
         status: 'active',
+        visualState: 'normal',
         nodeId: 'cust-node-1',
+        latitude: -7.2,
+        longitude: 110.3,
       },
       {
         key: 'loc-2',
@@ -215,7 +218,10 @@ describe('networkMapAssetConnections', () => {
         serviceName: 'Home 30 Mbps',
         locationLabel: '',
         status: 'suspended',
+        visualState: 'suspended',
         nodeId: 'cust-node-3',
+        latitude: -7.2,
+        longitude: 110.3,
       },
     ]);
   });
@@ -268,6 +274,7 @@ describe('networkMapAssetConnections', () => {
               service_id: 'svc-1',
               service_name: 'Home 20 Mbps',
               subscription_status: 'active',
+              pppoe_visual_state: 'disconnected',
             },
           }),
           node({
@@ -298,7 +305,10 @@ describe('networkMapAssetConnections', () => {
         serviceName: 'Home 20 Mbps',
         locationLabel: 'Rumah Andi',
         status: 'active',
+        visualState: 'internet_disconnected',
         nodeId: 'cust-node-1',
+        latitude: -7.2,
+        longitude: 110.3,
       },
       {
         key: 'loc-2',
@@ -308,7 +318,10 @@ describe('networkMapAssetConnections', () => {
         serviceName: 'Home 30 Mbps',
         locationLabel: 'Rumah Budi',
         status: 'suspended',
+        visualState: 'suspended',
         nodeId: 'cust-node-2',
+        latitude: -7.2,
+        longitude: 110.3,
       },
     ]);
   });

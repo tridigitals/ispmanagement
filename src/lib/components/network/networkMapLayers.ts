@@ -65,9 +65,41 @@ export function buildBaseMapStyle({
 
 function addTopologyAssetLayers(map: import('maplibre-gl').Map) {
   map.addLayer({
+    id: 'nm-topology-assets-cluster-circle',
+    type: 'circle',
+    source: SOURCE_TOPOLOGY_ASSETS,
+    filter: ['has', 'point_count'],
+    paint: {
+      'circle-color': ['step', ['get', 'point_count'], '#0f766e', 12, '#0f766e', 36, '#155e75'],
+      'circle-radius': ['step', ['get', 'point_count'], 17, 12, 21, 36, 25],
+      'circle-opacity': 0.92,
+      'circle-stroke-width': 1.8,
+      'circle-stroke-color': '#e2e8f0',
+    },
+  });
+
+  if (map.getStyle()?.glyphs) {
+    map.addLayer({
+      id: 'nm-topology-assets-cluster-count',
+      type: 'symbol',
+      source: SOURCE_TOPOLOGY_ASSETS,
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': ['to-string', ['get', 'point_count_abbreviated']],
+        'text-size': 11,
+        'text-allow-overlap': true,
+      },
+      paint: {
+        'text-color': '#f8fafc',
+      },
+    });
+  }
+
+  map.addLayer({
     id: 'nm-topology-assets-halo',
     type: 'circle',
     source: SOURCE_TOPOLOGY_ASSETS,
+    filter: ['!', ['has', 'point_count']],
     paint: {
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 9.5, 11, 12, 14, 14.5],
       'circle-color': ['coalesce', ['get', 'marker_color'], '#64748b'],
@@ -81,6 +113,7 @@ function addTopologyAssetLayers(map: import('maplibre-gl').Map) {
     id: 'nm-topology-assets-circle',
     type: 'circle',
     source: SOURCE_TOPOLOGY_ASSETS,
+    filter: ['!', ['has', 'point_count']],
     paint: {
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 7.4, 11, 9.2, 14, 11.2],
       'circle-color': ['coalesce', ['get', 'marker_color'], '#64748b'],
@@ -94,6 +127,7 @@ function addTopologyAssetLayers(map: import('maplibre-gl').Map) {
     id: 'nm-topology-assets-icon',
     type: 'symbol',
     source: SOURCE_TOPOLOGY_ASSETS,
+    filter: ['!', ['has', 'point_count']],
     layout: {
       'icon-image': [
         'match',
@@ -125,7 +159,13 @@ function addTopologyAssetLayers(map: import('maplibre-gl').Map) {
 
 export function ensureTopologyAssetSourceAndLayers(map: import('maplibre-gl').Map) {
   if (!map.getSource(SOURCE_TOPOLOGY_ASSETS)) {
-    map.addSource(SOURCE_TOPOLOGY_ASSETS, { type: 'geojson', data: emptyFeatureCollection() });
+    map.addSource(SOURCE_TOPOLOGY_ASSETS, {
+      type: 'geojson',
+      data: emptyFeatureCollection(),
+      cluster: true,
+      clusterMaxZoom: 14,
+      clusterRadius: 56,
+    });
   }
   if (!map.getLayer('nm-topology-assets-circle')) {
     addTopologyAssetLayers(map);
@@ -138,6 +178,8 @@ export function replaceTopologyAssetSourceData(
 ) {
   for (const layerId of [
     'nm-topology-assets-label',
+    'nm-topology-assets-cluster-count',
+    'nm-topology-assets-cluster-circle',
     'nm-topology-assets-icon',
     'nm-topology-assets-circle',
     'nm-topology-assets-halo',
@@ -152,6 +194,9 @@ export function replaceTopologyAssetSourceData(
   map.addSource(SOURCE_TOPOLOGY_ASSETS, {
     type: 'geojson',
     data: JSON.parse(JSON.stringify(data)),
+    cluster: true,
+    clusterMaxZoom: 14,
+    clusterRadius: 56,
   });
   addTopologyAssetLayers(map);
 }
@@ -160,7 +205,20 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
   map.addSource(SOURCE_ZONES, { type: 'geojson', data: emptyFeatureCollection() });
   map.addSource(SOURCE_LINKS, { type: 'geojson', data: emptyFeatureCollection() });
   map.addSource(SOURCE_NODES, { type: 'geojson', data: emptyFeatureCollection() });
-  map.addSource(SOURCE_ROUTERS, { type: 'geojson', data: emptyFeatureCollection() });
+  map.addSource(SOURCE_ROUTERS, {
+    type: 'geojson',
+    data: emptyFeatureCollection(),
+    cluster: true,
+    clusterMaxZoom: 14,
+    clusterRadius: 52,
+  });
+  map.addSource(SOURCE_TOPOLOGY_ASSETS, {
+    type: 'geojson',
+    data: emptyFeatureCollection(),
+    cluster: true,
+    clusterMaxZoom: 14,
+    clusterRadius: 56,
+  });
   map.addSource(SOURCE_TOPOLOGY_ASSET_LINKS, { type: 'geojson', data: emptyFeatureCollection() });
   map.addSource(SOURCE_CUSTOMERS, {
     type: 'geojson',
@@ -314,9 +372,40 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
   });
 
   map.addLayer({
+    id: 'nm-routers-cluster-circle',
+    type: 'circle',
+    source: SOURCE_ROUTERS,
+    filter: ['has', 'point_count'],
+    paint: {
+      'circle-color': ['step', ['get', 'point_count'], '#0f766e', 10, '#0284c7', 24, '#4338ca'],
+      'circle-radius': ['step', ['get', 'point_count'], 16, 10, 20, 24, 24],
+      'circle-stroke-width': 1.8,
+      'circle-stroke-color': '#e2e8f0',
+    },
+  });
+
+  if (map.getStyle()?.glyphs) {
+    map.addLayer({
+      id: 'nm-routers-cluster-count',
+      type: 'symbol',
+      source: SOURCE_ROUTERS,
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': ['to-string', ['get', 'point_count_abbreviated']],
+        'text-size': 11,
+        'text-allow-overlap': true,
+      },
+      paint: {
+        'text-color': '#f8fafc',
+      },
+    });
+  }
+
+  map.addLayer({
     id: 'nm-routers-circle',
     type: 'circle',
     source: SOURCE_ROUTERS,
+    filter: ['!', ['has', 'point_count']],
     paint: {
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 7, 11, 9, 14, 11.5],
       'circle-color': ['case', ['==', ['get', 'is_online'], true], '#16a34a', '#ef4444'],
@@ -329,6 +418,7 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
     id: 'nm-routers-icon',
     type: 'symbol',
     source: SOURCE_ROUTERS,
+    filter: ['!', ['has', 'point_count']],
     layout: {
       'icon-image': 'nm-node-icon-router',
       'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 0.72, 11, 0.86, 14, 1],

@@ -7,8 +7,12 @@ export const INTERACTIVE_LAYER_IDS = [
   'nm-links-line-dashed',
   'nm-nodes-circle',
   'nm-nodes-icons',
+  'nm-routers-cluster-circle',
+  'nm-routers-cluster-count',
   'nm-routers-circle',
   'nm-routers-icon',
+  'nm-topology-assets-cluster-circle',
+  'nm-topology-assets-cluster-count',
   'nm-topology-assets-circle',
   'nm-topology-assets-icon',
   'nm-customers-cluster-circle',
@@ -64,15 +68,22 @@ export function registerPrimaryLayerClicks(args: {
   onTopologyAssetClick: (e: any) => void;
   onLinkClick: (e: any) => void;
   onCustomerClusterClick: (e: any) => void;
+  onRouterClusterClick: (e: any) => void;
+  onTopologyAssetClusterClick: (e: any) => void;
 }) {
   args.map.on('click', 'nm-nodes-circle', args.onNodeClick);
   args.map.on('click', 'nm-nodes-icons', args.onNodeClick);
+  args.map.on('click', 'nm-routers-cluster-circle', args.onRouterClusterClick);
+  args.map.on('click', 'nm-routers-cluster-count', args.onRouterClusterClick);
   args.map.on('click', 'nm-routers-circle', args.onRouterClick);
   args.map.on('click', 'nm-routers-icon', args.onRouterClick);
+  args.map.on('click', 'nm-topology-assets-cluster-circle', args.onTopologyAssetClusterClick);
+  args.map.on('click', 'nm-topology-assets-cluster-count', args.onTopologyAssetClusterClick);
   args.map.on('click', 'nm-topology-assets-circle', args.onTopologyAssetClick);
   args.map.on('click', 'nm-topology-assets-icon', args.onTopologyAssetClick);
   args.map.on('click', 'nm-customers-point', args.onNodeClick);
   args.map.on('click', 'nm-customers-cluster-circle', args.onCustomerClusterClick);
+  args.map.on('click', 'nm-customers-cluster-count', args.onCustomerClusterClick);
   args.map.on('click', 'nm-links-line', args.onLinkClick);
   args.map.on('click', 'nm-links-line-dashed', args.onLinkClick);
 }

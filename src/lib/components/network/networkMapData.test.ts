@@ -184,6 +184,58 @@ describe('fetchNetworkMapData', () => {
     ]);
     expect(result.nodeRows).toHaveLength(2);
   });
+
+  it('excludes pending-installation customer and service rows from map overlays', () => {
+    const result = extractMapRows({
+      nodesRes: {
+        data: [
+          {
+            id: 'customer-node-pending',
+            name: 'Pending Customer',
+            node_type: 'customer_premise',
+            status: 'pending_installation',
+            lat: -6.2,
+            lng: 106.8,
+            metadata: {
+              asset_source: 'customer_location',
+              customer_id: 'cust-1',
+              location_id: 'loc-1',
+              subscription_status: 'pending_installation',
+            },
+          },
+          {
+            id: 'customer-node-suspended',
+            name: 'Suspended Customer',
+            node_type: 'customer_premise',
+            status: 'active',
+            lat: -6.21,
+            lng: 106.81,
+            metadata: {
+              asset_source: 'customer_location',
+              customer_id: 'cust-2',
+              location_id: 'loc-2',
+              subscription_status: 'suspended',
+              service_id: 'svc-2',
+              service_name: 'Home 20 Mbps',
+            },
+          },
+        ],
+        total: 2,
+        page: 1,
+        per_page: 1000,
+      },
+      linksRes: { data: [], total: 0, page: 1, per_page: 1000 },
+      zonesRes: { data: [], total: 0, page: 1, per_page: 1000 },
+      routersRes: [],
+    });
+
+    expect(result.customerRows).toEqual([
+      expect.objectContaining({ id: 'customer-node-suspended' }),
+    ]);
+    expect(result.serviceRows).toEqual([
+      expect.objectContaining({ id: 'customer-node-suspended' }),
+    ]);
+  });
 });
 
 describe('fetchAllPaginatedRows', () => {
