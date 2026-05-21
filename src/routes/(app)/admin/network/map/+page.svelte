@@ -801,15 +801,6 @@
             ? 'Ready'
             : `${portUsage.available} port left`;
     const canConnectAsset = row.canAcceptConnections;
-    const usedPorts = row.portsUsed ?? 0;
-    const customerDropLabel =
-      row.assetType !== 'odp'
-        ? ''
-        : usedPorts > 0
-          ? `${usedPorts} linked`
-          : row.hasCustomerRelation
-            ? 'Linked'
-            : 'Empty';
 
     return `
       <div class="nm-popup-card nm-popup-card-link">
@@ -845,8 +836,11 @@
           row.assetType === 'odp'
             ? `<div class="nm-popup-relation-list">
                 <button id="${customerDropBtnId}" class="nm-popup-relation-action" type="button">
-                  <div class="nm-popup-label">View Customer</div>
-                  <span class="nm-popup-badge ${row.hasCustomerRelation ? 'ok' : 'muted'}">${escapePopupValue(customerDropLabel)}</span>
+                  <div class="nm-popup-relation-copy">
+                    <div class="nm-popup-label">View Customer</div>
+                    <div class="nm-popup-relation-hint">Open connected customer list</div>
+                  </div>
+                  <span class="nm-popup-relation-arrow" aria-hidden="true">›</span>
                 </button>
               </div>`
             : ''
@@ -3477,12 +3471,54 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 0;
-    border: 0;
-    background: transparent;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    background:
+      linear-gradient(180deg, rgba(30, 41, 59, 0.64), rgba(15, 23, 42, 0.72)),
+      rgba(15, 23, 42, 0.46);
     color: inherit;
     text-align: left;
     cursor: pointer;
+    transition:
+      border-color 0.18s ease,
+      background 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  :global(.nm-popup-relation-action:hover) {
+    border-color: rgba(59, 130, 246, 0.34);
+    background:
+      linear-gradient(180deg, rgba(30, 41, 59, 0.78), rgba(15, 23, 42, 0.84)),
+      rgba(15, 23, 42, 0.54);
+    transform: translateY(-1px);
+  }
+
+  :global(.nm-popup-relation-action:focus-visible) {
+    outline: none;
+    border-color: rgba(56, 189, 248, 0.58);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.16);
+  }
+
+  :global(.nm-popup-relation-copy) {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+  }
+
+  :global(.nm-popup-relation-hint) {
+    color: #cbd5e1;
+    font-size: 0.73rem;
+    line-height: 1.25;
+    font-weight: 500;
+  }
+
+  :global(.nm-popup-relation-arrow) {
+    flex: 0 0 auto;
+    color: #60a5fa;
+    font-size: 1.2rem;
+    line-height: 1;
+    font-weight: 700;
   }
 
   :global(.nm-popup-relation-row) {
