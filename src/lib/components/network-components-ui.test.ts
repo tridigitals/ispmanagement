@@ -58,6 +58,7 @@ describe('network and shell component UI cleanup', () => {
     expect(topbar).toMatch(/\.topbar\s*\{[\s\S]*min-width:\s*0/);
     expect(topbar).toMatch(/\.topbar\s*\{[\s\S]*overflow:\s*visible/);
     expect(topbar).toMatch(/\.left-section\s*\{[\s\S]*min-width:\s*0/);
+    expect(topbar).toMatch(/\.center-section\s*\{[\s\S]*flex:\s*0 1 min\(40vw,\s*500px\)/);
     expect(topbar).toMatch(/\.page-title\s*\{[\s\S]*text-overflow:\s*ellipsis/);
     expect(topbar).toMatch(/\.page-title\s*\{[\s\S]*white-space:\s*nowrap/);
     expect(topbar).toMatch(/@media \(max-width:\s*900px\)[\s\S]*\.topbar\s*\{[\s\S]*overflow:\s*hidden/);
