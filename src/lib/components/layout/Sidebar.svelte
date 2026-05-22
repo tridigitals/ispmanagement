@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { user, isAdmin, isSuperAdmin, logout, can, authVersion } from '$lib/stores/auth';
+  import { user, isAdmin, isSuperAdmin, can, authVersion } from '$lib/stores/auth';
   import { appName } from '$lib/stores/settings';
   import { appLogo } from '$lib/stores/logo';
   import { isSidebarCollapsed } from '$lib/stores/ui';
@@ -11,6 +11,7 @@
   import { canAccessServiceCatalog } from '$lib/utils/serviceCatalogAccess';
   import { api, type Invoice } from '$lib/api/client';
   import Icon from '../ui/Icon.svelte';
+  import UserMenuDropdown from './UserMenuDropdown.svelte';
 
   let { isMobileOpen = $bindable(false) } = $props();
 
@@ -479,8 +480,6 @@
     return sections.filter((s) => s.items.length > 0);
   });
 
-  let isDropdownOpen = $state(false);
-
   let isUrlSuperadmin = $derived($page.url.pathname.startsWith('/superadmin'));
   let isUrlAdmin = $derived($page.url.pathname.includes('/admin'));
   let menuScope = $derived(isUrlSuperadmin ? 'superadmin' : isUrlAdmin ? 'admin' : 'app');
@@ -576,30 +575,9 @@
   // When inside `/superadmin`, we still want a quick jump back to the tenant admin panel.
   const adminPanelHref = '/admin';
 
-  function handleLogout() {
-    logout();
-    goto('/');
-  }
-
   function navigate(href: string) {
     goto(href);
-    isDropdownOpen = false;
     isMobileOpen = false; // Close mobile menu on navigate
-  }
-
-  function toggleDropdown(event: MouseEvent) {
-    event.stopPropagation();
-    isDropdownOpen = !isDropdownOpen;
-  }
-
-  function handleWindowClick() {
-    if (isDropdownOpen) isDropdownOpen = false;
-  }
-
-  function handleEscape(e: KeyboardEvent) {
-    if (e.key === 'Escape' && isDropdownOpen) {
-      isDropdownOpen = false;
-    }
   }
 
   function isActive(item: { href: string }) {
@@ -616,8 +594,6 @@
     return path === item.href || path.startsWith(`${item.href}/`);
   }
 </script>
-
-<svelte:window onclick={handleWindowClick} onkeydown={handleEscape} />
 
 <!-- Mobile Overlay Backdrop -->
 {#if isMobileOpen}
@@ -754,74 +730,8 @@
       </button>
     {/if}
 
-    <div class="profile-section">
-      {#if isDropdownOpen}
-        <div
-          class="dropdown-menu"
-          onclick={(e) => e.stopPropagation()}
-          onkeydown={(e) => e.stopPropagation()}
-          role="menu"
-          tabindex="-1"
-        >
-          <div class="dropdown-header" aria-hidden="true">
-            <div class="dropdown-avatar">
-              {$user?.name?.charAt(0).toUpperCase() || '?'}
-            </div>
-            <div class="dropdown-meta">
-              <div class="dropdown-name">
-                {$user?.name || $t('profile.fallback.user') || 'User'}
-              </div>
-              <div class="dropdown-sub">
-                {$user?.email || ''}
-                {#if $user?.email && $user?.role}
-                  <span class="dot">·</span>
-                {/if}
-                {$user?.role || ''}
-              </div>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <button
-            class="menu-item"
-            role="menuitem"
-            onclick={() => navigate(`${tenantPrefix}/profile`)}
-          >
-            <Icon name="profile" size={16} />
-            {$t('sidebar.profile')}
-          </button>
-
-          <button class="menu-item danger" role="menuitem" onclick={handleLogout}>
-            <Icon name="logout" size={16} />
-            {$t('sidebar.logout')}
-          </button>
-        </div>
-      {/if}
-
-      <button
-        class="profile-btn"
-        onclick={toggleDropdown}
-        aria-haspopup="menu"
-        aria-expanded={isDropdownOpen}
-        onkeydown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            toggleDropdown(e as any);
-          } else if (e.key === 'Escape') {
-            isDropdownOpen = false;
-          }
-        }}
-      >
-        <div class="avatar">
-          {$user?.name?.charAt(0).toUpperCase() || '?'}
-        </div>
-        <div class="user-meta">
-          <span class="name">{$user?.name}</span>
-          <span class="role">{$user?.role}</span>
-        </div>
-        <Icon name="chevron-up" size={14} class="chevron" />
-      </button>
+    <div class="mobile-profile-section">
+      <UserMenuDropdown variant="sidebar" onNavigate={() => (isMobileOpen = false)} />
     </div>
   </div>
 </aside>
@@ -1177,192 +1087,6 @@
     background: color-mix(in srgb, var(--color-primary) 14%, transparent);
   }
 
-  .profile-section {
-    position: relative;
-    min-width: 0;
-  }
-
-  .profile-btn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    min-height: 46px;
-    padding: 8px;
-    background: color-mix(in srgb, var(--bg-surface) 46%, transparent);
-    border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition:
-      background 0.15s ease,
-      border-color 0.15s ease;
-  }
-
-  .sidebar.collapsed .profile-btn {
-    justify-content: center;
-  }
-
-  .sidebar.collapsed .user-meta {
-    display: none;
-  }
-
-  .profile-btn:hover {
-    background: color-mix(in srgb, var(--bg-hover) 78%, transparent);
-    border-color: color-mix(in srgb, var(--border-color) 92%, transparent);
-  }
-
-  .profile-btn:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--color-primary), white 10%);
-    outline-offset: 2px;
-  }
-
-  .avatar {
-    width: 30px;
-    height: 30px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--color-primary) 16%, var(--bg-active));
-    color: color-mix(in srgb, var(--color-primary) 72%, var(--text-primary));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    font-weight: 900;
-    flex-shrink: 0;
-  }
-
-  .user-meta {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    overflow: hidden;
-  }
-
-  .name {
-    font-size: 0.85rem;
-    font-weight: 820;
-    color: var(--text-primary);
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .role {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    text-transform: capitalize;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* Dropdown */
-  .dropdown-menu {
-    position: absolute;
-    bottom: 100%;
-    left: 0;
-    right: 0;
-    margin-bottom: 8px;
-    background: color-mix(in srgb, var(--bg-surface), transparent 6%);
-    border: 1px solid color-mix(in srgb, var(--border-color), white 8%);
-    border-radius: var(--radius-md);
-    padding: 6px;
-    box-shadow: var(--shadow-md);
-        display: flex;
-    flex-direction: column;
-    z-index: 100;
-    animation: dropdownPop 0.14s ease-out;
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-
-  .dropdown-menu::after {
-    content: '';
-    position: absolute;
-    left: 18px;
-    bottom: -6px;
-    width: 12px;
-    height: 12px;
-    background: color-mix(in srgb, var(--bg-surface), transparent 6%);
-    border-right: 1px solid color-mix(in srgb, var(--border-color), white 8%);
-    border-bottom: 1px solid color-mix(in srgb, var(--border-color), white 8%);
-    transform: rotate(45deg);
-  }
-
-  .sidebar.collapsed .dropdown-menu {
-    left: 100%;
-    bottom: 0;
-    margin-left: 8px;
-    margin-bottom: 0;
-    width: clamp(210px, 28vw, 280px);
-    max-width: min(280px, calc(100vw - 24px));
-  }
-
-  .sidebar.collapsed .dropdown-menu::after {
-    left: -6px;
-    bottom: 16px;
-    transform: rotate(135deg);
-  }
-
-  .dropdown-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 10px 8px;
-    min-width: 0;
-  }
-
-  .dropdown-avatar {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 800;
-    font-size: 0.9rem;
-    flex: 0 0 auto;
-    box-shadow: 0 0 0 1px var(--border-subtle) inset;
-  }
-
-  .dropdown-meta {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    overflow: hidden;
-  }
-
-  .dropdown-name {
-    color: var(--text-primary);
-    font-weight: 800;
-    font-size: 0.9rem;
-    line-height: 1.1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-  }
-
-  .dropdown-sub {
-    color: var(--text-secondary);
-    font-size: 0.78rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-  }
-
-  .dot {
-    margin: 0 6px;
-    opacity: 0.7;
-  }
-
   /* Tooltips shown only when sidebar is collapsed (desktop) */
   @media (min-width: 900px) {
     .sidebar.collapsed [data-tooltip] {
@@ -1385,49 +1109,13 @@
       font-size: 0.85rem;
       z-index: 200;
     }
-  }
 
-  .menu-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border: none;
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    text-align: left;
-  }
-
-  .menu-item:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
-    outline-offset: 2px;
-  }
-
-  .menu-item:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-  }
-  .menu-item.danger:hover {
-    color: var(--color-danger);
-    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
-  }
-  .divider {
-    height: 1px;
-    background: color-mix(in srgb, var(--border-color), transparent 35%);
-    margin: 6px 6px;
-  }
-
-  @keyframes dropdownPop {
-    from {
-      opacity: 0;
-      transform: translateY(6px) scale(0.98);
+    .mobile-profile-section {
+      display: none;
     }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
+  }
+
+  .mobile-profile-section {
+    min-width: 0;
   }
 </style>

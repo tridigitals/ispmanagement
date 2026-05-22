@@ -15,6 +15,7 @@
   import Icon from '../ui/Icon.svelte';
   import NotificationDropdown from './NotificationDropdown.svelte';
   import TopbarGlobalSearchPanel from './TopbarGlobalSearchPanel.svelte';
+  import UserMenuDropdown from './UserMenuDropdown.svelte';
 
   let { onMobileMenuClick }: { onMobileMenuClick: () => void } = $props();
   const DESKTOP_BP = 900; // Keep in sync with --bp-lg
@@ -274,6 +275,9 @@
 
   <div class="right-section">
     <NotificationDropdown />
+    <div class="topbar-user-menu">
+      <UserMenuDropdown variant="topbar" />
+    </div>
   </div>
 </header>
 
@@ -329,6 +333,11 @@
     gap: 0.75rem;
     flex: 1 1 0;
     min-width: 0;
+  }
+
+  .topbar-user-menu {
+    min-width: 0;
+    flex: 0 1 auto;
   }
 
   /* Search Bar */
@@ -478,6 +487,10 @@
     .right-section {
       gap: 0.45rem;
       flex: 0 0 auto;
+    }
+
+    .topbar-user-menu {
+      display: none;
     }
   }
 </style>
