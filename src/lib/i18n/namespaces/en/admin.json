@@ -618,7 +618,22 @@
       "subscriptions": "Subscriptions",
       "billing": "Billing",
       "pppoe": "PPPoE",
-      "dhcp_static": "DHCP Static"
+      "dhcp_static": "DHCP Static",
+      "assets": "FTTH Assets"
+    },
+    "assets": {
+      "subtitle": "FTTH devices connected to this customer.",
+      "open_registry": "Open registry",
+      "empty": "No FTTH assets are linked to this customer yet.",
+      "columns": {
+        "name": "Asset",
+        "type": "Type",
+        "serial": "Serial",
+        "status": "Status",
+        "location": "Location",
+        "parent": "Parent",
+        "updated": "Updated"
+      }
     },
     "overview": {
       "title": "Customer profile"
@@ -863,6 +878,8 @@
       "serial": "Serial",
       "customer": "Customer",
       "location": "Location",
+      "relation": "Relation",
+      "topology": "Topology",
       "updated": "Updated",
       "empty": "No FTTH assets yet."
     },
@@ -975,7 +992,10 @@
     },
     "mapping": {
       "only_internet": "Router mapping is only available for Internet / PPPoE services.",
-      "not_required": "Router PPP profile mapping is not required for this service type."
+      "not_required": "Router PPP profile mapping is not required for this service type.",
+      "only_pppoe": "This mapping is only available for PPPoE services.",
+      "not_required_dhcp": "Router mapping is not required for DHCP Static services.",
+      "isolation_pool": "Isolation Pool"
     },
     "toasts": {
       "created": "Service created",
@@ -1344,6 +1364,7 @@
         },
         "actions": {
           "assign_default": "Assign Default Endpoint",
+          "apply": "Apply to Router",
           "create_mapping": "Create NAS Mapping",
           "show_secret": "Show secret",
           "hide_secret": "Hide secret",
@@ -1354,6 +1375,7 @@
           "cli_copied": "RADIUS CLI copied",
           "secret_copied": "Shared secret copied",
           "default_assigned": "Default Managed RADIUS assigned",
+          "applied": "Managed RADIUS applied to router",
           "mapping_created": "Managed RADIUS NAS mapping created"
         },
         "default_ready": "A default native RADIUS endpoint is available. Assign it to this tenant to continue with router onboarding.",
@@ -1743,6 +1765,7 @@
         "placeholder": "Search customer, service, node, link, zone, or router...",
         "empty_title": "No matching results",
         "empty_hint": "Try another keyword or switch quick mode to widen the result scope.",
+        "toggle": "Search map assets",
         "summary_idle": "{count} assets loaded in this workspace",
         "summary_results": "{count} matching results across {groups} sections"
       },
@@ -1802,7 +1825,66 @@
       },
       "manage": {
         "title": "Topology editor workspace",
-        "subtitle": "Editing lives in a separate workspace so monitoring and investigation stay focused."
+        "subtitle": "Editing lives in a separate workspace so monitoring and investigation stay focused.",
+        "syncing": "Syncing...",
+        "sync": "Sync"
+      },
+      "map_unavailable_title": "Map preview unavailable on this device",
+      "map_unavailable_subtitle": "WebGL context failed. Data is still loaded and counts are visible.",
+      "asset_create": {
+        "cancel": "Cancel add",
+        "start": "Add asset",
+        "hint": "Click a point on the map to add a new FTTH asset.",
+        "canceled": "Asset add canceled."
+      },
+      "asset_customer_drop": {
+        "title": "Connected Customers",
+        "view": "View",
+        "empty": "No customers are connected to this asset yet.",
+        "state_normal": "Normal",
+        "state_suspended": "Suspended",
+        "state_internet_disconnected": "Internet Off"
+      },
+      "popup": {
+        "asset_kicker": "FTTH Asset",
+        "port_usage": "Port Usage",
+        "port_used": "{used}/{total} used",
+        "port_available": "{count} available",
+        "port_total": "{count} total",
+        "port_left": "{count} port left",
+        "port_ready": "Ready",
+        "port_full": "Full",
+        "view_customer": "View Customer",
+        "view_customer_hint": "Open connected customer list",
+        "connect": "Connect"
+      },
+      "delete_confirm": {
+        "node_title": "Delete Node",
+        "node_message": "Delete node {label}? This action cannot be undone.",
+        "link_title": "Delete Link",
+        "link_message": "Delete link {label}? This action cannot be undone.",
+        "zone_title": "Delete Zone",
+        "zone_message": "Delete zone {label}? This action cannot be undone.",
+        "binding_title": "Delete Binding",
+        "binding_message": "Delete binding {label}? This action cannot be undone.",
+        "default_label": "this item"
+      },
+      "validation": {
+        "lat_lng_pair": "Latitude and longitude must be filled together.",
+        "lat_lng_invalid": "Latitude and longitude must be valid numbers.",
+        "lat_range": "Latitude must be between -90 and 90.",
+        "lng_range": "Longitude must be between -180 and 180."
+      },
+      "toasts": {
+        "asset_not_found": "FTTH asset data was not found.",
+        "asset_node_not_synced": "FTTH asset node is not synced to the topology map yet.",
+        "asset_node_unavailable": "FTTH asset node is not available in the topology map yet.",
+        "source_odp_unavailable": "Source ODP node is not available in the topology map yet.",
+        "asset_created": "FTTH asset created",
+        "asset_updated": "FTTH asset updated",
+        "asset_save_failed": "Failed to save FTTH asset",
+        "map_init_failed": "Failed to initialize WebGL map.",
+        "link_drawing_canceled": "Link drawing canceled."
       },
       "inspector": {
         "title": "Smart inspector",

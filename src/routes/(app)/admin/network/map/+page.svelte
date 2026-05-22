@@ -48,7 +48,6 @@
   } from '$lib/components/network/networkMapAssetConnect';
   import {
     buildDefaultLineGeometry,
-    buildDeleteConfirmCopy,
     currentDraftPathCoords,
     hasExistingLinkBetweenNodes,
   } from '$lib/components/network/networkMapInteractionUtils';
@@ -420,7 +419,9 @@
       'Visualize nodes, links, service zones, and operational context from the current viewport.';
     return `${base} ${workspaceStatusNotes[0] || ''}`.trim();
   });
-  const visibleNodeRows = $derived.by(() => nodeRows.filter((row) => !isLegacyFtthDistributionNode(row)));
+  const visibleNodeRows = $derived.by(() =>
+    nodeRows.filter((row) => !isLegacyFtthDistributionNode(row)),
+  );
   const workspaceSearchGroups = $derived.by(() =>
     buildNetworkMapOverviewSearchGroups({
       query: workspaceSearchQuery,
@@ -673,9 +674,14 @@
   }
 
   function customerDropStateLabel(state: TopologyAssetCustomerDropItem['visualState']) {
-    if (state === 'suspended') return 'Suspended';
-    if (state === 'internet_disconnected') return 'Internet Off';
-    return 'Normal';
+    if (state === 'suspended')
+      return $t('admin.network.map.asset_customer_drop.state_suspended') || 'Suspended';
+    if (state === 'internet_disconnected') {
+      return (
+        $t('admin.network.map.asset_customer_drop.state_internet_disconnected') || 'Internet Off'
+      );
+    }
+    return $t('admin.network.map.asset_customer_drop.state_normal') || 'Normal';
   }
 
   async function closeCustomerDropModalAndFocus(item: TopologyAssetCustomerDropItem) {
@@ -737,17 +743,23 @@
     await refreshTopologyAssetContext();
     const asset = topologyAssetItems.find((item) => item.id === assetId);
     if (!asset) {
-      toast.error('FTTH asset data tidak ditemukan.');
+      toast.error(
+        $t('admin.network.map.toasts.asset_not_found') || 'FTTH asset data was not found.',
+      );
       return;
     }
 
     const customerContextNodeRows = Array.from(
       new Map(
-        [...topologyAssetContextNodeRows, ...customerRows, ...serviceRows].map((row) => [row.id, row] as const),
+        [...topologyAssetContextNodeRows, ...customerRows, ...serviceRows].map(
+          (row) => [row.id, row] as const,
+        ),
       ).values(),
     );
     const customerContextLinkRows = Array.from(
-      new Map([...topologyAssetContextLinkRows, ...linkRows].map((row) => [row.id, row] as const)).values(),
+      new Map(
+        [...topologyAssetContextLinkRows, ...linkRows].map((row) => [row.id, row] as const),
+      ).values(),
     );
 
     assetCustomerDropItems = buildTopologyAssetCustomerDropItems({
@@ -757,7 +769,8 @@
       nodeRows: customerContextNodeRows,
       linkRows: customerContextLinkRows,
     });
-    assetCustomerDropModalTitle = asset.name || 'Connected Customers';
+    assetCustomerDropModalTitle =
+      asset.name || $t('admin.network.map.asset_customer_drop.title') || 'Connected Customers';
     showAssetCustomerDropModal = true;
   }
 
@@ -792,21 +805,21 @@
           : usagePercent >= 75
             ? 'warn'
             : 'ok';
-    const portStatusLabel =
-      !portUsage
-        ? ''
-        : portUsage.available <= 0
-          ? 'Full'
-          : portUsage.used <= 0
-            ? 'Ready'
-            : `${portUsage.available} port left`;
+    const portStatusLabel = !portUsage
+      ? ''
+      : portUsage.available <= 0
+        ? $t('admin.network.map.popup.port_full') || 'Full'
+        : portUsage.used <= 0
+          ? $t('admin.network.map.popup.port_ready') || 'Ready'
+          : $t('admin.network.map.popup.port_left', { values: { count: portUsage.available } }) ||
+            `${portUsage.available} port left`;
     const canConnectAsset = row.canAcceptConnections;
 
     return `
       <div class="nm-popup-card nm-popup-card-link">
         <div class="nm-popup-head">
           <div>
-            <div class="nm-popup-kicker">FTTH Asset</div>
+            <div class="nm-popup-kicker">${escapePopupValue($t('admin.network.map.popup.asset_kicker') || 'FTTH Asset')}</div>
             <div class="nm-popup-title">${escapePopupValue(row.name)}</div>
             <div class="nm-popup-subtitle">${escapePopupValue(subtitle)}</div>
           </div>
@@ -817,8 +830,12 @@
             ? `<div class="nm-popup-usage-card">
                 <div class="nm-popup-usage-head">
                   <div>
-                    <div class="nm-popup-usage-label">Port Usage</div>
-                    <div class="nm-popup-usage-value">${portUsage.used}/${portUsage.total} used</div>
+                    <div class="nm-popup-usage-label">${escapePopupValue($t('admin.network.map.popup.port_usage') || 'Port Usage')}</div>
+                    <div class="nm-popup-usage-value">${escapePopupValue(
+                      $t('admin.network.map.popup.port_used', {
+                        values: { used: portUsage.used, total: portUsage.total },
+                      }) || `${portUsage.used}/${portUsage.total} used`,
+                    )}</div>
                   </div>
                   <span class="nm-popup-badge ${portTone}">${escapePopupValue(portStatusLabel)}</span>
                 </div>
@@ -826,8 +843,16 @@
                   <span class="nm-popup-usage-fill ${portTone}" style="width: ${usagePercent}%"></span>
                 </div>
                 <div class="nm-popup-usage-meta">
-                  <span>${portUsage.available} available</span>
-                  <span>${portUsage.total} total</span>
+                  <span>${escapePopupValue(
+                    $t('admin.network.map.popup.port_available', {
+                      values: { count: portUsage.available },
+                    }) || `${portUsage.available} available`,
+                  )}</span>
+                  <span>${escapePopupValue(
+                    $t('admin.network.map.popup.port_total', {
+                      values: { count: portUsage.total },
+                    }) || `${portUsage.total} total`,
+                  )}</span>
                 </div>
               </div>`
             : ''
@@ -837,8 +862,11 @@
             ? `<div class="nm-popup-relation-list">
                 <button id="${customerDropBtnId}" class="nm-popup-relation-action" type="button">
                   <div class="nm-popup-relation-copy">
-                    <div class="nm-popup-label">View Customer</div>
-                    <div class="nm-popup-relation-hint">Open connected customer list</div>
+                    <div class="nm-popup-label">${escapePopupValue($t('admin.network.map.popup.view_customer') || 'View Customer')}</div>
+                    <div class="nm-popup-relation-hint">${escapePopupValue(
+                      $t('admin.network.map.popup.view_customer_hint') ||
+                        'Open connected customer list',
+                    )}</div>
                   </div>
                   <span class="nm-popup-relation-arrow" aria-hidden="true">›</span>
                 </button>
@@ -848,11 +876,17 @@
         <div class="nm-popup-actions nm-popup-actions-link">
           ${
             canManageFtthAssets
-              ? `<button id="${editBtnId}" class="nm-popup-btn" type="button">Edit</button>`
+              ? `<button id="${editBtnId}" class="nm-popup-btn" type="button">${escapePopupValue($t('common.edit') || 'Edit')}</button>`
               : ''
           }
-          <button id="${connectBtnId}" class="nm-popup-btn primary" type="button" ${canConnectAsset ? '' : 'disabled'}>${canConnectAsset ? 'Connect' : 'Full'}</button>
-          <button id="${closeBtnId}" class="nm-popup-btn nm-popup-btn-close" type="button">Close</button>
+          <button id="${connectBtnId}" class="nm-popup-btn primary" type="button" ${canConnectAsset ? '' : 'disabled'}>${escapePopupValue(
+            canConnectAsset
+              ? $t('admin.network.map.popup.connect') || 'Connect'
+              : $t('admin.network.map.popup.port_full') || 'Full',
+          )}</button>
+          <button id="${closeBtnId}" class="nm-popup-btn nm-popup-btn-close" type="button">${escapePopupValue(
+            $t('common.close') || 'Close',
+          )}</button>
         </div>
       </div>
     `;
@@ -1139,7 +1173,10 @@
       }
       const nodeId = await ensureTopologyAssetNodeId(assetId);
       if (!nodeId) {
-        toast.error('FTTH asset node belum tersinkron ke topology map.');
+        toast.error(
+          $t('admin.network.map.toasts.asset_node_not_synced') ||
+            'FTTH asset node is not synced to the topology map yet.',
+        );
         return;
       }
       handleLinkPickNode(nodeId);
@@ -1167,13 +1204,7 @@
     )
       .setLngLat(coords)
       .setHTML(
-        buildTopologyAssetPopupHtml(
-          row,
-          closeBtnId,
-          connectBtnId,
-          editBtnId,
-          customerDropBtnId,
-        ),
+        buildTopologyAssetPopupHtml(row, closeBtnId, connectBtnId, editBtnId, customerDropBtnId),
       );
     let cleanupNavigationDismiss: (() => void) | null = null;
 
@@ -1197,7 +1228,9 @@
       const closeBtn = document.getElementById(closeBtnId) as HTMLButtonElement | null;
       const connectBtn = document.getElementById(connectBtnId) as HTMLButtonElement | null;
       const editBtn = document.getElementById(editBtnId) as HTMLButtonElement | null;
-      const customerDropBtn = document.getElementById(customerDropBtnId) as HTMLButtonElement | null;
+      const customerDropBtn = document.getElementById(
+        customerDropBtnId,
+      ) as HTMLButtonElement | null;
       connectBtn?.addEventListener('click', () => {
         if (!row.canAcceptConnections) return;
         popup.remove();
@@ -1226,7 +1259,12 @@
   async function refreshTopologyAssetContext(force = false) {
     const now = Date.now();
     const isStale = now - lastTopologyAssetContextLoadedAt >= topologyAssetContextCacheTtlMs;
-    if (!force && !isStale && topologyAssetContextNodeRows.length && topologyAssetContextLinkRows.length) {
+    if (
+      !force &&
+      !isStale &&
+      topologyAssetContextNodeRows.length &&
+      topologyAssetContextLinkRows.length
+    ) {
       return;
     }
 
@@ -1311,7 +1349,9 @@
     assetCreatePickMode = false;
     const asset = topologyAssetItems.find((item) => item.id === assetId);
     if (!asset) {
-      toast.error('FTTH asset data tidak ditemukan.');
+      toast.error(
+        $t('admin.network.map.toasts.asset_not_found') || 'FTTH asset data was not found.',
+      );
       return;
     }
     await ensureAssetFormModalLoaded();
@@ -1333,7 +1373,7 @@
     activeNodePopup?.remove();
     if (assetCreatePickMode) {
       assetCreatePickMode = false;
-      toast.info('Add asset dibatalkan.');
+      toast.info($t('admin.network.map.asset_create.canceled') || 'Asset add canceled.');
       return;
     }
     showAssetFormModal = false;
@@ -1346,7 +1386,10 @@
       linkPathBendPoints = [];
       syncLinkDraftPreview();
     }
-    toast.info('Klik titik di map untuk menambah FTTH asset baru.');
+    toast.info(
+      $t('admin.network.map.asset_create.hint') ||
+        'Click a point on the map to add a new FTTH asset.',
+    );
   }
 
   async function openCreateTopologyAssetModalAt(lng: number, lat: number) {
@@ -1381,16 +1424,26 @@
         assetDraft.longitude,
       );
       if (parsedCoordinates.error === 'pair') {
-        throw new Error('Latitude and longitude must be filled together.');
+        throw new Error(
+          $t('admin.network.map.validation.lat_lng_pair') ||
+            'Latitude and longitude must be filled together.',
+        );
       }
       if (parsedCoordinates.error === 'invalid') {
-        throw new Error('Latitude and longitude must be valid numbers.');
+        throw new Error(
+          $t('admin.network.map.validation.lat_lng_invalid') ||
+            'Latitude and longitude must be valid numbers.',
+        );
       }
       if (parsedCoordinates.error === 'latitude_range') {
-        throw new Error('Latitude must be between -90 and 90.');
+        throw new Error(
+          $t('admin.network.map.validation.lat_range') || 'Latitude must be between -90 and 90.',
+        );
       }
       if (parsedCoordinates.error === 'longitude_range') {
-        throw new Error('Longitude must be between -180 and 180.');
+        throw new Error(
+          $t('admin.network.map.validation.lng_range') || 'Longitude must be between -180 and 180.',
+        );
       }
 
       const payload = buildNetworkAssetSavePayload({
@@ -1423,9 +1476,17 @@
       await refreshTopologyAssets(true);
       invalidateMapDataCache();
       await refreshMapData(true);
-      toast.success(wasEditing ? 'FTTH asset updated' : 'FTTH asset created');
+      toast.success(
+        wasEditing
+          ? $t('admin.network.map.toasts.asset_updated') || 'FTTH asset updated'
+          : $t('admin.network.map.toasts.asset_created') || 'FTTH asset created',
+      );
     } catch (error: any) {
-      toast.error(error?.message || 'Failed to save FTTH asset');
+      toast.error(
+        error?.message ||
+          $t('admin.network.map.toasts.asset_save_failed') ||
+          'Failed to save FTTH asset',
+      );
     } finally {
       savingAssetForm = false;
     }
@@ -1572,7 +1633,10 @@
     } catch (e: any) {
       console.error(e);
       mapUnavailable = true;
-      mapErrorMessage = e?.message || 'Failed to initialize WebGL map.';
+      mapErrorMessage =
+        e?.message ||
+        $t('admin.network.map.toasts.map_init_failed') ||
+        'Failed to initialize WebGL map.';
       await refreshMapData();
     } finally {
       loading = false;
@@ -2296,7 +2360,7 @@
     linkPickStep = 'from';
     linkPathBendPoints = [];
     syncLinkDraftPreview();
-    toast.info('Link drawing canceled.');
+    toast.info($t('admin.network.map.toasts.link_drawing_canceled') || 'Link drawing canceled.');
   }
 
   function handleLinkPickNode(nodeId: string) {
@@ -2399,7 +2463,9 @@
           include_legacy_ftth: true,
         });
         const fetchedRows = ((response.data || []) as NMNode[]).filter(
-          (row) => String(row.metadata?.asset_source || row.metadata?.asset_type || '').trim() === 'network_asset',
+          (row) =>
+            String(row.metadata?.asset_source || row.metadata?.asset_type || '').trim() ===
+            'network_asset',
         );
         if (fetchedRows.length) {
           const nextById = new Map(nodeRows.map((row) => [row.id, row] as const));
@@ -2422,7 +2488,10 @@
     activeNodePopup?.remove();
     const nodeId = await ensureTopologyAssetNodeId(assetId);
     if (!nodeId) {
-      toast.error('FTTH asset node belum tersedia di topology map.');
+      toast.error(
+        $t('admin.network.map.toasts.asset_node_unavailable') ||
+          'FTTH asset node is not available in the topology map yet.',
+      );
       return;
     }
     activeAssetConnectSourceId = assetId;
@@ -2462,11 +2531,17 @@
       if (!currentAsset) continue;
       const currentDraft = buildTopologyAssetConnectDraft(currentAsset);
       const nextParentAssetId =
-        operation.parentAssetId === undefined ? currentDraft.parentAssetId : String(operation.parentAssetId || '').trim();
+        operation.parentAssetId === undefined
+          ? currentDraft.parentAssetId
+          : String(operation.parentAssetId || '').trim();
       const nextCustomerId =
-        operation.customerId === undefined ? currentDraft.customerId : String(operation.customerId || '').trim();
+        operation.customerId === undefined
+          ? currentDraft.customerId
+          : String(operation.customerId || '').trim();
       const nextLocationId =
-        operation.locationId === undefined ? currentDraft.locationId : String(operation.locationId || '').trim();
+        operation.locationId === undefined
+          ? currentDraft.locationId
+          : String(operation.locationId || '').trim();
 
       if (nextParentAssetId !== currentDraft.parentAssetId) {
         await networkAssets.linkParentAsset(operation.assetId, nextParentAssetId || null);
@@ -2495,7 +2570,10 @@
       if (activeAssetConnectSourceId) {
         const sourceNodeId = await ensureTopologyAssetNodeId(activeAssetConnectSourceId);
         if (!sourceNodeId) {
-          toast.error('Node ODP sumber belum tersedia di topology map.');
+          toast.error(
+            $t('admin.network.map.toasts.source_odp_unavailable') ||
+              'Source ODP node is not available in the topology map yet.',
+          );
           return;
         }
         linkForm = {
@@ -2609,9 +2687,24 @@
   function openDeleteConfirm(targetType: 'node' | 'link' | 'zone', id: string, name?: string) {
     deleteTargetType = targetType;
     deleteTargetId = id;
-    const copy = buildDeleteConfirmCopy(targetType, name);
-    deleteConfirmTitle = copy.title;
-    deleteConfirmMessage = copy.message;
+    const fallbackLabel = $t('admin.network.map.delete_confirm.default_label') || 'this item';
+    const label = name?.trim() ? `"${name.trim()}"` : fallbackLabel;
+    if (targetType === 'node') {
+      deleteConfirmTitle = $t('admin.network.map.delete_confirm.node_title') || 'Delete Node';
+      deleteConfirmMessage =
+        $t('admin.network.map.delete_confirm.node_message', { values: { label } }) ||
+        `Delete node ${label}? This action cannot be undone.`;
+    } else if (targetType === 'link') {
+      deleteConfirmTitle = $t('admin.network.map.delete_confirm.link_title') || 'Delete Link';
+      deleteConfirmMessage =
+        $t('admin.network.map.delete_confirm.link_message', { values: { label } }) ||
+        `Delete link ${label}? This action cannot be undone.`;
+    } else {
+      deleteConfirmTitle = $t('admin.network.map.delete_confirm.zone_title') || 'Delete Zone';
+      deleteConfirmMessage =
+        $t('admin.network.map.delete_confirm.zone_message', { values: { label } }) ||
+        `Delete zone ${label}? This action cannot be undone.`;
+    }
     showDeleteConfirm = true;
   }
 
@@ -2651,8 +2744,8 @@
       labels={{
         backToInstallation: $t('admin.network.map.back_to_installation') || 'Back to Installation',
         backToNoc: $t('admin.network.map.back_to_noc') || 'Back to NOC',
-        syncing: 'Syncing...',
-        sync: 'Sync',
+        syncing: $t('admin.network.map.manage.syncing') || 'Syncing...',
+        sync: $t('admin.network.map.manage.sync') || 'Sync',
       }}
       onSyncAssets={() => {
         queueManualTopologySync();
@@ -2668,8 +2761,10 @@
     {loading}
     {mapUnavailable}
     {mapErrorMessage}
-    mapUnavailableTitle="Map preview unavailable on this device"
-    mapUnavailableSubtitle="WebGL context failed. Data is still loaded and counts are visible."
+    mapUnavailableTitle={$t('admin.network.map.map_unavailable_title') ||
+      'Map preview unavailable on this device'}
+    mapUnavailableSubtitle={$t('admin.network.map.map_unavailable_subtitle') ||
+      'WebGL context failed. Data is still loaded and counts are visible.'}
     height={compactMode ? 'min(82vh, 820px)' : 'calc(100vh - 150px)'}
   >
     <svelte:fragment slot="overlay">
@@ -2678,8 +2773,8 @@
           class="map-workspace-search-toggle"
           class:active={workspaceSearchOpen}
           type="button"
-          aria-label="Search map assets"
-          title="Search map assets"
+          aria-label={$t('admin.network.map.search.toggle') || 'Search map assets'}
+          title={$t('admin.network.map.search.toggle') || 'Search map assets'}
           onclick={() => (workspaceSearchOpen = !workspaceSearchOpen)}
         >
           <Icon name="search" size={18} />
@@ -2691,10 +2786,10 @@
               groups={workspaceSearchGroups}
               summary=""
               placeholder={$t('admin.network.map.search.placeholder') ||
-                'Cari customer, node, link, zone, atau router...'}
+                'Search customer, service, node, link, zone, or router...'}
               emptyTitle={$t('admin.network.map.search.empty_title') || 'No matching results'}
               emptyHint={$t('admin.network.map.search.empty_hint') ||
-                'Coba kata kunci lain.'}
+                'Try another keyword or switch quick mode to widen the result scope.'}
               onQueryChange={(value: string) => (workspaceSearchQuery = value)}
               onSelect={handleWorkspaceSearchSelect}
             />
@@ -2747,7 +2842,11 @@
               onclick={toggleAssetCreatePickMode}
             >
               <Icon name={assetCreatePickMode ? 'x-circle' : 'plus'} size={14} />
-              <span>{assetCreatePickMode ? 'Cancel Add' : 'Add Asset'}</span>
+              <span>
+                {assetCreatePickMode
+                  ? $t('admin.network.map.asset_create.cancel') || 'Cancel add'
+                  : $t('admin.network.map.asset_create.start') || 'Add asset'}
+              </span>
             </button>
           {/if}
         </div>
@@ -2756,7 +2855,10 @@
       {#if assetCreatePickMode}
         <div class="map-asset-create-hint">
           <Icon name="map-pin" size={14} />
-          <span>Klik titik lokasi asset baru di map.</span>
+          <span
+            >{$t('admin.network.map.asset_create.hint') ||
+              'Click a point on the map to add a new FTTH asset.'}</span
+          >
         </div>
       {/if}
 
@@ -2783,12 +2885,12 @@
               disabled={linkPathBendPoints.length === 0}
             >
               <Icon name="arrow-left" size={14} />
-              Undo
+              {$t('common.back') || 'Back'}
             </button>
           {/if}
           <button class="btn ghost btn-xs danger" type="button" onclick={cancelLinkPicking}>
             <Icon name="x-circle" size={14} />
-            Cancel
+            {$t('common.cancel') || 'Cancel'}
           </button>
         </div>
       {/if}
@@ -2877,7 +2979,9 @@
     >
       <div class="asset-customer-drop-modal-head">
         <div>
-          <div class="asset-customer-drop-modal-kicker">Connected Customers</div>
+          <div class="asset-customer-drop-modal-kicker">
+            {$t('admin.network.map.asset_customer_drop.title') || 'Connected Customers'}
+          </div>
           <h3 id="asset-customer-drop-modal-title">{assetCustomerDropModalTitle}</h3>
         </div>
         <button
@@ -2914,7 +3018,7 @@
                     type="button"
                     onclick={() => void closeCustomerDropModalAndFocus(item)}
                   >
-                    View
+                    {$t('admin.network.map.asset_customer_drop.view') || 'View'}
                   </button>
                 </div>
               </div>
@@ -2924,7 +3028,10 @@
       {:else}
         <div class="asset-customer-drop-empty">
           <Icon name="users" size={18} />
-          <span>Belum ada customer yang terhubung ke asset ini.</span>
+          <span>
+            {$t('admin.network.map.asset_customer_drop.empty') ||
+              'No customers are connected to this asset yet.'}
+          </span>
         </div>
       {/if}
     </div>
@@ -2936,8 +3043,8 @@
     show={showDeleteConfirm}
     title={deleteConfirmTitle}
     message={deleteConfirmMessage}
-    confirmText="Delete"
-    cancelText="Cancel"
+    confirmText={$t('common.delete') || 'Delete'}
+    cancelText={$t('common.cancel') || 'Cancel'}
     type="danger"
     loading={Boolean(deletingId)}
     onconfirm={() => void confirmDeleteAction()}
@@ -3061,7 +3168,6 @@
     background: var(--bg-surface);
     border-color: rgba(15, 23, 42, 0.16);
     box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
-    
   }
 
   .map-workspace-search :global(.search-group) {

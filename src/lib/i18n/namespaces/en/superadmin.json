@@ -367,6 +367,7 @@
     "subtitle": "Manage all organizations in the platform",
     "count": "{count} tenants",
     "search": "Search tenants...",
+    "loading": "Loading tenants modules...",
     "refreshing_title": "Refreshing...",
     "refreshing": "Refreshing",
     "aria": {
@@ -382,6 +383,7 @@
       "inactive_title": "Inactive Tenants"
     },
     "filters": {
+      "status": "Status",
       "all": "All",
       "active": "Active",
       "inactive": "Inactive"
@@ -480,6 +482,7 @@
         "table": "Table view"
       },
       "filters": {
+        "status": "Status",
         "all": "All",
         "pending": "Pending",
         "paid": "Paid",
@@ -939,6 +942,7 @@
       "default_title": "Default"
     },
     "filters": {
+      "status": "Status",
       "all": "All",
       "active": "Active",
       "inactive": "Inactive"

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  canAccessCustomerDashboard,
   getDefaultTenantLandingPath,
   hasInternalAppAccess,
   type LandingUserLike,
@@ -31,6 +32,7 @@ describe('app landing helpers', () => {
     });
 
     expect(hasInternalAppAccess(user)).toBe(true);
+    expect(canAccessCustomerDashboard(user)).toBe(false);
     expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/admin');
   });
 
@@ -40,6 +42,7 @@ describe('app landing helpers', () => {
     });
 
     expect(hasInternalAppAccess(user)).toBe(true);
+    expect(canAccessCustomerDashboard(user)).toBe(false);
     expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/admin');
   });
 
@@ -49,6 +52,15 @@ describe('app landing helpers', () => {
       permissions: ['*'],
     });
 
+    expect(canAccessCustomerDashboard(user)).toBe(false);
     expect(getDefaultTenantLandingPath(user, '')).toBe('/admin');
+  });
+
+  it('keeps customer-only users eligible for the customer dashboard', () => {
+    const user = makeUser({
+      permissions: ['customers:read_own', 'support:read'],
+    });
+
+    expect(canAccessCustomerDashboard(user)).toBe(true);
   });
 });

@@ -16,6 +16,9 @@
   import { isPlatformDomain } from '$lib/utils/domain';
   import { canAccessNetworkMap } from '$lib/utils/adminNetworkAccess';
   import { canAccessServiceCatalog } from '$lib/utils/serviceCatalogAccess';
+  import { canAccessCustomerDashboard } from '$lib/utils/appLanding';
+  import ProfileModal from '$lib/components/profile/ProfileModal.svelte';
+  import { openProfileModal, profileModal, setProfileModalLock } from '$lib/stores/profileModal';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
 
@@ -268,15 +271,6 @@
       return;
     }
 
-    // 2FA Enforcement
-    if ($is2FARequiredButDisabled && !$page.url.pathname.includes('/profile')) {
-      debugLog('redirect-2fa-required', {
-        to: `${tenantPrefix}/profile?2fa_required=true`,
-      });
-      goto(`${tenantPrefix}/profile?2fa_required=true`);
-      return;
-    }
-
     if (
       currentSlug &&
       userSlug &&
@@ -314,6 +308,30 @@
         goto('/unauthorized');
       }
       return;
+    }
+
+    if (canonicalPath.startsWith('/dashboard') && !canAccessCustomerDashboard($user)) {
+      debugLog('redirect-internal-user-from-customer-dashboard', {
+        canonicalPath,
+        role: $user?.role,
+        target: `${tenantPrefix}/admin`,
+      });
+      goto(`${tenantPrefix}/admin`);
+      return;
+    }
+
+    if ($is2FARequiredButDisabled) {
+      debugLog('open-profile-modal-2fa-required', {
+        tab: 'security',
+      });
+      if (!$profileModal.open || $profileModal.tab !== 'security' || !$profileModal.locked) {
+        openProfileModal({ tab: 'security', locked: true, reason: '2fa_required' });
+      }
+      return;
+    }
+
+    if ($profileModal.locked) {
+      setProfileModalLock(false);
     }
   });
 
@@ -405,6 +423,7 @@
         </div>
       </div>
     </div>
+    <ProfileModal />
   </div>
 {/if}
 

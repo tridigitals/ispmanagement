@@ -49,3 +49,7 @@ export function getDefaultTenantLandingPath(
 ): string {
   return hasInternalAppAccess(user) ? '/admin' : '/dashboard';
 }
+
+export function canAccessCustomerDashboard(user: LandingUserLike | null | undefined): boolean {
+  return !hasInternalAppAccess(user);
+}

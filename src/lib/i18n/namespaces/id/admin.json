@@ -372,7 +372,22 @@
       "subscriptions": "Langganan",
       "billing": "Billing",
       "pppoe": "PPPoE",
-      "dhcp_static": "DHCP Static"
+      "dhcp_static": "DHCP Static",
+      "assets": "Aset FTTH"
+    },
+    "assets": {
+      "subtitle": "Perangkat FTTH yang terhubung ke pelanggan ini.",
+      "open_registry": "Buka registri",
+      "empty": "Belum ada aset FTTH yang ditautkan ke pelanggan ini.",
+      "columns": {
+        "name": "Aset",
+        "type": "Tipe",
+        "serial": "Serial",
+        "status": "Status",
+        "location": "Lokasi",
+        "parent": "Induk",
+        "updated": "Diperbarui"
+      }
     },
     "overview": {
       "title": "Profil pelanggan"
@@ -617,6 +632,8 @@
       "serial": "Serial",
       "customer": "Pelanggan",
       "location": "Lokasi",
+      "relation": "Relasi",
+      "topology": "Topologi",
       "updated": "Diperbarui",
       "empty": "Belum ada aset FTTH."
     },
@@ -729,7 +746,10 @@
     },
     "mapping": {
       "only_internet": "Mapping router hanya tersedia untuk layanan Internet / PPPoE.",
-      "not_required": "Mapping profil PPP router tidak diperlukan untuk tipe layanan ini."
+      "not_required": "Mapping profil PPP router tidak diperlukan untuk tipe layanan ini.",
+      "only_pppoe": "Mapping ini hanya tersedia untuk layanan PPPoE.",
+      "not_required_dhcp": "Mapping router tidak diperlukan untuk layanan DHCP Static.",
+      "isolation_pool": "Isolation Pool"
     },
     "toasts": {
       "created": "Layanan dibuat",
@@ -1098,6 +1118,7 @@
         },
         "actions": {
           "assign_default": "Assign Default Endpoint",
+          "apply": "Terapkan ke Router",
           "create_mapping": "Buat NAS Mapping",
           "show_secret": "Tampilkan secret",
           "hide_secret": "Sembunyikan secret",
@@ -1108,6 +1129,7 @@
           "cli_copied": "CLI RADIUS berhasil disalin",
           "secret_copied": "Shared secret berhasil disalin",
           "default_assigned": "Default Managed RADIUS berhasil di-assign",
+          "applied": "Managed RADIUS berhasil diterapkan ke router",
           "mapping_created": "NAS mapping Managed RADIUS berhasil dibuat"
         },
         "default_ready": "Server default Managed RADIUS tersedia. Assign ke tenant ini untuk melanjutkan onboarding router.",
@@ -1497,6 +1519,7 @@
         "placeholder": "Cari customer, service, node, link, zona, atau router...",
         "empty_title": "Hasil tidak ditemukan",
         "empty_hint": "Coba kata kunci lain atau ganti quick mode agar cakupan hasil lebih luas.",
+        "toggle": "Cari aset peta",
         "summary_idle": "{count} aset termuat di workspace ini",
         "summary_results": "{count} hasil cocok di {groups} kelompok"
       },
@@ -1556,7 +1579,66 @@
       },
       "manage": {
         "title": "Workspace editor topologi",
-        "subtitle": "Aktivitas edit dipisahkan ke workspace sendiri agar monitoring dan investigasi tetap fokus."
+        "subtitle": "Aktivitas edit dipisahkan ke workspace sendiri agar monitoring dan investigasi tetap fokus.",
+        "syncing": "Menyinkronkan...",
+        "sync": "Sinkronkan"
+      },
+      "map_unavailable_title": "Pratinjau peta tidak tersedia di perangkat ini",
+      "map_unavailable_subtitle": "Konteks WebGL gagal dimuat. Data tetap dimuat dan jumlah item tetap terlihat.",
+      "asset_create": {
+        "cancel": "Batalkan tambah",
+        "start": "Tambah aset",
+        "hint": "Klik titik pada peta untuk menambah aset FTTH baru.",
+        "canceled": "Penambahan aset dibatalkan."
+      },
+      "asset_customer_drop": {
+        "title": "Pelanggan Terhubung",
+        "view": "Lihat",
+        "empty": "Belum ada pelanggan yang terhubung ke aset ini.",
+        "state_normal": "Normal",
+        "state_suspended": "Ditangguhkan",
+        "state_internet_disconnected": "Internet Putus"
+      },
+      "popup": {
+        "asset_kicker": "Aset FTTH",
+        "port_usage": "Penggunaan Port",
+        "port_used": "{used}/{total} terpakai",
+        "port_available": "{count} tersedia",
+        "port_total": "{count} total",
+        "port_left": "Sisa {count} port",
+        "port_ready": "Siap",
+        "port_full": "Penuh",
+        "view_customer": "Lihat Pelanggan",
+        "view_customer_hint": "Buka daftar pelanggan yang terhubung",
+        "connect": "Hubungkan"
+      },
+      "delete_confirm": {
+        "node_title": "Hapus Node",
+        "node_message": "Hapus node {label}? Tindakan ini tidak dapat dibatalkan.",
+        "link_title": "Hapus Link",
+        "link_message": "Hapus link {label}? Tindakan ini tidak dapat dibatalkan.",
+        "zone_title": "Hapus Zona",
+        "zone_message": "Hapus zona {label}? Tindakan ini tidak dapat dibatalkan.",
+        "binding_title": "Hapus Binding",
+        "binding_message": "Hapus binding {label}? Tindakan ini tidak dapat dibatalkan.",
+        "default_label": "item ini"
+      },
+      "validation": {
+        "lat_lng_pair": "Latitude dan longitude harus diisi bersamaan.",
+        "lat_lng_invalid": "Latitude dan longitude harus berupa angka yang valid.",
+        "lat_range": "Latitude harus berada di antara -90 dan 90.",
+        "lng_range": "Longitude harus berada di antara -180 dan 180."
+      },
+      "toasts": {
+        "asset_not_found": "Data aset FTTH tidak ditemukan.",
+        "asset_node_not_synced": "Node aset FTTH belum tersinkron ke peta topologi.",
+        "asset_node_unavailable": "Node aset FTTH belum tersedia di peta topologi.",
+        "source_odp_unavailable": "Node ODP sumber belum tersedia di peta topologi.",
+        "asset_created": "Aset FTTH berhasil dibuat",
+        "asset_updated": "Aset FTTH berhasil diperbarui",
+        "asset_save_failed": "Gagal menyimpan aset FTTH",
+        "map_init_failed": "Gagal menginisialisasi peta WebGL.",
+        "link_drawing_canceled": "Penggambaran link dibatalkan."
       },
       "inspector": {
         "title": "Inspector cerdas",

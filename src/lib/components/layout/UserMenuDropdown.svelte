@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
   import { logout, user } from '$lib/stores/auth';
+  import { openProfileModal } from '$lib/stores/profileModal';
   import { t } from 'svelte-i18n';
   import Icon from '../ui/Icon.svelte';
 
@@ -12,7 +12,6 @@
     onNavigate?: () => void;
   } = $props();
 
-  const tenantPrefix = '';
   let isDropdownOpen = $state(false);
   let rootEl = $state<HTMLDivElement | null>(null);
 
@@ -25,8 +24,8 @@
     isDropdownOpen = !isDropdownOpen;
   }
 
-  async function navigateToProfile() {
-    await goto(`${tenantPrefix}/profile`);
+  function navigateToProfile() {
+    openProfileModal({ tab: 'general' });
     closeDropdown();
     onNavigate?.();
   }
@@ -35,7 +34,7 @@
     logout();
     closeDropdown();
     onNavigate?.();
-    goto('/');
+    window.location.assign('/');
   }
 
   function handleWindowClick(event: MouseEvent) {

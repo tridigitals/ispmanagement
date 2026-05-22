@@ -13,7 +13,9 @@ describe('shell user menu composition', () => {
     expect(existsSync(resolve(process.cwd(), file))).toBe(true);
 
     const source = readSource(file);
-    expect(source).toContain("goto(`${tenantPrefix}/profile`)");
+    expect(source).toContain("import { openProfileModal } from '$lib/stores/profileModal'");
+    expect(source).toContain("openProfileModal({ tab: 'general' })");
+    expect(source).not.toContain("goto(`${tenantPrefix}/profile`)");
     expect(source).toContain('handleLogout');
     expect(source).toContain("$t('sidebar.profile')");
     expect(source).toContain("$t('sidebar.logout')");

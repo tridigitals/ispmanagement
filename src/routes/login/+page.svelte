@@ -127,7 +127,7 @@
 
       let target = getDefaultTenantLandingPath(u, ctx.tenantPrefix);
       const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/login';
-      if (target === currentPath) target = `${ctx.tenantPrefix}/profile`;
+      if (target === currentPath) target = '/';
       if (target === currentPath) target = '/';
       goto(target);
     };

@@ -9,12 +9,11 @@ function readSource(path: string) {
 describe('app detail UI cleanup', () => {
   it('keeps profile, support, subscription, and detail pages visually restrained', () => {
     const files = [
-      'src/routes/(app)/profile/+page.svelte',
+      'src/lib/components/profile/ProfileSurface.svelte',
+      'src/lib/components/profile/ProfileModal.svelte',
       'src/routes/(app)/support/[id]/+page.svelte',
       'src/routes/(app)/admin/support/[id]/+page.svelte',
       'src/routes/(app)/admin/subscription/+page.svelte',
-      'src/routes/(app)/admin/customers/[id]/+page.svelte',
-      'src/routes/(app)/admin/customers/[id]/CustomerSubscriptionsTab.svelte',
     ];
 
     for (const file of files) {

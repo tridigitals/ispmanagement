@@ -7,6 +7,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { hasInternalAppAccess } from '$lib/utils/appLanding';
+  import { openProfileModal } from '$lib/stores/profileModal';
   import {
     getAnnouncementDetailPath,
     resolveAnnouncementActionUrl,
@@ -464,7 +465,7 @@
         <h2>{$t('dashboard.quick_actions.title')}</h2>
       </div>
       <div class="actions-list">
-        <button class="action-item" onclick={() => goto(`${tenantPrefix}/profile`)}>
+        <button class="action-item" onclick={() => openProfileModal({ tab: 'general' })}>
           <Icon name="profile" size={18} />
           {$t('dashboard.quick_actions.update_profile')}
         </button>
@@ -472,13 +473,13 @@
           <Icon name="mail" size={18} />
           {$t('dashboard.quick_actions.check_messages')}
         </button>
-        <button class="action-item" onclick={() => goto(`${tenantPrefix}/profile?tab=security`)}>
+        <button class="action-item" onclick={() => openProfileModal({ tab: 'security' })}>
           <Icon name="lock" size={18} />
           {$t('dashboard.quick_actions.security_settings')}
         </button>
         <button
           class="action-item"
-          onclick={() => goto(`${tenantPrefix}/profile?tab=notifications`)}
+          onclick={() => openProfileModal({ tab: 'notifications' })}
         >
           <Icon name="message-circle" size={18} />
           {$t('dashboard.quick_actions.contact_support')}

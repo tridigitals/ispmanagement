@@ -367,6 +367,7 @@
     "subtitle": "Kelola semua organisasi di platform",
     "count": "{count} tenant",
     "search": "Cari tenant...",
+    "loading": "Memuat modul tenant...",
     "refreshing_title": "Menyegarkan...",
     "refreshing": "Menyegarkan",
     "aria": {
@@ -382,6 +383,7 @@
       "inactive_title": "Tenant Nonaktif"
     },
     "filters": {
+      "status": "Status",
       "all": "Semua",
       "active": "Aktif",
       "inactive": "Nonaktif"
@@ -480,6 +482,7 @@
         "table": "Tampilan tabel"
       },
       "filters": {
+        "status": "Status",
         "all": "Semua",
         "pending": "Pending",
         "paid": "Lunas",
@@ -939,6 +942,7 @@
       "default_title": "Default"
     },
     "filters": {
+      "status": "Status",
       "all": "Semua",
       "active": "Aktif",
       "inactive": "Nonaktif"

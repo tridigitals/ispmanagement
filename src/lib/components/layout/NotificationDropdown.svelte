@@ -16,6 +16,7 @@
   } from '$lib/stores/notifications';
   import { timeAgo } from '$lib/utils/date';
   import { goto } from '$app/navigation';
+  import { openProfileModal } from '$lib/stores/profileModal';
   import { user } from '$lib/stores/auth';
   import { hasInternalAppAccess } from '$lib/utils/appLanding';
   import { resolveAnnouncementActionUrl } from '$lib/utils/announcementRouting';
@@ -167,7 +168,7 @@
           <button
             class="icon-btn-sm"
             onclick={() => {
-              goto(`${tenantPrefix}/profile?tab=notifications`);
+              openProfileModal({ tab: 'notifications' });
               close();
             }}
             title={$t('topbar.notifications_menu.settings') || 'Settings'}
@@ -251,7 +252,7 @@
         <button
           class="footer-link"
           onclick={() => {
-            if (isSuperadminUrl) goto('/profile?tab=notifications');
+            if (isSuperadminUrl) openProfileModal({ tab: 'notifications' });
             else goto(`${tenantPrefix}/notifications`);
             close();
           }}

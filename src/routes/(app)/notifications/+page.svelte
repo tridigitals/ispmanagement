@@ -9,6 +9,7 @@
   import { timeAgo } from '$lib/utils/date';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { hasInternalAppAccess } from '$lib/utils/appLanding';
+  import { openProfileModal } from '$lib/stores/profileModal';
   import { resolveAnnouncementActionUrl } from '$lib/utils/announcementRouting';
   import { getVisiblePortalNotifications } from '$lib/utils/dashboardNotifications';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
@@ -103,7 +104,7 @@
   }
 
   function openPreferences() {
-    goto(`${tenantPrefix}/profile?tab=notifications`);
+    openProfileModal({ tab: 'notifications' });
   }
 
   function handleClick(n: any) {

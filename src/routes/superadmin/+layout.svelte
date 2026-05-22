@@ -1,6 +1,7 @@
 <script lang="ts">
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import Topbar from '$lib/components/layout/Topbar.svelte';
+  import ProfileModal from '$lib/components/profile/ProfileModal.svelte';
   import { checkAuth, user } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
@@ -53,6 +54,7 @@
         </div>
       </div>
     </div>
+    <ProfileModal />
   </div>
 {:else}
   <!-- Loading state while checking auth -->

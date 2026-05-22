@@ -9,6 +9,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { t } from 'svelte-i18n';
+  import { ensureLocaleNamespaces } from '$lib/i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import MobileFabMenu from '$lib/components/ui/MobileFabMenu.svelte';
   import {
@@ -18,17 +19,10 @@
     loadProfilePreferencesTab,
     loadProfileSecurityTab,
   } from '$lib/components/profile/profilePageModules';
+  import type { ProfileTabId } from '$lib/stores/profileModal';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
-
-  const profileTabIds = [
-    'general',
-    'security',
-    'preferences',
-    'notifications',
-    'addresses',
-  ] as const;
-
-  type ProfileTabId = (typeof profileTabIds)[number];
+  
+  const profileTabIds = ['general', 'security', 'preferences', 'notifications', 'addresses'] as const;
   type DeferredComponent = Component<any>;
   type NotificationActions = {
     updatePreference: (channel: string, category: string, enabled: boolean) => Promise<void>;
@@ -47,6 +41,7 @@
   }
 
   let activeTab = $state<ProfileTabId>('general');
+  let lastRequestedTab = $state<ProfileTabId | null>(null);
   let loading = $state(false);
   let message = $state<{ type: '' | 'success' | 'error'; text: string }>({
     type: '',
@@ -102,6 +97,13 @@
   let loadingDevices = $state(true);
 
   let isDesktop = $state(false);
+  let {
+    requestedTab = 'general',
+    twoFARequired = false,
+  }: {
+    requestedTab?: ProfileTabId;
+    twoFARequired?: boolean;
+  } = $props();
 
   let tenantCtx = $derived.by(() =>
     resolveTenantContext({
@@ -159,6 +161,7 @@
 
   // Initial Load
   onMount(async () => {
+    await ensureLocaleNamespaces(undefined, ['profile', 'auth']);
     void appSettings.init();
     isDesktop = !!(window as any).__TAURI_INTERNALS__;
 
@@ -173,8 +176,7 @@
       loadTrustedDevices();
     }
 
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('2fa_required') === 'true') {
+    if (twoFARequired) {
       activeTab = 'security';
       showMessage(
         'error',
@@ -182,9 +184,8 @@
           'Your organization requires Two-Factor Authentication.',
       );
     } else {
-      const tab = urlParams.get('tab');
-      if (isProfileTabId(tab)) {
-        activeTab = tab;
+      if (isProfileTabId(requestedTab)) {
+        activeTab = requestedTab;
       } else {
         const saved = localStorage.getItem('profile.activeTab');
         if (isProfileTabId(saved)) {
@@ -200,6 +201,19 @@
     if (typeof window === 'undefined') return;
     localStorage.setItem('profile.activeTab', activeTab);
     void ensureActiveTabReady(activeTab);
+  });
+
+  $effect(() => {
+    if (!isProfileTabId(requestedTab) || requestedTab === lastRequestedTab) return;
+    lastRequestedTab = requestedTab;
+    if (!twoFARequired) {
+      activeTab = requestedTab;
+    }
+  });
+
+  $effect(() => {
+    if (!twoFARequired) return;
+    if (activeTab !== 'security') activeTab = 'security';
   });
 
   function showMessage(type: 'success' | 'error', text: string) {

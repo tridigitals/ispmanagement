@@ -1,2246 +1,4 @@
 {
-  "auth": {
-    "login": {
-      "title": "Sign In",
-      "subtitle": "Access your dashboard",
-      "email_label": "Email",
-      "email_placeholder": "name@company.com",
-      "password_label": "Password",
-      "password_placeholder": "••••••••",
-      "remember_me": "Stay signed in",
-      "forgot_password": "Reset password",
-      "submit_button": "Continue",
-      "loading_button": "Signing in...",
-      "footer_text": "Need an account?",
-      "register_link": "Register here",
-      "error_wrong_tenant": "You do not have access to this workspace. Please login at your own workspace URL."
-    },
-    "register": {
-      "title": "Create Account",
-      "subtitle": "Start your journey with us",
-      "disabled_message": "Public registration is currently disabled",
-      "name_label": "Full Name",
-      "name_placeholder": "John Doe",
-      "email_label": "Email",
-      "email_placeholder": "name@company.com",
-      "password_label": "Password",
-      "password_placeholder": "••••••••",
-      "confirm_password_label": "Confirm Password",
-      "submit_button": "Create Account",
-      "loading_button": "Creating...",
-      "footer_text": "Already have an account?",
-      "login_link": "Sign in"
-    },
-    "validation": {
-      "passwords_do_not_match": "Passwords do not match",
-      "min_length": "Min {length} chars",
-      "require_uppercase": "1 uppercase",
-      "require_number": "1 number",
-      "require_special": "1 special char"
-    },
-    "2fa": {
-      "select_method": "Select Verification Method",
-      "select_method_desc": "Choose how you'd like to verify your identity",
-      "use_app": "Authenticator App",
-      "use_email": "Email Code",
-      "enter_code": "Enter Verification Code",
-      "totp_desc": "Enter the 6-digit code from your authenticator app",
-      "enter_email_code": "Enter Email Code",
-      "email_desc": "We'll send a verification code to your email",
-      "email_sent": "A verification code has been sent to your email",
-      "sending_email": "Sending verification code...",
-      "verify": "Verify",
-      "verify_and_login": "Verify & Login",
-      "resend_code": "Resend Code",
-      "code_resent": "Verification code sent!",
-      "try_another_method": "Try another method",
-      "back_to_login": "Back to Login",
-      "trust_device": "Trust this device for 30 days",
-      "invalid_code": "Invalid verification code"
-    },
-    "forgot_password": {
-      "title": "Reset Password",
-      "subtitle": "Enter your email and we'll send you a link to reset your password.",
-      "email_label": "Email Address",
-      "email_placeholder": "you@example.com",
-      "submit": "Send Reset Link",
-      "sending": "Sending...",
-      "check_email_title": "Check your email",
-      "check_email_message": "We've sent a password reset link to",
-      "back_to_login": "Back to Login"
-    },
-    "reset_password": {
-      "title": "Reset Password",
-      "subtitle": "Enter your new password below",
-      "invalid_token": "Invalid or missing reset token.",
-      "passwords_do_not_match": "Passwords do not match",
-      "min_length": "Password must be at least 8 characters",
-      "success": "Password reset successfully!",
-      "redirecting": "Redirecting to login...",
-      "new_password": "New Password",
-      "confirm_password": "Confirm Password",
-      "resetting": "Resetting...",
-      "submit": "Reset Password"
-    },
-    "verify_email": {
-      "title": "Email Verification",
-      "verifying": "Verifying your email...",
-      "invalid_link": "Invalid verification link.",
-      "success": "Email verified successfully!",
-      "redirecting": "Redirecting to dashboard...",
-      "go_to_login": "Go to Login"
-    }
-  },
-  "common": {
-    "back": "Back",
-    "cancel": "Cancel",
-    "clear": "Clear",
-    "close": "Close",
-    "copied": "Copied",
-    "copy": "Copy",
-    "copy_failed": "Copy failed",
-    "delete": "Delete",
-    "edit": "Edit",
-    "details": "Details",
-    "validation_error": "Validation error",
-    "status": "Status",
-    "action": "Action",
-    "actions": "Actions",
-    "open": "Open",
-    "download": "Download",
-    "load_more": "Load more",
-    "end": "End",
-    "page": "Page",
-    "results": "results",
-    "search": "Search",
-    "apply": "Apply",
-    "next": "Next",
-    "previous": "Previous",
-    "retry": "Retry",
-    "refresh": "Refresh",
-    "remove": "Remove",
-    "reset": "Reset",
-    "upgrade_plan": "Upgrade Plan",
-    "file_saved": "File saved successfully",
-    "otp_placeholder": "000000",
-    "otp_placeholder_spaced": "000 000",
-    "select": "Select",
-    "active": "Active",
-    "inactive": "Inactive",
-    "all": "All",
-    "add": "Add",
-    "create": "Create",
-    "total": "Total",
-    "start": "Start",
-    "complete": "Complete",
-    "available": "Available",
-    "customer": "Customer",
-    "package": "Package",
-    "location": "Location",
-    "assignee": "Assignee",
-    "schedule": "Schedule",
-    "notes": "Notes",
-    "global": "Global",
-    "na": "—",
-    "per_month_short": "/mo",
-    "per_year_short": "/yr",
-    "select_all": "Select All",
-    "you": "YOU",
-    "yes": "Yes",
-    "no": "No",
-    "save": "Save",
-    "saved": "Saved",
-    "save_changes": "Save Changes",
-    "saving": "Saving...",
-    "processing": "Processing...",
-    "loading": "Loading...",
-    "updated": "Updated",
-    "deleted": "Deleted",
-    "disabled": "Disabled",
-    "forbidden": "Forbidden",
-    "confirm_delete": "Are you sure you want to delete this item?",
-    "from": "From",
-    "to": "To",
-    "no_permission": "You do not have permission to view this page.",
-    "no_results": "No results",
-    "empty": {
-      "no_results": "No results"
-    },
-    "units": {
-      "hours": "hours",
-      "min": "min",
-      "minutes": "minutes",
-      "chars": "chars",
-      "attempts": "attempts",
-      "req_per_min": "req/min",
-      "mb": "MB",
-      "days": "days"
-    },
-    "weekdays": {
-      "mon": "Mon",
-      "tue": "Tue",
-      "wed": "Wed",
-      "thu": "Thu",
-      "fri": "Fri",
-      "sat": "Sat",
-      "sun": "Sun"
-    }
-  },
-  "components": {
-    "lightbox": {
-      "pdf_preview": "PDF Preview",
-      "pdf_unsupported": "Browser does not support PDF preview.",
-      "pdf_blank_warning": "Preview looks blank. Try download/open file.",
-      "download_pdf": "Download PDF",
-      "preview_unavailable": "Preview not available",
-      "download_file": "Download File",
-      "errors": {
-        "load_failed": "Failed to load content.",
-        "load_error": "Error loading content."
-      }
-    },
-    "global_uploads": {
-      "title": "Uploads in progress",
-      "status": {
-        "failed": "Failed",
-        "done": "Done"
-      },
-      "actions": {
-        "cancel": "Cancel upload"
-      }
-    },
-    "table": {
-      "search_placeholder": "Search...",
-      "empty": "No data found"
-    },
-    "file_manager": {
-      "title": "File Manager",
-      "title_admin": "Global Storage Manager",
-      "subtitle": "Manage your organization's files and assets",
-      "subtitle_admin": "Manage uploaded files and assets across all tenants",
-      "upload": "Upload",
-      "files": "Files",
-      "loading": "Loading files...",
-      "selected": "Selected",
-      "delete_selected": "Delete Selected",
-      "search_placeholder": "Search files by name...",
-      "view": {
-        "grid": "Grid View",
-        "list": "List View"
-      },
-      "filters": {
-        "all": "All Files",
-        "images": "Images",
-        "videos": "Videos",
-        "audio": "Audio",
-        "documents": "Documents",
-        "aria_group": "File type filters",
-        "aria_filter": "Filter: {label}"
-      },
-      "empty": {
-        "title": "No Files Found",
-        "subtitle": "Try adjusting your search terms."
-      },
-      "toasts": {
-        "load_failed": "Failed to load files: {message}",
-        "deleted": "File deleted successfully"
-      },
-      "columns": {
-        "name": "Name",
-        "size": "Size",
-        "type": "Type",
-        "uploaded": "Uploaded",
-        "action": "Action"
-      },
-      "pagination": {
-        "page_of": "Page {page} of {total}"
-      },
-      "load_more": "Load More",
-      "showing_count": "Showing {current} of {total} files",
-      "confirm": {
-        "delete_one_title": "Delete File",
-        "delete_one_message": "Are you sure you want to delete this file? This action cannot be undone.",
-        "delete_many_title": "Delete {count} files",
-        "delete_many_message": "Are you sure you want to delete {count} files ({size})? This action cannot be undone.",
-        "delete_many_confirm": "Delete {count}"
-      }
-    },
-    "pagination": {
-      "rows_per_page": "Rows per page:",
-      "range": "{start}-{end} of {count}",
-      "previous_page": "Previous page",
-      "next_page": "Next page"
-    },
-    "mobile_fab": {
-      "open_menu": "Open menu"
-    },
-    "confirm_dialog": {
-      "instruction_prefix": "Type",
-      "instruction_suffix": "to confirm.",
-      "placeholder": "Type {keyword} here"
-    }
-  },
-  "pages": {
-    "dashboard": {
-      "redirecting": "Redirecting to your dashboard..."
-    },
-    "maintenance": {
-      "title": "Under Maintenance",
-      "default_message": "We're updating our systems to serve you better. Please check back soon!",
-      "working": "Working on it",
-      "thanks": "Thank you for your patience. We'll be back shortly!"
-    },
-    "unauthorized": {
-      "title": "Access Denied",
-      "sorry": "Sorry,",
-      "message": "You don't have the required permissions to view this page. This area is restricted to system administrators.",
-      "back": "Return to Safety"
-    }
-  },
-  "install": {
-    "errors": {
-      "fill_all": "Please fill in all fields",
-      "failed": "Installation failed"
-    },
-    "common": {
-      "next": "Next"
-    },
-    "welcome": {
-      "title": "Welcome to {app}",
-      "subtitle": "Let's get your application set up. We'll start by configuring the basics.",
-      "cta": "Get Started"
-    },
-    "general": {
-      "title": "General Settings",
-      "subtitle": "Configure your application details.",
-      "app_name": "Application Name",
-      "app_name_placeholder": "My SaaS App",
-      "app_url": "Application URL",
-      "app_url_placeholder": "http://localhost:3000"
-    },
-    "admin": {
-      "title": "Create Admin Account",
-      "subtitle": "This account will have full access to the system.",
-      "full_name": "Full Name",
-      "full_name_placeholder": "John Doe",
-      "email": "Email Address",
-      "email_placeholder": "john@example.com",
-      "password": "Password",
-      "confirm_password": "Confirm Password",
-      "installing": "Installing...",
-      "complete": "Complete Setup"
-    },
-    "success": {
-      "title": "Installation Complete!",
-      "redirecting": "Redirecting you to login..."
-    }
-  },
-  "payment": {
-    "checkout": {
-      "title": "Checkout",
-      "loading": "Loading invoice...",
-      "item": "Item",
-      "total": "Total",
-      "status": "Status",
-      "tabs": {
-        "online": "Online Payment",
-        "manual": "Bank Transfer"
-      },
-      "online": {
-        "description": "Pay securely with Credit Card, GoPay, ShopeePay, or Virtual Account via Midtrans.",
-        "pay_now": "Pay Now",
-        "check_status": "Check Payment Status",
-        "checking": "Checking..."
-      },
-      "manual": {
-        "instructions": "Please transfer the exact amount to one of the following accounts:",
-        "upload_hint": "Already transferred? Upload your receipt.",
-        "uploading": "Uploading...",
-        "upload": "Upload Proof of Payment"
-      },
-      "pending": {
-        "title": "Payment Verification Pending",
-        "message": "We have received your payment proof. Our team is verifying it. We will notify you once approved.",
-        "back": "Return to Dashboard"
-      },
-      "success": {
-        "title": "Payment Successful!",
-        "message": "Thank you for your payment. Your subscription has been activated.",
-        "cta": "Go to Subscription"
-      },
-      "failed": {
-        "title": "Payment Verification Failed",
-        "message": "Your payment proof was rejected. Please check the reason below and upload a new proof.",
-        "reason_label": "Reason",
-        "reupload_hint": "After re-transfering, upload your new payment proof.",
-        "upload_again": "Upload Proof Again"
-      },
-      "not_found": "Invoice not found",
-      "errors": {
-        "load_failed": "Failed to load invoice",
-        "initiate_failed": "Failed to initiate payment: ",
-        "check_status_failed": "Failed to check status: ",
-        "file_too_large": "File size must be less than 5MB",
-        "upload_failed": "Upload failed: "
-      },
-      "toasts": {
-        "payment_success": "Payment successful!",
-        "waiting": "Waiting for payment...",
-        "payment_failed": "Payment failed",
-        "status_updated": "Status updated: ",
-        "current_status": "Current status: ",
-        "proof_uploaded": "Proof uploaded successfully!"
-      }
-    }
-  },
-  "sidebar": {
-    "dashboard": "Dashboard",
-    "overview": "Overview",
-    "users": "Users",
-    "radius": "RADIUS",
-    "team": "Team",
-    "roles": "Roles",
-    "tenants": "Tenants",
-    "plans": "Plans",
-    "billing": "Billing",
-    "invoices": "Invoices",
-    "collections": "Collections",
-    "billing_collection": "Billing Logs",
-    "storage": "Storage",
-    "subscription": "Subscription",
-    "audit_logs": "Audit Logs",
-    "backups": "Backups",
-    "system": "System",
-    "support": "Support",
-    "customers": "Customers",
-    "locations": "Locations",
-    "announcements": "Announcements",
-    "routers": "Routers",
-    "noc": "NOC",
-    "topology_map": "Topology Map",
-    "wallboard": "Wallboard",
-    "alerts": "Alerts",
-    "incidents": "Incidents",
-    "installations": "Installations",
-    "logs": "Logs",
-    "pppoe": "PPPoE",
-    "imports": "Imports",
-    "ppp_profiles": "PPP Profiles",
-    "ip_pools": "IP Pools",
-    "services": "Services",
-    "packages": "Packages",
-    "packages_pending_alert": "There is a pending invoice. Please review service billing.",
-    "packages_overdue_alert": "There is an overdue invoice. Please review service billing.",
-    "expand": "Expand sidebar",
-    "collapse": "Collapse sidebar",
-    "exit": "Exit",
-    "close_menu": "Close menu",
-    "super_admin": "Super Admin",
-    "settings": "Settings",
-    "email_outbox": "Email Outbox",
-    "user_view": "User View",
-    "admin_panel": "Admin Panel",
-    "profile": "Profile",
-    "logout": "Logout",
-    "sections": {
-      "workspace": "Workspace",
-      "help": "Help",
-      "network": "Network",
-      "platform": "Platform",
-      "billing": "Billing",
-      "operations": "Operations",
-      "security": "Security",
-      "access": "Access",
-      "compliance": "Compliance",
-      "configuration": "Configuration"
-    }
-  },
-  "topbar": {
-    "search_placeholder": "Search...",
-    "notifications": "Notifications",
-    "help": "Help",
-    "notifications_menu": {
-      "mark_all_read": "Mark all read",
-      "settings": "Notification settings",
-      "empty": "No notifications yet",
-      "mark_read": "Mark as read",
-      "delete": "Delete",
-      "view_all": "View all"
-    },
-    "toggle_dark": "Switch to dark mode",
-    "toggle_light": "Switch to light mode",
-    "titles": {
-      "dashboard": "Dashboard",
-      "profile": "My Profile",
-      "notifications": "Notifications",
-      "admin_overview": "Admin Overview",
-      "user_management": "User Management",
-      "global_settings": "Global Settings",
-      "settings": "Settings",
-      "team": "Team",
-      "roles": "Roles & Permissions",
-      "storage": "Storage",
-      "subscription": "Subscription",
-      "invoices": "Invoices",
-      "superadmin_dashboard": "Super Admin",
-      "tenants": "Tenants",
-      "users": "Users",
-      "radius": "RADIUS",
-      "plans": "Plans",
-      "audit_logs": "Audit Logs",
-      "system": "System",
-      "support": "Support",
-      "default": "Workspace"
-    }
-  },
-  "support": {
-    "title": "Support Tickets",
-    "subtitle": "Get help from your team or platform admins.",
-    "search_placeholder": "Search tickets...",
-    "loading": "Loading tickets...",
-    "loading_detail": "Loading ticket...",
-    "actions": {
-      "new": "New Ticket",
-      "create": "Create",
-      "creating": "Creating...",
-      "send": "Send",
-      "sending": "Sending..."
-    },
-    "fields": {
-      "subject": "Subject",
-      "subject_placeholder": "e.g. Cannot login to my account",
-      "priority": "Priority",
-      "message": "Message",
-      "message_placeholder": "Describe your issue or request...",
-      "attachments": "Attachments",
-      "reply": "Reply",
-      "reply_placeholder": "Write your reply..."
-    },
-    "filters": {
-      "aria": "Filter tickets",
-      "all": "All",
-      "open": "Open",
-      "pending": "Pending",
-      "closed": "Closed"
-    },
-    "stats": {
-      "total": "Total"
-    },
-    "empty": {
-      "title": "No tickets yet",
-      "subtitle": "Create a ticket if you need help or have a request."
-    },
-    "toasts": {
-      "created": "Ticket created",
-      "create_failed": "Create failed: {message}",
-      "replied": "Reply sent",
-      "reply_failed": "Reply failed: {message}",
-      "ticket_closed": "Ticket is closed"
-    },
-    "status": {
-      "open": "Open",
-      "pending": "Pending",
-      "closed": "Closed"
-    },
-    "priorities": {
-      "low": "Low",
-      "normal": "Normal",
-      "high": "High",
-      "urgent": "Urgent"
-    },
-    "tags": {
-      "internal": "Internal"
-    },
-    "labels": {
-      "support": "Support",
-      "customer": "Customer",
-      "staff": "Staff"
-    },
-    "detail": {
-      "updated": "Updated",
-      "not_found": "Ticket not found",
-      "thread": "Conversation",
-      "messages": "messages",
-      "closed_notice": "This ticket is closed. You can’t reply."
-    },
-    "create": {
-      "title": "Create Ticket"
-    }
-  },
-  "announcements": {
-    "title": "Announcements",
-    "subtitle": "Broadcast messages to users as banners and notifications.",
-    "feed_subtitle": "Product updates, maintenance windows, and important notices.",
-    "search_placeholder": "Search announcements...",
-    "tip_title": "Tip",
-    "banner_aria": "Announcements",
-    "more": "+{count} more",
-    "not_found": "Announcement not found.",
-    "ends": "Ends",
-    "scopes": {
-      "tenant": "Tenant",
-      "global": "Global"
-    },
-    "audiences": {
-      "all": "All users",
-      "admins": "Admins only"
-    },
-    "modes": {
-      "post": "Post",
-      "banner": "Banner"
-    },
-    "severity": {
-      "info": "Info",
-      "success": "Success",
-      "warning": "Warning",
-      "error": "Error"
-    },
-    "status": {
-      "scheduled": "Scheduled",
-      "expired": "Expired"
-    },
-    "fields": {
-      "scope": "Scope",
-      "audience": "Audience",
-      "severity": "Severity",
-      "mode": "Mode",
-      "status": "Status",
-      "cover": "Cover image (optional)",
-      "deliver_in_app": "Deliver in-app",
-      "deliver_in_app_desc": "Show to users in the app and send a notification.",
-      "deliver_email": "Send email",
-      "deliver_email_desc": "Send this announcement to all recipients via email (ignores preferences).",
-      "deliver_email_force": "Ignore email preferences",
-      "deliver_email_force_desc": "When disabled, only users who enabled email announcements will receive it.",
-      "title": "Title",
-      "body": "Body",
-      "starts_at": "Starts at",
-      "ends_at": "Ends at"
-    },
-    "placeholders": {
-      "body": "Write something clear and short..."
-    },
-    "actions": {
-      "publish": "Publish",
-      "read": "Read"
-    },
-    "create": {
-      "title": "Create broadcast"
-    },
-    "list": {
-      "title": "History"
-    },
-    "empty": "No announcements yet.",
-    "empty_feed": "No announcements yet.",
-    "confirm_delete": "Delete this announcement?",
-    "hints": {
-      "schedule": "Leave dates empty to publish immediately. End date controls when the banner stops showing.",
-      "rich": "Tip: Keep it concise. Links are allowed; images should be added as cover."
-    },
-    "toasts": {
-      "created": "Announcement created",
-      "deleted": "Deleted",
-      "delivery_required": "Choose at least one delivery channel."
-    }
-  },
-  "notifications_page": {
-    "title": "Notifications",
-    "subtitle": "Updates, alerts, and system messages.",
-    "search_placeholder": "Search notifications...",
-    "loading": "Loading notifications...",
-    "load_more": "Load more",
-    "confirm_delete": {
-      "title": "Delete notification",
-      "message": "Delete this notification? This action cannot be undone."
-    },
-    "confirm_mark_all": {
-      "title": "Mark all as read",
-      "message": "Mark all notifications as read?"
-    },
-    "filters": {
-      "aria": "Filters",
-      "all": "All",
-      "unread": "Unread"
-    },
-    "empty": {
-      "title": "You're all caught up",
-      "subtitle": "No notifications to show."
-    }
-  },
-  "notifications": {
-    "toasts": {
-      "push_not_supported": "Push notifications not supported",
-      "blocked": "Notifications are blocked. Please allow notifications in your browser settings.",
-      "permission_denied": "Permission denied. You need to allow notifications.",
-      "missing_vapid": "Configuration error: Missing VAPID key",
-      "enabled": "Push notifications enabled successfully!",
-      "disabled": "Push notifications disabled",
-      "test_sent": "Test notification sent!",
-      "test_failed": "Failed to send test notification",
-      "generic_error": "Error: {message}"
-    }
-  },
-  "utils": {
-    "download": {
-      "save_title": "Save File",
-      "downloading": "Downloading {filename}...",
-      "failed": "Download failed: {message}",
-      "failed_generic": "Download failed"
-    }
-  },
-  "superadmin": {
-    "dashboard": {
-      "loading": "Loading system data...",
-      "stats_aria": "Superadmin stats",
-      "stats": {
-        "tenants": "Tenants",
-        "active_tenants": "Active Tenants",
-        "users": "Users",
-        "system_health": "System Health",
-        "health_ok": "OK",
-        "health_down": "DB Down"
-      },
-      "quick_actions": {
-        "title": "Quick Actions",
-        "tenants": {
-          "title": "Manage Tenants",
-          "desc": "Create, edit, and maintain organizations."
-        },
-        "users": {
-          "title": "Manage Users",
-          "desc": "View global users, roles, and access."
-        },
-        "audit": {
-          "title": "Audit Logs",
-          "desc": "Track activity and security events."
-        },
-        "settings": {
-          "title": "Platform Settings",
-          "desc": "Configure policies and system defaults."
-        }
-      }
-    },
-    "audit_logs": {
-      "title": "Audit Logs",
-      "subtitle": "Track system activity and security events",
-      "count": "logs",
-      "refresh": "Refresh logs",
-      "search": "Search logs...",
-      "loading": "Loading logs...",
-      "columns": {
-        "time": "Time",
-        "action": "Action",
-        "user": "User",
-        "tenant": "Tenant",
-        "resource": "Resource",
-        "details": "Details",
-        "ip": "IP",
-        "time_ip": "Time / IP",
-        "user_tenant": "User / Tenant",
-        "action_resource": "Action / Resource"
-      },
-      "filters": {
-        "action": "Action (exact)",
-        "action_placeholder": "e.g. login, create_user",
-        "from": "From",
-        "to": "To"
-      },
-      "view": {
-        "table": "Table view",
-        "cards": "Card view"
-      },
-      "aria": {
-        "quick_ranges": "Quick ranges",
-        "view_mode": "View mode",
-        "cards": "Audit logs"
-      },
-      "actions": {
-        "expand_details": "Expand details",
-        "collapse_details": "Collapse details",
-        "expand": "Expand",
-        "collapse": "Collapse"
-      },
-      "labels": {
-        "user": "User",
-        "tenant": "Tenant",
-        "resource": "Resource",
-        "ip": "IP",
-        "details": "Details"
-      },
-      "empty": {
-        "title": "No logs found",
-        "subtitle": "Try adjusting your filters."
-      }
-    },
-    "users": {
-      "title": "Users",
-      "subtitle": "Manage global users and access",
-      "count": "users",
-      "search": "Search users...",
-      "filters": {
-        "all_roles": "All Roles",
-        "admin": "Admin",
-        "user": "User",
-        "superadmin": "Super Admin",
-        "all": "All",
-        "active": "Active",
-        "inactive": "Inactive"
-      },
-      "empty": {
-        "title": "No users found",
-        "subtitle": "Try adjusting your search or filters.",
-        "hint": "Try adjusting your search or filters."
-      },
-      "columns": {
-        "user": "User",
-        "email": "Email",
-        "role": "Role",
-        "tenant": "Tenant",
-        "status": "Status",
-        "joined": "Joined"
-      },
-      "aria": {
-        "stats": "User stats",
-        "list": "Users list"
-      },
-      "stats": {
-        "show_all": "Show all users",
-        "show_active": "Show active users",
-        "show_inactive": "Show inactive users",
-        "show_superadmins": "Show super admins",
-        "all_title": "All Users",
-        "active_title": "Active Users",
-        "inactive_title": "Inactive Users",
-        "superadmins_title": "Super Admins"
-      },
-      "view": {
-        "aria": "View mode",
-        "table": "Table view",
-        "cards": "Card view"
-      },
-      "actions": {
-        "view_details": "View details",
-        "reset_2fa": "Reset 2FA",
-        "activate_user": "Activate user",
-        "deactivate_user": "Deactivate user",
-        "activate": "Activate",
-        "deactivate": "Deactivate"
-      },
-      "status": {
-        "activate_title": "Activate User",
-        "deactivate_title": "Deactivate User",
-        "this_user": "this user",
-        "activate_message": "Activate {name}? They will be able to login again.",
-        "deactivate_message": "Deactivate {name}? They will not be able to login."
-      },
-      "reset2fa": {
-        "title": "Reset Two-Factor Authentication",
-        "message": "Reset 2FA for this user? They will be able to login without a secondary code.",
-        "confirm": "Reset 2FA"
-      },
-      "details": {
-        "title": "User Details",
-        "title_with_name": "User Details — {name}",
-        "sections": {
-          "account": "Account",
-          "tenant": "Tenant",
-          "security": "Security"
-        },
-        "labels": {
-          "name": "Name",
-          "email": "Email",
-          "role": "Role",
-          "status": "Status",
-          "created": "Created",
-          "last_login": "Last Login",
-          "tenant": "Tenant",
-          "slug": "Slug",
-          "tenant_role": "Tenant Role",
-          "twofa_enabled": "2FA Enabled",
-          "preferred_2fa": "Preferred 2FA"
-        }
-      },
-      "toasts": {
-        "reset_2fa_success": "Two-factor authentication has been reset",
-        "reset_2fa_failed": "Failed to reset 2FA: {message}",
-        "superadmin_cannot_deactivate": "Super Admin accounts cannot be deactivated here",
-        "cannot_deactivate_self": "You cannot deactivate your own account",
-        "activated": "User activated",
-        "deactivated": "User deactivated",
-        "update_status_failed": "Failed to update user status: {message}"
-      }
-    },
-    "radius": {
-      "title": "Managed RADIUS",
-      "subtitle": "Observe global RADIUS infrastructure and provisioned PPPoE users across tenants.",
-      "refresh": "Refresh",
-      "loading": "Loading managed RADIUS observability...",
-      "stats": {
-        "servers": "Servers",
-        "assignments": "Assignments",
-        "mappings": "NAS Mappings",
-        "routers": "Mapped Routers",
-        "users": "Users",
-        "out_of_sync": "Needs Attention"
-      },
-      "filters": {
-        "search_servers": "Search servers...",
-        "search_assignments": "Search assignments...",
-        "search_mappings": "Search mappings...",
-        "search_users": "Search users...",
-        "all_statuses": "All statuses",
-        "active": "Active",
-        "inactive": "Inactive",
-        "all_tenants": "All tenants",
-        "all_servers": "All servers",
-        "all_routers": "All routers",
-        "all_users": "All users",
-        "provisioned": "Provisioned",
-        "not_provisioned": "Not provisioned"
-      },
-      "sections": {
-        "servers": "Servers",
-        "assignments": "Tenant Assignments",
-        "mappings": "NAS Mappings",
-        "users": "Users"
-      },
-      "columns": {
-        "server": "Server",
-        "tenant": "Tenant",
-        "tenants": "Tenants",
-        "host": "Host",
-        "ports": "Ports",
-        "database": "Runtime profile",
-        "status": "Status",
-        "routers": "Routers",
-        "updated": "Updated",
-        "actions": "Actions",
-        "router": "Router",
-        "username": "Username",
-        "identity": "RADIUS Identity",
-        "profile": "Profile",
-        "nas": "NAS",
-        "secret": "Secret",
-        "last_sync": "Last Sync",
-        "last_error": "Last Error"
-      },
-      "status": {
-        "active": "Active",
-        "inactive": "Inactive",
-        "default": "Default",
-        "provisioned": "Provisioned",
-        "not_provisioned": "Not provisioned",
-        "needs_attention": "Needs attention"
-      },
-      "empty": {
-        "servers_title": "No native RADIUS endpoints yet",
-        "servers_subtitle": "Create global RADIUS infrastructure here, then assign tenants and map routers.",
-        "assignments_title": "No tenant assignments yet",
-        "assignments_subtitle": "Assign one active global server per tenant before creating NAS mappings.",
-        "mappings_title": "No NAS mappings yet",
-        "mappings_subtitle": "Create a tenant assignment first, then map a router to start issuing copy-ready MikroTik CLI.",
-        "users_title": "No managed RADIUS users yet",
-        "users_subtitle": "Managed-RADIUS-backed PPPoE users will appear here after tenant admins apply them."
-      },
-      "labels": {
-        "unknown_router": "Unknown router",
-        "none": "None",
-        "never": "Never"
-      },
-      "actions": {
-        "new_server": "New endpoint",
-        "new_assignment": "New assignment",
-        "new_mapping": "New mapping",
-        "create_server": "Create endpoint",
-        "save_server": "Save endpoint",
-        "create_assignment": "Create assignment",
-        "save_assignment": "Save assignment",
-        "create_mapping": "Create mapping",
-        "save_mapping": "Save mapping",
-        "edit": "Edit",
-        "set_default": "Set default",
-        "activate": "Activate",
-        "deactivate": "Deactivate",
-        "view_mappings": "View mappings",
-        "copy_cli": "Copy CLI",
-        "copy_secret": "Copy secret",
-        "reveal_secret": "Reveal secret",
-        "rotate_secret": "Rotate secret",
-        "generate_secret": "Generate"
-      },
-      "form": {
-        "tenant": "Tenant",
-        "server": "Endpoint",
-        "router": "Router",
-        "select_tenant": "Select a tenant",
-        "select_server": "Select an endpoint",
-        "select_router": "Select a router",
-        "server_name": "Endpoint name",
-        "server_name_placeholder": "Primary RADIUS endpoint",
-        "db_host": "RADIUS host",
-        "db_port": "RADIUS port",
-        "db_name": "Runtime profile",
-        "db_user": "Runtime user",
-        "db_password": "Runtime secret",
-        "db_password_placeholder": "Stored encrypted",
-        "db_password_placeholder_edit": "Leave blank to keep current password",
-        "notes": "Notes",
-        "notes_placeholder": "Optional operational note",
-        "active_server_hint": "Allow this native endpoint to receive tenant assignments",
-        "active_assignment_hint": "Keep this assignment active for the tenant",
-        "nas_name": "NAS name",
-        "nas_name_placeholder": "router-pop-a",
-        "shortname": "Shortname",
-        "shortname_placeholder": "POP-A",
-        "nas_ip_or_cidr": "NAS IP / CIDR",
-        "shared_secret": "Shared secret",
-        "shared_secret_placeholder": "Leave blank to auto-generate",
-        "active_mapping_hint": "Enable this NAS mapping immediately"
-      },
-      "modals": {
-        "server": {
-          "create_title": "New native RADIUS endpoint",
-          "edit_title": "Edit native RADIUS endpoint"
-        },
-        "assignment": {
-          "create_title": "New tenant assignment",
-          "edit_title": "Edit tenant assignment"
-        },
-        "mapping": {
-          "create_title": "New NAS mapping",
-          "edit_title": "Edit NAS mapping"
-        },
-        "secret": {
-          "rotate_title": "Rotate shared secret",
-          "reveal_title": "Reveal shared secret",
-          "mapping": "Mapping",
-          "masked": "Masked secret",
-          "revealed": "Revealed secret",
-          "not_loaded": "Click reveal to load the secret"
-        }
-      },
-      "toasts": {
-        "server_validation": "Complete the server form first",
-        "server_password_required": "Database password is required for new servers",
-        "server_created": "Native RADIUS endpoint created",
-        "server_updated": "Native RADIUS endpoint updated",
-        "server_default_set": "Default server updated",
-        "server_activated": "Server activated",
-        "server_deactivated": "Server deactivated",
-        "assignment_validation": "Complete the assignment form first",
-        "assignment_created": "Tenant assignment created",
-        "assignment_updated": "Tenant assignment updated",
-        "assignment_activated": "Assignment activated",
-        "assignment_deactivated": "Assignment deactivated",
-        "mapping_validation": "Complete the mapping form first",
-        "mapping_created": "NAS mapping created",
-        "mapping_updated": "NAS mapping updated",
-        "mapping_activated": "Mapping activated",
-        "mapping_deactivated": "Mapping deactivated",
-        "secret_revealed": "Shared secret loaded",
-        "secret_rotated": "Shared secret rotated",
-        "cli_copied": "RouterOS CLI copied"
-      }
-    },
-    "tenants": {
-      "title": "Tenants",
-      "subtitle": "Manage all organizations in the platform",
-      "count": "{count} tenants",
-      "search": "Search tenants...",
-      "refreshing_title": "Refreshing...",
-      "refreshing": "Refreshing",
-      "aria": {
-        "stats": "Tenant stats",
-        "cards": "Tenant cards"
-      },
-      "stats": {
-        "show_all": "Show all tenants",
-        "show_active": "Show active tenants",
-        "show_inactive": "Show inactive tenants",
-        "all_title": "All Tenants",
-        "active_title": "Active Tenants",
-        "inactive_title": "Inactive Tenants"
-      },
-      "filters": {
-        "all": "All",
-        "active": "Active",
-        "inactive": "Inactive"
-      },
-      "view": {
-        "table": "Table view",
-        "cards": "Cards view"
-      },
-      "meta": {
-        "created": "Created"
-      },
-      "actions": {
-        "new": "New Tenant",
-        "activate": "Activate",
-        "deactivate": "Deactivate"
-      },
-      "toggle": {
-        "activate_title": "Activate Tenant",
-        "deactivate_title": "Deactivate Tenant",
-        "this_tenant": "this tenant",
-        "activate_message": "Activate {name}? Users in this tenant will regain access.",
-        "deactivate_message": "Deactivate {name}? Users in this tenant will be blocked from accessing the app."
-      },
-      "delete": {
-        "title": "Delete Tenant",
-        "message": "Are you sure you want to delete this tenant? This action cannot be undone and will remove all associated data.",
-        "confirm": "Delete Permanently"
-      },
-      "modal": {
-        "edit_title": "Edit Tenant",
-        "create_title": "Create New Tenant",
-        "sections": {
-          "initial_subscription": "Initial Subscription",
-          "initial_admin": "Initial Admin User"
-        },
-        "labels": {
-          "name": "Tenant Name",
-          "slug": "Slug (URL)",
-          "custom_domain": "Custom Domain (Optional)",
-          "plan": "Subscription Plan",
-          "owner_email": "Owner Email",
-          "owner_password": "Owner Password",
-          "active_status": "Active Status"
-        },
-        "placeholders": {
-          "name": "e.g. Acme Corp",
-          "slug": "e.g. acme-corp",
-          "custom_domain": "e.g. app.acme.com",
-          "plan": "Select a plan",
-          "owner_email": "admin@acme.com",
-          "owner_password": "Strong password"
-        },
-        "actions": {
-          "create": "Create Tenant",
-          "update": "Update Tenant"
-        }
-      },
-      "empty": {
-        "title": "No tenants found",
-        "hint": "Try adjusting your search or filters."
-      },
-      "toasts": {
-        "updated": "Tenant updated successfully",
-        "update_failed": "Failed to update tenant: {message}",
-        "created": "Tenant created successfully",
-        "create_failed": "Failed to create tenant: {message}",
-        "deleted": "Tenant deleted successfully",
-        "delete_failed": "Failed to delete tenant: {message}",
-        "activated": "Tenant activated",
-        "deactivated": "Tenant deactivated"
-      }
-    },
-    "invoices": {
-      "aria": {
-        "stats": "Invoice stats",
-        "cards": "Invoice cards",
-        "table": "Invoices table"
-      },
-      "actions": {
-        "check_status": "Check Status",
-        "view_details": "View Details"
-      },
-      "cards": {
-        "amount": "Amount",
-        "due": "Due"
-      },
-      "list": {
-        "title": "All Invoices",
-        "subtitle": "Monitor all payments and transactions across the platform",
-        "search": "Search invoices...",
-        "loading": "Loading invoices...",
-        "empty": "No invoices found",
-        "empty_hint": "Try adjusting your search or filters.",
-        "view": {
-          "cards": "Cards view",
-          "table": "Table view"
-        },
-        "filters": {
-          "all": "All",
-          "pending": "Pending",
-          "paid": "Paid",
-          "failed": "Failed"
-        },
-        "columns": {
-          "invoice_number": "Invoice #",
-          "tenant": "Tenant",
-          "amount": "Amount",
-          "status": "Status",
-          "due_date": "Due Date",
-          "created_at": "Created At",
-          "actions": "Actions"
-        },
-        "errors": {
-          "load_failed": "Failed to load invoices",
-          "check_failed": "Failed to check status: "
-        },
-        "toasts": {
-          "status": "Invoice status: "
-        }
-      },
-      "detail": {
-        "title": "Invoice Details",
-        "back": "Back to Invoices",
-        "loading": "Loading details...",
-        "missing_id": "Missing invoice id",
-        "load_failed": "Failed to load invoice",
-        "invoice": "Invoice",
-        "tenant": "Tenant",
-        "description": "Description",
-        "amount": "Amount",
-        "created_at": "Created At",
-        "updated_at": "Updated At",
-        "manual_verification": "Manual Verification",
-        "approve_title": "Approve Payment",
-        "reject_title": "Reject Payment",
-        "approve_message": "Are you sure you want to approve this payment? This will activate the subscription immediately.",
-        "reject_message": "Are you sure you want to reject this payment? The user will be notified.",
-        "approve": "Approve",
-        "reject": "Reject",
-        "marked_as": "Invoice marked as",
-        "verify_failed": "Verification failed",
-        "already_status": "This invoice is already",
-        "payment_proof": "Payment Proof",
-        "click_enlarge": "Click to enlarge",
-        "no_proof": "No proof uploaded yet.",
-        "not_found": "Invoice not found"
-      }
-    },
-    "system": {
-      "tabs": {
-        "health": "Health",
-        "diagnostics": "Diagnostics"
-      },
-      "diagnostics": {
-        "loading": "Loading diagnostics...",
-        "database": "Database",
-        "migrations": "Migrations",
-        "applied": "Applied",
-        "resolved": "Resolved",
-        "show_applied": "Show applied migrations",
-        "platform": "Platform Settings",
-        "backups": "Backups",
-        "collected_at": "Collected at:"
-      },
-      "request_metrics": {
-        "title": "Request Metrics"
-      },
-      "title": "System Health",
-      "subtitle": "Monitor platform status and metrics",
-      "loading": "Loading system health...",
-      "retry": "Retry",
-      "db_connected": "Database Connected",
-      "db_disconnected": "Database Disconnected",
-      "tables": "tables",
-      "uptime": "Uptime:",
-      "cpu_usage": "CPU Usage",
-      "memory_usage": "Memory Usage",
-      "database_tables": "Database Tables",
-      "recent_activity": "Recent Activity",
-      "no_recent_activity": "No recent activity",
-      "last_updated": "Last updated:",
-      "stats": {
-        "total_tenants": "Total Tenants",
-        "total_users": "Total Users",
-        "active_users": "Active Users",
-        "audit_logs": "Audit Logs"
-      },
-      "table_headers": {
-        "table": "Table",
-        "rows": "Rows"
-      }
-    },
-    "settings": {
-      "title": "Platform Settings",
-      "subtitle": "Global Configuration",
-      "loading": "Loading settings...",
-      "errors": {
-        "load_failed": "Failed to load settings",
-        "save_failed": "Failed to save settings",
-        "missing_test_email": "Please enter an email address",
-        "test_email_failed": "Failed to send test email: ",
-        "bank_add_failed": "Failed to add bank",
-        "bank_remove_failed": "Failed to delete bank"
-      },
-      "toasts": {
-        "saved": "Settings saved successfully",
-        "bank_added": "Bank account added",
-        "bank_removed": "Bank account removed"
-      },
-      "confirm": {
-        "are_you_sure": "Are you sure?"
-      },
-      "sections": {
-        "general": "General Settings",
-        "auth": "Authentication Policy",
-        "password": "Password Policy",
-        "security": "Security & Rate Limiting",
-        "twofa": "Two-Factor Authentication",
-        "storage": "Storage Configuration",
-        "payment": "Payment Gateway (Midtrans)",
-        "manual_bank_transfer": "Manual Bank Transfer",
-        "backup_global": "Global Backups",
-        "backup_tenant": "Tenant Backups"
-      },
-      "security": {
-        "ip_blocking": {
-          "aria": "Enable IP Blocking",
-          "label": "Enable IP Blocking",
-          "desc": "Automatically block IP addresses with suspicious activity."
-        },
-        "max_login_attempts": {
-          "label": "Max Login Attempts",
-          "desc": "Number of failed login attempts before account lockout."
-        },
-        "lockout_duration": {
-          "label": "Lockout Duration",
-          "desc": "How long a user stays locked out after max failed attempts."
-        },
-        "api_rate_limit": {
-          "label": "API Rate Limit",
-          "desc": "Baseline API requests allowed per minute per user; auth and heavy endpoints stay stricter."
-        }
-      },
-      "twofa": {
-        "enable_2fa": {
-          "aria": "Enable 2FA",
-          "label": "Enable 2FA",
-          "desc": "Allow users to set up two-factor authentication for enhanced security."
-        },
-        "enable_totp": {
-          "aria": "Enable TOTP",
-          "label": "TOTP (Authenticator App)",
-          "desc": "Allow users to verify with Google Authenticator, Authy, etc."
-        },
-        "enable_email_otp": {
-          "aria": "Enable Email OTP"
-        },
-        "email_otp": {
-          "label": "Email OTP",
-          "desc": "Allow users to receive verification codes via email."
-        },
-        "email_otp_expiry": {
-          "label": "Email OTP Expiry",
-          "desc": "How long email verification codes remain valid."
-        }
-      },
-      "auth": {
-        "allow_public_registration": {
-          "label": "Allow Public Registration",
-          "desc": "Allow new users to sign up freely."
-        },
-        "require_email_verification": {
-          "label": "Require Email Verification",
-          "desc": "Users must verify email before logging in.",
-          "not_ready": "Email configuration is not ready. Configure email provider first."
-        },
-        "jwt_expiry": {
-          "label": "JWT Expiry (Hours)",
-          "desc": "How long an auth token remains valid."
-        },
-        "session_timeout": {
-          "label": "Session Timeout (Minutes)",
-          "desc": "Auto-logout after inactivity."
-        }
-      },
-      "password": {
-        "min_length": {
-          "label": "Minimum Length"
-        },
-        "require_uppercase": {
-          "label": "Require Uppercase"
-        },
-        "require_number": {
-          "label": "Require Number"
-        },
-        "require_special": {
-          "label": "Require Special Character"
-        }
-      },
-      "storage": {
-        "driver": {
-          "label": "Storage Driver",
-          "desc": "Choose where files are stored. Local uses the server's disk.",
-          "options": {
-            "local": "Local Disk",
-            "s3": "AWS S3 / MinIO",
-            "r2": "Cloudflare R2"
-          }
-        },
-        "s3": {
-          "bucket_name": "Bucket Name",
-          "region": "Region",
-          "region_hint": "Use 'auto' for R2.",
-          "endpoint_url": "Endpoint URL",
-          "endpoint_hint": "Required for R2 (https://ID.r2.cloudflarestorage.com) or MinIO.",
-          "access_key_id": "Access Key ID",
-          "secret_access_key": "Secret Access Key",
-          "public_url_optional": "Public Access URL (Optional)",
-          "public_url_hint": "CDN URL if serving files publicly."
-        },
-        "max_file_size_mb": "Max File Size (MB)",
-        "max_file_size_mb_desc": "Maximum allowed size for a single file upload.",
-        "allowed_extensions": "Allowed Extensions",
-        "allowed_extensions_desc": "Comma-separated list of allowed file extensions (e.g., jpg, png, pdf). Use * for all."
-      },
-      "payment": {
-        "midtrans": {
-          "title": "Midtrans Gateway",
-          "enable": {
-            "label": "Enable Midtrans Gateway",
-            "desc": "Allow users to pay online via Midtrans."
-          },
-          "merchant_id": "Merchant ID",
-          "server_key": "Server Key",
-          "server_key_hint": "From Midtrans Dashboard > Settings > Access Keys.",
-          "client_key": "Client Key",
-          "client_key_hint": "Public key for frontend Snap.js.",
-          "production_mode": "Production Mode",
-          "production_mode_desc": "Enable for real transactions. Disable for Sandbox."
-        },
-        "manual": {
-          "title": "Manual Bank Transfer",
-          "enable": {
-            "label": "Enable Manual Transfer",
-            "desc": "Allow users to pay via bank transfer and upload proof."
-          },
-          "instructions_label": "Payment Instructions",
-          "instructions_desc": "Instructions shown to user when they select Manual Transfer.",
-          "bank_accounts_title": "Bank Accounts"
-        },
-        "installation_sla": {
-          "title": "Installation SLA Reminders",
-          "enable": {
-            "label": "Enable installation SLA reminders",
-            "desc": "Send automatic notifications when installation work orders are overdue."
-          },
-          "overdue_minutes": {
-            "label": "Overdue threshold (minutes)",
-            "desc": "A scheduled work order is considered overdue after this many minutes."
-          },
-          "cooldown_minutes": {
-            "label": "Reminder cooldown (minutes)",
-            "desc": "Minimum delay before the same reminder is sent again for the same work order."
-          },
-          "scheduler_interval_minutes": {
-            "label": "Scheduler interval (minutes)",
-            "desc": "How often the backend checks all tenants for overdue installation work orders."
-          }
-        }
-      },
-      "fields": {
-        "public_url": {
-          "label": "Public Application URL",
-          "desc": "Base URL for redirects, emails, and payment callbacks (e.g. https://app.example.com)."
-        },
-        "main_domain": {
-          "label": "Main Domain",
-          "desc": "The primary domain where the application is hosted (e.g. example.com). Used for domain validation and tenant routing."
-        },
-        "currency": {
-          "label": "Default Currency",
-          "desc": "Currency used for plan pricing and invoice display (ISO 4217, e.g. IDR, USD)."
-        },
-        "maintenance_mode": {
-          "label": "Enable Maintenance Mode",
-          "desc": "When enabled, all users except superadmins will see a maintenance page."
-        },
-        "maintenance_message": {
-          "label": "Maintenance Message",
-          "desc": "The message displayed to users when maintenance mode is active."
-        },
-        "timezone": {
-          "label": "Timezone",
-          "desc": "Used to interpret schedule times (e.g. backups). Choose an IANA timezone.",
-          "search": "Search timezone..."
-        }
-      },
-      "placeholders": {
-        "url": "https://...",
-        "domain": "example.com",
-        "public_url": "https://cdn.example.com",
-        "maintenance_message": "Enter maintenance message...",
-        "manual_instructions": "Please transfer to one of the bank accounts below and upload proof.",
-        "s3_bucket": "e.g. my-app-uploads",
-        "s3_region": "us-east-1",
-        "extensions": "jpg, png, pdf...",
-        "bank_name": "Bank Name (e.g. BCA)",
-        "bank_account_number": "Account Number",
-        "bank_account_holder": "Account Holder"
-      },
-      "actions": {
-        "remove": "Remove",
-        "add": "Add",
-        "reset": "Reset",
-        "save": "Save Changes",
-        "saving": "Saving..."
-      },
-      "alerting": {
-        "title": "Error Alerting",
-        "enabled": {
-          "label": "Enable Alerting",
-          "desc": "Send email alerts when error thresholds are exceeded."
-        },
-        "email": {
-          "label": "Alert Email",
-          "desc": "Email address to receive alerts."
-        },
-        "error_threshold": {
-          "label": "Error Rate Threshold (%)",
-          "desc": "Alert when error rate exceeds this percentage."
-        },
-        "rate_limit_threshold": {
-          "label": "Rate Limit Threshold",
-          "desc": "Alert when rate-limited requests exceed this count."
-        },
-        "response_time_threshold": {
-          "label": "P95 Response Time Threshold (ms)",
-          "desc": "Alert when P95 response time exceeds this value."
-        },
-        "cooldown": {
-          "label": "Alert Cooldown (minutes)",
-          "desc": "Minutes to wait before sending the same alert type again."
-        }
-      },
-      "bank": {
-        "add_new_account": "Add New Account",
-        "empty": "No bank accounts added yet.",
-        "table": {
-          "bank": "Bank",
-          "number": "Number",
-          "holder": "Holder",
-          "action": "Action"
-        }
-      },
-      "categories": {
-        "general": "General & Maintenance",
-        "auth": "Authentication",
-        "password": "Password Policy",
-        "security": "Security & Rate Limiting",
-        "storage": "Storage Configuration",
-        "payment": "Payment Gateway",
-        "alerting": "Error Alerting",
-        "backup": "Backups"
-      },
-      "backups": {
-        "schedule_desc": "Use cron format (min hour * * *) or HH:MM. Example: 0 2 * * *",
-        "retention_desc": "Old backups older than this will be deleted automatically.",
-        "global": {
-          "enable": "Enable Global Backup Schedule",
-          "enable_desc": "Run automatic global backups on a simple schedule (uses app timezone).",
-          "enable_aria": "Enable global backup schedule",
-          "schedule": "Schedule",
-          "retention": "Retention (days)",
-          "run_now": "Run Global Backup Now",
-          "run_now_desc": "Queue a one-time global backup on the scheduler.",
-          "run_now_btn": "Run Now"
-        },
-        "tenant": {
-          "enable": "Enable Tenant Backup Schedule",
-          "enable_desc": "Run automatic backups for tenant data on a simple schedule (uses app timezone).",
-          "enable_aria": "Enable tenant backup schedule",
-          "schedule": "Schedule",
-          "retention": "Retention (days)",
-          "run_now": "Run Tenant Backups Now",
-          "run_now_desc": "Queue one-time backups for all active tenants.",
-          "run_now_btn": "Run Now"
-        },
-        "mode": {
-          "label": "Schedule Type",
-          "desc": "Choose how often backups are created."
-        },
-        "modes": {
-          "minute": "Every N minutes",
-          "hour": "Every N hours",
-          "day": "Daily at a time",
-          "week": "Weekly at a time"
-        },
-        "every": {
-          "label": "Every",
-          "desc": "Interval value. Example: 15 minutes or 6 hours."
-        },
-        "at": {
-          "label": "At",
-          "desc": "Time of day to run the backup."
-        },
-        "weekday": {
-          "label": "Weekday",
-          "desc": "Day of week to run the backup."
-        },
-        "timezone": {
-          "label": "Timezone",
-          "desc": "Used to interpret daily/weekly schedule times."
-        }
-      }
-    },
-    "plans": {
-      "page_title": "Plans | Superadmin",
-      "title": "Subscription Plans",
-      "subtitle": "Manage pricing tiers and plan status",
-      "search": "Search plans...",
-      "loading": "Loading plans...",
-      "actions": {
-        "create": "Create plan",
-        "activate": "Activate",
-        "deactivate": "Deactivate",
-        "set_default": "Set as default",
-        "already_default": "Already default"
-      },
-      "price": {
-        "free": "Free"
-      },
-      "aria": {
-        "stats": "Plan stats",
-        "cards": "Plan cards",
-        "table": "Plans table"
-      },
-      "stats": {
-        "show_all": "Show all plans",
-        "show_active": "Show active plans",
-        "show_inactive": "Show inactive plans",
-        "current_default": "Current default plan",
-        "all_title": "All Plans",
-        "active_title": "Active",
-        "inactive_title": "Inactive",
-        "default_title": "Default"
-      },
-      "filters": {
-        "all": "All",
-        "active": "Active",
-        "inactive": "Inactive"
-      },
-      "view": {
-        "cards": "Cards view",
-        "table": "Table view"
-      },
-      "badges": {
-        "default_title": "Default plan",
-        "default": "Default"
-      },
-      "refreshing_title": "Refreshing...",
-      "refreshing": "Refreshing",
-      "errors": {
-        "load_failed": "Failed to load data",
-        "default_cannot_deactivate": "Default plan cannot be deactivated. Set another default first."
-      },
-      "confirm": {
-        "delete_title": "Delete Plan",
-        "delete_message": "Delete \"{name}\"? This action cannot be undone.",
-        "activate_title": "Activate Plan",
-        "activate_message": "Activate \"{name}\"? Tenants can be assigned to it again.",
-        "deactivate_title": "Deactivate Plan",
-        "deactivate_message": "Deactivate \"{name}\"? Tenants can no longer be assigned to it.",
-        "default_title": "Set Default Plan",
-        "default_message": "Make \"{name}\" the default plan for new tenants?"
-      },
-      "toasts": {
-        "deleted": "Plan deleted",
-        "activated": "Plan activated",
-        "deactivated": "Plan deactivated",
-        "default_updated": "Default plan updated"
-      },
-      "empty": {
-        "title": "No plans found",
-        "subtitle": "Try adjusting your search or filters.",
-        "description": "No description"
-      },
-      "editor": {
-        "head": {
-          "new": "New Plan"
-        },
-        "header": {
-          "create_title": "Create New Plan",
-          "edit_title": "Edit {name}"
-        },
-        "aria": {
-          "actions": "Plan actions",
-          "tabs": "Plan editor tabs"
-        },
-        "actions": {
-          "save": "Save Plan"
-        },
-        "tabs": {
-          "general": "General",
-          "features": "Features & Limits"
-        },
-        "fields": {
-          "name": "Plan Name",
-          "slug": "Slug (Code)",
-          "description": "Description",
-          "sort_order": "Sort Order"
-        },
-        "placeholders": {
-          "name": "e.g. Pro Plan",
-          "slug": "e.g. pro-plan"
-        },
-        "help": {
-          "slug": "Unique identifier used in code/API."
-        },
-        "toasts": {
-          "created": "Plan created successfully",
-          "updated": "Plan updated successfully"
-        },
-        "errors": {
-          "save_failed": "Failed to save plan"
-        }
-      }
-    }
-  },
-  "dashboard": {
-    "greeting": {
-      "morning": "Good Morning",
-      "afternoon": "Good Afternoon",
-      "evening": "Good Evening",
-      "welcome_message": "Here's what's happening with your account today."
-    },
-    "manage_files": "Manage Files",
-    "generate_report": "Generate Report",
-    "admin_mode": {
-      "title": "Administrator Mode",
-      "description": "You have system-wide permissions. Access management tools here."
-    },
-    "locations": {
-      "kicker": "Customer portal",
-      "title": "My Locations",
-      "subtitle": "Your service locations. If something looks wrong, contact support.",
-      "location": "Location",
-      "source": {
-        "customer": "Customer",
-        "profile": "Profile"
-      },
-      "summary": {
-        "total": "Total locations",
-        "customer": "Customer-linked",
-        "profile": "Profile addresses"
-      },
-      "empty": "No locations yet.",
-      "empty_hint": "Your admin has not linked your account to a customer location.",
-      "toasts": {
-        "load_failed": "Failed to load locations"
-      }
-    },
-    "stats": {
-      "account_role": "Account Role",
-      "member_since": "Member Since",
-      "system_status": "System Status",
-      "active": "Active"
-    },
-    "recent_activity": {
-      "title": "Recent Activity",
-      "view_all": "View All",
-      "loading": "Loading activity...",
-      "empty": {
-        "title": "No activity yet",
-        "description": "When you start using the app, your activity will appear here.",
-        "learn_more": "Learn More"
-      }
-    },
-    "announcements": {
-      "title": "Announcements",
-      "view_all": "View All",
-      "empty": {
-        "title": "No announcements yet",
-        "description": "When the team publishes updates, they will show up here.",
-        "open": "Open announcements"
-      }
-    },
-    "packages": {
-      "title": "Internet Services",
-      "subtitle": "Manage your services and submit installation request instantly.",
-      "tabs": {
-        "ordered": "My Services",
-        "order_new": "Order Service"
-      },
-      "fields": {
-        "location": "Location",
-        "billing_cycle": "Billing cycle",
-        "package": "Package",
-        "total": "Total"
-      },
-      "builder": {
-        "title": "Order Builder",
-        "subtitle": "Create multiple package orders for different addresses in one checkout flow.",
-        "checkout_all": "Checkout all",
-        "empty": "No order items yet"
-      },
-      "cycles": {
-        "monthly": "Monthly",
-        "yearly": "Yearly"
-      },
-      "current": {
-        "title": "Current subscription",
-        "none": "No active package on this location"
-      },
-      "ordered": {
-        "title": "Ordered Services",
-        "subtitle": "All subscriptions from your linked locations.",
-        "empty": "No service order yet. Start from Order Service tab."
-      },
-      "coverage": {
-        "title": "Coverage zone",
-        "select_location": "Select a location first",
-        "checking": "Checking coverage...",
-        "missing_coordinates": "This location has no coordinates yet. Coverage filter is disabled.",
-        "not_covered": "This location is outside active coverage zones.",
-        "zone_packages": "Packages available in this zone",
-        "no_packages_for_zone": "No packages in this coverage zone",
-        "no_packages_for_zone_hint": "Your location is covered, but no package offer is configured for this zone yet."
-      },
-      "actions": {
-        "buy": "Buy package",
-        "switch": "Switch package",
-        "current": "Current package",
-        "add_location": "Add location",
-        "add_to_order": "Add to order",
-        "request_again": "Request Again",
-        "request_reopen": "Request Re-open",
-        "order_again": "Order Again"
-      },
-      "badges": {
-        "active": "Active",
-        "rerequested": "Re-requested"
-      },
-      "empty": {
-        "no_locations": "No locations available",
-        "no_locations_hint": "Ask admin to link your account with a customer location first.",
-        "no_packages": "No active packages yet",
-        "no_packages_hint": "Your admin has not published package catalog yet."
-      },
-      "toasts": {
-        "load_failed": "Failed to load package catalog",
-        "select_location": "Select a location first",
-        "yearly_unavailable": "Yearly billing is not available for this package",
-        "already_active": "This package is already active",
-        "checkout_success": "Invoice created. Continue to payment.",
-        "checkout_failed": "Checkout failed",
-        "request_success": "Installation request submitted.",
-        "request_failed": "Failed to submit installation request",
-        "added_to_order": "Added to order builder",
-        "bulk_checkout_success": "invoices created successfully",
-        "bulk_request_success": "installation requests submitted successfully",
-        "package_unavailable": "Package is no longer available. Please choose another package.",
-        "location_unavailable": "Location is no longer available. Please add/select another location."
-      }
-    },
-    "internet_order": {
-      "hero": {
-        "title": "Internet Service Order",
-        "subtitle": "Flow: choose address, choose package, review your order, then submit installation request."
-      },
-      "steps": {
-        "address": "Address",
-        "package": "Package",
-        "review": "Review"
-      },
-      "actions": {
-        "service_types": "Service Types",
-        "billing_invoices": "Billing & Invoices",
-        "refresh": "Refresh",
-        "add_location": "Add Location",
-        "next_choose_package": "Next: Choose Package",
-        "back_to_address": "Back to Address",
-        "selected": "Selected",
-        "select_package": "Select Package",
-        "order_now": "Order Now",
-        "back_to_package": "Back to Package",
-        "add_more": "Add More",
-        "submit_installation_request": "Submit Installation Request",
-        "cancel": "Cancel",
-        "save": "Save"
-      },
-      "labels": {
-        "location": "Location",
-        "coverage_zone": "Coverage Zone",
-        "billing_cycle": "Billing Cycle",
-        "selected_address": "Selected Address",
-        "monthly_plan": "Monthly plan",
-        "yearly_available": "yearly option available",
-        "yearly_not_available": "Yearly plan not available",
-        "current_item_total": "Current item total",
-        "total_order_amount": "Total order amount"
-      },
-      "coverage": {
-        "checking": "Checking coverage...",
-        "select_location": "Select a location first",
-        "missing_coordinates": "This location has no coordinates yet. Coverage filter is disabled.",
-        "not_covered": "This location is outside active coverage zones."
-      },
-      "stage": {
-        "address": {
-          "title": "Select Address",
-          "subtitle": "Choose existing address or add a new one first."
-        },
-        "package": {
-          "title": "Choose Package"
-        },
-        "review": {
-          "title": "Review & Submit",
-          "subtitle": "All items below will be submitted as installation requests."
-        }
-      },
-      "empty": {
-        "no_locations_title": "No locations available",
-        "no_locations_subtitle": "Add at least one location to continue internet ordering.",
-        "no_packages_title": "No internet packages are available yet",
-        "no_packages_subtitle": "Please contact the admin to enable the package catalog.",
-        "no_order_items_title": "No order item yet",
-        "no_order_items_subtitle": "Add at least one package first."
-      },
-      "sidecard": {
-        "title": "Current Selection",
-        "step_badge": "Step 2 / 3",
-        "address": "Address",
-        "package": "Package",
-        "billing": "Billing",
-        "hint": "You can add more services later from the Review step."
-      },
-      "modal": {
-        "add_location_title": "Add Location",
-        "fields": {
-          "label": "Label",
-          "address": "Address",
-          "city": "City",
-          "state": "State",
-          "postal_code": "Postal code",
-          "country": "Country",
-          "notes": "Notes",
-          "latitude": "Latitude",
-          "longitude": "Longitude"
-        },
-        "placeholders": {
-          "label": "Home / Office",
-          "address": "Street address"
-        }
-      },
-      "status": {
-        "loading_packages": "Loading packages...",
-        "processing": "Processing...",
-        "saving": "Saving..."
-      },
-      "cycles": {
-        "monthly": "Monthly",
-        "yearly": "Yearly"
-      },
-      "badges": {
-        "selected": "Selected"
-      },
-      "toasts": {
-        "load_failed": "Failed to load internet service catalog",
-        "coverage_failed": "Failed to check coverage",
-        "select_location_first": "Select a location first",
-        "yearly_unavailable": "Yearly billing is not available for this package",
-        "invalid_package": "Invalid package",
-        "added_to_order": "Item added to your order",
-        "invalid_package_in_order": "Invalid package in order list",
-        "request_submitted_single": "Installation request submitted ({id})",
-        "request_submitted_multi": "{count} installation requests submitted",
-        "request_submit_failed": "Failed to submit installation request",
-        "latitude_range": "Latitude must be between -90 and 90",
-        "longitude_range": "Longitude must be between -180 and 180",
-        "location_saved": "Location saved",
-        "location_create_failed": "Failed to create location"
-      }
-    },
-    "services_portal": {
-      "page": {
-        "title": "Customer Services",
-        "subtitle": "List of all services you have ordered."
-      },
-      "actions": {
-        "billing_invoices": "Billing & Invoices",
-        "order_new_service": "Order New Service",
-        "show_all_services": "Show All Services",
-        "view_invoices": "View Invoices",
-        "track_installation": "Track Installation",
-        "request_reopen": "Request Reopen",
-        "reopening": "Reopening..."
-      },
-      "stats": {
-        "total": "Total Services",
-        "active": "Active",
-        "pending_installation": "Pending Installation",
-        "needs_attention": "Needs Attention"
-      },
-      "list": {
-        "title": "Ordered Services",
-        "subtitle": "Services requested by your account.",
-        "services_suffix": "services",
-        "filter": "Filter",
-        "sort": "Sort"
-      },
-      "filters": {
-        "all": "All Services",
-        "active": "Active",
-        "pending_installation": "Pending Installation",
-        "needs_attention": "Needs Attention"
-      },
-      "sort": {
-        "updated_at": "Updated",
-        "price": "Price",
-        "status": "Status",
-        "location": "Location",
-        "service": "Service"
-      },
-      "table": {
-        "service": "Service",
-        "status": "Status",
-        "location": "Location",
-        "billing_cycle": "Billing Cycle",
-        "price": "Price",
-        "updated_at": "Updated",
-        "actions": "Actions"
-      },
-      "empty": {
-        "no_services": "No ordered services yet.",
-        "no_match": "No service found for selected filter."
-      },
-      "toasts": {
-        "load_failed": "Failed to load services",
-        "reopen_success_with_id": "Installation request reopened (WO {id})",
-        "reopen_success": "Installation request reopened",
-        "reopen_failed": "Failed to reopen installation request"
-      },
-      "status": {
-        "grace_active": "Grace Active",
-        "pending_installation": "Pending Installation",
-        "awaiting_payment": "Awaiting Payment",
-        "suspended": "Suspended",
-        "cancelled": "Cancelled"
-      },
-      "status_hint": {
-        "active": "Service is active and running.",
-        "grace_active": "Service is temporarily active for post-installation testing while awaiting first payment.",
-        "pending_installation": "Waiting assignment and installation scheduling.",
-        "awaiting_payment": "Installation is complete. Waiting for first invoice/payment confirmation.",
-        "suspended": "Service is suspended. Please check billing or contact support.",
-        "cancelled": "Request was cancelled.",
-        "cancelled_reopen": "Request was cancelled. You can submit reopen request."
-      },
-      "tracker": {
-        "title": "Installation Tracker",
-        "loading": "Loading tracker...",
-        "scheduled_at": "Scheduled At",
-        "last_update": "Last Update",
-        "latest_notes": "Latest Notes",
-        "steps": {
-          "requested": "Requested",
-          "assigned": "Assigned",
-          "scheduled": "Scheduled",
-          "onsite": "On-site",
-          "active": "Active"
-        }
-      },
-      "reschedule": {
-        "badge": {
-          "pending": "Reschedule Pending",
-          "approved": "Reschedule Approved",
-          "rejected": "Reschedule Rejected"
-        },
-        "latest_title": "Latest Reschedule Request",
-        "labels": {
-          "requested_at": "Reschedule At",
-          "requested_schedule": "Requested Schedule",
-          "requested_by": "Requested By",
-          "reason": "Reason",
-          "admin_notes": "Admin Notes"
-        },
-        "form": {
-          "title": "Request Reschedule",
-          "subtitle": "You can request new installation time before onsite work starts.",
-          "new_schedule": "New Schedule",
-          "reason_optional": "Reason (optional)",
-          "reason_placeholder": "Need different time slot",
-          "submit": "Submit Reschedule",
-          "submitting": "Submitting...",
-          "wait_schedule": "Reschedule will be available after admin/technician sets your installation schedule."
-        },
-        "toasts": {
-          "select_schedule": "Please select new installation schedule",
-          "invalid_datetime": "Invalid date time",
-          "submit_success": "Reschedule request submitted",
-          "submit_failed": "Failed to submit reschedule request"
-        }
-      }
-    },
-    "portal_summary": {
-      "title": "Service Overview",
-      "health": "Status",
-      "active_package": "Active package",
-      "next_invoice": "Next invoice",
-      "no_pending_invoice": "No pending invoice",
-      "none": "-",
-      "due": "Due",
-      "manage_package": "Manage service",
-      "manage_service": "Manage service",
-      "pay_now": "Pay now",
-      "status": {
-        "normal": "Normal",
-        "pending": "Pending invoice",
-        "overdue": "Overdue"
-      }
-    },
-    "quick_actions": {
-      "title": "Quick Actions",
-      "update_profile": "Update Profile",
-      "check_messages": "Check Messages",
-      "security_settings": "Security Settings",
-      "contact_support": "Contact Support"
-    }
-  },
-  "profile": {
-    "title": "Settings",
-    "subtitle": "Manage your account settings and preferences.",
-    "fallback": {
-      "user": "User",
-      "member": "Member"
-    },
-    "tabs": {
-      "general": "General",
-      "security": "Security",
-      "addresses": "Addresses",
-      "preferences": "Preferences",
-      "notifications": "Notifications"
-    },
-    "addresses": {
-      "title": "Addresses",
-      "subtitle": "Manage multiple addresses for future billing and shipping.",
-      "add": "Add Address",
-      "add_title": "Add Address",
-      "edit_title": "Edit Address",
-      "untitled": "Untitled",
-      "default_shipping": "Default Shipping",
-      "default_billing": "Default Billing",
-      "recipient": "Recipient",
-      "empty_title": "No addresses yet",
-      "empty_subtitle": "Add one so you can reuse it for shipping and billing.",
-      "delete_title": "Delete address?",
-      "delete_message": "This address will be removed permanently.",
-      "fields": {
-        "label": "Label",
-        "recipient_name": "Recipient name",
-        "phone": "Phone",
-        "line1": "Address line 1",
-        "line2": "Address line 2",
-        "city": "City",
-        "state": "State/Province",
-        "postal_code": "Postal code",
-        "country_code": "Country code",
-        "default_shipping": "Default shipping",
-        "default_billing": "Default billing"
-      },
-      "validation": {
-        "line1_required": "Address line is required."
-      }
-    },
-    "general": {
-      "title": "Profile Information",
-      "subtitle": "Update your account details and public profile.",
-      "change_avatar": "Change Avatar",
-      "your_name": "Your Name",
-      "role_label": "Role",
-      "display_name": "Display Name",
-      "display_name_placeholder": "Enter your full name",
-      "email_address": "Email Address",
-      "email_placeholder": "name@example.com",
-      "save_button": "Save Changes",
-      "saving": "Saving..."
-    },
-    "security": {
-      "title": "Password & Security",
-      "subtitle": "Manage your password and security settings.",
-      "current_password": "Current Password",
-      "new_password": "New Password",
-      "confirm_password": "Confirm Password",
-      "password_placeholder": "••••••••",
-      "requirements_title": "Password requirements:",
-      "req_length": "At least {length} characters long",
-      "req_uppercase": "One uppercase letter",
-      "req_number": "One number",
-      "req_special": "One special character",
-      "update_button": "Update Password",
-      "updating": "Updating...",
-      "twofa": {
-        "title": "Two-Factor Authentication",
-        "subtitle": "Protect your account with an extra layer of security.",
-        "enabled_title": "2FA is Enabled",
-        "enabled_desc": "Your account is secured with 2FA.",
-        "recovery_title": "Save your Recovery Codes!",
-        "recovery": {
-          "saved_button": "I have saved them"
-        },
-        "disable_title": "Disable 2FA",
-        "methods": {
-          "authenticator_app": "Authenticator App",
-          "email_verification": "Email Verification"
-        },
-        "disable": {
-          "placeholder": "Enter authentication code"
-        }
-      }
-    },
-    "preferences": {
-      "title": "Appearance",
-      "subtitle": "Customize the look and feel of the application.",
-      "dark_mode": "Dark Mode",
-      "dark_mode_desc": "Toggle between dark and light themes."
-    },
-    "notifications": {
-      "title": "Notification Preferences",
-      "subtitle": "Customize how and when you want to be notified.",
-      "view_all": "View all",
-      "test": "Test Notification",
-      "push": {
-        "active_title": "Push Notifications Active",
-        "active_desc": "You are subscribed to real-time updates on this device.",
-        "disable": "Disable",
-        "enable_title": "Enable Push Notifications",
-        "enable_desc": "Get real-time updates even when the app is closed.",
-        "enable": "Enable Push"
-      },
-      "channels": {
-        "in_app": "In-App",
-        "email": "Email",
-        "push": "Push",
-        "required": "Required"
-      },
-      "categories": {
-        "system": {
-          "label": "System Updates",
-          "desc": "Maintenance & announcements"
-        },
-        "support": {
-          "label": "Support Tickets",
-          "desc": "New tickets & replies"
-        },
-        "team": {
-          "label": "Team Activity",
-          "desc": "Member changes & invites"
-        },
-        "payment": {
-          "label": "Billing",
-          "desc": "Invoices & subscriptions"
-        },
-        "security": {
-          "label": "Security",
-          "desc": "Login alerts & password changes"
-        }
-      }
-    },
-    "messages": {
-      "profile_updated": "Profile updated successfully!",
-      "password_changed": "Password changed successfully!",
-      "password_mismatch": "New passwords do not match",
-      "update_failed": "Failed to update profile",
-      "change_password_failed": "Failed to change password",
-      "twofa_required": "Your organization requires Two-Factor Authentication. Please enable it to continue.",
-      "2fa_method_totp": "2FA method changed to Authenticator App",
-      "2fa_method_email": "2FA method changed to Email"
-    }
-  },
   "admin": {
     "dashboard": {
       "eyebrow": "Adaptive admin dashboard",
@@ -2435,6 +193,87 @@
         }
       }
     },
+    "message_templates": {
+      "subtitle": "Build granular WhatsApp and email templates for manual and automated communication.",
+      "search": "Search templates...",
+      "loading": "Loading templates...",
+      "empty": "No message templates yet.",
+      "confirm_delete": "Delete template \"{name}\"?",
+      "actions": {
+        "new": "New Template",
+        "refresh": "Refresh",
+        "preview": "Preview",
+        "previewing": "Previewing...",
+        "cancel": "Cancel",
+        "save": "Save",
+        "saving": "Saving..."
+      },
+      "filters": {
+        "all_use_cases": "All use cases",
+        "all_channels": "All channels",
+        "all_statuses": "All statuses"
+      },
+      "use_cases": {
+        "billing": "Billing",
+        "installation": "Installation",
+        "support": "Support",
+        "outage": "Outage",
+        "lifecycle": "Lifecycle",
+        "custom": "Custom"
+      },
+      "channels": {
+        "both": "Both"
+      },
+      "statuses": {
+        "draft": "Draft",
+        "active": "Active",
+        "archived": "Archived"
+      },
+      "triggers": {
+        "manual": "Manual",
+        "automatic": "Automatic",
+        "both": "Both"
+      },
+      "fields": {
+        "key": "Key",
+        "name": "Name",
+        "description": "Description",
+        "use_case": "Use Case",
+        "channel": "Channel",
+        "status": "Status",
+        "trigger": "Trigger",
+        "event_key": "Event Key",
+        "whatsapp_body": "WhatsApp Body",
+        "email_subject": "Email Subject",
+        "email_body": "Email Body"
+      },
+      "editor": {
+        "new_title": "New Template",
+        "edit_title": "Edit Template",
+        "content_title": "Template content",
+        "content_hint": "Use variables for customer-specific messages. Keep WhatsApp concise and email more complete.",
+        "draft_badge": "Draft"
+      },
+      "variables": {
+        "title": "Variable Picker",
+        "hint": "Click a token to insert it into the active channel body.",
+        "tenant": "Tenant",
+        "customer": "Customer"
+      },
+      "preview": {
+        "title": "Preview",
+        "variables": "Variables"
+      },
+      "toasts": {
+        "load_failed": "Failed to load message templates",
+        "required": "Template key and name are required",
+        "saved": "Message template saved",
+        "save_failed": "Failed to save message template",
+        "deleted": "Message template deleted",
+        "delete_failed": "Failed to delete message template",
+        "preview_failed": "Template preview failed"
+      }
+    },
     "settings": {
       "title": "Global Settings",
       "subtitle": "Manage application configuration, security, and integrations.",
@@ -2567,7 +406,18 @@
         "email": "Email",
         "branding": "Branding & Domain",
         "billing_plan": "Billing & Plan",
-        "payment": "Payments"
+        "whatsapp": "WhatsApp Gateway",
+        "event_notifications": "Event Notifications",
+        "payment": "Payments",
+        "service": "Service"
+      },
+      "whatsapp": {
+        "title": "WhatsApp Gateway",
+        "description": "Configure this tenant WhatsApp gateway."
+      },
+      "event_notifications": {
+        "title": "Event Notifications",
+        "description": "Choose notification channels for each tenant event."
       },
       "billing_plan": {
         "eyebrow": "Tenant billing",
@@ -2678,6 +528,42 @@
       "actions": {
         "new": "New customer"
       },
+      "communication": {
+        "actions": {
+          "open_whatsapp_app": "Open WhatsApp App",
+          "send": "Send",
+          "send_email": "Send Email",
+          "send_whatsapp": "Send WhatsApp",
+          "sending": "Sending..."
+        },
+        "body": "Body",
+        "characters": "characters",
+        "custom_email": "Custom email",
+        "custom_message": "Custom message",
+        "email_body_required": "Email body is required",
+        "email_outbox": "Email outbox",
+        "email_queued": "Email queued",
+        "email_send_failed": "Failed to send email",
+        "email_subject_required": "Email subject is required",
+        "fallback_email_body": "Hello {name},\n\nWe would like to contact you about your internet service.\n\nThank you.",
+        "fallback_email_subject": "Service information for {name}",
+        "fallback_whatsapp": "Hello {name}, Tri Digitals would like to contact you about your internet service.",
+        "gateway_not_ready": "Gateway not ready",
+        "gateway_ready": "ready",
+        "load_templates_failed": "Failed to load message templates",
+        "message": "Message",
+        "phone_not_set": "Customer phone is not set",
+        "email_not_set": "Customer email is not set",
+        "queued_through_outbox": "Queued through email outbox",
+        "subject": "Subject",
+        "template": "Template",
+        "title_email": "Send Email",
+        "title_whatsapp": "Send WhatsApp",
+        "whatsapp_body_required": "WhatsApp message is required",
+        "whatsapp_failed": "WhatsApp gateway failed to send message",
+        "whatsapp_send_failed": "Failed to send WhatsApp message",
+        "whatsapp_sent": "WhatsApp message sent"
+      },
       "search": "Search customers...",
       "results": "results",
       "empty": "No customers yet.",
@@ -2732,7 +618,23 @@
         "portal": "Portal users",
         "subscriptions": "Subscriptions",
         "billing": "Billing",
-        "pppoe": "PPPoE"
+        "pppoe": "PPPoE",
+        "dhcp_static": "DHCP Static",
+        "assets": "FTTH Assets"
+      },
+      "assets": {
+        "subtitle": "FTTH devices connected to this customer.",
+        "open_registry": "Open registry",
+        "empty": "No FTTH assets are linked to this customer yet.",
+        "columns": {
+          "name": "Asset",
+          "type": "Type",
+          "serial": "Serial",
+          "status": "Status",
+          "location": "Location",
+          "parent": "Parent",
+          "updated": "Updated"
+        }
       },
       "overview": {
         "title": "Customer profile"
@@ -2928,6 +830,23 @@
           "delete_failed": "Failed to delete PPPoE account: {message}"
         }
       },
+      "dhcp_static": {
+        "title": "DHCP Static",
+        "subtitle": "Static lease and queue status for this customer.",
+        "empty": "No DHCP static services.",
+        "columns": {
+          "server": "Server",
+          "mac": "MAC",
+          "ip": "IP",
+          "lease": "Lease",
+          "queue": "Queue"
+        },
+        "sync": {
+          "present": "Present",
+          "missing": "Missing",
+          "none": "None"
+        }
+      },
       "toasts": {
         "load_failed": "Failed to load customers",
         "created": "Customer created",
@@ -2936,6 +855,92 @@
         "update_failed": "Failed to update customer: {message}",
         "deleted": "Customer deleted",
         "delete_failed": "Failed to delete customer: {message}"
+      }
+    },
+    "ftth_assets": {
+      "page": {
+        "subtitle": "Manage tenant FTTH assets such as OLT, ODP, splitter, ONT, and related devices."
+      },
+      "stats": {
+        "total": "Total",
+        "installed": "Installed",
+        "available": "Available",
+        "faulty": "Faulty"
+      },
+      "filters": {
+        "search_placeholder": "Search asset, code, or serial...",
+        "all_types": "All types",
+        "all_statuses": "All statuses"
+      },
+      "table": {
+        "asset": "Asset",
+        "type": "Type",
+        "status": "Status",
+        "serial": "Serial",
+        "customer": "Customer",
+        "location": "Location",
+        "relation": "Relation",
+        "topology": "Topology",
+        "updated": "Updated",
+        "empty": "No FTTH assets yet."
+      },
+      "fields": {
+        "type": "Type",
+        "status": "Status",
+        "name": "Name",
+        "code": "Code",
+        "serial_number": "Serial Number",
+        "vendor": "Vendor",
+        "model": "Model",
+        "customer": "Customer",
+        "location": "Location",
+        "work_order_scope": "Work order scope",
+        "work_order": "Work Order",
+        "parent_asset": "Parent Asset",
+        "notes": "Notes"
+      },
+      "placeholders": {
+        "name": "ODP-Cluster A",
+        "code": "ODP-001",
+        "serial_number": "SN-123",
+        "vendor": "ZTE",
+        "model": "F670L",
+        "search_customer": "Search customer...",
+        "search_parent_asset": "Search parent asset..."
+      },
+      "options": {
+        "no_customer": "No customer",
+        "select_customer_first": "Select customer first",
+        "loading_locations": "Loading locations...",
+        "no_location": "No location",
+        "show_all_work_orders": "Show all tenant work orders",
+        "no_work_order": "No work order",
+        "no_parent_asset": "No parent asset"
+      },
+      "actions": {
+        "new_asset": "New asset",
+        "create_asset": "Create asset",
+        "save_changes": "Save changes",
+        "cancel": "Cancel",
+        "saving": "Saving..."
+      },
+      "modal": {
+        "title_create": "New FTTH Asset",
+        "title_edit": "Edit FTTH Asset"
+      },
+      "details": {
+        "title": "Asset-specific details",
+        "subtitle": "These fields adjust to the selected asset type."
+      },
+      "hints": {
+        "selected": "Selected:"
+      },
+      "status": {
+        "available": "Available",
+        "reserved": "Reserved",
+        "installed": "Installed",
+        "faulty": "Faulty",
+        "retired": "Retired"
       }
     },
     "services": {
@@ -2952,7 +957,9 @@
         "price": "Price"
       },
       "fields": {
-        "service_type": "Service type"
+        "service_type": "Service type",
+        "provisioning_type": "Provisioning type",
+        "provisioning_type_hint": "Choose how this internet package will be activated during installation."
       },
       "actions": {
         "add": "Add service",
@@ -2976,12 +983,20 @@
       },
       "types": {
         "internet_pppoe": "Internet / PPPoE",
+        "internet_dhcp_static": "Internet / DHCP Static",
         "hotspot": "Hotspot",
         "vpn": "VPN"
       },
+      "provisioning": {
+        "pppoe": "PPPoE",
+        "dhcp_static": "DHCP Static"
+      },
       "mapping": {
         "only_internet": "Router mapping is only available for Internet / PPPoE services.",
-        "not_required": "Router PPP profile mapping is not required for this service type."
+        "not_required": "Router PPP profile mapping is not required for this service type.",
+        "only_pppoe": "This mapping is only available for PPPoE services.",
+        "not_required_dhcp": "Router mapping is not required for DHCP Static services.",
+        "isolation_pool": "Isolation Pool"
       },
       "toasts": {
         "created": "Service created",
@@ -3204,6 +1219,111 @@
           "reconcile_failed": "Failed to reconcile router state: {message}"
         }
       },
+      "dhcp_static": {
+        "title": "DHCP Static",
+        "subtitle": "Monitor and re-apply static DHCP leases and optional simple queues.",
+        "empty": "No DHCP static services.",
+        "confirm_delete": "Delete this DHCP static service?",
+        "stats": {
+          "total": "Total",
+          "lease_ready": "Lease Ready",
+          "queue_issues": "Queue Issues",
+          "disabled": "Disabled"
+        },
+        "filters": {
+          "search_placeholder": "MAC, IP, server, comment",
+          "router": "Router",
+          "all_routers": "All routers"
+        },
+        "columns": {
+          "server": "Server",
+          "mac": "MAC",
+          "ip": "IP",
+          "lease": "Lease",
+          "queue": "Queue",
+          "actions": "Actions"
+        },
+        "sync": {
+          "present": "Present",
+          "missing": "Missing",
+          "none": "None"
+        },
+        "actions": {
+          "reconcile": "Reconcile Router",
+          "create": "Create DHCP Static",
+          "update": "Update DHCP Static",
+          "create_via_installation": "Create via Installation",
+          "install": "Install",
+          "apply": "Apply"
+        },
+        "fields": {
+          "subscription": "Subscription",
+          "select_customer": "Select customer",
+          "select_location": "Select location",
+          "select_subscription": "Select DHCP static subscription",
+          "select_router": "Select router",
+          "select_dhcp_server": "Select DHCP server",
+          "selected_router": "Selected",
+          "dhcp_server_name": "DHCP Server Name",
+          "mac_address": "MAC Address",
+          "ip_address": "IP Address",
+          "comment_placeholder": "Optional note for static lease",
+          "queue_mode": "Queue Mode",
+          "queue_rate_limit": "Queue Rate Limit",
+          "queue_rate_limit_hint": "Use format like 20M/20M for download/upload.",
+          "queue_presets": "Quick presets",
+          "disabled": "Disabled on router",
+          "subscription_context": "Subscription context",
+          "simple_queue": "Simple Queue",
+          "no_subscription_for_location": "No DHCP static subscription is available for this location yet.",
+          "existing_services_title": "Existing DHCP Static",
+          "existing_services_count": "{count} item(s)",
+          "choose_customer_for_existing_services": "Choose customer first to inspect existing DHCP static services.",
+          "choose_location_for_existing_services": "Choose location to narrow existing DHCP static services.",
+          "no_existing_service_for_location": "No existing DHCP static service for this location.",
+          "loading_dhcp_servers": "Loading DHCP servers from router...",
+          "pick_router_first": "Choose router first to load DHCP server names.",
+          "current_dhcp_server_unavailable": "current value",
+          "selected_dhcp_server_with_interface": "Interface: {interface}",
+          "selected_dhcp_server_detected": "Detected from router",
+          "detected_dhcp_servers": "{count} DHCP server(s) detected from router",
+          "no_dhcp_servers_available": "No DHCP server available from the selected router."
+        },
+        "modal": {
+          "create_title": "Create DHCP Static",
+          "edit_title": "Edit DHCP Static",
+          "context_help": "Choose the customer and subscription first, then continue with lease provisioning.",
+          "lease_title": "Lease Provisioning",
+          "lease_help": "Fill router, DHCP server, customer MAC, and static IP assignment.",
+          "traffic_title": "Traffic Control",
+          "traffic_help": "Optional queue settings for bandwidth shaping on the router."
+        },
+        "validation": {
+          "select_router": "Select a router first",
+          "required_fields": "Complete all required DHCP static fields first",
+          "required_router": "Select router",
+          "required_dhcp_server_name": "Enter DHCP server name",
+          "invalid_mac": "Enter a valid MAC address",
+          "invalid_ip": "Enter a valid IPv4 address",
+          "invalid_queue_rate": "Queue rate limit must use format like 20M/20M",
+          "queue_rate_required": "Queue rate limit is required when Simple Queue is enabled"
+        },
+        "toasts": {
+          "load_failed": "Failed to load DHCP static services",
+          "load_customer_scope_failed": "Failed to load customer DHCP options",
+          "load_router_dhcp_servers_failed": "Failed to load DHCP servers from router",
+          "applied": "DHCP static lease applied",
+          "apply_failed": "Failed to apply DHCP static lease",
+          "reconciled": "DHCP static services reconciled",
+          "reconcile_failed": "Failed to reconcile DHCP static services",
+          "created": "DHCP static service created",
+          "create_failed": "Failed to create DHCP static service",
+          "updated": "DHCP static service updated",
+          "update_failed": "Failed to update DHCP static service",
+          "deleted": "Deleted",
+          "delete_failed": "Failed to delete DHCP static service"
+        }
+      },
       "routers": {
         "title": "Routers",
         "subtitle": "Manage MikroTik routers and monitoring",
@@ -3245,6 +1365,7 @@
           },
           "actions": {
             "assign_default": "Assign Default Endpoint",
+            "apply": "Apply to Router",
             "create_mapping": "Create NAS Mapping",
             "show_secret": "Show secret",
             "hide_secret": "Hide secret",
@@ -3255,6 +1376,7 @@
             "cli_copied": "RADIUS CLI copied",
             "secret_copied": "Shared secret copied",
             "default_assigned": "Default Managed RADIUS assigned",
+            "applied": "Managed RADIUS applied to router",
             "mapping_created": "Managed RADIUS NAS mapping created"
           },
           "default_ready": "A default native RADIUS endpoint is available. Assign it to this tenant to continue with router onboarding.",
@@ -3644,6 +1766,7 @@
           "placeholder": "Search customer, service, node, link, zone, or router...",
           "empty_title": "No matching results",
           "empty_hint": "Try another keyword or switch quick mode to widen the result scope.",
+          "toggle": "Search map assets",
           "summary_idle": "{count} assets loaded in this workspace",
           "summary_results": "{count} matching results across {groups} sections"
         },
@@ -3675,6 +1798,7 @@
           "nodes": "Nodes",
           "links": "Links",
           "zones": "Zones",
+          "assets": "FTTH Assets",
           "routers": "Routers",
           "customers": "Customers"
         },
@@ -3702,7 +1826,66 @@
         },
         "manage": {
           "title": "Topology editor workspace",
-          "subtitle": "Editing lives in a separate workspace so monitoring and investigation stay focused."
+          "subtitle": "Editing lives in a separate workspace so monitoring and investigation stay focused.",
+          "syncing": "Syncing...",
+          "sync": "Sync"
+        },
+        "map_unavailable_title": "Map preview unavailable on this device",
+        "map_unavailable_subtitle": "WebGL context failed. Data is still loaded and counts are visible.",
+        "asset_create": {
+          "cancel": "Cancel add",
+          "start": "Add asset",
+          "hint": "Click a point on the map to add a new FTTH asset.",
+          "canceled": "Asset add canceled."
+        },
+        "asset_customer_drop": {
+          "title": "Connected Customers",
+          "view": "View",
+          "empty": "No customers are connected to this asset yet.",
+          "state_normal": "Normal",
+          "state_suspended": "Suspended",
+          "state_internet_disconnected": "Internet Off"
+        },
+        "popup": {
+          "asset_kicker": "FTTH Asset",
+          "port_usage": "Port Usage",
+          "port_used": "{used}/{total} used",
+          "port_available": "{count} available",
+          "port_total": "{count} total",
+          "port_left": "{count} port left",
+          "port_ready": "Ready",
+          "port_full": "Full",
+          "view_customer": "View Customer",
+          "view_customer_hint": "Open connected customer list",
+          "connect": "Connect"
+        },
+        "delete_confirm": {
+          "node_title": "Delete Node",
+          "node_message": "Delete node {label}? This action cannot be undone.",
+          "link_title": "Delete Link",
+          "link_message": "Delete link {label}? This action cannot be undone.",
+          "zone_title": "Delete Zone",
+          "zone_message": "Delete zone {label}? This action cannot be undone.",
+          "binding_title": "Delete Binding",
+          "binding_message": "Delete binding {label}? This action cannot be undone.",
+          "default_label": "this item"
+        },
+        "validation": {
+          "lat_lng_pair": "Latitude and longitude must be filled together.",
+          "lat_lng_invalid": "Latitude and longitude must be valid numbers.",
+          "lat_range": "Latitude must be between -90 and 90.",
+          "lng_range": "Longitude must be between -180 and 180."
+        },
+        "toasts": {
+          "asset_not_found": "FTTH asset data was not found.",
+          "asset_node_not_synced": "FTTH asset node is not synced to the topology map yet.",
+          "asset_node_unavailable": "FTTH asset node is not available in the topology map yet.",
+          "source_odp_unavailable": "Source ODP node is not available in the topology map yet.",
+          "asset_created": "FTTH asset created",
+          "asset_updated": "FTTH asset updated",
+          "asset_save_failed": "Failed to save FTTH asset",
+          "map_init_failed": "Failed to initialize WebGL map.",
+          "link_drawing_canceled": "Link drawing canceled."
         },
         "inspector": {
           "title": "Smart inspector",
@@ -3968,11 +2151,13 @@
         "step_assign": "Assign",
         "step_schedule": "Schedule",
         "step_onsite": "On-site & Test",
+        "step_assets": "Asset Binding",
         "step_activate": "Finish",
         "step_assign_help": "Choose technician first, then continue to scheduling.",
         "step_take_help": "Take this work order first, then continue to scheduling.",
         "step_schedule_help": "Set installation date/time, then start work order.",
         "step_onsite_help": "Complete physical installation, confirm internet test, and record onsite proof.",
+        "step_assets_help": "Select the terminal asset installed at the customer site, then optionally link the FTTH parent asset for cleaner inventory traceability.",
         "step_active_help": "Checklist complete. Finish installation to trigger the final service state.",
         "subscription_status": "Service Status",
         "status_grace_active": "Grace Active",
@@ -3986,6 +2171,8 @@
         "focus_onsite_hint": "Move through one onsite task at a time so handover and proof stay clean.",
         "focus_test_title": "Test customer internet access",
         "focus_test_hint": "Use the package mapping values automatically, then verify the account really connects.",
+        "focus_asset_title": "Bind the terminal asset",
+        "focus_asset_hint": "Choose the ONT or ONU actually installed on site, then optionally pick the FTTH parent asset from the last-mile path.",
         "focus_finish_title": "Finish and confirm service outcome",
         "focus_finish_hint": "Once completed, the service will either enter grace-active or become fully active depending on payment state.",
         "focus_grace_title": "Service is temporarily active",
@@ -4019,6 +2206,22 @@
         "internet_test_help": "Technician only enters username and password. Router, profile, and pool follow the active internet package mapping.",
         "internet_test_configured": "Configured",
         "target_managed_radius": "Managed RADIUS",
+        "terminal_asset": "Terminal Asset (ONT/ONU)",
+        "select_terminal_asset": "Select ONT/ONU asset",
+        "parent_asset_optional": "Parent Asset (Optional)",
+        "no_parent_asset": "No parent asset",
+        "terminal_asset_selected": "Terminal asset",
+        "parent_asset_selected": "Parent asset",
+        "continue_finish": "Continue to Finish",
+        "quick_create_terminal_asset": "Create ONT/ONU",
+        "quick_create_title": "Quick Create Terminal Asset",
+        "quick_asset_type": "Type",
+        "quick_asset_name": "Asset Name",
+        "quick_asset_serial": "Serial Number",
+        "quick_asset_code": "Code",
+        "quick_asset_vendor": "Vendor",
+        "quick_asset_model": "Model",
+        "quick_create_submit": "Create & Select",
         "pppoe_username": "Username",
         "pppoe_password": "Password",
         "pppoe_comment": "Comment",
@@ -4637,6 +2840,2277 @@
         "no_results": "No members found",
         "try_adjusting": "Try adjusting your search or filters."
       }
+    }
+  },
+  "announcements": {
+    "title": "Announcements",
+    "subtitle": "Broadcast messages to users as banners and notifications.",
+    "feed_subtitle": "Product updates, maintenance windows, and important notices.",
+    "search_placeholder": "Search announcements...",
+    "tip_title": "Tip",
+    "banner_aria": "Announcements",
+    "more": "+{count} more",
+    "not_found": "Announcement not found.",
+    "ends": "Ends",
+    "scopes": {
+      "tenant": "Tenant",
+      "global": "Global"
+    },
+    "audiences": {
+      "all": "All users",
+      "admins": "Admins only"
+    },
+    "modes": {
+      "post": "Post",
+      "banner": "Banner"
+    },
+    "severity": {
+      "info": "Info",
+      "success": "Success",
+      "warning": "Warning",
+      "error": "Error"
+    },
+    "status": {
+      "scheduled": "Scheduled",
+      "expired": "Expired"
+    },
+    "fields": {
+      "scope": "Scope",
+      "audience": "Audience",
+      "severity": "Severity",
+      "mode": "Mode",
+      "status": "Status",
+      "cover": "Cover image (optional)",
+      "deliver_in_app": "Deliver in-app",
+      "deliver_in_app_desc": "Show to users in the app and send a notification.",
+      "deliver_email": "Send email",
+      "deliver_email_desc": "Send this announcement to all recipients via email (ignores preferences).",
+      "deliver_email_force": "Ignore email preferences",
+      "deliver_email_force_desc": "When disabled, only users who enabled email announcements will receive it.",
+      "title": "Title",
+      "body": "Body",
+      "starts_at": "Starts at",
+      "ends_at": "Ends at"
+    },
+    "placeholders": {
+      "body": "Write something clear and short..."
+    },
+    "actions": {
+      "publish": "Publish",
+      "read": "Read"
+    },
+    "create": {
+      "title": "Create broadcast"
+    },
+    "list": {
+      "title": "History"
+    },
+    "empty": "No announcements yet.",
+    "empty_feed": "No announcements yet.",
+    "confirm_delete": "Delete this announcement?",
+    "hints": {
+      "schedule": "Leave dates empty to publish immediately. End date controls when the banner stops showing.",
+      "rich": "Tip: Keep it concise. Links are allowed; images should be added as cover."
+    },
+    "toasts": {
+      "created": "Announcement created",
+      "deleted": "Deleted",
+      "delivery_required": "Choose at least one delivery channel."
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Sign In",
+      "subtitle": "Access your dashboard",
+      "email_label": "Email",
+      "email_placeholder": "name@company.com",
+      "password_label": "Password",
+      "password_placeholder": "••••••••",
+      "remember_me": "Stay signed in",
+      "forgot_password": "Reset password",
+      "submit_button": "Continue",
+      "loading_button": "Signing in...",
+      "footer_text": "Need an account?",
+      "register_link": "Register here",
+      "error_wrong_tenant": "You do not have access to this workspace. Please login at your own workspace URL."
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "Start your journey with us",
+      "disabled_message": "Public registration is currently disabled",
+      "name_label": "Full Name",
+      "name_placeholder": "John Doe",
+      "email_label": "Email",
+      "email_placeholder": "name@company.com",
+      "password_label": "Password",
+      "password_placeholder": "••••••••",
+      "confirm_password_label": "Confirm Password",
+      "submit_button": "Create Account",
+      "loading_button": "Creating...",
+      "footer_text": "Already have an account?",
+      "login_link": "Sign in"
+    },
+    "validation": {
+      "passwords_do_not_match": "Passwords do not match",
+      "min_length": "Min {length} chars",
+      "require_uppercase": "1 uppercase",
+      "require_number": "1 number",
+      "require_special": "1 special char"
+    },
+    "2fa": {
+      "select_method": "Select Verification Method",
+      "select_method_desc": "Choose how you'd like to verify your identity",
+      "use_app": "Authenticator App",
+      "use_email": "Email Code",
+      "enter_code": "Enter Verification Code",
+      "totp_desc": "Enter the 6-digit code from your authenticator app",
+      "enter_email_code": "Enter Email Code",
+      "email_desc": "We'll send a verification code to your email",
+      "email_sent": "A verification code has been sent to your email",
+      "sending_email": "Sending verification code...",
+      "verify": "Verify",
+      "verify_and_login": "Verify & Login",
+      "resend_code": "Resend Code",
+      "code_resent": "Verification code sent!",
+      "try_another_method": "Try another method",
+      "back_to_login": "Back to Login",
+      "trust_device": "Trust this device for 30 days",
+      "invalid_code": "Invalid verification code"
+    },
+    "forgot_password": {
+      "title": "Reset Password",
+      "subtitle": "Enter your email and we'll send you a link to reset your password.",
+      "email_label": "Email Address",
+      "email_placeholder": "you@example.com",
+      "submit": "Send Reset Link",
+      "sending": "Sending...",
+      "check_email_title": "Check your email",
+      "check_email_message": "We've sent a password reset link to",
+      "back_to_login": "Back to Login"
+    },
+    "reset_password": {
+      "title": "Reset Password",
+      "subtitle": "Enter your new password below",
+      "invalid_token": "Invalid or missing reset token.",
+      "passwords_do_not_match": "Passwords do not match",
+      "min_length": "Password must be at least 8 characters",
+      "success": "Password reset successfully!",
+      "redirecting": "Redirecting to login...",
+      "new_password": "New Password",
+      "confirm_password": "Confirm Password",
+      "resetting": "Resetting...",
+      "submit": "Reset Password"
+    },
+    "verify_email": {
+      "title": "Email Verification",
+      "verifying": "Verifying your email...",
+      "invalid_link": "Invalid verification link.",
+      "success": "Email verified successfully!",
+      "redirecting": "Redirecting to dashboard...",
+      "go_to_login": "Go to Login"
+    }
+  },
+  "common": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "clear": "Clear",
+    "close": "Close",
+    "copied": "Copied",
+    "copy": "Copy",
+    "copy_failed": "Copy failed",
+    "delete": "Delete",
+    "edit": "Edit",
+    "details": "Details",
+    "validation_error": "Validation error",
+    "status": "Status",
+    "action": "Action",
+    "actions": "Actions",
+    "open": "Open",
+    "download": "Download",
+    "load_more": "Load more",
+    "end": "End",
+    "page": "Page",
+    "results": "results",
+    "search": "Search",
+    "apply": "Apply",
+    "next": "Next",
+    "previous": "Previous",
+    "retry": "Retry",
+    "refresh": "Refresh",
+    "remove": "Remove",
+    "reset": "Reset",
+    "upgrade_plan": "Upgrade Plan",
+    "file_saved": "File saved successfully",
+    "otp_placeholder": "000000",
+    "otp_placeholder_spaced": "000 000",
+    "select": "Select",
+    "active": "Active",
+    "inactive": "Inactive",
+    "all": "All",
+    "add": "Add",
+    "create": "Create",
+    "total": "Total",
+    "start": "Start",
+    "complete": "Complete",
+    "available": "Available",
+    "customer": "Customer",
+    "package": "Package",
+    "location": "Location",
+    "assignee": "Assignee",
+    "schedule": "Schedule",
+    "notes": "Notes",
+    "global": "Global",
+    "na": "—",
+    "per_month_short": "/mo",
+    "per_year_short": "/yr",
+    "select_all": "Select All",
+    "you": "YOU",
+    "yes": "Yes",
+    "no": "No",
+    "save": "Save",
+    "saved": "Saved",
+    "save_changes": "Save Changes",
+    "saving": "Saving...",
+    "processing": "Processing...",
+    "loading": "Loading...",
+    "updated": "Updated",
+    "deleted": "Deleted",
+    "disabled": "Disabled",
+    "forbidden": "Forbidden",
+    "confirm_delete": "Are you sure you want to delete this item?",
+    "from": "From",
+    "to": "To",
+    "no_permission": "You do not have permission to view this page.",
+    "no_results": "No results",
+    "empty": {
+      "no_results": "No results"
+    },
+    "units": {
+      "hours": "hours",
+      "min": "min",
+      "minutes": "minutes",
+      "chars": "chars",
+      "attempts": "attempts",
+      "req_per_min": "req/min",
+      "mb": "MB",
+      "days": "days"
+    },
+    "weekdays": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    }
+  },
+  "components": {
+    "lightbox": {
+      "pdf_preview": "PDF Preview",
+      "pdf_unsupported": "Browser does not support PDF preview.",
+      "pdf_blank_warning": "Preview looks blank. Try download/open file.",
+      "download_pdf": "Download PDF",
+      "preview_unavailable": "Preview not available",
+      "download_file": "Download File",
+      "errors": {
+        "load_failed": "Failed to load content.",
+        "load_error": "Error loading content."
+      }
+    },
+    "global_uploads": {
+      "title": "Uploads in progress",
+      "status": {
+        "failed": "Failed",
+        "done": "Done"
+      },
+      "actions": {
+        "cancel": "Cancel upload"
+      }
+    },
+    "table": {
+      "search_placeholder": "Search...",
+      "empty": "No data found"
+    },
+    "file_manager": {
+      "title": "File Manager",
+      "title_admin": "Global Storage Manager",
+      "subtitle": "Manage your organization's files and assets",
+      "subtitle_admin": "Manage uploaded files and assets across all tenants",
+      "upload": "Upload",
+      "files": "Files",
+      "loading": "Loading files...",
+      "selected": "Selected",
+      "delete_selected": "Delete Selected",
+      "search_placeholder": "Search files by name...",
+      "view": {
+        "grid": "Grid View",
+        "list": "List View"
+      },
+      "filters": {
+        "all": "All Files",
+        "images": "Images",
+        "videos": "Videos",
+        "audio": "Audio",
+        "documents": "Documents",
+        "aria_group": "File type filters",
+        "aria_filter": "Filter: {label}"
+      },
+      "empty": {
+        "title": "No Files Found",
+        "subtitle": "Try adjusting your search terms."
+      },
+      "toasts": {
+        "load_failed": "Failed to load files: {message}",
+        "deleted": "File deleted successfully"
+      },
+      "columns": {
+        "name": "Name",
+        "size": "Size",
+        "type": "Type",
+        "uploaded": "Uploaded",
+        "action": "Action"
+      },
+      "pagination": {
+        "page_of": "Page {page} of {total}"
+      },
+      "load_more": "Load More",
+      "showing_count": "Showing {current} of {total} files",
+      "confirm": {
+        "delete_one_title": "Delete File",
+        "delete_one_message": "Are you sure you want to delete this file? This action cannot be undone.",
+        "delete_many_title": "Delete {count} files",
+        "delete_many_message": "Are you sure you want to delete {count} files ({size})? This action cannot be undone.",
+        "delete_many_confirm": "Delete {count}"
+      }
+    },
+    "pagination": {
+      "rows_per_page": "Rows per page:",
+      "range": "{start}-{end} of {count}",
+      "previous_page": "Previous page",
+      "next_page": "Next page"
+    },
+    "mobile_fab": {
+      "open_menu": "Open menu"
+    },
+    "confirm_dialog": {
+      "instruction_prefix": "Type",
+      "instruction_suffix": "to confirm.",
+      "placeholder": "Type {keyword} here"
+    }
+  },
+  "dashboard": {
+    "greeting": {
+      "morning": "Good Morning",
+      "afternoon": "Good Afternoon",
+      "evening": "Good Evening",
+      "welcome_message": "Here's what's happening with your account today."
+    },
+    "manage_files": "Manage Files",
+    "generate_report": "Generate Report",
+    "admin_mode": {
+      "title": "Administrator Mode",
+      "description": "You have system-wide permissions. Access management tools here."
+    },
+    "locations": {
+      "kicker": "Customer portal",
+      "title": "My Locations",
+      "subtitle": "Your service locations. If something looks wrong, contact support.",
+      "location": "Location",
+      "source": {
+        "customer": "Customer",
+        "profile": "Profile"
+      },
+      "summary": {
+        "total": "Total locations",
+        "customer": "Customer-linked",
+        "profile": "Profile addresses"
+      },
+      "empty": "No locations yet.",
+      "empty_hint": "Your admin has not linked your account to a customer location.",
+      "toasts": {
+        "load_failed": "Failed to load locations"
+      }
+    },
+    "stats": {
+      "account_role": "Account Role",
+      "member_since": "Member Since",
+      "system_status": "System Status",
+      "active": "Active"
+    },
+    "recent_activity": {
+      "title": "Recent Activity",
+      "view_all": "View All",
+      "loading": "Loading activity...",
+      "empty": {
+        "title": "No activity yet",
+        "description": "When you start using the app, your activity will appear here.",
+        "learn_more": "Learn More"
+      }
+    },
+    "announcements": {
+      "title": "Announcements",
+      "view_all": "View All",
+      "empty": {
+        "title": "No announcements yet",
+        "description": "When the team publishes updates, they will show up here.",
+        "open": "Open announcements"
+      }
+    },
+    "packages": {
+      "title": "Internet Services",
+      "subtitle": "Manage your services and submit installation request instantly.",
+      "tabs": {
+        "ordered": "My Services",
+        "order_new": "Order Service"
+      },
+      "fields": {
+        "location": "Location",
+        "billing_cycle": "Billing cycle",
+        "package": "Package",
+        "total": "Total"
+      },
+      "builder": {
+        "title": "Order Builder",
+        "subtitle": "Create multiple package orders for different addresses in one checkout flow.",
+        "checkout_all": "Checkout all",
+        "empty": "No order items yet"
+      },
+      "cycles": {
+        "monthly": "Monthly",
+        "yearly": "Yearly"
+      },
+      "current": {
+        "title": "Current subscription",
+        "none": "No active package on this location"
+      },
+      "ordered": {
+        "title": "Ordered Services",
+        "subtitle": "All subscriptions from your linked locations.",
+        "empty": "No service order yet. Start from Order Service tab."
+      },
+      "coverage": {
+        "title": "Coverage zone",
+        "select_location": "Select a location first",
+        "checking": "Checking coverage...",
+        "missing_coordinates": "This location has no coordinates yet. Coverage filter is disabled.",
+        "not_covered": "This location is outside active coverage zones.",
+        "zone_packages": "Packages available in this zone",
+        "no_packages_for_zone": "No packages in this coverage zone",
+        "no_packages_for_zone_hint": "Your location is covered, but no package offer is configured for this zone yet."
+      },
+      "actions": {
+        "buy": "Buy package",
+        "switch": "Switch package",
+        "current": "Current package",
+        "add_location": "Add location",
+        "add_to_order": "Add to order",
+        "request_again": "Request Again",
+        "request_reopen": "Request Re-open",
+        "order_again": "Order Again"
+      },
+      "badges": {
+        "active": "Active",
+        "rerequested": "Re-requested"
+      },
+      "empty": {
+        "no_locations": "No locations available",
+        "no_locations_hint": "Ask admin to link your account with a customer location first.",
+        "no_packages": "No active packages yet",
+        "no_packages_hint": "Your admin has not published package catalog yet."
+      },
+      "toasts": {
+        "load_failed": "Failed to load package catalog",
+        "select_location": "Select a location first",
+        "yearly_unavailable": "Yearly billing is not available for this package",
+        "already_active": "This package is already active",
+        "checkout_success": "Invoice created. Continue to payment.",
+        "checkout_failed": "Checkout failed",
+        "request_success": "Installation request submitted.",
+        "request_failed": "Failed to submit installation request",
+        "added_to_order": "Added to order builder",
+        "bulk_checkout_success": "invoices created successfully",
+        "bulk_request_success": "installation requests submitted successfully",
+        "package_unavailable": "Package is no longer available. Please choose another package.",
+        "location_unavailable": "Location is no longer available. Please add/select another location."
+      }
+    },
+    "internet_order": {
+      "hero": {
+        "title": "Internet Service Order",
+        "subtitle": "Flow: choose address, choose package, review your order, then submit installation request."
+      },
+      "steps": {
+        "address": "Address",
+        "package": "Package",
+        "review": "Review"
+      },
+      "actions": {
+        "service_types": "Service Types",
+        "billing_invoices": "Billing & Invoices",
+        "refresh": "Refresh",
+        "add_location": "Add Location",
+        "next_choose_package": "Next: Choose Package",
+        "back_to_address": "Back to Address",
+        "selected": "Selected",
+        "select_package": "Select Package",
+        "order_now": "Order Now",
+        "back_to_package": "Back to Package",
+        "add_more": "Add More",
+        "submit_installation_request": "Submit Installation Request",
+        "cancel": "Cancel",
+        "save": "Save"
+      },
+      "labels": {
+        "location": "Location",
+        "coverage_zone": "Coverage Zone",
+        "billing_cycle": "Billing Cycle",
+        "selected_address": "Selected Address",
+        "monthly_plan": "Monthly plan",
+        "yearly_available": "yearly option available",
+        "yearly_not_available": "Yearly plan not available",
+        "current_item_total": "Current item total",
+        "total_order_amount": "Total order amount"
+      },
+      "coverage": {
+        "checking": "Checking coverage...",
+        "select_location": "Select a location first",
+        "missing_coordinates": "This location has no coordinates yet. Coverage filter is disabled.",
+        "not_covered": "This location is outside active coverage zones."
+      },
+      "stage": {
+        "address": {
+          "title": "Select Address",
+          "subtitle": "Choose existing address or add a new one first."
+        },
+        "package": {
+          "title": "Choose Package"
+        },
+        "review": {
+          "title": "Review & Submit",
+          "subtitle": "All items below will be submitted as installation requests."
+        }
+      },
+      "empty": {
+        "no_locations_title": "No locations available",
+        "no_locations_subtitle": "Add at least one location to continue internet ordering.",
+        "no_packages_title": "No internet packages are available yet",
+        "no_packages_subtitle": "Please contact the admin to enable the package catalog.",
+        "no_order_items_title": "No order item yet",
+        "no_order_items_subtitle": "Add at least one package first."
+      },
+      "sidecard": {
+        "title": "Current Selection",
+        "step_badge": "Step 2 / 3",
+        "address": "Address",
+        "package": "Package",
+        "billing": "Billing",
+        "hint": "You can add more services later from the Review step."
+      },
+      "modal": {
+        "add_location_title": "Add Location",
+        "fields": {
+          "label": "Label",
+          "address": "Address",
+          "city": "City",
+          "state": "State",
+          "postal_code": "Postal code",
+          "country": "Country",
+          "notes": "Notes",
+          "latitude": "Latitude",
+          "longitude": "Longitude"
+        },
+        "placeholders": {
+          "label": "Home / Office",
+          "address": "Street address"
+        }
+      },
+      "status": {
+        "loading_packages": "Loading packages...",
+        "processing": "Processing...",
+        "saving": "Saving..."
+      },
+      "cycles": {
+        "monthly": "Monthly",
+        "yearly": "Yearly"
+      },
+      "badges": {
+        "selected": "Selected"
+      },
+      "toasts": {
+        "load_failed": "Failed to load internet service catalog",
+        "coverage_failed": "Failed to check coverage",
+        "select_location_first": "Select a location first",
+        "yearly_unavailable": "Yearly billing is not available for this package",
+        "invalid_package": "Invalid package",
+        "added_to_order": "Item added to your order",
+        "invalid_package_in_order": "Invalid package in order list",
+        "request_submitted_single": "Installation request submitted ({id})",
+        "request_submitted_multi": "{count} installation requests submitted",
+        "request_submit_failed": "Failed to submit installation request",
+        "latitude_range": "Latitude must be between -90 and 90",
+        "longitude_range": "Longitude must be between -180 and 180",
+        "location_saved": "Location saved",
+        "location_create_failed": "Failed to create location"
+      }
+    },
+    "services_portal": {
+      "page": {
+        "title": "Customer Services",
+        "subtitle": "List of all services you have ordered."
+      },
+      "actions": {
+        "billing_invoices": "Billing & Invoices",
+        "order_new_service": "Order New Service",
+        "show_all_services": "Show All Services",
+        "view_invoices": "View Invoices",
+        "track_installation": "Track Installation",
+        "request_reopen": "Request Reopen",
+        "reopening": "Reopening..."
+      },
+      "stats": {
+        "total": "Total Services",
+        "active": "Active",
+        "pending_installation": "Pending Installation",
+        "needs_attention": "Needs Attention"
+      },
+      "list": {
+        "title": "Ordered Services",
+        "subtitle": "Services requested by your account.",
+        "services_suffix": "services",
+        "filter": "Filter",
+        "sort": "Sort"
+      },
+      "filters": {
+        "all": "All Services",
+        "active": "Active",
+        "pending_installation": "Pending Installation",
+        "needs_attention": "Needs Attention"
+      },
+      "sort": {
+        "updated_at": "Updated",
+        "price": "Price",
+        "status": "Status",
+        "location": "Location",
+        "service": "Service"
+      },
+      "table": {
+        "service": "Service",
+        "status": "Status",
+        "location": "Location",
+        "billing_cycle": "Billing Cycle",
+        "price": "Price",
+        "updated_at": "Updated",
+        "actions": "Actions"
+      },
+      "empty": {
+        "no_services": "No ordered services yet.",
+        "no_match": "No service found for selected filter."
+      },
+      "toasts": {
+        "load_failed": "Failed to load services",
+        "reopen_success_with_id": "Installation request reopened (WO {id})",
+        "reopen_success": "Installation request reopened",
+        "reopen_failed": "Failed to reopen installation request"
+      },
+      "status": {
+        "grace_active": "Grace Active",
+        "pending_installation": "Pending Installation",
+        "awaiting_payment": "Awaiting Payment",
+        "suspended": "Suspended",
+        "cancelled": "Cancelled"
+      },
+      "status_hint": {
+        "active": "Service is active and running.",
+        "grace_active": "Service is temporarily active for post-installation testing while awaiting first payment.",
+        "pending_installation": "Waiting assignment and installation scheduling.",
+        "awaiting_payment": "Installation is complete. Waiting for first invoice/payment confirmation.",
+        "suspended": "Service is suspended. Please check billing or contact support.",
+        "cancelled": "Request was cancelled.",
+        "cancelled_reopen": "Request was cancelled. You can submit reopen request."
+      },
+      "tracker": {
+        "title": "Installation Tracker",
+        "loading": "Loading tracker...",
+        "scheduled_at": "Scheduled At",
+        "last_update": "Last Update",
+        "latest_notes": "Latest Notes",
+        "steps": {
+          "requested": "Requested",
+          "assigned": "Assigned",
+          "scheduled": "Scheduled",
+          "onsite": "On-site",
+          "active": "Active"
+        }
+      },
+      "reschedule": {
+        "badge": {
+          "pending": "Reschedule Pending",
+          "approved": "Reschedule Approved",
+          "rejected": "Reschedule Rejected"
+        },
+        "latest_title": "Latest Reschedule Request",
+        "labels": {
+          "requested_at": "Reschedule At",
+          "requested_schedule": "Requested Schedule",
+          "requested_by": "Requested By",
+          "reason": "Reason",
+          "admin_notes": "Admin Notes"
+        },
+        "form": {
+          "title": "Request Reschedule",
+          "subtitle": "You can request new installation time before onsite work starts.",
+          "new_schedule": "New Schedule",
+          "reason_optional": "Reason (optional)",
+          "reason_placeholder": "Need different time slot",
+          "submit": "Submit Reschedule",
+          "submitting": "Submitting...",
+          "wait_schedule": "Reschedule will be available after admin/technician sets your installation schedule."
+        },
+        "toasts": {
+          "select_schedule": "Please select new installation schedule",
+          "invalid_datetime": "Invalid date time",
+          "submit_success": "Reschedule request submitted",
+          "submit_failed": "Failed to submit reschedule request"
+        }
+      }
+    },
+    "portal_summary": {
+      "title": "Service Overview",
+      "health": "Status",
+      "active_package": "Active package",
+      "next_invoice": "Next invoice",
+      "no_pending_invoice": "No pending invoice",
+      "none": "-",
+      "due": "Due",
+      "manage_package": "Manage service",
+      "manage_service": "Manage service",
+      "pay_now": "Pay now",
+      "status": {
+        "normal": "Normal",
+        "pending": "Pending invoice",
+        "overdue": "Overdue"
+      }
+    },
+    "quick_actions": {
+      "title": "Quick Actions",
+      "update_profile": "Update Profile",
+      "check_messages": "Check Messages",
+      "security_settings": "Security Settings",
+      "contact_support": "Contact Support"
+    }
+  },
+  "install": {
+    "errors": {
+      "fill_all": "Please fill in all fields",
+      "failed": "Installation failed"
+    },
+    "common": {
+      "next": "Next"
+    },
+    "welcome": {
+      "title": "Welcome to {app}",
+      "subtitle": "Let's get your application set up. We'll start by configuring the basics.",
+      "cta": "Get Started"
+    },
+    "general": {
+      "title": "General Settings",
+      "subtitle": "Configure your application details.",
+      "app_name": "Application Name",
+      "app_name_placeholder": "My SaaS App",
+      "app_url": "Application URL",
+      "app_url_placeholder": "http://localhost:3000"
+    },
+    "admin": {
+      "title": "Create Admin Account",
+      "subtitle": "This account will have full access to the system.",
+      "full_name": "Full Name",
+      "full_name_placeholder": "John Doe",
+      "email": "Email Address",
+      "email_placeholder": "john@example.com",
+      "password": "Password",
+      "confirm_password": "Confirm Password",
+      "installing": "Installing...",
+      "complete": "Complete Setup"
+    },
+    "success": {
+      "title": "Installation Complete!",
+      "redirecting": "Redirecting you to login..."
+    }
+  },
+  "notifications": {
+    "toasts": {
+      "push_not_supported": "Push notifications not supported",
+      "blocked": "Notifications are blocked. Please allow notifications in your browser settings.",
+      "permission_denied": "Permission denied. You need to allow notifications.",
+      "missing_vapid": "Configuration error: Missing VAPID key",
+      "enabled": "Push notifications enabled successfully!",
+      "disabled": "Push notifications disabled",
+      "test_sent": "Test notification sent!",
+      "test_failed": "Failed to send test notification",
+      "generic_error": "Error: {message}"
+    }
+  },
+  "notifications_page": {
+    "title": "Notifications",
+    "subtitle": "Updates, alerts, and system messages.",
+    "search_placeholder": "Search notifications...",
+    "loading": "Loading notifications...",
+    "load_more": "Load more",
+    "confirm_delete": {
+      "title": "Delete notification",
+      "message": "Delete this notification? This action cannot be undone."
+    },
+    "confirm_mark_all": {
+      "title": "Mark all as read",
+      "message": "Mark all notifications as read?"
+    },
+    "filters": {
+      "aria": "Filters",
+      "all": "All",
+      "unread": "Unread"
+    },
+    "empty": {
+      "title": "You're all caught up",
+      "subtitle": "No notifications to show."
+    }
+  },
+  "pages": {
+    "dashboard": {
+      "redirecting": "Redirecting to your dashboard..."
+    },
+    "maintenance": {
+      "title": "Under Maintenance",
+      "default_message": "We're updating our systems to serve you better. Please check back soon!",
+      "working": "Working on it",
+      "thanks": "Thank you for your patience. We'll be back shortly!"
+    },
+    "unauthorized": {
+      "title": "Access Denied",
+      "sorry": "Sorry,",
+      "message": "You don't have the required permissions to view this page. This area is restricted to system administrators.",
+      "back": "Return to Safety"
+    }
+  },
+  "payment": {
+    "checkout": {
+      "title": "Checkout",
+      "loading": "Loading invoice...",
+      "item": "Item",
+      "total": "Total",
+      "status": "Status",
+      "tabs": {
+        "online": "Online Payment",
+        "manual": "Bank Transfer"
+      },
+      "online": {
+        "description": "Pay securely with Credit Card, GoPay, ShopeePay, or Virtual Account via Midtrans.",
+        "pay_now": "Pay Now",
+        "check_status": "Check Payment Status",
+        "checking": "Checking..."
+      },
+      "manual": {
+        "instructions": "Please transfer the exact amount to one of the following accounts:",
+        "upload_hint": "Already transferred? Upload your receipt.",
+        "uploading": "Uploading...",
+        "upload": "Upload Proof of Payment"
+      },
+      "pending": {
+        "title": "Payment Verification Pending",
+        "message": "We have received your payment proof. Our team is verifying it. We will notify you once approved.",
+        "back": "Return to Dashboard"
+      },
+      "success": {
+        "title": "Payment Successful!",
+        "message": "Thank you for your payment. Your subscription has been activated.",
+        "cta": "Go to Subscription"
+      },
+      "failed": {
+        "title": "Payment Verification Failed",
+        "message": "Your payment proof was rejected. Please check the reason below and upload a new proof.",
+        "reason_label": "Reason",
+        "reupload_hint": "After re-transfering, upload your new payment proof.",
+        "upload_again": "Upload Proof Again"
+      },
+      "not_found": "Invoice not found",
+      "errors": {
+        "load_failed": "Failed to load invoice",
+        "initiate_failed": "Failed to initiate payment: ",
+        "check_status_failed": "Failed to check status: ",
+        "file_too_large": "File size must be less than 5MB",
+        "upload_failed": "Upload failed: "
+      },
+      "toasts": {
+        "payment_success": "Payment successful!",
+        "waiting": "Waiting for payment...",
+        "payment_failed": "Payment failed",
+        "status_updated": "Status updated: ",
+        "current_status": "Current status: ",
+        "proof_uploaded": "Proof uploaded successfully!"
+      }
+    }
+  },
+  "profile": {
+    "title": "Settings",
+    "subtitle": "Manage your account settings and preferences.",
+    "fallback": {
+      "user": "User",
+      "member": "Member"
+    },
+    "tabs": {
+      "general": "General",
+      "security": "Security",
+      "addresses": "Addresses",
+      "preferences": "Preferences",
+      "notifications": "Notifications"
+    },
+    "addresses": {
+      "title": "Addresses",
+      "subtitle": "Manage multiple addresses for future billing and shipping.",
+      "add": "Add Address",
+      "add_title": "Add Address",
+      "edit_title": "Edit Address",
+      "untitled": "Untitled",
+      "default_shipping": "Default Shipping",
+      "default_billing": "Default Billing",
+      "recipient": "Recipient",
+      "empty_title": "No addresses yet",
+      "empty_subtitle": "Add one so you can reuse it for shipping and billing.",
+      "delete_title": "Delete address?",
+      "delete_message": "This address will be removed permanently.",
+      "fields": {
+        "label": "Label",
+        "recipient_name": "Recipient name",
+        "phone": "Phone",
+        "line1": "Address line 1",
+        "line2": "Address line 2",
+        "city": "City",
+        "state": "State/Province",
+        "postal_code": "Postal code",
+        "country_code": "Country code",
+        "default_shipping": "Default shipping",
+        "default_billing": "Default billing"
+      },
+      "validation": {
+        "line1_required": "Address line is required."
+      }
+    },
+    "general": {
+      "title": "Profile Information",
+      "subtitle": "Update your account details and public profile.",
+      "change_avatar": "Change Avatar",
+      "your_name": "Your Name",
+      "role_label": "Role",
+      "display_name": "Display Name",
+      "display_name_placeholder": "Enter your full name",
+      "email_address": "Email Address",
+      "email_placeholder": "name@example.com",
+      "save_button": "Save Changes",
+      "saving": "Saving..."
+    },
+    "security": {
+      "title": "Password & Security",
+      "subtitle": "Manage your password and security settings.",
+      "current_password": "Current Password",
+      "new_password": "New Password",
+      "confirm_password": "Confirm Password",
+      "password_placeholder": "••••••••",
+      "requirements_title": "Password requirements:",
+      "req_length": "At least {length} characters long",
+      "req_uppercase": "One uppercase letter",
+      "req_number": "One number",
+      "req_special": "One special character",
+      "update_button": "Update Password",
+      "updating": "Updating...",
+      "twofa": {
+        "title": "Two-Factor Authentication",
+        "subtitle": "Protect your account with an extra layer of security.",
+        "enabled_title": "2FA is Enabled",
+        "enabled_desc": "Your account is secured with 2FA.",
+        "recovery_title": "Save your Recovery Codes!",
+        "recovery": {
+          "saved_button": "I have saved them"
+        },
+        "disable_title": "Disable 2FA",
+        "methods": {
+          "authenticator_app": "Authenticator App",
+          "email_verification": "Email Verification"
+        },
+        "disable": {
+          "placeholder": "Enter authentication code"
+        }
+      }
+    },
+    "preferences": {
+      "title": "Appearance",
+      "subtitle": "Customize the look and feel of the application.",
+      "dark_mode": "Dark Mode",
+      "dark_mode_desc": "Toggle between dark and light themes."
+    },
+    "notifications": {
+      "title": "Notification Preferences",
+      "subtitle": "Customize how and when you want to be notified.",
+      "view_all": "View all",
+      "test": "Test Notification",
+      "push": {
+        "active_title": "Push Notifications Active",
+        "active_desc": "You are subscribed to real-time updates on this device.",
+        "disable": "Disable",
+        "enable_title": "Enable Push Notifications",
+        "enable_desc": "Get real-time updates even when the app is closed.",
+        "enable": "Enable Push"
+      },
+      "channels": {
+        "in_app": "In-App",
+        "email": "Email",
+        "push": "Push",
+        "whatsapp": "WhatsApp",
+        "required": "Required"
+      },
+      "categories": {
+        "system": {
+          "label": "System Updates",
+          "desc": "Maintenance & announcements"
+        },
+        "support": {
+          "label": "Support Tickets",
+          "desc": "New tickets & replies"
+        },
+        "team": {
+          "label": "Team Activity",
+          "desc": "Member changes & invites"
+        },
+        "payment": {
+          "label": "Billing",
+          "desc": "Invoices & subscriptions"
+        },
+        "security": {
+          "label": "Security",
+          "desc": "Login alerts & password changes"
+        }
+      }
+    },
+    "messages": {
+      "profile_updated": "Profile updated successfully!",
+      "password_changed": "Password changed successfully!",
+      "password_mismatch": "New passwords do not match",
+      "update_failed": "Failed to update profile",
+      "change_password_failed": "Failed to change password",
+      "twofa_required": "Your organization requires Two-Factor Authentication. Please enable it to continue.",
+      "2fa_method_totp": "2FA method changed to Authenticator App",
+      "2fa_method_email": "2FA method changed to Email"
+    }
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "overview": "Overview",
+    "users": "Users",
+    "radius": "RADIUS",
+    "team": "Team",
+    "roles": "Roles",
+    "tenants": "Tenants",
+    "plans": "Plans",
+    "billing": "Billing",
+    "invoices": "Invoices",
+    "collections": "Collections",
+    "billing_collection": "Billing Logs",
+    "storage": "Storage",
+    "subscription": "Subscription",
+    "audit_logs": "Audit Logs",
+    "backups": "Backups",
+    "system": "System",
+    "support": "Support",
+    "customers": "Customers",
+    "locations": "Locations",
+    "announcements": "Announcements",
+    "routers": "Routers",
+    "noc": "NOC",
+    "topology_map": "Topology Map",
+    "wallboard": "Wallboard",
+    "alerts": "Alerts",
+    "incidents": "Incidents",
+    "installations": "Installations",
+    "logs": "Logs",
+    "pppoe": "PPPoE",
+    "dhcp_static": "DHCP Static",
+    "ftth_assets": "FTTH Assets",
+    "imports": "Imports",
+    "ppp_profiles": "PPP Profiles",
+    "ip_pools": "IP Pools",
+    "services": "Services",
+    "packages": "Packages",
+    "packages_pending_alert": "There is a pending invoice. Please review service billing.",
+    "packages_overdue_alert": "There is an overdue invoice. Please review service billing.",
+    "expand": "Expand sidebar",
+    "collapse": "Collapse sidebar",
+    "exit": "Exit",
+    "close_menu": "Close menu",
+    "super_admin": "Super Admin",
+    "settings": "Settings",
+    "email_outbox": "Email Outbox",
+    "message_templates": "Message Templates",
+    "user_view": "User View",
+    "admin_panel": "Admin Panel",
+    "profile": "Profile",
+    "logout": "Logout",
+    "sections": {
+      "workspace": "Workspace",
+      "help": "Help",
+      "network": "Network",
+      "platform": "Platform",
+      "billing": "Billing",
+      "operations": "Operations",
+      "security": "Security",
+      "access": "Access",
+      "compliance": "Compliance",
+      "configuration": "Configuration"
+    }
+  },
+  "superadmin": {
+    "dashboard": {
+      "loading": "Loading system data...",
+      "stats_aria": "Superadmin stats",
+      "stats": {
+        "tenants": "Tenants",
+        "active_tenants": "Active Tenants",
+        "users": "Users",
+        "system_health": "System Health",
+        "health_ok": "OK",
+        "health_down": "DB Down"
+      },
+      "quick_actions": {
+        "title": "Quick Actions",
+        "tenants": {
+          "title": "Manage Tenants",
+          "desc": "Create, edit, and maintain organizations."
+        },
+        "users": {
+          "title": "Manage Users",
+          "desc": "View global users, roles, and access."
+        },
+        "audit": {
+          "title": "Audit Logs",
+          "desc": "Track activity and security events."
+        },
+        "settings": {
+          "title": "Platform Settings",
+          "desc": "Configure policies and system defaults."
+        }
+      }
+    },
+    "audit_logs": {
+      "title": "Audit Logs",
+      "subtitle": "Track system activity and security events",
+      "count": "logs",
+      "refresh": "Refresh logs",
+      "search": "Search logs...",
+      "loading": "Loading logs...",
+      "columns": {
+        "time": "Time",
+        "action": "Action",
+        "user": "User",
+        "tenant": "Tenant",
+        "resource": "Resource",
+        "details": "Details",
+        "ip": "IP",
+        "time_ip": "Time / IP",
+        "user_tenant": "User / Tenant",
+        "action_resource": "Action / Resource"
+      },
+      "filters": {
+        "action": "Action (exact)",
+        "action_placeholder": "e.g. login, create_user",
+        "from": "From",
+        "to": "To"
+      },
+      "view": {
+        "table": "Table view",
+        "cards": "Card view"
+      },
+      "aria": {
+        "quick_ranges": "Quick ranges",
+        "view_mode": "View mode",
+        "cards": "Audit logs"
+      },
+      "actions": {
+        "expand_details": "Expand details",
+        "collapse_details": "Collapse details",
+        "expand": "Expand",
+        "collapse": "Collapse"
+      },
+      "labels": {
+        "user": "User",
+        "tenant": "Tenant",
+        "resource": "Resource",
+        "ip": "IP",
+        "details": "Details"
+      },
+      "empty": {
+        "title": "No logs found",
+        "subtitle": "Try adjusting your filters."
+      }
+    },
+    "users": {
+      "title": "Users",
+      "subtitle": "Manage global users and access",
+      "count": "users",
+      "search": "Search users...",
+      "filters": {
+        "all_roles": "All Roles",
+        "admin": "Admin",
+        "user": "User",
+        "superadmin": "Super Admin",
+        "all": "All",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "empty": {
+        "title": "No users found",
+        "subtitle": "Try adjusting your search or filters.",
+        "hint": "Try adjusting your search or filters."
+      },
+      "columns": {
+        "user": "User",
+        "email": "Email",
+        "role": "Role",
+        "tenant": "Tenant",
+        "status": "Status",
+        "joined": "Joined"
+      },
+      "aria": {
+        "stats": "User stats",
+        "list": "Users list"
+      },
+      "stats": {
+        "show_all": "Show all users",
+        "show_active": "Show active users",
+        "show_inactive": "Show inactive users",
+        "show_superadmins": "Show super admins",
+        "all_title": "All Users",
+        "active_title": "Active Users",
+        "inactive_title": "Inactive Users",
+        "superadmins_title": "Super Admins"
+      },
+      "view": {
+        "aria": "View mode",
+        "table": "Table view",
+        "cards": "Card view"
+      },
+      "actions": {
+        "view_details": "View details",
+        "reset_2fa": "Reset 2FA",
+        "activate_user": "Activate user",
+        "deactivate_user": "Deactivate user",
+        "activate": "Activate",
+        "deactivate": "Deactivate"
+      },
+      "status": {
+        "activate_title": "Activate User",
+        "deactivate_title": "Deactivate User",
+        "this_user": "this user",
+        "activate_message": "Activate {name}? They will be able to login again.",
+        "deactivate_message": "Deactivate {name}? They will not be able to login."
+      },
+      "reset2fa": {
+        "title": "Reset Two-Factor Authentication",
+        "message": "Reset 2FA for this user? They will be able to login without a secondary code.",
+        "confirm": "Reset 2FA"
+      },
+      "details": {
+        "title": "User Details",
+        "title_with_name": "User Details — {name}",
+        "sections": {
+          "account": "Account",
+          "tenant": "Tenant",
+          "security": "Security"
+        },
+        "labels": {
+          "name": "Name",
+          "email": "Email",
+          "role": "Role",
+          "status": "Status",
+          "created": "Created",
+          "last_login": "Last Login",
+          "tenant": "Tenant",
+          "slug": "Slug",
+          "tenant_role": "Tenant Role",
+          "twofa_enabled": "2FA Enabled",
+          "preferred_2fa": "Preferred 2FA"
+        }
+      },
+      "toasts": {
+        "reset_2fa_success": "Two-factor authentication has been reset",
+        "reset_2fa_failed": "Failed to reset 2FA: {message}",
+        "superadmin_cannot_deactivate": "Super Admin accounts cannot be deactivated here",
+        "cannot_deactivate_self": "You cannot deactivate your own account",
+        "activated": "User activated",
+        "deactivated": "User deactivated",
+        "update_status_failed": "Failed to update user status: {message}"
+      }
+    },
+    "radius": {
+      "title": "Managed RADIUS",
+      "subtitle": "Manage the native RADIUS runtime, tenant assignments, and NAS mappings for MikroTik PPPoE.",
+      "refresh": "Refresh",
+      "loading": "Loading managed RADIUS observability...",
+      "stats": {
+        "servers": "Servers",
+        "assignments": "Assignments",
+        "mappings": "NAS Mappings",
+        "routers": "Mapped Routers",
+        "users": "Users",
+        "sessions": "Sessions",
+        "out_of_sync": "Needs Attention"
+      },
+      "filters": {
+        "search_servers": "Search servers...",
+        "search_assignments": "Search assignments...",
+        "search_mappings": "Search mappings...",
+        "search_users": "Search users...",
+        "search_sessions": "Search sessions...",
+        "all_statuses": "All statuses",
+        "active": "Active",
+        "inactive": "Inactive",
+        "all_tenants": "All tenants",
+        "all_servers": "All servers",
+        "all_routers": "All routers",
+        "all_users": "All users",
+        "provisioned": "Provisioned",
+        "not_provisioned": "Not provisioned"
+      },
+      "sections": {
+        "servers": "Servers",
+        "assignments": "Tenant Assignments",
+        "mappings": "NAS Mappings",
+        "users": "Users",
+        "sessions": "Sessions"
+      },
+      "columns": {
+        "server": "Server",
+        "tenant": "Tenant",
+        "tenants": "Tenants",
+        "host": "Endpoint",
+        "ports": "Ports",
+        "status": "Status",
+        "routers": "Routers",
+        "updated": "Updated",
+        "actions": "Actions",
+        "router": "Router",
+        "username": "Username",
+        "identity": "RADIUS Identity",
+        "profile": "Profile",
+        "nas": "NAS",
+        "secret": "Secret",
+        "last_sync": "Last Sync",
+        "last_error": "Last Error",
+        "ip_address": "Framed IP",
+        "session_id": "Session ID"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "default": "Default",
+        "provisioned": "Provisioned",
+        "not_provisioned": "Not provisioned",
+        "needs_attention": "Needs attention",
+        "online": "Online",
+        "offline": "Offline"
+      },
+      "empty": {
+        "servers_title": "No native RADIUS endpoints yet",
+        "servers_subtitle": "Create a native RADIUS endpoint here, then assign tenants and map routers.",
+        "assignments_title": "No tenant assignments yet",
+        "assignments_subtitle": "Assign one active native RADIUS endpoint per tenant before creating NAS mappings.",
+        "mappings_title": "No NAS mappings yet",
+        "mappings_subtitle": "Create a tenant assignment first, then map a router so MikroTik can authenticate PPPoE against the native RADIUS runtime.",
+        "users_title": "No managed RADIUS users yet",
+        "users_subtitle": "PPPoE users backed by the native RADIUS runtime will appear here after tenant admins apply them.",
+        "sessions_title": "No accounting sessions yet",
+        "sessions_subtitle": "Accounting start, interim, and stop packets from the native RADIUS runtime will appear here."
+      },
+      "labels": {
+        "unknown_router": "Unknown router",
+        "none": "None",
+        "never": "Never"
+      },
+      "runtime": {
+        "disabled": "Disabled",
+        "running": "Running",
+        "stopped": "Stopped",
+        "endpoint": "Endpoint",
+        "authenticator": "Message-Authenticator",
+        "required": "Required",
+        "optional": "Optional"
+      },
+      "actions": {
+        "new_server": "New endpoint",
+        "new_assignment": "New assignment",
+        "new_mapping": "New mapping",
+        "create_server": "Create endpoint",
+        "save_server": "Save endpoint",
+        "create_assignment": "Create assignment",
+        "save_assignment": "Save assignment",
+        "create_mapping": "Create mapping",
+        "save_mapping": "Save mapping",
+        "edit": "Edit",
+        "set_default": "Set default",
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "view_mappings": "View mappings",
+        "copy_cli": "Copy CLI",
+        "copy_secret": "Copy secret",
+        "reveal_secret": "Reveal secret",
+        "rotate_secret": "Rotate secret",
+        "generate_secret": "Generate"
+      },
+      "form": {
+        "tenant": "Tenant",
+        "server": "Endpoint",
+        "router": "Router",
+        "select_tenant": "Select a tenant",
+        "select_server": "Select an endpoint",
+        "select_router": "Select a router",
+        "server_name": "Endpoint name",
+        "server_name_placeholder": "Primary RADIUS endpoint",
+        "endpoint_host": "Endpoint host",
+        "notes": "Notes",
+        "notes_placeholder": "Optional operational note",
+        "active_server_hint": "Allow this native endpoint to receive tenant assignments",
+        "active_assignment_hint": "Keep this assignment active for the tenant",
+        "nas_name": "NAS name",
+        "nas_name_placeholder": "router-pop-a",
+        "shortname": "Shortname",
+        "shortname_placeholder": "POP-A",
+        "nas_ip_or_cidr": "NAS IP / CIDR",
+        "shared_secret": "Shared secret",
+        "shared_secret_placeholder": "Leave blank to auto-generate",
+        "active_mapping_hint": "Enable this NAS mapping immediately"
+      },
+      "modals": {
+        "server": {
+          "create_title": "New native RADIUS endpoint",
+          "edit_title": "Edit native RADIUS endpoint"
+        },
+        "assignment": {
+          "create_title": "New tenant assignment",
+          "edit_title": "Edit tenant assignment"
+        },
+        "mapping": {
+          "create_title": "New NAS mapping",
+          "edit_title": "Edit NAS mapping"
+        },
+        "secret": {
+          "rotate_title": "Rotate shared secret",
+          "reveal_title": "Reveal shared secret",
+          "mapping": "Mapping",
+          "masked": "Masked secret",
+          "revealed": "Revealed secret",
+          "not_loaded": "Click reveal to load the secret"
+        }
+      },
+      "toasts": {
+        "server_validation": "Complete the server form first",
+        "server_created": "Native RADIUS endpoint created",
+        "server_updated": "Native RADIUS endpoint updated",
+        "server_default_set": "Default server updated",
+        "server_activated": "Server activated",
+        "server_deactivated": "Server deactivated",
+        "assignment_validation": "Complete the assignment form first",
+        "assignment_created": "Tenant assignment created",
+        "assignment_updated": "Tenant assignment updated",
+        "assignment_activated": "Assignment activated",
+        "assignment_deactivated": "Assignment deactivated",
+        "mapping_validation": "Complete the mapping form first",
+        "mapping_created": "NAS mapping created",
+        "mapping_updated": "NAS mapping updated",
+        "mapping_activated": "Mapping activated",
+        "mapping_deactivated": "Mapping deactivated",
+        "secret_revealed": "Shared secret loaded",
+        "secret_rotated": "Shared secret rotated",
+        "cli_copied": "RouterOS CLI copied"
+      }
+    },
+    "tenants": {
+      "title": "Tenants",
+      "subtitle": "Manage all organizations in the platform",
+      "count": "{count} tenants",
+      "search": "Search tenants...",
+      "loading": "Loading tenants modules...",
+      "refreshing_title": "Refreshing...",
+      "refreshing": "Refreshing",
+      "aria": {
+        "stats": "Tenant stats",
+        "cards": "Tenant cards"
+      },
+      "stats": {
+        "show_all": "Show all tenants",
+        "show_active": "Show active tenants",
+        "show_inactive": "Show inactive tenants",
+        "all_title": "All Tenants",
+        "active_title": "Active Tenants",
+        "inactive_title": "Inactive Tenants"
+      },
+      "filters": {
+        "status": "Status",
+        "all": "All",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "view": {
+        "table": "Table view",
+        "cards": "Cards view"
+      },
+      "meta": {
+        "created": "Created"
+      },
+      "actions": {
+        "new": "New Tenant",
+        "activate": "Activate",
+        "deactivate": "Deactivate"
+      },
+      "toggle": {
+        "activate_title": "Activate Tenant",
+        "deactivate_title": "Deactivate Tenant",
+        "this_tenant": "this tenant",
+        "activate_message": "Activate {name}? Users in this tenant will regain access.",
+        "deactivate_message": "Deactivate {name}? Users in this tenant will be blocked from accessing the app."
+      },
+      "delete": {
+        "title": "Delete Tenant",
+        "message": "Are you sure you want to delete this tenant? This action cannot be undone and will remove all associated data.",
+        "confirm": "Delete Permanently"
+      },
+      "modal": {
+        "edit_title": "Edit Tenant",
+        "create_title": "Create New Tenant",
+        "sections": {
+          "initial_subscription": "Initial Subscription",
+          "initial_admin": "Initial Admin User"
+        },
+        "labels": {
+          "name": "Tenant Name",
+          "slug": "Slug (URL)",
+          "custom_domain": "Custom Domain (Optional)",
+          "plan": "Subscription Plan",
+          "owner_email": "Owner Email",
+          "owner_password": "Owner Password",
+          "active_status": "Active Status"
+        },
+        "placeholders": {
+          "name": "e.g. Acme Corp",
+          "slug": "e.g. acme-corp",
+          "custom_domain": "e.g. app.acme.com",
+          "plan": "Select a plan",
+          "owner_email": "admin@acme.com",
+          "owner_password": "Strong password"
+        },
+        "actions": {
+          "create": "Create Tenant",
+          "update": "Update Tenant"
+        }
+      },
+      "empty": {
+        "title": "No tenants found",
+        "hint": "Try adjusting your search or filters."
+      },
+      "toasts": {
+        "updated": "Tenant updated successfully",
+        "update_failed": "Failed to update tenant: {message}",
+        "created": "Tenant created successfully",
+        "create_failed": "Failed to create tenant: {message}",
+        "deleted": "Tenant deleted successfully",
+        "delete_failed": "Failed to delete tenant: {message}",
+        "activated": "Tenant activated",
+        "deactivated": "Tenant deactivated"
+      }
+    },
+    "invoices": {
+      "aria": {
+        "stats": "Invoice stats",
+        "cards": "Invoice cards",
+        "table": "Invoices table"
+      },
+      "actions": {
+        "check_status": "Check Status",
+        "view_details": "View Details"
+      },
+      "cards": {
+        "amount": "Amount",
+        "due": "Due"
+      },
+      "list": {
+        "title": "All Invoices",
+        "subtitle": "Monitor all payments and transactions across the platform",
+        "search": "Search invoices...",
+        "loading": "Loading invoices...",
+        "empty": "No invoices found",
+        "empty_hint": "Try adjusting your search or filters.",
+        "view": {
+          "cards": "Cards view",
+          "table": "Table view"
+        },
+        "filters": {
+          "status": "Status",
+          "all": "All",
+          "pending": "Pending",
+          "paid": "Paid",
+          "failed": "Failed"
+        },
+        "columns": {
+          "invoice_number": "Invoice #",
+          "tenant": "Tenant",
+          "amount": "Amount",
+          "status": "Status",
+          "due_date": "Due Date",
+          "created_at": "Created At",
+          "actions": "Actions"
+        },
+        "errors": {
+          "load_failed": "Failed to load invoices",
+          "check_failed": "Failed to check status: "
+        },
+        "toasts": {
+          "status": "Invoice status: "
+        }
+      },
+      "detail": {
+        "title": "Invoice Details",
+        "back": "Back to Invoices",
+        "loading": "Loading details...",
+        "missing_id": "Missing invoice id",
+        "load_failed": "Failed to load invoice",
+        "invoice": "Invoice",
+        "tenant": "Tenant",
+        "description": "Description",
+        "amount": "Amount",
+        "created_at": "Created At",
+        "updated_at": "Updated At",
+        "manual_verification": "Manual Verification",
+        "approve_title": "Approve Payment",
+        "reject_title": "Reject Payment",
+        "approve_message": "Are you sure you want to approve this payment? This will activate the subscription immediately.",
+        "reject_message": "Are you sure you want to reject this payment? The user will be notified.",
+        "approve": "Approve",
+        "reject": "Reject",
+        "marked_as": "Invoice marked as",
+        "verify_failed": "Verification failed",
+        "already_status": "This invoice is already",
+        "payment_proof": "Payment Proof",
+        "click_enlarge": "Click to enlarge",
+        "no_proof": "No proof uploaded yet.",
+        "not_found": "Invoice not found"
+      }
+    },
+    "system": {
+      "tabs": {
+        "health": "Health",
+        "diagnostics": "Diagnostics"
+      },
+      "diagnostics": {
+        "loading": "Loading diagnostics...",
+        "database": "Database",
+        "migrations": "Migrations",
+        "applied": "Applied",
+        "resolved": "Resolved",
+        "show_applied": "Show applied migrations",
+        "platform": "Platform Settings",
+        "backups": "Backups",
+        "collected_at": "Collected at:"
+      },
+      "request_metrics": {
+        "title": "Request Metrics"
+      },
+      "title": "System Health",
+      "subtitle": "Monitor platform status and metrics",
+      "loading": "Loading system health...",
+      "retry": "Retry",
+      "db_connected": "Database Connected",
+      "db_disconnected": "Database Disconnected",
+      "tables": "tables",
+      "uptime": "Uptime:",
+      "cpu_usage": "CPU Usage",
+      "memory_usage": "Memory Usage",
+      "database_tables": "Database Tables",
+      "recent_activity": "Recent Activity",
+      "no_recent_activity": "No recent activity",
+      "last_updated": "Last updated:",
+      "stats": {
+        "total_tenants": "Total Tenants",
+        "total_users": "Total Users",
+        "active_users": "Active Users",
+        "audit_logs": "Audit Logs"
+      },
+      "table_headers": {
+        "table": "Table",
+        "rows": "Rows"
+      }
+    },
+    "settings": {
+      "title": "Platform Settings",
+      "subtitle": "Global Configuration",
+      "loading": "Loading settings...",
+      "errors": {
+        "load_failed": "Failed to load settings",
+        "save_failed": "Failed to save settings",
+        "missing_test_email": "Please enter an email address",
+        "test_email_failed": "Failed to send test email: ",
+        "bank_add_failed": "Failed to add bank",
+        "bank_remove_failed": "Failed to delete bank"
+      },
+      "toasts": {
+        "saved": "Settings saved successfully",
+        "bank_added": "Bank account added",
+        "bank_removed": "Bank account removed"
+      },
+      "confirm": {
+        "are_you_sure": "Are you sure?"
+      },
+      "sections": {
+        "general": "General Settings",
+        "auth": "Authentication Policy",
+        "password": "Password Policy",
+        "security": "Security & Rate Limiting",
+        "twofa": "Two-Factor Authentication",
+        "storage": "Storage Configuration",
+        "payment": "Payment Gateway (Midtrans)",
+        "manual_bank_transfer": "Manual Bank Transfer",
+        "backup_global": "Global Backups",
+        "backup_tenant": "Tenant Backups"
+      },
+      "security": {
+        "ip_blocking": {
+          "aria": "Enable IP Blocking",
+          "label": "Enable IP Blocking",
+          "desc": "Automatically block IP addresses with suspicious activity."
+        },
+        "max_login_attempts": {
+          "label": "Max Login Attempts",
+          "desc": "Number of failed login attempts before account lockout."
+        },
+        "lockout_duration": {
+          "label": "Lockout Duration",
+          "desc": "How long a user stays locked out after max failed attempts."
+        },
+        "api_rate_limit": {
+          "label": "API Rate Limit",
+          "desc": "Baseline API requests allowed per minute per user; auth and heavy endpoints stay stricter."
+        }
+      },
+      "twofa": {
+        "enable_2fa": {
+          "aria": "Enable 2FA",
+          "label": "Enable 2FA",
+          "desc": "Allow users to set up two-factor authentication for enhanced security."
+        },
+        "enable_totp": {
+          "aria": "Enable TOTP",
+          "label": "TOTP (Authenticator App)",
+          "desc": "Allow users to verify with Google Authenticator, Authy, etc."
+        },
+        "enable_email_otp": {
+          "aria": "Enable Email OTP"
+        },
+        "email_otp": {
+          "label": "Email OTP",
+          "desc": "Allow users to receive verification codes via email."
+        },
+        "email_otp_expiry": {
+          "label": "Email OTP Expiry",
+          "desc": "How long email verification codes remain valid."
+        }
+      },
+      "auth": {
+        "allow_public_registration": {
+          "label": "Allow Public Registration",
+          "desc": "Allow new users to sign up freely."
+        },
+        "require_email_verification": {
+          "label": "Require Email Verification",
+          "desc": "Users must verify email before logging in.",
+          "not_ready": "Email configuration is not ready. Configure email provider first."
+        },
+        "jwt_expiry": {
+          "label": "JWT Expiry (Hours)",
+          "desc": "How long an auth token remains valid."
+        },
+        "session_timeout": {
+          "label": "Session Timeout (Minutes)",
+          "desc": "Auto-logout after inactivity."
+        }
+      },
+      "password": {
+        "min_length": {
+          "label": "Minimum Length"
+        },
+        "require_uppercase": {
+          "label": "Require Uppercase"
+        },
+        "require_number": {
+          "label": "Require Number"
+        },
+        "require_special": {
+          "label": "Require Special Character"
+        }
+      },
+      "storage": {
+        "driver": {
+          "label": "Storage Driver",
+          "desc": "Choose where files are stored. Local uses the server's disk.",
+          "options": {
+            "local": "Local Disk",
+            "s3": "AWS S3 / MinIO",
+            "r2": "Cloudflare R2"
+          }
+        },
+        "s3": {
+          "bucket_name": "Bucket Name",
+          "region": "Region",
+          "region_hint": "Use 'auto' for R2.",
+          "endpoint_url": "Endpoint URL",
+          "endpoint_hint": "Required for R2 (https://ID.r2.cloudflarestorage.com) or MinIO.",
+          "access_key_id": "Access Key ID",
+          "secret_access_key": "Secret Access Key",
+          "public_url_optional": "Public Access URL (Optional)",
+          "public_url_hint": "CDN URL if serving files publicly."
+        },
+        "max_file_size_mb": "Max File Size (MB)",
+        "max_file_size_mb_desc": "Maximum allowed size for a single file upload.",
+        "allowed_extensions": "Allowed Extensions",
+        "allowed_extensions_desc": "Comma-separated list of allowed file extensions (e.g., jpg, png, pdf). Use * for all."
+      },
+      "payment": {
+        "midtrans": {
+          "title": "Midtrans Gateway",
+          "enable": {
+            "label": "Enable Midtrans Gateway",
+            "desc": "Allow users to pay online via Midtrans."
+          },
+          "merchant_id": "Merchant ID",
+          "server_key": "Server Key",
+          "server_key_hint": "From Midtrans Dashboard > Settings > Access Keys.",
+          "client_key": "Client Key",
+          "client_key_hint": "Public key for frontend Snap.js.",
+          "production_mode": "Production Mode",
+          "production_mode_desc": "Enable for real transactions. Disable for Sandbox."
+        },
+        "manual": {
+          "title": "Manual Bank Transfer",
+          "enable": {
+            "label": "Enable Manual Transfer",
+            "desc": "Allow users to pay via bank transfer and upload proof."
+          },
+          "instructions_label": "Payment Instructions",
+          "instructions_desc": "Instructions shown to user when they select Manual Transfer.",
+          "bank_accounts_title": "Bank Accounts"
+        },
+        "installation_sla": {
+          "title": "Installation SLA Reminders",
+          "enable": {
+            "label": "Enable installation SLA reminders",
+            "desc": "Send automatic notifications when installation work orders are overdue."
+          },
+          "overdue_minutes": {
+            "label": "Overdue threshold (minutes)",
+            "desc": "A scheduled work order is considered overdue after this many minutes."
+          },
+          "cooldown_minutes": {
+            "label": "Reminder cooldown (minutes)",
+            "desc": "Minimum delay before the same reminder is sent again for the same work order."
+          },
+          "scheduler_interval_minutes": {
+            "label": "Scheduler interval (minutes)",
+            "desc": "How often the backend checks all tenants for overdue installation work orders."
+          }
+        }
+      },
+      "fields": {
+        "public_url": {
+          "label": "Public Application URL",
+          "desc": "Base URL for redirects, emails, and payment callbacks (e.g. https://app.example.com)."
+        },
+        "main_domain": {
+          "label": "Main Domain",
+          "desc": "The primary domain where the application is hosted (e.g. example.com). Used for domain validation and tenant routing."
+        },
+        "currency": {
+          "label": "Default Currency",
+          "desc": "Currency used for plan pricing and invoice display (ISO 4217, e.g. IDR, USD)."
+        },
+        "maintenance_mode": {
+          "label": "Enable Maintenance Mode",
+          "desc": "When enabled, all users except superadmins will see a maintenance page."
+        },
+        "maintenance_message": {
+          "label": "Maintenance Message",
+          "desc": "The message displayed to users when maintenance mode is active."
+        },
+        "timezone": {
+          "label": "Timezone",
+          "desc": "Used to interpret schedule times (e.g. backups). Choose an IANA timezone.",
+          "search": "Search timezone..."
+        }
+      },
+      "placeholders": {
+        "url": "https://...",
+        "domain": "example.com",
+        "public_url": "https://cdn.example.com",
+        "maintenance_message": "Enter maintenance message...",
+        "manual_instructions": "Please transfer to one of the bank accounts below and upload proof.",
+        "s3_bucket": "e.g. my-app-uploads",
+        "s3_region": "us-east-1",
+        "extensions": "jpg, png, pdf...",
+        "bank_name": "Bank Name (e.g. BCA)",
+        "bank_account_number": "Account Number",
+        "bank_account_holder": "Account Holder"
+      },
+      "actions": {
+        "remove": "Remove",
+        "add": "Add",
+        "reset": "Reset",
+        "save": "Save Changes",
+        "saving": "Saving..."
+      },
+      "alerting": {
+        "title": "Error Alerting",
+        "enabled": {
+          "label": "Enable Alerting",
+          "desc": "Send email alerts when error thresholds are exceeded."
+        },
+        "email": {
+          "label": "Alert Email",
+          "desc": "Email address to receive alerts."
+        },
+        "error_threshold": {
+          "label": "Error Rate Threshold (%)",
+          "desc": "Alert when error rate exceeds this percentage."
+        },
+        "rate_limit_threshold": {
+          "label": "Rate Limit Threshold",
+          "desc": "Alert when rate-limited requests exceed this count."
+        },
+        "response_time_threshold": {
+          "label": "P95 Response Time Threshold (ms)",
+          "desc": "Alert when P95 response time exceeds this value."
+        },
+        "cooldown": {
+          "label": "Alert Cooldown (minutes)",
+          "desc": "Minutes to wait before sending the same alert type again."
+        }
+      },
+      "bank": {
+        "add_new_account": "Add New Account",
+        "empty": "No bank accounts added yet.",
+        "table": {
+          "bank": "Bank",
+          "number": "Number",
+          "holder": "Holder",
+          "action": "Action"
+        }
+      },
+      "categories": {
+        "general": "General & Maintenance",
+        "auth": "Authentication",
+        "password": "Password Policy",
+        "security": "Security & Rate Limiting",
+        "storage": "Storage Configuration",
+        "payment": "Payment Gateway",
+        "alerting": "Error Alerting",
+        "whatsapp": "WhatsApp Gateway",
+        "event_notifications": "Event Notifications",
+        "backup": "Backups"
+      },
+      "whatsapp": {
+        "title": "WhatsApp Gateway",
+        "description": "Configure the global WhatsApp gateway."
+      },
+      "event_notifications": {
+        "title": "Event Notifications",
+        "description": "Choose notification channels for each platform event."
+      },
+      "backups": {
+        "schedule_desc": "Use cron format (min hour * * *) or HH:MM. Example: 0 2 * * *",
+        "retention_desc": "Old backups older than this will be deleted automatically.",
+        "global": {
+          "enable": "Enable Global Backup Schedule",
+          "enable_desc": "Run automatic global backups on a simple schedule (uses app timezone).",
+          "enable_aria": "Enable global backup schedule",
+          "schedule": "Schedule",
+          "retention": "Retention (days)",
+          "run_now": "Run Global Backup Now",
+          "run_now_desc": "Queue a one-time global backup on the scheduler.",
+          "run_now_btn": "Run Now"
+        },
+        "tenant": {
+          "enable": "Enable Tenant Backup Schedule",
+          "enable_desc": "Run automatic backups for tenant data on a simple schedule (uses app timezone).",
+          "enable_aria": "Enable tenant backup schedule",
+          "schedule": "Schedule",
+          "retention": "Retention (days)",
+          "run_now": "Run Tenant Backups Now",
+          "run_now_desc": "Queue one-time backups for all active tenants.",
+          "run_now_btn": "Run Now"
+        },
+        "mode": {
+          "label": "Schedule Type",
+          "desc": "Choose how often backups are created."
+        },
+        "modes": {
+          "minute": "Every N minutes",
+          "hour": "Every N hours",
+          "day": "Daily at a time",
+          "week": "Weekly at a time"
+        },
+        "every": {
+          "label": "Every",
+          "desc": "Interval value. Example: 15 minutes or 6 hours."
+        },
+        "at": {
+          "label": "At",
+          "desc": "Time of day to run the backup."
+        },
+        "weekday": {
+          "label": "Weekday",
+          "desc": "Day of week to run the backup."
+        },
+        "timezone": {
+          "label": "Timezone",
+          "desc": "Used to interpret daily/weekly schedule times."
+        }
+      }
+    },
+    "plans": {
+      "page_title": "Plans | Superadmin",
+      "title": "Subscription Plans",
+      "subtitle": "Manage pricing tiers and plan status",
+      "search": "Search plans...",
+      "loading": "Loading plans...",
+      "actions": {
+        "create": "Create plan",
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "set_default": "Set as default",
+        "already_default": "Already default"
+      },
+      "price": {
+        "free": "Free"
+      },
+      "aria": {
+        "stats": "Plan stats",
+        "cards": "Plan cards",
+        "table": "Plans table"
+      },
+      "stats": {
+        "show_all": "Show all plans",
+        "show_active": "Show active plans",
+        "show_inactive": "Show inactive plans",
+        "current_default": "Current default plan",
+        "all_title": "All Plans",
+        "active_title": "Active",
+        "inactive_title": "Inactive",
+        "default_title": "Default"
+      },
+      "filters": {
+        "status": "Status",
+        "all": "All",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "view": {
+        "cards": "Cards view",
+        "table": "Table view"
+      },
+      "badges": {
+        "default_title": "Default plan",
+        "default": "Default"
+      },
+      "refreshing_title": "Refreshing...",
+      "refreshing": "Refreshing",
+      "errors": {
+        "load_failed": "Failed to load data",
+        "default_cannot_deactivate": "Default plan cannot be deactivated. Set another default first."
+      },
+      "confirm": {
+        "delete_title": "Delete Plan",
+        "delete_message": "Delete \"{name}\"? This action cannot be undone.",
+        "activate_title": "Activate Plan",
+        "activate_message": "Activate \"{name}\"? Tenants can be assigned to it again.",
+        "deactivate_title": "Deactivate Plan",
+        "deactivate_message": "Deactivate \"{name}\"? Tenants can no longer be assigned to it.",
+        "default_title": "Set Default Plan",
+        "default_message": "Make \"{name}\" the default plan for new tenants?"
+      },
+      "toasts": {
+        "deleted": "Plan deleted",
+        "activated": "Plan activated",
+        "deactivated": "Plan deactivated",
+        "default_updated": "Default plan updated"
+      },
+      "empty": {
+        "title": "No plans found",
+        "subtitle": "Try adjusting your search or filters.",
+        "description": "No description"
+      },
+      "editor": {
+        "head": {
+          "new": "New Plan"
+        },
+        "header": {
+          "create_title": "Create New Plan",
+          "edit_title": "Edit {name}"
+        },
+        "aria": {
+          "actions": "Plan actions",
+          "tabs": "Plan editor tabs"
+        },
+        "actions": {
+          "save": "Save Plan"
+        },
+        "tabs": {
+          "general": "General",
+          "features": "Features & Limits"
+        },
+        "fields": {
+          "name": "Plan Name",
+          "slug": "Slug (Code)",
+          "description": "Description",
+          "sort_order": "Sort Order"
+        },
+        "placeholders": {
+          "name": "e.g. Pro Plan",
+          "slug": "e.g. pro-plan"
+        },
+        "help": {
+          "slug": "Unique identifier used in code/API."
+        },
+        "toasts": {
+          "created": "Plan created successfully",
+          "updated": "Plan updated successfully"
+        },
+        "errors": {
+          "save_failed": "Failed to save plan"
+        }
+      }
+    }
+  },
+  "support": {
+    "title": "Support Tickets",
+    "subtitle": "Get help from your team or platform admins.",
+    "search_placeholder": "Search tickets...",
+    "loading": "Loading tickets...",
+    "loading_detail": "Loading ticket...",
+    "actions": {
+      "new": "New Ticket",
+      "create": "Create",
+      "creating": "Creating...",
+      "send": "Send",
+      "sending": "Sending..."
+    },
+    "fields": {
+      "subject": "Subject",
+      "subject_placeholder": "e.g. Cannot login to my account",
+      "priority": "Priority",
+      "message": "Message",
+      "message_placeholder": "Describe your issue or request...",
+      "attachments": "Attachments",
+      "reply": "Reply",
+      "reply_placeholder": "Write your reply..."
+    },
+    "filters": {
+      "aria": "Filter tickets",
+      "all": "All",
+      "open": "Open",
+      "pending": "Pending",
+      "closed": "Closed"
+    },
+    "stats": {
+      "total": "Total"
+    },
+    "empty": {
+      "title": "No tickets yet",
+      "subtitle": "Create a ticket if you need help or have a request."
+    },
+    "toasts": {
+      "created": "Ticket created",
+      "create_failed": "Create failed: {message}",
+      "replied": "Reply sent",
+      "reply_failed": "Reply failed: {message}",
+      "ticket_closed": "Ticket is closed"
+    },
+    "status": {
+      "open": "Open",
+      "pending": "Pending",
+      "closed": "Closed"
+    },
+    "priorities": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "tags": {
+      "internal": "Internal"
+    },
+    "labels": {
+      "support": "Support",
+      "customer": "Customer",
+      "staff": "Staff"
+    },
+    "detail": {
+      "updated": "Updated",
+      "not_found": "Ticket not found",
+      "thread": "Conversation",
+      "messages": "messages",
+      "closed_notice": "This ticket is closed. You can’t reply."
+    },
+    "create": {
+      "title": "Create Ticket"
+    }
+  },
+  "topbar": {
+    "search_placeholder": "Search...",
+    "notifications": "Notifications",
+    "help": "Help",
+    "notifications_menu": {
+      "mark_all_read": "Mark all read",
+      "settings": "Notification settings",
+      "empty": "No notifications yet",
+      "mark_read": "Mark as read",
+      "delete": "Delete",
+      "view_all": "View all"
+    },
+    "toggle_dark": "Switch to dark mode",
+    "toggle_light": "Switch to light mode",
+    "titles": {
+      "dashboard": "Dashboard",
+      "profile": "My Profile",
+      "notifications": "Notifications",
+      "admin_overview": "Admin Overview",
+      "user_management": "User Management",
+      "global_settings": "Global Settings",
+      "settings": "Settings",
+      "team": "Team",
+      "roles": "Roles & Permissions",
+      "storage": "Storage",
+      "subscription": "Subscription",
+      "invoices": "Invoices",
+      "superadmin_dashboard": "Super Admin",
+      "tenants": "Tenants",
+      "users": "Users",
+      "radius": "RADIUS",
+      "plans": "Plans",
+      "audit_logs": "Audit Logs",
+      "system": "System",
+      "support": "Support",
+      "message_templates": "Message Templates",
+      "default": "Workspace"
+    }
+  },
+  "utils": {
+    "download": {
+      "save_title": "Save File",
+      "downloading": "Downloading {filename}...",
+      "failed": "Download failed: {message}",
+      "failed_generic": "Download failed"
     }
   }
 }
