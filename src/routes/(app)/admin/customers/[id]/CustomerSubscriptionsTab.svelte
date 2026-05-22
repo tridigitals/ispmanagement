@@ -6,11 +6,7 @@
   let {
     t,
     loadingSubscriptions,
-    loadingLifecycleObservability,
-    lifecycleObservability,
     metricCount,
-    agingBucketCount,
-    timeAgo,
     subscriptionColumns,
     subscriptions,
     subscriptionStatusLabel,
@@ -74,63 +70,6 @@
         <span class="summary-label">WO berjalan</span>
         <strong>{metricCount('in_progress', 'work_order')}</strong>
       </div>
-    </div>
-  </div>
-
-  <div class="lifecycle-observability card">
-    <div class="observability-head">
-      <div>
-        <h4>Ringkasan lifecycle layanan</h4>
-        <p class="subtitle">Status layanan dan progres aktivasi.</p>
-      </div>
-      <span class="meta-pill">
-        <Icon name="activity" size={14} />
-        {#if loadingLifecycleObservability}
-          Memuat...
-        {:else if lifecycleObservability?.generated_at}
-          {`Diperbarui ${timeAgo(lifecycleObservability.generated_at)}`}
-        {:else}
-          Menunggu data
-        {/if}
-      </span>
-    </div>
-
-    <div class="observability-grid">
-      <div class="metric-tile">
-        <span class="metric-label">Instalasi tertunda</span>
-        <strong>{metricCount('pending_installation')}</strong>
-      </div>
-      <div class="metric-tile emphasis">
-        <span class="metric-label">Masa tenggang aktif</span>
-        <strong>{metricCount('grace_active') || metricCount('installation_done_awaiting_payment')}</strong>
-      </div>
-      <div class="metric-tile">
-        <span class="metric-label">Aktif</span>
-        <strong>{metricCount('active')}</strong>
-      </div>
-      <div class="metric-tile">
-        <span class="metric-label">Dibatalkan</span>
-        <strong>{metricCount('cancelled')}</strong>
-      </div>
-      <div class="metric-tile">
-        <span class="metric-label">WO tertunda</span>
-        <strong>{metricCount('pending', 'work_order')}</strong>
-      </div>
-      <div class="metric-tile">
-        <span class="metric-label">WO berjalan</span>
-        <strong>{metricCount('in_progress', 'work_order')}</strong>
-      </div>
-      <div class="metric-tile">
-        <span class="metric-label">WO selesai</span>
-        <strong>{metricCount('completed', 'work_order')}</strong>
-      </div>
-    </div>
-
-    <div class="aging-row">
-      <span class="aging-pill">0-1d: {agingBucketCount('0-1d')}</span>
-      <span class="aging-pill">2-3d: {agingBucketCount('2-3d')}</span>
-      <span class="aging-pill">4-7d: {agingBucketCount('4-7d')}</span>
-      <span class="aging-pill">>7d: {agingBucketCount('>7d')}</span>
     </div>
   </div>
 
@@ -251,14 +190,12 @@
   }
 
   .section-head,
-  .observability-head,
   .header-actions {
     display: flex;
     gap: 1rem;
   }
 
-  .section-head,
-  .observability-head {
+  .section-head {
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 1rem;
@@ -270,8 +207,6 @@
   }
 
   .subtitle,
-  .metric-label,
-  .aging-pill,
   .policy-label {
     color: var(--text-secondary);
   }
@@ -311,62 +246,6 @@
 
   .summary-card strong {
     font-size: 1rem;
-  }
-
-  .meta-pill,
-  .aging-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    border-radius: 999px;
-    padding: 0.28rem 0.62rem;
-    font-size: 0.8rem;
-    font-weight: 700;
-    background: color-mix(in srgb, var(--bg-surface), transparent 12%);
-  }
-
-  .lifecycle-observability {
-    margin-bottom: 1rem;
-    padding: 1rem;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    background: color-mix(in srgb, var(--bg-surface), transparent 3%);
-  }
-
-  .observability-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 0.75rem;
-  }
-
-  .metric-tile {
-    border-radius: 12px;
-    padding: 0.85rem 0.9rem;
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface), transparent 2%);
-  }
-
-  .metric-tile.emphasis {
-    border-color: rgba(245, 158, 11, 0.35);
-    background: rgba(245, 158, 11, 0.08);
-  }
-
-  .metric-label {
-    display: block;
-    font-size: 0.78rem;
-    margin-bottom: 0.35rem;
-  }
-
-  .metric-tile strong {
-    font-size: 1.4rem;
-    line-height: 1;
-  }
-
-  .aging-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.9rem;
   }
 
   .name {
@@ -546,8 +425,7 @@
   }
 
   @media (max-width: 900px) {
-    .section-head,
-    .observability-head {
+    .section-head {
       flex-direction: column;
       align-items: stretch;
     }
@@ -562,18 +440,13 @@
     }
 
     .summary-strip,
-    .observability-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     .row-actions {
       justify-content: flex-start;
     }
   }
 
   @media (max-width: 640px) {
-    .summary-strip,
-    .observability-grid {
+    .summary-strip {
       grid-template-columns: 1fr;
     }
   }

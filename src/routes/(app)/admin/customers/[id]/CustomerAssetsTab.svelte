@@ -22,17 +22,17 @@
   }
 </script>
 
-<section class="asset-panel">
+<section class="card section asset-panel">
   <div class="asset-panel__head">
     <div>
       <h3>{$t('admin.customers.tabs.assets') || 'FTTH Assets'}</h3>
-      <p class="muted">
+      <p class="muted subtitle">
         {$t('admin.customers.assets.subtitle') || 'Perangkat FTTH yang terhubung ke pelanggan ini.'}
       </p>
     </div>
 
-    <button class="btn ghost" type="button" onclick={openAssetsPage}>
-      <Icon name="box" size={16} />
+    <button class="btn btn-secondary" type="button" onclick={openAssetsPage}>
+      <Icon name="package" size={16} />
       {$t('admin.customers.assets.open_registry') || 'Open registry'}
     </button>
   </div>
@@ -91,6 +91,11 @@
 </section>
 
 <style>
+  .section {
+    padding: 1.1rem;
+    background: var(--bg-surface);
+  }
+
   .asset-panel {
     display: grid;
     gap: 1rem;
@@ -107,8 +112,28 @@
     color: var(--text-secondary);
   }
 
+  .subtitle {
+    margin-top: 0.25rem;
+  }
+
   .mono {
     font-family: var(--font-mono, monospace);
+  }
+
+  .btn {
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border-radius: 12px;
+    min-height: 42px;
+    padding: 0.55rem 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: 650;
+    font-size: 0.9rem;
   }
 
   .empty {
@@ -152,5 +177,16 @@
     background: var(--bg-soft);
     border: 1px solid var(--border-subtle);
     font-size: 0.82rem;
+  }
+
+  @media (max-width: 900px) {
+    .asset-panel__head {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .asset-panel__head .btn {
+      width: 100%;
+    }
   }
 </style>

@@ -365,7 +365,7 @@
           },
           {
             label: $t('sidebar.ftth_assets') || 'FTTH Assets',
-            icon: 'box',
+            icon: 'package',
             href: `${tenantPrefix}/admin/network/assets`,
             show: $can('read', 'ftth_assets') || $can('manage', 'ftth_assets'),
           },

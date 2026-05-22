@@ -64,6 +64,11 @@
     loadCustomerSubscriptionsTab,
     loadCustomerTimelineTab,
   } from './customerDetailTabModules';
+  import {
+    buildCustomerBillingStats,
+    filterCustomerBillingRows,
+    type CustomerBillingFilter,
+  } from './customerBillingState';
 
   const customerId = $derived(String($page.params.id || ''));
   type DeferredComponent = Component<any>;
@@ -122,10 +127,7 @@
   let subNotes = $state('');
   let billingInvoices = $state<Invoice[]>([]);
   let loadingBilling = $state(false);
-  let billingStatus = $state<'all' | 'pending' | 'verification_pending' | 'paid' | 'failed'>('all');
-  let billingDateFrom = $state('');
-  let billingDateTo = $state('');
-  let billingQuickRange = $state<'' | 'today' | '7d' | '30d' | 'month'>('');
+  let billingFilter = $state<CustomerBillingFilter>('all');
   let generatingInvoiceFor = $state<string | null>(null);
 
   // PPPoE
@@ -448,46 +450,21 @@
   const timelineRows = $derived.by(() =>
     timelineHelperModule ? timelineHelperModule.buildCustomerTimelineRows(timelineFilteredLogs) : [],
   );
-  const billingRows = $derived.by(() => {
-    const rows = billingInvoices.filter((inv) => {
-      const sid = getSubscriptionIdFromInvoice(inv);
-      if (!sid || !subscriptionById.has(sid)) return false;
-      if (billingStatus !== 'all' && inv.status !== billingStatus) return false;
-      const refDate = new Date(inv.created_at || inv.due_date);
-      if (Number.isNaN(refDate.getTime())) return false;
-      if (billingDateFrom) {
-        const from = new Date(`${billingDateFrom}T00:00:00`);
-        if (refDate < from) return false;
-      }
-      if (billingDateTo) {
-        const to = new Date(`${billingDateTo}T23:59:59.999`);
-        if (refDate > to) return false;
-      }
-      return true;
-    });
-
-    return rows.sort(
-      (a, b) =>
-        new Date(b.created_at || b.due_date).getTime() -
-        new Date(a.created_at || a.due_date).getTime(),
-    );
-  });
-  const billingStats = $derived.by(() => {
-    const now = Date.now();
-    const overdue = billingRows.filter(
-      (inv) => inv.status !== 'paid' && new Date(inv.due_date).getTime() < now,
-    ).length;
-    const unpaid = billingRows.filter((inv) =>
-      ['pending', 'verification_pending'].includes(inv.status),
-    ).length;
-    const paid = billingRows.filter((inv) => inv.status === 'paid').length;
-    return {
-      total: billingRows.length,
-      unpaid,
-      paid,
-      overdue,
-    };
-  });
+  const billingRows = $derived.by(() =>
+    filterCustomerBillingRows({
+      invoices: billingInvoices,
+      subscriptionById,
+      getSubscriptionIdFromInvoice,
+      filter: billingFilter,
+    }),
+  );
+  const billingStats = $derived.by(() =>
+    buildCustomerBillingStats({
+      invoices: billingInvoices,
+      subscriptionById,
+      getSubscriptionIdFromInvoice,
+    }),
+  );
 
   onMount(() => {
     const mq = window.matchMedia('(max-width: 900px)');
@@ -1153,6 +1130,10 @@
     }
   }
 
+  function onSelectBillingFilter(filter: CustomerBillingFilter) {
+    billingFilter = billingFilter === filter ? 'all' : filter;
+  }
+
   async function generateInvoiceForSubscription(subscriptionId: string) {
     if (!subscriptionId || generatingInvoiceFor) return;
     generatingInvoiceFor = subscriptionId;
@@ -1182,33 +1163,6 @@
   function openCreateOrderForCustomer() {
     if (!customer) return;
     void goto(`${customersPath}/orders/new?customer_id=${encodeURIComponent(customer.id)}`);
-  }
-
-  function clearBillingFilters() {
-    billingStatus = 'all';
-    billingDateFrom = '';
-    billingDateTo = '';
-    billingQuickRange = '';
-  }
-
-  function formatDateInputValue(d: Date): string {
-    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
-    return local.toISOString().slice(0, 10);
-  }
-
-  function applyBillingQuickRange(range: 'today' | '7d' | '30d' | 'month') {
-    const end = new Date();
-    const start = new Date(end);
-    if (range === '7d') start.setDate(start.getDate() - 6);
-    if (range === '30d') start.setDate(start.getDate() - 29);
-    if (range === 'month') start.setDate(1);
-    billingDateFrom = formatDateInputValue(start);
-    billingDateTo = formatDateInputValue(end);
-    billingQuickRange = range;
-  }
-
-  function onBillingDateChange() {
-    billingQuickRange = '';
   }
 
   async function loadTimeline(options: { force?: boolean } = {}) {
@@ -2003,11 +1957,7 @@
         <SubscriptionsTabComponent
           t={t}
           loadingSubscriptions={loadingSubscriptions}
-          loadingLifecycleObservability={loadingLifecycleObservability}
-          lifecycleObservability={lifecycleObservability}
           metricCount={metricCount}
-          agingBucketCount={agingBucketCount}
-          timeAgo={timeAgo}
           subscriptionColumns={subscriptionColumns}
           subscriptions={subscriptions}
           subscriptionStatusLabel={subscriptionStatusLabel}
@@ -2035,14 +1985,8 @@
       {#if BillingTabComponent}
         <BillingTabComponent
           t={t}
-          bind:billingStatus
-          bind:billingDateFrom
-          bind:billingDateTo
-          bind:billingQuickRange
-          onApplyQuickRange={applyBillingQuickRange}
-          onBillingDateChange={onBillingDateChange}
-          onClearFilters={clearBillingFilters}
-          onRefresh={() => loadBillingInvoices({ force: true })}
+          bind:billingFilter
+          {onSelectBillingFilter}
           loadingBilling={loadingBilling}
           billingStats={billingStats}
           billingColumns={billingColumns}

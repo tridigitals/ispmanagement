@@ -1,18 +1,13 @@
 <script lang="ts">
-  import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import Icon from '$lib/components/ui/Icon.svelte';
   import type { Invoice } from '$lib/api/client';
+  import type { CustomerBillingFilter } from './customerBillingState';
 
   let {
     t,
-    billingStatus = $bindable(),
-    billingDateFrom = $bindable(),
-    billingDateTo = $bindable(),
-    billingQuickRange = $bindable(),
-    onApplyQuickRange,
-    onBillingDateChange,
-    onClearFilters,
-    onRefresh,
+    billingFilter = $bindable<CustomerBillingFilter>(),
+    onSelectBillingFilter,
     loadingBilling,
     billingStats,
     billingColumns,
@@ -31,71 +26,53 @@
       <h3>{$t('admin.customers.billing.title') || 'Billing'}</h3>
       <p class="subtitle">Invoice pelanggan.</p>
     </div>
-    <div class="billing-toolbar">
-      <div class="billing-toolbar-grid">
-        <label class="inline-filter">
-          <span>{$t('admin.customers.billing.filters.status') || 'Status'}</span>
-          <select class="input" bind:value={billingStatus}>
-            <option value="all">{$t('admin.customers.billing.filters.all') || 'All'}</option>
-            <option value="pending">{$t('admin.package_invoices.statuses.pending') || 'Pending'}</option>
-            <option value="verification_pending">{$t('admin.package_invoices.statuses.verification_pending') || 'Verification pending'}</option>
-            <option value="paid">{$t('admin.package_invoices.statuses.paid') || 'Paid'}</option>
-            <option value="failed">{$t('admin.package_invoices.statuses.failed') || 'Failed'}</option>
-          </select>
-        </label>
-        <div class="quick-ranges">
-          <button class="btn btn-secondary btn-quick" class:active={billingQuickRange === 'today'} onclick={() => onApplyQuickRange('today')}>
-            {$t('admin.customers.billing.filters.today') || 'Today'}
-          </button>
-          <button class="btn btn-secondary btn-quick" class:active={billingQuickRange === '7d'} onclick={() => onApplyQuickRange('7d')}>
-            {$t('admin.customers.billing.filters.last_7d') || '7D'}
-          </button>
-          <button class="btn btn-secondary btn-quick" class:active={billingQuickRange === '30d'} onclick={() => onApplyQuickRange('30d')}>
-            {$t('admin.customers.billing.filters.last_30d') || '30D'}
-          </button>
-          <button class="btn btn-secondary btn-quick" class:active={billingQuickRange === 'month'} onclick={() => onApplyQuickRange('month')}>
-            {$t('admin.customers.billing.filters.this_month') || 'This Month'}
-          </button>
-        </div>
-        <label class="inline-filter">
-          <span>{$t('admin.customers.billing.filters.from') || 'From'}</span>
-          <input class="input" type="date" bind:value={billingDateFrom} oninput={onBillingDateChange} />
-        </label>
-        <label class="inline-filter">
-          <span>{$t('admin.customers.billing.filters.to') || 'To'}</span>
-          <input class="input" type="date" bind:value={billingDateTo} oninput={onBillingDateChange} />
-        </label>
-      </div>
-      <div class="billing-toolbar-actions">
-        <button class="btn btn-secondary" onclick={onClearFilters} disabled={billingStatus === 'all' && !billingDateFrom && !billingDateTo}>
-          <Icon name="eraser" size={16} />
-          {$t('admin.customers.billing.filters.clear') || 'Clear'}
-        </button>
-        <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingBilling}>
-          <Icon name="refresh-cw" size={16} />
-          {$t('common.refresh') || 'Refresh'}
-        </button>
-      </div>
-    </div>
   </div>
 
   <div class="billing-stats">
-    <div class="billing-stat">
-      <div class="billing-stat-label">{$t('admin.customers.billing.stats.total') || 'Total invoices'}</div>
-      <div class="billing-stat-value">{billingStats.total}</div>
-    </div>
-    <div class="billing-stat">
-      <div class="billing-stat-label">{$t('admin.customers.billing.stats.unpaid') || 'Unpaid'}</div>
-      <div class="billing-stat-value">{billingStats.unpaid}</div>
-    </div>
-    <div class="billing-stat">
-      <div class="billing-stat-label">{$t('admin.customers.billing.stats.paid') || 'Paid'}</div>
-      <div class="billing-stat-value">{billingStats.paid}</div>
-    </div>
-    <div class="billing-stat">
-      <div class="billing-stat-label">{$t('admin.customers.billing.stats.overdue') || 'Overdue'}</div>
-      <div class="billing-stat-value">{billingStats.overdue}</div>
-    </div>
+    <button
+      type="button"
+      class={`billing-stat-button ${billingFilter === 'all' ? 'active' : ''}`}
+      onclick={() => onSelectBillingFilter('all')}
+      aria-pressed={billingFilter === 'all'}
+    >
+      <div class="billing-stat">
+        <div class="billing-stat-label">{$t('admin.customers.billing.stats.total') || 'Total invoices'}</div>
+        <div class="billing-stat-value">{billingStats.total}</div>
+      </div>
+    </button>
+    <button
+      type="button"
+      class={`billing-stat-button ${billingFilter === 'unpaid' ? 'active' : ''}`}
+      onclick={() => onSelectBillingFilter('unpaid')}
+      aria-pressed={billingFilter === 'unpaid'}
+    >
+      <div class="billing-stat">
+        <div class="billing-stat-label">{$t('admin.customers.billing.stats.unpaid') || 'Unpaid'}</div>
+        <div class="billing-stat-value">{billingStats.unpaid}</div>
+      </div>
+    </button>
+    <button
+      type="button"
+      class={`billing-stat-button ${billingFilter === 'paid' ? 'active' : ''}`}
+      onclick={() => onSelectBillingFilter('paid')}
+      aria-pressed={billingFilter === 'paid'}
+    >
+      <div class="billing-stat">
+        <div class="billing-stat-label">{$t('admin.customers.billing.stats.paid') || 'Paid'}</div>
+        <div class="billing-stat-value">{billingStats.paid}</div>
+      </div>
+    </button>
+    <button
+      type="button"
+      class={`billing-stat-button ${billingFilter === 'overdue' ? 'active' : ''}`}
+      onclick={() => onSelectBillingFilter('overdue')}
+      aria-pressed={billingFilter === 'overdue'}
+    >
+      <div class="billing-stat">
+        <div class="billing-stat-label">{$t('admin.customers.billing.stats.overdue') || 'Overdue'}</div>
+        <div class="billing-stat-value">{billingStats.overdue}</div>
+      </div>
+    </button>
   </div>
 
   <Table
@@ -140,183 +117,130 @@
     padding: 1.1rem;
     background: var(--bg-surface);
   }
+
   .section-head {
     display: flex;
-    gap: 1rem;
-  }
-  .section-head {
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 1rem;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
   }
-  .billing-toolbar {
-    display: grid;
-    gap: 0.85rem;
-    width: min(100%, 860px);
-    margin-left: auto;
-    padding: 0.9rem;
-    border: 1px solid color-mix(in srgb, var(--border-color), transparent 16%);
-    border-radius: 16px;
-    background: color-mix(in srgb, var(--bg-surface), transparent 5%);
-  }
-  .billing-toolbar-grid {
-    display: grid;
-    grid-template-columns: minmax(160px, 190px) minmax(0, 1fr) repeat(2, minmax(150px, 180px));
-    gap: 0.75rem;
-    align-items: end;
-  }
-  .billing-toolbar-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.65rem;
-    flex-wrap: wrap;
-  }
+
   .subtitle,
   .sub,
   .billing-stat-label {
     color: var(--text-secondary);
   }
+
   .subtitle {
     margin-top: 0.25rem;
   }
-  .inline-filter {
-    display: grid;
-    gap: 0.3rem;
-    min-width: 180px;
-  }
-  .inline-filter span {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    margin: 0;
-  }
-  .input {
-    width: 100%;
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    border-radius: 12px;
-    padding: 0.65rem 0.75rem;
-  }
-  .quick-ranges {
-    display: flex;
-    align-items: stretch;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-  }
-  .btn,
-  .btn-icon {
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    cursor: pointer;
-  }
-  .btn {
-    border-radius: 12px;
-    min-height: 42px;
-    padding: 0.55rem 0.9rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    font-weight: 650;
-    font-size: 0.9rem;
-  }
-  .btn-quick {
-    min-height: 40px;
-    padding-inline: 0.7rem;
-    border-radius: 10px;
-  }
-  .btn-quick.active {
-    border-color: rgba(99, 102, 241, 0.5);
-    background: rgba(99, 102, 241, 0.14);
-    color: #e0e7ff;
-  }
+
   .billing-stats {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.65rem;
     margin-bottom: 0.85rem;
   }
+
+  .billing-stat-button {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+  }
+
   .billing-stat {
     border: 1px solid color-mix(in srgb, var(--border-color), transparent 20%);
     border-radius: 12px;
     background: color-mix(in srgb, var(--bg-surface), transparent 9%);
     padding: 0.65rem 0.75rem;
+    min-height: 100%;
+    transition:
+      border-color 140ms ease,
+      transform 140ms ease,
+      background 140ms ease,
+      box-shadow 140ms ease;
   }
+
+  .billing-stat-button:hover .billing-stat,
+  .billing-stat-button:focus-visible .billing-stat {
+    border-color: color-mix(in srgb, var(--accent), var(--border-color) 42%);
+    background: color-mix(in srgb, var(--bg-surface), var(--accent) 10%);
+    transform: translateY(-1px);
+  }
+
+  .billing-stat-button.active .billing-stat {
+    border-color: color-mix(in srgb, var(--accent), white 8%);
+    background: color-mix(in srgb, var(--bg-surface), var(--accent) 14%);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent), transparent 35%);
+  }
+
   .billing-stat-label {
     font-size: 0.8rem;
     margin-bottom: 0.2rem;
   }
+
   .billing-stat-value {
     font-weight: 800;
     font-size: 1.1rem;
     letter-spacing: -0.01em;
     color: var(--text-primary);
   }
+
   .name {
     font-weight: 650;
   }
+
   .sub {
     font-size: 0.85rem;
     margin-top: 0.15rem;
   }
+
   .mono {
     font-variant-numeric: tabular-nums;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
     color: var(--text-secondary);
     font-size: 0.9rem;
   }
+
   .row-actions {
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
   }
+
   .btn-icon {
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    cursor: pointer;
     border-radius: 10px;
     width: 38px;
     height: 38px;
     padding: 0;
   }
+
   .badge.danger {
     border-color: rgba(239, 68, 68, 0.35);
     color: rgb(239, 68, 68);
     background: rgba(239, 68, 68, 0.1);
   }
+
   @media (max-width: 900px) {
     .section-head {
       flex-direction: column;
       align-items: stretch;
     }
-    .billing-toolbar {
-      width: 100%;
-      margin-left: 0;
-      padding: 0.85rem;
-    }
-    .billing-toolbar-grid {
-      grid-template-columns: 1fr;
-    }
+
     .billing-stats {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .quick-ranges {
-      width: 100%;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .btn-quick,
-    .billing-toolbar-actions .btn {
-      width: 100%;
-    }
-    .billing-toolbar-actions {
-      display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
   @media (max-width: 560px) {
-    .billing-stats,
-    .quick-ranges,
-    .billing-toolbar-actions {
+    .billing-stats {
       grid-template-columns: 1fr;
     }
   }
