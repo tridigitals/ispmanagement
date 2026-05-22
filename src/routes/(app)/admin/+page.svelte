@@ -113,6 +113,11 @@
       dashboardModel.quickActions.length > 0 ||
       dashboardModel.trendCards.length > 0,
   );
+  const heroSummary = $derived.by(() => {
+    const focus = dashboardModel.focusCards.length;
+    const actions = dashboardModel.quickActions.length;
+    return `${focus} priorities • ${actions} actions`;
+  });
 
   onMount(() => {
     void initData();
@@ -316,47 +321,63 @@
     return `${Math.max(10, Math.round((value / maxValue) * 100))}%`;
   }
 
+  function getTrendShare(value: number, total: number) {
+    if (total <= 0) return '0%';
+    return `${Math.round((value / total) * 100)}%`;
+  }
+
   function getTrendMax(items: Array<{ value: number }>) {
     return Math.max(...items.map((item) => item.value), 0);
   }
+
+  function getTrendTotal(items: Array<{ value: number }>) {
+    return items.reduce((total, item) => total + item.value, 0);
+  }
+
+  function getRingLength(radius: number) {
+    return 2 * Math.PI * radius;
+  }
+
+  function getRingOffset(value: number, total: number, radius: number) {
+    if (total <= 0) return getRingLength(radius);
+    return getRingLength(radius) * (1 - value / total);
+  }
 </script>
 
-<div class="admin-dashboard fade-in">
-  <div class="masthead">
-    <div class="masthead-copy">
+<div class="admin-dashboard dashboard-shell fade-in">
+  <section class="executive-hero">
+    <div class="hero-copy">
       <h1>{$t(audienceContent.titleKey) || audienceContent.fallbackTitle}</h1>
-      <p>{$t(audienceContent.subtitleKey) || audienceContent.fallbackSubtitle}</p>
+      <div class="hero-summary">{heroSummary}</div>
     </div>
 
-    <div class="masthead-tools">
-      <div class="context-pill">
-        <Icon name="activity" size={14} />
-        <span
-          >{$t('admin.dashboard.role_scoped') || 'Hanya modul yang dapat Anda akses'}</span
+    <div class="hero-side">
+      <div class="hero-actions">
+        {#if lastLoadedAt}
+          <div class="hero-updated">
+            <span class="hero-meta-label"
+              >{$t('admin.dashboard.last_updated') || 'Last updated'}</span
+            >
+            <strong>{formatLastLoaded(lastLoadedAt)}</strong>
+          </div>
+        {/if}
+        <button
+          class="refresh-button"
+          type="button"
+          onclick={() => void initData()}
+          disabled={refreshing}
         >
+          <Icon name="refresh-cw" size={16} />
+          <span
+            >{refreshing
+              ? $t('common.loading') || 'Loading...'
+              : $t('common.refresh') || 'Refresh'}</span
+          >
+        </button>
       </div>
 
-      <button
-        class="refresh-button"
-        type="button"
-        onclick={() => void initData()}
-        disabled={refreshing}
-      >
-        <Icon name="refresh-cw" size={16} />
-        <span
-          >{refreshing
-            ? $t('common.loading') || 'Loading...'
-            : $t('common.refresh') || 'Refresh'}</span
-        >
-      </button>
-
-      {#if lastLoadedAt}
-        <div class="last-updated">
-          {$t('admin.dashboard.last_updated') || 'Last updated'}: {formatLastLoaded(lastLoadedAt)}
-        </div>
-      {/if}
     </div>
-  </div>
+  </section>
 
   {#if loading}
     <div class="loading-panel">
@@ -376,11 +397,13 @@
     </section>
   {:else}
     {#if dashboardModel.primaryStats.length > 0}
-      <section class="section-block">
+      <section class="section-block kpi-strip">
         <div class="section-heading">
           <div>
+            <div class="section-kicker">At a glance</div>
             <h2>{$t('admin.dashboard.sections.primary.title') || 'Selected KPIs'}</h2>
           </div>
+          <div class="section-meta">{dashboardModel.primaryStats.length} cards</div>
         </div>
 
         <div class="stats-grid">
@@ -391,7 +414,7 @@
               onclick={() => goto(card.href)}
             >
               <div class="metric-topline">
-                <span class="metric-icon">
+                <span class={`metric-icon tone-${card.tone}`}>
                   <Icon name={card.icon} size={18} />
                 </span>
                 {#if card.badge}
@@ -413,11 +436,13 @@
     {/if}
 
     {#if dashboardModel.focusCards.length > 0}
-      <section class="section-block">
+      <section class="section-block focus-band">
         <div class="section-heading">
           <div>
+            <div class="section-kicker">Priority queue</div>
             <h2>{$t('admin.dashboard.sections.focus.title') || 'My Focus Today'}</h2>
           </div>
+          <div class="section-meta">{dashboardModel.focusCards.length} items</div>
         </div>
 
         <div class="focus-grid">
@@ -427,9 +452,14 @@
               type="button"
               onclick={() => goto(card.href)}
             >
+              <div class="focus-card-top">
+                <span class={`focus-tone tone-${card.tone}`}>
+                  <Icon name={card.icon} size={16} />
+                </span>
+                <span class="focus-value">{formatMetricValue(card.value)}</span>
+              </div>
               <div class="focus-title-row">
                 <span class="focus-title">{$t(card.titleKey) || card.fallbackTitle}</span>
-                <span class="focus-value">{formatMetricValue(card.value)}</span>
               </div>
               <p>{$t(card.descriptionKey) || card.fallbackDescription}</p>
               <div class="focus-link">
@@ -442,16 +472,18 @@
       </section>
     {/if}
 
-    <div class="split-layout">
+    <div class="split-layout decision-grid">
       {#if dashboardModel.quickActions.length > 0}
         <section class="section-block section-actions">
           <div class="section-heading">
             <div>
+              <div class="section-kicker">Fast lanes</div>
               <h2>{$t('admin.dashboard.sections.actions.title') || 'Quick Actions'}</h2>
             </div>
+            <div class="section-meta">{dashboardModel.quickActions.length} shortcuts</div>
           </div>
 
-          <div class="action-list">
+          <div class="action-list action-rail">
             {#each dashboardModel.quickActions as action (action.id)}
               <button class="action-row" type="button" onclick={() => goto(action.href)}>
                 <span class={`action-icon tone-${action.tone}`}>
@@ -472,20 +504,57 @@
         <section class="section-block section-trends">
           <div class="section-heading">
             <div>
+              <div class="section-kicker">Signal mix</div>
               <h2>{$t('admin.dashboard.sections.trends.title') || 'Compact trends'}</h2>
             </div>
+            <div class="section-meta">{dashboardModel.trendCards.length} groups</div>
           </div>
 
           <div class="trend-list">
             {#each dashboardModel.trendCards as trend (trend.id)}
               <button class="trend-card" type="button" onclick={() => goto(trend.href)}>
-                <div class="trend-title">{$t(trend.titleKey) || trend.fallbackTitle}</div>
+                <div class="trend-card-top">
+                  <div class="trend-title-group">
+                    <div class="trend-title">{$t(trend.titleKey) || trend.fallbackTitle}</div>
+                    <div class="trend-caption">{getTrendTotal(trend.items)} tracked items</div>
+                  </div>
+                  {#if trend.items[0]}
+                    <div class="trend-visual">
+                      <div class="trend-ring">
+                        <svg viewBox="0 0 72 72" aria-hidden="true">
+                          <circle class="trend-ring-base" cx="36" cy="36" r="26"></circle>
+                          <circle
+                            class={`trend-ring-value tone-${trend.items[0].tone}`}
+                            cx="36"
+                            cy="36"
+                            r="26"
+                            stroke-dasharray={getRingLength(26)}
+                            stroke-dashoffset={getRingOffset(
+                              trend.items[0].value,
+                              getTrendTotal(trend.items),
+                              26,
+                            )}
+                          ></circle>
+                        </svg>
+                        <div class="trend-ring-label">
+                          <strong>{trend.items[0].value}</strong>
+                          <span>{$t(trend.items[0].labelKey) || trend.items[0].fallbackLabel}</span>
+                        </div>
+                      </div>
+                    </div>
+                  {/if}
+                </div>
                 <div class="trend-items">
                   {#each trend.items as item (item.id)}
                     <div class="trend-row">
                       <div class="trend-row-top">
                         <span>{$t(item.labelKey) || item.fallbackLabel}</span>
-                        <strong>{item.value}</strong>
+                        <div class="trend-row-values">
+                          <span class="trend-share">
+                            {getTrendShare(item.value, getTrendTotal(trend.items))}
+                          </span>
+                          <strong>{item.value}</strong>
+                        </div>
                       </div>
                       <div class="trend-track">
                         <div
@@ -519,59 +588,80 @@
     --rose-soft: rgba(244, 63, 94, 0.14);
     --slate: #94a3b8;
     --slate-soft: rgba(148, 163, 184, 0.12);
-    padding: clamp(1rem, 2.2vw, 2rem);
-    max-width: 1440px;
+    padding: clamp(1rem, 2.4vw, 2.1rem);
+    max-width: 1480px;
     margin: 0 auto;
   }
 
-  .masthead {
-    display: flex;
-    justify-content: space-between;
-    gap: 1.1rem;
-    align-items: flex-start;
-    margin-bottom: 1.1rem;
-    padding: 1rem 1.05rem;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    background: var(--bg-secondary);
-  }
-
-  .masthead-copy {
-    max-width: 720px;
-  }
-
-  .masthead h1 {
-    margin: 0 0 0.45rem;
-    font-size: clamp(1.55rem, 2.1vw, 2rem);
-    line-height: 1.12;
-  }
-
-  .masthead p {
-    margin: 0;
-    max-width: 62ch;
-    color: var(--text-secondary);
-    font-size: 0.94rem;
-    line-height: 1.55;
-  }
-
-  .masthead-tools {
-    min-width: 280px;
+  .dashboard-shell {
     display: grid;
-    gap: 0.6rem;
-    justify-items: end;
+    gap: 1.15rem;
   }
 
-  .context-pill,
-  .last-updated {
-    display: inline-flex;
-    align-items: center;
+  .executive-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+    gap: 0.8rem;
+    align-items: end;
+    padding: 0.15rem 0 0.35rem;
+  }
+
+  .hero-copy {
+    display: grid;
+    align-content: start;
+    gap: 0.38rem;
+  }
+
+  .hero-copy h1 {
+    margin: 0;
+    max-width: 14ch;
+    font-size: clamp(1.45rem, 1.7vw, 1.9rem);
+    line-height: 1.04;
+    letter-spacing: -0.025em;
+  }
+
+  .hero-summary {
+    color: color-mix(in srgb, var(--text-secondary) 88%, white 12%);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .hero-side {
+    display: grid;
     gap: 0.55rem;
-    padding: 0.55rem 0.8rem;
+    align-content: start;
+  }
+
+  .hero-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+  }
+
+  .hero-updated {
+    display: grid;
+    gap: 0.14rem;
+    min-width: 180px;
+    padding: 0.52rem 0.7rem;
+    border: 1px solid color-mix(in srgb, var(--border-color) 84%, transparent);
     border-radius: 10px;
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface), transparent 3%);
+    background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+  }
+
+  .hero-meta-label {
     color: var(--text-secondary);
-    font-size: 0.82rem;
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .hero-updated strong {
+    color: var(--text-primary);
+    font-size: 0.78rem;
+    line-height: 1.25;
   }
 
   .refresh-button {
@@ -579,12 +669,13 @@
     align-items: center;
     gap: 0.65rem;
     border: 1px solid color-mix(in srgb, var(--color-primary) 24%, var(--border-color));
-    background: color-mix(in srgb, var(--color-primary) 13%, var(--bg-secondary));
+    background: color-mix(in srgb, var(--color-primary) 10%, var(--bg-secondary));
     color: var(--text-primary);
-    padding: 0.65rem 0.9rem;
+    padding: 0.56rem 0.78rem;
     border-radius: 10px;
     cursor: pointer;
     font-weight: 600;
+    font-size: 0.8rem;
   }
 
   .refresh-button:disabled {
@@ -595,9 +686,9 @@
   .loading-panel,
   .empty-panel,
   .section-block {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
+    background: color-mix(in srgb, var(--bg-secondary) 96%, #09111d 4%);
+    border: 1px solid color-mix(in srgb, var(--border-color) 84%, transparent);
+    border-radius: 15px;
   }
 
   .loading-panel,
@@ -641,8 +732,8 @@
   }
 
   .section-block {
-    padding: 1rem;
-    margin-bottom: 1rem;
+    padding: 1.05rem;
+    margin-bottom: 0;
   }
 
   .section-heading {
@@ -650,13 +741,42 @@
     justify-content: space-between;
     gap: 1rem;
     align-items: flex-end;
-    margin-bottom: 1rem;
+    margin-bottom: 0.95rem;
+  }
+
+  .section-heading h2 {
+    font-size: 1.38rem;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  .section-meta {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 0.7rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 84%, transparent);
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: color-mix(in srgb, var(--bg-surface) 78%, transparent);
+  }
+
+  .section-kicker {
+    margin-bottom: 0.34rem;
+    color: #93c5fd;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-    gap: 0.8rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.9rem;
   }
 
   .metric-card,
@@ -664,16 +784,17 @@
   .action-row,
   .trend-card {
     width: 100%;
-    border: 1px solid rgba(148, 163, 184, 0.12);
-    background: color-mix(in srgb, var(--bg-tertiary) 82%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border-color) 84%, transparent);
+    background: color-mix(in srgb, var(--bg-tertiary) 88%, transparent);
     color: var(--text-primary);
-    border-radius: var(--radius-md);
+    border-radius: 14px;
     cursor: pointer;
     text-align: left;
     transition:
       transform 0.18s ease,
       border-color 0.18s ease,
-      background 0.18s ease;
+      background 0.18s ease,
+      box-shadow 0.18s ease;
   }
 
   .metric-card:hover,
@@ -682,10 +803,14 @@
   .trend-card:hover {
     transform: translateY(-1px);
     border-color: color-mix(in srgb, var(--color-primary) 34%, var(--border-color));
+    box-shadow: 0 14px 26px rgba(2, 6, 23, 0.16);
   }
 
   .metric-card {
-    padding: 0.95rem;
+    padding: 1rem;
+    min-height: 168px;
+    display: grid;
+    align-content: space-between;
   }
 
   .metric-topline {
@@ -696,34 +821,38 @@
   }
 
   .metric-icon,
-  .action-icon {
+  .action-icon,
+  .focus-tone {
     width: 2rem;
     height: 2rem;
-    border-radius: 7px;
+    border-radius: 8px;
     display: grid;
     place-items: center;
   }
 
   .metric-title {
     color: var(--text-secondary);
-    font-size: 0.86rem;
-    margin-bottom: 0.3rem;
+    font-size: 0.8rem;
+    margin-bottom: 0.45rem;
+    line-height: 1.35;
   }
 
   .metric-value {
-    font-size: clamp(1.35rem, 1.8vw, 1.95rem);
-    font-weight: 700;
-    line-height: 1.1;
+    font-size: clamp(1.8rem, 2vw, 2.3rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.03em;
     word-break: break-word;
   }
 
   .metric-meta {
-    margin-top: 0.6rem;
+    margin-top: 0.8rem;
     display: flex;
     gap: 0.45rem;
     align-items: baseline;
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: 0.84rem;
+    flex-wrap: wrap;
   }
 
   .metric-meta strong {
@@ -735,47 +864,61 @@
     align-items: center;
     padding: 0.25rem 0.6rem;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
-    font-size: 0.74rem;
+    background: rgba(255, 255, 255, 0.06);
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: capitalize;
   }
 
   .focus-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1rem;
   }
 
   .focus-card {
-    padding: 1.15rem;
-    min-height: 180px;
+    padding: 1.15rem 1.1rem;
+    min-height: 196px;
     display: grid;
     align-content: space-between;
-    gap: 0.9rem;
+    gap: 0.82rem;
+  }
+
+  .focus-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.8rem;
   }
 
   .focus-title-row {
     display: flex;
     justify-content: space-between;
-    gap: 0.75rem;
+    gap: 0.4rem;
     align-items: flex-start;
   }
 
   .focus-title {
-    font-size: 1rem;
-    font-weight: 700;
+    font-size: 1.03rem;
+    font-weight: 750;
+    line-height: 1.25;
   }
 
   .focus-value {
-    font-size: 1.35rem;
+    font-size: 1.6rem;
     font-weight: 800;
+    letter-spacing: -0.03em;
   }
 
   .focus-card p {
     margin: 0;
     color: var(--text-secondary);
     line-height: 1.6;
+    display: -webkit-box;
+    line-clamp: 3;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .focus-link {
@@ -784,11 +927,12 @@
     gap: 0.45rem;
     color: var(--text-primary);
     font-weight: 600;
+    font-size: 0.88rem;
   }
 
   .split-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
     gap: 1.25rem;
   }
 
@@ -798,36 +942,152 @@
     gap: 0.85rem;
   }
 
+  .action-rail {
+    gap: 0.7rem;
+  }
+
   .action-row {
-    padding: 0.95rem 1rem;
+    padding: 1rem 1rem;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: 0.85rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .action-row::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: rgba(148, 163, 184, 0.32);
+  }
+
+  .action-row.tone-emerald::before {
+    background: rgba(16, 185, 129, 0.9);
+  }
+
+  .action-row.tone-amber::before {
+    background: rgba(245, 158, 11, 0.9);
+  }
+
+  .action-row.tone-cyan::before {
+    background: rgba(56, 189, 248, 0.9);
+  }
+
+  .action-row.tone-indigo::before {
+    background: color-mix(in srgb, var(--color-primary) 88%, white 12%);
+  }
+
+  .action-row.tone-rose::before {
+    background: rgba(244, 63, 94, 0.9);
+  }
+
+  .action-row.tone-slate::before {
+    background: rgba(148, 163, 184, 0.76);
   }
 
   .action-copy {
     display: grid;
-    gap: 0.22rem;
+    gap: 0.28rem;
+  }
+
+  .action-copy strong {
+    font-size: 0.92rem;
+    line-height: 1.3;
   }
 
   .action-copy small {
     color: var(--text-secondary);
-    line-height: 1.55;
+    line-height: 1.5;
+    font-size: 0.8rem;
   }
 
   .trend-card {
-    padding: 1rem;
+    padding: 1rem 1rem 0.95rem;
+  }
+
+  .trend-card-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+
+  .trend-title-group {
+    display: grid;
+    gap: 0.3rem;
   }
 
   .trend-title {
-    font-weight: 700;
-    margin-bottom: 0.9rem;
+    font-weight: 750;
+    font-size: 0.98rem;
+  }
+
+  .trend-caption {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+  }
+
+  .trend-visual {
+    flex: 0 0 auto;
+  }
+
+  .trend-ring {
+    position: relative;
+    width: 72px;
+    height: 72px;
+  }
+
+  .trend-ring svg {
+    width: 72px;
+    height: 72px;
+    transform: rotate(-90deg);
+  }
+
+  .trend-ring-base,
+  .trend-ring-value {
+    fill: none;
+    stroke-width: 7;
+  }
+
+  .trend-ring-base {
+    stroke: rgba(148, 163, 184, 0.18);
+  }
+
+  .trend-ring-value {
+    stroke-linecap: round;
+  }
+
+  .trend-ring-label {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    padding: 0.55rem;
+  }
+
+  .trend-ring-label strong {
+    display: block;
+    font-size: 1rem;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+
+  .trend-ring-label span {
+    display: block;
+    margin-top: 0.16rem;
+    color: var(--text-secondary);
+    font-size: 0.58rem;
+    line-height: 1.2;
   }
 
   .trend-items {
     display: grid;
-    gap: 0.8rem;
+    gap: 0.75rem;
   }
 
   .trend-row {
@@ -841,14 +1101,33 @@
     gap: 0.8rem;
     color: var(--text-secondary);
     font-size: 0.9rem;
+    align-items: center;
+  }
+
+  .trend-row-values {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
   }
 
   .trend-row-top strong {
     color: var(--text-primary);
   }
 
+  .trend-share {
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    padding: 0 0.45rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 84%, transparent);
+    color: var(--text-secondary);
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+
   .trend-track {
-    height: 0.45rem;
+    height: 0.42rem;
     border-radius: 999px;
     background: rgba(148, 163, 184, 0.12);
     overflow: hidden;
@@ -889,27 +1168,93 @@
     color: var(--slate);
   }
 
+  .trend-ring-value.tone-emerald {
+    stroke: var(--emerald);
+    background: transparent;
+  }
+
+  .trend-ring-value.tone-amber {
+    stroke: var(--amber);
+    background: transparent;
+  }
+
+  .trend-ring-value.tone-cyan {
+    stroke: var(--cyan);
+    background: transparent;
+  }
+
+  .trend-ring-value.tone-indigo {
+    stroke: var(--indigo);
+    background: transparent;
+  }
+
+  .trend-ring-value.tone-rose {
+    stroke: var(--rose);
+    background: transparent;
+  }
+
+  .trend-ring-value.tone-slate {
+    stroke: var(--slate);
+    background: transparent;
+  }
+
   @media (max-width: 960px) {
     .admin-dashboard {
       padding: 1rem;
     }
 
-    .masthead,
+    .executive-hero,
     .split-layout {
       grid-template-columns: 1fr;
       display: grid;
     }
 
-    .masthead-tools {
-      min-width: 0;
-      justify-items: stretch;
+    .hero-actions {
+      justify-content: stretch;
     }
 
-    .refresh-button,
-    .context-pill,
-    .last-updated {
+    .hero-updated,
+    .refresh-button {
       width: 100%;
-      justify-content: center;
+    }
+
+    .stats-grid,
+    .focus-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .trend-card-top {
+      align-items: center;
+    }
+
+    .section-meta {
+      display: none;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .hero-copy h1 {
+      max-width: none;
+      font-size: 1.45rem;
+    }
+
+    .stats-grid,
+    .focus-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .section-block {
+      padding: 0.95rem;
+    }
+
+    .executive-hero {
+      padding: 0 0 0.2rem;
+    }
+
+    .trend-card-top {
+      grid-template-columns: 1fr;
+      display: grid;
+      justify-items: start;
     }
   }
 
