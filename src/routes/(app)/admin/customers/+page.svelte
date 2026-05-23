@@ -1180,80 +1180,89 @@
 <Modal
   show={showInviteModal}
   title="Customer Invite Link"
+  width="760px"
   onclose={() => (showInviteModal = false)}
 >
-  <div class="form">
-    <section class="invite-section">
-      <div class="invite-section-head">
-        <strong>Default policy (tenant)</strong>
-        {#if invitePolicyLoading}
-          <span class="muted">{$t('common.loading') || 'Loading...'}</span>
-        {/if}
-      </div>
-      <div class="grid2">
-        <label>
-          <span>Default expiry (hours)</span>
-          <input
-            class="input"
-            type="number"
-            min="1"
-            max="720"
-            bind:value={invitePolicyExpiresInHours}
-          />
-        </label>
-        <label>
-          <span>Default max uses</span>
-          <input class="input" type="number" min="1" max="100" bind:value={invitePolicyMaxUses} />
-        </label>
-      </div>
-      <div class="actions actions-inline">
-        <button class="btn btn-secondary" onclick={saveInvitePolicy} disabled={invitePolicySaving}>
-          <Icon name="save" size={14} />
-          {invitePolicySaving ? 'Saving...' : 'Save defaults'}
-        </button>
-      </div>
-    </section>
-
-    <section class="invite-section">
-      <div class="invite-section-head">
-        <strong>Invite summary</strong>
-      </div>
-      {#if inviteSummaryLoading}
-        <div class="muted">{$t('common.loading') || 'Loading...'}</div>
-      {:else if inviteSummary}
-        <div class="invite-summary-grid">
-          <div class="invite-summary-item">
-            <small>Total</small>
-            <strong>{inviteSummary.total}</strong>
-          </div>
-          <div class="invite-summary-item">
-            <small>Active</small>
-            <strong>{inviteSummary.active}</strong>
-          </div>
-          <div class="invite-summary-item">
-            <small>Used up</small>
-            <strong>{inviteSummary.used_up}</strong>
-          </div>
-          <div class="invite-summary-item">
-            <small>Expired</small>
-            <strong>{inviteSummary.expired}</strong>
-          </div>
-          <div class="invite-summary-item">
-            <small>Revoked</small>
-            <strong>{inviteSummary.revoked}</strong>
-          </div>
-          <div class="invite-summary-item">
-            <small>Utilization</small>
-            <strong>{inviteSummary.utilization_percent.toFixed(1)}%</strong>
-          </div>
+  <div class="form invite-modal-shell">
+    <section class="invite-section invite-generate-card">
+      <div class="invite-section-head invite-section-heading-block">
+        <div>
+          <strong>Generate invite</strong>
+          <p class="invite-section-copy">
+            Buat link pendaftaran customer yang bisa langsung dibagikan ke tim sales atau calon pelanggan.
+          </p>
         </div>
-      {/if}
-    </section>
-
-    <section class="invite-section">
-      <div class="invite-section-head">
-        <strong>Generate invite</strong>
       </div>
+
+      <div class="invite-overview-grid">
+        <section class="invite-section invite-section-subtle">
+          <div class="invite-section-head">
+            <strong>Default policy</strong>
+            {#if invitePolicyLoading}
+              <span class="muted">{$t('common.loading') || 'Loading...'}</span>
+            {/if}
+          </div>
+          <div class="grid2">
+            <label>
+              <span>Default expiry (hours)</span>
+              <input
+                class="input"
+                type="number"
+                min="1"
+                max="720"
+                bind:value={invitePolicyExpiresInHours}
+              />
+            </label>
+            <label>
+              <span>Default max uses</span>
+              <input class="input" type="number" min="1" max="100" bind:value={invitePolicyMaxUses} />
+            </label>
+          </div>
+          <div class="actions actions-inline">
+            <button class="btn btn-secondary" onclick={saveInvitePolicy} disabled={invitePolicySaving}>
+              <Icon name="save" size={14} />
+              {invitePolicySaving ? 'Saving...' : 'Save defaults'}
+            </button>
+          </div>
+        </section>
+
+        <section class="invite-section invite-section-subtle">
+          <div class="invite-section-head">
+            <strong>Invite summary</strong>
+          </div>
+          {#if inviteSummaryLoading}
+            <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+          {:else if inviteSummary}
+            <div class="invite-summary-grid">
+              <div class="invite-summary-item">
+                <small>Total</small>
+                <strong>{inviteSummary.total}</strong>
+              </div>
+              <div class="invite-summary-item">
+                <small>Active</small>
+                <strong>{inviteSummary.active}</strong>
+              </div>
+              <div class="invite-summary-item">
+                <small>Used up</small>
+                <strong>{inviteSummary.used_up}</strong>
+              </div>
+              <div class="invite-summary-item">
+                <small>Expired</small>
+                <strong>{inviteSummary.expired}</strong>
+              </div>
+              <div class="invite-summary-item">
+                <small>Revoked</small>
+                <strong>{inviteSummary.revoked}</strong>
+              </div>
+              <div class="invite-summary-item">
+                <small>Utilization</small>
+                <strong>{inviteSummary.utilization_percent.toFixed(1)}%</strong>
+              </div>
+            </div>
+          {/if}
+        </section>
+      </div>
+
       <div class="grid2">
         <label>
           <span>Expire (hours)</span>
@@ -1266,7 +1275,7 @@
       </div>
       <label>
         <span>Note (optional)</span>
-        <input class="input" bind:value={inviteNote} placeholder="Campaign/remark" />
+        <input class="input" bind:value={inviteNote} placeholder="Campaign, PIC, atau remark internal" />
       </label>
 
       <div class="actions actions-inline">
@@ -1275,78 +1284,103 @@
           {inviteGenerating ? 'Generating...' : 'Generate Invite Link'}
         </button>
       </div>
+
+      {#if generatedInviteUrl}
+        <div class="invite-result-panel">
+          <div class="invite-result-head">
+            <div>
+              <strong>Generated link</strong>
+              <div class="sub">Bagikan link ini ke customer atau tim terkait.</div>
+            </div>
+            <small class="sub">
+              Expires: {new Date(generatedInviteExpiresAt).toLocaleString()}
+            </small>
+          </div>
+          <div class="invite-copy-row">
+            <input class="input mono" readonly value={generatedInviteUrl} />
+            <button class="btn btn-secondary" onclick={() => copyInviteLink(generatedInviteUrl)}>
+              <Icon name="copy" size={16} />
+              {$t('common.copy') || 'Copy'}
+            </button>
+          </div>
+        </div>
+      {/if}
     </section>
 
-    {#if generatedInviteUrl}
-      <div class="invite-result">
-        <div class="invite-result-head">
-          <strong>Generated link</strong>
-          <small class="sub">
-            Expires: {new Date(generatedInviteExpiresAt).toLocaleString()}
-          </small>
+    <section class="invite-section invite-history-section">
+      <div class="invite-history-toolbar">
+        <div>
+          <strong>Recent invite links</strong>
+          <div class="sub">Pantau link aktif, usage, dan revoke link yang sudah tidak dipakai.</div>
         </div>
-        <div class="invite-copy-row">
-          <input class="input mono" readonly value={generatedInviteUrl} />
-          <button class="btn btn-secondary" onclick={() => copyInviteLink(generatedInviteUrl)}>
-            <Icon name="link" size={16} />
-            {$t('common.copy') || 'Copy'}
-          </button>
-        </div>
+        <label class="inline-check">
+          <input
+            type="checkbox"
+            bind:checked={inviteIncludeInactive}
+            onchange={() => loadInvites()}
+          />
+          <span>Show inactive</span>
+        </label>
       </div>
-    {/if}
 
-    <div class="invite-list-head">
-      <strong>Recent invite links</strong>
-      <label class="inline-check">
-        <input
-          type="checkbox"
-          bind:checked={inviteIncludeInactive}
-          onchange={() => loadInvites()}
-        />
-        <span>Show inactive</span>
-      </label>
-    </div>
-
-    {#if inviteLoading}
-      <div class="muted">{$t('common.loading') || 'Loading...'}</div>
-    {:else if inviteRows.length === 0}
-      <div class="muted">No invite links yet.</div>
-    {:else}
-      <div class="invite-list">
-        {#each inviteRows as invite}
-          <div class="invite-item">
-            <div>
-              <div class="invite-meta">
-                <span class="pill" class:pill-green={inviteStatus(invite) === 'active'}>
-                  {inviteStatusLabel(invite)}
-                </span>
-                <span class="mono">
-                  Uses: {invite.used_count}/{invite.max_uses}
-                </span>
+      {#if inviteLoading}
+        <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+      {:else if inviteRows.length === 0}
+        <div class="invite-empty-state">
+          <Icon name="link" size={18} />
+          <span>No invite links yet.</span>
+        </div>
+      {:else}
+        <div class="invite-list">
+          {#each inviteRows as invite}
+            <div class="invite-item">
+              <div class="invite-item-main">
+                <div class="invite-meta">
+                  <span
+                    class="pill"
+                    class:pill-green={inviteStatus(invite) === 'active'}
+                    class:pill-warning={inviteStatus(invite) === 'used' || inviteStatus(invite) === 'expired'}
+                    class:pill-gray={inviteStatus(invite) === 'revoked'}
+                  >
+                    {inviteStatusLabel(invite)}
+                  </span>
+                  <span class="mono">
+                    Uses: {invite.used_count}/{invite.max_uses}
+                  </span>
+                </div>
+                <div class="sub">
+                  Created: {new Date(invite.created_at).toLocaleString()} · Expires: {new Date(
+                    invite.expires_at,
+                  ).toLocaleString()}
+                </div>
+                {#if invite.note}
+                  <div class="sub">{invite.note}</div>
+                {/if}
+                <a class="invite-item-link mono" href={invite.invite_url} target="_blank" rel="noreferrer">
+                  {invite.invite_url}
+                </a>
               </div>
-              <div class="sub">
-                Created: {new Date(invite.created_at).toLocaleString()} · Expires: {new Date(
-                  invite.expires_at,
-                ).toLocaleString()}
+              <div class="invite-item-actions">
+                <button class="btn btn-secondary" onclick={() => copyInviteLink(invite.invite_url)}>
+                  <Icon name="copy" size={14} />
+                  {$t('common.copy') || 'Copy'}
+                </button>
+                {#if inviteStatus(invite) === 'active'}
+                  <button
+                    class="btn btn-secondary"
+                    onclick={() => revokeInvite(invite.id)}
+                    disabled={inviteRevokingId === invite.id}
+                  >
+                    <Icon name="x" size={14} />
+                    {inviteRevokingId === invite.id ? 'Revoking...' : 'Revoke'}
+                  </button>
+                {/if}
               </div>
-              {#if invite.note}
-                <div class="sub">{invite.note}</div>
-              {/if}
             </div>
-            {#if inviteStatus(invite) === 'active'}
-              <button
-                class="btn btn-secondary"
-                onclick={() => revokeInvite(invite.id)}
-                disabled={inviteRevokingId === invite.id}
-              >
-                <Icon name="x" size={14} />
-                {inviteRevokingId === invite.id ? 'Revoking...' : 'Revoke'}
-              </button>
-            {/if}
-          </div>
-        {/each}
-      </div>
-    {/if}
+          {/each}
+        </div>
+      {/if}
+    </section>
   </div>
 </Modal>
 
@@ -1889,17 +1923,51 @@
   .invite-section {
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    padding: 0.75rem;
+    padding: 0.9rem;
     background: var(--bg-surface);
     display: grid;
-    gap: 0.65rem;
+    gap: 0.75rem;
   }
 
   .invite-section-head {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.6rem;
+  }
+
+  .invite-section-heading-block {
+    align-items: flex-start;
+  }
+
+  .invite-section-copy {
+    margin: 0.3rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+
+  .invite-modal-shell {
+    gap: 1rem;
+  }
+
+  .invite-overview-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 0.85rem;
+  }
+
+  .invite-generate-card {
+    padding: 1rem;
+    gap: 0.9rem;
+  }
+
+  .invite-history-section {
+    gap: 0.85rem;
+  }
+
+  .invite-section-subtle {
+    background: color-mix(in srgb, var(--bg-surface) 88%, var(--bg-tertiary) 12%);
   }
 
   .actions-inline {
@@ -1909,14 +1977,14 @@
   .invite-summary-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.55rem;
+    gap: 0.6rem;
   }
 
   .invite-summary-item {
     border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 0.55rem 0.6rem;
-    background: rgba(99, 102, 241, 0.06);
+    background: color-mix(in srgb, var(--bg-surface) 84%, rgba(99, 102, 241, 0.06));
     display: grid;
     gap: 0.2rem;
   }
@@ -1930,11 +1998,11 @@
     font-size: 0.98rem;
   }
 
-  .invite-result {
+  .invite-result-panel {
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    padding: 0.75rem;
-    background: var(--bg-surface);
+    padding: 0.9rem;
+    background: color-mix(in srgb, var(--bg-surface) 82%, rgba(99, 102, 241, 0.08));
     display: grid;
     gap: 0.6rem;
   }
@@ -1953,12 +2021,11 @@
     align-items: center;
   }
 
-  .invite-list-head {
+  .invite-history-toolbar {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.75rem;
-    margin-top: 0.4rem;
   }
 
   .inline-check {
@@ -1972,7 +2039,7 @@
   .invite-list {
     display: grid;
     gap: 0.65rem;
-    max-height: 280px;
+    max-height: 320px;
     overflow: auto;
     padding-right: 0.25rem;
   }
@@ -1980,11 +2047,25 @@
   .invite-item {
     border: 1px solid var(--border-color);
     border-radius: 10px;
-    padding: 0.7rem;
+    padding: 0.8rem;
     display: flex;
     justify-content: space-between;
-    gap: 0.75rem;
-    align-items: center;
+    gap: 0.9rem;
+    align-items: flex-start;
+    background: color-mix(in srgb, var(--bg-surface) 90%, var(--bg-tertiary) 10%);
+  }
+
+  .invite-item-main {
+    min-width: 0;
+    display: grid;
+    gap: 0.32rem;
+  }
+
+  .invite-item-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
   }
 
   .invite-meta {
@@ -1992,6 +2073,30 @@
     gap: 0.55rem;
     align-items: center;
     margin-bottom: 0.25rem;
+    flex-wrap: wrap;
+  }
+
+  .invite-item-link {
+    display: inline-block;
+    margin-top: 0.2rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+
+  .invite-item-link:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+  }
+
+  .invite-empty-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 0.85rem 0.9rem;
+    color: var(--text-secondary);
   }
 
   @media (max-width: 900px) {
@@ -2036,12 +2141,22 @@
     .invite-summary-grid {
       grid-template-columns: 1fr 1fr;
     }
+    .invite-overview-grid {
+      grid-template-columns: 1fr;
+    }
     .invite-copy-row {
       grid-template-columns: 1fr;
+    }
+    .invite-history-toolbar {
+      flex-direction: column;
+      align-items: stretch;
     }
     .invite-item {
       flex-direction: column;
       align-items: stretch;
+    }
+    .invite-item-actions {
+      justify-content: flex-start;
     }
   }
 

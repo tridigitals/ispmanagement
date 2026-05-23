@@ -94,6 +94,20 @@ describe('admin operational UI cleanup', () => {
     expect(source).toContain('selectedMessageTemplateId');
   });
 
+  it('keeps the customer invite modal operational and easy to scan', () => {
+    const source = readSource('src/routes/(app)/admin/customers/+page.svelte');
+
+    expect(source).toContain('Customer Invite Link');
+    expect(source).toContain('invite-modal-shell');
+    expect(source).toContain('invite-overview-grid');
+    expect(source).toContain('invite-generate-card');
+    expect(source).toContain('invite-result-panel');
+    expect(source).toContain('invite-history-toolbar');
+    expect(source).toContain('invite-item-link');
+    expect(source).not.toContain('linear-gradient');
+    expect(source).not.toContain('backdrop-filter');
+  });
+
   it('keeps customer backend service filters set-based', () => {
     const source = readSource('src-tauri/src/services/customer_service/core.rs');
     const migrationPath =

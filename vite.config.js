@@ -5,6 +5,61 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const host = process.env.TAURI_DEV_HOST;
+const LOCAL_DEV_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
+
+function csvList(rawValue) {
+  return String(rawValue || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function isLocalHostname(value) {
+  return LOCAL_DEV_HOSTS.has(String(value || '').trim().toLowerCase());
+}
+
+function collectPublicDevHosts(explicitAllowedHosts, corsOrigins, devHost) {
+  const publicHosts = new Set();
+
+  for (const allowedHost of explicitAllowedHosts) {
+    const normalized = allowedHost.toLowerCase();
+    if (normalized !== 'all' && !isLocalHostname(normalized)) {
+      publicHosts.add(allowedHost);
+    }
+  }
+
+  for (const origin of corsOrigins) {
+    try {
+      const hostname = new URL(origin.trim()).hostname;
+      if (!isLocalHostname(hostname)) {
+        publicHosts.add(hostname);
+      }
+    } catch {
+      // Ignore invalid origins in env parsing. Vite will keep working with the valid ones.
+    }
+  }
+
+  if (devHost && !isLocalHostname(devHost)) {
+    publicHosts.add(devHost);
+  }
+
+  return [...publicHosts];
+}
+
+function warnPublicDevExposure(publicDevHosts, wildcardHostsEnabled) {
+  if (wildcardHostsEnabled) {
+    console.warn(
+      '[vite] Vite dev server is configured with VITE_ALLOWED_HOSTS=all. This is unsafe outside intentional tunnel/debug usage. Set ALLOW_UNSAFE_PUBLIC_DEV=1 only when you explicitly accept that risk.',
+    );
+    return;
+  }
+
+  if (publicDevHosts.length > 0) {
+    console.warn(
+      `[vite] Vite dev server is configured for non-local browser access (${publicDevHosts.join(', ')}). This is acceptable for intentional dev tunnels/demo links, but it is not a production deployment path.`,
+    );
+  }
+}
 
 /**
  * @param {string | undefined} rawApiUrl
@@ -33,20 +88,30 @@ export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   // Extract hostnames from CORS_ALLOWED_ORIGINS for allowedHosts
-  const corsOrigins = (env.CORS_ALLOWED_ORIGINS || '').split(',');
+  const corsOrigins = csvList(env.CORS_ALLOWED_ORIGINS);
   const parsedHosts = corsOrigins
     .map((origin) => {
       try {
-        // Remove trailing slash if present before parsing (though URL ctor handles it)
         return new URL(origin.trim()).hostname;
       } catch {
-        return null; // Ignore invalid URLs
+        return null;
       }
     })
     .filter(Boolean);
 
-  const explicitAllowedHosts = (env.VITE_ALLOWED_HOSTS || '').split(',').filter(Boolean);
+  const explicitAllowedHosts = csvList(env.VITE_ALLOWED_HOSTS);
   const apiProxyTarget = resolveApiProxyTarget(env.VITE_API_URL);
+  const wildcardHostsEnabled = explicitAllowedHosts.includes('all');
+  const publicDevHosts = collectPublicDevHosts(explicitAllowedHosts, corsOrigins, host);
+  const allowUnsafePublicDev = env.ALLOW_UNSAFE_PUBLIC_DEV === '1';
+
+  if (wildcardHostsEnabled && !allowUnsafePublicDev) {
+    throw new Error(
+      'Refusing to start Vite dev server with VITE_ALLOWED_HOSTS=all. If this is an intentional dev tunnel or remote debug session, set ALLOW_UNSAFE_PUBLIC_DEV=1 explicitly.',
+    );
+  }
+
+  warnPublicDevExposure(publicDevHosts, wildcardHostsEnabled);
 
   // Combine all sources
   const finalAllowedHosts = [
@@ -70,7 +135,7 @@ export default defineConfig(async ({ mode }) => {
       port: 1420,
       strictPort: true,
       host: host || false,
-      allowedHosts: explicitAllowedHosts.includes('all') ? true : finalAllowedHosts,
+      allowedHosts: wildcardHostsEnabled ? true : finalAllowedHosts,
       proxy: apiProxyTarget
         ? {
             '/api': {

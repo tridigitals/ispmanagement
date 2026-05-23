@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { getLucideIconModuleLoader, hasLucideIconModule } from './iconModules';
+import { getLucideIconImportPath } from './iconResolver';
 
 describe('icon module registry', () => {
   it('exposes loaders for icons used by the app shell', () => {
@@ -31,5 +32,13 @@ describe('icon module registry', () => {
   it('returns no loader for icons outside the registry', () => {
     expect(hasLucideIconModule('not-a-real-icon')).toBe(false);
     expect(getLucideIconModuleLoader('not-a-real-icon')).toBeUndefined();
+  });
+
+  it('covers resolved alias names used by the UI icon component', () => {
+    const resolvedLinkIcon = getLucideIconImportPath('link');
+
+    expect(resolvedLinkIcon).toBe('link-2');
+    expect(hasLucideIconModule(resolvedLinkIcon)).toBe(true);
+    expect(typeof getLucideIconModuleLoader(resolvedLinkIcon)).toBe('function');
   });
 });

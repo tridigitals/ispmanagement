@@ -63,6 +63,7 @@ const iconModuleLoaders: Record<string, LucideModuleLoader> = {
   'layers-3': () => import('lucide-svelte/icons/layers-3'),
   'life-buoy': () => import('lucide-svelte/icons/life-buoy'),
   link: () => import('lucide-svelte/icons/link-2'),
+  'link-2': () => import('lucide-svelte/icons/link-2'),
   list: () => import('lucide-svelte/icons/list'),
   'list-ordered': () => import('lucide-svelte/icons/list-ordered'),
   loader: () => import('lucide-svelte/icons/loader'),

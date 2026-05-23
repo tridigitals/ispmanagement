@@ -133,6 +133,8 @@ npm run tauri dev
 
 The app will open automatically. First run will show the **Installation Wizard**.
 
+If you expose the dev app through Cloudflare Tunnel or another public demo URL, keep treating it as a development environment. `vite dev` is allowed for intentional tunnel usage, but it is not a production deployment path.
+
 ---
 
 ## ⚙️ Environment Variables
@@ -355,6 +357,13 @@ npm run tauri build
 ```
 
 Output will be in `src-tauri/target/release/`.
+
+### Web Deployment Notes
+
+- Do not publish `npm run dev` or a raw Vite dev server to the public internet as a production app.
+- For browser-based production traffic, serve the built frontend as static assets and proxy `/api` and `/ws` to the Rust backend.
+- Use `deploy/systemd/isp-management.service` as the production runtime path for the Rust server.
+- `VITE_ALLOWED_HOSTS=all` is intentionally blocked unless `ALLOW_UNSAFE_PUBLIC_DEV=1` is set for an explicit dev/debug session.
 
 ---
 
