@@ -33,7 +33,6 @@ use crate::models::{
     UpdateCustomerSubscriptionRequest, WorkOrderRescheduleDecisionRequest,
     WorkOrderRescheduleRequestView,
 };
-use crate::security::secret::encrypt_secret_for;
 use crate::services::subscription_lifecycle::{
     resolve_activation_status, should_disable_pppoe_for_subscription_status, transition_status,
     SubscriptionLifecycleEvent, SubscriptionLifecycleStatus,
@@ -46,6 +45,7 @@ use tracing::warn;
 use uuid::Uuid;
 
 const PURPOSE_PPPOE: &str = "pppoe_secrets";
+const PURPOSE_CUSTOMER_INVITE: &str = "customer_invite_tokens";
 const INVITE_DEFAULT_EXPIRES_HOURS: u32 = 24;
 const INVITE_DEFAULT_MAX_USES: u32 = 1;
 const INVITE_DEFAULT_EXPIRES_KEY: &str = "customer_invite_default_expires_hours";

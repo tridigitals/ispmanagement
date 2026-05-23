@@ -7,6 +7,10 @@ import path from 'node:path';
 const host = process.env.TAURI_DEV_HOST;
 const LOCAL_DEV_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
 
+/**
+ * @param {unknown} rawValue
+ * @returns {string[]}
+ */
 function csvList(rawValue) {
   return String(rawValue || '')
     .split(',')
@@ -14,10 +18,20 @@ function csvList(rawValue) {
     .filter(Boolean);
 }
 
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
 function isLocalHostname(value) {
   return LOCAL_DEV_HOSTS.has(String(value || '').trim().toLowerCase());
 }
 
+/**
+ * @param {string[]} explicitAllowedHosts
+ * @param {string[]} corsOrigins
+ * @param {string | undefined} devHost
+ * @returns {string[]}
+ */
 function collectPublicDevHosts(explicitAllowedHosts, corsOrigins, devHost) {
   const publicHosts = new Set();
 
@@ -46,6 +60,11 @@ function collectPublicDevHosts(explicitAllowedHosts, corsOrigins, devHost) {
   return [...publicHosts];
 }
 
+/**
+ * @param {string[]} publicDevHosts
+ * @param {boolean} wildcardHostsEnabled
+ * @returns {void}
+ */
 function warnPublicDevExposure(publicDevHosts, wildcardHostsEnabled) {
   if (wildcardHostsEnabled) {
     console.warn(

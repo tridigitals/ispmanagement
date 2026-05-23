@@ -9,6 +9,7 @@
   import { api } from '$lib/api/client';
   import type { ManagedRadiusRouterSetup as ManagedRadiusRouterSetupResponse } from '$lib/api/types';
   import { toast } from '$lib/stores/toast';
+  import { resolveBackTarget } from '$lib/utils/backNavigation';
   import {
     canCopyManagedRadiusSecret,
     getManagedRadiusSummary,
@@ -139,6 +140,8 @@
   let ipPoolsLoading = $state(false);
   let pppProfiles = $state<PppProfileRow[]>([]);
   let ipPools = $state<IpPoolRow[]>([]);
+  const routerListPath = $derived($page.url.pathname.replace(/\/[^/]+\/?$/, ''));
+  const routerBackTarget = $derived(resolveBackTarget($page.url, routerListPath));
   let pppLoadedFor = $state<string | null>(null);
   let poolsLoadedFor = $state<string | null>(null);
   let managedRadiusSetupLoading = $state(false);
@@ -903,7 +906,7 @@
       <button
         class="back"
         type="button"
-        onclick={() => goto($page.url.pathname.replace(/\/[^/]+\/?$/, ''))}
+        onclick={() => goto(routerBackTarget)}
       >
         <Icon name="arrow-left" size={16} />
         {$t('common.back') || 'Back'}

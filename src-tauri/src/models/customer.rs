@@ -575,6 +575,7 @@ pub struct CustomerRegistrationInviteView {
     pub last_used_at: Option<DateTime<Utc>>,
     pub note: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub invite_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

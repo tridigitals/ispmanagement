@@ -39,6 +39,7 @@
   import { formatDate, timeAgo } from '$lib/utils/date';
   import { formatMoney } from '$lib/utils/money';
   import { getAdminCustomerNavigation } from '$lib/utils/adminCustomerNavigation';
+  import { resolveBackTarget } from '$lib/utils/backNavigation';
   import {
     formatLocationCoordinates,
     validateOptionalCoordinates,
@@ -80,6 +81,7 @@
     }),
   );
   const customersPath = $derived(customerNav.customersPath);
+  const customerBackTarget = $derived(resolveBackTarget($page.url, customersPath));
 
   let activeTab = $state<CustomerDetailTab>('overview');
   let isMobile = $state(false);
@@ -1761,7 +1763,7 @@
 <div class="page-content fade-in">
   <div class="customer-hero card">
     <div class="hero-top">
-      <button class="btn btn-secondary" onclick={() => goto(customersPath)}>
+      <button class="btn btn-secondary" onclick={() => goto(customerBackTarget)}>
         <Icon name="arrow-left" size={16} />
         {$t('common.back') || 'Back'}
       </button>

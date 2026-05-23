@@ -183,6 +183,28 @@ fn invite_policy_and_token_hash_helpers_are_stable() {
 }
 
 #[test]
+fn registration_invite_url_helpers_preserve_domain_and_encryption_contract() {
+    let invite_url =
+        CustomerService::build_registration_invite_url("billing.example.com", "invite-token");
+    assert_eq!(
+        invite_url,
+        "https://billing.example.com/register?invite=invite-token"
+    );
+
+    let encrypted = CustomerService::encrypt_registration_invite_token("invite-token")
+        .expect("invite token should encrypt");
+    assert_ne!(encrypted, "invite-token");
+
+    let decrypted = CustomerService::decrypt_registration_invite_token(&encrypted)
+        .expect("invite token should decrypt");
+    assert_eq!(decrypted.as_deref(), Some("invite-token"));
+
+    let empty = CustomerService::decrypt_registration_invite_token("")
+        .expect("empty invite token should be accepted");
+    assert!(empty.is_none());
+}
+
+#[test]
 fn portal_and_reschedule_helpers_preserve_validation_contracts() {
     let parsed = CustomerService::parse_optional_datetime(Some("2026-03-27".to_string())).unwrap();
     assert_eq!(

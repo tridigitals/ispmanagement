@@ -8,6 +8,7 @@
   import { appSettings } from '$lib/stores/settings';
   import { api } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
+  import { appendBackParam } from '$lib/utils/backNavigation';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
@@ -300,7 +301,7 @@
   }
 
   function openDetail(r: RouterRow) {
-    goto(`${$page.url.pathname}/${r.id}`);
+    goto(appendBackParam(`${$page.url.pathname}/${r.id}`, $page.url));
   }
 
   function statusLabel(r: RouterRow) {

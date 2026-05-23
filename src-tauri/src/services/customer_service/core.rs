@@ -1,4 +1,5 @@
 use super::*;
+use crate::security::secret::encrypt_secret_for;
 
 impl CustomerService {
     pub async fn run_installation_sla_reminders_for_all_tenants(&self) -> AppResult<u64> {
@@ -875,20 +876,22 @@ impl CustomerService {
         let expires_at = now + chrono::Duration::hours(expires_in_hours as i64);
         let invite_token = Self::build_registration_invite_token();
         let token_hash = Self::hash_registration_invite_token(&invite_token);
+        let token_enc = Self::encrypt_registration_invite_token(&invite_token)?;
         let invite_id = Uuid::new_v4().to_string();
 
         #[cfg(feature = "postgres")]
         sqlx::query(
             r#"
             INSERT INTO customer_registration_invites
-                (id, tenant_id, token_hash, created_by, max_uses, used_count, expires_at, is_revoked, revoked_at, last_used_at, note, created_at)
+                (id, tenant_id, token_hash, token_enc, created_by, max_uses, used_count, expires_at, is_revoked, revoked_at, last_used_at, note, created_at)
             VALUES
-                ($1,$2,$3,$4,$5,0,$6,false,NULL,NULL,$7,$8)
+                ($1,$2,$3,$4,$5,$6,0,$7,false,NULL,NULL,$8,$9)
             "#,
         )
         .bind(&invite_id)
         .bind(tenant_id)
         .bind(&token_hash)
+        .bind(&token_enc)
         .bind(actor_id)
         .bind(max_uses as i64)
         .bind(expires_at)
@@ -901,14 +904,15 @@ impl CustomerService {
         sqlx::query(
             r#"
             INSERT INTO customer_registration_invites
-                (id, tenant_id, token_hash, created_by, max_uses, used_count, expires_at, is_revoked, revoked_at, last_used_at, note, created_at)
+                (id, tenant_id, token_hash, token_enc, created_by, max_uses, used_count, expires_at, is_revoked, revoked_at, last_used_at, note, created_at)
             VALUES
-                (?,?,?,?,?,0,?,0,NULL,NULL,?,?)
+                (?,?,?,?,?,?,0,?,0,NULL,NULL,?,?)
             "#,
         )
         .bind(&invite_id)
         .bind(tenant_id)
         .bind(&token_hash)
+        .bind(&token_enc)
         .bind(actor_id)
         .bind(max_uses as i64)
         .bind(expires_at.to_rfc3339())
@@ -929,8 +933,9 @@ impl CustomerService {
             last_used_at: None,
             note,
             created_at: now,
+            invite_url: None,
         };
-        let invite_url = format!("https://{domain}/register?invite={invite_token}");
+        let invite_url = Self::build_registration_invite_url(&domain, &invite_token);
 
         self.audit_service
             .log(

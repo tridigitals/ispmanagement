@@ -496,6 +496,7 @@ export interface CustomerRegistrationInviteView {
   last_used_at: string | null;
   note: string | null;
   created_at: string;
+  invite_url?: string | null;
 }
 
 export interface CustomerRegistrationInviteCreateResponse {

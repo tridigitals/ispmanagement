@@ -159,6 +159,7 @@
   import MapCanvasShell from '$lib/components/network/MapCanvasShell.svelte';
   import NetworkMapSearchBar from '$lib/components/network/NetworkMapSearchBar.svelte';
   import { canAccessNetworkMap } from '$lib/utils/adminNetworkAccess';
+  import { appendBackParam } from '$lib/utils/backNavigation';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -728,14 +729,19 @@
       activePopup: activeNodePopup,
       setActivePopup: (popup) => (activeNodePopup = popup),
       onClose: clearMapPopupSelection,
-      onOpenCustomer: (customerId) => void goto(`${tenantPrefix}/admin/customers/${customerId}`),
+      onOpenCustomer: (customerId) =>
+        void goto(appendBackParam(`${tenantPrefix}/admin/customers/${customerId}`, $page.url)),
       onOpenService: (customerId, serviceId) =>
         void goto(
-          `${tenantPrefix}/admin/customers/${customerId}?tab=subscriptions&service_id=${encodeURIComponent(serviceId)}`,
+          appendBackParam(
+            `${tenantPrefix}/admin/customers/${customerId}?tab=subscriptions&service_id=${encodeURIComponent(serviceId)}`,
+            $page.url,
+          ),
         ),
       onConnect: startConnectFromNode,
       onEdit: openEditNodeModal,
-      onOpenRouter: (routerId) => void goto(`${tenantPrefix}/admin/network/routers/${routerId}`),
+      onOpenRouter: (routerId) =>
+        void goto(appendBackParam(`${tenantPrefix}/admin/network/routers/${routerId}`, $page.url)),
     });
   }
 
@@ -1052,14 +1058,19 @@
       activePopup: activeNodePopup,
       setActivePopup: (popup) => (activeNodePopup = popup),
       onClose: clearMapPopupSelection,
-      onOpenCustomer: (customerId) => void goto(`${tenantPrefix}/admin/customers/${customerId}`),
+      onOpenCustomer: (customerId) =>
+        void goto(appendBackParam(`${tenantPrefix}/admin/customers/${customerId}`, $page.url)),
       onOpenService: (customerId, serviceId) =>
         void goto(
-          `${tenantPrefix}/admin/customers/${customerId}?tab=subscriptions&service_id=${encodeURIComponent(serviceId)}`,
+          appendBackParam(
+            `${tenantPrefix}/admin/customers/${customerId}?tab=subscriptions&service_id=${encodeURIComponent(serviceId)}`,
+            $page.url,
+          ),
         ),
       onConnect: startConnectFromNode,
       onEdit: openEditNodeModal,
-      onOpenRouter: (routerId) => void goto(`${tenantPrefix}/admin/network/routers/${routerId}`),
+      onOpenRouter: (routerId) =>
+        void goto(appendBackParam(`${tenantPrefix}/admin/network/routers/${routerId}`, $page.url)),
     });
   }
 

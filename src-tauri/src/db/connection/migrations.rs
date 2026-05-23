@@ -427,6 +427,7 @@ pub(super) async fn run_migrations_sqlite(pool: &DbPool) -> Result<(), sqlx::Err
             id TEXT PRIMARY KEY NOT NULL,
             tenant_id TEXT NOT NULL,
             token_hash TEXT NOT NULL UNIQUE,
+            token_enc TEXT,
             created_by TEXT,
             max_uses INTEGER NOT NULL DEFAULT 1,
             used_count INTEGER NOT NULL DEFAULT 0,
@@ -443,6 +444,10 @@ pub(super) async fn run_migrations_sqlite(pool: &DbPool) -> Result<(), sqlx::Err
     )
     .execute(pool)
     .await?;
+
+    let _ = sqlx::query("ALTER TABLE customer_registration_invites ADD COLUMN token_enc TEXT")
+        .execute(pool)
+        .await;
 
     // Create bank_accounts table (SQLite)
     sqlx::query(

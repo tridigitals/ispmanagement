@@ -1,6 +1,48 @@
 use super::*;
 
+#[derive(sqlx::FromRow)]
+struct CustomerRegistrationInviteListRow {
+    id: String,
+    tenant_id: String,
+    created_by: Option<String>,
+    max_uses: i64,
+    used_count: i64,
+    expires_at: DateTime<Utc>,
+    is_revoked: bool,
+    revoked_at: Option<DateTime<Utc>>,
+    last_used_at: Option<DateTime<Utc>>,
+    note: Option<String>,
+    created_at: DateTime<Utc>,
+    token_enc: Option<String>,
+    custom_domain: Option<String>,
+}
+
 impl CustomerService {
+    fn map_registration_invite_row(
+        row: CustomerRegistrationInviteListRow,
+    ) -> AppResult<CustomerRegistrationInviteView> {
+        let invite_url = match (row.custom_domain.as_deref(), row.token_enc.as_deref()) {
+            (Some(domain), Some(token_enc)) => Self::decrypt_registration_invite_token(token_enc)?
+                .map(|token| Self::build_registration_invite_url(domain, &token)),
+            _ => None,
+        };
+
+        Ok(CustomerRegistrationInviteView {
+            id: row.id,
+            tenant_id: row.tenant_id,
+            created_by: row.created_by,
+            max_uses: row.max_uses,
+            used_count: row.used_count,
+            expires_at: row.expires_at,
+            is_revoked: row.is_revoked,
+            revoked_at: row.revoked_at,
+            last_used_at: row.last_used_at,
+            note: row.note,
+            created_at: row.created_at,
+            invite_url,
+        })
+    }
+
     pub async fn get_customer_registration_invite_policy(
         &self,
         actor_id: &str,
@@ -285,27 +327,30 @@ impl CustomerService {
         let now = Utc::now();
 
         #[cfg(feature = "postgres")]
-        let rows: Vec<CustomerRegistrationInviteView> = sqlx::query_as(
+        let rows: Vec<CustomerRegistrationInviteListRow> = sqlx::query_as(
             r#"
             SELECT
-                id,
-                tenant_id,
-                created_by,
-                max_uses,
-                used_count,
-                expires_at,
-                is_revoked,
-                revoked_at,
-                last_used_at,
-                note,
-                created_at
-            FROM customer_registration_invites
-            WHERE tenant_id = $1
+                cri.id,
+                cri.tenant_id,
+                cri.created_by,
+                cri.max_uses,
+                cri.used_count,
+                cri.expires_at,
+                cri.is_revoked,
+                cri.revoked_at,
+                cri.last_used_at,
+                cri.note,
+                cri.created_at,
+                cri.token_enc,
+                t.custom_domain
+            FROM customer_registration_invites cri
+            JOIN tenants t ON t.id = cri.tenant_id
+            WHERE cri.tenant_id = $1
               AND (
                     $2::bool = true
-                 OR (is_revoked = false AND expires_at > $3 AND used_count < max_uses)
+                 OR (cri.is_revoked = false AND cri.expires_at > $3 AND cri.used_count < cri.max_uses)
               )
-            ORDER BY created_at DESC
+            ORDER BY cri.created_at DESC
             LIMIT $4
             "#,
         )
@@ -317,27 +362,30 @@ impl CustomerService {
         .await?;
 
         #[cfg(feature = "sqlite")]
-        let rows: Vec<CustomerRegistrationInviteView> = sqlx::query_as(
+        let rows: Vec<CustomerRegistrationInviteListRow> = sqlx::query_as(
             r#"
             SELECT
-                id,
-                tenant_id,
-                created_by,
-                max_uses,
-                used_count,
-                expires_at,
-                is_revoked,
-                revoked_at,
-                last_used_at,
-                note,
-                created_at
-            FROM customer_registration_invites
-            WHERE tenant_id = ?
+                cri.id,
+                cri.tenant_id,
+                cri.created_by,
+                cri.max_uses,
+                cri.used_count,
+                cri.expires_at,
+                cri.is_revoked,
+                cri.revoked_at,
+                cri.last_used_at,
+                cri.note,
+                cri.created_at,
+                cri.token_enc,
+                t.custom_domain
+            FROM customer_registration_invites cri
+            JOIN tenants t ON t.id = cri.tenant_id
+            WHERE cri.tenant_id = ?
               AND (
                     ? = 1
-                 OR (is_revoked = 0 AND expires_at > ? AND used_count < max_uses)
+                 OR (cri.is_revoked = 0 AND cri.expires_at > ? AND cri.used_count < cri.max_uses)
               )
-            ORDER BY created_at DESC
+            ORDER BY cri.created_at DESC
             LIMIT ?
             "#,
         )
@@ -348,7 +396,7 @@ impl CustomerService {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows)
+        rows.into_iter().map(Self::map_registration_invite_row).collect()
     }
 
     pub async fn revoke_customer_registration_invite(

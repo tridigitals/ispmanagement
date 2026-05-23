@@ -25,6 +25,7 @@
     getPppoeCreateActionFallback,
     getPppoeCreatedAndAppliedToastFallback,
   } from '$lib/utils/pppoeSource';
+  import { appendBackParam } from '$lib/utils/backNavigation';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { loadPppoeAccountModal } from './pppoePageModules';
 
@@ -968,7 +969,8 @@
                 class="btn-icon"
                 title={$t('admin.network.pppoe.actions.open_customer') || 'Open customer'}
                 onclick={() =>
-                  row.customer_id && goto(`${tenantPrefix}/admin/customers/${row.customer_id}`)}
+                  row.customer_id &&
+                  goto(appendBackParam(`${tenantPrefix}/admin/customers/${row.customer_id}`, $page.url))}
               >
                 <Icon name="external-link" size={16} />
               </button>
@@ -978,7 +980,12 @@
                   'Open customer billing'}
                 onclick={() =>
                   row.customer_id &&
-                  goto(`${tenantPrefix}/admin/customers/${row.customer_id}?tab=billing`)}
+                  goto(
+                    appendBackParam(
+                      `${tenantPrefix}/admin/customers/${row.customer_id}?tab=billing`,
+                      $page.url,
+                    ),
+                  )}
               >
                 <Icon name="file-text" size={16} />
               </button>

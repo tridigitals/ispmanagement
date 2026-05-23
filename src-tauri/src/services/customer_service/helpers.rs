@@ -1,8 +1,9 @@
 use super::{
-    CustomerService, InstallationSlaBreachType, INSTALLATION_GRACE_HOURS_KEY,
-    INSTALLATION_SLA_REMINDER_ENABLED_KEY,
+    CustomerService, InstallationSlaBreachType, PURPOSE_CUSTOMER_INVITE,
+    INSTALLATION_GRACE_HOURS_KEY, INSTALLATION_SLA_REMINDER_ENABLED_KEY,
 };
 use crate::error::{AppError, AppResult};
+use crate::security::secret::{decrypt_secret_opt_for, encrypt_secret_for};
 use crate::services::subscription_lifecycle::SubscriptionLifecycleStatus;
 use chrono::{DateTime, Duration, Utc};
 use sha2::{Digest, Sha256};
@@ -255,6 +256,22 @@ impl CustomerService {
 
     pub(super) fn build_registration_invite_token() -> String {
         format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple())
+    }
+
+    pub(super) fn build_registration_invite_url(domain: &str, invite_token: &str) -> String {
+        format!(
+            "https://{}/register?invite={}",
+            domain.trim(),
+            invite_token.trim()
+        )
+    }
+
+    pub(super) fn encrypt_registration_invite_token(token: &str) -> AppResult<String> {
+        encrypt_secret_for(PURPOSE_CUSTOMER_INVITE, token)
+    }
+
+    pub(super) fn decrypt_registration_invite_token(stored: &str) -> AppResult<Option<String>> {
+        decrypt_secret_opt_for(PURPOSE_CUSTOMER_INVITE, stored)
     }
 
     pub(super) fn parse_invite_policy_u32(

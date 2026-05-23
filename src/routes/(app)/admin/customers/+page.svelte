@@ -1356,12 +1356,25 @@
                 {#if invite.note}
                   <div class="sub">{invite.note}</div>
                 {/if}
-                <a class="invite-item-link mono" href={invite.invite_url} target="_blank" rel="noreferrer">
-                  {invite.invite_url}
-                </a>
+                {#if invite.invite_url}
+                  <a
+                    class="invite-item-link mono"
+                    href={invite.invite_url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {invite.invite_url}
+                  </a>
+                {:else}
+                  <div class="sub">Link hanya tersedia saat invite baru dibuat.</div>
+                {/if}
               </div>
               <div class="invite-item-actions">
-                <button class="btn btn-secondary" onclick={() => copyInviteLink(invite.invite_url)}>
+                <button
+                  class="btn btn-secondary"
+                  onclick={() => invite.invite_url && copyInviteLink(invite.invite_url)}
+                  disabled={!invite.invite_url}
+                >
                   <Icon name="copy" size={14} />
                   {$t('common.copy') || 'Copy'}
                 </button>
