@@ -15,7 +15,10 @@ use serde::Deserialize;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/", get(list_assets).post(create_asset))
-        .route("/{id}", get(get_asset).patch(update_asset).delete(delete_asset))
+        .route(
+            "/{id}",
+            get(get_asset).patch(update_asset).delete(delete_asset),
+        )
         .route("/{id}/customer", post(assign_customer))
         .route("/{id}/location", post(assign_location))
         .route("/{id}/work-order", post(assign_work_order))
@@ -192,7 +195,12 @@ async fn link_parent_asset(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let out = state
         .network_asset_service
-        .link_parent_asset(&claims.sub, &tenant_id, &id, body.parent_asset_id.as_deref())
+        .link_parent_asset(
+            &claims.sub,
+            &tenant_id,
+            &id,
+            body.parent_asset_id.as_deref(),
+        )
         .await?;
     Ok(Json(out))
 }

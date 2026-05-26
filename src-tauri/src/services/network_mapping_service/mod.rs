@@ -1562,20 +1562,26 @@ mod tests {
             "asset_type": "odp",
             "asset_id": "asset-1",
         });
-        assert!(NetworkMappingService::system_managed_node_matches_asset_reference(
-            &network_asset,
-            "network_asset",
-            "asset-1"
-        ));
-        assert!(NetworkMappingService::system_managed_node_matches_asset_source(
-            &network_asset,
-            "network_asset"
-        ));
-        assert!(!NetworkMappingService::system_managed_node_matches_asset_reference(
-            &network_asset,
-            "network_asset",
-            "asset-2"
-        ));
+        assert!(
+            NetworkMappingService::system_managed_node_matches_asset_reference(
+                &network_asset,
+                "network_asset",
+                "asset-1"
+            )
+        );
+        assert!(
+            NetworkMappingService::system_managed_node_matches_asset_source(
+                &network_asset,
+                "network_asset"
+            )
+        );
+        assert!(
+            !NetworkMappingService::system_managed_node_matches_asset_reference(
+                &network_asset,
+                "network_asset",
+                "asset-2"
+            )
+        );
 
         let customer_location = serde_json::json!({
             "system_managed": true,
@@ -1584,11 +1590,13 @@ mod tests {
             "asset_id": "loc-1",
             "location_id": "loc-1",
         });
-        assert!(NetworkMappingService::system_managed_node_matches_asset_reference(
-            &customer_location,
-            "customer_location",
-            "loc-1"
-        ));
+        assert!(
+            NetworkMappingService::system_managed_node_matches_asset_reference(
+                &customer_location,
+                "customer_location",
+                "loc-1"
+            )
+        );
 
         let router = serde_json::json!({
             "system_managed": true,
@@ -1597,11 +1605,13 @@ mod tests {
             "asset_id": "router-1",
             "router_id": "router-1",
         });
-        assert!(NetworkMappingService::system_managed_node_matches_asset_reference(
-            &router,
-            "mikrotik_router",
-            "router-1"
-        ));
+        assert!(
+            NetworkMappingService::system_managed_node_matches_asset_reference(
+                &router,
+                "mikrotik_router",
+                "router-1"
+            )
+        );
     }
 
     #[test]

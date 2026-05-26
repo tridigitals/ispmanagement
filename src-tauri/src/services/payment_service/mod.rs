@@ -420,6 +420,24 @@ impl PaymentService {
         description: Option<String>,
         external_id: Option<String>,
     ) -> AppResult<Invoice> {
+        self.create_invoice_with_due_date(
+            tenant_id,
+            amount,
+            description,
+            external_id,
+            Utc::now() + chrono::Duration::days(1),
+        )
+        .await
+    }
+
+    async fn create_invoice_with_due_date(
+        &self,
+        tenant_id: &str,
+        amount: f64,
+        description: Option<String>,
+        external_id: Option<String>,
+        due_date: chrono::DateTime<chrono::Utc>,
+    ) -> AppResult<Invoice> {
         let id = Uuid::new_v4().to_string();
         // Simple invoice number generation: INV-YYYYMMDD-HHMMSS
         let now = Utc::now();
@@ -480,7 +498,7 @@ impl PaymentService {
         .bind(&fx_source)
         .bind(fx_fetched_at)
         .bind(&description)
-        .bind(now + chrono::Duration::days(1))
+        .bind(due_date)
         .bind(&external_id)
         .bind(now)
         .fetch_one(&self.pool)
@@ -508,7 +526,7 @@ impl PaymentService {
             .bind(&fx_source)
             .bind(fx_fetched_at.map(|d| d.to_rfc3339()))
             .bind(&description)
-            .bind((now + chrono::Duration::days(1)).to_rfc3339())
+            .bind(due_date.to_rfc3339())
             .bind(&external_id)
             .bind(now.to_rfc3339()).bind(now.to_rfc3339())
             .execute(&self.pool)
@@ -871,6 +889,38 @@ impl PaymentService {
         subscription_id: &str,
         period_ref: chrono::DateTime<chrono::Utc>,
     ) -> AppResult<Invoice> {
+        self.create_invoice_for_customer_subscription_at_with_due_date(
+            tenant_id,
+            subscription_id,
+            period_ref,
+            None,
+        )
+        .await
+    }
+
+    pub async fn create_bootstrap_invoice_for_customer_subscription(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        period_ref: chrono::DateTime<chrono::Utc>,
+        due_date: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> AppResult<Invoice> {
+        self.create_invoice_for_customer_subscription_at_with_due_date(
+            tenant_id,
+            subscription_id,
+            period_ref,
+            due_date,
+        )
+        .await
+    }
+
+    async fn create_invoice_for_customer_subscription_at_with_due_date(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        period_ref: chrono::DateTime<chrono::Utc>,
+        due_date: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> AppResult<Invoice> {
         #[cfg(feature = "postgres")]
         let row: Option<(
             String,
@@ -999,7 +1049,13 @@ impl PaymentService {
         );
 
         let invoice = self
-            .create_invoice(tenant_id, price, Some(description), Some(external_id))
+            .create_invoice_with_due_date(
+                tenant_id,
+                price,
+                Some(description),
+                Some(external_id),
+                due_date.unwrap_or_else(|| Utc::now() + chrono::Duration::days(1)),
+            )
             .await?;
 
         if let Err(err) = self

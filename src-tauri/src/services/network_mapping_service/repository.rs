@@ -75,9 +75,10 @@ impl NetworkMappingService {
         tenant_id: &str,
         asset_source: &str,
     ) -> AppResult<u64> {
-        let rows_affected = if asset_source == "network_asset" || asset_source == "customer_location" {
-            sqlx::query(
-                r#"
+        let rows_affected =
+            if asset_source == "network_asset" || asset_source == "customer_location" {
+                sqlx::query(
+                    r#"
                 DELETE FROM network_nodes n
                 USING (
                   SELECT id
@@ -97,16 +98,16 @@ impl NetworkMappingService {
                 ) duplicates
                 WHERE n.id = duplicates.id::uuid
                 "#,
-            )
-            .bind(tenant_id)
-            .bind(asset_source)
-            .execute(&self.pool)
-            .await
-            .map_err(AppError::Database)?
-            .rows_affected()
-        } else {
-            0
-        };
+                )
+                .bind(tenant_id)
+                .bind(asset_source)
+                .execute(&self.pool)
+                .await
+                .map_err(AppError::Database)?
+                .rows_affected()
+            } else {
+                0
+            };
 
         Ok(rows_affected)
     }

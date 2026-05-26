@@ -88,8 +88,11 @@ pub async fn refresh_port_usage_cache_for_tenant(pool: &DbPool, tenant_id: &str)
     .await
     .map_err(AppError::Database)?;
 
-    let node_by_id: HashMap<String, NodeRow> =
-        node_rows.iter().cloned().map(|node| (node.id.clone(), node)).collect();
+    let node_by_id: HashMap<String, NodeRow> = node_rows
+        .iter()
+        .cloned()
+        .map(|node| (node.id.clone(), node))
+        .collect();
     let asset_node_id_by_asset_id: HashMap<String, String> = node_rows
         .iter()
         .filter_map(|node| {
@@ -110,7 +113,10 @@ pub async fn refresh_port_usage_cache_for_tenant(pool: &DbPool, tenant_id: &str)
 
         let mut endpoint_keys = HashSet::<String>::new();
 
-        for child in assets.iter().filter(|candidate| candidate.parent_asset_id.as_deref() == Some(asset.id.as_str())) {
+        for child in assets
+            .iter()
+            .filter(|candidate| candidate.parent_asset_id.as_deref() == Some(asset.id.as_str()))
+        {
             if EXCLUDED_STATUSES.contains(&child.status.as_str()) {
                 continue;
             }
@@ -138,11 +144,9 @@ pub async fn refresh_port_usage_cache_for_tenant(pool: &DbPool, tenant_id: &str)
                 let Some(other_node_id) = other_node_id else {
                     continue;
                 };
-                let Some(endpoint_key) = topology_endpoint_key(
-                    &asset.asset_type,
-                    other_node_id,
-                    &node_by_id,
-                ) else {
+                let Some(endpoint_key) =
+                    topology_endpoint_key(&asset.asset_type, other_node_id, &node_by_id)
+                else {
                     continue;
                 };
                 endpoint_keys.insert(endpoint_key);
@@ -195,7 +199,11 @@ fn parse_positive_integer(value: Option<&Value>) -> Option<i64> {
     }
 }
 
-fn asset_endpoint_key(location_id: Option<&str>, customer_id: Option<&str>, asset_id: &str) -> String {
+fn asset_endpoint_key(
+    location_id: Option<&str>,
+    customer_id: Option<&str>,
+    asset_id: &str,
+) -> String {
     if let Some(location_id) = location_id.filter(|value| !value.trim().is_empty()) {
         return format!("location:{}", location_id.trim());
     }
@@ -220,7 +228,9 @@ fn topology_endpoint_key(
     if source == "network_asset" {
         let asset_id = metadata_text(&other_node.metadata, "asset_id");
         let target_asset_type = metadata_text(&other_node.metadata, "asset_type");
-        if asset_id.is_empty() || !should_count_topology_asset_port_usage(source_asset_type, &target_asset_type) {
+        if asset_id.is_empty()
+            || !should_count_topology_asset_port_usage(source_asset_type, &target_asset_type)
+        {
             return None;
         }
         return Some(format!("asset:{asset_id}"));
@@ -243,7 +253,10 @@ fn topology_endpoint_key(
     Some(format!("node:{}", other_node.id))
 }
 
-fn should_count_topology_asset_port_usage(source_asset_type: &str, target_asset_type: &str) -> bool {
+fn should_count_topology_asset_port_usage(
+    source_asset_type: &str,
+    target_asset_type: &str,
+) -> bool {
     let source_rank = asset_rank(source_asset_type);
     let target_rank = asset_rank(target_asset_type);
     matches!((source_rank, target_rank), (Some(source_rank), Some(target_rank)) if target_rank >= source_rank)

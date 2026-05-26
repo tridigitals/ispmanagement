@@ -1,6 +1,6 @@
 use super::{
-    CustomerService, InstallationSlaBreachType, PURPOSE_CUSTOMER_INVITE,
-    INSTALLATION_GRACE_HOURS_KEY, INSTALLATION_SLA_REMINDER_ENABLED_KEY,
+    CustomerService, InstallationSlaBreachType, INSTALLATION_GRACE_HOURS_KEY,
+    INSTALLATION_SLA_REMINDER_ENABLED_KEY, PURPOSE_CUSTOMER_INVITE,
 };
 use crate::error::{AppError, AppResult};
 use crate::security::secret::{decrypt_secret_opt_for, encrypt_secret_for};

@@ -196,14 +196,32 @@ mod mixradius_import_executor_tests {
                 tenant_id text NOT NULL,
                 invoice_number text NOT NULL,
                 amount numeric(12,2) NOT NULL,
+                currency_code text NOT NULL DEFAULT 'IDR',
+                base_currency_code text NOT NULL DEFAULT 'IDR',
+                fx_rate numeric(18,8),
+                fx_source text,
+                fx_fetched_at timestamp with time zone,
                 status text NOT NULL DEFAULT 'pending',
                 description text,
                 due_date timestamp with time zone NOT NULL,
                 paid_at timestamp with time zone,
                 payment_method text,
+                proof_attachment text,
                 external_id text,
+                merchant_id text,
+                rejection_reason text,
                 created_at timestamp with time zone NOT NULL,
                 updated_at timestamp with time zone NOT NULL
+            );
+
+            CREATE TABLE public.settings (
+                id text PRIMARY KEY NOT NULL,
+                tenant_id text,
+                key text NOT NULL,
+                value text NOT NULL,
+                description text,
+                created_at timestamp with time zone NOT NULL DEFAULT now(),
+                updated_at timestamp with time zone NOT NULL DEFAULT now()
             );
             "#,
         )
@@ -1842,7 +1860,7 @@ mod mixradius_import_executor_tests {
     }
 
     #[tokio::test]
-    async fn mixradius_import_executor_does_not_create_production_invoices_from_legacy_transactions(
+    async fn mixradius_import_executor_bootstraps_first_invoice_without_replaying_legacy_transactions(
     ) {
         let (pool, db_name) = isolated_pool().await;
         create_package_table(&pool).await;
@@ -1892,15 +1910,88 @@ mod mixradius_import_executor_tests {
         executor
             .execute_subscription_imports("tenant-executor", &batch_id)
             .await
-            .expect("subscription import should not generate invoices");
+            .expect("subscription import should bootstrap first invoice");
 
-        let invoice_count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM public.invoices WHERE tenant_id = $1")
-                .bind("tenant-executor")
-                .fetch_one(&pool)
-                .await
-                .expect("invoice count should query");
-        assert_eq!(invoice_count, 0);
+        let invoice = sqlx::query(
+            r#"
+            SELECT external_id, due_date
+            FROM public.invoices
+            WHERE tenant_id = $1
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind("tenant-executor")
+        .fetch_one(&pool)
+        .await
+        .expect("bootstrap invoice should query");
+        let external_id = invoice
+            .get::<Option<String>, _>("external_id")
+            .unwrap_or_default();
+        assert!(external_id.starts_with("pkgsub:"));
+        assert!(
+            external_id.ends_with(":2026-04"),
+            "unexpected external_id {external_id}"
+        );
+        assert_eq!(
+            invoice
+                .get::<chrono::DateTime<chrono::Utc>, _>("due_date")
+                .to_rfc3339(),
+            "2026-05-01T00:00:00+00:00"
+        );
+
+        drop_test_database(pool, &db_name).await;
+    }
+
+    #[tokio::test]
+    async fn mixradius_import_executor_reimport_keeps_bootstrap_invoice_idempotent() {
+        let (pool, db_name) = isolated_pool().await;
+        create_package_table(&pool).await;
+        create_customer_tables(&pool).await;
+        create_subscription_table(&pool).await;
+        seed_test_tenant(&pool, "tenant-executor").await;
+        let batch_id = create_ready_batch(&pool, "tenant-executor").await;
+        insert_staged_customer_with_lifecycle(
+            &pool,
+            "tenant-executor",
+            &batch_id,
+            "MBR-SUB-6B",
+            "Pelanggan Legacy Tx Repeat",
+            "Paket 60 Mbps",
+            650_000.0,
+            "PAID",
+            "2026-05-01 00:00:00+00",
+        )
+        .await;
+        import_customer_package_and_location_fixture(
+            &pool,
+            "tenant-executor",
+            &batch_id,
+            "MBR-SUB-6B",
+            "plan-sub-6b",
+            "Paket 60 Mbps",
+            650_000.0,
+        )
+        .await;
+
+        let executor = MixradiusImportExecutor::new(pool.clone());
+        executor
+            .execute_subscription_imports("tenant-executor", &batch_id)
+            .await
+            .expect("initial import should succeed");
+        executor
+            .execute_subscription_imports("tenant-executor", &batch_id)
+            .await
+            .expect("reimport should stay idempotent");
+
+        let invoice_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM public.invoices WHERE tenant_id = $1 AND external_id LIKE 'pkgsub:%'",
+        )
+        .bind("tenant-executor")
+        .fetch_one(&pool)
+        .await
+        .expect("invoice count should query");
+        assert_eq!(invoice_count, 1);
 
         drop_test_database(pool, &db_name).await;
     }

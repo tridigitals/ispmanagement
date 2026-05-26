@@ -368,6 +368,38 @@ export interface CustomerSummary {
   pending_installation: number;
 }
 
+export interface CustomerServiceLifecycleIssue {
+  issue_type: string;
+  customer_id: string;
+  customer_name: string;
+  subscription_id: string;
+  subscription_status: string;
+  package_name: string | null;
+  location_label: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  recommended_action: string;
+}
+
+export interface CustomerServiceLifecycleReport {
+  generated_at: string;
+  total_issues: number;
+  missing_bootstrap_invoice: number;
+  invalid_active_lifecycle: number;
+  page: number;
+  per_page: number;
+  data: CustomerServiceLifecycleIssue[];
+}
+
+export interface CustomerServiceLifecycleRepairResult {
+  issue_type: string;
+  matched_count: number;
+  repaired_count: number;
+  skipped_count: number;
+  failed_count: number;
+  errors: string[];
+}
+
 export interface CustomerLocation {
   id: string;
   tenant_id: string;
@@ -403,12 +435,7 @@ export type NetworkAssetType =
 
 export type NetworkAssetGroup = 'access_fiber' | 'infrastructure' | string;
 
-export type NetworkAssetStatus =
-  | 'available'
-  | 'reserved'
-  | 'installed'
-  | 'faulty'
-  | 'retired';
+export type NetworkAssetStatus = 'available' | 'reserved' | 'installed' | 'faulty' | 'retired';
 
 export interface NetworkAsset {
   id: string;

@@ -1,4 +1,5 @@
 use crate::db::DbPool;
+use crate::http::WsHub;
 use crate::models::{
     MixradiusImportExecutionMode, MixradiusImportMappingOverride,
     MixradiusImportPppoeProvisioningTarget, PppoeAccount, PppoeAccountSource,
@@ -9,10 +10,15 @@ use crate::services::mixradius_import_mapper::{
     safe_customer_update_patch, ExistingCustomer, MixradiusImportMapperPolicy, StagedCustomer,
 };
 use crate::services::pppoe_service::{encrypt_pppoe_password_for_storage, PURPOSE_PPPOE};
+use crate::services::{
+    AuditService, AuthService, EmailOutboxService, EmailService, NotificationService,
+    PaymentService, PppoeService, SettingsService,
+};
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde_json::{json, Value};
 use sqlx::FromRow;
+use std::sync::Arc;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -141,6 +147,13 @@ struct ExistingPppoeAccountRow {
 #[derive(Clone)]
 pub struct MixradiusImportExecutor {
     pool: DbPool,
+}
+
+#[derive(Debug, Clone)]
+struct SubscriptionInvoiceBootstrap {
+    subscription_id: String,
+    starts_at: Option<chrono::DateTime<Utc>>,
+    ends_at: Option<chrono::DateTime<Utc>>,
 }
 
 impl MixradiusImportExecutor {
@@ -903,6 +916,7 @@ impl MixradiusImportExecutor {
             total_rows: staged_customers.len() as i64,
             ..Default::default()
         };
+        let mut bootstrap_invoices = Vec::new();
 
         let mut tx = self
             .pool
@@ -953,6 +967,7 @@ impl MixradiusImportExecutor {
                 staged_customer.expired_on,
                 Utc::now(),
             );
+            let should_bootstrap_invoice = should_bootstrap_first_invoice(&lifecycle.status);
             let mut notes = vec![format!(
                 "Imported from MixRadius member {}",
                 staged_customer.member_id
@@ -1011,6 +1026,13 @@ impl MixradiusImportExecutor {
                 )
                 .await?;
                 summary.updated_rows += 1;
+                if should_bootstrap_invoice {
+                    bootstrap_invoices.push(SubscriptionInvoiceBootstrap {
+                        subscription_id: existing_subscription_id,
+                        starts_at: staged_customer.renewed_on,
+                        ends_at: staged_customer.expired_on,
+                    });
+                }
                 continue;
             }
 
@@ -1099,13 +1121,72 @@ impl MixradiusImportExecutor {
             )
             .await?;
             summary.imported_rows += 1;
+            if should_bootstrap_invoice {
+                bootstrap_invoices.push(SubscriptionInvoiceBootstrap {
+                    subscription_id,
+                    starts_at: staged_customer.renewed_on,
+                    ends_at: staged_customer.expired_on,
+                });
+            }
         }
 
         tx.commit()
             .await
             .context("failed to commit MixRadius subscription execution transaction")?;
 
+        if !bootstrap_invoices.is_empty() {
+            let payment_service = self.build_payment_service();
+            for bootstrap in bootstrap_invoices {
+                let period_ref = bootstrap
+                    .starts_at
+                    .or(bootstrap.ends_at)
+                    .unwrap_or_else(Utc::now);
+                payment_service
+                    .create_bootstrap_invoice_for_customer_subscription(
+                        tenant_id,
+                        &bootstrap.subscription_id,
+                        period_ref,
+                        bootstrap.ends_at,
+                    )
+                    .await
+                    .with_context(|| {
+                        format!(
+                            "failed to bootstrap first invoice for imported subscription {}",
+                            bootstrap.subscription_id
+                        )
+                    })?;
+            }
+        }
+
         Ok(summary)
+    }
+
+    fn build_payment_service(&self) -> PaymentService {
+        let audit_service = AuditService::new(self.pool.clone(), None);
+        let settings_service = SettingsService::new(self.pool.clone(), audit_service.clone());
+        let email_service = EmailService::new(settings_service.clone());
+        let email_outbox = EmailOutboxService::new(
+            self.pool.clone(),
+            settings_service.clone(),
+            email_service.clone(),
+        );
+        let notification_service =
+            NotificationService::new(self.pool.clone(), Arc::new(WsHub::new()), email_outbox);
+        let auth_service = AuthService::new(
+            self.pool.clone(),
+            "mixradius-import-bootstrap-jwt-secret".to_string(),
+            email_service,
+            audit_service.clone(),
+            settings_service.clone(),
+        );
+        let pppoe_service = PppoeService::new(
+            self.pool.clone(),
+            auth_service,
+            audit_service,
+            settings_service,
+        );
+
+        PaymentService::new(self.pool.clone(), notification_service, pppoe_service)
     }
 
     pub async fn execute_pppoe_imports(
@@ -1666,6 +1747,13 @@ fn resolve_billing_cycle(staged_customer: &StagedCustomerRow) -> &'static str {
         Some(value) if value.contains("tahun") || value.contains("year") => "yearly",
         _ => "monthly",
     }
+}
+
+fn should_bootstrap_first_invoice(status: &str) -> bool {
+    matches!(
+        status.trim().to_ascii_lowercase().as_str(),
+        "active" | "grace_active"
+    )
 }
 
 fn extract_framed_ip_address(source_json: &Value) -> Option<String> {

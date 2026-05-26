@@ -264,6 +264,656 @@ impl CustomerService {
         Ok(row)
     }
 
+    pub async fn get_service_lifecycle_report(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        q: Option<String>,
+        issue_type: Option<String>,
+        page: u32,
+        per_page: u32,
+    ) -> AppResult<CustomerServiceLifecycleReport> {
+        if self
+            .auth_service
+            .check_permission(actor_id, tenant_id, "customers", "read")
+            .await
+            .is_err()
+        {
+            self.auth_service
+                .check_permission(actor_id, tenant_id, "orders", "create")
+                .await?;
+        }
+
+        let offset = (page.saturating_sub(1)) * per_page;
+        let q = q.unwrap_or_default().trim().to_string();
+        let issue_type = issue_type
+            .unwrap_or_else(|| "all".to_string())
+            .trim()
+            .to_ascii_lowercase();
+
+        #[derive(sqlx::FromRow)]
+        struct IssueRow {
+            #[sqlx(flatten)]
+            issue: CustomerServiceLifecycleIssue,
+            total_count: i64,
+        }
+
+        #[cfg(feature = "postgres")]
+        let rows: Vec<IssueRow> = sqlx::query_as(
+            r#"
+            WITH lifecycle_issues AS (
+              SELECT
+                'missing_bootstrap_invoice' AS issue_type,
+                cs.customer_id,
+                c.name AS customer_name,
+                cs.id AS subscription_id,
+                cs.status AS subscription_status,
+                p.name AS package_name,
+                cl.label AS location_label,
+                cs.starts_at,
+                cs.ends_at,
+                'bootstrap_invoice' AS recommended_action,
+                COALESCE(cs.ends_at, cs.updated_at) AS issue_sort_at
+              FROM customer_subscriptions cs
+              INNER JOIN customers c
+                ON c.tenant_id = cs.tenant_id AND c.id = cs.customer_id
+              LEFT JOIN isp_packages p
+                ON p.tenant_id = cs.tenant_id AND p.id = cs.package_id
+              LEFT JOIN customer_locations cl
+                ON cl.tenant_id = cs.tenant_id AND cl.id = cs.location_id
+              WHERE cs.tenant_id = $1
+                AND LOWER(cs.status) IN ('active', 'grace_active')
+                AND LOWER(COALESCE(cs.billing_cycle, '')) IN ('monthly', 'yearly')
+                AND (cs.starts_at IS NULL OR cs.starts_at <= NOW())
+                AND (cs.ends_at IS NULL OR cs.ends_at >= NOW())
+                AND (
+                  cs.starts_at IS NULL
+                  OR cs.ends_at IS NULL
+                  OR cs.starts_at <= cs.ends_at
+                )
+                AND NOT EXISTS (
+                  SELECT 1
+                  FROM invoices i
+                  WHERE i.tenant_id = cs.tenant_id
+                    AND (
+                      i.external_id = 'pkgsub:' || cs.id
+                      OR i.external_id LIKE 'pkgsub:' || cs.id || ':%'
+                    )
+                )
+              UNION ALL
+              SELECT
+                'invalid_active_lifecycle' AS issue_type,
+                cs.customer_id,
+                c.name AS customer_name,
+                cs.id AS subscription_id,
+                cs.status AS subscription_status,
+                p.name AS package_name,
+                cl.label AS location_label,
+                cs.starts_at,
+                cs.ends_at,
+                'review_lifecycle_data' AS recommended_action,
+                COALESCE(cs.ends_at, cs.updated_at) AS issue_sort_at
+              FROM customer_subscriptions cs
+              INNER JOIN customers c
+                ON c.tenant_id = cs.tenant_id AND c.id = cs.customer_id
+              LEFT JOIN isp_packages p
+                ON p.tenant_id = cs.tenant_id AND p.id = cs.package_id
+              LEFT JOIN customer_locations cl
+                ON cl.tenant_id = cs.tenant_id AND cl.id = cs.location_id
+              WHERE cs.tenant_id = $1
+                AND LOWER(cs.status) IN ('active', 'grace_active')
+                AND (
+                  LOWER(COALESCE(cs.billing_cycle, '')) NOT IN ('monthly', 'yearly')
+                  OR (cs.starts_at IS NOT NULL AND cs.starts_at > NOW())
+                  OR (cs.ends_at IS NOT NULL AND cs.ends_at < NOW())
+                  OR (
+                    cs.starts_at IS NOT NULL
+                    AND cs.ends_at IS NOT NULL
+                    AND cs.starts_at > cs.ends_at
+                  )
+                )
+            )
+            SELECT
+              issue_type,
+              customer_id,
+              customer_name,
+              subscription_id,
+              subscription_status,
+              package_name,
+              location_label,
+              starts_at,
+              ends_at,
+              recommended_action,
+              COUNT(*) OVER() AS total_count
+            FROM lifecycle_issues
+            WHERE ($2 = 'all' OR issue_type = $2)
+              AND (
+                $3 = ''
+                OR customer_name ILIKE '%' || $3 || '%'
+                OR COALESCE(package_name, '') ILIKE '%' || $3 || '%'
+                OR COALESCE(location_label, '') ILIKE '%' || $3 || '%'
+                OR subscription_id ILIKE '%' || $3 || '%'
+              )
+            ORDER BY
+              CASE WHEN issue_type = 'invalid_active_lifecycle' THEN 0 ELSE 1 END,
+              issue_sort_at ASC,
+              subscription_id DESC
+            LIMIT $4 OFFSET $5
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&issue_type)
+        .bind(&q)
+        .bind(per_page as i64)
+        .bind(offset as i64)
+        .fetch_all(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let rows: Vec<IssueRow> = sqlx::query_as(
+            r#"
+            WITH lifecycle_issues AS (
+              SELECT
+                'missing_bootstrap_invoice' AS issue_type,
+                cs.customer_id,
+                c.name AS customer_name,
+                cs.id AS subscription_id,
+                cs.status AS subscription_status,
+                p.name AS package_name,
+                cl.label AS location_label,
+                cs.starts_at,
+                cs.ends_at,
+                'bootstrap_invoice' AS recommended_action,
+                COALESCE(cs.ends_at, cs.updated_at) AS issue_sort_at
+              FROM customer_subscriptions cs
+              INNER JOIN customers c
+                ON c.tenant_id = cs.tenant_id AND c.id = cs.customer_id
+              LEFT JOIN isp_packages p
+                ON p.tenant_id = cs.tenant_id AND p.id = cs.package_id
+              LEFT JOIN customer_locations cl
+                ON cl.tenant_id = cs.tenant_id AND cl.id = cs.location_id
+              WHERE cs.tenant_id = ?
+                AND LOWER(cs.status) IN ('active', 'grace_active')
+                AND LOWER(COALESCE(cs.billing_cycle, '')) IN ('monthly', 'yearly')
+                AND (cs.starts_at IS NULL OR cs.starts_at <= ?)
+                AND (cs.ends_at IS NULL OR cs.ends_at >= ?)
+                AND (
+                  cs.starts_at IS NULL
+                  OR cs.ends_at IS NULL
+                  OR cs.starts_at <= cs.ends_at
+                )
+                AND NOT EXISTS (
+                  SELECT 1
+                  FROM invoices i
+                  WHERE i.tenant_id = cs.tenant_id
+                    AND (
+                      i.external_id = 'pkgsub:' || cs.id
+                      OR i.external_id LIKE 'pkgsub:' || cs.id || ':%'
+                    )
+                )
+              UNION ALL
+              SELECT
+                'invalid_active_lifecycle' AS issue_type,
+                cs.customer_id,
+                c.name AS customer_name,
+                cs.id AS subscription_id,
+                cs.status AS subscription_status,
+                p.name AS package_name,
+                cl.label AS location_label,
+                cs.starts_at,
+                cs.ends_at,
+                'review_lifecycle_data' AS recommended_action,
+                COALESCE(cs.ends_at, cs.updated_at) AS issue_sort_at
+              FROM customer_subscriptions cs
+              INNER JOIN customers c
+                ON c.tenant_id = cs.tenant_id AND c.id = cs.customer_id
+              LEFT JOIN isp_packages p
+                ON p.tenant_id = cs.tenant_id AND p.id = cs.package_id
+              LEFT JOIN customer_locations cl
+                ON cl.tenant_id = cs.tenant_id AND cl.id = cs.location_id
+              WHERE cs.tenant_id = ?
+                AND LOWER(cs.status) IN ('active', 'grace_active')
+                AND (
+                  LOWER(COALESCE(cs.billing_cycle, '')) NOT IN ('monthly', 'yearly')
+                  OR (cs.starts_at IS NOT NULL AND cs.starts_at > ?)
+                  OR (cs.ends_at IS NOT NULL AND cs.ends_at < ?)
+                  OR (
+                    cs.starts_at IS NOT NULL
+                    AND cs.ends_at IS NOT NULL
+                    AND cs.starts_at > cs.ends_at
+                  )
+                )
+            )
+            SELECT
+              issue_type,
+              customer_id,
+              customer_name,
+              subscription_id,
+              subscription_status,
+              package_name,
+              location_label,
+              starts_at,
+              ends_at,
+              recommended_action,
+              COUNT(*) OVER() AS total_count
+            FROM lifecycle_issues
+            WHERE (? = 'all' OR issue_type = ?)
+              AND (
+                ? = ''
+                OR customer_name LIKE '%' || ? || '%'
+                OR COALESCE(package_name, '') LIKE '%' || ? || '%'
+                OR COALESCE(location_label, '') LIKE '%' || ? || '%'
+                OR subscription_id LIKE '%' || ? || '%'
+              )
+            ORDER BY
+              CASE WHEN issue_type = 'invalid_active_lifecycle' THEN 0 ELSE 1 END,
+              issue_sort_at ASC,
+              subscription_id DESC
+            LIMIT ? OFFSET ?
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(Utc::now().to_rfc3339())
+        .bind(Utc::now().to_rfc3339())
+        .bind(tenant_id)
+        .bind(Utc::now().to_rfc3339())
+        .bind(Utc::now().to_rfc3339())
+        .bind(&issue_type)
+        .bind(&issue_type)
+        .bind(&q)
+        .bind(&q)
+        .bind(&q)
+        .bind(&q)
+        .bind(&q)
+        .bind(per_page as i64)
+        .bind(offset as i64)
+        .fetch_all(&self.pool)
+        .await?;
+
+        #[cfg(feature = "postgres")]
+        let missing_bootstrap_invoice: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)::bigint
+            FROM customer_subscriptions cs
+            WHERE cs.tenant_id = $1
+              AND LOWER(cs.status) IN ('active', 'grace_active')
+              AND LOWER(COALESCE(cs.billing_cycle, '')) IN ('monthly', 'yearly')
+              AND (cs.starts_at IS NULL OR cs.starts_at <= NOW())
+              AND (cs.ends_at IS NULL OR cs.ends_at >= NOW())
+              AND (
+                cs.starts_at IS NULL
+                OR cs.ends_at IS NULL
+                OR cs.starts_at <= cs.ends_at
+              )
+              AND NOT EXISTS (
+                SELECT 1
+                FROM invoices i
+                WHERE i.tenant_id = cs.tenant_id
+                  AND (
+                    i.external_id = 'pkgsub:' || cs.id
+                    OR i.external_id LIKE 'pkgsub:' || cs.id || ':%'
+                  )
+              )
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let missing_bootstrap_invoice: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)
+            FROM customer_subscriptions cs
+            WHERE cs.tenant_id = ?
+              AND LOWER(cs.status) IN ('active', 'grace_active')
+              AND LOWER(COALESCE(cs.billing_cycle, '')) IN ('monthly', 'yearly')
+              AND (cs.starts_at IS NULL OR cs.starts_at <= ?)
+              AND (cs.ends_at IS NULL OR cs.ends_at >= ?)
+              AND (
+                cs.starts_at IS NULL
+                OR cs.ends_at IS NULL
+                OR cs.starts_at <= cs.ends_at
+              )
+              AND NOT EXISTS (
+                SELECT 1
+                FROM invoices i
+                WHERE i.tenant_id = cs.tenant_id
+                  AND (
+                    i.external_id = 'pkgsub:' || cs.id
+                    OR i.external_id LIKE 'pkgsub:' || cs.id || ':%'
+                  )
+              )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(Utc::now().to_rfc3339())
+        .bind(Utc::now().to_rfc3339())
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "postgres")]
+        let invalid_active_lifecycle: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)::bigint
+            FROM customer_subscriptions cs
+            WHERE cs.tenant_id = $1
+              AND LOWER(cs.status) IN ('active', 'grace_active')
+              AND (
+                LOWER(COALESCE(cs.billing_cycle, '')) NOT IN ('monthly', 'yearly')
+                OR (cs.starts_at IS NOT NULL AND cs.starts_at > NOW())
+                OR (cs.ends_at IS NOT NULL AND cs.ends_at < NOW())
+                OR (
+                  cs.starts_at IS NOT NULL
+                  AND cs.ends_at IS NOT NULL
+                  AND cs.starts_at > cs.ends_at
+                )
+              )
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let invalid_active_lifecycle: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)
+            FROM customer_subscriptions cs
+            WHERE cs.tenant_id = ?
+              AND LOWER(cs.status) IN ('active', 'grace_active')
+              AND (
+                LOWER(COALESCE(cs.billing_cycle, '')) NOT IN ('monthly', 'yearly')
+                OR (cs.starts_at IS NOT NULL AND cs.starts_at > ?)
+                OR (cs.ends_at IS NOT NULL AND cs.ends_at < ?)
+                OR (
+                  cs.starts_at IS NOT NULL
+                  AND cs.ends_at IS NOT NULL
+                  AND cs.starts_at > cs.ends_at
+                )
+              )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(Utc::now().to_rfc3339())
+        .bind(Utc::now().to_rfc3339())
+        .fetch_one(&self.pool)
+        .await?;
+
+        let total_issues = rows
+            .first()
+            .map(|row| row.total_count)
+            .unwrap_or(missing_bootstrap_invoice + invalid_active_lifecycle);
+
+        Ok(CustomerServiceLifecycleReport {
+            generated_at: Utc::now(),
+            total_issues,
+            missing_bootstrap_invoice,
+            invalid_active_lifecycle,
+            page,
+            per_page,
+            data: rows.into_iter().map(|row| row.issue).collect(),
+        })
+    }
+
+    pub async fn repair_service_lifecycle_issues(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        request: RepairCustomerServiceLifecycleRequest,
+    ) -> AppResult<CustomerServiceLifecycleRepairResult> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "billing", "manage")
+            .await?;
+
+        let issue_type =
+            Self::normalize_service_lifecycle_issue_type(Some(request.issue_type.as_str()))?;
+
+        match issue_type {
+            "missing_bootstrap_invoice" => {
+                #[derive(sqlx::FromRow)]
+                struct RepairRow {
+                    subscription_id: String,
+                    starts_at: Option<DateTime<Utc>>,
+                    ends_at: Option<DateTime<Utc>>,
+                }
+
+                #[cfg(feature = "postgres")]
+                let rows: Vec<RepairRow> = sqlx::query_as(
+                    r#"
+                    SELECT cs.id AS subscription_id, cs.starts_at, cs.ends_at
+                    FROM customer_subscriptions cs
+                    WHERE cs.tenant_id = $1
+                      AND LOWER(cs.status) IN ('active', 'grace_active')
+                      AND LOWER(COALESCE(cs.billing_cycle, '')) IN ('monthly', 'yearly')
+                      AND (cs.starts_at IS NULL OR cs.starts_at <= NOW())
+                      AND (cs.ends_at IS NULL OR cs.ends_at >= NOW())
+                      AND (
+                        cs.starts_at IS NULL
+                        OR cs.ends_at IS NULL
+                        OR cs.starts_at <= cs.ends_at
+                      )
+                      AND NOT EXISTS (
+                        SELECT 1
+                        FROM invoices i
+                        WHERE i.tenant_id = cs.tenant_id
+                          AND (
+                            i.external_id = 'pkgsub:' || cs.id
+                            OR i.external_id LIKE 'pkgsub:' || cs.id || ':%'
+                          )
+                      )
+                    ORDER BY COALESCE(cs.ends_at, cs.updated_at) ASC, cs.updated_at DESC, cs.id DESC
+                    "#,
+                )
+                .bind(tenant_id)
+                .fetch_all(&self.pool)
+                .await?;
+
+                #[cfg(feature = "sqlite")]
+                let rows: Vec<RepairRow> = sqlx::query_as(
+                    r#"
+                    SELECT cs.id AS subscription_id, cs.starts_at, cs.ends_at
+                    FROM customer_subscriptions cs
+                    WHERE cs.tenant_id = ?
+                      AND LOWER(cs.status) IN ('active', 'grace_active')
+                      AND LOWER(COALESCE(cs.billing_cycle, '')) IN ('monthly', 'yearly')
+                      AND (cs.starts_at IS NULL OR cs.starts_at <= ?)
+                      AND (cs.ends_at IS NULL OR cs.ends_at >= ?)
+                      AND (
+                        cs.starts_at IS NULL
+                        OR cs.ends_at IS NULL
+                        OR cs.starts_at <= cs.ends_at
+                      )
+                      AND NOT EXISTS (
+                        SELECT 1
+                        FROM invoices i
+                        WHERE i.tenant_id = cs.tenant_id
+                          AND (
+                            i.external_id = 'pkgsub:' || cs.id
+                            OR i.external_id LIKE 'pkgsub:' || cs.id || ':%'
+                          )
+                      )
+                    ORDER BY COALESCE(cs.ends_at, cs.updated_at) ASC, cs.updated_at DESC, cs.id DESC
+                    "#,
+                )
+                .bind(tenant_id)
+                .bind(Utc::now().to_rfc3339())
+                .bind(Utc::now().to_rfc3339())
+                .fetch_all(&self.pool)
+                .await?;
+
+                let matched_count = rows.len() as i64;
+                let payment_service = PaymentService::new(
+                    self.pool.clone(),
+                    self.notification_service.clone(),
+                    self.pppoe_service.clone(),
+                );
+                let mut repaired_count = 0_i64;
+                let mut skipped_count = 0_i64;
+                let mut failed_count = 0_i64;
+                let mut errors = Vec::new();
+
+                for row in rows {
+                    let period_ref = row.starts_at.or(row.ends_at).unwrap_or_else(Utc::now);
+                    match payment_service
+                        .create_bootstrap_invoice_for_customer_subscription(
+                            tenant_id,
+                            &row.subscription_id,
+                            period_ref,
+                            row.ends_at,
+                        )
+                        .await
+                    {
+                        Ok(_) => repaired_count += 1,
+                        Err(AppError::Validation(err)) => {
+                            skipped_count += 1;
+                            errors.push(format!("{}: {}", row.subscription_id, err));
+                        }
+                        Err(err) => {
+                            failed_count += 1;
+                            errors.push(format!("{}: {}", row.subscription_id, err));
+                        }
+                    }
+                }
+
+                Ok(CustomerServiceLifecycleRepairResult {
+                    issue_type: issue_type.to_string(),
+                    matched_count,
+                    repaired_count,
+                    skipped_count,
+                    failed_count,
+                    errors,
+                })
+            }
+            "invalid_active_lifecycle" => {
+                #[derive(sqlx::FromRow)]
+                struct InvalidLifecycleRow {
+                    subscription_id: String,
+                }
+
+                #[cfg(feature = "postgres")]
+                let rows: Vec<InvalidLifecycleRow> = sqlx::query_as(
+                    r#"
+                    SELECT cs.id AS subscription_id
+                    FROM customer_subscriptions cs
+                    WHERE cs.tenant_id = $1
+                      AND LOWER(cs.status) IN ('active', 'grace_active')
+                      AND (
+                        LOWER(COALESCE(cs.billing_cycle, '')) NOT IN ('monthly', 'yearly')
+                        OR (cs.starts_at IS NOT NULL AND cs.starts_at > NOW())
+                        OR (cs.ends_at IS NOT NULL AND cs.ends_at < NOW())
+                        OR (
+                          cs.starts_at IS NOT NULL
+                          AND cs.ends_at IS NOT NULL
+                          AND cs.starts_at > cs.ends_at
+                        )
+                      )
+                    ORDER BY COALESCE(cs.ends_at, cs.updated_at) ASC, cs.updated_at DESC, cs.id DESC
+                    "#,
+                )
+                .bind(tenant_id)
+                .fetch_all(&self.pool)
+                .await?;
+
+                #[cfg(feature = "sqlite")]
+                let rows: Vec<InvalidLifecycleRow> = sqlx::query_as(
+                    r#"
+                    SELECT cs.id AS subscription_id
+                    FROM customer_subscriptions cs
+                    WHERE cs.tenant_id = ?
+                      AND LOWER(cs.status) IN ('active', 'grace_active')
+                      AND (
+                        LOWER(COALESCE(cs.billing_cycle, '')) NOT IN ('monthly', 'yearly')
+                        OR (cs.starts_at IS NOT NULL AND cs.starts_at > ?)
+                        OR (cs.ends_at IS NOT NULL AND cs.ends_at < ?)
+                        OR (
+                          cs.starts_at IS NOT NULL
+                          AND cs.ends_at IS NOT NULL
+                          AND cs.starts_at > cs.ends_at
+                        )
+                      )
+                    ORDER BY COALESCE(cs.ends_at, cs.updated_at) ASC, cs.updated_at DESC, cs.id DESC
+                    "#,
+                )
+                .bind(tenant_id)
+                .bind(Utc::now().to_rfc3339())
+                .bind(Utc::now().to_rfc3339())
+                .fetch_all(&self.pool)
+                .await?;
+
+                let matched_count = rows.len() as i64;
+                let mut repaired_count = 0_i64;
+                let mut skipped_count = 0_i64;
+                let mut failed_count = 0_i64;
+                let mut errors = Vec::new();
+
+                for row in rows {
+                    match self
+                        .normalize_invalid_active_lifecycle_subscription(
+                            actor_id,
+                            tenant_id,
+                            &row.subscription_id,
+                        )
+                        .await
+                    {
+                        Ok(true) => repaired_count += 1,
+                        Ok(false) => skipped_count += 1,
+                        Err(AppError::Validation(err)) => {
+                            skipped_count += 1;
+                            errors.push(format!("{}: {}", row.subscription_id, err));
+                        }
+                        Err(err) => {
+                            failed_count += 1;
+                            errors.push(format!("{}: {}", row.subscription_id, err));
+                        }
+                    }
+                }
+
+                Ok(CustomerServiceLifecycleRepairResult {
+                    issue_type: issue_type.to_string(),
+                    matched_count,
+                    repaired_count,
+                    skipped_count,
+                    failed_count,
+                    errors,
+                })
+            }
+            _ => Err(AppError::Validation(
+                "unsupported service lifecycle issue type".to_string(),
+            )),
+        }
+    }
+
+    async fn normalize_invalid_active_lifecycle_subscription(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        subscription_id: &str,
+    ) -> AppResult<bool> {
+        let updated = self
+            .update_customer_subscription(
+                actor_id,
+                tenant_id,
+                subscription_id,
+                crate::models::UpdateCustomerSubscriptionRequest {
+                    location_id: None,
+                    package_id: None,
+                    router_id: None,
+                    billing_cycle: None,
+                    price: None,
+                    currency_code: None,
+                    status: Some("suspended".to_string()),
+                    starts_at: None,
+                    ends_at: None,
+                    notes: Some("Auto-normalized from lifecycle reconciliation".to_string()),
+                },
+                Some("127.0.0.1"),
+            )
+            .await?;
+
+        Ok(updated.status == "suspended")
+    }
+
     pub async fn get_customer(
         &self,
         actor_id: &str,
@@ -1626,6 +2276,22 @@ impl CustomerService {
         .await?;
 
         Ok(row)
+    }
+
+    pub fn normalize_service_lifecycle_issue_type(value: Option<&str>) -> AppResult<&'static str> {
+        match value
+            .unwrap_or_default()
+            .trim()
+            .to_ascii_lowercase()
+            .as_str()
+        {
+            "missing_bootstrap_invoice" => Ok("missing_bootstrap_invoice"),
+            "invalid_active_lifecycle" => Ok("invalid_active_lifecycle"),
+            _ => Err(AppError::Validation(
+                "issue_type must be missing_bootstrap_invoice or invalid_active_lifecycle"
+                    .to_string(),
+            )),
+        }
     }
 
     pub async fn create_portal_user(

@@ -396,7 +396,9 @@ impl CustomerService {
         .fetch_all(&self.pool)
         .await?;
 
-        rows.into_iter().map(Self::map_registration_invite_row).collect()
+        rows.into_iter()
+            .map(Self::map_registration_invite_row)
+            .collect()
     }
 
     pub async fn revoke_customer_registration_invite(

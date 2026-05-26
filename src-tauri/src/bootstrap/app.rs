@@ -8,9 +8,9 @@ use crate::services::metrics_service::MetricsService;
 use crate::services::{
     AnnouncementScheduler, AuditService, AuthService, BackupService, CustomerService,
     DhcpStaticServiceManager, EmailOutboxService, EmailService, IspPackageService,
-    ManagedRadiusService, MikrotikService, NetworkAssetService, NetworkMappingService, NotificationService,
-    PaymentService, PlanService, PppoeService, RadiusRuntimeConfig, RadiusService, RoleService,
-    SettingsService, SystemService, TeamService, UserService,
+    ManagedRadiusService, MikrotikService, NetworkAssetService, NetworkMappingService,
+    NotificationService, PaymentService, PlanService, PppoeService, RadiusRuntimeConfig,
+    RadiusService, RoleService, SettingsService, SystemService, TeamService, UserService,
 };
 #[cfg(feature = "desktop")]
 use tauri::Manager;

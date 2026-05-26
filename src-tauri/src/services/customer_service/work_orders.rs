@@ -46,11 +46,7 @@ impl CustomerService {
         Ok(())
     }
 
-    async fn load_network_asset(
-        &self,
-        tenant_id: &str,
-        asset_id: &str,
-    ) -> AppResult<NetworkAsset> {
+    async fn load_network_asset(&self, tenant_id: &str, asset_id: &str) -> AppResult<NetworkAsset> {
         #[cfg(feature = "postgres")]
         let query = r#"
             SELECT
@@ -86,7 +82,9 @@ impl CustomerService {
         terminal_asset_id: &str,
         parent_asset_id: Option<&str>,
     ) -> AppResult<()> {
-        let terminal_asset = self.load_network_asset(tenant_id, terminal_asset_id).await?;
+        let terminal_asset = self
+            .load_network_asset(tenant_id, terminal_asset_id)
+            .await?;
         if !matches!(terminal_asset.asset_type.as_str(), "ont" | "onu") {
             return Err(AppError::Validation(
                 "Terminal asset must be ONT or ONU".into(),

@@ -357,3 +357,21 @@ fn customer_active_only_enables_pppoe_when_subscription_is_serviceable() {
         &[]
     ));
 }
+
+#[test]
+fn service_lifecycle_reconciliation_issue_types_are_strict() {
+    assert_eq!(
+        CustomerService::normalize_service_lifecycle_issue_type(Some("missing_bootstrap_invoice"))
+            .unwrap(),
+        "missing_bootstrap_invoice"
+    );
+    assert_eq!(
+        CustomerService::normalize_service_lifecycle_issue_type(Some("invalid_active_lifecycle"))
+            .unwrap(),
+        "invalid_active_lifecycle"
+    );
+
+    let err =
+        CustomerService::normalize_service_lifecycle_issue_type(Some("unknown_issue")).unwrap_err();
+    assert!(matches!(err, AppError::Validation(_)));
+}

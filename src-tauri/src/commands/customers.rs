@@ -5,12 +5,13 @@ use crate::models::{
     CreateMyCustomerLocationRequest, Customer, CustomerLifecycleObservability, CustomerListItem,
     CustomerLocation, CustomerPortalSubscriptionStats, CustomerPortalUser,
     CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
-    CustomerRegistrationInviteSummary, CustomerRegistrationInviteView, CustomerSubscription,
+    CustomerRegistrationInviteSummary, CustomerRegistrationInviteView,
+    CustomerServiceLifecycleRepairResult, CustomerServiceLifecycleReport, CustomerSubscription,
     CustomerSubscriptionOption, CustomerSubscriptionView, CustomerSummary, InstallationWorkOrder,
     InstallationWorkOrderView, Invoice, IspPackage, PaginatedResponse,
-    PortalCheckoutSubscriptionRequest, TeamMemberWithUser, UpdateCustomerLocationRequest,
-    UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
-    UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
+    PortalCheckoutSubscriptionRequest, RepairCustomerServiceLifecycleRequest, TeamMemberWithUser,
+    UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
+    UpdateCustomerRequest, UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
 };
 use crate::services::{AuthService, CustomerService, PaymentService};
 use tauri::State;
@@ -101,6 +102,66 @@ pub async fn get_customer_summary(
 
     customers
         .get_customer_summary(&claims.sub, &tenant_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_customer_service_lifecycle_report(
+    token: String,
+    q: Option<String>,
+    issue_type: Option<String>,
+    page: Option<u32>,
+    per_page: Option<u32>,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<CustomerServiceLifecycleReport, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "read").await?;
+
+    customers
+        .get_service_lifecycle_report(
+            &claims.sub,
+            &tenant_id,
+            q,
+            issue_type,
+            page.unwrap_or(1),
+            per_page.unwrap_or(25),
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn repair_customer_service_lifecycle_issues(
+    token: String,
+    issue_type: String,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<CustomerServiceLifecycleRepairResult, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "billing", "manage").await?;
+
+    customers
+        .repair_service_lifecycle_issues(
+            &claims.sub,
+            &tenant_id,
+            RepairCustomerServiceLifecycleRequest { issue_type },
+        )
         .await
         .map_err(|e| e.to_string())
 }

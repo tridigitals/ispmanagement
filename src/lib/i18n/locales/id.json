@@ -325,6 +325,57 @@
         "active": "Aktif",
         "inactive": "Nonaktif"
       },
+      "reconciliation": {
+        "title": "Rekonsiliasi Lifecycle",
+        "subtitle": "Tinjau anomali lifecycle layanan sebelum menjalankan perbaikan massal yang aman.",
+        "search": "Cari pelanggan, paket, lokasi, atau subscription...",
+        "generated_at": "Dibuat",
+        "empty": "Tidak ada masalah lifecycle",
+        "filters": {
+          "issue_type": "Tipe masalah",
+          "all_issues": "Semua masalah"
+        },
+        "columns": {
+          "customer": "Pelanggan",
+          "service": "Layanan",
+          "issue": "Masalah",
+          "action": "Saran tindakan"
+        },
+        "stats": {
+          "total_issues": "Total masalah",
+          "missing_bootstrap_invoice": "Belum ada invoice awal",
+          "invalid_active_lifecycle": "Lifecycle aktif tidak valid",
+          "visible_rows": "Baris tampil"
+        },
+        "actions": {
+          "bootstrap_missing_invoices": "Buat Invoice Awal",
+          "review_lifecycle_data": "Tinjau data lifecycle",
+          "suspend_invalid_active_lifecycle": "Suspend Service Invalid",
+          "open_service": "Buka service"
+        },
+        "issue_types": {
+          "missing_bootstrap_invoice": "Belum ada invoice awal",
+          "invalid_active_lifecycle": "Lifecycle aktif tidak valid"
+        },
+        "repair_result": {
+          "title": "Hasil perbaikan",
+          "subtitle": "Ringkasan hasil eksekusi mass action terakhir.",
+          "matched": "Dicek",
+          "repaired": "Berhasil",
+          "skipped": "Dilewati",
+          "failed": "Gagal",
+          "errors": "Detail error"
+        },
+        "fallback": {
+          "package": "Paket",
+          "unknown_location": "Lokasi tidak diketahui"
+        },
+        "toasts": {
+          "load_failed": "Gagal memuat laporan rekonsiliasi lifecycle",
+          "repair_success": "Invoice awal diproses: {repaired} berhasil, {skipped} dilewati, {failed} gagal dari {matched} layanan.",
+          "repair_failed": "Gagal memperbaiki masalah lifecycle"
+        }
+      },
       "columns": {
         "customer": "Pelanggan",
         "contact": "Kontak",

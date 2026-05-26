@@ -9,12 +9,13 @@ use crate::models::{
     CreateMyCustomerLocationRequest, Customer, CustomerLifecycleObservability, CustomerListItem,
     CustomerLocation, CustomerPortalSubscriptionStats, CustomerPortalUser,
     CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
-    CustomerRegistrationInviteSummary, CustomerRegistrationInviteView, CustomerSubscription,
+    CustomerRegistrationInviteSummary, CustomerRegistrationInviteView,
+    CustomerServiceLifecycleRepairResult, CustomerServiceLifecycleReport, CustomerSubscription,
     CustomerSubscriptionOption, CustomerSubscriptionView, CustomerSummary, InstallationWorkOrder,
     InstallationWorkOrderView, Invoice, IspPackage, PaginatedResponse,
-    PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest,
-    UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
-    UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
+    PortalCheckoutSubscriptionRequest, RepairCustomerServiceLifecycleRequest,
+    UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
+    UpdateCustomerRequest, UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
 };
 use axum::{
     extract::{ConnectInfo, Extension, Path, Query, State},
@@ -35,6 +36,14 @@ pub fn router() -> Router<AppState> {
             post(create_backoffice_installation_order),
         )
         .route("/summary", get(get_customer_summary))
+        .route(
+            "/reconciliation/service-lifecycle",
+            get(get_service_lifecycle_report),
+        )
+        .route(
+            "/reconciliation/service-lifecycle/repair",
+            post(repair_service_lifecycle_issues),
+        )
         .route(
             "/invites",
             get(list_customer_registration_invites).post(create_customer_registration_invite),
@@ -252,6 +261,51 @@ async fn get_customer_summary(
         .get_customer_summary(&claims.sub, &tenant_id)
         .await?;
     Ok(Json(summary))
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct ServiceLifecycleReportQuery {
+    q: Option<String>,
+    issue_type: Option<String>,
+    page: Option<u32>,
+    per_page: Option<u32>,
+}
+
+// GET /api/customers/reconciliation/service-lifecycle
+async fn get_service_lifecycle_report(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<ServiceLifecycleReportQuery>,
+) -> AppResult<Json<CustomerServiceLifecycleReport>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "read").await?;
+    let report = state
+        .customer_service
+        .get_service_lifecycle_report(
+            &claims.sub,
+            &tenant_id,
+            q.q,
+            q.issue_type,
+            q.page.unwrap_or(1),
+            q.per_page.unwrap_or(25),
+        )
+        .await?;
+    Ok(Json(report))
+}
+
+// POST /api/customers/reconciliation/service-lifecycle/repair
+async fn repair_service_lifecycle_issues(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(dto): Json<RepairCustomerServiceLifecycleRequest>,
+) -> AppResult<Json<CustomerServiceLifecycleRepairResult>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "billing", "manage").await?;
+    let result = state
+        .customer_service
+        .repair_service_lifecycle_issues(&claims.sub, &tenant_id, dto)
+        .await?;
+    Ok(Json(result))
 }
 
 // GET /api/customers/observability/lifecycle?customer_id=...

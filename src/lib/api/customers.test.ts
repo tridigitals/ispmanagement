@@ -85,4 +85,53 @@ describe('customers api wrapper', () => {
     expect(metrics.lifecycle_funnel[1]?.stage).toBe('installation_done_awaiting_payment');
     expect(metrics.aging_buckets[0]?.bucket).toBe('>7d');
   });
+
+  it('loads lifecycle reconciliation report through safeInvoke', async () => {
+    safeInvoke.mockResolvedValue({
+      generated_at: '2026-05-26T10:00:00Z',
+      total_issues: 3,
+      missing_bootstrap_invoice: 2,
+      invalid_active_lifecycle: 1,
+      page: 1,
+      per_page: 25,
+      data: [],
+    });
+
+    const { customers } = await import('./customers');
+    const report = await customers.reconciliation.report({
+      q: 'hartatik',
+      issueType: 'invalid_active_lifecycle',
+      page: 1,
+      perPage: 25,
+    });
+
+    expect(report.invalid_active_lifecycle).toBe(1);
+
+    expect(safeInvoke).toHaveBeenCalledWith('get_customer_service_lifecycle_report', {
+      token: 'token-123',
+      q: 'hartatik',
+      issue_type: 'invalid_active_lifecycle',
+      page: 1,
+      per_page: 25,
+    });
+  });
+
+  it('repairs lifecycle reconciliation issues through safeInvoke', async () => {
+    safeInvoke.mockResolvedValue({
+      issue_type: 'missing_bootstrap_invoice',
+      matched_count: 3,
+      repaired_count: 3,
+      skipped_count: 0,
+      failed_count: 0,
+      errors: [],
+    });
+
+    const { customers } = await import('./customers');
+    await customers.reconciliation.repair('invalid_active_lifecycle');
+
+    expect(safeInvoke).toHaveBeenCalledWith('repair_customer_service_lifecycle_issues', {
+      token: 'token-123',
+      issue_type: 'invalid_active_lifecycle',
+    });
+  });
 });

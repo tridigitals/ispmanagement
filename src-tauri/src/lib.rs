@@ -386,6 +386,8 @@ pub fn run() {
                                     // Customers (tenant scoped)
                                     list_customers,
                                     get_customer_summary,
+                                    get_customer_service_lifecycle_report,
+                                    repair_customer_service_lifecycle_issues,
                                     get_customer,
                                     create_customer,
                                     create_customer_with_portal,

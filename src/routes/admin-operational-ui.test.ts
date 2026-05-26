@@ -92,6 +92,30 @@ describe('admin operational UI cleanup', () => {
     expect(source).toContain('whatsapp.sendCustomer');
     expect(source).toContain('messageTemplates.list');
     expect(source).toContain('selectedMessageTemplateId');
+    expect(source).toContain('lifecycle-reconciliation');
+    expect(source).toContain('loadLifecycleReconciliationSummary');
+    expect(source).toContain('class:attention={lifecycleIssueCount > 0}');
+    expect(source).toContain('toolbar-alert-count');
+    expect(source).toContain('pulse-red');
+  });
+
+  it('exposes a focused lifecycle reconciliation admin surface for customer service anomalies', () => {
+    const path = 'src/routes/(app)/admin/customers/lifecycle-reconciliation/+page.svelte';
+
+    expect(existsSync(resolve(process.cwd(), path))).toBe(true);
+
+    const source = readSource(path);
+    expect(source).toContain('Buat Invoice Awal');
+    expect(source).toContain('Belum ada invoice awal');
+    expect(source).toContain('invalid_active_lifecycle');
+    expect(source).toContain('repair-result-card');
+    expect(source).toContain('repair_failed');
+    expect(source).toContain('pagination={true}');
+    expect(source).toContain('serverSide={true}');
+    expect(source).toContain('suspend_invalid_active_lifecycle');
+    expect(source).toContain('reconciliation-filter-select');
+    expect(source).toContain('api.customers.reconciliation.report');
+    expect(source).toContain('api.customers.reconciliation.repair');
   });
 
   it('keeps the customer invite modal operational and easy to scan', () => {

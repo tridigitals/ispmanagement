@@ -15,6 +15,8 @@ import type {
   CustomerRegistrationInvitePolicy,
   CustomerRegistrationInviteSummary,
   CustomerRegistrationInviteView,
+  CustomerServiceLifecycleRepairResult,
+  CustomerServiceLifecycleReport,
   CustomerSummary,
   CustomerSubscriptionOption,
   CustomerSubscription,
@@ -46,6 +48,30 @@ export const customers = {
     safeInvoke('get_customer_summary', {
       token: getTokenOrThrow(),
     }),
+
+  reconciliation: {
+    report: (params?: {
+      q?: string;
+      issueType?: 'all' | 'missing_bootstrap_invoice' | 'invalid_active_lifecycle';
+      page?: number;
+      perPage?: number;
+    }): Promise<CustomerServiceLifecycleReport> =>
+      safeInvoke('get_customer_service_lifecycle_report', {
+        token: getTokenOrThrow(),
+        q: params?.q,
+        issue_type: params?.issueType,
+        page: params?.page,
+        per_page: params?.perPage,
+      }),
+
+    repair: (
+      issueType: 'missing_bootstrap_invoice' | 'invalid_active_lifecycle',
+    ): Promise<CustomerServiceLifecycleRepairResult> =>
+      safeInvoke('repair_customer_service_lifecycle_issues', {
+        token: getTokenOrThrow(),
+        issue_type: issueType,
+      }),
+  },
 
   get: (customerId: string): Promise<Customer> =>
     safeInvoke('get_customer', {

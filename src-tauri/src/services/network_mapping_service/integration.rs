@@ -492,9 +492,14 @@ impl NetworkMappingService {
             .iter()
             .map(|row| row.location_id.clone())
             .collect();
-        let eligible_asset_ids: Vec<String> = network_assets.iter().map(|row| row.id.clone()).collect();
+        let eligible_asset_ids: Vec<String> =
+            network_assets.iter().map(|row| row.id.clone()).collect();
         let pruned_asset_nodes = self
-            .prune_system_managed_nodes_not_in_assets(tenant_id, "network_asset", &eligible_asset_ids)
+            .prune_system_managed_nodes_not_in_assets(
+                tenant_id,
+                "network_asset",
+                &eligible_asset_ids,
+            )
             .await?;
         let deduped_asset_nodes = self
             .dedupe_system_managed_nodes_by_asset_source(tenant_id, "network_asset")
@@ -796,11 +801,15 @@ mod tests {
     #[test]
     fn sync_topology_asset_type_covers_current_ftth_assets() {
         assert!(NetworkMappingService::is_sync_topology_asset_type("olt"));
-        assert!(NetworkMappingService::is_sync_topology_asset_type("splitter"));
+        assert!(NetworkMappingService::is_sync_topology_asset_type(
+            "splitter"
+        ));
         assert!(NetworkMappingService::is_sync_topology_asset_type("switch"));
         assert!(!NetworkMappingService::is_sync_topology_asset_type("odf"));
         assert!(!NetworkMappingService::is_sync_topology_asset_type("ont"));
-        assert!(!NetworkMappingService::is_sync_topology_asset_type("router"));
+        assert!(!NetworkMappingService::is_sync_topology_asset_type(
+            "router"
+        ));
     }
 
     #[test]

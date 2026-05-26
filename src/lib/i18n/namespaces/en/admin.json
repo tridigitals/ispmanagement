@@ -571,6 +571,57 @@
       "active": "Active",
       "inactive": "Inactive"
     },
+    "reconciliation": {
+      "title": "Lifecycle Reconciliation",
+      "subtitle": "Review service lifecycle anomalies before running safe mass repair actions.",
+      "search": "Search customer, package, location, or subscription...",
+      "generated_at": "Generated",
+      "empty": "No lifecycle issues found",
+      "filters": {
+        "issue_type": "Issue type",
+        "all_issues": "All issues"
+      },
+      "columns": {
+        "customer": "Customer",
+        "service": "Service",
+        "issue": "Issue",
+        "action": "Recommended action"
+      },
+      "stats": {
+        "total_issues": "Total issues",
+        "missing_bootstrap_invoice": "Missing initial invoice",
+        "invalid_active_lifecycle": "Invalid active lifecycle",
+        "visible_rows": "Visible rows"
+      },
+      "actions": {
+        "bootstrap_missing_invoices": "Create Initial Invoice",
+        "review_lifecycle_data": "Review lifecycle data",
+        "suspend_invalid_active_lifecycle": "Suspend Invalid Services",
+        "open_service": "Open service"
+      },
+      "issue_types": {
+        "missing_bootstrap_invoice": "Missing initial invoice",
+        "invalid_active_lifecycle": "Invalid active lifecycle"
+      },
+      "repair_result": {
+        "title": "Repair result",
+        "subtitle": "Summary of the latest mass action execution.",
+        "matched": "Matched",
+        "repaired": "Repaired",
+        "skipped": "Skipped",
+        "failed": "Failed",
+        "errors": "Error details"
+      },
+      "fallback": {
+        "package": "Package",
+        "unknown_location": "Unknown location"
+      },
+      "toasts": {
+        "load_failed": "Failed to load lifecycle reconciliation report",
+        "repair_success": "Initial invoices processed: {repaired} repaired, {skipped} skipped, {failed} failed from {matched} services.",
+        "repair_failed": "Failed to repair lifecycle issues"
+      }
+    },
     "columns": {
       "customer": "Customer",
       "contact": "Contact",

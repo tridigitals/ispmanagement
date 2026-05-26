@@ -340,6 +340,47 @@ pub struct CustomerLifecycleObservability {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct CustomerServiceLifecycleIssue {
+    pub issue_type: String,
+    pub customer_id: String,
+    pub customer_name: String,
+    pub subscription_id: String,
+    pub subscription_status: String,
+    pub package_name: Option<String>,
+    pub location_label: Option<String>,
+    pub starts_at: Option<DateTime<Utc>>,
+    pub ends_at: Option<DateTime<Utc>>,
+    pub recommended_action: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerServiceLifecycleReport {
+    pub generated_at: DateTime<Utc>,
+    pub total_issues: i64,
+    pub missing_bootstrap_invoice: i64,
+    pub invalid_active_lifecycle: i64,
+    pub page: u32,
+    pub per_page: u32,
+    pub data: Vec<CustomerServiceLifecycleIssue>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RepairCustomerServiceLifecycleRequest {
+    pub issue_type: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerServiceLifecycleRepairResult {
+    pub issue_type: String,
+    pub matched_count: i64,
+    pub repaired_count: i64,
+    pub skipped_count: i64,
+    pub failed_count: i64,
+    pub errors: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct InstallationWorkOrder {
     pub id: String,
     pub tenant_id: String,

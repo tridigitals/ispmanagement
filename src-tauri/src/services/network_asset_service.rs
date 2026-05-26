@@ -92,9 +92,9 @@ impl NetworkAssetService {
     fn validate_coordinates(latitude: Option<f64>, longitude: Option<f64>) -> AppResult<()> {
         match (latitude, longitude) {
             (None, None) => Ok(()),
-            (Some(_), None) | (None, Some(_)) => {
-                Err(AppError::Validation("Latitude and longitude must be filled together".into()))
-            }
+            (Some(_), None) | (None, Some(_)) => Err(AppError::Validation(
+                "Latitude and longitude must be filled together".into(),
+            )),
             (Some(lat), Some(lng)) => {
                 if !(-90.0..=90.0).contains(&lat) {
                     return Err(AppError::Validation(
@@ -111,37 +111,38 @@ impl NetworkAssetService {
         }
     }
 
-    fn validate_detail_metadata(
-        asset_type: &str,
-        metadata: &serde_json::Value,
-    ) -> AppResult<()> {
+    fn validate_detail_metadata(asset_type: &str, metadata: &serde_json::Value) -> AppResult<()> {
         let Some(map) = metadata.as_object() else {
             return Ok(());
         };
 
-        let validate_positive_integer =
-            |key: &str, label: &str| -> AppResult<()> {
-                let Some(value) = map.get(key) else {
-                    return Ok(());
-                };
-                let normalized = match value {
-                    serde_json::Value::String(text) => text.trim().to_string(),
-                    serde_json::Value::Number(number) => number.to_string(),
-                    _ => {
-                        return Err(AppError::Validation(format!(
-                            "{label} must be a positive whole number"
-                        )))
-                    }
-                };
-
-                if normalized.parse::<u32>().ok().filter(|value| *value > 0).is_some() {
-                    Ok(())
-                } else {
-                    Err(AppError::Validation(format!(
+        let validate_positive_integer = |key: &str, label: &str| -> AppResult<()> {
+            let Some(value) = map.get(key) else {
+                return Ok(());
+            };
+            let normalized = match value {
+                serde_json::Value::String(text) => text.trim().to_string(),
+                serde_json::Value::Number(number) => number.to_string(),
+                _ => {
+                    return Err(AppError::Validation(format!(
                         "{label} must be a positive whole number"
                     )))
                 }
             };
+
+            if normalized
+                .parse::<u32>()
+                .ok()
+                .filter(|value| *value > 0)
+                .is_some()
+            {
+                Ok(())
+            } else {
+                Err(AppError::Validation(format!(
+                    "{label} must be a positive whole number"
+                )))
+            }
+        };
 
         match asset_type {
             "switch" | "router" | "media_converter" => {
@@ -157,9 +158,9 @@ impl NetworkAssetService {
                 if let Some(value) = map.get("mac_address").and_then(|value| value.as_str()) {
                     let octets: Vec<&str> = value.trim().split([':', '-']).collect();
                     let valid = octets.len() == 6
-                        && octets
-                            .iter()
-                            .all(|part| part.len() == 2 && part.chars().all(|ch| ch.is_ascii_hexdigit()));
+                        && octets.iter().all(|part| {
+                            part.len() == 2 && part.chars().all(|ch| ch.is_ascii_hexdigit())
+                        });
                     if !valid {
                         return Err(AppError::Validation(
                             "MAC Address must use format like AA:BB:CC:DD:EE:FF".into(),
@@ -190,8 +191,7 @@ impl NetworkAssetService {
         #[cfg(feature = "postgres")]
         let query = format!("SELECT id FROM {table} WHERE tenant_id = $1 AND id = $2 LIMIT 1");
         #[cfg(feature = "sqlite")]
-        let query =
-            format!("SELECT id FROM {table} WHERE tenant_id = ?1 AND id = ?2 LIMIT 1");
+        let query = format!("SELECT id FROM {table} WHERE tenant_id = ?1 AND id = ?2 LIMIT 1");
 
         let found: Option<String> = sqlx::query_scalar(&query)
             .bind(tenant_id)
@@ -554,13 +554,8 @@ impl NetworkAssetService {
         let longitude = dto.longitude;
         let metadata = dto.metadata.unwrap_or_else(|| serde_json::json!({}));
 
-        self.ensure_unique_identifiers(
-            tenant_id,
-            code.as_deref(),
-            serial_number.as_deref(),
-            None,
-        )
-        .await?;
+        self.ensure_unique_identifiers(tenant_id, code.as_deref(), serial_number.as_deref(), None)
+            .await?;
         self.ensure_relation_exists(tenant_id, "customers", customer_id.as_deref(), "Customer")
             .await?;
         self.ensure_relation_exists(
@@ -684,7 +679,10 @@ impl NetworkAssetService {
                 "create",
                 "ftth_assets",
                 Some(&asset.id),
-                Some(&format!("Created {} asset {}", asset.asset_type, asset.name)),
+                Some(&format!(
+                    "Created {} asset {}",
+                    asset.asset_type, asset.name
+                )),
                 Some("127.0.0.1"),
             )
             .await;
@@ -912,12 +910,7 @@ impl NetworkAssetService {
         self.load_asset(tenant_id, id).await
     }
 
-    pub async fn delete_asset(
-        &self,
-        actor_id: &str,
-        tenant_id: &str,
-        id: &str,
-    ) -> AppResult<()> {
+    pub async fn delete_asset(&self, actor_id: &str, tenant_id: &str, id: &str) -> AppResult<()> {
         self.require_manage(actor_id, tenant_id).await?;
         let current = self.load_asset(tenant_id, id).await?;
 
@@ -978,7 +971,10 @@ impl NetworkAssetService {
                 "delete",
                 "ftth_assets",
                 Some(id),
-                Some(&format!("Deleted {} asset {}", current.asset_type, current.name)),
+                Some(&format!(
+                    "Deleted {} asset {}",
+                    current.asset_type, current.name
+                )),
                 Some("127.0.0.1"),
             )
             .await;
@@ -1003,7 +999,8 @@ impl NetworkAssetService {
             return Err(AppError::Validation("Asset cannot parent itself".into()));
         }
         if let Some(table) = table {
-            self.ensure_relation_exists(tenant_id, table, value, label).await?;
+            self.ensure_relation_exists(tenant_id, table, value, label)
+                .await?;
         }
 
         #[cfg(feature = "postgres")]

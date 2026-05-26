@@ -49,6 +49,7 @@
     inactive: 0,
     pending_installation: 0,
   });
+  let lifecycleIssueCount = $state(0);
   let loading = $state(true);
   let error = $state('');
 
@@ -130,6 +131,7 @@
       canManageCustomers ? loadMessageTemplates() : Promise.resolve(),
       load(),
       loadCustomerSummary(),
+      loadLifecycleReconciliationSummary(),
     ]);
   });
 
@@ -187,7 +189,7 @@
 
   async function refreshCustomers(options: { sync?: boolean } = {}) {
     if (options.sync !== false) syncUrlState();
-    await Promise.all([load(), loadCustomerSummary()]);
+    await Promise.all([load(), loadCustomerSummary(), loadLifecycleReconciliationSummary()]);
   }
 
   async function setStatusFilter(next: CustomerStatusFilter) {
@@ -241,6 +243,18 @@
     }
   }
 
+  async function loadLifecycleReconciliationSummary() {
+    try {
+      const report = await api.customers.reconciliation.report({
+        page: 1,
+        perPage: 1,
+      });
+      lifecycleIssueCount = report.total_issues;
+    } catch {
+      lifecycleIssueCount = 0;
+    }
+  }
+
   function isSystemImportPlaceholder(customer: Customer): boolean {
     return customer.name === IMPORT_PLACEHOLDER_CUSTOMER_NAME;
   }
@@ -267,7 +281,11 @@
 
   function customerHealthTone(c: CustomerListItem) {
     if (!c.is_active) return 'muted';
-    if (c.pending_installations > 0 || c.service_status === 'none' || c.service_status === 'inactive') {
+    if (
+      c.pending_installations > 0 ||
+      c.service_status === 'none' ||
+      c.service_status === 'inactive'
+    ) {
       return 'warning';
     }
     return 'healthy';
@@ -289,6 +307,10 @@
 
   function openCreateInvoice(c: CustomerListItem) {
     goto(`${adminBasePath()}/invoices?customer_id=${encodeURIComponent(c.id)}`);
+  }
+
+  function openLifecycleReconciliation() {
+    goto(`${adminBasePath()}/customers/lifecycle-reconciliation`);
   }
 
   async function loadWhatsAppReadiness() {
@@ -378,8 +400,14 @@
       return { subject: emailSubject, body: emailBody };
     }
     return {
-      subject: ($t('admin.customers.communication.fallback_email_subject') || '').replace('{name}', c.name),
-      body: ($t('admin.customers.communication.fallback_email_body') || '').replace('{name}', c.name),
+      subject: ($t('admin.customers.communication.fallback_email_subject') || '').replace(
+        '{name}',
+        c.name,
+      ),
+      body: ($t('admin.customers.communication.fallback_email_body') || '').replace(
+        '{name}',
+        c.name,
+      ),
     };
   }
 
@@ -853,7 +881,9 @@
               aria-label="Customer status filter"
               value={statusFilter}
               onchange={(event) =>
-                setStatusFilter((event.currentTarget as HTMLSelectElement).value as CustomerStatusFilter)}
+                setStatusFilter(
+                  (event.currentTarget as HTMLSelectElement).value as CustomerStatusFilter,
+                )}
             >
               <option value="all">All customers</option>
               <option value="active">Active</option>
@@ -867,7 +897,9 @@
               aria-label="Customer service filter"
               value={serviceFilter}
               onchange={(event) =>
-                setServiceFilter((event.currentTarget as HTMLSelectElement).value as CustomerServiceFilter)}
+                setServiceFilter(
+                  (event.currentTarget as HTMLSelectElement).value as CustomerServiceFilter,
+                )}
             >
               <option value="all">All services</option>
               <option value="active">Active service</option>
@@ -893,10 +925,23 @@
         </div>
       {/snippet}
       {#snippet actions()}
-        <span class="muted">
-          {total}
-          {$t('admin.customers.results') || 'results'}
-        </span>
+        <div class="customer-toolbar-actions">
+          <span class="customer-toolbar-results">
+            {total}
+            {$t('admin.customers.results') || 'results'}
+          </span>
+          <button
+            class="customer-toolbar-shortcut"
+            class:attention={lifecycleIssueCount > 0}
+            onclick={openLifecycleReconciliation}
+          >
+            <Icon name="shield-check" size={16} />
+            <span>Lifecycle reconciliation</span>
+            {#if lifecycleIssueCount > 0}
+              <span class="toolbar-alert-count pulse-red">{lifecycleIssueCount}</span>
+            {/if}
+          </button>
+        </div>
       {/snippet}
     </TableToolbar>
 
@@ -916,7 +961,11 @@
         {#each customers as c (c.id)}
           <article class="mobile-customer-card">
             <div class="mobile-customer-head">
-              <button class="linkish" onclick={() => openCustomer(c)} disabled={isSystemImportPlaceholder(c)}>
+              <button
+                class="linkish"
+                onclick={() => openCustomer(c)}
+                disabled={isSystemImportPlaceholder(c)}
+              >
                 <div class="name">{c.name}</div>
                 <div class="sub">{c.email || c.phone || 'No contact'}</div>
               </button>
@@ -945,7 +994,11 @@
                 <button class="btn-icon" title="Add service" onclick={() => openAddService(c)}>
                   <Icon name="wifi" size={16} />
                 </button>
-                <button class="btn-icon" title="Create invoice" onclick={() => openCreateInvoice(c)}>
+                <button
+                  class="btn-icon"
+                  title="Create invoice"
+                  onclick={() => openCreateInvoice(c)}
+                >
                   <Icon name="receipt" size={16} />
                 </button>
                 <button
@@ -976,7 +1029,11 @@
           </article>
         {/each}
         <div class="mobile-pager">
-          <button class="btn btn-secondary" disabled={page === 0} onclick={() => goToMobilePage(page - 1)}>
+          <button
+            class="btn btn-secondary"
+            disabled={page === 0}
+            onclick={() => goToMobilePage(page - 1)}
+          >
             <Icon name="chevron-left" size={16} />
             Prev
           </button>
@@ -1081,7 +1138,11 @@
                 <button class="btn-icon" title="Add service" onclick={() => openAddService(c)}>
                   <Icon name="wifi" size={16} />
                 </button>
-                <button class="btn-icon" title="Create invoice" onclick={() => openCreateInvoice(c)}>
+                <button
+                  class="btn-icon"
+                  title="Create invoice"
+                  onclick={() => openCreateInvoice(c)}
+                >
                   <Icon name="receipt" size={16} />
                 </button>
                 <button
@@ -1189,7 +1250,8 @@
         <div>
           <strong>Generate invite</strong>
           <p class="invite-section-copy">
-            Buat link pendaftaran customer yang bisa langsung dibagikan ke tim sales atau calon pelanggan.
+            Buat link pendaftaran customer yang bisa langsung dibagikan ke tim sales atau calon
+            pelanggan.
           </p>
         </div>
       </div>
@@ -1215,11 +1277,21 @@
             </label>
             <label>
               <span>Default max uses</span>
-              <input class="input" type="number" min="1" max="100" bind:value={invitePolicyMaxUses} />
+              <input
+                class="input"
+                type="number"
+                min="1"
+                max="100"
+                bind:value={invitePolicyMaxUses}
+              />
             </label>
           </div>
           <div class="actions actions-inline">
-            <button class="btn btn-secondary" onclick={saveInvitePolicy} disabled={invitePolicySaving}>
+            <button
+              class="btn btn-secondary"
+              onclick={saveInvitePolicy}
+              disabled={invitePolicySaving}
+            >
               <Icon name="save" size={14} />
               {invitePolicySaving ? 'Saving...' : 'Save defaults'}
             </button>
@@ -1275,7 +1347,11 @@
       </div>
       <label>
         <span>Note (optional)</span>
-        <input class="input" bind:value={inviteNote} placeholder="Campaign, PIC, atau remark internal" />
+        <input
+          class="input"
+          bind:value={inviteNote}
+          placeholder="Campaign, PIC, atau remark internal"
+        />
       </label>
 
       <div class="actions actions-inline">
@@ -1339,7 +1415,8 @@
                   <span
                     class="pill"
                     class:pill-green={inviteStatus(invite) === 'active'}
-                    class:pill-warning={inviteStatus(invite) === 'used' || inviteStatus(invite) === 'expired'}
+                    class:pill-warning={inviteStatus(invite) === 'used' ||
+                      inviteStatus(invite) === 'expired'}
                     class:pill-gray={inviteStatus(invite) === 'revoked'}
                   >
                     {inviteStatusLabel(invite)}
@@ -1415,7 +1492,9 @@
         <span class="pill" class:pill-green={whatsappGatewayReady}>
           {whatsappGatewayReady
             ? `${whatsappGatewayProvider || 'gateway'} ${$t('admin.customers.communication.gateway_ready') || 'ready'}`
-            : whatsappGatewayReason || $t('admin.customers.communication.gateway_not_ready') || 'Gateway not ready'}
+            : whatsappGatewayReason ||
+              $t('admin.customers.communication.gateway_not_ready') ||
+              'Gateway not ready'}
         </span>
       </div>
       <label>
@@ -1428,7 +1507,9 @@
           {#each messageTemplateOptions as template}
             <option value={template.id}>{template.name}</option>
           {/each}
-          <option value="custom">{$t('admin.customers.communication.custom_message') || 'Custom message'}</option>
+          <option value="custom"
+            >{$t('admin.customers.communication.custom_message') || 'Custom message'}</option
+          >
         </select>
       </label>
       <label>
@@ -1436,13 +1517,19 @@
         <textarea class="input" rows="7" bind:value={whatsappMessage}></textarea>
       </label>
       <div class="compose-footnote">
-        <span>{whatsappMessage.trim().length} {$t('admin.customers.communication.characters') || 'characters'}</span>
+        <span
+          >{whatsappMessage.trim().length}
+          {$t('admin.customers.communication.characters') || 'characters'}</span
+        >
         {#if !whatsappGatewayReady}
           <span>{whatsappGatewayReason}</span>
         {/if}
       </div>
       <div class="actions">
-        <button class="btn btn-secondary" onclick={() => whatsappTarget && openWhatsAppApp(whatsappTarget)}>
+        <button
+          class="btn btn-secondary"
+          onclick={() => whatsappTarget && openWhatsAppApp(whatsappTarget)}
+        >
           <Icon name="external-link" size={16} />
           {$t('admin.customers.communication.actions.open_whatsapp_app') || 'Open WhatsApp App'}
         </button>
@@ -1476,7 +1563,9 @@
           <strong>{emailTarget.name}</strong>
           <span>{emailTarget.email}</span>
         </div>
-        <span class="pill pill-green">{$t('admin.customers.communication.email_outbox') || 'Email outbox'}</span>
+        <span class="pill pill-green"
+          >{$t('admin.customers.communication.email_outbox') || 'Email outbox'}</span
+        >
       </div>
       <label>
         <span>{$t('admin.customers.communication.template') || 'Template'}</span>
@@ -1488,7 +1577,9 @@
           {#each emailTemplateOptions as template}
             <option value={template.id}>{template.name}</option>
           {/each}
-          <option value="custom">{$t('admin.customers.communication.custom_email') || 'Custom email'}</option>
+          <option value="custom"
+            >{$t('admin.customers.communication.custom_email') || 'Custom email'}</option
+          >
         </select>
       </label>
       <label>
@@ -1500,8 +1591,14 @@
         <textarea class="input" rows="9" bind:value={emailBody}></textarea>
       </label>
       <div class="compose-footnote">
-        <span>{emailBody.trim().length} {$t('admin.customers.communication.characters') || 'characters'}</span>
-        <span>{$t('admin.customers.communication.queued_through_outbox') || 'Queued through email outbox'}</span>
+        <span
+          >{emailBody.trim().length}
+          {$t('admin.customers.communication.characters') || 'characters'}</span
+        >
+        <span
+          >{$t('admin.customers.communication.queued_through_outbox') ||
+            'Queued through email outbox'}</span
+        >
       </div>
       <div class="actions">
         <button
@@ -1643,6 +1740,107 @@
   .table-card {
     padding: 1rem;
     overflow: hidden;
+  }
+
+  .customer-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .customer-toolbar-results {
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    white-space: nowrap;
+  }
+
+  .customer-toolbar-shortcut {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-height: 38px;
+    padding: 0.55rem 0.9rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      border-color 0.2s ease,
+      background 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .customer-toolbar-shortcut:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
+    background: color-mix(in srgb, var(--bg-tertiary) 82%, var(--color-primary) 18%);
+  }
+
+  .customer-toolbar-shortcut:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-primary) 42%, transparent);
+    outline-offset: 2px;
+  }
+
+  .customer-toolbar-shortcut.attention {
+    border-color: rgba(239, 68, 68, 0.7);
+    background: color-mix(in srgb, var(--bg-tertiary) 75%, rgba(127, 29, 29, 0.55));
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.18);
+    animation: toolbar-attention 1s ease-in-out infinite;
+  }
+
+  .customer-toolbar-shortcut.attention:hover {
+    border-color: rgba(248, 113, 113, 0.95);
+    background: color-mix(in srgb, var(--bg-tertiary) 68%, rgba(127, 29, 29, 0.7));
+  }
+
+  .toolbar-alert-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    height: 1.5rem;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+
+  .pulse-red {
+    animation: pulse-red 0.95s ease-in-out infinite;
+  }
+
+  @keyframes toolbar-attention {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 1px rgba(239, 68, 68, 0.18),
+        0 0 0 0 rgba(239, 68, 68, 0.08);
+    }
+    50% {
+      box-shadow:
+        0 0 0 1px rgba(248, 113, 113, 0.42),
+        0 0 0 6px rgba(239, 68, 68, 0.12);
+    }
+  }
+
+  @keyframes pulse-red {
+    0%,
+    100% {
+      transform: scale(1);
+      filter: brightness(1);
+    }
+    50% {
+      transform: scale(1.08);
+      filter: brightness(1.15);
+    }
   }
 
   .toolbar-filters {
@@ -2176,6 +2374,20 @@
   @media (max-width: 720px) {
     .table-card {
       padding: 0.9rem;
+    }
+    .customer-toolbar-actions {
+      width: 100%;
+      flex-direction: column-reverse;
+      align-items: stretch;
+      justify-content: flex-start;
+    }
+    .customer-toolbar-results {
+      white-space: normal;
+      text-align: left;
+    }
+    .customer-toolbar-shortcut {
+      width: 100%;
+      justify-content: center;
     }
     .desktop-customer-table {
       display: none;
