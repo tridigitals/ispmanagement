@@ -43,6 +43,8 @@
     "@tiptap/starter-kit": "^2.26.1",
     "@zerodevx/svelte-toast": "^0.9.6",
     "docx-preview": "^0.3.7",
+    "html2canvas-pro": "^2.0.4",
+    "jspdf": "^4.2.1",
     "lucide-svelte": "^0.562.0",
     "maplibre-gl": "^4.7.1",
     "pdfjs-dist": "^5.4.624",

@@ -1,10 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api, type Invoice } from '$lib/api/client';
+  import type { BankAccount, Customer } from '$lib/api/types';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import InvoicePrintModal from '$lib/components/invoice/InvoicePrintModal.svelte';
   import { toast } from '$lib/stores/toast';
   import { appSettings } from '$lib/stores/settings';
+  import { user } from '$lib/stores/auth';
   import { formatMoney } from '$lib/utils/money';
   import { formatDate } from '$lib/utils/date';
   import { goto } from '$app/navigation';
@@ -14,6 +17,14 @@
   let invoices = $state<Invoice[]>([]);
   let loading = $state(true);
   let error = $state('');
+
+  // ---- printable invoice state -------------------------------------------
+  let showPrintModal = $state(false);
+  let printInvoice = $state<Invoice | null>(null);
+  let printCustomer = $state<Customer | null>(null);
+  let printBankAccounts = $state<BankAccount[]>([]);
+  let printPreparing = $state(false);
+  let cachedBanks = $state<BankAccount[] | null>(null);
 
   const columns = $derived.by(() => [
     {
@@ -66,6 +77,52 @@
 
   function formatCurrency(amount: number, currency?: string) {
     return formatMoney(amount, { currency });
+  }
+
+  async function openPrintModal(item: Invoice) {
+    if (printPreparing) return;
+    printPreparing = true;
+    try {
+      printInvoice = item;
+
+      // Customer-side: build a Customer record from the active session user.
+      // The portal API doesn't expose a `getMe` for the customer entity,
+      // so we use the auth store to seed the bill-to block.
+      const u = get(user) as any;
+      printCustomer = u
+        ? {
+            id: u.id,
+            tenant_id: u.tenant_id || '',
+            name: u.name || u.email || 'Customer',
+            email: u.email || null,
+            phone: u.phone || null,
+            notes: null,
+            is_active: true,
+            created_at: '',
+            updated_at: '',
+          }
+        : null;
+
+      // Bank accounts are tenant-scoped public-ish data; cache on first fetch.
+      if (cachedBanks === null) {
+        try {
+          cachedBanks = await api.payment.listBanks();
+        } catch {
+          cachedBanks = [];
+        }
+      }
+      printBankAccounts = cachedBanks;
+
+      showPrintModal = true;
+    } catch (e: any) {
+      toast.error(
+        e?.message ||
+          get(t)('admin.invoices.print_failed') ||
+          'Failed to prepare invoice for print',
+      );
+    } finally {
+      printPreparing = false;
+    }
   }
 </script>
 
@@ -124,6 +181,16 @@
                 <Icon name="eye" size={18} />
               </button>
             {/if}
+            <button
+              type="button"
+              class="action-btn"
+              title={$t('admin.invoices.print_pdf') || 'Print / Download PDF'}
+              aria-label={$t('admin.invoices.print_pdf') || 'Print / Download PDF'}
+              onclick={() => openPrintModal(item)}
+              disabled={printPreparing}
+            >
+              <Icon name="printer" size={18} />
+            </button>
           </div>
         {:else}
           {item[column.key]}
@@ -132,6 +199,15 @@
     </Table>
   </div>
 </div>
+
+{#if printInvoice}
+  <InvoicePrintModal
+    bind:show={showPrintModal}
+    invoice={printInvoice}
+    customer={printCustomer}
+    bankAccounts={printBankAccounts}
+  />
+{/if}
 
 <style>
   .page-container {

@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { api, type Invoice } from '$lib/api/client';
+  import type { BankAccount, Customer, CustomerSubscriptionView } from '$lib/api/types';
   import { toast } from '$lib/stores/toast';
   import { appSettings } from '$lib/stores/settings';
   import { formatDateTime } from '$lib/utils/date';
@@ -10,6 +11,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import { loadLightboxModule } from '$lib/components/ui/lightboxModule';
+  import InvoicePrintModal from '$lib/components/invoice/InvoicePrintModal.svelte';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
   import { can, user, tenant, token } from '$lib/stores/auth';
@@ -44,6 +46,13 @@
   let lightboxFiles = $state<any[]>([]);
   let LightboxComponent = $state<any>(null);
   let relatedCustomerId = $state<string | null>(null);
+
+  // ---- printable invoice state -------------------------------------------
+  let showPrintModal = $state(false);
+  let printCustomer = $state<Customer | null>(null);
+  let printSubscription = $state<CustomerSubscriptionView | null>(null);
+  let printBankAccounts = $state<BankAccount[]>([]);
+  let printPreparing = $state(false);
 
   const billingNav = $derived.by(() =>
     getAdminBillingNavigation({
@@ -274,6 +283,52 @@
       rejectReason = '';
     }
   }
+
+  async function openPrintModal() {
+    if (!invoice) return;
+    if (printPreparing) return;
+    printPreparing = true;
+    try {
+      // Best-effort: fetch related customer + subscription + tenant bank
+      // accounts so the printable invoice can render the full bill-to block.
+      // Any individual fetch failure degrades the document gracefully — the
+      // print modal still opens with whatever data is available.
+      const subscriptionId = getCustomerPackageSubscriptionId(invoice.external_id);
+
+      const [subRes, banksRes] = await Promise.allSettled([
+        subscriptionId
+          ? api.customers.subscriptions.get(subscriptionId)
+          : Promise.resolve(null),
+        api.payment.listBanks(),
+      ]);
+
+      const subscription =
+        subRes.status === 'fulfilled' ? (subRes.value as CustomerSubscriptionView | null) : null;
+      printSubscription = subscription;
+      printBankAccounts = banksRes.status === 'fulfilled' ? (banksRes.value as BankAccount[]) : [];
+
+      const customerId = subscription?.customer_id || relatedCustomerId;
+      if (customerId) {
+        try {
+          printCustomer = await api.customers.get(customerId);
+        } catch {
+          printCustomer = null;
+        }
+      } else {
+        printCustomer = null;
+      }
+
+      showPrintModal = true;
+    } catch (e: any) {
+      toast.error(
+        e?.message ||
+          get(t)('admin.package_invoices.detail.errors.print_failed') ||
+          'Failed to prepare invoice for print',
+      );
+    } finally {
+      printPreparing = false;
+    }
+  }
 </script>
 
 <div class="page-container fade-in">
@@ -309,6 +364,18 @@
       <button class="btn btn-secondary" onclick={loadInvoice} disabled={loading}>
         <Icon name="refresh-cw" size={16} />
         <span>{$t('common.refresh') || 'Refresh'}</span>
+      </button>
+      <button
+        class="btn btn-secondary"
+        onclick={openPrintModal}
+        disabled={loading || printPreparing || !invoice}
+      >
+        <Icon name="printer" size={16} />
+        <span>
+          {printPreparing
+            ? $t('admin.package_invoices.detail.actions.preparing') || 'Preparing...'
+            : $t('admin.package_invoices.detail.actions.print_pdf') || 'Cetak / PDF'}
+        </span>
       </button>
       {#if invoice && invoice.status === 'pending'}
         <button class="btn btn-primary" onclick={() => goto(`/pay/${invoice?.id}`)}>
@@ -516,6 +583,16 @@
       </div>
     </div>
   </div>
+{/if}
+
+{#if invoice}
+  <InvoicePrintModal
+    bind:show={showPrintModal}
+    {invoice}
+    customer={printCustomer}
+    subscription={printSubscription}
+    bankAccounts={printBankAccounts}
+  />
 {/if}
 
 <style>
