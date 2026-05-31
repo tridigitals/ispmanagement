@@ -233,7 +233,7 @@ billing:read, billing:write
 | ------------------ | ------------------------------ |
 | `/`                | Landing page                   |
 | `/login`           | Login page                     |
-| `/register`        | Registration page              |
+| `/register`        | Registration page (hybrid pending flow) |
 | `/forgot-password` | Password recovery              |
 | `/verify-email`    | Email verification             |
 | `/install`         | First-time installation wizard |
@@ -267,6 +267,7 @@ billing:read, billing:write
 | `/superadmin/invoices`   | All invoices           |
 | `/superadmin/settings`   | Global settings        |
 | `/superadmin/storage`    | Global file manager    |
+| `/superadmin/registration-approvals` | Pending registration approvals |
 | `/superadmin/audit-logs` | Audit log viewer       |
 | `/superadmin/system`     | System health          |
 

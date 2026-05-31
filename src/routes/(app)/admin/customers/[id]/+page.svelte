@@ -132,6 +132,13 @@
   let billingFilter = $state<CustomerBillingFilter>('all');
   let generatingInvoiceFor = $state<string | null>(null);
 
+  // Change package (pro-rata upgrade/downgrade)
+  let showChangePackage = $state(false);
+  let changePackageSubscription = $state<CustomerSubscriptionView | null>(null);
+  let changePackageNewId = $state('');
+  let changePackageLoading = $state(false);
+  let changePackageResult = $state<any>(null);
+
   // PPPoE
   let pppoeAccounts = $state<PppoeAccountPublic[]>([]);
   let dhcpStaticServices = $state<DhcpStaticServicePublic[]>([]);
@@ -1357,6 +1364,41 @@
     }
   }
 
+  function openChangePackage(row: CustomerSubscriptionView) {
+    changePackageSubscription = row;
+    changePackageNewId = '';
+    changePackageResult = null;
+    showChangePackage = true;
+    // Load available packages if not already loaded
+    if (subscriptionPackages.length === 0) {
+      loadSubscriptionPackages();
+    }
+  }
+
+  async function submitChangePackage() {
+    if (!changePackageSubscription || !changePackageNewId) return;
+    changePackageLoading = true;
+    changePackageResult = null;
+    try {
+      const result = await api.payment.changePackage({
+        subscription_id: changePackageSubscription.id,
+        new_package_id: changePackageNewId,
+      });
+      changePackageResult = result;
+      toast.success(
+        result.net_amount > 0
+          ? `${$t('admin.customers.subscriptions.change_package.toasts.success_with_charge') || 'Paket diganti! Tagihan pro-rata:'} ${formatMoney(result.net_amount)}`
+          : ($t('admin.customers.subscriptions.change_package.toasts.success_no_charge') || 'Paket diganti! Tidak ada tagihan tambahan'),
+      );
+      await loadSubscriptions({ force: true });
+      await loadBillingInvoices();
+    } catch (e: any) {
+      toast.error(`${$t('admin.customers.subscriptions.change_package.toasts.error') || 'Gagal ganti paket:'} ${e?.message || e}`);
+    } finally {
+      changePackageLoading = false;
+    }
+  }
+
   async function loadPppoeRouters() {
     if (!$can('read', 'router_inventory') && !$can('manage', 'router_inventory')) return;
     loadingPppoeRouters = true;
@@ -1976,6 +2018,7 @@
           togglingSubscription={togglingSubscription}
           onEditSubscription={openEditSubscription}
           onDeleteSubscription={deleteSubscription}
+          onChangePackage={openChangePackage}
         />
       {:else if activeDeferredTabLoading === 'subscriptions'}
         <div class="card loading-card">
@@ -2315,6 +2358,112 @@
   />
 {/if}
 
+<!-- Change Package Dialog (Pro-rata) -->
+<Modal bind:show={showChangePackage} title="{$t('admin.customers.subscriptions.change_package.title') || 'Ganti Paket'} — {changePackageSubscription?.package_name || 'Subscription'}" width="520px">
+  {#if !changePackageResult}
+    <div class="field-group">
+      <label class="field-label">{$t('admin.customers.subscriptions.change_package.current_package') || 'Paket Saat Ini'}</label>
+      <div class="field-static">
+        <strong>{changePackageSubscription?.package_name || changePackageSubscription?.package_id}</strong>
+        <span class="subtle"> · {changePackageSubscription?.billing_cycle} · {formatMoney(changePackageSubscription?.price || 0)}</span>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="new-package">{$t('admin.customers.subscriptions.change_package.new_package') || 'Paket Baru'}</label>
+      <select id="new-package" bind:value={changePackageNewId} class="field-input">
+        <option value="">{$t('admin.customers.subscriptions.change_package.select_placeholder') || '— Pilih paket —'}</option>
+        {#each subscriptionPackages.filter((p) => p.id !== changePackageSubscription?.package_id && p.is_active) as pkg}
+          <option value={pkg.id}>
+            {pkg.name} — {formatMoney(changePackageSubscription?.billing_cycle === 'yearly' ? pkg.price_yearly : pkg.price_monthly)}/{changePackageSubscription?.billing_cycle === 'yearly' ? 'tahun' : 'bulan'}
+          </option>
+        {/each}
+      </select>
+    </div>
+
+    {#if changePackageNewId}
+      {@const selectedPkg = subscriptionPackages.find((p) => p.id === changePackageNewId)}
+      {#if selectedPkg}
+        <div class="pro-rata-preview">
+          <div class="preview-row">
+            <span>{$t('admin.customers.subscriptions.change_package.old_package_label') || 'Paket lama (sisa hari)'}</span>
+            <span class="preview-value">-{formatMoney(changePackageSubscription?.price || 0)}</span>
+          </div>
+          <div class="preview-row">
+            <span>{$t('admin.customers.subscriptions.change_package.new_package_label') || 'Paket baru (sisa hari)'}</span>
+            <span class="preview-value">+{formatMoney(changePackageSubscription?.billing_cycle === 'yearly' ? selectedPkg.price_yearly : selectedPkg.price_monthly)}</span>
+          </div>
+          <div class="preview-divider"></div>
+          <div class="preview-row preview-total">
+            <span>{$t('admin.customers.subscriptions.change_package.pro_rata_estimate') || 'Tagihan pro-rata (estimasi)'}</span>
+            <span class="preview-value">
+              {#if (changePackageSubscription?.billing_cycle === 'yearly' ? selectedPkg.price_yearly : selectedPkg.price_monthly) > (changePackageSubscription?.price || 0)}
+                {formatMoney((changePackageSubscription?.billing_cycle === 'yearly' ? selectedPkg.price_yearly : selectedPkg.price_monthly) - (changePackageSubscription?.price || 0))}
+              {:else}
+                Rp 0
+              {/if}
+            </span>
+          </div>
+          <p class="preview-note">{$t('admin.customers.subscriptions.change_package.pro_rata_note') || '* Nilai aktual dihitung berdasarkan sisa hari dalam periode billing saat ini.'}</p>
+        </div>
+      {/if}
+    {/if}
+  {:else}
+    <div class="result-card success">
+      <Icon name="check-circle" size={24} />
+      <div>
+        <strong>{$t('admin.customers.subscriptions.change_package.success_title') || 'Berhasil!'}</strong>
+        <p>{$t('admin.customers.subscriptions.change_package.success_message') || 'Paket diubah dari'} <strong>{changePackageResult.old_package_name}</strong> {$t('admin.customers.subscriptions.change_package.success_message_to') || 'ke'} <strong>{changePackageResult.new_package_name}</strong></p>
+      </div>
+    </div>
+
+    <div class="result-details">
+      <div class="result-row">
+        <span>{$t('admin.customers.subscriptions.change_package.old_price') || 'Harga lama'}</span>
+        <span>{formatMoney(changePackageResult.old_price)}/{changePackageResult.billing_cycle}</span>
+      </div>
+      <div class="result-row">
+        <span>{$t('admin.customers.subscriptions.change_package.new_price') || 'Harga baru'}</span>
+        <span>{formatMoney(changePackageResult.new_price)}/{changePackageResult.billing_cycle}</span>
+      </div>
+      <div class="result-row">
+        <span>{$t('admin.customers.subscriptions.change_package.credit') || 'Kredit (sisa hari paket lama)'}</span>
+        <span>-{formatMoney(changePackageResult.pro_rata_credit)}</span>
+      </div>
+      <div class="result-row">
+        <span>{$t('admin.customers.subscriptions.change_package.charge') || 'Tagihan (sisa hari paket baru)'}</span>
+        <span>+{formatMoney(changePackageResult.pro_rata_charge)}</span>
+      </div>
+      <div class="result-divider"></div>
+      <div class="result-row result-total">
+        <span>{$t('admin.customers.subscriptions.change_package.net_amount') || 'Tagihan bersih'}</span>
+        <span>{formatMoney(changePackageResult.net_amount)}</span>
+      </div>
+      {#if changePackageResult.invoice_id}
+        <div class="result-row">
+          <span>Invoice</span>
+          <a href="/admin/invoices/{changePackageResult.invoice_id}" class="link">{$t('admin.customers.subscriptions.change_package.view_invoice') || 'Lihat invoice →'}</a>
+        </div>
+      {/if}
+    </div>
+  {/if}
+
+  {#snippet footer()}
+    {#if !changePackageResult}
+      <button class="btn btn-secondary" onclick={() => { showChangePackage = false; }}>{$t('admin.customers.subscriptions.change_package.cancel') || 'Batal'}</button>
+      <button
+        class="btn btn-primary"
+        onclick={submitChangePackage}
+        disabled={!changePackageNewId || changePackageLoading}
+      >
+        {changePackageLoading ? ($t('admin.customers.subscriptions.change_package.processing') || 'Memproses...') : ($t('admin.customers.subscriptions.change_package.submit') || 'Ganti Paket')}
+      </button>
+    {:else}
+      <button class="btn btn-primary" onclick={() => { showChangePackage = false; changePackageResult = null; }}>{$t('admin.customers.subscriptions.change_package.close') || 'Tutup'}</button>
+    {/if}
+  {/snippet}
+</Modal>
+
 <style>
   .page-content {
     padding: 1.25rem 1.5rem 1.5rem;
@@ -2635,7 +2784,7 @@
   .overview-form {
     padding: 1rem;
     border: 1px solid color-mix(in srgb, var(--border-color), transparent 18%);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     background: color-mix(in srgb, var(--bg-surface), transparent 4%);
   }
 
@@ -2794,7 +2943,7 @@
   .table-wrap {
     overflow: auto;
     border: 1px solid color-mix(in srgb, var(--border-color), transparent 14%);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     background: color-mix(in srgb, var(--bg-surface), transparent 4%);
   }
 
@@ -3098,6 +3247,170 @@
     .table-wrap td:last-child {
       border-bottom: none;
     }
+  }
+
+  /* ── Change Package Modal ── */
+
+  .field-group {
+    display: grid;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+  }
+
+  .field-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .field-static {
+    padding: 0.65rem 0.75rem;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--border-color), transparent 18%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 6%);
+    font-size: 0.9rem;
+  }
+
+  .field-static .subtle {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+  }
+
+  .field-input {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border-radius: 12px;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .field-input:focus {
+    border-color: color-mix(in srgb, var(--color-primary) 52%, var(--border-color));
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
+  }
+
+  .pro-rata-preview {
+    margin-top: 0.75rem;
+    padding: 0.85rem 0.9rem;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--border-color), transparent 18%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 4%);
+  }
+
+  .preview-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.35rem 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+  }
+
+  .preview-value {
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+  }
+
+  .preview-divider {
+    border-top: 1px solid color-mix(in srgb, var(--border-color), transparent 30%);
+    margin: 0.5rem 0;
+  }
+
+  .preview-total {
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .preview-total .preview-value {
+    font-size: 1rem;
+    color: var(--color-primary);
+  }
+
+  .preview-note {
+    margin: 0.5rem 0 0;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    font-style: italic;
+  }
+
+  .result-card {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--color-success) 30%, var(--border-color));
+    background: color-mix(in srgb, var(--color-success) 8%, transparent);
+    margin-bottom: 1rem;
+  }
+
+  .result-card.success {
+    color: var(--color-success);
+  }
+
+  .result-card strong {
+    color: var(--text-primary);
+  }
+
+  .result-card p {
+    margin: 0.25rem 0 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+  }
+
+  .result-details {
+    padding: 0.85rem 0.9rem;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--border-color), transparent 18%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 4%);
+  }
+
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.35rem 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+  }
+
+  .result-row span:last-child {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .result-divider {
+    border-top: 1px solid color-mix(in srgb, var(--border-color), transparent 30%);
+    margin: 0.5rem 0;
+  }
+
+  .result-total {
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .result-total span:last-child {
+    font-size: 1rem;
+    color: var(--color-primary);
+  }
+
+  .result-row .link {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .result-row .link:hover {
+    text-decoration: underline;
   }
 
   @media (max-width: 560px) {

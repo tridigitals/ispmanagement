@@ -1,9 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const listInvoices = vi.fn();
-const listRouters = vi.fn();
-const listTeam = vi.fn();
-const listAllInvoices = vi.fn();
+// vi.mock factories are hoisted to the top of the file by Vitest. To safely
+// reference shared mock fns from those factories we must declare them via
+// vi.hoisted so they exist before any vi.mock factory runs. Plain top-level
+// const declarations would throw "Cannot access X before initialization".
+const { listInvoices, listRouters, listTeam, listAllInvoices } = vi.hoisted(() => ({
+  listInvoices: vi.fn(),
+  listRouters: vi.fn(),
+  listTeam: vi.fn(),
+  listAllInvoices: vi.fn(),
+}));
 
 vi.mock('$lib/api/payment', () => ({
   payment: {

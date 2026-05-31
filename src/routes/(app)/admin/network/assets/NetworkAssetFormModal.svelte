@@ -594,7 +594,7 @@
     gap: 0.85rem;
     padding: 1.05rem;
     border: 1px solid color-mix(in srgb, var(--border-subtle) 88%, #eadfcd 12%);
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     background:
       linear-gradient(
         180deg,

@@ -466,7 +466,7 @@
     gap: 0.9rem;
   }
   .stats :global(.stats-card) {
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     background:
       linear-gradient(
         180deg,
@@ -479,7 +479,7 @@
     display: grid;
     gap: 0;
     border: 1px solid var(--border-subtle, var(--border-color));
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     background: color-mix(in srgb, var(--bg-surface) 94%, transparent);
     overflow: hidden;
     box-shadow: 0 14px 44px rgba(0, 0, 0, 0.12);
@@ -552,7 +552,7 @@
     padding: 0.28rem 0.28rem 0.4rem;
   }
   .table-shell :global(.table-container) {
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
   }
   .table-shell :global(.responsive-table thead th) {

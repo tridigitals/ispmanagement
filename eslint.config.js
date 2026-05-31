@@ -11,10 +11,15 @@ export default [
       'build/**',
       '.svelte-kit/**',
       'src-tauri/target/**',
+      'src-tauri/target-*/**',
       'src-tauri/gen/**',
       'src-tauri/icons/**',
       'src-tauri/capabilities/**',
       'static/**',
+      'storage/**',
+      '.codex_tmp/**',
+      '.roo/skills/**',
+      '.roomodes',
       '**/*.svelte',
     ],
   },
@@ -43,6 +48,10 @@ export default [
       'no-unused-vars': 'off',
       'no-empty': 'off',
       'no-useless-escape': 'off',
+      // TypeScript handles undefined symbol checking natively; ESLint's
+      // no-undef produces false positives for ambient types (DOM, GeoJSON, etc.)
+      // See https://typescript-eslint.io/troubleshooting/faqs/eslint/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined
+      'no-undef': 'off',
     },
   },
   {

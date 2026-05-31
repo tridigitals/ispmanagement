@@ -149,7 +149,7 @@
     width: min(100%, 36rem);
     padding: 0.85rem;
     border: 1px solid color-mix(in srgb, var(--border-color), transparent 16%);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     background: color-mix(in srgb, var(--bg-surface), transparent 5%);
   }
   .pppoe-search {

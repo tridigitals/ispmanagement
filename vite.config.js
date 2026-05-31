@@ -145,6 +145,30 @@ export default defineConfig(async ({ mode }) => {
       },
     },
 
+    // Vitest config. We do not have a separate vitest.config.ts; vitest reads
+    // from this returned config. The exclude list keeps vitest from picking up
+    // vendored upstream test fixtures under .codex_tmp/ (e.g. SuperRoo
+    // brainstorm-server tests written for node:test, not vitest) and other
+    // build artifacts that contain test files but are not part of our suite.
+    test: {
+      exclude: [
+        '**/node_modules/**',
+        '**/dist/**',
+        '**/build/**',
+        '**/.svelte-kit/**',
+        '**/.idea/**',
+        '**/.git/**',
+        '**/.cache/**',
+        '**/.codex_tmp/**',
+        '**/.codex/**',
+        '**/.superpowers/**',
+        '**/.specify/**',
+        '**/.worktrees/**',
+        '**/.playwright-mcp/**',
+        '**/src-tauri/**',
+      ],
+    },
+
     // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
     //
     // 1. prevent Vite from obscuring rust errors

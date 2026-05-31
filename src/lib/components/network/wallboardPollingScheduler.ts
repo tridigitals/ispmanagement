@@ -30,11 +30,12 @@ export function createWallboardPollingScheduler(args: {
       }
       try {
         await args.pollLiveOnce();
-      } finally {
-        if (loopSeq !== liveLoopSeq) return;
-        const nextDelay = Math.max(250, args.getPollMs());
-        scheduleNextLiveTick(loopSeq, nextDelay);
+      } catch {
+        // Swallow — scheduling continues below regardless of poll errors
       }
+      if (loopSeq !== liveLoopSeq) return;
+      const nextDelay = Math.max(250, args.getPollMs());
+      scheduleNextLiveTick(loopSeq, nextDelay);
     }, Math.max(250, delayMs));
   }
 

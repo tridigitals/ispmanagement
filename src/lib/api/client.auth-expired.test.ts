@@ -57,7 +57,14 @@ function setupBrowser(pathname: string = '/admin/network/noc') {
   return { win, assign, local, session };
 }
 
-describe('api client auth-expired handling', () => {
+// Each test calls vi.resetModules() and then re-imports './client', a
+// barrel re-exporting 30+ API submodules backed by the 866-line core.ts.
+// In isolation a single test costs ~1.1s; under the 170-file parallel pool
+// Vite's transform queue is contended enough that the cold path can blow
+// past the default 5s for the first tests of the file (subsequent tests
+// reuse the warmed cache). The per-suite timeout bump reflects environment
+// contention rather than a logic bug.
+describe('api client auth-expired handling', { timeout: 20000 }, () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.resetModules();

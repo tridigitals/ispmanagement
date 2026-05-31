@@ -3328,12 +3328,11 @@
     padding: 10px 12px;
     border: 1px solid rgba(14, 116, 144, 0.2);
     border-radius: 12px;
-    background: rgba(248, 250, 252, 0.96);
-    color: #0f172a;
+    background: var(--bg-surface);
+    color: var(--text-primary);
     font-size: 0.76rem;
     font-weight: 760;
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
-    backdrop-filter: blur(8px);
   }
 
   @keyframes spin {
@@ -3506,9 +3505,7 @@
     border: 1px solid rgba(148, 163, 184, 0.18);
     border-radius: 14px;
     padding: 10px 12px;
-    background:
-      linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.76)),
-      rgba(15, 23, 42, 0.86);
+    background: var(--bg-surface);
   }
 
   :global(.nm-popup-usage-head) {
@@ -3551,19 +3548,19 @@
   }
 
   :global(.nm-popup-usage-fill.ok) {
-    background: linear-gradient(90deg, #14b8a6, #22c55e);
+    background: var(--color-success);
   }
 
   :global(.nm-popup-usage-fill.warn) {
-    background: linear-gradient(90deg, #f59e0b, #f97316);
+    background: var(--color-warning);
   }
 
   :global(.nm-popup-usage-fill.danger) {
-    background: linear-gradient(90deg, #fb7185, #ef4444);
+    background: var(--color-danger);
   }
 
   :global(.nm-popup-usage-fill.muted) {
-    background: linear-gradient(90deg, #64748b, #94a3b8);
+    background: #64748b;
   }
 
   :global(.nm-popup-usage-meta) {
@@ -3591,9 +3588,7 @@
     padding: 10px 12px;
     border-radius: 14px;
     border: 1px solid rgba(148, 163, 184, 0.14);
-    background:
-      linear-gradient(180deg, rgba(30, 41, 59, 0.64), rgba(15, 23, 42, 0.72)),
-      rgba(15, 23, 42, 0.46);
+    background: var(--bg-surface);
     color: inherit;
     text-align: left;
     cursor: pointer;
@@ -3605,9 +3600,7 @@
 
   :global(.nm-popup-relation-action:hover) {
     border-color: rgba(59, 130, 246, 0.34);
-    background:
-      linear-gradient(180deg, rgba(30, 41, 59, 0.78), rgba(15, 23, 42, 0.84)),
-      rgba(15, 23, 42, 0.54);
+    background: var(--bg-secondary);
     transform: translateY(-1px);
   }
 
@@ -3679,15 +3672,14 @@
     display: grid;
     place-items: center;
     padding: 20px;
-    background: rgba(15, 23, 42, 0.48);
-    backdrop-filter: blur(6px);
+    background: rgba(15, 23, 42, 0.72);
   }
 
   .asset-customer-drop-modal {
     width: min(460px, calc(100vw - 24px));
     max-height: min(72vh, 680px);
     overflow: auto;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     border: 1px solid rgba(148, 163, 184, 0.18);
     background: rgba(15, 23, 42, 0.97);
     box-shadow: 0 24px 64px rgba(2, 6, 23, 0.4);
@@ -3829,7 +3821,7 @@
     justify-content: center;
     gap: 10px;
     min-height: 140px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     border: 1px dashed rgba(148, 163, 184, 0.22);
     color: rgba(226, 232, 240, 0.78);
     text-align: center;
