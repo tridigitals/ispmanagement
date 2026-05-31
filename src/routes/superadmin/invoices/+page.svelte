@@ -433,7 +433,7 @@
 
 <style>
   .page-container {
-    padding: 2rem;
+    padding: clamp(16px, 3vw, 32px);
     max-width: 1400px;
     margin: 0 auto;
   }
@@ -719,9 +719,6 @@
   }
 
   @media (max-width: 720px) {
-    .page-container {
-      padding: 1.25rem;
-    }
     .page-header {
       flex-direction: column;
       gap: 0.75rem;
@@ -741,6 +738,12 @@
       grid-template-columns: 1fr;
     }
     .invoice-meta {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .stats-row {
       grid-template-columns: 1fr;
     }
   }

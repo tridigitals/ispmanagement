@@ -373,6 +373,7 @@
     font-weight: 700;
     color: white;
     font-size: 0.9rem;
+    flex-shrink: 0;
   }
 
   .user-name {
@@ -513,6 +514,8 @@
   .actions {
     display: flex;
     gap: 0.5rem;
+    flex-shrink: 0;
+    align-items: center;
   }
 
   .cards-wrapper {
@@ -521,7 +524,7 @@
 
   .user-cards {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 0.9rem;
     margin-top: 0.25rem;
   }
@@ -548,6 +551,7 @@
     padding: 1rem;
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-surface);
+    overflow: hidden;
   }
 
   :global([data-theme='light']) .card-top {
@@ -562,11 +566,29 @@
     gap: 0.1rem;
   }
 
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-width: 0;
+    flex: 1 1 0;
+    overflow: hidden;
+  }
+
+  .user-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .user-email {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 220px;
+    min-width: 0;
+    font-size: 0.85rem;
   }
 
   .card-bottom {
@@ -618,5 +640,41 @@
   .empty-state-container h3 {
     color: var(--text-primary);
     margin: 0.25rem 0 0.35rem 0;
+  }
+
+  @media (max-width: 768px) {
+    .cards-wrapper {
+      padding: 0 1rem 1rem 1rem;
+    }
+
+    .user-cards {
+      grid-template-columns: 1fr;
+    }
+
+    .card-top {
+      padding: 0.85rem;
+      gap: 0.5rem;
+    }
+
+    .card-bottom {
+      padding: 0.85rem;
+    }
+
+    .actions {
+      gap: 0.35rem;
+    }
+
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .meta-grid {
+      grid-template-columns: 1fr;
+      gap: 0.65rem;
+    }
   }
 </style>

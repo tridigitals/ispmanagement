@@ -9,6 +9,7 @@
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import { fly } from 'svelte/transition';
   import { t } from 'svelte-i18n';
+  import { get } from 'svelte/store';
 
   let backups = $state<BackupRecord[]>([]);
   let loading = $state(false);
@@ -40,7 +41,9 @@
     creating = true;
     try {
       await api.backup.create('global');
-      toast.success('Global backup created successfully');
+      toast.success(
+        get(t)('superadmin.backups.toast_create_success') || 'Global backup created successfully',
+      );
       await loadBackups();
     } catch (e: any) {
       toast.error(e.message);
@@ -59,7 +62,7 @@
     isDeleting = true;
     try {
       await api.backup.delete(deleteTarget);
-      toast.success('Backup deleted');
+      toast.success(get(t)('superadmin.backups.toast_delete_success') || 'Backup deleted');
       await loadBackups();
     } catch (e: any) {
       toast.error(e.message);
@@ -76,9 +79,13 @@
       await api.backup.download(filename, (p) => {
         downloading[filename] = p;
       });
-      toast.success('Download complete');
+      toast.success(get(t)('superadmin.backups.toast_download_success') || 'Download complete');
     } catch (e: any) {
-      toast.error('Download failed: ' + e.message);
+      toast.error(
+        (get(t)('superadmin.backups.toast_download_failed') || 'Download failed') +
+          ': ' +
+          e.message,
+      );
     } finally {
       delete downloading[filename];
     }
@@ -107,10 +114,15 @@
       } else if (restoreMode === 'upload') {
         await api.backup.restore(restoreFile || undefined);
       }
-      toast.success('System restore completed successfully. The application will now reload.');
+      toast.success(
+        get(t)('superadmin.backups.toast_restore_success') ||
+          'System restore completed successfully. The application will now reload.',
+      );
       setTimeout(() => window.location.reload(), 2000);
     } catch (e: any) {
-      toast.error('Restore failed: ' + e.message);
+      toast.error(
+        (get(t)('superadmin.backups.toast_restore_failed') || 'Restore failed') + ': ' + e.message,
+      );
     } finally {
       restoring = false;
       showRestoreModal = false;
@@ -145,10 +157,13 @@
 <div class="superadmin-content fade-in">
   <div class="header-section">
     <div>
-      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">System Backups</h1>
-      <p class="muted">Manage global database backups and tenant data exports.</p>
+      <h1 class="page-title">{$t('superadmin.backups.title') || 'System Backups'}</h1>
+      <p class="muted">
+        {$t('superadmin.backups.subtitle') ||
+          'Manage global database backups and tenant data exports.'}
+      </p>
     </div>
-    <div class="flex gap-2">
+    <div class="header-buttons">
       <input
         type="file"
         accept=".zip"
@@ -168,10 +183,10 @@
       >
         {#if restoring}
           <span class="spinner-xs"></span>
-          <span>Restoring...</span>
+          <span>{$t('superadmin.backups.restoring') || 'Restoring...'}</span>
         {:else}
           <Icon name="refresh-cw" size={18} />
-          <span>Restore from File</span>
+          <span>{$t('superadmin.backups.restore_from_file') || 'Restore from File'}</span>
         {/if}
       </button>
       <button class="btn btn-primary" disabled={creating} onclick={createBackup}>
@@ -180,7 +195,7 @@
         {:else}
           <Icon name="plus" size={18} />
         {/if}
-        <span>Create Global Backup</span>
+        <span>{$t('superadmin.backups.create_global') || 'Create Global Backup'}</span>
       </button>
     </div>
   </div>
@@ -188,11 +203,16 @@
   <div class="glass-card" in:fly={{ y: 20, delay: 80 }}>
     <div class="card-header glass">
       <div>
-        <h3>Available Backups</h3>
-        <span class="muted">History of generated backup files</span>
+        <h3>{$t('superadmin.backups.available_title') || 'Available Backups'}</h3>
+        <span class="muted">
+          {$t('superadmin.backups.available_desc') || 'History of generated backup files'}
+        </span>
       </div>
       <div class="header-actions">
-        <span class="count-badge">{backups.length} files</span>
+        <span class="count-badge">
+          {backups.length}
+          {$t('superadmin.backups.files_count') || 'files'}
+        </span>
       </div>
     </div>
 
@@ -200,7 +220,7 @@
       {#if loading && backups.length === 0}
         <div class="empty-state">
           <span class="spinner"></span>
-          <p>Loading backups...</p>
+          <p>{$t('superadmin.backups.loading') || 'Loading backups...'}</p>
         </div>
       {:else if backups.length === 0}
         <div class="empty-state fancy">
@@ -208,13 +228,16 @@
             <Icon name="archive" size={28} />
           </div>
           <div class="empty-text">
-            <h4>No backups yet</h4>
-            <p>Create a global backup to protect system data.</p>
+            <h4>{$t('superadmin.backups.empty_title') || 'No backups yet'}</h4>
+            <p>
+              {$t('superadmin.backups.empty_desc') ||
+                'Create a global backup to protect system data.'}
+            </p>
           </div>
           <div class="empty-actions">
             <button class="btn btn-primary" disabled={creating || restoring} onclick={createBackup}>
               <Icon name="plus" size={16} />
-              <span>Create Global Backup</span>
+              <span>{$t('superadmin.backups.create_global') || 'Create Global Backup'}</span>
             </button>
           </div>
         </div>
@@ -222,11 +245,11 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>Filename</th>
-              <th>Type</th>
-              <th>Size</th>
-              <th class="nowrap">Created At</th>
-              <th class="text-right">Actions</th>
+              <th>{$t('superadmin.backups.col_filename') || 'Filename'}</th>
+              <th>{$t('superadmin.backups.col_type') || 'Type'}</th>
+              <th>{$t('superadmin.backups.col_size') || 'Size'}</th>
+              <th class="nowrap">{$t('superadmin.backups.col_created_at') || 'Created At'}</th>
+              <th class="text-right">{$t('common.actions') || 'Actions'}</th>
             </tr>
           </thead>
           <tbody>
@@ -251,7 +274,7 @@
                     <button
                       class="btn-icon btn-primary-text"
                       onclick={() => downloadBackup(backup.name)}
-                      title="Download Backup"
+                      title={$t('superadmin.backups.tooltip_download') || 'Download Backup'}
                     >
                       <Icon name="download" size={16} />
                     </button>
@@ -259,14 +282,14 @@
                       class="btn-icon btn-warning-text"
                       disabled={restoring}
                       onclick={() => requestRestoreLocal(backup.name)}
-                      title="Restore from this file"
+                      title={$t('superadmin.backups.tooltip_restore') || 'Restore from this file'}
                     >
                       <Icon name="refresh-cw" size={16} />
                     </button>
                     <button
                       class="btn-icon btn-danger-text"
                       onclick={() => requestDelete(backup.name)}
-                      title="Delete Backup"
+                      title={$t('superadmin.backups.tooltip_delete') || 'Delete Backup'}
                     >
                       <Icon name="trash" size={16} />
                     </button>
@@ -283,9 +306,12 @@
 
 <ConfirmDialog
   bind:show={showDeleteModal}
-  title="Delete Backup"
-  message={`Are you sure you want to delete ${deleteTarget || 'this backup'}?`}
-  confirmText="Delete"
+  title={$t('superadmin.backups.delete_title') || 'Delete Backup'}
+  message={($t('superadmin.backups.delete_message') || 'Are you sure you want to delete {name}?').replace(
+    '{name}',
+    deleteTarget || $t('superadmin.backups.delete_message_fallback') || 'this backup',
+  )}
+  confirmText={$t('common.delete') || 'Delete'}
   type="danger"
   loading={isDeleting}
   onconfirm={confirmDelete}
@@ -297,11 +323,16 @@
 
 <ConfirmDialog
   bind:show={showRestoreModal}
-  title="Restore Backup"
-  message={restoreMode === 'upload'
-    ? `Restore from ${restoreTarget || 'selected file'}? This will OVERWRITE existing system data!`
-    : `Restore from ${restoreTarget || 'this backup'}? This will OVERWRITE existing system data!`}
-  confirmText="Restore"
+  title={$t('superadmin.backups.restore_title') || 'Restore Backup'}
+  message={($t('superadmin.backups.restore_message') ||
+    'Restore from {name}? This will OVERWRITE existing system data!').replace(
+    '{name}',
+    restoreTarget ||
+      (restoreMode === 'upload'
+        ? $t('superadmin.backups.restore_message_upload_fallback') || 'selected file'
+        : $t('superadmin.backups.restore_message_local_fallback') || 'this backup'),
+  )}
+  confirmText={$t('superadmin.backups.restore_title') || 'Restore'}
   type="warning"
   loading={restoring}
   onconfirm={confirmRestore}
@@ -329,12 +360,32 @@
     flex-wrap: wrap;
   }
 
+  .page-title {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+  }
+
+  .header-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
   .glass-card {
     background: var(--bg-surface);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-sm);
+  }
+
+  :global([data-theme='light']) .glass-card {
+    background: var(--bg-surface);
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-sm);
   }
 
   .card-header {
@@ -344,7 +395,7 @@
     justify-content: space-between;
     gap: 1rem;
     flex-wrap: wrap;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--border-color);
   }
 
   .card-header h3 {
@@ -359,10 +410,13 @@
   }
 
   .count-badge {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
     padding: 0.35rem 0.75rem;
     border-radius: 999px;
     font-size: 0.85rem;
+    font-weight: 650;
   }
 
   .table-container {
@@ -378,7 +432,7 @@
 
   .data-table th {
     padding: 1rem 1.25rem;
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
     font-weight: 600;
     text-transform: uppercase;
@@ -388,11 +442,11 @@
 
   .data-table td {
     padding: 1rem 1.25rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    border-top: 1px solid var(--border-color);
   }
 
   .data-table tr:hover {
-    background: rgba(255, 255, 255, 0.01);
+    background: color-mix(in srgb, var(--color-primary) 4%, transparent);
   }
 
   .text-right {

@@ -218,8 +218,13 @@
     }
   }
 
-  // ─── Bulk-send invoice (Phase 4) ──────────────────────────────────────────
+  function isBulkSendableInvoice(invoice: Invoice) {
+    return invoice.status === 'pending' || invoice.status === 'verification_pending';
+  }
+
   function toggleSelected(id: string) {
+    const invoice = filteredInvoices.find((item) => item.id === id);
+    if (!invoice || !isBulkSendableInvoice(invoice)) return;
     const next = new Set(selectedIds);
     if (next.has(id)) next.delete(id);
     else next.add(id);
@@ -227,21 +232,25 @@
   }
 
   function toggleSelectAllVisible() {
-    const ids = filteredInvoices.map((i: Invoice) => i.id);
+    const ids = filteredInvoices.filter(isBulkSendableInvoice).map((i: Invoice) => i.id);
     const allSelected = ids.length > 0 && ids.every((id: string) => selectedIds.has(id));
     selectedIds = allSelected ? new Set() : new Set(ids);
   }
 
   async function bulkSendSelectedInvoices() {
     if (bulkSending) return;
-    if (selectedIds.size === 0) {
+    const ids = Array.from(selectedIds).filter((id) => {
+      const invoice = filteredInvoices.find((item) => item.id === id);
+      return invoice ? isBulkSendableInvoice(invoice) : false;
+    });
+    if (ids.length === 0) {
       toast.error(
         get(t)('admin.package_invoices.list.toasts.bulk_send_no_selection') ||
-          'Pilih minimal satu invoice',
+          'Pilih minimal satu invoice yang masih pending',
       );
       return;
     }
-    const ids = Array.from(selectedIds);
+
     const confirmMsg =
       (get(t)('admin.package_invoices.list.actions.bulk_send_confirm') ||
         'Kirim {count} invoice ke email pelanggan? (Email + Notifikasi in-app)').replace(
@@ -599,6 +608,13 @@
               type="checkbox"
               checked={selectedIds.has(item.id)}
               onchange={() => toggleSelected(item.id)}
+              disabled={!isBulkSendableInvoice(item)}
+              title={
+                isBulkSendableInvoice(item)
+                  ? $t('admin.package_invoices.list.actions.select_invoice') || 'Pilih invoice'
+                  : $t('admin.package_invoices.list.actions.invoice_not_sendable') ||
+                    'Invoice sudah settled dan tidak bisa dikirim'
+              }
               aria-label={$t('admin.package_invoices.list.actions.select_invoice') ||
                 'Pilih invoice'}
             />

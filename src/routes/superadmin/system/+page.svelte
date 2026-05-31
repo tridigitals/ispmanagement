@@ -262,7 +262,7 @@
 
 <style>
   .page-container {
-    padding: 2rem;
+    padding: clamp(16px, 3vw, 32px);
     max-width: 1400px;
     margin: 0 auto;
   }
@@ -271,6 +271,7 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    gap: 1rem;
     margin-bottom: 2rem;
   }
 
@@ -341,7 +342,7 @@
 
   .grid-2 {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
   }
@@ -405,5 +406,39 @@
     border-radius: 6px;
     cursor: pointer;
     font-weight: 500;
+  }
+
+  @media (max-width: 720px) {
+    .page-header {
+      flex-direction: column;
+      align-items: stretch;
+      margin-bottom: 1.25rem;
+    }
+
+    .header-content h1 {
+      font-size: 1.35rem;
+    }
+
+    .view-toggle {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .view-toggle button {
+      flex: 1 1 auto;
+    }
+
+    .btn-refresh {
+      align-self: flex-end;
+    }
+
+    .last-updated {
+      flex-wrap: wrap;
+      margin-top: 1.25rem;
+    }
+
+    .loading-state {
+      padding: 2.5rem 1rem;
+    }
   }
 </style>

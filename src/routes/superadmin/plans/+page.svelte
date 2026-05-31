@@ -1143,4 +1143,10 @@
       text-align: left;
     }
   }
+
+  @media (max-width: 480px) {
+    .stats-row {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>

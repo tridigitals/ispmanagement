@@ -435,6 +435,19 @@
     margin-bottom: 1.25rem;
   }
 
+  @media (max-width: 900px) {
+    .stats-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .stats-row {
+      grid-template-columns: 1fr;
+    }
+  }
+
   .stat-btn {
     border: none;
     padding: 0;

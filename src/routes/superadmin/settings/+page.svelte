@@ -1231,7 +1231,8 @@
 
 <style>
   .page-container {
-    padding: 2rem;
+    --page-pad: clamp(16px, 3vw, 32px);
+    padding: var(--page-pad);
     max-width: 1200px;
     margin: 0 auto;
   }
@@ -1318,7 +1319,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 4rem;
+    padding: clamp(2rem, 5vw, 4rem);
     color: var(--text-secondary);
     gap: 1rem;
   }
@@ -1376,35 +1377,16 @@
     gap: 1rem;
     position: sticky;
     bottom: 0px;
-    padding: 1.5rem 2rem;
+    padding: clamp(1rem, 3vw, 1.5rem) var(--page-pad);
     background: var(--bg-surface);
     border-top: 1px solid var(--border-color);
     z-index: 100;
     /* Negative margins to span full width of container padding */
-    margin-left: -2rem;
-    margin-right: -2rem;
-    margin-bottom: -2rem;
-    width: calc(100% + 4rem);
+    margin-left: calc(-1 * var(--page-pad));
+    margin-right: calc(-1 * var(--page-pad));
+    margin-bottom: calc(-1 * var(--page-pad));
+    width: calc(100% + 2 * var(--page-pad));
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
-  }
-
-  /* Adjust for mobile */
-  @media (max-width: 600px) {
-    .actions-footer {
-      padding: 1rem;
-      margin-left: -1rem;
-      margin-right: -1rem;
-      margin-bottom: -1rem;
-      width: calc(100% + 2rem);
-      flex-direction: column-reverse;
-      align-items: stretch;
-      gap: 0.75rem;
-    }
-
-    .actions-footer .btn {
-      width: 100%;
-      min-width: 0;
-    }
   }
 
   .btn {
@@ -1467,17 +1449,25 @@
     .desktop-sidebar {
       display: none;
     }
-
-    .page-container {
-      padding: 1rem;
-    }
-
     .header-mobile h1 {
       font-size: 1.5rem;
     }
 
     .card {
       margin-bottom: 1rem;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .actions-footer {
+      flex-direction: column-reverse;
+      align-items: stretch;
+      gap: 0.75rem;
+    }
+
+    .actions-footer .btn {
+      width: 100%;
+      min-width: 0;
     }
   }
 </style>
