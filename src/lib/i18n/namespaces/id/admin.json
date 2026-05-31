@@ -2538,6 +2538,7 @@
         "bulk_generated": "Generate massal selesai",
         "bulk_generate_failed": "Gagal generate invoice jatuh tempo",
         "bulk_sent": "Kirim massal selesai",
+        "bulk_sent_stats": "{sent} terkirim, {skipped} dilewati, {failed} gagal",
         "bulk_send_failed": "Gagal mengirim faktur",
         "bulk_send_no_selection": "Pilih minimal satu invoice"
       },

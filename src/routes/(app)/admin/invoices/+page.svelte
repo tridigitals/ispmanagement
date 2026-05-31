@@ -256,9 +256,16 @@
         invoice_ids: ids,
         attach_pdf: true,
       });
-      const summary =
-        (get(t)('admin.package_invoices.list.toasts.bulk_sent') || 'Bulk send result') +
-        `: ${res.sent_count} terkirim, ${res.skipped_count} dilewati, ${res.failed_count} gagal`;
+      const summaryHeader =
+        get(t)('admin.package_invoices.list.toasts.bulk_sent') || 'Bulk send result';
+      const summaryStats = (
+        get(t)('admin.package_invoices.list.toasts.bulk_sent_stats') ||
+        '{sent} terkirim, {skipped} dilewati, {failed} gagal'
+      )
+        .replace('{sent}', String(res.sent_count))
+        .replace('{skipped}', String(res.skipped_count))
+        .replace('{failed}', String(res.failed_count));
+      const summary = `${summaryHeader}: ${summaryStats}`;
       if (res.failed_count > 0) {
         const firstFail = res.items.find((it) => it.status === 'failed');
         const detail = firstFail?.error || firstFail?.reason || '';

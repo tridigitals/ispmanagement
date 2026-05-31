@@ -2786,6 +2786,7 @@
           "bulk_generated": "Bulk generated",
           "bulk_generate_failed": "Failed to generate due invoices",
           "bulk_sent": "Bulk send complete",
+          "bulk_sent_stats": "{sent} sent, {skipped} skipped, {failed} failed",
           "bulk_send_failed": "Failed to send invoices",
           "bulk_send_no_selection": "Select at least one invoice"
         },
