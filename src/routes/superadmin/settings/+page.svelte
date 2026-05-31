@@ -1235,6 +1235,7 @@
     padding: var(--page-pad);
     max-width: 1200px;
     margin: 0 auto;
+    overflow-x: hidden;
   }
 
   .layout-grid {
@@ -1312,6 +1313,8 @@
     box-shadow: var(--shadow-sm);
     overflow: hidden;
     margin-bottom: 1.5rem;
+    max-width: 100%;
+    min-width: 0;
   }
 
   .loading-state {
@@ -1345,7 +1348,7 @@
   .tab-loading {
     display: grid;
     gap: 1rem;
-    padding: 1.5rem;
+    padding: clamp(1rem, 3vw, 1.5rem);
   }
 
   .tab-loading-bar,
@@ -1449,12 +1452,40 @@
     .desktop-sidebar {
       display: none;
     }
+
     .header-mobile h1 {
       font-size: 1.5rem;
     }
 
     .card {
       margin-bottom: 1rem;
+    }
+
+    .tab-loading {
+      padding: 1rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .header-mobile {
+      margin-bottom: 1rem;
+    }
+
+    .header-mobile h1 {
+      font-size: 1.3rem;
+    }
+
+    .card {
+      margin-bottom: 0.75rem;
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+    }
+
+    .actions-footer {
+      padding: 0.75rem var(--page-pad);
     }
   }
 

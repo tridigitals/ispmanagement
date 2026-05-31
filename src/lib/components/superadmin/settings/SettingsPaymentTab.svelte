@@ -601,6 +601,29 @@
     border-bottom: none;
   }
 
+  @media (max-width: 600px) {
+    .setting-row {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .setting-info {
+      padding-right: 0;
+    }
+
+    .card-body {
+      padding: 1rem;
+    }
+
+    .sub-settings {
+      padding: 1rem;
+    }
+
+    .sub-settings .setting-row {
+      gap: 0.5rem;
+    }
+  }
+
   .setting-info {
     flex: 1;
     padding-right: 1.5rem;
@@ -628,7 +651,7 @@
 
   .form-input {
     width: 100%;
-    max-width: 400px;
+    max-width: min(400px, 100%);
     padding: 0.5rem 0.75rem;
     background: var(--bg-app);
     border: 1px solid var(--border-color);
@@ -718,7 +741,7 @@
   }
 
   .sub-settings .form-input {
-    max-width: 320px;
+    max-width: min(320px, 100%);
   }
 
   .bank-accounts-list {
@@ -738,7 +761,7 @@
 
   .bank-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
     gap: 1rem;
   }
 
@@ -845,6 +868,7 @@
 
   .form-row-inline {
     display: flex;
+    flex-wrap: wrap;
     gap: 1rem;
     align-items: flex-end;
   }

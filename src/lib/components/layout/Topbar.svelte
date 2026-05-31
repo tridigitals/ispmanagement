@@ -473,9 +473,42 @@
     .left-section {
       gap: 0.5rem;
       flex: 1 1 auto;
+      min-width: 0;
     }
 
     .center-section {
+      display: flex;
+      flex: 0 1 auto;
+      min-width: 0;
+    }
+
+    .center-section :global(.hide-mobile) {
+      display: block !important;
+    }
+
+    .search-slot {
+      width: auto;
+    }
+
+    .search-bar {
+      min-height: 34px;
+      padding: 0.15rem 0.4rem 0.15rem 0.5rem;
+      border-radius: 10px;
+      gap: 0.4rem;
+    }
+
+    .search-leading {
+      width: 24px;
+      height: 24px;
+      border-radius: 8px;
+    }
+
+    .search-bar input {
+      width: 80px;
+      font-size: 0.82rem;
+    }
+
+    .search-shortcut {
       display: none;
     }
 
@@ -490,7 +523,7 @@
     }
 
     .topbar-user-menu {
-      display: none;
+      display: flex;
     }
   }
 </style>

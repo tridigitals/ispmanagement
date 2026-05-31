@@ -1254,6 +1254,7 @@
     margin: 0 auto;
     display: grid;
     gap: 1.5rem;
+    overflow-x: hidden;
   }
 
   .hero {
@@ -1278,13 +1279,14 @@
     margin-top: 0.9rem;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
+    gap: 0.5rem 0.75rem;
     align-items: center;
   }
 
   .runtime-meta {
     color: var(--text-secondary);
     font-size: 0.95rem;
+    word-break: break-all;
   }
 
   .runtime-meta strong {
@@ -1312,6 +1314,7 @@
     border-radius: var(--radius-lg);
     padding: 1rem;
     box-shadow: var(--shadow-sm);
+    overflow: hidden;
   }
 
   .state-card.error {
@@ -1358,6 +1361,7 @@
 
   .table-wrap {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .primary {
@@ -1448,9 +1452,27 @@
       gap: 1rem;
     }
 
+    .hero p {
+      max-width: none;
+    }
+
     .hero-actions {
       width: 100%;
       justify-content: stretch;
+    }
+
+    .hero-actions :global(.btn),
+    .hero-actions :global(button) {
+      flex: 1;
+    }
+
+    .stats-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+
+    .panel {
+      padding: 0.85rem;
     }
 
     .advanced-grid,
@@ -1470,8 +1492,22 @@
   }
 
   @media (max-width: 560px) {
+    .page-shell {
+      padding: 12px;
+      gap: 0.75rem;
+    }
+
     .stats-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.6rem;
+    }
+
+    .panel {
+      padding: 0.65rem;
+    }
+
+    .hero h1 {
+      font-size: 1.25rem;
     }
 
     code {

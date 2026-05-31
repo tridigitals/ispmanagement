@@ -1114,13 +1114,10 @@
       font-size: 0.85rem;
       z-index: 200;
     }
-
-    .mobile-profile-section {
-      display: none;
-    }
   }
 
   .mobile-profile-section {
+    display: none;
     min-width: 0;
   }
 </style>

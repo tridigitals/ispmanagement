@@ -91,7 +91,7 @@
   /* Mobile FAB Styles */
   .mobile-fab {
     position: fixed;
-    bottom: 2rem;
+    bottom: 5.5rem;
     right: 2rem;
     width: 3.5rem;
     height: 3.5rem;
@@ -104,7 +104,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 100;
+    z-index: 101;
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
@@ -117,7 +117,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
-        z-index: 90;
+        z-index: 102;
     display: flex;
     align-items: flex-end;
     justify-content: center;

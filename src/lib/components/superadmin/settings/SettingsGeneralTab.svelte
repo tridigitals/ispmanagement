@@ -139,7 +139,7 @@
       </div>
       <Select2
         id="app-timezone"
-        width="400px"
+        width="min(400px, 100%)"
         bind:value={appTimezone}
         options={timezoneOptions}
         placeholder="UTC"
@@ -232,6 +232,29 @@
     border-bottom: none;
   }
 
+  @media (max-width: 600px) {
+    .setting-row {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .setting-info {
+      padding-right: 0;
+    }
+
+    .card-body {
+      padding: 1rem;
+    }
+
+    .sub-settings {
+      padding: 1rem;
+    }
+
+    .sub-settings .setting-row {
+      gap: 0.5rem;
+    }
+  }
+
   .setting-info {
     flex: 1;
     padding-right: 1.5rem;
@@ -259,7 +282,7 @@
 
   .form-input {
     width: 100%;
-    max-width: 400px;
+    max-width: min(400px, 100%);
     padding: 0.5rem 0.75rem;
     background: var(--bg-app);
     border: 1px solid var(--border-color);

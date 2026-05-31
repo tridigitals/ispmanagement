@@ -6507,10 +6507,11 @@ impl PaymentService {
         tenant_id: &str,
         invoice: &crate::models::invoice::Invoice,
     ) -> AppResult<InvoiceCustomerLink> {
+
         // --- Path 1: customer_service_assignments (existing) ---
         let row: Option<(Option<String>, Option<String>, Option<String>, Option<String>)> = sqlx::query_as(
             r#"
-            SELECT csa.subscription_id, csa.customer_id, c.email, c.full_name
+            SELECT csa.subscription_id, csa.customer_id, c.email, c.name
             FROM customer_service_assignments csa
             INNER JOIN customers c ON c.id = csa.customer_id AND c.tenant_id = csa.tenant_id
             WHERE csa.tenant_id = $1 AND csa.invoice_id = $2
@@ -6538,6 +6539,7 @@ impl PaymentService {
         // gets .ok()'d into None.
         if let Some(ref ext_id) = invoice.external_id {
             if let Some(subscription_id) = parse_subscription_id_from_external_id(ext_id) {
+
                 tracing::info!(
                     invoice_id = %invoice.id,
                     subscription_id = %subscription_id,
@@ -6557,7 +6559,7 @@ impl PaymentService {
                     Ok(Some((customer_id,))) => {
                         // Look up customer to get email + name
                         let cust_result = sqlx::query_as::<_, (Option<String>, Option<String>)>(
-                            r#"SELECT email, full_name FROM customers WHERE id = $1 AND tenant_id = $2"#,
+                            r#"SELECT email, name FROM customers WHERE id = $1 AND tenant_id = $2"#,
                         )
                         .bind(&customer_id)
                         .bind(tenant_id)
