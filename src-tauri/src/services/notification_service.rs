@@ -79,6 +79,32 @@ impl NotificationService {
             .await
     }
 
+    /// Force send/enqueue an email with binary attachments.
+    ///
+    /// Phase 2 of bulk-send-invoice. Routes through `email_outbox` so the
+    /// attachments persist with the queued row and survive retries. When
+    /// `attachments` is empty, falls through to the no-attachment path.
+    pub async fn force_send_email_with_attachments(
+        &self,
+        tenant_id: Option<String>,
+        to: &str,
+        subject: &str,
+        body_text: &str,
+        body_html: Option<&str>,
+        attachments: Vec<crate::services::email_service::EmailAttachment>,
+    ) -> AppResult<()> {
+        self.email_outbox
+            .send_or_enqueue_with_attachments(
+                tenant_id,
+                to,
+                subject,
+                body_text,
+                body_html,
+                attachments,
+            )
+            .await
+    }
+
     /// Send an email to a set of users (by user_id), bypassing preferences.
     #[cfg(feature = "postgres")]
     pub async fn force_send_email_to_users(

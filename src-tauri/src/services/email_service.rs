@@ -5,7 +5,8 @@
 
 use crate::error::{AppError, AppResult};
 use crate::services::SettingsService;
-use lettre::message::{header::ContentType, MultiPart, SinglePart};
+use base64::Engine;
+use lettre::message::{header::ContentType, Attachment, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::transport::smtp::client::Tls;
 use lettre::transport::smtp::client::TlsParameters;
@@ -13,6 +14,18 @@ use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use serde::Serialize;
 use std::time::Instant;
 use tracing::info;
+
+/// Binary attachment carried alongside an outbound email.
+///
+/// `content_type` should be a valid MIME type (e.g. `application/pdf`).
+/// `content` is the raw bytes — providers that need base64 (Resend,
+/// SendGrid, Webhook) handle the encoding internally.
+#[derive(Debug, Clone)]
+pub struct EmailAttachment {
+    pub filename: String,
+    pub content_type: String,
+    pub content: Vec<u8>,
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct SmtpConnectionTestResult {
@@ -549,5 +562,353 @@ impl EmailService {
             "Test Email - Configuration Verified",
             "Hello!\n\nThis is a test email. Your email configuration is working correctly.\n\nBest regards,\nYour Application",
         ).await
+    }
+
+    // ---------------- attachments ----------------
+
+    /// Send an email with binary attachments through the tenant-configured provider.
+    ///
+    /// Phase 2 of bulk-send-invoice. Backward-compatible: when `attachments`
+    /// is empty, falls back to `send_email_with_optional_html_for_tenant`.
+    pub async fn send_email_with_attachments_for_tenant(
+        &self,
+        tenant_id: Option<&str>,
+        to: &str,
+        subject: &str,
+        body_text: &str,
+        body_html: Option<&str>,
+        attachments: &[EmailAttachment],
+    ) -> AppResult<()> {
+        if attachments.is_empty() {
+            return self
+                .send_email_with_optional_html_for_tenant(tenant_id, to, subject, body_text, body_html)
+                .await;
+        }
+
+        let config = self.get_config_for(tenant_id).await?;
+        info!(
+            "Sending email to {} via {} with {} attachment(s)",
+            to,
+            config.provider,
+            attachments.len()
+        );
+
+        match config.provider.as_str() {
+            "resend" => {
+                self.send_via_resend_with_attachments(&config, to, subject, body_text, body_html, attachments)
+                    .await
+            }
+            "smtp" => {
+                self.send_via_smtp_with_attachments(&config, to, subject, body_text, body_html, attachments)
+                    .await
+            }
+            "sendgrid" => {
+                self.send_via_sendgrid_with_attachments(&config, to, subject, body_text, body_html, attachments)
+                    .await
+            }
+            "webhook" => {
+                self.send_via_webhook_with_attachments(&config, to, subject, body_text, body_html, attachments)
+                    .await
+            }
+            _ => Err(AppError::Validation(format!(
+                "Unknown email provider: {}",
+                config.provider
+            ))),
+        }
+    }
+
+    /// SMTP with attachments — uses lettre's `MultiPart::mixed` with an
+    /// alternative text/html part plus one binary part per attachment.
+    async fn send_via_smtp_with_attachments(
+        &self,
+        config: &EmailConfig,
+        to: &str,
+        subject: &str,
+        body_text: &str,
+        body_html: Option<&str>,
+        attachments: &[EmailAttachment],
+    ) -> AppResult<()> {
+        let builder = Message::builder()
+            .from(
+                format!("{} <{}>", config.from_name, config.from_email)
+                    .parse()
+                    .map_err(|e| AppError::Validation(format!("Invalid from address: {}", e)))?,
+            )
+            .to(to
+                .parse()
+                .map_err(|e| AppError::Validation(format!("Invalid to address: {}", e)))?)
+            .subject(subject);
+
+        // Body part: alternative(text, html) when html present; otherwise plain.
+        let body_part = if let Some(html) = body_html {
+            MultiPart::alternative()
+                .singlepart(
+                    SinglePart::builder()
+                        .header(ContentType::TEXT_PLAIN)
+                        .body(body_text.to_string()),
+                )
+                .singlepart(
+                    SinglePart::builder()
+                        .header(ContentType::TEXT_HTML)
+                        .body(html.to_string()),
+                )
+        } else {
+            MultiPart::alternative().singlepart(
+                SinglePart::builder()
+                    .header(ContentType::TEXT_PLAIN)
+                    .body(body_text.to_string()),
+            )
+        };
+
+        let mut mixed = MultiPart::mixed().multipart(body_part);
+        for att in attachments {
+            let ct = att
+                .content_type
+                .parse::<ContentType>()
+                .map_err(|e| AppError::Validation(format!("Invalid attachment content_type '{}': {}", att.content_type, e)))?;
+            mixed = mixed.singlepart(
+                Attachment::new(att.filename.clone()).body(att.content.clone(), ct),
+            );
+        }
+
+        let email = builder
+            .multipart(mixed)
+            .map_err(|e| AppError::Internal(format!("Failed to build email: {}", e)))?;
+
+        let mailer = self.build_smtp_transport(config)?;
+        mailer
+            .send(email)
+            .await
+            .map_err(|e| AppError::Internal(format!("SMTP sending failed: {}", e)))?;
+
+        info!("Email sent via SMTP (with attachments)");
+        Ok(())
+    }
+
+    /// Resend with attachments — Resend accepts `attachments: [{filename, content}]`
+    /// where `content` is a base64-encoded string.
+    async fn send_via_resend_with_attachments(
+        &self,
+        config: &EmailConfig,
+        to: &str,
+        subject: &str,
+        body_text: &str,
+        body_html: Option<&str>,
+        attachments: &[EmailAttachment],
+    ) -> AppResult<()> {
+        if config.api_key.is_empty() {
+            return Err(AppError::Validation(
+                "Resend API key not configured".to_string(),
+            ));
+        }
+
+        #[derive(Serialize)]
+        struct ResendAttachment {
+            filename: String,
+            content: String, // base64
+            #[serde(rename = "content_type", skip_serializing_if = "Option::is_none")]
+            content_type: Option<String>,
+        }
+        #[derive(Serialize)]
+        struct ResendRequestWithAttachments<'a> {
+            from: String,
+            to: Vec<String>,
+            subject: &'a str,
+            text: &'a str,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            html: Option<&'a str>,
+            attachments: Vec<ResendAttachment>,
+        }
+
+        let b64 = base64::engine::general_purpose::STANDARD;
+        let req = ResendRequestWithAttachments {
+            from: format!("{} <{}>", config.from_name, config.from_email),
+            to: vec![to.to_string()],
+            subject,
+            text: body_text,
+            html: body_html,
+            attachments: attachments
+                .iter()
+                .map(|a| ResendAttachment {
+                    filename: a.filename.clone(),
+                    content: b64.encode(&a.content),
+                    content_type: Some(a.content_type.clone()),
+                })
+                .collect(),
+        };
+
+        let client = reqwest::Client::new();
+        let response = client
+            .post("https://api.resend.com/emails")
+            .header("Authorization", format!("Bearer {}", config.api_key))
+            .json(&req)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("Request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            let err = response.text().await.unwrap_or_default();
+            return Err(AppError::Internal(format!("Resend error: {}", err)));
+        }
+
+        info!("Email sent via Resend (with attachments)");
+        Ok(())
+    }
+
+    /// SendGrid v3 with attachments.
+    async fn send_via_sendgrid_with_attachments(
+        &self,
+        config: &EmailConfig,
+        to: &str,
+        subject: &str,
+        body_text: &str,
+        body_html: Option<&str>,
+        attachments: &[EmailAttachment],
+    ) -> AppResult<()> {
+        if config.api_key.is_empty() {
+            return Err(AppError::Validation(
+                "SendGrid API key not configured".to_string(),
+            ));
+        }
+
+        #[derive(Serialize)]
+        struct SgAttachment {
+            content: String, // base64
+            #[serde(rename = "type")]
+            kind: String,
+            filename: String,
+            disposition: &'static str,
+        }
+        #[derive(Serialize)]
+        struct SgRequest<'a> {
+            personalizations: Vec<SendGridPersonalization>,
+            from: SendGridEmail,
+            subject: &'a str,
+            content: Vec<SendGridContent>,
+            attachments: Vec<SgAttachment>,
+        }
+
+        let mut content = vec![SendGridContent {
+            content_type: "text/plain".to_string(),
+            value: body_text.to_string(),
+        }];
+        if let Some(html) = body_html {
+            content.push(SendGridContent {
+                content_type: "text/html".to_string(),
+                value: html.to_string(),
+            });
+        }
+
+        let b64 = base64::engine::general_purpose::STANDARD;
+        let req = SgRequest {
+            personalizations: vec![SendGridPersonalization {
+                to: vec![SendGridEmail {
+                    email: to.to_string(),
+                    name: None,
+                }],
+            }],
+            from: SendGridEmail {
+                email: config.from_email.clone(),
+                name: Some(config.from_name.clone()),
+            },
+            subject,
+            content,
+            attachments: attachments
+                .iter()
+                .map(|a| SgAttachment {
+                    content: b64.encode(&a.content),
+                    kind: a.content_type.clone(),
+                    filename: a.filename.clone(),
+                    disposition: "attachment",
+                })
+                .collect(),
+        };
+
+        let client = reqwest::Client::new();
+        let response = client
+            .post("https://api.sendgrid.com/v3/mail/send")
+            .header("Authorization", format!("Bearer {}", config.api_key))
+            .json(&req)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("Request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            let err = response.text().await.unwrap_or_default();
+            return Err(AppError::Internal(format!("SendGrid error: {}", err)));
+        }
+
+        info!("Email sent via SendGrid (with attachments)");
+        Ok(())
+    }
+
+    /// Webhook with attachments — passes a JSON payload with base64-encoded
+    /// attachments in `attachments: [{filename, content_type, content_base64}]`.
+    async fn send_via_webhook_with_attachments(
+        &self,
+        config: &EmailConfig,
+        to: &str,
+        subject: &str,
+        body_text: &str,
+        body_html: Option<&str>,
+        attachments: &[EmailAttachment],
+    ) -> AppResult<()> {
+        if config.webhook_url.is_empty() {
+            return Err(AppError::Validation(
+                "Webhook URL not configured".to_string(),
+            ));
+        }
+
+        #[derive(Serialize)]
+        struct WhAttachment {
+            filename: String,
+            content_type: String,
+            content_base64: String,
+        }
+        #[derive(Serialize)]
+        struct WhRequest<'a> {
+            to: &'a str,
+            from_email: &'a str,
+            from_name: &'a str,
+            subject: &'a str,
+            body: &'a str,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            body_html: Option<&'a str>,
+            attachments: Vec<WhAttachment>,
+        }
+
+        let b64 = base64::engine::general_purpose::STANDARD;
+        let req = WhRequest {
+            to,
+            from_email: &config.from_email,
+            from_name: &config.from_name,
+            subject,
+            body: body_text,
+            body_html,
+            attachments: attachments
+                .iter()
+                .map(|a| WhAttachment {
+                    filename: a.filename.clone(),
+                    content_type: a.content_type.clone(),
+                    content_base64: b64.encode(&a.content),
+                })
+                .collect(),
+        };
+
+        let client = reqwest::Client::new();
+        let response = client
+            .post(&config.webhook_url)
+            .json(&req)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("Request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            let err = response.text().await.unwrap_or_default();
+            return Err(AppError::Internal(format!("Webhook error: {}", err)));
+        }
+
+        info!("Email sent via Webhook (with attachments)");
+        Ok(())
     }
 }

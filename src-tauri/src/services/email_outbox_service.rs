@@ -1,5 +1,6 @@
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
+use crate::services::email_service::EmailAttachment;
 use crate::services::{EmailService, SettingsService};
 use chrono::{DateTime, Utc};
 #[cfg(feature = "postgres")]
@@ -321,6 +322,163 @@ impl EmailOutboxService {
         Ok(())
     }
 
+    // ---------------- attachments ----------------
+
+    /// Fetch attachments for one outbox row. Used by the sender loop.
+    #[cfg(feature = "postgres")]
+    async fn fetch_attachments(&self, outbox_id: &str) -> AppResult<Vec<EmailAttachment>> {
+        let rows: Vec<(String, String, Vec<u8>)> = sqlx::query_as(
+            r#"
+            SELECT filename, content_type, content_bytes
+            FROM email_outbox_attachments
+            WHERE outbox_id = $1
+            ORDER BY created_at ASC, id ASC
+            "#,
+        )
+        .bind(outbox_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+        Ok(rows
+            .into_iter()
+            .map(|(filename, content_type, content)| EmailAttachment {
+                filename,
+                content_type,
+                content,
+            })
+            .collect())
+    }
+
+    /// Enqueue a queued email with binary attachments.
+    ///
+    /// On postgres: inserts the outbox row and the attachment rows in a
+    /// single transaction so a partially-queued message can never escape.
+    /// Without the postgres feature, this is a no-op (matches `enqueue`).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn enqueue_with_attachments(
+        &self,
+        tenant_id: Option<String>,
+        to_email: String,
+        subject: String,
+        body: String,
+        body_html: Option<String>,
+        attachments: Vec<EmailAttachment>,
+        max_attempts: Option<i32>,
+        scheduled_at: Option<DateTime<Utc>>,
+    ) -> AppResult<String> {
+        let id = Uuid::new_v4().to_string();
+        let now = Utc::now();
+        let max_attempts = max_attempts
+            .unwrap_or(self.max_attempts_default().await)
+            .clamp(1, 25);
+        let scheduled_at = scheduled_at.unwrap_or(now);
+
+        #[cfg(feature = "postgres")]
+        {
+            let mut tx = self.pool.begin().await.map_err(AppError::Database)?;
+            sqlx::query(
+                r#"
+                INSERT INTO email_outbox
+                  (id, tenant_id, to_email, subject, body, body_html, status, attempts, max_attempts, scheduled_at, last_error, sent_at, created_at, updated_at)
+                VALUES
+                  ($1,$2,$3,$4,$5,$6,'queued',0,$7,$8,NULL,NULL,$9,$10)
+                "#,
+            )
+            .bind(&id)
+            .bind(tenant_id.as_deref())
+            .bind(&to_email)
+            .bind(&subject)
+            .bind(&body)
+            .bind(body_html.as_deref())
+            .bind(max_attempts)
+            .bind(scheduled_at)
+            .bind(now)
+            .bind(now)
+            .execute(&mut *tx)
+            .await
+            .map_err(AppError::Database)?;
+
+            if !attachments.is_empty() {
+                let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
+                    r#"
+                    INSERT INTO email_outbox_attachments
+                      (id, outbox_id, filename, content_type, content_bytes, size_bytes, created_at)
+                    "#,
+                );
+                qb.push_values(&attachments, |mut b, att| {
+                    b.push_bind(Uuid::new_v4().to_string())
+                        .push_bind(&id)
+                        .push_bind(&att.filename)
+                        .push_bind(&att.content_type)
+                        .push_bind(&att.content)
+                        .push_bind(att.content.len() as i32)
+                        .push_bind(now);
+                });
+                qb.build()
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(AppError::Database)?;
+            }
+
+            tx.commit().await.map_err(AppError::Database)?;
+        }
+
+        let _ = (tenant_id, body_html); // silence unused on non-postgres builds
+        let _ = attachments;
+        Ok(id)
+    }
+
+    /// Send-or-enqueue with attachments. Mirrors `send_or_enqueue_with_html`
+    /// but routes binary parts through the new EmailService path.
+    pub async fn send_or_enqueue_with_attachments(
+        &self,
+        tenant_id: Option<String>,
+        to: &str,
+        subject: &str,
+        body_text: &str,
+        body_html: Option<&str>,
+        attachments: Vec<EmailAttachment>,
+    ) -> AppResult<()> {
+        if attachments.is_empty() {
+            return self
+                .send_or_enqueue_with_html(
+                    tenant_id,
+                    to,
+                    subject,
+                    body_text,
+                    body_html.map(|s| s.to_string()),
+                )
+                .await;
+        }
+
+        if self.enabled().await {
+            let _ = self
+                .enqueue_with_attachments(
+                    tenant_id,
+                    to.to_string(),
+                    subject.to_string(),
+                    body_text.to_string(),
+                    body_html.map(|s| s.to_string()),
+                    attachments,
+                    None,
+                    None,
+                )
+                .await?;
+            Ok(())
+        } else {
+            self.email_service
+                .send_email_with_attachments_for_tenant(
+                    tenant_id.as_deref(),
+                    to,
+                    subject,
+                    body_text,
+                    body_html,
+                    &attachments,
+                )
+                .await
+        }
+    }
+
     pub async fn start_sender(&self) {
         let svc = self.clone();
         tokio::spawn(async move {
@@ -448,16 +606,44 @@ impl EmailOutboxService {
                 let attempts = r.attempts.saturating_add(1);
                 let max_attempts = r.max_attempts;
 
-                match self
-                    .email_service
-                    .send_email_with_optional_html_for_tenant(
-                        r.tenant_id.as_deref(),
-                        &r.to_email,
-                        &r.subject,
-                        &r.body,
-                        r.body_html.as_deref(),
-                    )
-                    .await
+                // Fetch attachments for this row, if any. Routes through the
+                // attachments-aware send path when present; falls back to the
+                // simple optional-html path otherwise.
+                let attachments = match self.fetch_attachments(&r.id).await {
+                    Ok(a) => a,
+                    Err(e) => {
+                        warn!(
+                            "Email outbox: failed to fetch attachments for {}: {} (sending without attachments)",
+                            r.id, e
+                        );
+                        Vec::new()
+                    }
+                };
+
+                let send_result = if attachments.is_empty() {
+                    self.email_service
+                        .send_email_with_optional_html_for_tenant(
+                            r.tenant_id.as_deref(),
+                            &r.to_email,
+                            &r.subject,
+                            &r.body,
+                            r.body_html.as_deref(),
+                        )
+                        .await
+                } else {
+                    self.email_service
+                        .send_email_with_attachments_for_tenant(
+                            r.tenant_id.as_deref(),
+                            &r.to_email,
+                            &r.subject,
+                            &r.body,
+                            r.body_html.as_deref(),
+                            &attachments,
+                        )
+                        .await
+                };
+
+                match send_result
                 {
                     Ok(_) => {
                         let _ = sqlx::query(
