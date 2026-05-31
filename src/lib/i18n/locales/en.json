@@ -2758,7 +2758,15 @@
           "creating": "Creating...",
           "billing_logs": "Billing Logs",
           "generate_due_bulk": "Generate Due Invoices",
-          "bulk_generating": "Generating..."
+          "bulk_generating": "Generating...",
+          "select_invoice": "Select invoice",
+          "select_all_visible": "Select All",
+          "select_all_visible_title": "Select all invoices on this page",
+          "clear_selection": "Clear selection",
+          "bulk_send_count": "Send {count} Invoices",
+          "bulk_send_title": "Send selected invoices via email + notification",
+          "bulk_send_confirm": "Send {count} invoices to customer email? (Email + In-app Notification)",
+          "bulk_sending": "Sending..."
         },
         "filters": {
           "all_status": "All status",
@@ -2776,7 +2784,10 @@
           "created": "Customer service invoice created",
           "create_failed": "Failed to create invoice",
           "bulk_generated": "Bulk generated",
-          "bulk_generate_failed": "Failed to generate due invoices"
+          "bulk_generate_failed": "Failed to generate due invoices",
+          "bulk_sent": "Bulk send complete",
+          "bulk_send_failed": "Failed to send invoices",
+          "bulk_send_no_selection": "Select at least one invoice"
         },
         "stats": {
           "total": "Total",
