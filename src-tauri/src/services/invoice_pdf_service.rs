@@ -1,30 +1,23 @@
 //! Invoice PDF generation service.
 //!
-//! Pure-Rust PDF generator using `printpdf 0.9` for invoice attachments
-//! sent in bulk-send-invoice and similar flows. Built on the `Op` enum
-//! stack-based API (text sections + cursor positioning + builtin fonts).
+//! Pure-Rust PDF generator using `printpdf 0.9` for invoice attachments.
+//! Built on the `Op` enum stack-based API (text sections + cursor positioning
+//! + builtin Helvetica fonts + filled rectangles + lines).
 //!
 //! Layout (single page, A4 portrait, mm units):
-//!   - Header (top): company name + address + NPWP (left), big "INVOICE" +
-//!     invoice number + status badge text (right)
-//!   - Sub-header: bill-to (customer) on left, dates (issued, due) on right
-//!   - Body: items table with description / qty / unit price / subtotal
-//!   - Footer: totals (subtotal, tax, grand total) + payment URL
-//!
-//! Fonts: built-in Helvetica family (no external font files for v1).
-//! Caveat: Helvetica's encoding is WinAnsi (Latin-1). It covers Indonesian
-//! text and the "Rp" string fine, but not most non-Latin scripts. If the
-//! invoice surfaces non-Latin characters, embed a TTF (e.g. DejaVu Sans)
-//! via `PdfDocument::add_ttf_font` in a follow-up.
+//!   - Top brand band (full width, brand color)
+//!   - Header: company info (left), big "INVOICE" + number + status badge (right)
+//!   - Bill-to (left) + dates (right)
+//!   - Items table: filled header row, per-row bottom border, right-aligned numbers
+//!   - Totals box: subtotal + tax + GRAND TOTAL with brand accent
+//!   - Footer: payment URL + notes + bottom rule
 
 use crate::error::{AppError, AppResult};
 use printpdf::{
-    BuiltinFont, Color, Mm, Op, PdfDocument, PdfFontHandle, PdfPage, PdfSaveOptions, Point, Pt,
-    Rgb, TextItem,
+    BuiltinFont, Color, Line, LinePoint, Mm, Op, PaintMode, PdfDocument, PdfFontHandle, PdfPage,
+    PdfSaveOptions, Point, Pt, Rect, Rgb, TextItem,
 };
 
-/// One line item on the invoice (description + qty + unit price + subtotal,
-/// all formatted by the caller — keeps this service formatting-agnostic).
 #[derive(Debug, Clone)]
 pub struct InvoicePdfLineItem {
     pub description: String,
@@ -33,7 +26,6 @@ pub struct InvoicePdfLineItem {
     pub subtotal: String,
 }
 
-/// Tenant company information rendered in the header.
 #[derive(Debug, Clone, Default)]
 pub struct InvoicePdfCompany {
     pub name: String,
@@ -43,7 +35,6 @@ pub struct InvoicePdfCompany {
     pub phone: Option<String>,
 }
 
-/// Customer (bill-to) information.
 #[derive(Debug, Clone, Default)]
 pub struct InvoicePdfCustomer {
     pub name: String,
@@ -51,40 +42,93 @@ pub struct InvoicePdfCustomer {
     pub email: Option<String>,
 }
 
-/// Pre-formatted total values. The caller uses tenant currency settings.
 #[derive(Debug, Clone, Default)]
 pub struct InvoicePdfTotals {
     pub subtotal: String,
-    pub tax_label: Option<String>, // e.g. "PPN 11%"
+    pub tax_label: Option<String>,
     pub tax_amount: Option<String>,
     pub grand_total: String,
 }
 
-/// Full rendering context for one invoice page.
 #[derive(Debug, Clone)]
 pub struct InvoicePdfContext {
     pub company: InvoicePdfCompany,
     pub customer: InvoicePdfCustomer,
     pub invoice_number: String,
-    pub status_label: String, // e.g. "PENDING", "PAID"
-    pub issued_at: String,    // pre-formatted date string
-    pub due_at: String,       // pre-formatted date string
+    pub status_label: String, // "PENDING" | "PAID" | "OVERDUE" | "CANCELLED" | other
+    pub issued_at: String,
+    pub due_at: String,
     pub items: Vec<InvoicePdfLineItem>,
     pub totals: InvoicePdfTotals,
-    pub payment_url: Option<String>, // shown as text under totals (link annotations: future)
+    pub payment_url: Option<String>,
     pub notes: Option<String>,
 }
 
-/// Stateless PDF generator. Cheap to clone (zero fields).
 #[derive(Debug, Clone, Default)]
 pub struct InvoicePdfService;
+
+// ---------- color palette (slate + teal + status accents) ----------
+
+fn rgb(r: f32, g: f32, b: f32) -> Color {
+    Color::Rgb(Rgb {
+        r,
+        g,
+        b,
+        icc_profile: None,
+    })
+}
+
+fn brand() -> Color {
+    rgb(0.059, 0.463, 0.431) // #0F766E teal-700
+}
+fn brand_dark() -> Color {
+    rgb(0.043, 0.341, 0.318) // darker teal
+}
+fn text_dark() -> Color {
+    rgb(0.122, 0.161, 0.216) // #1F2937 slate-800
+}
+fn text_muted() -> Color {
+    rgb(0.42, 0.45, 0.50) // #6B7280 slate-500
+}
+fn border_gray() -> Color {
+    rgb(0.898, 0.906, 0.922) // #E5E7EB slate-200
+}
+fn table_header_fill() -> Color {
+    rgb(0.953, 0.957, 0.965) // #F3F4F6 slate-100
+}
+fn total_box_fill() -> Color {
+    rgb(0.945, 0.980, 0.976) // very light teal
+}
+fn white() -> Color {
+    rgb(1.0, 1.0, 1.0)
+}
+
+fn status_color(status: &str) -> Color {
+    match status.to_ascii_uppercase().as_str() {
+        "PAID" | "LUNAS" => rgb(0.063, 0.725, 0.506), // emerald-500
+        "OVERDUE" => rgb(0.937, 0.267, 0.267),        // red-500
+        "CANCELLED" | "CANCELED" | "VOID" => rgb(0.42, 0.45, 0.50), // gray
+        _ => rgb(0.961, 0.620, 0.043),                // amber-500 (PENDING/default)
+    }
+}
+
+// ---------- text width approximation for right-alignment ----------
+// Helvetica avg em-width ≈ 0.50, HelveticaBold ≈ 0.55. Good enough for
+// numeric right-alignment on invoices (digits are very uniform).
+fn approx_text_width_mm(text: &str, font: BuiltinFont, size_pt: f32) -> f32 {
+    let em = match font {
+        BuiltinFont::HelveticaBold | BuiltinFont::TimesBold | BuiltinFont::CourierBold => 0.55,
+        _ => 0.50,
+    };
+    // 1 pt = 0.352778 mm
+    text.chars().count() as f32 * em * size_pt * 0.352778
+}
 
 impl InvoicePdfService {
     pub fn new() -> Self {
         Self
     }
 
-    /// Render the invoice context into a PDF byte buffer.
     pub fn render_invoice(&self, ctx: &InvoicePdfContext) -> AppResult<Vec<u8>> {
         if ctx.invoice_number.trim().is_empty() {
             return Err(AppError::Validation(
@@ -94,37 +138,32 @@ impl InvoicePdfService {
 
         let mut ops: Vec<Op> = Vec::new();
 
-        // ---------- Page geometry (A4 portrait) ----------
-        let page_w_mm = 210.0_f32;
-        let page_h_mm = 297.0_f32;
-        let left_mm = 18.0_f32;
-        let right_mm = page_w_mm - 18.0_f32;
-        let _content_w_mm = right_mm - left_mm;
+        // --- Page geometry (A4 portrait, mm) ---
+        let page_w = 210.0_f32;
+        let page_h = 297.0_f32;
+        let margin_l = 18.0_f32;
+        let margin_r = page_w - 18.0_f32;
+        let content_w = margin_r - margin_l;
+
+        // ---------- BRAND BAND (top 6mm) ----------
+        push_filled_rect(&mut ops, 0.0, page_h - 6.0, page_w, 6.0, brand());
 
         // ---------- HEADER ----------
-        // Company name (left, big bold)
+        // Company name (left)
         push_text(
             &mut ops,
-            Mm(left_mm),
-            Mm(280.0),
+            margin_l,
+            page_h - 18.0,
             BuiltinFont::HelveticaBold,
-            Pt(16.0),
-            Pt(18.0),
-            black(),
+            16.0,
+            text_dark(),
             &ctx.company.name,
         );
 
-        let mut header_y = 273.0_f32;
+        let mut y = page_h - 24.0;
         for line in [
             ctx.company.address.as_deref(),
-            ctx.company.npwp.as_deref().map(|n| {
-                // borrow-friendly fallback
-                if !n.is_empty() {
-                    n
-                } else {
-                    ""
-                }
-            }),
+            ctx.company.npwp.as_deref(),
             ctx.company.email.as_deref(),
             ctx.company.phone.as_deref(),
         ]
@@ -134,75 +173,99 @@ impl InvoicePdfService {
         {
             push_text(
                 &mut ops,
-                Mm(left_mm),
-                Mm(header_y),
+                margin_l,
+                y,
                 BuiltinFont::Helvetica,
-                Pt(9.0),
-                Pt(10.5),
-                gray(),
+                9.0,
+                text_muted(),
                 line,
             );
-            header_y -= 4.5;
+            y -= 4.5;
         }
 
-        // "INVOICE" big right-aligned-ish (printpdf 0.9 has no built-in alignment;
-        // we offset the cursor so that, with a known approximate width, it sits
-        // on the right margin. For simplicity v1 uses a fixed offset.)
+        // INVOICE big (right) + invoice number + status badge
+        let inv_label = "INVOICE";
+        let inv_label_w = approx_text_width_mm(inv_label, BuiltinFont::HelveticaBold, 24.0);
         push_text(
             &mut ops,
-            Mm(right_mm - 36.0),
-            Mm(280.0),
+            margin_r - inv_label_w,
+            page_h - 18.0,
             BuiltinFont::HelveticaBold,
-            Pt(22.0),
-            Pt(24.0),
-            black(),
-            "INVOICE",
+            24.0,
+            brand(),
+            inv_label,
         );
+
+        let inv_num = format!("# {}", ctx.invoice_number);
+        let inv_num_w = approx_text_width_mm(&inv_num, BuiltinFont::Helvetica, 11.0);
         push_text(
             &mut ops,
-            Mm(right_mm - 36.0),
-            Mm(272.0),
-            BuiltinFont::HelveticaBold,
-            Pt(11.0),
-            Pt(13.0),
-            black(),
-            &format!("# {}", ctx.invoice_number),
-        );
-        push_text(
-            &mut ops,
-            Mm(right_mm - 36.0),
-            Mm(266.0),
+            margin_r - inv_num_w,
+            page_h - 27.0,
             BuiltinFont::Helvetica,
-            Pt(9.0),
-            Pt(11.0),
-            gray(),
-            &format!("Status: {}", ctx.status_label),
+            11.0,
+            text_dark(),
+            &inv_num,
+        );
+
+        // Status badge: filled rect + white text, right-aligned
+        let badge_text = ctx.status_label.to_ascii_uppercase();
+        let badge_text_w = approx_text_width_mm(&badge_text, BuiltinFont::HelveticaBold, 9.0);
+        let badge_w = badge_text_w + 6.0;
+        let badge_h = 5.0;
+        let badge_x = margin_r - badge_w;
+        let badge_y = page_h - 36.0;
+        push_filled_rect(
+            &mut ops,
+            badge_x,
+            badge_y,
+            badge_w,
+            badge_h,
+            status_color(&ctx.status_label),
+        );
+        push_text(
+            &mut ops,
+            badge_x + 3.0,
+            badge_y + 1.4,
+            BuiltinFont::HelveticaBold,
+            9.0,
+            white(),
+            &badge_text,
+        );
+
+        // Divider line under header
+        push_line(
+            &mut ops,
+            margin_l,
+            page_h - 50.0,
+            margin_r,
+            page_h - 50.0,
+            border_gray(),
+            0.5,
         );
 
         // ---------- BILL TO + DATES ----------
-        let billto_y = 245.0_f32;
+        let block_top = page_h - 56.0;
         push_text(
             &mut ops,
-            Mm(left_mm),
-            Mm(billto_y),
+            margin_l,
+            block_top,
             BuiltinFont::HelveticaBold,
-            Pt(10.0),
-            Pt(12.0),
-            black(),
+            8.5,
+            text_muted(),
             "BILL TO",
         );
         push_text(
             &mut ops,
-            Mm(left_mm),
-            Mm(billto_y - 5.5),
-            BuiltinFont::Helvetica,
-            Pt(10.0),
-            Pt(12.0),
-            black(),
+            margin_l,
+            block_top - 5.5,
+            BuiltinFont::HelveticaBold,
+            10.5,
+            text_dark(),
             &ctx.customer.name,
         );
 
-        let mut bill_y = billto_y - 11.0;
+        let mut by = block_top - 10.5;
         for line in [
             ctx.customer.address.as_deref(),
             ctx.customer.email.as_deref(),
@@ -213,275 +276,298 @@ impl InvoicePdfService {
         {
             push_text(
                 &mut ops,
-                Mm(left_mm),
-                Mm(bill_y),
+                margin_l,
+                by,
                 BuiltinFont::Helvetica,
-                Pt(9.0),
-                Pt(11.0),
-                gray(),
+                9.0,
+                text_muted(),
                 line,
             );
-            bill_y -= 4.5;
+            by -= 4.5;
         }
 
-        // Dates on the right
+        // Dates (right-aligned labels + values)
+        let date_x = margin_r - 50.0;
         push_text(
             &mut ops,
-            Mm(right_mm - 50.0),
-            Mm(billto_y),
+            date_x,
+            block_top,
             BuiltinFont::HelveticaBold,
-            Pt(10.0),
-            Pt(12.0),
-            black(),
+            8.5,
+            text_muted(),
             "ISSUED",
         );
         push_text(
             &mut ops,
-            Mm(right_mm - 50.0),
-            Mm(billto_y - 5.5),
+            date_x,
+            block_top - 5.5,
             BuiltinFont::Helvetica,
-            Pt(10.0),
-            Pt(12.0),
-            black(),
+            10.0,
+            text_dark(),
             &ctx.issued_at,
         );
         push_text(
             &mut ops,
-            Mm(right_mm - 50.0),
-            Mm(billto_y - 12.0),
+            date_x,
+            block_top - 13.0,
             BuiltinFont::HelveticaBold,
-            Pt(10.0),
-            Pt(12.0),
-            black(),
+            8.5,
+            text_muted(),
             "DUE",
         );
         push_text(
             &mut ops,
-            Mm(right_mm - 50.0),
-            Mm(billto_y - 17.5),
+            date_x,
+            block_top - 18.5,
             BuiltinFont::Helvetica,
-            Pt(10.0),
-            Pt(12.0),
-            black(),
+            10.0,
+            text_dark(),
             &ctx.due_at,
         );
 
         // ---------- ITEMS TABLE ----------
-        // Column x positions (mm). Right-most three are right-aligned via fixed offsets.
-        let col_desc_x = left_mm; // description start
-        let col_qty_x = right_mm - 78.0;
-        let col_price_x = right_mm - 52.0;
-        let col_sub_x = right_mm - 24.0;
+        // Column layout (mm): description (flex) | qty (right) | price (right) | subtotal (right)
+        let table_top = block_top - 32.0;
+        let col_qty_x = margin_l + content_w - 78.0; // right-edge for QTY column
+        let col_price_x = margin_l + content_w - 52.0; // right-edge for PRICE
+        let col_sub_x = margin_l + content_w; // right-edge for SUBTOTAL = margin_r
 
-        let table_top_y = 215.0_f32;
-        // Header row
+        // Header row background
+        push_filled_rect(
+            &mut ops,
+            margin_l,
+            table_top - 1.5,
+            content_w,
+            7.0,
+            table_header_fill(),
+        );
+
+        // Header text
         push_text(
             &mut ops,
-            Mm(col_desc_x),
-            Mm(table_top_y),
+            margin_l + 2.0,
+            table_top + 1.0,
             BuiltinFont::HelveticaBold,
-            Pt(9.5),
-            Pt(11.0),
-            black(),
+            9.0,
+            text_dark(),
             "DESCRIPTION",
         );
-        push_text(
+        push_text_right(
             &mut ops,
-            Mm(col_qty_x),
-            Mm(table_top_y),
+            col_qty_x,
+            table_top + 1.0,
             BuiltinFont::HelveticaBold,
-            Pt(9.5),
-            Pt(11.0),
-            black(),
+            9.0,
+            text_dark(),
             "QTY",
         );
-        push_text(
+        push_text_right(
             &mut ops,
-            Mm(col_price_x),
-            Mm(table_top_y),
+            col_price_x,
+            table_top + 1.0,
             BuiltinFont::HelveticaBold,
-            Pt(9.5),
-            Pt(11.0),
-            black(),
+            9.0,
+            text_dark(),
             "PRICE",
         );
-        push_text(
+        push_text_right(
             &mut ops,
-            Mm(col_sub_x),
-            Mm(table_top_y),
+            col_sub_x,
+            table_top + 1.0,
             BuiltinFont::HelveticaBold,
-            Pt(9.5),
-            Pt(11.0),
-            black(),
+            9.0,
+            text_dark(),
             "SUBTOTAL",
         );
 
-        // Items
-        let mut row_y = table_top_y - 7.0;
-        for item in &ctx.items {
-            push_text(
-                &mut ops,
-                Mm(col_desc_x),
-                Mm(row_y),
-                BuiltinFont::Helvetica,
-                Pt(9.5),
-                Pt(11.0),
-                black(),
-                &item.description,
-            );
-            push_text(
-                &mut ops,
-                Mm(col_qty_x),
-                Mm(row_y),
-                BuiltinFont::Helvetica,
-                Pt(9.5),
-                Pt(11.0),
-                black(),
-                &item.quantity,
-            );
-            push_text(
-                &mut ops,
-                Mm(col_price_x),
-                Mm(row_y),
-                BuiltinFont::Helvetica,
-                Pt(9.5),
-                Pt(11.0),
-                black(),
-                &item.unit_price,
-            );
-            push_text(
-                &mut ops,
-                Mm(col_sub_x),
-                Mm(row_y),
-                BuiltinFont::Helvetica,
-                Pt(9.5),
-                Pt(11.0),
-                black(),
-                &item.subtotal,
-            );
-            row_y -= 6.0;
+        // Item rows
+        let mut row_y = table_top - 6.0;
+        let row_height = 7.0_f32;
+        let row_min_y = 95.0_f32; // leave space for totals + footer
 
-            // Stop early if the page would overflow — v1 caps at one page;
-            // additional items spill into a "(…and N more items)" stub line.
-            if row_y < 90.0 {
-                let remaining = ctx.items.len()
-                    - (ctx
-                        .items
-                        .iter()
-                        .take_while(|i| !std::ptr::eq(*i, item))
-                        .count()
-                        + 1);
-                if remaining > 0 {
-                    push_text(
-                        &mut ops,
-                        Mm(col_desc_x),
-                        Mm(row_y),
-                        BuiltinFont::HelveticaOblique,
-                        Pt(9.0),
-                        Pt(11.0),
-                        gray(),
-                        &format!("…and {} more item(s)", remaining),
-                    );
-                }
+        let total_items = ctx.items.len();
+        let mut rendered = 0_usize;
+        for item in &ctx.items {
+            if row_y < row_min_y {
                 break;
             }
+            push_text(
+                &mut ops,
+                margin_l + 2.0,
+                row_y,
+                BuiltinFont::Helvetica,
+                9.5,
+                text_dark(),
+                &item.description,
+            );
+            push_text_right(
+                &mut ops,
+                col_qty_x,
+                row_y,
+                BuiltinFont::Helvetica,
+                9.5,
+                text_dark(),
+                &item.quantity,
+            );
+            push_text_right(
+                &mut ops,
+                col_price_x,
+                row_y,
+                BuiltinFont::Helvetica,
+                9.5,
+                text_dark(),
+                &item.unit_price,
+            );
+            push_text_right(
+                &mut ops,
+                col_sub_x,
+                row_y,
+                BuiltinFont::Helvetica,
+                9.5,
+                text_dark(),
+                &item.subtotal,
+            );
+            // Bottom border per row
+            push_line(
+                &mut ops,
+                margin_l,
+                row_y - 2.0,
+                margin_r,
+                row_y - 2.0,
+                border_gray(),
+                0.3,
+            );
+            rendered += 1;
+            row_y -= row_height;
+        }
+
+        if rendered < total_items {
+            push_text(
+                &mut ops,
+                margin_l + 2.0,
+                row_y,
+                BuiltinFont::HelveticaOblique,
+                9.0,
+                text_muted(),
+                &format!(
+                    "…and {} more item(s) — see online portal",
+                    total_items - rendered
+                ),
+            );
         }
 
         // ---------- TOTALS ----------
-        let totals_x_label = right_mm - 56.0;
-        let totals_x_amount = right_mm - 24.0;
-        let mut totals_y = 80.0_f32;
+        let totals_box_w = 70.0_f32;
+        let totals_box_x = margin_r - totals_box_w;
+        let mut ty = 80.0_f32;
 
+        // Subtotal row
         push_text(
             &mut ops,
-            Mm(totals_x_label),
-            Mm(totals_y),
+            totals_box_x,
+            ty,
             BuiltinFont::Helvetica,
-            Pt(10.0),
-            Pt(12.0),
-            black(),
+            10.0,
+            text_muted(),
             "Subtotal",
         );
-        push_text(
+        push_text_right(
             &mut ops,
-            Mm(totals_x_amount),
-            Mm(totals_y),
+            margin_r,
+            ty,
             BuiltinFont::Helvetica,
-            Pt(10.0),
-            Pt(12.0),
-            black(),
+            10.0,
+            text_dark(),
             &ctx.totals.subtotal,
         );
-        totals_y -= 6.0;
+        ty -= 5.5;
 
+        // Tax row (optional)
         if let (Some(label), Some(amount)) = (
             ctx.totals.tax_label.as_deref(),
             ctx.totals.tax_amount.as_deref(),
         ) {
             push_text(
                 &mut ops,
-                Mm(totals_x_label),
-                Mm(totals_y),
+                totals_box_x,
+                ty,
                 BuiltinFont::Helvetica,
-                Pt(10.0),
-                Pt(12.0),
-                black(),
+                10.0,
+                text_muted(),
                 label,
             );
-            push_text(
+            push_text_right(
                 &mut ops,
-                Mm(totals_x_amount),
-                Mm(totals_y),
+                margin_r,
+                ty,
                 BuiltinFont::Helvetica,
-                Pt(10.0),
-                Pt(12.0),
-                black(),
+                10.0,
+                text_dark(),
                 amount,
             );
-            totals_y -= 6.0;
+            ty -= 5.5;
         }
 
-        push_text(
+        // Grand total: highlighted box with brand accent line above it
+        let total_box_h = 10.0_f32;
+        let total_box_y = ty - total_box_h - 1.0;
+        push_filled_rect(
             &mut ops,
-            Mm(totals_x_label),
-            Mm(totals_y - 2.0),
-            BuiltinFont::HelveticaBold,
-            Pt(11.0),
-            Pt(13.0),
-            black(),
-            "TOTAL",
+            totals_box_x,
+            total_box_y,
+            totals_box_w,
+            total_box_h,
+            total_box_fill(),
+        );
+        // Top brand stripe on the box
+        push_filled_rect(
+            &mut ops,
+            totals_box_x,
+            total_box_y + total_box_h - 0.6,
+            totals_box_w,
+            0.6,
+            brand(),
         );
         push_text(
             &mut ops,
-            Mm(totals_x_amount),
-            Mm(totals_y - 2.0),
+            totals_box_x + 2.5,
+            total_box_y + 3.0,
             BuiltinFont::HelveticaBold,
-            Pt(11.0),
-            Pt(13.0),
-            black(),
+            11.5,
+            brand_dark(),
+            "TOTAL",
+        );
+        push_text_right(
+            &mut ops,
+            margin_r - 2.5,
+            total_box_y + 3.0,
+            BuiltinFont::HelveticaBold,
+            12.0,
+            brand_dark(),
             &ctx.totals.grand_total,
         );
 
-        // ---------- FOOTER (payment URL + notes) ----------
+        // ---------- FOOTER (payment URL + notes + rule) ----------
+        // Bottom rule
+        push_line(&mut ops, margin_l, 22.0, margin_r, 22.0, border_gray(), 0.5);
+
         if let Some(url) = ctx.payment_url.as_deref().filter(|s| !s.is_empty()) {
             push_text(
                 &mut ops,
-                Mm(left_mm),
-                Mm(40.0),
+                margin_l,
+                40.0,
                 BuiltinFont::HelveticaBold,
-                Pt(10.0),
-                Pt(12.0),
-                black(),
+                9.5,
+                text_dark(),
                 "Pay online:",
             );
             push_text(
                 &mut ops,
-                Mm(left_mm),
-                Mm(34.0),
+                margin_l,
+                35.0,
                 BuiltinFont::Helvetica,
-                Pt(9.5),
-                Pt(11.0),
-                gray(),
+                9.0,
+                brand(),
                 url,
             );
         }
@@ -489,18 +575,29 @@ impl InvoicePdfService {
         if let Some(notes) = ctx.notes.as_deref().filter(|s| !s.is_empty()) {
             push_text(
                 &mut ops,
-                Mm(left_mm),
-                Mm(22.0),
+                margin_l,
+                17.0,
                 BuiltinFont::HelveticaOblique,
-                Pt(9.0),
-                Pt(11.0),
-                gray(),
+                8.5,
+                text_muted(),
                 notes,
             );
         }
 
+        // Page-foot identity
+        let foot = format!("Invoice {} • Generated electronically", ctx.invoice_number);
+        push_text(
+            &mut ops,
+            margin_l,
+            10.0,
+            BuiltinFont::Helvetica,
+            7.5,
+            text_muted(),
+            &foot,
+        );
+
         // ---------- ASSEMBLE ----------
-        let page = PdfPage::new(Mm(page_w_mm), Mm(page_h_mm), ops);
+        let page = PdfPage::new(Mm(page_w), Mm(page_h), ops);
         let mut warnings = Vec::new();
         let pdf_bytes = PdfDocument::new(&format!("Invoice {}", ctx.invoice_number))
             .with_pages(vec![page])
@@ -510,50 +607,100 @@ impl InvoicePdfService {
     }
 }
 
-// ---------- helpers ----------
+// ---------- low-level helpers ----------
 
 fn push_text(
     ops: &mut Vec<Op>,
-    x: Mm,
-    y: Mm,
+    x_mm: f32,
+    y_mm: f32,
     font: BuiltinFont,
-    size: Pt,
-    line_height: Pt,
+    size_pt: f32,
     color: Color,
     text: &str,
 ) {
+    ops.push(Op::SaveGraphicsState);
     ops.push(Op::StartTextSection);
     ops.push(Op::SetTextCursor {
-        pos: Point::new(x, y),
+        pos: Point::new(Mm(x_mm), Mm(y_mm)),
     });
     ops.push(Op::SetFont {
         font: PdfFontHandle::Builtin(font),
-        size,
+        size: Pt(size_pt),
     });
-    ops.push(Op::SetLineHeight { lh: line_height });
+    ops.push(Op::SetLineHeight {
+        lh: Pt(size_pt * 1.2),
+    });
     ops.push(Op::SetFillColor { col: color });
     ops.push(Op::ShowText {
         items: vec![TextItem::Text(text.to_string())],
     });
     ops.push(Op::EndTextSection);
+    ops.push(Op::RestoreGraphicsState);
 }
 
-fn black() -> Color {
-    Color::Rgb(Rgb {
-        r: 0.0,
-        g: 0.0,
-        b: 0.0,
-        icc_profile: None,
-    })
+fn push_text_right(
+    ops: &mut Vec<Op>,
+    right_x_mm: f32,
+    y_mm: f32,
+    font: BuiltinFont,
+    size_pt: f32,
+    color: Color,
+    text: &str,
+) {
+    let w = approx_text_width_mm(text, font, size_pt);
+    push_text(ops, right_x_mm - w, y_mm, font, size_pt, color, text);
 }
 
-fn gray() -> Color {
-    Color::Rgb(Rgb {
-        r: 0.35,
-        g: 0.35,
-        b: 0.38,
-        icc_profile: None,
-    })
+fn mm_to_pt(mm: f32) -> Pt {
+    Pt(mm * 2.834_645_7)
+}
+
+fn push_filled_rect(ops: &mut Vec<Op>, x_mm: f32, y_mm: f32, w_mm: f32, h_mm: f32, color: Color) {
+    ops.push(Op::SaveGraphicsState);
+    ops.push(Op::SetFillColor { col: color });
+    ops.push(Op::DrawRectangle {
+        rectangle: Rect {
+            x: mm_to_pt(x_mm),
+            y: mm_to_pt(y_mm),
+            width: mm_to_pt(w_mm),
+            height: mm_to_pt(h_mm),
+            mode: Some(PaintMode::Fill),
+            winding_order: None,
+        },
+    });
+    ops.push(Op::RestoreGraphicsState);
+}
+
+fn push_line(
+    ops: &mut Vec<Op>,
+    x1_mm: f32,
+    y1_mm: f32,
+    x2_mm: f32,
+    y2_mm: f32,
+    color: Color,
+    thickness_pt: f32,
+) {
+    ops.push(Op::SaveGraphicsState);
+    ops.push(Op::SetOutlineColor { col: color });
+    ops.push(Op::SetOutlineThickness {
+        pt: Pt(thickness_pt),
+    });
+    ops.push(Op::DrawLine {
+        line: Line {
+            points: vec![
+                LinePoint {
+                    p: Point::new(Mm(x1_mm), Mm(y1_mm)),
+                    bezier: false,
+                },
+                LinePoint {
+                    p: Point::new(Mm(x2_mm), Mm(y2_mm)),
+                    bezier: false,
+                },
+            ],
+            is_closed: false,
+        },
+    });
+    ops.push(Op::RestoreGraphicsState);
 }
 
 #[cfg(test)]
@@ -565,7 +712,7 @@ mod tests {
             company: InvoicePdfCompany {
                 name: "PT ISP Demo".to_string(),
                 address: Some("Jl. Merdeka No. 1, Jakarta".to_string()),
-                npwp: Some("01.234.567.8-901.000".to_string()),
+                npwp: Some("NPWP: 01.234.567.8-901.000".to_string()),
                 email: Some("billing@isp-demo.id".to_string()),
                 phone: Some("+62 21 1234 5678".to_string()),
             },
@@ -605,14 +752,11 @@ mod tests {
 
     #[test]
     fn render_invoice_produces_non_empty_pdf_with_magic_header() {
-        let svc = InvoicePdfService::new();
-        let bytes = svc.render_invoice(&sample_ctx()).expect("render");
-        assert!(bytes.len() > 1024, "PDF too small: {} bytes", bytes.len());
-        assert!(
-            bytes.starts_with(b"%PDF-"),
-            "missing %PDF- magic; got {:?}",
-            &bytes[..bytes.len().min(8)]
-        );
+        let bytes = InvoicePdfService::new()
+            .render_invoice(&sample_ctx())
+            .unwrap();
+        assert!(bytes.len() > 1024);
+        assert!(bytes.starts_with(b"%PDF-"));
     }
 
     #[test]
@@ -633,9 +777,8 @@ mod tests {
     }
 
     #[test]
-    fn render_invoice_caps_long_item_list_with_overflow_notice() {
+    fn render_invoice_handles_long_item_list() {
         let mut ctx = sample_ctx();
-        // Many items to trigger the row_y < 90.0 overflow branch
         ctx.items = (0..40)
             .map(|i| InvoicePdfLineItem {
                 description: format!("Line {}", i),
@@ -644,6 +787,14 @@ mod tests {
                 subtotal: "Rp 10.000".to_string(),
             })
             .collect();
+        let bytes = InvoicePdfService::new().render_invoice(&ctx).unwrap();
+        assert!(bytes.starts_with(b"%PDF-"));
+    }
+
+    #[test]
+    fn render_invoice_status_paid_uses_green_badge() {
+        let mut ctx = sample_ctx();
+        ctx.status_label = "PAID".to_string();
         let bytes = InvoicePdfService::new().render_invoice(&ctx).unwrap();
         assert!(bytes.starts_with(b"%PDF-"));
     }
