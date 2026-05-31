@@ -4296,4 +4296,18 @@
       padding: 9px 10px;
     }
   }
+
+  /* Popups and markers must render above all map controls + search overlays */
+  :global(.maplibregl-popup) {
+    z-index: 20;
+  }
+
+  :global(.maplibregl-marker) {
+    z-index: 15;
+  }
+
+  :global(.maplibregl-marker svg),
+  :global(.maplibregl-marker img) {
+    pointer-events: auto;
+  }
 </style>

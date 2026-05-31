@@ -68,6 +68,7 @@ const iconModuleLoaders: Record<string, LucideModuleLoader> = {
   'list-ordered': () => import('lucide-svelte/icons/list-ordered'),
   loader: () => import('lucide-svelte/icons/loader'),
   lock: () => import('lucide-svelte/icons/lock'),
+  'log-out': () => import('lucide-svelte/icons/log-out'),
   logout: () => import('lucide-svelte/icons/log-out'),
   mail: () => import('lucide-svelte/icons/mail'),
   'mail-check': () => import('lucide-svelte/icons/mail-check'),

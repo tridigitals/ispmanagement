@@ -105,6 +105,39 @@ impl NotificationService {
             .await
     }
 
+    /// Explicit WhatsApp send for admin-triggered actions (e.g. bulk invoice send).
+    ///
+    /// Unlike `deliver_whatsapp_notification`, this does NOT gate on the per-event
+    /// WhatsApp toggle (`is_event_whatsapp_enabled`) — an explicit admin action
+    /// should always attempt delivery regardless of the auto-notification settings.
+    /// Returns `Ok(false)` when the gateway is not configured or the provider
+    /// reports a non-success delivery; `Ok(true)` only on confirmed send.
+    pub async fn force_send_whatsapp(
+        &self,
+        tenant_id: Option<&str>,
+        event_code: &str,
+        recipient_user_id: Option<&str>,
+        phone: &str,
+        message: &str,
+    ) -> AppResult<bool> {
+        let Some(gateway) = &self.whatsapp_gateway else {
+            return Ok(false);
+        };
+        // Use the *_response variant so we can read the actual delivery outcome.
+        // `send_text` swallows provider-level failures into Ok(()), which would
+        // make whatsapp_sent inaccurate.
+        match gateway
+            .send_text_response(tenant_id, event_code, recipient_user_id, phone, message)
+            .await
+        {
+            Ok(resp) => Ok(resp.ok),
+            Err(e) => {
+                tracing::warn!("force_send_whatsapp failed for {phone}: {e}");
+                Ok(false)
+            }
+        }
+    }
+
     /// Send an email to a set of users (by user_id), bypassing preferences.
     #[cfg(feature = "postgres")]
     pub async fn force_send_email_to_users(

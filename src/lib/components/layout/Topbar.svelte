@@ -25,6 +25,7 @@
   let closePanelTimer: ReturnType<typeof setTimeout> | null = null;
   let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   let latestSearchRequestId = 0;
+  let mobileSearchOpen = $state(false);
 
   // Helper to get page title based on path (ordered by specificity)
   function getPageTitle(path: string) {
@@ -152,11 +153,25 @@
     if (closePanelTimer) clearTimeout(closePanelTimer);
   }
 
+  function handleMobileSearchToggle() {
+    mobileSearchOpen = !mobileSearchOpen;
+    if (mobileSearchOpen) {
+      // Defer focus so DOM has updated
+      requestAnimationFrame(() => {
+        inputEl?.focus();
+        handleTopbarSearchFocus();
+      });
+    } else {
+      globalSearch.close();
+    }
+  }
+
   function handleTopbarSearchBlur() {
     closePanelTimer = setTimeout(() => {
       latestSearchRequestId += 1;
       globalSearch.close();
       highlightedIndex = -1;
+      mobileSearchOpen = false;
     }, 120);
   }
 
@@ -243,7 +258,7 @@
     <h2 class="page-title">{title}</h2>
   </div>
 
-  <div class="center-section">
+  <div class="center-section" class:mobile-open={mobileSearchOpen}>
     <div class="search-slot hide-mobile">
       <div class="search-bar">
         <span class="search-leading">
@@ -274,6 +289,14 @@
   </div>
 
   <div class="right-section">
+    <!-- Mobile search icon (replaces full search bar) -->
+    <button
+      class="icon-btn mobile-search-btn"
+      aria-label={$t('topbar.search_placeholder') || 'Search'}
+      onclick={handleMobileSearchToggle}
+    >
+      <Icon name="search" size={18} />
+    </button>
     <NotificationDropdown />
     <div class="topbar-user-menu">
       <UserMenuDropdown variant="topbar" />
@@ -283,6 +306,7 @@
 
 <style>
   .topbar {
+    position: relative;
     height: var(--header-height);
     width: 100%;
     max-width: 100%;
@@ -338,6 +362,10 @@
   .topbar-user-menu {
     min-width: 0;
     flex: 0 1 auto;
+  }
+
+  .mobile-search-btn {
+    display: none;
   }
 
   /* Search Bar */
@@ -467,7 +495,7 @@
     .topbar {
       gap: 0.5rem;
       padding: 0.16rem clamp(10px, 3.5vw, 16px) 0.38rem;
-      overflow: hidden;
+      overflow: visible;
     }
 
     .left-section {
@@ -477,9 +505,34 @@
     }
 
     .center-section {
+      display: none;
+    }
+
+    .center-section.mobile-open {
       display: flex;
-      flex: 0 1 auto;
-      min-width: 0;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 50;
+      background: var(--bg-primary);
+      padding: 0.4rem 0.75rem;
+      align-items: center;
+    }
+
+    .center-section.mobile-open .search-slot {
+      flex: 1;
+      width: 100%;
+    }
+
+    .center-section.mobile-open .search-bar {
+      width: 100%;
+    }
+
+    .center-section.mobile-open .search-bar input {
+      width: 100%;
+      flex: 1;
     }
 
     .center-section :global(.hide-mobile) {
@@ -523,6 +576,10 @@
     }
 
     .topbar-user-menu {
+      display: flex;
+    }
+
+    .mobile-search-btn {
       display: flex;
     }
   }
