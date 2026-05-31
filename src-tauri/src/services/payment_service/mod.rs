@@ -6228,9 +6228,10 @@ impl PaymentService {
             .unwrap_or_else(|| vec!["email".to_string(), "notification".to_string()]);
         let want_email = channels.iter().any(|c| c == "email");
         let want_notification = channels.iter().any(|c| c == "notification");
-        if !want_email && !want_notification {
+        let want_whatsapp = channels.iter().any(|c| c == "whatsapp");
+        if !want_email && !want_notification && !want_whatsapp {
             return Err(AppError::Validation(
-                "channels must include at least one of: email, notification".to_string(),
+                "channels must include at least one of: email, notification, whatsapp".to_string(),
             ));
         }
 
@@ -6246,6 +6247,7 @@ impl PaymentService {
                     invoice_id,
                     want_email,
                     want_notification,
+                    want_whatsapp,
                     req.attach_pdf,
                     req.template_id.as_deref(),
                 )
@@ -6259,6 +6261,7 @@ impl PaymentService {
                     status: "failed".to_string(),
                     email_sent: false,
                     notification_sent: false,
+                    whatsapp_sent: false,
                     pdf_attached: false,
                     reason: Some(e.to_string()),
                 },
@@ -6310,6 +6313,7 @@ impl PaymentService {
         invoice_id: &str,
         want_email: bool,
         want_notification: bool,
+        want_whatsapp: bool,
         attach_pdf: bool,
         _template_id: Option<&str>,
     ) -> AppResult<crate::services::payment_service::dto::BulkSendInvoiceItemResult> {
@@ -6326,6 +6330,7 @@ impl PaymentService {
                     status: "failed".to_string(),
                     email_sent: false,
                     notification_sent: false,
+                    whatsapp_sent: false,
                     pdf_attached: false,
                     reason: Some("invoice_not_found".to_string()),
                 });
@@ -6343,6 +6348,7 @@ impl PaymentService {
                 status: "failed".to_string(),
                 email_sent: false,
                 notification_sent: false,
+                whatsapp_sent: false,
                 pdf_attached: false,
                 reason: Some("tenant_mismatch".to_string()),
             });
@@ -6356,6 +6362,7 @@ impl PaymentService {
                 status: "skipped".to_string(),
                 email_sent: false,
                 notification_sent: false,
+                whatsapp_sent: false,
                 pdf_attached: false,
                 reason: Some("already_settled".to_string()),
             });
@@ -6367,9 +6374,9 @@ impl PaymentService {
             .resolve_invoice_customer_link(tenant_id, &invoice)
             .await
             .ok();
-        let (subscription_id, customer_email, customer_name) = match link {
-            Some(l) => (l.subscription_id, l.customer_email, l.customer_name),
-            None => (None, None, None),
+        let (subscription_id, customer_email, customer_name, customer_phone) = match link {
+            Some(l) => (l.subscription_id, l.customer_email, l.customer_name, l.customer_phone),
+            None => (None, None, None, None),
         };
 
         // ---- email channel ----
@@ -6462,14 +6469,54 @@ impl PaymentService {
             }
         }
 
-        // Resolve final status. If neither channel produced a send AND there
-        // was no recipient at all, mark skipped instead of failed (we did
-        // nothing wrong — the customer simply has no contact path).
+        // ---- WhatsApp channel ----
+        // Explicit admin-triggered send: routed through NotificationService's
+        // force_send_whatsapp, which bypasses the per-event WA toggle (this is
+        // an explicit action, not an auto-notification). Uses customer.phone
+        // resolved via the same link as email.
+        let mut whatsapp_sent = false;
+        if want_whatsapp {
+            let phone = customer_phone
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty());
+            if let Some(p) = phone {
+                let msg = format!(
+                    "Halo {cust},\n\n\
+                     Invoice {num} sebesar {cur} {amt:.2} sudah terbit.\n\
+                     Jatuh tempo: {due}\n\
+                     Bayar online: /pay/{id}\n\n\
+                     Terima kasih.",
+                    cust = customer_name.as_deref().unwrap_or("Pelanggan"),
+                    num = invoice.invoice_number,
+                    cur = invoice.currency_code,
+                    amt = invoice.amount,
+                    due = invoice.due_date.format("%Y-%m-%d"),
+                    id = invoice.id,
+                );
+                whatsapp_sent = self
+                    .notification_service
+                    .force_send_whatsapp(
+                        Some(tenant_id),
+                        "customer_invoice_due",
+                        None,
+                        p,
+                        &msg,
+                    )
+                    .await
+                    .unwrap_or(false);
+            }
+        }
+
+        // Resolve final status. If no channel produced a send AND there was no
+        // recipient at all on every requested channel, mark skipped instead of
+        // failed (we did nothing wrong — the customer simply has no contact path).
         let no_email_target = want_email && customer_email.as_deref().unwrap_or("").trim().is_empty();
         let no_notif_target = want_notification && subscription_id.is_none();
-        let status = if email_sent || notification_sent {
+        let no_wa_target = want_whatsapp && customer_phone.as_deref().unwrap_or("").trim().is_empty();
+        let status = if email_sent || notification_sent || whatsapp_sent {
             "sent".to_string()
-        } else if no_email_target && no_notif_target {
+        } else if no_email_target && no_notif_target && no_wa_target {
             "skipped".to_string()
         } else {
             "failed".to_string()
@@ -6488,6 +6535,7 @@ impl PaymentService {
             status,
             email_sent,
             notification_sent,
+            whatsapp_sent,
             pdf_attached,
             reason,
         })
@@ -6509,9 +6557,9 @@ impl PaymentService {
     ) -> AppResult<InvoiceCustomerLink> {
 
         // --- Path 1: customer_service_assignments (existing) ---
-        let row: Option<(Option<String>, Option<String>, Option<String>, Option<String>)> = sqlx::query_as(
+        let row: Option<(Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> = sqlx::query_as(
             r#"
-            SELECT csa.subscription_id, csa.customer_id, c.email, c.name
+            SELECT csa.subscription_id, csa.customer_id, c.email, c.name, c.phone
             FROM customer_service_assignments csa
             INNER JOIN customers c ON c.id = csa.customer_id AND c.tenant_id = csa.tenant_id
             WHERE csa.tenant_id = $1 AND csa.invoice_id = $2
@@ -6525,11 +6573,12 @@ impl PaymentService {
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        if let Some((sub, _cust, email, name)) = row {
+        if let Some((sub, _cust, email, name, phone)) = row {
             return Ok(InvoiceCustomerLink {
                 subscription_id: sub,
                 customer_email: email,
                 customer_name: name,
+                customer_phone: phone,
             });
         }
 
@@ -6557,9 +6606,9 @@ impl PaymentService {
 
                 match sub_result {
                     Ok(Some((customer_id,))) => {
-                        // Look up customer to get email + name
-                        let cust_result = sqlx::query_as::<_, (Option<String>, Option<String>)>(
-                            r#"SELECT email, name FROM customers WHERE id = $1 AND tenant_id = $2"#,
+                        // Look up customer to get email + name + phone
+                        let cust_result = sqlx::query_as::<_, (Option<String>, Option<String>, Option<String>)>(
+                            r#"SELECT email, name, phone FROM customers WHERE id = $1 AND tenant_id = $2"#,
                         )
                         .bind(&customer_id)
                         .bind(tenant_id)
@@ -6567,7 +6616,7 @@ impl PaymentService {
                         .await;
 
                         match cust_result {
-                            Ok(Some((email, name))) => {
+                            Ok(Some((email, name, phone))) => {
                                 tracing::info!(
                                     invoice_id = %invoice.id,
                                     customer_id = %customer_id,
@@ -6578,6 +6627,7 @@ impl PaymentService {
                                     subscription_id: Some(subscription_id),
                                     customer_email: email,
                                     customer_name: name,
+                                    customer_phone: phone,
                                 });
                             }
                             Ok(None) => {
@@ -6707,6 +6757,7 @@ struct InvoiceCustomerLink {
     subscription_id: Option<String>,
     customer_email: Option<String>,
     customer_name: Option<String>,
+    customer_phone: Option<String>,
 }
 
 /// Parse subscription ID from invoice `external_id`.

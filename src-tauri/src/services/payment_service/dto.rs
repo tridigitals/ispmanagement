@@ -83,6 +83,7 @@ pub struct BulkSendInvoiceItemResult {
     pub status: String, // "sent" | "skipped" | "failed"
     pub email_sent: bool,
     pub notification_sent: bool,
+    pub whatsapp_sent: bool,
     pub pdf_attached: bool,
     pub reason: Option<String>,
 }
