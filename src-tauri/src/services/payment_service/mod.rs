@@ -646,10 +646,7 @@ impl PaymentService {
     /// The sequence is monotonic and global, not per-day. See the migration
     /// `20260529082913_invoice_number_uniqueness` for rationale.
     #[cfg(feature = "postgres")]
-    async fn next_invoice_number(
-        &self,
-        now: chrono::DateTime<chrono::Utc>,
-    ) -> AppResult<String> {
+    async fn next_invoice_number(&self, now: chrono::DateTime<chrono::Utc>) -> AppResult<String> {
         let seq: i64 = sqlx::query_scalar("SELECT nextval('invoice_number_seq')")
             .fetch_one(&self.pool)
             .await
@@ -962,7 +959,12 @@ impl PaymentService {
         // Parse effective date or use now
         let effective_date = match &request.effective_date {
             Some(d) => DateTime::parse_from_rfc3339(d)
-                .or_else(|_| DateTime::parse_from_str(&format!("{}T00:00:00+00:00", d), "%Y-%m-%dT%H:%M:%S%:z"))
+                .or_else(|_| {
+                    DateTime::parse_from_str(
+                        &format!("{}T00:00:00+00:00", d),
+                        "%Y-%m-%dT%H:%M:%S%:z",
+                    )
+                })
                 .map(|dt| dt.with_timezone(&Utc))
                 .map_err(|_| AppError::Validation("Invalid effective_date format".to_string()))?,
             None => Utc::now(),
@@ -970,7 +972,14 @@ impl PaymentService {
 
         // 1. Get current subscription with package info
         #[cfg(feature = "postgres")]
-        let sub_row: Option<(String, String, String, f64, Option<DateTime<Utc>>, Option<DateTime<Utc>>)> = sqlx::query_as(
+        let sub_row: Option<(
+            String,
+            String,
+            String,
+            f64,
+            Option<DateTime<Utc>>,
+            Option<DateTime<Utc>>,
+        )> = sqlx::query_as(
             r#"
             SELECT
                 cs.billing_cycle,
@@ -992,7 +1001,14 @@ impl PaymentService {
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         #[cfg(feature = "sqlite")]
-        let sub_row: Option<(String, String, String, f64, Option<DateTime<Utc>>, Option<DateTime<Utc>>)> = sqlx::query_as(
+        let sub_row: Option<(
+            String,
+            String,
+            String,
+            f64,
+            Option<DateTime<Utc>>,
+            Option<DateTime<Utc>>,
+        )> = sqlx::query_as(
             r#"
             SELECT
                 cs.billing_cycle,
@@ -1014,17 +1030,22 @@ impl PaymentService {
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         let (billing_cycle, old_package_name, old_package_id, old_price, starts_at, ends_at) =
-            sub_row.ok_or_else(|| AppError::NotFound("Active subscription not found".to_string()))?;
+            sub_row
+                .ok_or_else(|| AppError::NotFound("Active subscription not found".to_string()))?;
 
         // Don't allow changing to the same package
         if old_package_id == request.new_package_id {
-            return Err(AppError::Validation("New package is the same as current package".to_string()));
+            return Err(AppError::Validation(
+                "New package is the same as current package".to_string(),
+            ));
         }
 
         // Check subscription hasn't ended
         if let Some(ends) = ends_at {
             if effective_date > ends {
-                return Err(AppError::Validation("Subscription already ended".to_string()));
+                return Err(AppError::Validation(
+                    "Subscription already ended".to_string(),
+                ));
             }
         }
 
@@ -1063,12 +1084,13 @@ impl PaymentService {
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        let (new_package_name, new_price) =
-            new_pkg.ok_or_else(|| AppError::NotFound("New package not found or inactive".to_string()))?;
+        let (new_package_name, new_price) = new_pkg
+            .ok_or_else(|| AppError::NotFound("New package not found or inactive".to_string()))?;
 
         // 3. Calculate current billing period
         let anchor = starts_at.unwrap_or(effective_date);
-        let (period_start, period_end) = Self::current_billing_period(&billing_cycle, anchor, effective_date)?;
+        let (period_start, period_end) =
+            Self::current_billing_period(&billing_cycle, anchor, effective_date)?;
 
         // 4. Calculate pro-rata amounts
         let days_remaining = (period_end - effective_date).num_days().max(0) as f64;
@@ -5911,7 +5933,10 @@ impl PaymentService {
         if cycle == "monthly" {
             // Walk forward from anchor to find current period
             let mut cursor = anchor;
-            while cursor.checked_add_months(Months::new(1)).map_or(true, |next| next <= now) {
+            while cursor
+                .checked_add_months(Months::new(1))
+                .map_or(true, |next| next <= now)
+            {
                 cursor = cursor.checked_add_months(Months::new(1)).ok_or_else(|| {
                     AppError::Internal("Failed to compute monthly period".to_string())
                 })?;
@@ -5924,7 +5949,10 @@ impl PaymentService {
 
         if cycle == "yearly" {
             let mut cursor = anchor;
-            while cursor.checked_add_months(Months::new(12)).map_or(true, |next| next <= now) {
+            while cursor
+                .checked_add_months(Months::new(12))
+                .map_or(true, |next| next <= now)
+            {
                 cursor = cursor.checked_add_months(Months::new(12)).ok_or_else(|| {
                     AppError::Internal("Failed to compute yearly period".to_string())
                 })?;

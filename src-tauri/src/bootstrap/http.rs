@@ -32,8 +32,7 @@ use crate::http::{
     email_outbox, install, isp_packages, message_templates, middleware, mikrotik, mixradius_import,
     network_assets, network_mapping, notifications, payment, plans, pppoe, public,
     registration_approvals, roles, settings, storage, superadmin, support, system, team, tenant,
-    users, websocket, whatsapp, work_orders,
-    AppState, SecurityRuntimeConfig, WsHub,
+    users, websocket, whatsapp, work_orders, AppState, SecurityRuntimeConfig, WsHub,
 };
 
 type IpBlockMap = HashMap<String, chrono::DateTime<chrono::Utc>>;

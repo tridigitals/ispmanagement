@@ -625,7 +625,7 @@ impl AuthService {
 
         // Notify superadmin(s) about pending registration
         let superadmin_emails: Vec<String> = sqlx::query_scalar(
-            "SELECT email FROM users WHERE is_super_admin = true AND is_active = true"
+            "SELECT email FROM users WHERE is_super_admin = true AND is_active = true",
         )
         .fetch_all(&self.pool)
         .await
@@ -637,10 +637,19 @@ impl AuthService {
                 "A new user has registered and is awaiting your approval.\n\n\
                  Name: {}\nEmail: {}\nRegistered at: {}\n\n\
                  Please review and approve or reject this registration in the admin panel.",
-                user.name, user.email, user.created_at.to_rfc3339()
+                user.name,
+                user.email,
+                user.created_at.to_rfc3339()
             );
-            if let Err(e) = self.email_service.send_email(&admin_email, &subject, &body).await {
-                warn!("Failed to send pending registration notification to {}: {}", admin_email, e);
+            if let Err(e) = self
+                .email_service
+                .send_email(&admin_email, &subject, &body)
+                .await
+            {
+                warn!(
+                    "Failed to send pending registration notification to {}: {}",
+                    admin_email, e
+                );
             }
         }
 
@@ -651,7 +660,10 @@ impl AuthService {
                 "USER_REGISTER",
                 "auth",
                 Some(&user.id),
-                Some(&format!("Registered via email {} (pending approval)", user.email)),
+                Some(&format!(
+                    "Registered via email {} (pending approval)",
+                    user.email
+                )),
                 ip_address.as_deref(),
             )
             .await;
@@ -947,7 +959,9 @@ impl AuthService {
                     ip_address.as_deref(),
                 )
                 .await;
-            return Err(AppError::Validation("Your registration has been rejected. Please contact support.".to_string()));
+            return Err(AppError::Validation(
+                "Your registration has been rejected. Please contact support.".to_string(),
+            ));
         }
 
         // Check if account is active (after registration_status so pending/rejected are caught first)
@@ -2461,7 +2475,7 @@ impl AuthService {
                    approved_at = $1,
                    approved_by_user_id = $2,
                    updated_at = $3
-               WHERE id = $4 AND registration_status = 'pending'"#
+               WHERE id = $4 AND registration_status = 'pending'"#,
         )
         .bind(now)
         .bind(actor_user_id)
@@ -2481,7 +2495,7 @@ impl AuthService {
                        approved_at = ?,
                        approved_by_user_id = ?,
                        updated_at = ?
-                   WHERE id = ? AND registration_status = 'pending'"#
+                   WHERE id = ? AND registration_status = 'pending'"#,
             )
             .bind(&now_str)
             .bind(actor_user_id)
@@ -2493,7 +2507,9 @@ impl AuthService {
         };
 
         if affected == 0 {
-            return Err(AppError::NotFound("User not found or not in pending state".to_string()));
+            return Err(AppError::NotFound(
+                "User not found or not in pending state".to_string(),
+            ));
         }
 
         // Attach user to tenant via tenant_members
@@ -2503,7 +2519,7 @@ impl AuthService {
         sqlx::query(
             r#"INSERT INTO tenant_members (id, tenant_id, user_id, role, role_id, created_at)
                VALUES ($1, $2, $3, 'Member', $4, $5)
-               ON CONFLICT DO NOTHING"#
+               ON CONFLICT DO NOTHING"#,
         )
         .bind(&member_id)
         .bind(tenant_id)
@@ -2537,7 +2553,10 @@ impl AuthService {
                 "user.registration_approved",
                 "users",
                 Some(target_user_id),
-                Some(&format!("Approved pending user and assigned to tenant with role_id={}", role_id)),
+                Some(&format!(
+                    "Approved pending user and assigned to tenant with role_id={}",
+                    role_id
+                )),
                 None,
             )
             .await;
@@ -2562,7 +2581,7 @@ impl AuthService {
                    rejected_by_user_id = $2,
                    rejected_reason = $3,
                    updated_at = $4
-               WHERE id = $5 AND registration_status = 'pending'"#
+               WHERE id = $5 AND registration_status = 'pending'"#,
         )
         .bind(now)
         .bind(actor_user_id)
@@ -2583,7 +2602,7 @@ impl AuthService {
                        rejected_by_user_id = ?,
                        rejected_reason = ?,
                        updated_at = ?
-                   WHERE id = ? AND registration_status = 'pending'"#
+                   WHERE id = ? AND registration_status = 'pending'"#,
             )
             .bind(&now_str)
             .bind(actor_user_id)
@@ -2596,7 +2615,9 @@ impl AuthService {
         };
 
         if affected == 0 {
-            return Err(AppError::NotFound("User not found or not in pending state".to_string()));
+            return Err(AppError::NotFound(
+                "User not found or not in pending state".to_string(),
+            ));
         }
 
         self.audit_service
@@ -2617,7 +2638,7 @@ impl AuthService {
     /// List all users with registration_status='pending'.
     pub async fn list_pending_users(&self) -> AppResult<Vec<User>> {
         let users = sqlx::query_as::<_, User>(
-            "SELECT * FROM users WHERE registration_status = 'pending' ORDER BY created_at DESC"
+            "SELECT * FROM users WHERE registration_status = 'pending' ORDER BY created_at DESC",
         )
         .fetch_all(&self.pool)
         .await?;

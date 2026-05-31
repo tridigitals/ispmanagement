@@ -1880,9 +1880,18 @@ async fn process_midtrans_notification_writes_audit_log_for_status_change() {
     let parsed: serde_json::Value =
         serde_json::from_str(details).expect("details should be JSON object");
 
-    assert_eq!(parsed.get("gateway").and_then(|v| v.as_str()), Some("midtrans"));
-    assert_eq!(parsed.get("old_status").and_then(|v| v.as_str()), Some("pending"));
-    assert_eq!(parsed.get("new_status").and_then(|v| v.as_str()), Some("paid"));
+    assert_eq!(
+        parsed.get("gateway").and_then(|v| v.as_str()),
+        Some("midtrans")
+    );
+    assert_eq!(
+        parsed.get("old_status").and_then(|v| v.as_str()),
+        Some("pending")
+    );
+    assert_eq!(
+        parsed.get("new_status").and_then(|v| v.as_str()),
+        Some("paid")
+    );
     assert_eq!(
         parsed.get("invoice_number").and_then(|v| v.as_str()),
         Some(invoice_number.as_str())
@@ -1991,8 +2000,7 @@ async fn submit_payment_proof_writes_audit_log() {
         .await
         .expect("submit_payment_proof should succeed");
 
-    let logs =
-        fetch_audit_logs_by_action(&fixture.pool, "invoice.payment_proof_uploaded").await;
+    let logs = fetch_audit_logs_by_action(&fixture.pool, "invoice.payment_proof_uploaded").await;
     assert_eq!(
         logs.len(),
         1,
@@ -2168,9 +2176,7 @@ async fn auto_resume_writes_subscription_audit_log() {
         serde_json::from_str(entry.details.as_deref().unwrap_or("null"))
             .expect("details should be JSON object");
     assert_eq!(
-        parsed
-            .get("triggering_invoice_id")
-            .and_then(|v| v.as_str()),
+        parsed.get("triggering_invoice_id").and_then(|v| v.as_str()),
         Some(invoice_id.as_str())
     );
 
@@ -2205,7 +2211,9 @@ fn invoice_number_seq_value(invoice_number: &str) -> i64 {
         .rsplit('-')
         .next()
         .expect("invoice number should contain '-'");
-    suffix.parse().expect("invoice number suffix should be numeric")
+    suffix
+        .parse()
+        .expect("invoice number suffix should be numeric")
 }
 
 #[tokio::test]
@@ -2288,8 +2296,13 @@ async fn concurrent_create_invoice_yields_unique_numbers() {
         let svc = service.clone();
         let tenant = fixture.tenant_id.clone();
         handles.push(tokio::spawn(async move {
-            svc.create_invoice(&tenant, 1_000.0 + i as f64, Some(format!("burst-{i}")), None)
-                .await
+            svc.create_invoice(
+                &tenant,
+                1_000.0 + i as f64,
+                Some(format!("burst-{i}")),
+                None,
+            )
+            .await
         }));
     }
 

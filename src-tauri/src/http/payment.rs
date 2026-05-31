@@ -30,10 +30,7 @@ pub fn router() -> Router<AppState> {
             "/invoices/customer-package/create",
             post(create_invoice_for_customer_subscription),
         )
-        .route(
-            "/billing/change-package",
-            post(change_subscription_package),
-        )
+        .route("/billing/change-package", post(change_subscription_package))
         .route(
             "/invoices/installation/create",
             post(create_invoice_for_installation_work_order),
@@ -700,7 +697,10 @@ async fn change_subscription_package(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(body): Json<crate::services::payment_service::dto::ChangePackageRequest>,
-) -> Result<Json<crate::services::payment_service::dto::ChangePackageResult>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<
+    Json<crate::services::payment_service::dto::ChangePackageResult>,
+    (StatusCode, Json<ErrorResponse>),
+> {
     let claims = authenticate(&state, &headers).await?;
     require_payment_manage_access(&state, &claims).await?;
     let tenant_id = claims.tenant_id.ok_or_else(|| {
