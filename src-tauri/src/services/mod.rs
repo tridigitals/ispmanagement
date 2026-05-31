@@ -6,6 +6,7 @@ pub mod auth_service;
 pub mod cache;
 pub mod email_outbox_service;
 pub mod email_service;
+pub mod invoice_pdf_service;
 pub mod managed_radius_service;
 pub mod message_template_renderer;
 pub mod message_template_service;
