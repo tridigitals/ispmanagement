@@ -110,11 +110,16 @@ impl BillingFixture {
         let pppoe_service = PppoeService::new(
             self.pool.clone(),
             auth_service,
-            audit_service,
+            audit_service.clone(),
             settings_service,
         );
 
-        PaymentService::new(self.pool.clone(), notification_service, pppoe_service)
+        PaymentService::new(
+            self.pool.clone(),
+            notification_service,
+            pppoe_service,
+            audit_service,
+        )
     }
 
     async fn create_pppoe_account(&self, address_pool: &str) {
@@ -224,6 +229,47 @@ async fn upsert_setting(pool: &PgPool, tenant_id: Option<&str>, key: &str, value
         .await
         .expect("setting should insert");
     }
+}
+
+#[derive(sqlx::FromRow, Debug)]
+struct AuditLogRow {
+    #[allow(dead_code)]
+    action: String,
+    resource: String,
+    resource_id: Option<String>,
+    #[allow(dead_code)]
+    tenant_id: Option<String>,
+    #[allow(dead_code)]
+    user_id: Option<String>,
+    details: Option<String>,
+}
+
+/// Fetch audit_logs rows by action only.
+///
+/// NOTE: filtering is by `action` and not `tenant_id` because the production
+/// `AuditService::log` postgres path parses `tenant_id` as a `Uuid` and falls
+/// back to `NULL` when parsing fails; the integration-test fixture uses string
+/// IDs like `"tenant-billing"` which never parse, so rows in audit_logs have
+/// `tenant_id = NULL`. Each test uses an isolated temp database, so action
+/// alone is sufficient to scope the query.
+async fn fetch_audit_logs_by_action(pool: &PgPool, action: &str) -> Vec<AuditLogRow> {
+    sqlx::query_as::<_, AuditLogRow>(
+        r#"
+        SELECT action,
+               resource,
+               resource_id,
+               tenant_id::text AS tenant_id,
+               user_id::text AS user_id,
+               details
+        FROM audit_logs
+        WHERE action = $1
+        ORDER BY created_at ASC
+        "#,
+    )
+    .bind(action)
+    .fetch_all(pool)
+    .await
+    .expect("audit logs should query")
 }
 
 async fn latest_customer_invoice(
@@ -825,6 +871,24 @@ async fn create_schema(pool: &PgPool) {
             actor_id text,
             created_at timestamp with time zone NOT NULL
         );
+
+        CREATE TABLE audit_logs (
+            id uuid PRIMARY KEY NOT NULL,
+            user_id uuid,
+            tenant_id uuid,
+            action text NOT NULL,
+            resource text NOT NULL,
+            resource_id text,
+            details text,
+            ip_address text,
+            created_at timestamp with time zone NOT NULL
+        );
+
+        -- Mirrors production migration: invoice_number uniqueness scoped per-tenant
+        -- + monotonic sequence used by PaymentService::create_invoice.
+        CREATE UNIQUE INDEX idx_invoices_tenant_invoice_number
+            ON invoices (tenant_id, invoice_number);
+        CREATE SEQUENCE invoice_number_seq;
         "#,
     )
     .execute(pool)
@@ -1775,6 +1839,569 @@ async fn expired_grace_active_without_payment_gets_suspended() {
     .await
     .expect("grace expire logs should query");
     assert_eq!(grace_logs, 1);
+
+    fixture.cleanup().await;
+}
+
+#[tokio::test]
+async fn process_midtrans_notification_writes_audit_log_for_status_change() {
+    let fixture = BillingFixture::new().await;
+    let service = fixture.service().await;
+
+    service
+        .generate_due_customer_package_invoices_for_all_tenants()
+        .await
+        .expect("invoice generation should succeed");
+
+    let (invoice_id, invoice_number) =
+        latest_customer_invoice(&fixture.pool, &fixture.tenant_id, &fixture.subscription_id).await;
+
+    service
+        .process_midtrans_notification(&invoice_number, "paid", Some("req-123"), Some("cb-456"))
+        .await
+        .expect("paid callback should succeed");
+
+    let logs = fetch_audit_logs_by_action(&fixture.pool, "invoice.status_changed").await;
+    assert_eq!(
+        logs.len(),
+        1,
+        "expected exactly one invoice.status_changed audit entry, found {}",
+        logs.len()
+    );
+
+    let entry = &logs[0];
+    assert_eq!(entry.resource, "invoice");
+    assert_eq!(entry.resource_id.as_deref(), Some(invoice_id.as_str()));
+
+    let details = entry
+        .details
+        .as_ref()
+        .expect("audit entry should include JSON details");
+    let parsed: serde_json::Value =
+        serde_json::from_str(details).expect("details should be JSON object");
+
+    assert_eq!(parsed.get("gateway").and_then(|v| v.as_str()), Some("midtrans"));
+    assert_eq!(parsed.get("old_status").and_then(|v| v.as_str()), Some("pending"));
+    assert_eq!(parsed.get("new_status").and_then(|v| v.as_str()), Some("paid"));
+    assert_eq!(
+        parsed.get("invoice_number").and_then(|v| v.as_str()),
+        Some(invoice_number.as_str())
+    );
+
+    fixture.cleanup().await;
+}
+
+#[tokio::test]
+async fn verify_payment_approve_writes_audit_log() {
+    let fixture = BillingFixture::new().await;
+    let service = fixture.service().await;
+
+    service
+        .generate_due_customer_package_invoices_for_all_tenants()
+        .await
+        .expect("invoice generation should succeed");
+    let (invoice_id, _invoice_number) =
+        latest_customer_invoice(&fixture.pool, &fixture.tenant_id, &fixture.subscription_id).await;
+
+    // Move invoice to verification_pending so manual verification is meaningful.
+    service
+        .submit_payment_proof(&invoice_id, "/tmp/proof.png")
+        .await
+        .expect("submit payment proof should succeed");
+
+    service
+        .verify_payment(&invoice_id, "paid", None)
+        .await
+        .expect("approve should succeed");
+
+    let logs = fetch_audit_logs_by_action(&fixture.pool, "invoice.verified").await;
+    assert_eq!(
+        logs.len(),
+        1,
+        "expected exactly one invoice.verified audit entry, found {}",
+        logs.len()
+    );
+    let entry = &logs[0];
+    assert_eq!(entry.resource, "invoice");
+    assert_eq!(entry.resource_id.as_deref(), Some(invoice_id.as_str()));
+    let parsed: serde_json::Value =
+        serde_json::from_str(entry.details.as_deref().unwrap_or("null"))
+            .expect("details should be JSON object");
+    assert_eq!(parsed.get("status").and_then(|v| v.as_str()), Some("paid"));
+
+    fixture.cleanup().await;
+}
+
+#[tokio::test]
+async fn verify_payment_reject_writes_audit_log() {
+    let fixture = BillingFixture::new().await;
+    let service = fixture.service().await;
+
+    service
+        .generate_due_customer_package_invoices_for_all_tenants()
+        .await
+        .expect("invoice generation should succeed");
+    let (invoice_id, _invoice_number) =
+        latest_customer_invoice(&fixture.pool, &fixture.tenant_id, &fixture.subscription_id).await;
+
+    service
+        .submit_payment_proof(&invoice_id, "/tmp/proof.png")
+        .await
+        .expect("submit payment proof should succeed");
+
+    service
+        .verify_payment(&invoice_id, "failed", Some("Bukti tidak jelas".to_string()))
+        .await
+        .expect("reject should succeed");
+
+    let logs = fetch_audit_logs_by_action(&fixture.pool, "invoice.rejected").await;
+    assert_eq!(
+        logs.len(),
+        1,
+        "expected exactly one invoice.rejected audit entry, found {}",
+        logs.len()
+    );
+    let entry = &logs[0];
+    assert_eq!(entry.resource_id.as_deref(), Some(invoice_id.as_str()));
+    let parsed: serde_json::Value =
+        serde_json::from_str(entry.details.as_deref().unwrap_or("null"))
+            .expect("details should be JSON object");
+    assert_eq!(
+        parsed.get("rejection_reason").and_then(|v| v.as_str()),
+        Some("Bukti tidak jelas")
+    );
+
+    fixture.cleanup().await;
+}
+
+#[tokio::test]
+async fn submit_payment_proof_writes_audit_log() {
+    let fixture = BillingFixture::new().await;
+    let service = fixture.service().await;
+
+    service
+        .generate_due_customer_package_invoices_for_all_tenants()
+        .await
+        .expect("invoice generation should succeed");
+    let (invoice_id, _invoice_number) =
+        latest_customer_invoice(&fixture.pool, &fixture.tenant_id, &fixture.subscription_id).await;
+
+    service
+        .submit_payment_proof(&invoice_id, "/storage/proofs/abc.jpg")
+        .await
+        .expect("submit_payment_proof should succeed");
+
+    let logs =
+        fetch_audit_logs_by_action(&fixture.pool, "invoice.payment_proof_uploaded").await;
+    assert_eq!(
+        logs.len(),
+        1,
+        "expected exactly one invoice.payment_proof_uploaded audit entry, found {}",
+        logs.len()
+    );
+    let entry = &logs[0];
+    assert_eq!(entry.resource, "invoice");
+    assert_eq!(entry.resource_id.as_deref(), Some(invoice_id.as_str()));
+    let parsed: serde_json::Value =
+        serde_json::from_str(entry.details.as_deref().unwrap_or("null"))
+            .expect("details should be JSON object");
+    assert_eq!(
+        parsed.get("file_path").and_then(|v| v.as_str()),
+        Some("/storage/proofs/abc.jpg")
+    );
+
+    fixture.cleanup().await;
+}
+
+#[tokio::test]
+async fn billing_collection_run_writes_summary_audit_log() {
+    let fixture = BillingFixture::new().await;
+    let service = fixture.service().await;
+
+    service
+        .generate_due_customer_package_invoices_for_all_tenants()
+        .await
+        .expect("invoice generation should succeed");
+
+    let (invoice_id, _) =
+        latest_customer_invoice(&fixture.pool, &fixture.tenant_id, &fixture.subscription_id).await;
+    sqlx::query("UPDATE invoices SET due_date = $1, updated_at = $2 WHERE id = $3")
+        .bind(Utc::now() - Duration::days(1))
+        .bind(Utc::now())
+        .bind(&invoice_id)
+        .execute(&fixture.pool)
+        .await
+        .expect("invoice due date should backdate");
+
+    service
+        .run_billing_collection_for_all_tenants()
+        .await
+        .expect("billing collection should succeed");
+
+    let logs = fetch_audit_logs_by_action(&fixture.pool, "billing.collection_run").await;
+    assert!(
+        !logs.is_empty(),
+        "expected at least one billing.collection_run audit entry, found 0"
+    );
+    let entry = &logs[0];
+    assert_eq!(entry.resource, "billing");
+    let parsed: serde_json::Value =
+        serde_json::from_str(entry.details.as_deref().unwrap_or("null"))
+            .expect("details should be JSON object");
+    // Suspended_count should reflect at least one auto-suspend in this scenario.
+    let suspended = parsed
+        .get("suspended_count")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    assert!(
+        suspended >= 1,
+        "expected suspended_count>=1 in billing.collection_run audit details, got {}",
+        suspended
+    );
+
+    fixture.cleanup().await;
+}
+
+#[tokio::test]
+async fn auto_suspend_writes_subscription_audit_log() {
+    let fixture = BillingFixture::new().await;
+    let service = fixture.service().await;
+
+    service
+        .generate_due_customer_package_invoices_for_all_tenants()
+        .await
+        .expect("invoice generation should succeed");
+    let (invoice_id, _) =
+        latest_customer_invoice(&fixture.pool, &fixture.tenant_id, &fixture.subscription_id).await;
+    sqlx::query("UPDATE invoices SET due_date = $1, updated_at = $2 WHERE id = $3")
+        .bind(Utc::now() - Duration::days(1))
+        .bind(Utc::now())
+        .bind(&invoice_id)
+        .execute(&fixture.pool)
+        .await
+        .expect("invoice due date should backdate");
+
+    service
+        .run_billing_collection_for_all_tenants()
+        .await
+        .expect("billing collection should succeed");
+
+    let logs = fetch_audit_logs_by_action(&fixture.pool, "subscription.auto_suspended").await;
+    assert_eq!(
+        logs.len(),
+        1,
+        "expected exactly one subscription.auto_suspended audit entry, found {}",
+        logs.len()
+    );
+    let entry = &logs[0];
+    assert_eq!(entry.resource, "subscription");
+    assert_eq!(
+        entry.resource_id.as_deref(),
+        Some(fixture.subscription_id.as_str())
+    );
+    let parsed: serde_json::Value =
+        serde_json::from_str(entry.details.as_deref().unwrap_or("null"))
+            .expect("details should be JSON object");
+    assert!(
+        parsed.get("reason").and_then(|v| v.as_str()).is_some(),
+        "expected reason field in subscription.auto_suspended details"
+    );
+
+    fixture.cleanup().await;
+}
+
+#[tokio::test]
+async fn auto_resume_writes_subscription_audit_log() {
+    let fixture = BillingFixture::new().await;
+    let service = fixture.service().await;
+
+    service
+        .generate_due_customer_package_invoices_for_all_tenants()
+        .await
+        .expect("invoice generation should succeed");
+    let (invoice_id, invoice_number) =
+        latest_customer_invoice(&fixture.pool, &fixture.tenant_id, &fixture.subscription_id).await;
+
+    sqlx::query("UPDATE invoices SET due_date = $1, updated_at = $2 WHERE id = $3")
+        .bind(Utc::now() - Duration::days(1))
+        .bind(Utc::now())
+        .bind(&invoice_id)
+        .execute(&fixture.pool)
+        .await
+        .expect("invoice due date should backdate");
+
+    service
+        .run_billing_collection_for_all_tenants()
+        .await
+        .expect("billing collection should succeed");
+
+    // Confirm subscription is suspended before paying.
+    let suspended_status: String = sqlx::query_scalar(
+        "SELECT status FROM customer_subscriptions WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(&fixture.tenant_id)
+    .bind(&fixture.subscription_id)
+    .fetch_one(&fixture.pool)
+    .await
+    .expect("subscription status should query");
+    assert_eq!(suspended_status, "suspended");
+
+    service
+        .process_midtrans_notification(&invoice_number, "paid", None, None)
+        .await
+        .expect("paid callback should succeed");
+
+    let logs = fetch_audit_logs_by_action(&fixture.pool, "subscription.auto_resumed").await;
+    assert_eq!(
+        logs.len(),
+        1,
+        "expected exactly one subscription.auto_resumed audit entry, found {}",
+        logs.len()
+    );
+    let entry = &logs[0];
+    assert_eq!(entry.resource, "subscription");
+    assert_eq!(
+        entry.resource_id.as_deref(),
+        Some(fixture.subscription_id.as_str())
+    );
+    let parsed: serde_json::Value =
+        serde_json::from_str(entry.details.as_deref().unwrap_or("null"))
+            .expect("details should be JSON object");
+    assert_eq!(
+        parsed
+            .get("triggering_invoice_id")
+            .and_then(|v| v.as_str()),
+        Some(invoice_id.as_str())
+    );
+
+    fixture.cleanup().await;
+}
+
+// ==================== Invoice number uniqueness / sequence ====================
+//
+// Regression coverage for HIGH #3 (MVP DoD audit):
+// `create_invoice` previously used `INV-{YYYYMMDD-HHMMSS}` granularity, which
+// collides under concurrent invocation (scheduler + manual create at same
+// second). The format is migrating to `INV-{YYYYMMDD}-{NNNNNN}` driven by
+// the Postgres sequence `invoice_number_seq`, with composite uniqueness
+// `(tenant_id, invoice_number)` as a structural safety net.
+
+/// Validates the `INV-YYYYMMDD-NNNNNN` invoice number format without pulling
+/// in a regex dependency.
+fn matches_invoice_number_format(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    if bytes.len() != 19 {
+        return false;
+    }
+    if &bytes[..4] != b"INV-" || bytes[12] != b'-' {
+        return false;
+    }
+    bytes[4..12].iter().all(|c| c.is_ascii_digit())
+        && bytes[13..].iter().all(|c| c.is_ascii_digit())
+}
+
+fn invoice_number_seq_value(invoice_number: &str) -> i64 {
+    let suffix = invoice_number
+        .rsplit('-')
+        .next()
+        .expect("invoice number should contain '-'");
+    suffix.parse().expect("invoice number suffix should be numeric")
+}
+
+#[tokio::test]
+async fn create_invoice_uses_sequence_format() {
+    let fixture = BillingFixture::new().await;
+    let service = fixture.service().await;
+
+    let invoice = service
+        .create_invoice(
+            &fixture.tenant_id,
+            123_456.0,
+            Some("format check".to_string()),
+            None,
+        )
+        .await
+        .expect("create_invoice should succeed");
+
+    assert!(
+        matches_invoice_number_format(&invoice.invoice_number),
+        "invoice_number {:?} should match INV-YYYYMMDD-NNNNNN",
+        invoice.invoice_number
+    );
+
+    // Distinguish the new sequence-driven format from the old HHMMSS format:
+    // the production sequence MUST have been consumed by create_invoice.
+    let last_value: Option<i64> =
+        sqlx::query_scalar("SELECT pg_sequence_last_value('invoice_number_seq')")
+            .fetch_one(&fixture.pool)
+            .await
+            .expect("pg_sequence_last_value query should succeed");
+    assert!(
+        last_value.is_some(),
+        "create_invoice should consume invoice_number_seq, got {last_value:?}"
+    );
+    let parsed_seq = invoice_number_seq_value(&invoice.invoice_number);
+    assert_eq!(
+        last_value,
+        Some(parsed_seq),
+        "invoice_number suffix should match the consumed sequence value"
+    );
+
+    fixture.cleanup().await;
+}
+
+#[tokio::test]
+async fn create_invoice_sequence_is_monotonic() {
+    let fixture = BillingFixture::new().await;
+    let service = fixture.service().await;
+
+    let mut seqs = Vec::new();
+    for i in 0..3 {
+        let inv = service
+            .create_invoice(
+                &fixture.tenant_id,
+                100.0 + i as f64,
+                Some(format!("monotonic-{i}")),
+                None,
+            )
+            .await
+            .expect("create_invoice should succeed");
+        seqs.push(invoice_number_seq_value(&inv.invoice_number));
+    }
+
+    assert_eq!(seqs.len(), 3);
+    assert!(
+        seqs[1] > seqs[0] && seqs[2] > seqs[1],
+        "sequence should be strictly increasing, got {seqs:?}"
+    );
+
+    fixture.cleanup().await;
+}
+
+#[tokio::test]
+async fn concurrent_create_invoice_yields_unique_numbers() {
+    let fixture = BillingFixture::new().await;
+    let service = fixture.service().await;
+
+    let mut handles = Vec::with_capacity(5);
+    for i in 0..5 {
+        let svc = service.clone();
+        let tenant = fixture.tenant_id.clone();
+        handles.push(tokio::spawn(async move {
+            svc.create_invoice(&tenant, 1_000.0 + i as f64, Some(format!("burst-{i}")), None)
+                .await
+        }));
+    }
+
+    let mut numbers = Vec::with_capacity(5);
+    for h in handles {
+        let inv = h
+            .await
+            .expect("task should not panic")
+            .expect("create_invoice should succeed under burst");
+        numbers.push(inv.invoice_number);
+    }
+
+    for n in &numbers {
+        assert!(
+            matches_invoice_number_format(n),
+            "invoice_number {n:?} should match expected format"
+        );
+    }
+
+    let mut sorted = numbers.clone();
+    sorted.sort();
+    sorted.dedup();
+    assert_eq!(
+        sorted.len(),
+        numbers.len(),
+        "expected 5 unique invoice numbers, got duplicates in {numbers:?}"
+    );
+
+    fixture.cleanup().await;
+}
+
+#[tokio::test]
+async fn create_invoice_retries_on_unique_conflict() {
+    let fixture = BillingFixture::new().await;
+    let service = fixture.service().await;
+
+    // Pre-claim the next sequence value and pre-insert a row that owns the
+    // resulting invoice_number for this tenant. We then rewind the sequence
+    // with `is_called = false` so the next nextval returns the SAME value
+    // again, guaranteeing the first INSERT inside create_invoice collides
+    // on the (tenant_id, invoice_number) unique index. A correct
+    // implementation must retry with a fresh sequence value and succeed.
+    let claimed_seq: i64 = sqlx::query_scalar("SELECT nextval('invoice_number_seq')")
+        .fetch_one(&fixture.pool)
+        .await
+        .expect("nextval should succeed");
+    let now = Utc::now();
+    let claimed_number = format!("INV-{}-{:06}", now.format("%Y%m%d"), claimed_seq);
+
+    sqlx::query(
+        r#"
+        INSERT INTO invoices (
+            id, tenant_id, invoice_number, amount, currency_code, base_currency_code,
+            status, due_date, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, 'IDR', 'IDR', 'pending', $5, $6, $6)
+        "#,
+    )
+    .bind(format!("invoice-conflict-{}", Uuid::new_v4()))
+    .bind(&fixture.tenant_id)
+    .bind(&claimed_number)
+    .bind(50.0_f64)
+    .bind(now + Duration::days(1))
+    .bind(now)
+    .execute(&fixture.pool)
+    .await
+    .expect("conflict-blocker invoice should insert");
+
+    // is_called=false → next nextval returns claimed_seq again, then advances.
+    sqlx::query(&format!(
+        "SELECT setval('invoice_number_seq', {claimed_seq}, false)"
+    ))
+    .execute(&fixture.pool)
+    .await
+    .expect("setval should succeed");
+
+    let invoice = service
+        .create_invoice(
+            &fixture.tenant_id,
+            999.0,
+            Some("retry path".to_string()),
+            None,
+        )
+        .await
+        .expect("create_invoice should retry past unique conflict");
+
+    assert!(
+        matches_invoice_number_format(&invoice.invoice_number),
+        "invoice_number {:?} should match expected format",
+        invoice.invoice_number
+    );
+    assert_ne!(
+        invoice.invoice_number, claimed_number,
+        "create_invoice must not return the conflicting number"
+    );
+    let new_seq = invoice_number_seq_value(&invoice.invoice_number);
+    assert!(
+        new_seq > claimed_seq,
+        "retried invoice should consume a later sequence value (claimed {claimed_seq}, got {new_seq})"
+    );
+
+    // Confirm the sequence was actually advanced by create_invoice's retry
+    // path (>= 2 nextval calls beyond claimed_seq). With a non-retrying or
+    // non-sequence-based implementation, last_value stays at claimed_seq.
+    let last_value: Option<i64> =
+        sqlx::query_scalar("SELECT pg_sequence_last_value('invoice_number_seq')")
+            .fetch_one(&fixture.pool)
+            .await
+            .expect("pg_sequence_last_value query should succeed");
+    assert!(
+        last_value.is_some_and(|v| v > claimed_seq),
+        "sequence should advance past claimed value via retry, got {last_value:?} (claimed {claimed_seq})"
+    );
 
     fixture.cleanup().await;
 }

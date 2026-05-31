@@ -20,3 +20,33 @@ pub(super) struct AssignmentCandidateNodeRow {
     pub(super) down_links: i64,
     pub(super) link_count: i64,
 }
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChangePackageRequest {
+    pub subscription_id: String,
+    pub new_package_id: String,
+    /// ISO 8601 date. Default: now (UTC).
+    pub effective_date: Option<String>,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ChangePackageResult {
+    pub subscription_id: String,
+    pub old_package_name: String,
+    pub new_package_name: String,
+    pub old_price: f64,
+    pub new_price: f64,
+    /// Pro-rata credit for unused days on old package.
+    pub pro_rata_credit: f64,
+    /// Pro-rata charge for remaining days on new package.
+    pub pro_rata_charge: f64,
+    /// Net amount to charge (positive) or credit (negative).
+    pub net_amount: f64,
+    /// Invoice ID if a pro-rata invoice was generated.
+    pub invoice_id: Option<String>,
+    pub effective_date: String,
+    pub billing_cycle: String,
+}

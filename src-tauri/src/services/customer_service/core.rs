@@ -747,6 +747,7 @@ impl CustomerService {
                     self.pool.clone(),
                     self.notification_service.clone(),
                     self.pppoe_service.clone(),
+                    self.audit_service.clone(),
                 );
                 let mut repaired_count = 0_i64;
                 let mut skipped_count = 0_i64;

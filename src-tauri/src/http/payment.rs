@@ -31,6 +31,10 @@ pub fn router() -> Router<AppState> {
             post(create_invoice_for_customer_subscription),
         )
         .route(
+            "/billing/change-package",
+            post(change_subscription_package),
+        )
+        .route(
             "/invoices/installation/create",
             post(create_invoice_for_installation_work_order),
         )
@@ -685,6 +689,42 @@ async fn create_invoice_for_customer_subscription(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
+}
+
+async fn change_subscription_package(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<crate::services::payment_service::dto::ChangePackageRequest>,
+) -> Result<Json<crate::services::payment_service::dto::ChangePackageResult>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    require_payment_manage_access(&state, &claims).await?;
+    let tenant_id = claims.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "No tenant context".to_string(),
+            }),
+        )
+    })?;
+
+    state
+        .payment_service
+        .change_subscription_package(&tenant_id, body)
+        .await
+        .map(Json)
+        .map_err(|e| {
+            let status = match &e {
+                crate::error::AppError::NotFound(_) => StatusCode::NOT_FOUND,
+                crate::error::AppError::Validation(_) => StatusCode::BAD_REQUEST,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+            (
+                status,
                 Json(ErrorResponse {
                     error: e.to_string(),
                 }),

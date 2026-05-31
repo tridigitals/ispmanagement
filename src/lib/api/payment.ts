@@ -146,4 +146,27 @@ export const payment = {
       rejectionReason,
       rejection_reason: rejectionReason,
     }),
+
+  changePackage: (body: {
+    subscription_id: string;
+    new_package_id: string;
+    effective_date?: string;
+    reason?: string;
+  }): Promise<{
+    subscription_id: string;
+    old_package_name: string;
+    new_package_name: string;
+    old_price: number;
+    new_price: number;
+    pro_rata_credit: number;
+    pro_rata_charge: number;
+    net_amount: number;
+    invoice_id: string | null;
+    effective_date: string;
+    billing_cycle: string;
+  }> =>
+    safeInvoke('change_subscription_package', {
+      token: getTokenOrThrow(),
+      ...body,
+    }),
 };

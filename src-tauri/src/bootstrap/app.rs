@@ -147,6 +147,7 @@ pub async fn initialize_backend<R: tauri::Runtime>(
         pool.clone(),
         notification_service.clone(),
         pppoe_service.clone(),
+        audit_service.clone(),
     );
     payment_service.start_customer_invoice_scheduler();
 

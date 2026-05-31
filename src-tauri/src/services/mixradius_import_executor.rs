@@ -1182,11 +1182,16 @@ impl MixradiusImportExecutor {
         let pppoe_service = PppoeService::new(
             self.pool.clone(),
             auth_service,
-            audit_service,
+            audit_service.clone(),
             settings_service,
         );
 
-        PaymentService::new(self.pool.clone(), notification_service, pppoe_service)
+        PaymentService::new(
+            self.pool.clone(),
+            notification_service,
+            pppoe_service,
+            audit_service,
+        )
     }
 
     pub async fn execute_pppoe_imports(

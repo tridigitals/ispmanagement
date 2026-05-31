@@ -23,6 +23,7 @@
     togglingSubscription,
     onEditSubscription,
     onDeleteSubscription,
+    onChangePackage,
   } = $props();
 </script>
 
@@ -144,6 +145,16 @@
             >
               <Icon name="file-text" size={16} />
             </button>
+            {#if row.status === 'active' && onChangePackage}
+              <button
+                class="btn-icon"
+                title="Ganti Paket"
+                onclick={() => onChangePackage(row)}
+                disabled={togglingSubscription === row.id || deletingSubscription === row.id}
+              >
+                <Icon name="repeat" size={16} />
+              </button>
+            {/if}
             {#if row.status === 'active'}
               <button
                 class="btn-icon"

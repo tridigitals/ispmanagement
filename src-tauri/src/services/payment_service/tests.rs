@@ -5,12 +5,12 @@ use super::{
     is_customer_package_invoice_external_id, is_owner_admin_or_technician_role,
     is_owner_or_admin_role, normalize_auto_suspend_isolation_pool, parse_auto_suspend_mode,
     parse_auto_suspend_pppoe_action, AutoSuspendMode, AutoSuspendPppoeAction,
-    BillingCollectionSettings, MidtransTransitionDecision,
+    BillingCollectionSettings, MidtransTransitionDecision, PaymentService,
 };
 use crate::services::subscription_lifecycle::{
     resolve_activation_status, SubscriptionLifecycleStatus,
 };
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate, TimeZone, Utc};
 
 #[test]
 fn owner_admin_role_detection_is_case_insensitive() {
@@ -373,4 +373,87 @@ fn fixed_day_threshold_rolls_to_next_month_when_due_after_fixed_day() {
         auto_suspend_threshold_date(due_date, AutoSuspendMode::FixedDay, 3, 20),
         NaiveDate::from_ymd_opt(2026, 6, 20).expect("valid threshold date")
     );
+}
+
+// ==================== PRO-RATA BILLING TESTS ====================
+
+#[test]
+fn pro_rata_full_period_returns_full_amount() {
+    let start = Utc.with_ymd_and_hms(2026, 6, 1, 0, 0, 0).unwrap();
+    let end = Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap();
+    let change = Utc.with_ymd_and_hms(2026, 6, 1, 0, 0, 0).unwrap();
+    let result = PaymentService::calculate_pro_rata_amount(100_000.0, start, end, change);
+    assert_eq!(result, 100_000.0);
+}
+
+#[test]
+fn pro_rata_mid_cycle_returns_proportional_amount() {
+    // June has 30 days. Change on June 16 = 15 remaining days / 30 total = 50%
+    let start = Utc.with_ymd_and_hms(2026, 6, 1, 0, 0, 0).unwrap();
+    let end = Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap();
+    let change = Utc.with_ymd_and_hms(2026, 6, 16, 0, 0, 0).unwrap();
+    let result = PaymentService::calculate_pro_rata_amount(100_000.0, start, end, change);
+    assert_eq!(result, 50_000.0);
+}
+
+#[test]
+fn pro_rata_end_of_cycle_returns_zero() {
+    let start = Utc.with_ymd_and_hms(2026, 6, 1, 0, 0, 0).unwrap();
+    let end = Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap();
+    let change = Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap();
+    let result = PaymentService::calculate_pro_rata_amount(100_000.0, start, end, change);
+    assert_eq!(result, 0.0);
+}
+
+#[test]
+fn pro_rata_one_day_before_end() {
+    // June 30 = 1 remaining day / 30 total
+    let start = Utc.with_ymd_and_hms(2026, 6, 1, 0, 0, 0).unwrap();
+    let end = Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap();
+    let change = Utc.with_ymd_and_hms(2026, 6, 30, 0, 0, 0).unwrap();
+    let result = PaymentService::calculate_pro_rata_amount(300_000.0, start, end, change);
+    // 1/30 * 300000 = 10000
+    assert_eq!(result, 10_000.0);
+}
+
+#[test]
+fn pro_rata_before_period_start_returns_full_amount() {
+    let start = Utc.with_ymd_and_hms(2026, 6, 1, 0, 0, 0).unwrap();
+    let end = Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap();
+    let change = Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap();
+    let result = PaymentService::calculate_pro_rata_amount(100_000.0, start, end, change);
+    assert_eq!(result, 100_000.0);
+}
+
+#[test]
+fn pro_rata_after_period_end_returns_zero() {
+    let start = Utc.with_ymd_and_hms(2026, 6, 1, 0, 0, 0).unwrap();
+    let end = Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap();
+    let change = Utc.with_ymd_and_hms(2026, 7, 15, 0, 0, 0).unwrap();
+    let result = PaymentService::calculate_pro_rata_amount(100_000.0, start, end, change);
+    assert_eq!(result, 0.0);
+}
+
+#[test]
+fn current_billing_period_monthly() {
+    let anchor = Utc.with_ymd_and_hms(2026, 1, 15, 0, 0, 0).unwrap();
+    let now = Utc.with_ymd_and_hms(2026, 6, 20, 0, 0, 0).unwrap();
+    let (start, end) = PaymentService::current_billing_period("monthly", anchor, now).unwrap();
+    // Should be June 15 - July 15
+    assert_eq!(start.month(), 6);
+    assert_eq!(start.day(), 15);
+    assert_eq!(end.month(), 7);
+    assert_eq!(end.day(), 15);
+}
+
+#[test]
+fn current_billing_period_yearly() {
+    let anchor = Utc.with_ymd_and_hms(2025, 3, 1, 0, 0, 0).unwrap();
+    let now = Utc.with_ymd_and_hms(2026, 6, 20, 0, 0, 0).unwrap();
+    let (start, end) = PaymentService::current_billing_period("yearly", anchor, now).unwrap();
+    // Should be March 1 2026 - March 1 2027
+    assert_eq!(start.year(), 2026);
+    assert_eq!(start.month(), 3);
+    assert_eq!(end.year(), 2027);
+    assert_eq!(end.month(), 3);
 }

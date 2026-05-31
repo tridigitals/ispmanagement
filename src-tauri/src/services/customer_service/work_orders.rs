@@ -953,6 +953,7 @@ impl CustomerService {
                         self.pool.clone(),
                         self.notification_service.clone(),
                         self.pppoe_service.clone(),
+                        self.audit_service.clone(),
                     );
 
                     match payment_service

@@ -1,7 +1,7 @@
 //! Payment Service - Manages invoices and bank accounts
 
 mod core;
-mod dto;
+pub mod dto;
 mod integration;
 mod mapper;
 mod repository;
@@ -25,7 +25,7 @@ use crate::services::subscription_lifecycle::{
     resolve_activation_status, should_disable_pppoe_for_subscription_status,
     SubscriptionLifecycleStatus,
 };
-use crate::services::{NotificationService, PppoeService};
+use crate::services::{AuditService, NotificationService, PppoeService};
 
 const BILLING_AUTO_SUSPEND_ENABLED_KEY: &str = "billing_auto_suspend_enabled";
 const BILLING_AUTO_SUSPEND_MODE_KEY: &str = "billing_auto_suspend_mode";
@@ -297,6 +297,7 @@ pub struct PaymentService {
     http_client: Client,
     notification_service: NotificationService,
     pppoe_service: PppoeService,
+    audit_service: AuditService,
 }
 
 impl PaymentService {
@@ -304,13 +305,41 @@ impl PaymentService {
         pool: DbPool,
         notification_service: NotificationService,
         pppoe_service: PppoeService,
+        audit_service: AuditService,
     ) -> Self {
         Self {
             pool,
             http_client: Client::new(),
             notification_service,
             pppoe_service,
+            audit_service,
         }
+    }
+
+    /// Wrapper around `AuditService::log` that swallows database errors so
+    /// audit-log persistence never blocks a payment-flow side effect.
+    /// Builds a JSON `details` payload from a typed metadata object.
+    async fn audit_log(
+        &self,
+        actor_user_id: Option<&str>,
+        tenant_id: Option<&str>,
+        action: &str,
+        resource: &str,
+        resource_id: Option<&str>,
+        metadata: &serde_json::Value,
+    ) {
+        let details = metadata.to_string();
+        self.audit_service
+            .log(
+                actor_user_id,
+                tenant_id,
+                action,
+                resource,
+                resource_id,
+                Some(details.as_str()),
+                None,
+            )
+            .await;
     }
 
     async fn payment_setting_for_invoice(
@@ -438,10 +467,7 @@ impl PaymentService {
         external_id: Option<String>,
         due_date: chrono::DateTime<chrono::Utc>,
     ) -> AppResult<Invoice> {
-        let id = Uuid::new_v4().to_string();
-        // Simple invoice number generation: INV-YYYYMMDD-HHMMSS
         let now = Utc::now();
-        let invoice_number = format!("INV-{}", now.format("%Y%m%d-%H%M%S"));
 
         // Base currency for pricing (global) and tenant display currency.
         let base_currency_code = self
@@ -473,40 +499,116 @@ impl PaymentService {
             };
 
         #[cfg(feature = "postgres")]
-        let invoice = sqlx::query_as::<_, Invoice>(
-            r#"
-            INSERT INTO invoices (
-                id, tenant_id, invoice_number, amount, currency_code, base_currency_code, fx_rate, fx_source, fx_fetched_at,
-                status, description, due_date, external_id, created_at, updated_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10, $11, $12, $13, $13)
-            RETURNING
-                id, tenant_id, invoice_number,
-                amount::FLOAT8 as amount,
-                currency_code, base_currency_code,
-                fx_rate::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
-                status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at
-            "#
-        )
-        .bind(&id)
-        .bind(tenant_id)
-        .bind(&invoice_number)
-        .bind(final_amount)
-        .bind(&currency_code)
-        .bind(&base_currency_code)
-        .bind(fx_rate)
-        .bind(&fx_source)
-        .bind(fx_fetched_at)
-        .bind(&description)
-        .bind(due_date)
-        .bind(&external_id)
-        .bind(now)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        let invoice = {
+            // HIGH #3 (MVP DoD audit): the previous `INV-{YYYYMMDD-HHMMSS}`
+            // format collides at second granularity when the scheduler and a
+            // manual create race within the same second. We now build the
+            // number from a Postgres SEQUENCE and rely on the composite
+            // unique index `(tenant_id, invoice_number)` as a structural
+            // safety net. Postgres `nextval()` itself is atomic and
+            // concurrency-safe, so two writers will never receive the same
+            // sequence value. The retry loop is a safety net for paths that
+            // pre-claim invoice numbers out-of-band (tenant-specific
+            // numbering schemes or recovery scripts using `setval`).
+            const MAX_ATTEMPTS: u32 = 3;
+            let mut last_error: Option<sqlx::Error> = None;
+            let mut inserted: Option<Invoice> = None;
+            for attempt in 0..MAX_ATTEMPTS {
+                let invoice_number = self.next_invoice_number(now).await?;
+                let id = Uuid::new_v4().to_string();
+                let res = sqlx::query_as::<_, Invoice>(
+                    r#"
+                    INSERT INTO invoices (
+                        id, tenant_id, invoice_number, amount, currency_code, base_currency_code, fx_rate, fx_source, fx_fetched_at,
+                        status, description, due_date, external_id, created_at, updated_at
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10, $11, $12, $13, $13)
+                    RETURNING
+                        id, tenant_id, invoice_number,
+                        amount::FLOAT8 as amount,
+                        currency_code, base_currency_code,
+                        fx_rate::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
+                        status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at
+                    "#
+                )
+                .bind(&id)
+                .bind(tenant_id)
+                .bind(&invoice_number)
+                .bind(final_amount)
+                .bind(&currency_code)
+                .bind(&base_currency_code)
+                .bind(fx_rate)
+                .bind(&fx_source)
+                .bind(fx_fetched_at)
+                .bind(&description)
+                .bind(due_date)
+                .bind(&external_id)
+                .bind(now)
+                .fetch_one(&self.pool)
+                .await;
+
+                match res {
+                    Ok(inv) => {
+                        inserted = Some(inv);
+                        break;
+                    }
+                    Err(err) => {
+                        // Be strict: only retry when sqlx can confirm the
+                        // 23505 originated from one of our invoice_number
+                        // unique constraints. If `constraint()` returns
+                        // `None`, that's an unexpected error condition
+                        // (different unique constraint, or sqlx behavior
+                        // change) — surface it instead of papering over.
+                        let is_invoice_unique_conflict = err
+                            .as_database_error()
+                            .map(|db| {
+                                db.code().as_deref() == Some("23505")
+                                    && db
+                                        .constraint()
+                                        .map(|c| {
+                                            c == "idx_invoices_tenant_invoice_number"
+                                                || c == "invoices_invoice_number_key"
+                                        })
+                                        .unwrap_or(false)
+                            })
+                            .unwrap_or(false);
+                        if is_invoice_unique_conflict && attempt + 1 < MAX_ATTEMPTS {
+                            tracing::warn!(
+                                tenant_id = %tenant_id,
+                                attempt = attempt + 1,
+                                "invoice_number unique conflict, retrying with fresh sequence value"
+                            );
+                            last_error = Some(err);
+                            continue;
+                        }
+                        return Err(AppError::Internal(err.to_string()));
+                    }
+                }
+            }
+            inserted.ok_or_else(|| {
+                AppError::Internal(format!(
+                    "create_invoice exceeded {MAX_ATTEMPTS} retry attempts; last error: {}",
+                    last_error
+                        .as_ref()
+                        .map(|e| e.to_string())
+                        .unwrap_or_else(|| "unknown".to_string())
+                ))
+            })?
+        };
 
         #[cfg(feature = "sqlite")]
         let invoice = {
+            // SQLite path is single-tenant standalone (desktop/dev); the
+            // burst-collision concern from MVP DoD HIGH #3 does not apply,
+            // but we still avoid HHMMSS-only collisions by suffixing with
+            // a UUID short to keep numbers unique without introducing a
+            // sequence dependency that SQLite doesn't have.
+            let id = Uuid::new_v4().to_string();
+            let invoice_number = format!(
+                "INV-{}-{}",
+                now.format("%Y%m%d-%H%M%S"),
+                &id.replace('-', "")[..8]
+            );
             sqlx::query(
                 r#"
                 INSERT INTO invoices (
@@ -537,6 +639,22 @@ impl PaymentService {
         };
 
         Ok(invoice)
+    }
+
+    /// Build the next invoice number using the Postgres `invoice_number_seq`
+    /// sequence. Returns `INV-YYYYMMDD-NNNNNN` (zero-padded, 6-digit suffix).
+    /// The sequence is monotonic and global, not per-day. See the migration
+    /// `20260529082913_invoice_number_uniqueness` for rationale.
+    #[cfg(feature = "postgres")]
+    async fn next_invoice_number(
+        &self,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> AppResult<String> {
+        let seq: i64 = sqlx::query_scalar("SELECT nextval('invoice_number_seq')")
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        Ok(format!("INV-{}-{:06}", now.format("%Y%m%d"), seq))
     }
 
     /// Get invoice by ID
@@ -830,6 +948,211 @@ impl PaymentService {
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         Ok(owns)
+    }
+
+    /// Change a customer's subscription package mid-cycle with pro-rata billing.
+    /// Calculates credit for unused days on old package and charge for remaining days on new package.
+    pub async fn change_subscription_package(
+        &self,
+        tenant_id: &str,
+        request: dto::ChangePackageRequest,
+    ) -> AppResult<dto::ChangePackageResult> {
+        use chrono::{DateTime, Utc};
+
+        // Parse effective date or use now
+        let effective_date = match &request.effective_date {
+            Some(d) => DateTime::parse_from_rfc3339(d)
+                .or_else(|_| DateTime::parse_from_str(&format!("{}T00:00:00+00:00", d), "%Y-%m-%dT%H:%M:%S%:z"))
+                .map(|dt| dt.with_timezone(&Utc))
+                .map_err(|_| AppError::Validation("Invalid effective_date format".to_string()))?,
+            None => Utc::now(),
+        };
+
+        // 1. Get current subscription with package info
+        #[cfg(feature = "postgres")]
+        let sub_row: Option<(String, String, String, f64, Option<DateTime<Utc>>, Option<DateTime<Utc>>)> = sqlx::query_as(
+            r#"
+            SELECT
+                cs.billing_cycle,
+                COALESCE(p.name, 'Package') AS package_name,
+                cs.package_id,
+                cs.price::FLOAT8 AS price,
+                cs.starts_at,
+                cs.ends_at
+            FROM customer_subscriptions cs
+            LEFT JOIN isp_packages p ON p.id = cs.package_id AND p.tenant_id = cs.tenant_id
+            WHERE cs.id = $1 AND cs.tenant_id = $2 AND cs.status = 'active'
+            LIMIT 1
+            "#,
+        )
+        .bind(&request.subscription_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let sub_row: Option<(String, String, String, f64, Option<DateTime<Utc>>, Option<DateTime<Utc>>)> = sqlx::query_as(
+            r#"
+            SELECT
+                cs.billing_cycle,
+                COALESCE(p.name, 'Package') AS package_name,
+                cs.package_id,
+                cs.price AS price,
+                cs.starts_at,
+                cs.ends_at
+            FROM customer_subscriptions cs
+            LEFT JOIN isp_packages p ON p.id = cs.package_id AND p.tenant_id = cs.tenant_id
+            WHERE cs.id = ? AND cs.tenant_id = ? AND cs.status = 'active'
+            LIMIT 1
+            "#,
+        )
+        .bind(&request.subscription_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let (billing_cycle, old_package_name, old_package_id, old_price, starts_at, ends_at) =
+            sub_row.ok_or_else(|| AppError::NotFound("Active subscription not found".to_string()))?;
+
+        // Don't allow changing to the same package
+        if old_package_id == request.new_package_id {
+            return Err(AppError::Validation("New package is the same as current package".to_string()));
+        }
+
+        // Check subscription hasn't ended
+        if let Some(ends) = ends_at {
+            if effective_date > ends {
+                return Err(AppError::Validation("Subscription already ended".to_string()));
+            }
+        }
+
+        // 2. Get new package price
+        #[cfg(feature = "postgres")]
+        let new_pkg: Option<(String, f64)> = sqlx::query_as(
+            r#"
+            SELECT name,
+                CASE WHEN $3 = 'yearly' THEN price_yearly::FLOAT8 ELSE price_monthly::FLOAT8 END AS price
+            FROM isp_packages
+            WHERE id = $1 AND tenant_id = $2 AND is_active = true
+            LIMIT 1
+            "#,
+        )
+        .bind(&request.new_package_id)
+        .bind(tenant_id)
+        .bind(&billing_cycle)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let new_pkg: Option<(String, f64)> = sqlx::query_as(
+            r#"
+            SELECT name,
+                CASE WHEN ?3 = 'yearly' THEN price_yearly ELSE price_monthly END AS price
+            FROM isp_packages
+            WHERE id = ?1 AND tenant_id = ?2 AND is_active = true
+            LIMIT 1
+            "#,
+        )
+        .bind(&request.new_package_id)
+        .bind(tenant_id)
+        .bind(&billing_cycle)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let (new_package_name, new_price) =
+            new_pkg.ok_or_else(|| AppError::NotFound("New package not found or inactive".to_string()))?;
+
+        // 3. Calculate current billing period
+        let anchor = starts_at.unwrap_or(effective_date);
+        let (period_start, period_end) = Self::current_billing_period(&billing_cycle, anchor, effective_date)?;
+
+        // 4. Calculate pro-rata amounts
+        let days_remaining = (period_end - effective_date).num_days().max(0) as f64;
+        let total_days = (period_end - period_start).num_days().max(1) as f64;
+
+        // Credit: refund unused portion of old package
+        let pro_rata_credit = (old_price * days_remaining / total_days * 100.0).round() / 100.0;
+        // Charge: new package for remaining days
+        let pro_rata_charge = (new_price * days_remaining / total_days * 100.0).round() / 100.0;
+        let net_amount = ((pro_rata_charge - pro_rata_credit) * 100.0).round() / 100.0;
+
+        // 5. Update subscription package and price
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"
+            UPDATE customer_subscriptions
+            SET package_id = $1, price = $2, updated_at = NOW()
+            WHERE id = $3 AND tenant_id = $4
+            "#,
+        )
+        .bind(&request.new_package_id)
+        .bind(new_price)
+        .bind(&request.subscription_id)
+        .bind(tenant_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(
+            r#"
+            UPDATE customer_subscriptions
+            SET package_id = ?1, price = ?2, updated_at = datetime('now')
+            WHERE id = ?3 AND tenant_id = ?4
+            "#,
+        )
+        .bind(&request.new_package_id)
+        .bind(new_price)
+        .bind(&request.subscription_id)
+        .bind(tenant_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        // 6. Create pro-rata invoice if net amount > 0
+        let invoice_id = if net_amount > 0.0 {
+            let description = format!(
+                "Pro-rata upgrade: {} → {} ({} remaining days)",
+                old_package_name, new_package_name, days_remaining as i64
+            );
+            let external_id = format!(
+                "PRATA:{}:{}:{}",
+                request.subscription_id,
+                effective_date.format("%Y%m%d"),
+                uuid::Uuid::new_v4()
+            );
+            let invoice = self
+                .create_invoice_with_due_date(
+                    tenant_id,
+                    net_amount,
+                    Some(description),
+                    Some(external_id),
+                    Utc::now() + chrono::Duration::days(7),
+                )
+                .await?;
+            Some(invoice.id)
+        } else {
+            // If credit > charge, we could create a credit note, but for now just skip
+            None
+        };
+
+        Ok(dto::ChangePackageResult {
+            subscription_id: request.subscription_id,
+            old_package_name,
+            new_package_name,
+            old_price,
+            new_price,
+            pro_rata_credit,
+            pro_rata_charge,
+            net_amount,
+            invoice_id,
+            effective_date: effective_date.to_rfc3339(),
+            billing_cycle,
+        })
     }
 
     pub async fn create_invoice_for_customer_subscription(
@@ -1401,6 +1724,19 @@ impl PaymentService {
                                 "suspended",
                             )
                             .await;
+                        self.audit_log(
+                            None,
+                            Some(tenant_id),
+                            "subscription.auto_suspended",
+                            "subscription",
+                            Some(&subscription_id),
+                            &json!({
+                                "reason": "grace_period_overdue",
+                                "invoice_id": invoice_id,
+                                "trigger": "grace_expire",
+                            }),
+                        )
+                        .await;
                         if let Some(invoice_id) = invoice_id.as_deref() {
                             let _ = self
                                 .insert_billing_collection_log(
@@ -1677,6 +2013,21 @@ impl PaymentService {
                                 None,
                             )
                             .await;
+                        self.audit_log(
+                            None,
+                            Some(tenant_id),
+                            "subscription.auto_suspended",
+                            "subscription",
+                            Some(&subscription_id),
+                            &json!({
+                                "reason": "grace_period_overdue",
+                                "invoice_id": invoice_id,
+                                "invoice_number": invoice_number,
+                                "day_offset": day_offset,
+                                "threshold_date": threshold_day.to_string(),
+                            }),
+                        )
+                        .await;
                         let _ = self
                             .notify_subscription_suspension(
                                 tenant_id,
@@ -1720,6 +2071,23 @@ impl PaymentService {
                 }
             }
         }
+
+        self.audit_log(
+            None,
+            Some(tenant_id),
+            "billing.collection_run",
+            "billing",
+            Some(tenant_id),
+            &json!({
+                "evaluated_count": result.evaluated_count,
+                "reminder_sent_count": result.reminder_sent_count,
+                "reminder_skipped_count": result.reminder_skipped_count,
+                "suspended_count": result.suspended_count,
+                "resumed_count": result.resumed_count,
+                "failed_count": result.failed_count,
+            }),
+        )
+        .await;
 
         Ok(result)
     }
@@ -2932,6 +3300,23 @@ impl PaymentService {
             )
             .await;
 
+        self.audit_log(
+            None,
+            Some(&invoice.tenant_id),
+            "invoice.status_changed",
+            "invoice",
+            Some(&invoice.id),
+            &json!({
+                "gateway": "midtrans",
+                "old_status": current_status,
+                "new_status": status,
+                "invoice_number": invoice.invoice_number,
+                "request_id": request_id,
+                "callback_ref": callback_ref,
+            }),
+        )
+        .await;
+
         tracing::info!(
             request_id = request_id.unwrap_or("-"),
             callback_ref = callback_ref.unwrap_or("-"),
@@ -3502,6 +3887,20 @@ impl PaymentService {
             }
         }
 
+        self.audit_log(
+            None,
+            Some(&invoice.tenant_id),
+            "invoice.payment_proof_uploaded",
+            "invoice",
+            Some(invoice_id),
+            &json!({
+                "file_path": file_path,
+                "invoice_number": invoice.invoice_number,
+                "is_customer_package": is_customer_package,
+            }),
+        )
+        .await;
+
         Ok(())
     }
 
@@ -3558,6 +3957,26 @@ impl PaymentService {
             .execute(&self.pool)
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let action = if status == "paid" {
+            "invoice.verified"
+        } else {
+            "invoice.rejected"
+        };
+        self.audit_log(
+            None,
+            Some(&invoice.tenant_id),
+            action,
+            "invoice",
+            Some(invoice_id),
+            &json!({
+                "status": status,
+                "amount": invoice.amount,
+                "rejection_reason": normalized_reason,
+                "invoice_number": invoice.invoice_number,
+            }),
+        )
+        .await;
 
         Ok(())
     }
@@ -3751,6 +4170,19 @@ impl PaymentService {
                         None,
                     )
                     .await;
+                self.audit_log(
+                    None,
+                    Some(&invoice.tenant_id),
+                    "subscription.auto_resumed",
+                    "subscription",
+                    Some(&subscription_id),
+                    &json!({
+                        "triggering_invoice_id": invoice.id,
+                        "invoice_number": invoice.invoice_number,
+                        "previous_status": current_status,
+                    }),
+                )
+                .await;
                 let _ = self
                     .notify_subscription_resumed(
                         &invoice.tenant_id,
@@ -5442,6 +5874,70 @@ impl PaymentService {
         let d = self.currency_decimals(currency);
         let factor = 10_f64.powi(d);
         (amount * factor).round() / factor
+    }
+
+    /// Calculate pro-rata amount for a partial billing period.
+    /// Returns the proportional charge for remaining days from `change_date` to `period_end`.
+    /// Used when a customer upgrades/downgrades mid-cycle.
+    pub fn calculate_pro_rata_amount(
+        full_cycle_amount: f64,
+        period_start: chrono::DateTime<chrono::Utc>,
+        period_end: chrono::DateTime<chrono::Utc>,
+        change_date: chrono::DateTime<chrono::Utc>,
+    ) -> f64 {
+        if change_date <= period_start {
+            return (full_cycle_amount * 100.0).round() / 100.0;
+        }
+        if change_date >= period_end {
+            return 0.0;
+        }
+
+        let total_days = (period_end - period_start).num_days().max(1) as f64;
+        let remaining_days = (period_end - change_date).num_days().max(0) as f64;
+        let ratio = remaining_days / total_days;
+
+        (full_cycle_amount * ratio * 100.0).round() / 100.0
+    }
+
+    /// Calculate the current billing period boundaries for a subscription.
+    /// Returns (period_start, period_end) based on anchor date and billing cycle.
+    pub fn current_billing_period(
+        billing_cycle: &str,
+        anchor: chrono::DateTime<chrono::Utc>,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> AppResult<(chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>)> {
+        let cycle = billing_cycle.trim().to_ascii_lowercase();
+
+        if cycle == "monthly" {
+            // Walk forward from anchor to find current period
+            let mut cursor = anchor;
+            while cursor.checked_add_months(Months::new(1)).map_or(true, |next| next <= now) {
+                cursor = cursor.checked_add_months(Months::new(1)).ok_or_else(|| {
+                    AppError::Internal("Failed to compute monthly period".to_string())
+                })?;
+            }
+            let period_end = cursor.checked_add_months(Months::new(1)).ok_or_else(|| {
+                AppError::Internal("Failed to compute monthly period end".to_string())
+            })?;
+            return Ok((cursor, period_end));
+        }
+
+        if cycle == "yearly" {
+            let mut cursor = anchor;
+            while cursor.checked_add_months(Months::new(12)).map_or(true, |next| next <= now) {
+                cursor = cursor.checked_add_months(Months::new(12)).ok_or_else(|| {
+                    AppError::Internal("Failed to compute yearly period".to_string())
+                })?;
+            }
+            let period_end = cursor.checked_add_months(Months::new(12)).ok_or_else(|| {
+                AppError::Internal("Failed to compute yearly period end".to_string())
+            })?;
+            return Ok((cursor, period_end));
+        }
+
+        Err(AppError::Validation(
+            "billing_cycle must be monthly or yearly".to_string(),
+        ))
     }
 
     fn billing_period_key(
