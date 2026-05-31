@@ -19,6 +19,7 @@
   import { adminSettingsCache } from '$lib/stores/adminSettingsCache';
   import { getAdminBillingNavigation } from '$lib/utils/adminBillingNavigation';
   import {
+    loadAdminSettingsCompanyTab,
     loadAdminSettingsEmailTab,
     loadAdminSettingsNotificationEventsTab,
     loadAdminSettingsPaymentTab,
@@ -52,8 +53,10 @@
   let SettingsEmailTabComponent = $state<DeferredComponent | null>(null);
   let SettingsPaymentTabComponent = $state<DeferredComponent | null>(null);
   let SettingsServiceTabComponent = $state<DeferredComponent | null>(null);
+  let SettingsCompanyTabComponent = $state<DeferredComponent | null>(null);
   let SettingsWhatsAppTabComponent = $state<DeferredComponent | null>(null);
   let SettingsNotificationEventsTabComponent = $state<DeferredComponent | null>(null);
+  let companyTabLoading = $state(false);
 
   // Tenant specific state
   let tenantInfo = $state<any>(null);
@@ -90,6 +93,20 @@
         'default_locale',
         'currency_code',
         'app_logo_path',
+      ],
+    },
+    company: {
+      label: $t('admin.settings.categories.company') || 'Company / Invoice',
+      icon: 'file-text',
+      keys: [
+        'organization_name',
+        'company_address',
+        'company_phone',
+        'company_email',
+        'company_npwp',
+        'company_website',
+        'company_logo',
+        'invoice_footer_note',
       ],
     },
     branding: {
@@ -363,6 +380,21 @@
     }
   }
 
+  async function ensureCompanyTabLoaded() {
+    if (SettingsCompanyTabComponent || companyTabLoading) return;
+
+    companyTabLoading = true;
+    try {
+      const { SettingsCompanyTabComponent: CompanyTabComponent } =
+        await loadAdminSettingsCompanyTab();
+      SettingsCompanyTabComponent = CompanyTabComponent;
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to load company settings tab');
+    } finally {
+      companyTabLoading = false;
+    }
+  }
+
   async function ensureWhatsAppTabLoaded() {
     if (SettingsWhatsAppTabComponent || whatsappTabLoading) return;
 
@@ -410,6 +442,10 @@
   $effect(() => {
     if (activeTab !== 'service') return;
     void ensureServiceTabLoaded();
+  });
+  $effect(() => {
+    if (activeTab !== 'company') return;
+    void ensureCompanyTabLoaded();
   });
   $effect(() => {
     if (activeTab !== 'whatsapp') return;
@@ -1447,6 +1483,15 @@
                   {invoicesPath}
                   {handleChange}
                 />
+              {:else}
+                <div class="inline-tab-loading">
+                  <div class="spinner"></div>
+                </div>
+              {/if}
+            {:else if activeTab === 'company'}
+              {#if SettingsCompanyTabComponent}
+                {@const CompanyTab = SettingsCompanyTabComponent}
+                <CompanyTab {localSettings} {handleChange} />
               {:else}
                 <div class="inline-tab-loading">
                   <div class="spinner"></div>
