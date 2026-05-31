@@ -5,6 +5,8 @@ import type {
   BillingCollectionRunResult,
   DuitkuPaymentMethod,
   BulkGenerateInvoicesResult,
+  BulkSendInvoiceRequest,
+  BulkSendInvoiceResult,
   FxRate,
   Invoice,
   InvoiceReminderLogView,
@@ -63,6 +65,17 @@ export const payment = {
 
   generateDueCustomerPackageInvoices: (): Promise<BulkGenerateInvoicesResult> =>
     safeInvoke('generate_due_customer_package_invoices', { token: getTokenOrThrow() }),
+
+  bulkSendInvoices: (request: BulkSendInvoiceRequest): Promise<BulkSendInvoiceResult> =>
+    safeInvoke('bulk_send_invoices', {
+      token: getTokenOrThrow(),
+      request: {
+        invoice_ids: request.invoice_ids,
+        channels: request.channels ?? null,
+        template_id: request.template_id ?? null,
+        attach_pdf: request.attach_pdf ?? null,
+      },
+    }),
 
   listBillingCollectionLogs: (filters?: {
     action?: string;

@@ -1055,6 +1055,32 @@ export interface BulkGenerateInvoicesResult {
   failed_count: number;
 }
 
+export interface BulkSendInvoiceRequest {
+  invoice_ids: string[];
+  channels?: ('email' | 'in_app')[];
+  template_id?: string | null;
+  attach_pdf?: boolean;
+}
+
+export interface BulkSendInvoiceItemResult {
+  invoice_id: string;
+  invoice_number: string | null;
+  status: 'sent' | 'skipped' | 'failed';
+  email_sent: boolean;
+  notification_sent: boolean;
+  pdf_attached: boolean;
+  reason: string | null;
+  error: string | null;
+}
+
+export interface BulkSendInvoiceResult {
+  total: number;
+  sent_count: number;
+  skipped_count: number;
+  failed_count: number;
+  items: BulkSendInvoiceItemResult[];
+}
+
 export interface BillingCollectionRunResult {
   evaluated_count: number;
   reminder_sent_count: number;

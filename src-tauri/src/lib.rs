@@ -317,6 +317,7 @@ pub fn run() {
                                     create_invoice_for_customer_subscription,
                                     create_invoice_for_installation_work_order,
                                     generate_due_customer_package_invoices,
+                                    bulk_send_invoices,
                                     list_billing_collection_logs,
                                     list_invoice_reminder_logs,
                                     run_billing_collection_now,

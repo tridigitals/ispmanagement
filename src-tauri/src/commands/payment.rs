@@ -215,6 +215,27 @@ pub async fn generate_due_customer_package_invoices(
         .map_err(|e| e.to_string())
 }
 
+/// Bulk-send invoice (Phase 3) — fan-out send for multiple invoices in one call.
+#[tauri::command]
+pub async fn bulk_send_invoices(
+    token: String,
+    request: crate::services::payment_service::dto::BulkSendInvoiceRequest,
+    auth_service: State<'_, AuthService>,
+    payment_service: State<'_, PaymentService>,
+) -> Result<crate::services::payment_service::dto::BulkSendInvoiceResult, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    require_payment_manage_access(&auth_service, &claims).await?;
+    let tenant_id = claims.tenant_id.clone().ok_or("No tenant context")?;
+
+    payment_service
+        .bulk_send_invoices(&claims.sub, &tenant_id, request)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub async fn list_billing_collection_logs(
     token: String,

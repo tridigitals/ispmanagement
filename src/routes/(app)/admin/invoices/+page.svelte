@@ -19,6 +19,8 @@
   let loading = $state(true);
   let creating = $state(false);
   let bulkGenerating = $state(false);
+  let selectedIds = $state<Set<string>>(new Set());
+  let bulkSending = $state(false);
   let error = $state('');
   let statusFilter = $state<'all' | 'pending' | 'verification_pending' | 'paid' | 'failed'>('all');
   let dateFrom = $state('');
@@ -46,6 +48,12 @@
   const customerBasePath = $derived(`${billingNav.tenantPrefix}/admin/customers`);
 
   const columns = $derived.by(() => [
+    {
+      key: 'select',
+      label: '',
+      width: '36px',
+      align: 'center' as const,
+    },
     {
       key: 'invoice_number',
       label: $t('admin.package_invoices.list.columns.invoice_number') || 'Invoice #',
@@ -210,6 +218,66 @@
     }
   }
 
+  // ─── Bulk-send invoice (Phase 4) ──────────────────────────────────────────
+  function toggleSelected(id: string) {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    selectedIds = next;
+  }
+
+  function toggleSelectAllVisible() {
+    const ids = filteredInvoices.map((i: Invoice) => i.id);
+    const allSelected = ids.length > 0 && ids.every((id: string) => selectedIds.has(id));
+    selectedIds = allSelected ? new Set() : new Set(ids);
+  }
+
+  async function bulkSendSelectedInvoices() {
+    if (bulkSending) return;
+    if (selectedIds.size === 0) {
+      toast.error(
+        get(t)('admin.package_invoices.list.toasts.bulk_send_no_selection') ||
+          'Pilih minimal satu invoice',
+      );
+      return;
+    }
+    const ids = Array.from(selectedIds);
+    const confirmMsg =
+      (get(t)('admin.package_invoices.list.actions.bulk_send_confirm') ||
+        'Kirim {count} invoice ke email pelanggan? (Email + Notifikasi in-app)').replace(
+        '{count}',
+        String(ids.length),
+      );
+    if (typeof window !== 'undefined' && !window.confirm(confirmMsg)) return;
+
+    bulkSending = true;
+    try {
+      const res = await api.payment.bulkSendInvoices({
+        invoice_ids: ids,
+        attach_pdf: true,
+      });
+      const summary =
+        (get(t)('admin.package_invoices.list.toasts.bulk_sent') || 'Bulk send result') +
+        `: ${res.sent_count} terkirim, ${res.skipped_count} dilewati, ${res.failed_count} gagal`;
+      if (res.failed_count > 0) {
+        const firstFail = res.items.find((it) => it.status === 'failed');
+        const detail = firstFail?.error || firstFail?.reason || '';
+        toast.error(`${summary}${detail ? ` — ${detail}` : ''}`);
+      } else {
+        toast.success(summary);
+      }
+      selectedIds = new Set();
+    } catch (e: any) {
+      toast.error(
+        e?.message ||
+          get(t)('admin.package_invoices.list.toasts.bulk_send_failed') ||
+          'Gagal mengirim faktur',
+      );
+    } finally {
+      bulkSending = false;
+    }
+  }
+
   function openInvoiceDetail(id: string) {
     const basePath =
       typeof window !== 'undefined'
@@ -290,6 +358,45 @@
         <Icon name="activity" size={16} />
         <span>{$t('sidebar.collections') || 'Collections'}</span>
       </button>
+      {#if selectedIds.size === 0 && filteredInvoices.length > 0}
+        <button
+          class="btn btn-secondary"
+          onclick={toggleSelectAllVisible}
+          title={$t('admin.package_invoices.list.actions.select_all_visible_title') ||
+            'Pilih semua invoice di halaman ini'}
+        >
+          <Icon name="check-square" size={16} />
+          <span>{$t('admin.package_invoices.list.actions.select_all_visible') || 'Pilih Semua'}</span>
+        </button>
+      {/if}
+      {#if selectedIds.size > 0}
+        <button
+          class="btn btn-secondary"
+          onclick={() => (selectedIds = new Set())}
+          disabled={bulkSending}
+          title={$t('admin.package_invoices.list.actions.clear_selection') || 'Batal pilih'}
+        >
+          <Icon name="x" size={16} />
+          <span>{$t('common.cancel') || 'Batal'}</span>
+        </button>
+        <button
+          class="btn btn-primary"
+          onclick={bulkSendSelectedInvoices}
+          disabled={bulkSending}
+          title={$t('admin.package_invoices.list.actions.bulk_send_title') ||
+            'Kirim invoice terpilih via email + notifikasi'}
+        >
+          <Icon name="send" size={16} />
+          <span>
+            {bulkSending
+              ? $t('admin.package_invoices.list.actions.bulk_sending') || 'Mengirim...'
+              : (
+                  $t('admin.package_invoices.list.actions.bulk_send_count') ||
+                  'Kirim {count} Invoice'
+                ).replace('{count}', String(selectedIds.size))}
+          </span>
+        </button>
+      {/if}
       <button class="btn btn-primary" onclick={generateDueInvoicesBulk} disabled={bulkGenerating}>
         <Icon name="layers" size={16} />
         <span
@@ -480,7 +587,15 @@
         onsort={handleInvoiceSort}
       >
         {#snippet cell({ item, column })}
-          {#if column.key === 'amount'}
+          {#if column.key === 'select'}
+            <input
+              type="checkbox"
+              checked={selectedIds.has(item.id)}
+              onchange={() => toggleSelected(item.id)}
+              aria-label={$t('admin.package_invoices.list.actions.select_invoice') ||
+                'Pilih invoice'}
+            />
+          {:else if column.key === 'amount'}
             {formatCurrency(item.amount, item.currency_code)}
           {:else if column.key === 'status'}
             <span class="status-pill {item.status}">{statusLabel(item.status)}</span>
