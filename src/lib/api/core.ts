@@ -282,6 +282,10 @@ const commandMap: Record<string, { method: string; path: string }> = {
     method: 'POST',
     path: '/payment/invoices/customer-package/generate-due',
   },
+  bulk_send_invoices: {
+    method: 'POST',
+    path: '/payment/invoices/bulk-send',
+  },
   list_billing_collection_logs: { method: 'GET', path: '/payment/billing-collection/logs' },
   list_invoice_reminder_logs: {
     method: 'GET',

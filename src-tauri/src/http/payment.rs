@@ -799,10 +799,15 @@ async fn generate_due_customer_package_invoices(
 /// Phase 3 of bulk-send-invoice. Auth: same `billing:manage` permission used
 /// by the rest of the manual billing routes. Tenant comes from the caller's
 /// JWT; per-invoice tenant ownership is enforced inside the service.
+///
+/// Body shape: accepts BOTH the flat `BulkSendInvoiceRequest` AND a wrapped
+/// `{ "request": BulkSendInvoiceRequest }` shape so the Tauri-IPC frontend
+/// (which uses named arg `request: <dto>`) can hit the same HTTP fallback
+/// without rewiring its call sites.
 async fn bulk_send_invoices(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Json(req): Json<crate::services::payment_service::dto::BulkSendInvoiceRequest>,
+    Json(body): Json<serde_json::Value>,
 ) -> Result<
     Json<crate::services::payment_service::dto::BulkSendInvoiceResult>,
     (StatusCode, Json<ErrorResponse>),
@@ -817,6 +822,18 @@ async fn bulk_send_invoices(
             }),
         )
     })?;
+
+    // Accept wrapped `{request: {...}}` (Tauri IPC fallback) OR flat body.
+    let candidate = body.get("request").cloned().unwrap_or(body);
+    let req: crate::services::payment_service::dto::BulkSendInvoiceRequest =
+        serde_json::from_value(candidate).map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: format!("Invalid bulk-send request body: {}", e),
+                }),
+            )
+        })?;
 
     state
         .payment_service
