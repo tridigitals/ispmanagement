@@ -1057,7 +1057,7 @@ export interface BulkGenerateInvoicesResult {
 
 export interface BulkSendInvoiceRequest {
   invoice_ids: string[];
-  channels?: ('email' | 'in_app')[];
+  channels?: ('email' | 'notification' | 'whatsapp')[];
   template_id?: string | null;
   attach_pdf?: boolean;
 }
@@ -1068,6 +1068,7 @@ export interface BulkSendInvoiceItemResult {
   status: 'sent' | 'skipped' | 'failed';
   email_sent: boolean;
   notification_sent: boolean;
+  whatsapp_sent: boolean;
   pdf_attached: boolean;
   reason: string | null;
   error: string | null;

@@ -2519,7 +2519,14 @@
         "bulk_send_title": "Kirim invoice terpilih via email + notifikasi",
         "bulk_send_confirm": "Kirim {count} invoice ke email pelanggan? (Email + Notifikasi in-app)",
         "bulk_sending": "Mengirim...",
-        "invoice_not_sendable": "Invoice sudah settled dan tidak bisa dikirim"
+        "invoice_not_sendable": "Invoice sudah settled dan tidak bisa dikirim",
+        "bulk_send_modal_title": "Kirim Invoice",
+        "bulk_send_modal_body": "Pilih channel pengiriman untuk {count} invoice terpilih.",
+        "channel_email": "Email",
+        "channel_notification": "Notifikasi in-app",
+        "channel_whatsapp": "WhatsApp",
+        "attach_pdf_label": "Lampirkan PDF invoice",
+        "bulk_send_no_channel": "Pilih minimal satu channel pengiriman"
       },
       "filters": {
         "all_status": "Semua status",

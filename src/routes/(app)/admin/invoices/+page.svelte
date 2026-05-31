@@ -4,6 +4,7 @@
   import { api, type Invoice } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import Modal from '$lib/components/ui/Modal.svelte';
   import { toast } from '$lib/stores/toast';
   import { appSettings } from '$lib/stores/settings';
   import { formatDate } from '$lib/utils/date';
@@ -21,6 +22,12 @@
   let bulkGenerating = $state(false);
   let selectedIds = $state<Set<string>>(new Set());
   let bulkSending = $state(false);
+  // Bulk-send channel picker modal
+  let showBulkSendModal = $state(false);
+  let channelEmail = $state(true);
+  let channelNotification = $state(true);
+  let channelWhatsapp = $state(false);
+  let channelAttachPdf = $state(true);
   let error = $state('');
   let statusFilter = $state<'all' | 'pending' | 'verification_pending' | 'paid' | 'failed'>('all');
   let dateFrom = $state('');
@@ -237,7 +244,28 @@
     selectedIds = allSelected ? new Set() : new Set(ids);
   }
 
-  async function bulkSendSelectedInvoices() {
+  function openBulkSendModal() {
+    if (bulkSending) return;
+    const ids = Array.from(selectedIds).filter((id) => {
+      const invoice = filteredInvoices.find((item) => item.id === id);
+      return invoice ? isBulkSendableInvoice(invoice) : false;
+    });
+    if (ids.length === 0) {
+      toast.error(
+        get(t)('admin.package_invoices.list.toasts.bulk_send_no_selection') ||
+          'Pilih minimal satu invoice yang masih pending',
+      );
+      return;
+    }
+    // Reset channel defaults each time the modal opens.
+    channelEmail = true;
+    channelNotification = true;
+    channelWhatsapp = false;
+    channelAttachPdf = true;
+    showBulkSendModal = true;
+  }
+
+  async function confirmBulkSend() {
     if (bulkSending) return;
     const ids = Array.from(selectedIds).filter((id) => {
       const invoice = filteredInvoices.find((item) => item.id === id);
@@ -251,19 +279,24 @@
       return;
     }
 
-    const confirmMsg =
-      (get(t)('admin.package_invoices.list.actions.bulk_send_confirm') ||
-        'Kirim {count} invoice ke email pelanggan? (Email + Notifikasi in-app)').replace(
-        '{count}',
-        String(ids.length),
+    const channels: ('email' | 'notification' | 'whatsapp')[] = [];
+    if (channelEmail) channels.push('email');
+    if (channelNotification) channels.push('notification');
+    if (channelWhatsapp) channels.push('whatsapp');
+    if (channels.length === 0) {
+      toast.error(
+        get(t)('admin.package_invoices.list.actions.bulk_send_no_channel') ||
+          'Pilih minimal satu channel pengiriman',
       );
-    if (typeof window !== 'undefined' && !window.confirm(confirmMsg)) return;
+      return;
+    }
 
     bulkSending = true;
     try {
       const res = await api.payment.bulkSendInvoices({
         invoice_ids: ids,
-        attach_pdf: true,
+        channels,
+        attach_pdf: channelEmail ? channelAttachPdf : false,
       });
       const summaryHeader =
         get(t)('admin.package_invoices.list.toasts.bulk_sent') || 'Bulk send result';
@@ -283,6 +316,7 @@
         toast.success(summary);
       }
       selectedIds = new Set();
+      showBulkSendModal = false;
     } catch (e: any) {
       toast.error(
         e?.message ||
@@ -397,7 +431,7 @@
         </button>
         <button
           class="btn btn-primary"
-          onclick={bulkSendSelectedInvoices}
+          onclick={openBulkSendModal}
           disabled={bulkSending}
           title={$t('admin.package_invoices.list.actions.bulk_send_title') ||
             'Kirim invoice terpilih via email + notifikasi'}
@@ -661,6 +695,67 @@
     </div>
   </section>
 </div>
+
+<Modal bind:show={showBulkSendModal} title={$t('admin.package_invoices.list.actions.bulk_send_modal_title') || 'Kirim Invoice'} width="480px">
+  <div class="bulk-send-form">
+    <p class="bulk-send-intro">
+      {(
+        $t('admin.package_invoices.list.actions.bulk_send_modal_body') ||
+        'Pilih channel pengiriman untuk {count} invoice terpilih.'
+      ).replace('{count}', String(selectedIds.size))}
+    </p>
+
+    <label class="channel-row">
+      <input type="checkbox" bind:checked={channelEmail} disabled={bulkSending} />
+      <span class="channel-label">
+        <Icon name="mail" size={16} />
+        <span>{$t('admin.package_invoices.list.actions.channel_email') || 'Email'}</span>
+      </span>
+    </label>
+
+    {#if channelEmail}
+      <label class="channel-row channel-sub">
+        <input type="checkbox" bind:checked={channelAttachPdf} disabled={bulkSending} />
+        <span class="channel-label">
+          <Icon name="file-text" size={16} />
+          <span>{$t('admin.package_invoices.list.actions.attach_pdf_label') || 'Lampirkan PDF invoice'}</span>
+        </span>
+      </label>
+    {/if}
+
+    <label class="channel-row">
+      <input type="checkbox" bind:checked={channelNotification} disabled={bulkSending} />
+      <span class="channel-label">
+        <Icon name="bell" size={16} />
+        <span>{$t('admin.package_invoices.list.actions.channel_notification') || 'Notifikasi in-app'}</span>
+      </span>
+    </label>
+
+    <label class="channel-row">
+      <input type="checkbox" bind:checked={channelWhatsapp} disabled={bulkSending} />
+      <span class="channel-label">
+        <Icon name="message-circle" size={16} />
+        <span>{$t('admin.package_invoices.list.actions.channel_whatsapp') || 'WhatsApp'}</span>
+      </span>
+    </label>
+  </div>
+
+  {#snippet footer()}
+    <button class="btn btn-secondary" onclick={() => (showBulkSendModal = false)} disabled={bulkSending}>
+      {$t('common.cancel') || 'Batal'}
+    </button>
+    <button class="btn btn-primary" onclick={confirmBulkSend} disabled={bulkSending}>
+      <Icon name="send" size={16} />
+      <span>
+        {bulkSending
+          ? $t('admin.package_invoices.list.actions.bulk_sending') || 'Mengirim...'
+          : (
+              $t('admin.package_invoices.list.actions.bulk_send_count') || 'Kirim {count} Invoice'
+            ).replace('{count}', String(selectedIds.size))}
+      </span>
+    </button>
+  {/snippet}
+</Modal>
 
 <style>
   .page-container {
@@ -968,5 +1063,54 @@
     .stats-grid {
       grid-template-columns: 1fr;
     }
+  }
+
+  .bulk-send-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .bulk-send-intro {
+    margin: 0 0 0.25rem 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+
+  .channel-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 8px);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .channel-row:hover {
+    background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+    border-color: color-mix(in srgb, var(--color-primary) 30%, var(--border-color));
+  }
+
+  .channel-row input[type='checkbox'] {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .channel-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-primary);
+    font-size: 0.92rem;
+  }
+
+  .channel-sub {
+    margin-left: 1.5rem;
+    padding: 0.5rem 0.75rem;
+    background: color-mix(in srgb, var(--text-primary) 3%, transparent);
   }
 </style>

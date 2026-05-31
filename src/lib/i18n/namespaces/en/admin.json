@@ -2766,7 +2766,14 @@
         "bulk_send_title": "Send selected invoices via email + notification",
         "bulk_send_confirm": "Send {count} invoices to customer email? (Email + In-app Notification)",
         "bulk_sending": "Sending...",
-        "invoice_not_sendable": "Invoice is already settled and cannot be sent"
+        "invoice_not_sendable": "Invoice is already settled and cannot be sent",
+        "bulk_send_modal_title": "Send Invoice",
+        "bulk_send_modal_body": "Choose delivery channels for {count} selected invoices.",
+        "channel_email": "Email",
+        "channel_notification": "In-app Notification",
+        "channel_whatsapp": "WhatsApp",
+        "attach_pdf_label": "Attach invoice PDF",
+        "bulk_send_no_channel": "Choose at least one delivery channel"
       },
       "filters": {
         "all_status": "All status",
