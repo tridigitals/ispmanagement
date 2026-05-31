@@ -1273,12 +1273,14 @@ impl PaymentService {
             String,
             String,
             String,
+            String,
             f64,
             Option<chrono::DateTime<chrono::Utc>>,
             Option<chrono::DateTime<chrono::Utc>>,
         )> = sqlx::query_as(
             r#"
             SELECT
+                cs.customer_id,
                 c.name AS customer_name,
                 COALESCE(p.name, 'Package') AS package_name,
                 cs.billing_cycle,
@@ -1303,12 +1305,14 @@ impl PaymentService {
             String,
             String,
             String,
+            String,
             f64,
             Option<chrono::DateTime<chrono::Utc>>,
             Option<chrono::DateTime<chrono::Utc>>,
         )> = sqlx::query_as(
             r#"
             SELECT
+                cs.customer_id,
                 c.name AS customer_name,
                 COALESCE(p.name, 'Package') AS package_name,
                 cs.billing_cycle,
@@ -1328,7 +1332,7 @@ impl PaymentService {
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        let (customer_name, package_name, billing_cycle, price, starts_at, ends_at) =
+        let (customer_id, customer_name, package_name, billing_cycle, price, starts_at, ends_at) =
             row.ok_or_else(|| AppError::NotFound("Customer subscription not found".to_string()))?;
         if let Some(ends) = ends_at {
             if period_ref > ends {
@@ -1404,6 +1408,16 @@ impl PaymentService {
                 due_date.unwrap_or_else(|| Utc::now() + chrono::Duration::days(1)),
             )
             .await?;
+
+        // Ensure customer_service_assignments row exists so bulk-send and
+        // other invoice→customer resolution paths work immediately.
+        self.ensure_customer_service_assignment_for_invoice(
+            tenant_id,
+            &invoice.id,
+            subscription_id,
+            &customer_id,
+        )
+        .await;
 
         if let Err(err) = self
             .notify_subscription_invoice_created(
@@ -6347,9 +6361,10 @@ impl PaymentService {
             });
         }
 
-        // Resolve subscription_id + customer_id via service-assignment link.
+        // Resolve subscription_id + customer_id via service-assignment link
+        // (with fallback via external_id → subscription → customer chain).
         let link = self
-            .resolve_invoice_customer_link(tenant_id, invoice_id)
+            .resolve_invoice_customer_link(tenant_id, &invoice)
             .await
             .ok();
         let (subscription_id, customer_email, customer_name) = match link {
@@ -6478,15 +6493,21 @@ impl PaymentService {
         })
     }
 
-    /// Look up the customer + subscription tied to an invoice via
-    /// `customer_service_assignments` (fallback path when invoices have no
-    /// direct customer FK).
+    /// Look up the customer + subscription tied to an invoice.
+    ///
+    /// Resolution strategy (in order):
+    /// 1. `customer_service_assignments` table — populated for work-order and
+    ///    manually-linked invoices.
+    /// 2. Parse `invoice.external_id` — format `pkgsub:<subscription_id>:<period>`.
+    ///    Resolves subscription → customer → email. This handles auto-generated
+    ///    package invoices that were never inserted into `customer_service_assignments`.
     #[cfg(feature = "postgres")]
     async fn resolve_invoice_customer_link(
         &self,
         tenant_id: &str,
-        invoice_id: &str,
+        invoice: &crate::models::invoice::Invoice,
     ) -> AppResult<InvoiceCustomerLink> {
+        // --- Path 1: customer_service_assignments (existing) ---
         let row: Option<(Option<String>, Option<String>, Option<String>, Option<String>)> = sqlx::query_as(
             r#"
             SELECT csa.subscription_id, csa.customer_id, c.email, c.full_name
@@ -6498,26 +6519,69 @@ impl PaymentService {
             "#,
         )
         .bind(tenant_id)
-        .bind(invoice_id)
+        .bind(&invoice.id)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        match row {
-            Some((sub, _cust, email, name)) => Ok(InvoiceCustomerLink {
+        if let Some((sub, _cust, email, name)) = row {
+            return Ok(InvoiceCustomerLink {
                 subscription_id: sub,
                 customer_email: email,
                 customer_name: name,
-            }),
-            None => Ok(InvoiceCustomerLink::default()),
+            });
         }
+
+        // --- Path 2: fallback via external_id → subscription → customer ---
+        if let Some(ref ext_id) = invoice.external_id {
+            if let Some(subscription_id) = parse_subscription_id_from_external_id(ext_id) {
+                tracing::debug!(
+                    invoice_id = %invoice.id,
+                    subscription_id = %subscription_id,
+                    "resolve_invoice_customer_link: falling back to external_id subscription chain"
+                );
+
+                // Look up subscription to get customer_id
+                let sub_row: Option<(String,)> = sqlx::query_as(
+                    r#"SELECT customer_id FROM customer_subscriptions WHERE id = $1 AND tenant_id = $2"#,
+                )
+                .bind(&subscription_id)
+                .bind(tenant_id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+
+                if let Some((customer_id,)) = sub_row {
+                    // Look up customer to get email + name
+                    let cust_row: Option<(Option<String>, Option<String>)> = sqlx::query_as(
+                        r#"SELECT email, full_name FROM customers WHERE id = $1 AND tenant_id = $2"#,
+                    )
+                    .bind(&customer_id)
+                    .bind(tenant_id)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+                    if let Some((email, name)) = cust_row {
+                        return Ok(InvoiceCustomerLink {
+                            subscription_id: Some(subscription_id),
+                            customer_email: email,
+                            customer_name: name,
+                        });
+                    }
+                }
+            }
+        }
+
+        // --- No path resolved ---
+        Ok(InvoiceCustomerLink::default())
     }
 
     #[cfg(not(feature = "postgres"))]
     async fn resolve_invoice_customer_link(
         &self,
         _tenant_id: &str,
-        _invoice_id: &str,
+        _invoice: &crate::models::invoice::Invoice,
     ) -> AppResult<InvoiceCustomerLink> {
         Ok(InvoiceCustomerLink::default())
     }
@@ -6596,6 +6660,74 @@ struct InvoiceCustomerLink {
     subscription_id: Option<String>,
     customer_email: Option<String>,
     customer_name: Option<String>,
+}
+
+/// Parse subscription ID from invoice `external_id`.
+///
+/// Format: `pkgsub:<subscription_uuid>:<billing_period>`
+/// Example: `pkgsub:3bb3157a-86f5-443d-975d-f71e3fed01b0:2026-04`
+///
+/// Returns `None` if the external_id doesn't match the expected format.
+fn parse_subscription_id_from_external_id(external_id: &str) -> Option<String> {
+    let rest = external_id.strip_prefix("pkgsub:")?;
+    let subscription_id = rest.split(':').next()?;
+    let trimmed = subscription_id.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    // Validate it looks like a UUID (36 chars with hyphens)
+    if trimmed.len() >= 36 && trimmed.contains('-') {
+        Some(trimmed.to_string())
+    } else {
+        None
+    }
+}
+
+impl PaymentService {
+    /// Ensure a `customer_service_assignments` row exists for an invoice.
+    ///
+    /// Uses `INSERT ... ON CONFLICT DO NOTHING` so it's safe to call multiple
+    /// times (idempotent). This is called during invoice generation so that
+    /// bulk-send and other resolution paths work immediately.
+    async fn ensure_customer_service_assignment_for_invoice(
+        &self,
+        tenant_id: &str,
+        invoice_id: &str,
+        subscription_id: &str,
+        customer_id: &str,
+    ) {
+        let id = uuid::Uuid::new_v4().to_string();
+        let now = chrono::Utc::now();
+        let result = sqlx::query(
+            r#"
+            INSERT INTO customer_service_assignments
+              (id, tenant_id, invoice_id, subscription_id, customer_id, status, created_at, updated_at)
+            SELECT $1, $2, $3, $4, $5, 'active', $6, $6
+            WHERE NOT EXISTS (
+              SELECT 1 FROM customer_service_assignments
+              WHERE tenant_id = $2 AND invoice_id = $3
+            )
+            "#,
+        )
+        .bind(&id)
+        .bind(tenant_id)
+        .bind(invoice_id)
+        .bind(subscription_id)
+        .bind(customer_id)
+        .bind(now)
+        .execute(&self.pool)
+        .await;
+
+        match result {
+            Ok(_) => {}
+            Err(e) => {
+                tracing::warn!(
+                    "ensure_customer_service_assignment_for_invoice: failed for invoice {}: {}",
+                    invoice_id, e
+                );
+            }
+        }
+    }
 }
 
 #[cfg(all(test, feature = "postgres"))]
