@@ -2511,7 +2511,16 @@
           "creating": "Membuat...",
           "billing_logs": "Log Billing",
           "generate_due_bulk": "Generate Invoice Jatuh Tempo",
-          "bulk_generating": "Memproses..."
+          "bulk_generating": "Memproses...",
+          "select_invoice": "Pilih invoice",
+          "select_all_visible": "Pilih Semua",
+          "select_all_visible_title": "Pilih semua invoice di halaman ini",
+          "clear_selection": "Batal pilih",
+          "bulk_send_count": "Kirim {count} Invoice",
+          "bulk_send_title": "Kirim invoice terpilih via email + notifikasi",
+          "bulk_send_confirm": "Kirim {count} invoice ke email pelanggan? (Email + Notifikasi in-app)",
+          "bulk_sending": "Mengirim...",
+          "invoice_not_sendable": "Invoice sudah settled dan tidak bisa dikirim"
         },
         "filters": {
           "all_status": "Semua status",

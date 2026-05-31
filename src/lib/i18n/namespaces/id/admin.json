@@ -2518,7 +2518,8 @@
         "bulk_send_count": "Kirim {count} Invoice",
         "bulk_send_title": "Kirim invoice terpilih via email + notifikasi",
         "bulk_send_confirm": "Kirim {count} invoice ke email pelanggan? (Email + Notifikasi in-app)",
-        "bulk_sending": "Mengirim..."
+        "bulk_sending": "Mengirim...",
+        "invoice_not_sendable": "Invoice sudah settled dan tidak bisa dikirim"
       },
       "filters": {
         "all_status": "Semua status",

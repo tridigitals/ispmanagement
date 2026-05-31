@@ -2765,7 +2765,8 @@
         "bulk_send_count": "Send {count} Invoices",
         "bulk_send_title": "Send selected invoices via email + notification",
         "bulk_send_confirm": "Send {count} invoices to customer email? (Email + In-app Notification)",
-        "bulk_sending": "Sending..."
+        "bulk_sending": "Sending...",
+        "invoice_not_sendable": "Invoice is already settled and cannot be sent"
       },
       "filters": {
         "all_status": "All status",

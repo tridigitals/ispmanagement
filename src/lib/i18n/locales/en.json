@@ -2758,7 +2758,16 @@
           "creating": "Creating...",
           "billing_logs": "Billing Logs",
           "generate_due_bulk": "Generate Due Invoices",
-          "bulk_generating": "Generating..."
+          "bulk_generating": "Generating...",
+          "select_invoice": "Select invoice",
+          "select_all_visible": "Select All",
+          "select_all_visible_title": "Select all invoices on this page",
+          "clear_selection": "Clear selection",
+          "bulk_send_count": "Send {count} Invoices",
+          "bulk_send_title": "Send selected invoices via email + notification",
+          "bulk_send_confirm": "Send {count} invoices to customer email? (Email + In-app Notification)",
+          "bulk_sending": "Sending...",
+          "invoice_not_sendable": "Invoice is already settled and cannot be sent"
         },
         "filters": {
           "all_status": "All status",
