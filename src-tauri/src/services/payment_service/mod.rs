@@ -6533,43 +6533,88 @@ impl PaymentService {
         }
 
         // --- Path 2: fallback via external_id → subscription → customer ---
+        // Best-effort: log errors but don't propagate them, so the caller
+        // still gets a usable (possibly empty) link instead of an Err that
+        // gets .ok()'d into None.
         if let Some(ref ext_id) = invoice.external_id {
             if let Some(subscription_id) = parse_subscription_id_from_external_id(ext_id) {
-                tracing::debug!(
+                tracing::info!(
                     invoice_id = %invoice.id,
                     subscription_id = %subscription_id,
                     "resolve_invoice_customer_link: falling back to external_id subscription chain"
                 );
 
                 // Look up subscription to get customer_id
-                let sub_row: Option<(String,)> = sqlx::query_as(
+                let sub_result = sqlx::query_as::<_, (String,)>(
                     r#"SELECT customer_id FROM customer_subscriptions WHERE id = $1 AND tenant_id = $2"#,
                 )
                 .bind(&subscription_id)
                 .bind(tenant_id)
                 .fetch_optional(&self.pool)
-                .await
-                .map_err(|e| AppError::Internal(e.to_string()))?;
+                .await;
 
-                if let Some((customer_id,)) = sub_row {
-                    // Look up customer to get email + name
-                    let cust_row: Option<(Option<String>, Option<String>)> = sqlx::query_as(
-                        r#"SELECT email, full_name FROM customers WHERE id = $1 AND tenant_id = $2"#,
-                    )
-                    .bind(&customer_id)
-                    .bind(tenant_id)
-                    .fetch_optional(&self.pool)
-                    .await
-                    .map_err(|e| AppError::Internal(e.to_string()))?;
+                match sub_result {
+                    Ok(Some((customer_id,))) => {
+                        // Look up customer to get email + name
+                        let cust_result = sqlx::query_as::<_, (Option<String>, Option<String>)>(
+                            r#"SELECT email, full_name FROM customers WHERE id = $1 AND tenant_id = $2"#,
+                        )
+                        .bind(&customer_id)
+                        .bind(tenant_id)
+                        .fetch_optional(&self.pool)
+                        .await;
 
-                    if let Some((email, name)) = cust_row {
-                        return Ok(InvoiceCustomerLink {
-                            subscription_id: Some(subscription_id),
-                            customer_email: email,
-                            customer_name: name,
-                        });
+                        match cust_result {
+                            Ok(Some((email, name))) => {
+                                tracing::info!(
+                                    invoice_id = %invoice.id,
+                                    customer_id = %customer_id,
+                                    email = ?email,
+                                    "resolve_invoice_customer_link: fallback resolved customer successfully"
+                                );
+                                return Ok(InvoiceCustomerLink {
+                                    subscription_id: Some(subscription_id),
+                                    customer_email: email,
+                                    customer_name: name,
+                                });
+                            }
+                            Ok(None) => {
+                                tracing::warn!(
+                                    invoice_id = %invoice.id,
+                                    customer_id = %customer_id,
+                                    "resolve_invoice_customer_link: customer not found in fallback"
+                                );
+                            }
+                            Err(e) => {
+                                tracing::warn!(
+                                    invoice_id = %invoice.id,
+                                    error = %e,
+                                    "resolve_invoice_customer_link: customer query failed in fallback"
+                                );
+                            }
+                        }
+                    }
+                    Ok(None) => {
+                        tracing::warn!(
+                            invoice_id = %invoice.id,
+                            subscription_id = %subscription_id,
+                            "resolve_invoice_customer_link: subscription not found in fallback"
+                        );
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            invoice_id = %invoice.id,
+                            error = %e,
+                            "resolve_invoice_customer_link: subscription query failed in fallback"
+                        );
                     }
                 }
+            } else {
+                tracing::debug!(
+                    invoice_id = %invoice.id,
+                    external_id = %ext_id,
+                    "resolve_invoice_customer_link: external_id does not match pkgsub: format"
+                );
             }
         }
 
