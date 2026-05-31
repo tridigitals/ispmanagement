@@ -56,6 +56,9 @@ pub enum AppError {
 
     #[error("Conflict: {0}")]
     Conflict(String),
+
+    #[error("Account pending approval")]
+    AccountPendingApproval,
 }
 
 impl serde::Serialize for AppError {

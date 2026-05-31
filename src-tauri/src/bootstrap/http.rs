@@ -30,8 +30,9 @@ use std::{collections::HashMap, time::Instant};
 use crate::http::{
     announcements, audit, auth, backup, customer_communication, customers, dhcp_static,
     email_outbox, install, isp_packages, message_templates, middleware, mikrotik, mixradius_import,
-    network_assets, network_mapping, notifications, payment, plans, pppoe, public, roles, settings,
-    storage, superadmin, support, system, team, tenant, users, websocket, whatsapp, work_orders,
+    network_assets, network_mapping, notifications, payment, plans, pppoe, public,
+    registration_approvals, roles, settings, storage, superadmin, support, system, team, tenant,
+    users, websocket, whatsapp, work_orders,
     AppState, SecurityRuntimeConfig, WsHub,
 };
 
@@ -489,6 +490,18 @@ pub async fn start_server_impl(
         .route(
             "/api/superadmin/radius/sessions",
             get(superadmin::list_managed_radius_sessions),
+        )
+        .route(
+            "/api/superadmin/registration-approvals",
+            get(registration_approvals::list_pending),
+        )
+        .route(
+            "/api/superadmin/registration-approvals/{user_id}/approve",
+            post(registration_approvals::approve),
+        )
+        .route(
+            "/api/superadmin/registration-approvals/{user_id}/reject",
+            post(registration_approvals::reject),
         )
         .route("/api/superadmin/audit-logs", get(audit::list_audit_logs))
         .route("/api/admin/audit-logs", get(audit::list_tenant_audit_logs))

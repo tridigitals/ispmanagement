@@ -204,7 +204,14 @@
         redirectUser(response.user, response.tenant);
       }
     } catch (err) {
-      error = err instanceof Error ? err.message : String(err);
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('Account pending approval') || msg.includes('AccountPendingApproval')) {
+        error = $t('auth.login.error_pending_approval');
+      } else if (msg.includes('rejected')) {
+        error = $t('auth.login.error_rejected');
+      } else {
+        error = msg || $t('auth.login.error_generic');
+      }
     } finally {
       loading = false;
     }

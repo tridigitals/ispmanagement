@@ -33,6 +33,7 @@ pub mod payment;
 pub mod plans;
 pub mod pppoe;
 pub mod public;
+pub mod registration_approvals;
 pub mod roles;
 pub mod settings;
 pub mod storage;

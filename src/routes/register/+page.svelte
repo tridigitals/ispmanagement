@@ -29,6 +29,7 @@
   let inviteToken = '';
   let hasInviteToken = false;
   let inviteTokenValidated = false;
+  let pendingApproval = false;
 
   // Visibility states
   let showPassword = false;
@@ -178,6 +179,11 @@
         name,
         hasInviteToken ? inviteToken : null,
       );
+      // Check for pending approval status first
+      if (response.user?.registration_status === 'pending') {
+        pendingApproval = true;
+        return;
+      }
       if (response.token) {
         if (response.user?.is_super_admin) {
           goto('/superadmin');
@@ -201,7 +207,33 @@
   }
 </script>
 
-{#if canShowRegisterForm}
+{#if pendingApproval}
+  <div class="auth-container">
+    <div class="brand-section">
+      <div class="brand-content" in:fade={{ duration: 1000 }}>
+        <div class="logo-area">
+          {#if $appLogo}
+            <img src={$appLogo} alt="App Logo" class="app-logo" />
+          {:else}
+            <Icon name="app" size={48} strokeWidth={1.5} />
+          {/if}
+          <h1>{appName}</h1>
+        </div>
+        <p>{appDescription}</p>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-wrapper">
+        <div class="text-center py-8">
+          <Icon name="clock" size={48} strokeWidth={1.5} />
+          <h2 class="text-xl font-semibold mb-2">{$t('auth.register.pending_title')}</h2>
+          <p class="text-gray-600 dark:text-gray-400 mb-6">{$t('auth.register.pending_message')}</p>
+          <a href="/login" class="btn btn-primary">{$t('auth.register.back_to_login')}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+{:else if canShowRegisterForm}
   <div class="auth-container">
     <div class="brand-section">
       <div class="brand-content" in:fade={{ duration: 1000 }}>

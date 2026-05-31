@@ -60,6 +60,9 @@ impl IntoResponse for crate::error::AppError {
             crate::error::AppError::Conflict(msg) => (StatusCode::CONFLICT, msg),
             crate::error::AppError::Authentication(msg) => (StatusCode::UNAUTHORIZED, msg),
             crate::error::AppError::Configuration(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            crate::error::AppError::AccountPendingApproval => {
+                (StatusCode::FORBIDDEN, "Account pending approval".to_string())
+            }
         };
 
         let body = Json(json!({

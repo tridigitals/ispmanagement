@@ -296,4 +296,21 @@ export const superadmin = {
 
   getSystemDiagnostics: (): Promise<any> =>
     safeInvoke('get_system_diagnostics', { token: getTokenOrThrow() }),
+
+  listPendingApprovals: (): Promise<{ users: PendingUser[]; total: number }> =>
+    safeInvoke('list_pending_approvals', { token: getTokenOrThrow() }),
+
+  approvePendingUser: (userId: string, tenantId: string, roleId: string): Promise<{ message: string }> =>
+    safeInvoke('approve_pending_user', { token: getTokenOrThrow(), userId, tenantId, roleId }),
+
+  rejectPendingUser: (userId: string, reason: string): Promise<{ message: string }> =>
+    safeInvoke('reject_pending_user', { token: getTokenOrThrow(), userId, reason }),
 };
+
+export interface PendingUser {
+  id: string;
+  email: string;
+  name: string;
+  pending_review_message: string | null;
+  created_at: string;
+}

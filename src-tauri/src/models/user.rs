@@ -46,6 +46,15 @@ pub struct User {
     pub totp_enabled: bool,
     #[serde(default)]
     pub email_2fa_enabled: bool,
+    // Registration status (active, pending, rejected)
+    #[serde(default)]
+    pub registration_status: String,
+    pub pending_review_message: Option<String>,
+    pub approved_at: Option<DateTime<Utc>>,
+    pub approved_by_user_id: Option<String>,
+    pub rejected_at: Option<DateTime<Utc>>,
+    pub rejected_reason: Option<String>,
+    pub rejected_by_user_id: Option<String>,
 }
 
 impl User {
@@ -77,6 +86,13 @@ impl User {
             preferred_2fa_method: Some("totp".to_string()),
             totp_enabled: false,
             email_2fa_enabled: false,
+            registration_status: "active".to_string(),
+            pending_review_message: None,
+            approved_at: None,
+            approved_by_user_id: None,
+            rejected_at: None,
+            rejected_reason: None,
+            rejected_by_user_id: None,
         }
     }
 
@@ -104,6 +120,7 @@ pub struct UserResponse {
     pub preferred_2fa_method: Option<String>,
     pub totp_enabled: bool,
     pub email_2fa_enabled: bool,
+    pub registration_status: String,
     pub created_at: DateTime<Utc>,
     pub permissions: Vec<String>,
     pub tenant_slug: Option<String>,
@@ -125,6 +142,7 @@ impl From<User> for UserResponse {
             preferred_2fa_method: user.preferred_2fa_method,
             totp_enabled: user.totp_enabled,
             email_2fa_enabled: user.email_2fa_enabled,
+            registration_status: user.registration_status,
             created_at: user.created_at,
             permissions: vec![],        // Populated by service
             tenant_slug: None,          // Populated by service

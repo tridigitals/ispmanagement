@@ -558,6 +558,10 @@ impl AuthService {
         // Create user
         let mut user = User::new(dto.email, password_hash, dto.name);
 
+        // Hybrid flow: all public registrations are pending
+        user.registration_status = "pending".to_string();
+        user.is_active = false; // Pending users are NOT active until approved
+
         // Handle email verification
         if require_email_verification {
             let token = uuid::Uuid::new_v4().to_string();
@@ -568,8 +572,8 @@ impl AuthService {
 
         let query = sqlx::query(
             r#"
-            INSERT INTO users (id, email, password_hash, name, role, is_active, failed_login_attempts, created_at, updated_at, verification_token, email_verified_at)
-            VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9, $10)
+            INSERT INTO users (id, email, password_hash, name, role, is_active, failed_login_attempts, created_at, updated_at, verification_token, email_verified_at, registration_status)
+            VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9, $10, $11)
             "#,
         )
         .bind(&user.id)
@@ -584,22 +588,23 @@ impl AuthService {
             .bind(user.created_at)
             .bind(user.updated_at)
             .bind(&user.verification_token)
-            .bind(user.email_verified_at);
+            .bind(user.email_verified_at)
+            .bind(&user.registration_status);
 
         #[cfg(not(feature = "postgres"))]
         let query = query
             .bind(user.created_at.to_rfc3339())
             .bind(user.updated_at.to_rfc3339())
             .bind(&user.verification_token)
-            .bind(user.email_verified_at.map(|t| t.to_rfc3339()));
+            .bind(user.email_verified_at.map(|t| t.to_rfc3339()))
+            .bind(&user.registration_status);
 
         query.execute(&self.pool).await?;
 
-        info!("New user registered: {}", user.email);
+        info!("New user registered (pending approval): {}", user.email);
 
+        // Send verification email if required
         if require_email_verification {
-            // ... existing email code ...
-            // Send verification email
             if let Some(token) = &user.verification_token {
                 let link = format!("/auth/verify-email?token={}", token);
 
@@ -616,61 +621,56 @@ impl AuthService {
                     warn!("Failed to send verification email: {}", e);
                 }
             }
-
-            self.audit_service
-                .log(
-                    Some(&user.id),
-                    None,
-                    "USER_REGISTER",
-                    "auth",
-                    Some(&user.id),
-                    Some(&format!("Registered via email {}", user.email)),
-                    ip_address.as_deref(),
-                )
-                .await;
-
-            Ok(AuthResponse {
-                user: user.into(),
-                tenant: None,
-                token: None,
-                expires_at: None,
-                message: Some(
-                    "Registration successful. Please check your email to verify your account."
-                        .to_string(),
-                ),
-                requires_2fa: None,
-                requires_2fa_setup: None,
-                temp_token: None,
-                available_2fa_methods: None,
-            })
-        } else {
-            // Generate token (no tenant for now on direct registration)
-            let (token, expires_at) = self.generate_token(&user, None).await?;
-
-            self.audit_service
-                .log(
-                    Some(&user.id),
-                    None,
-                    "USER_REGISTER",
-                    "auth",
-                    Some(&user.id),
-                    Some(&format!("Registered via email {}", user.email)),
-                    ip_address.as_deref(),
-                )
-                .await;
-
-            Ok(AuthResponse {
-                user: user.into(),
-                tenant: None,
-                token: Some(token),
-                expires_at: Some(expires_at),
-                message: None,
-                requires_2fa: None,
-                requires_2fa_setup: None,
-                temp_token: None,
-                available_2fa_methods: None,
-            })
         }
+
+        // Notify superadmin(s) about pending registration
+        let superadmin_emails: Vec<String> = sqlx::query_scalar(
+            "SELECT email FROM users WHERE is_super_admin = true AND is_active = true"
+        )
+        .fetch_all(&self.pool)
+        .await
+        .unwrap_or_default();
+
+        for admin_email in superadmin_emails {
+            let subject = format!("New user registration pending approval: {}", user.email);
+            let body = format!(
+                "A new user has registered and is awaiting your approval.\n\n\
+                 Name: {}\nEmail: {}\nRegistered at: {}\n\n\
+                 Please review and approve or reject this registration in the admin panel.",
+                user.name, user.email, user.created_at.to_rfc3339()
+            );
+            if let Err(e) = self.email_service.send_email(&admin_email, &subject, &body).await {
+                warn!("Failed to send pending registration notification to {}: {}", admin_email, e);
+            }
+        }
+
+        self.audit_service
+            .log(
+                Some(&user.id),
+                None,
+                "USER_REGISTER",
+                "auth",
+                Some(&user.id),
+                Some(&format!("Registered via email {} (pending approval)", user.email)),
+                ip_address.as_deref(),
+            )
+            .await;
+
+        // Always return pending status — no token issued
+        Ok(AuthResponse {
+            user: user.into(),
+            tenant: None,
+            token: None,
+            expires_at: None,
+            message: Some(
+                "Registration successful. Your account is pending approval by an administrator. You will be able to login once approved."
+                    .to_string(),
+            ),
+            requires_2fa: None,
+            requires_2fa_setup: None,
+            temp_token: None,
+            available_2fa_methods: None,
+        })
     }
 
     /// Verify email with token
@@ -908,7 +908,49 @@ impl AuthService {
             )));
         }
 
-        // Check if account is active
+        // Check registration status — pending users cannot login
+        // Must be checked BEFORE is_active since pending users have is_active=false
+        if user.registration_status == "pending" {
+            let details = serde_json::json!({
+                "email": user.email,
+                "reason": "account_pending_approval"
+            })
+            .to_string();
+            self.audit_service
+                .log(
+                    Some(&user.id),
+                    None,
+                    "login_pending_approval",
+                    "auth",
+                    None,
+                    Some(details.as_str()),
+                    ip_address.as_deref(),
+                )
+                .await;
+            return Err(AppError::AccountPendingApproval);
+        }
+
+        if user.registration_status == "rejected" {
+            let details = serde_json::json!({
+                "email": user.email,
+                "reason": "account_rejected"
+            })
+            .to_string();
+            self.audit_service
+                .log(
+                    Some(&user.id),
+                    None,
+                    "login_rejected",
+                    "auth",
+                    None,
+                    Some(details.as_str()),
+                    ip_address.as_deref(),
+                )
+                .await;
+            return Err(AppError::Validation("Your registration has been rejected. Please contact support.".to_string()));
+        }
+
+        // Check if account is active (after registration_status so pending/rejected are caught first)
         if !user.is_active {
             let details = serde_json::json!({
                 "email": user.email,
@@ -2398,6 +2440,189 @@ impl AuthService {
         }
 
         Ok(())
+    }
+
+    /// Approve a pending user: set registration_status='active', attach to tenant with role.
+    pub async fn approve_pending_user(
+        &self,
+        actor_user_id: &str,
+        target_user_id: &str,
+        tenant_id: &str,
+        role_id: &str,
+    ) -> AppResult<()> {
+        let now = Utc::now();
+
+        // Optimistic lock: only approve if still pending
+        #[cfg(feature = "postgres")]
+        let affected = sqlx::query(
+            r#"UPDATE users
+               SET registration_status = 'active',
+                   is_active = true,
+                   approved_at = $1,
+                   approved_by_user_id = $2,
+                   updated_at = $3
+               WHERE id = $4 AND registration_status = 'pending'"#
+        )
+        .bind(now)
+        .bind(actor_user_id)
+        .bind(now)
+        .bind(target_user_id)
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+
+        #[cfg(not(feature = "postgres"))]
+        let affected = {
+            let now_str = now.to_rfc3339();
+            sqlx::query(
+                r#"UPDATE users
+                   SET registration_status = 'active',
+                       is_active = 1,
+                       approved_at = ?,
+                       approved_by_user_id = ?,
+                       updated_at = ?
+                   WHERE id = ? AND registration_status = 'pending'"#
+            )
+            .bind(&now_str)
+            .bind(actor_user_id)
+            .bind(&now_str)
+            .bind(target_user_id)
+            .execute(&self.pool)
+            .await?
+            .rows_affected()
+        };
+
+        if affected == 0 {
+            return Err(AppError::NotFound("User not found or not in pending state".to_string()));
+        }
+
+        // Attach user to tenant via tenant_members
+        let member_id = Uuid::new_v4().to_string();
+
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"INSERT INTO tenant_members (id, tenant_id, user_id, role, role_id, created_at)
+               VALUES ($1, $2, $3, 'Member', $4, $5)
+               ON CONFLICT DO NOTHING"#
+        )
+        .bind(&member_id)
+        .bind(tenant_id)
+        .bind(target_user_id)
+        .bind(role_id)
+        .bind(now)
+        .execute(&self.pool)
+        .await?;
+
+        #[cfg(not(feature = "postgres"))]
+        {
+            let now_str = now.to_rfc3339();
+            sqlx::query(
+                r#"INSERT OR IGNORE INTO tenant_members (id, tenant_id, user_id, role, role_id, created_at)
+                   VALUES (?, ?, ?, 'Member', ?, ?)"#
+            )
+            .bind(&member_id)
+            .bind(tenant_id)
+            .bind(target_user_id)
+            .bind(role_id)
+            .bind(&now_str)
+            .execute(&self.pool)
+            .await?;
+        }
+
+        // Audit log
+        self.audit_service
+            .log(
+                Some(actor_user_id),
+                Some(tenant_id),
+                "user.registration_approved",
+                "users",
+                Some(target_user_id),
+                Some(&format!("Approved pending user and assigned to tenant with role_id={}", role_id)),
+                None,
+            )
+            .await;
+
+        Ok(())
+    }
+
+    /// Reject a pending user: mark as rejected (soft, not deleted for audit trail).
+    pub async fn reject_pending_user(
+        &self,
+        actor_user_id: &str,
+        target_user_id: &str,
+        reason: &str,
+    ) -> AppResult<()> {
+        let now = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        let affected = sqlx::query(
+            r#"UPDATE users
+               SET registration_status = 'rejected',
+                   rejected_at = $1,
+                   rejected_by_user_id = $2,
+                   rejected_reason = $3,
+                   updated_at = $4
+               WHERE id = $5 AND registration_status = 'pending'"#
+        )
+        .bind(now)
+        .bind(actor_user_id)
+        .bind(reason)
+        .bind(now)
+        .bind(target_user_id)
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+
+        #[cfg(not(feature = "postgres"))]
+        let affected = {
+            let now_str = now.to_rfc3339();
+            sqlx::query(
+                r#"UPDATE users
+                   SET registration_status = 'rejected',
+                       rejected_at = ?,
+                       rejected_by_user_id = ?,
+                       rejected_reason = ?,
+                       updated_at = ?
+                   WHERE id = ? AND registration_status = 'pending'"#
+            )
+            .bind(&now_str)
+            .bind(actor_user_id)
+            .bind(reason)
+            .bind(&now_str)
+            .bind(target_user_id)
+            .execute(&self.pool)
+            .await?
+            .rows_affected()
+        };
+
+        if affected == 0 {
+            return Err(AppError::NotFound("User not found or not in pending state".to_string()));
+        }
+
+        self.audit_service
+            .log(
+                Some(actor_user_id),
+                None,
+                "user.registration_rejected",
+                "users",
+                Some(target_user_id),
+                Some(&format!("Rejected with reason: {}", reason)),
+                None,
+            )
+            .await;
+
+        Ok(())
+    }
+
+    /// List all users with registration_status='pending'.
+    pub async fn list_pending_users(&self) -> AppResult<Vec<User>> {
+        let users = sqlx::query_as::<_, User>(
+            "SELECT * FROM users WHERE registration_status = 'pending' ORDER BY created_at DESC"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(users)
     }
 }
 

@@ -17,7 +17,7 @@ describe('public auth UI', () => {
     for (const path of publicAuthPages) {
       const source = readPage(path);
 
-      expect(source, path).not.toMatch(/[🔑📩🛡️✓✕]/u);
+      expect(source, path).not.toMatch(/[\u{1F511}\u{1F4E9}\u{1F6E1}\u2713\u2715]/u);
     }
   });
 });

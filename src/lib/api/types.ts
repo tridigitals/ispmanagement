@@ -16,6 +16,7 @@ export interface User {
   tenant_role?: string;
   tenant_custom_domain?: string;
   preferred_2fa_method?: string;
+  registration_status?: string;
 }
 
 export interface UserAddress {

@@ -175,6 +175,11 @@
           },
           { label: $t('sidebar.users') || 'Users', icon: 'users', href: '/superadmin/users' },
           {
+            label: $t('superadmin.pending_approvals.title') || 'Pending Approvals',
+            icon: 'clock',
+            href: '/superadmin/registration-approvals',
+          },
+          {
             label: $t('sidebar.radius') || 'RADIUS',
             icon: 'server',
             href: '/superadmin/radius',
