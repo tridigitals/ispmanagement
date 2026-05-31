@@ -1022,5 +1022,20 @@
         "save_failed": "Gagal menyimpan paket"
       }
     }
+  },
+  "pending_approvals": {
+    "title": "Pendaftaran Tertunda",
+    "empty": "Tidak ada pendaftaran tertunda",
+    "approve": "Setujui",
+    "reject": "Tolak",
+    "approve_dialog_title": "Setujui Pengguna",
+    "reject_dialog_title": "Tolak Pengguna",
+    "select_tenant": "Tetapkan ke Tenant",
+    "select_role": "Tetapkan Peran",
+    "reject_reason": "Alasan Penolakan",
+    "confirm_approve": "Konfirmasi Persetujuan",
+    "confirm_reject": "Konfirmasi Penolakan",
+    "approved_success": "Pengguna berhasil disetujui",
+    "rejected_success": "Pengguna berhasil ditolak"
   }
 }

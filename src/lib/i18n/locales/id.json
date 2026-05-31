@@ -538,6 +538,34 @@
           "starts_at": "Mulai",
           "ends_at": "Berakhir",
           "notes": "Catatan"
+        },
+        "change_package": {
+          "title": "Ganti Paket",
+          "current_package": "Paket Saat Ini",
+          "new_package": "Paket Baru",
+          "select_placeholder": "— Pilih paket —",
+          "old_package_label": "Paket lama (sisa hari)",
+          "new_package_label": "Paket baru (sisa hari)",
+          "pro_rata_estimate": "Tagihan pro-rata (estimasi)",
+          "pro_rata_note": "* Nilai aktual dihitung berdasarkan sisa hari dalam periode billing saat ini.",
+          "success_title": "Berhasil!",
+          "success_message": "Paket diubah dari",
+          "old_price": "Harga lama",
+          "new_price": "Harga baru",
+          "credit": "Kredit (sisa hari paket lama)",
+          "charge": "Tagihan (sisa hari paket baru)",
+          "net_amount": "Tagihan bersih",
+          "view_invoice": "Lihat invoice →",
+          "cancel": "Batal",
+          "processing": "Memproses...",
+          "submit": "Ganti Paket",
+          "close": "Tutup",
+          "toasts": {
+            "success_with_charge": "Paket diganti! Tagihan pro-rata:",
+            "success_no_charge": "Paket diganti! Tidak ada tagihan tambahan",
+            "error": "Gagal ganti paket:"
+          },
+          "success_message_to": "ke"
         }
       },
       "billing": {
@@ -2363,7 +2391,8 @@
       },
       "toasts": {
         "load_failed": "Gagal memuat invoice"
-      }
+      },
+      "print_pdf": "Cetak / Unduh PDF"
     },
     "billing_collection": {
       "title": "Log Billing Collection",
@@ -2531,7 +2560,9 @@
           "mark_paid": "Tandai Lunas",
           "mark_failed": "Tandai Gagal",
           "open_payment_page": "Buka Halaman Pembayaran",
-          "view_payment_proof": "Lihat Bukti Pembayaran"
+          "view_payment_proof": "Lihat Bukti Pembayaran",
+          "preparing": "Menyiapkan...",
+          "print_pdf": "Cetak / PDF"
         },
         "payment_methods": {
           "online_payment": "Pembayaran Online",
@@ -2710,7 +2741,8 @@
         "whatsapp": "WhatsApp Gateway",
         "event_notifications": "Notifikasi Event",
         "payment": "Pembayaran",
-        "service": "Service"
+        "service": "Service",
+        "company": "Perusahaan / Invoice"
       },
       "whatsapp": {
         "title": "WhatsApp Gateway",
@@ -2984,7 +3016,10 @@
       "loading_button": "Sedang masuk...",
       "footer_text": "Belum punya akun?",
       "register_link": "Daftar di sini",
-      "error_wrong_tenant": "Anda tidak memiliki akses ke ruang kerja ini. Silakan masuk melalui URL ruang kerja Anda sendiri."
+      "error_wrong_tenant": "Anda tidak memiliki akses ke ruang kerja ini. Silakan masuk melalui URL ruang kerja Anda sendiri.",
+      "error_generic": "Terjadi kesalahan tak terduga. Silakan coba lagi.",
+      "error_pending_approval": "Akun Anda sedang menunggu persetujuan. Silakan tunggu administrator meninjau pendaftaran Anda.",
+      "error_rejected": "Pendaftaran Anda telah ditolak. Silakan hubungi dukungan untuk bantuan."
     },
     "register": {
       "title": "Buat Akun",
@@ -3000,7 +3035,10 @@
       "submit_button": "Buat Akun",
       "loading_button": "Membuat akun...",
       "footer_text": "Sudah punya akun?",
-      "login_link": "Masuk"
+      "login_link": "Masuk",
+      "back_to_login": "Kembali ke Login",
+      "pending_message": "Akun Anda telah dibuat dan sedang menunggu persetujuan dari administrator. Anda akan menerima email setelah akun disetujui.",
+      "pending_title": "Pendaftaran Tertunda"
     },
     "validation": {
       "passwords_do_not_match": "Kata sandi tidak cocok",
@@ -3249,6 +3287,12 @@
       "instruction_prefix": "Ketik",
       "instruction_suffix": "untuk konfirmasi.",
       "placeholder": "Ketik {keyword} di sini"
+    },
+    "invoice_print": {
+      "preview": "Preview Invoice",
+      "download_pdf": "Download PDF",
+      "generating": "Membuat PDF...",
+      "print": "Cetak"
     }
   },
   "dashboard": {
@@ -5041,6 +5085,21 @@
           "save_failed": "Gagal menyimpan paket"
         }
       }
+    },
+    "pending_approvals": {
+      "title": "Pendaftaran Tertunda",
+      "empty": "Tidak ada pendaftaran tertunda",
+      "approve": "Setujui",
+      "reject": "Tolak",
+      "approve_dialog_title": "Setujui Pengguna",
+      "reject_dialog_title": "Tolak Pengguna",
+      "select_tenant": "Tetapkan ke Tenant",
+      "select_role": "Tetapkan Peran",
+      "reject_reason": "Alasan Penolakan",
+      "confirm_approve": "Konfirmasi Persetujuan",
+      "confirm_reject": "Konfirmasi Penolakan",
+      "approved_success": "Pengguna berhasil disetujui",
+      "rejected_success": "Pengguna berhasil ditolak"
     }
   },
   "support": {
@@ -5163,5 +5222,8 @@
       "failed": "Unduhan gagal: {message}",
       "failed_generic": "Unduhan gagal"
     }
+  },
+  "customers": {
+    "subscriptions": {}
   }
 }

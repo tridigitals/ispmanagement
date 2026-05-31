@@ -537,6 +537,34 @@
         "starts_at": "Mulai",
         "ends_at": "Berakhir",
         "notes": "Catatan"
+      },
+      "change_package": {
+        "title": "Ganti Paket",
+        "current_package": "Paket Saat Ini",
+        "new_package": "Paket Baru",
+        "select_placeholder": "— Pilih paket —",
+        "old_package_label": "Paket lama (sisa hari)",
+        "new_package_label": "Paket baru (sisa hari)",
+        "pro_rata_estimate": "Tagihan pro-rata (estimasi)",
+        "pro_rata_note": "* Nilai aktual dihitung berdasarkan sisa hari dalam periode billing saat ini.",
+        "success_title": "Berhasil!",
+        "success_message": "Paket diubah dari",
+        "old_price": "Harga lama",
+        "new_price": "Harga baru",
+        "credit": "Kredit (sisa hari paket lama)",
+        "charge": "Tagihan (sisa hari paket baru)",
+        "net_amount": "Tagihan bersih",
+        "view_invoice": "Lihat invoice →",
+        "cancel": "Batal",
+        "processing": "Memproses...",
+        "submit": "Ganti Paket",
+        "close": "Tutup",
+        "toasts": {
+          "success_with_charge": "Paket diganti! Tagihan pro-rata:",
+          "success_no_charge": "Paket diganti! Tidak ada tagihan tambahan",
+          "error": "Gagal ganti paket:"
+        },
+        "success_message_to": "ke"
       }
     },
     "billing": {
@@ -2362,7 +2390,8 @@
     },
     "toasts": {
       "load_failed": "Gagal memuat invoice"
-    }
+    },
+    "print_pdf": "Cetak / Unduh PDF"
   },
   "billing_collection": {
     "title": "Log Billing Collection",
@@ -2530,7 +2559,9 @@
         "mark_paid": "Tandai Lunas",
         "mark_failed": "Tandai Gagal",
         "open_payment_page": "Buka Halaman Pembayaran",
-        "view_payment_proof": "Lihat Bukti Pembayaran"
+        "view_payment_proof": "Lihat Bukti Pembayaran",
+        "preparing": "Menyiapkan...",
+        "print_pdf": "Cetak / PDF"
       },
       "payment_methods": {
         "online_payment": "Pembayaran Online",
@@ -2709,7 +2740,8 @@
       "whatsapp": "WhatsApp Gateway",
       "event_notifications": "Notifikasi Event",
       "payment": "Pembayaran",
-      "service": "Service"
+      "service": "Service",
+      "company": "Perusahaan / Invoice"
     },
     "whatsapp": {
       "title": "WhatsApp Gateway",

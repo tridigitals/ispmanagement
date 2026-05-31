@@ -90,5 +90,11 @@
     "instruction_prefix": "Ketik",
     "instruction_suffix": "untuk konfirmasi.",
     "placeholder": "Ketik {keyword} di sini"
+  },
+  "invoice_print": {
+    "preview": "Preview Invoice",
+    "download_pdf": "Download PDF",
+    "generating": "Membuat PDF...",
+    "print": "Cetak"
   }
 }

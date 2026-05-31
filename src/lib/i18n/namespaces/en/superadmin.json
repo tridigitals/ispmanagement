@@ -1022,5 +1022,20 @@
         "save_failed": "Failed to save plan"
       }
     }
+  },
+  "pending_approvals": {
+    "title": "Pending Registrations",
+    "empty": "No pending registrations",
+    "approve": "Approve",
+    "reject": "Reject",
+    "approve_dialog_title": "Approve User",
+    "reject_dialog_title": "Reject User",
+    "select_tenant": "Assign to Tenant",
+    "select_role": "Assign Role",
+    "reject_reason": "Reason for Rejection",
+    "confirm_approve": "Confirm Approval",
+    "confirm_reject": "Confirm Rejection",
+    "approved_success": "User approved successfully",
+    "rejected_success": "User rejected successfully"
   }
 }

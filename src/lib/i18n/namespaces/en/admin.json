@@ -408,7 +408,8 @@
       "whatsapp": "WhatsApp Gateway",
       "event_notifications": "Event Notifications",
       "payment": "Payments",
-      "service": "Service"
+      "service": "Service",
+      "company": "Company / Invoice"
     },
     "whatsapp": {
       "title": "WhatsApp Gateway",
@@ -783,6 +784,34 @@
         "starts_at": "Starts at",
         "ends_at": "Ends at",
         "notes": "Notes"
+      },
+      "change_package": {
+        "title": "Change Package",
+        "current_package": "Current Package",
+        "new_package": "New Package",
+        "select_placeholder": "— Select package —",
+        "old_package_label": "Old package (remaining days)",
+        "new_package_label": "New package (remaining days)",
+        "pro_rata_estimate": "Pro-rata charge (estimate)",
+        "pro_rata_note": "* Actual amount is calculated based on remaining days in the current billing period.",
+        "success_title": "Success!",
+        "success_message": "Package changed from",
+        "old_price": "Old price",
+        "new_price": "New price",
+        "credit": "Credit (unused days on old package)",
+        "charge": "Charge (remaining days on new package)",
+        "net_amount": "Net charge",
+        "view_invoice": "View invoice →",
+        "cancel": "Cancel",
+        "processing": "Processing...",
+        "submit": "Change Package",
+        "close": "Close",
+        "toasts": {
+          "success_with_charge": "Package changed! Pro-rata charge:",
+          "success_no_charge": "Package changed! No additional charge",
+          "error": "Failed to change package:"
+        },
+        "success_message_to": "to"
       }
     },
     "billing": {
@@ -2608,7 +2637,8 @@
     },
     "toasts": {
       "load_failed": "Failed to load invoices"
-    }
+    },
+    "print_pdf": "Print / Download PDF"
   },
   "billing_collection": {
     "title": "Billing Collection Logs",
@@ -2776,7 +2806,9 @@
         "mark_paid": "Mark Paid",
         "mark_failed": "Mark Failed",
         "open_payment_page": "Open Payment Page",
-        "view_payment_proof": "View Payment Proof"
+        "view_payment_proof": "View Payment Proof",
+        "preparing": "Preparing...",
+        "print_pdf": "Print / PDF"
       },
       "payment_methods": {
         "online_payment": "Online Payment",

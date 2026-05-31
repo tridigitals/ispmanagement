@@ -90,5 +90,11 @@
     "instruction_prefix": "Type",
     "instruction_suffix": "to confirm.",
     "placeholder": "Type {keyword} here"
+  },
+  "invoice_print": {
+    "preview": "Invoice Preview",
+    "download_pdf": "Download PDF",
+    "generating": "Generating...",
+    "print": "Print"
   }
 }
