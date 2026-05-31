@@ -50,3 +50,47 @@ pub struct ChangePackageResult {
     pub effective_date: String,
     pub billing_cycle: String,
 }
+
+// =============================================================================
+// Bulk Send Invoice (Phase 3)
+// =============================================================================
+
+/// Request body for `POST /api/payment/invoices/bulk-send`.
+///
+/// Lets admins fan out a multi-invoice send in one call. Channels are opt-in:
+/// when `channels` is omitted, both `email` and `notification` are attempted.
+/// `attach_pdf` is on by default — caller must explicitly set false to send the
+/// email body without a PDF.
+#[derive(Debug, Deserialize)]
+pub struct BulkSendInvoiceRequest {
+    pub invoice_ids: Vec<String>,
+    #[serde(default)]
+    pub channels: Option<Vec<String>>, // ["email","notification"]; default both
+    #[serde(default)]
+    pub template_id: Option<String>,
+    #[serde(default = "default_attach_pdf")]
+    pub attach_pdf: bool,
+}
+
+fn default_attach_pdf() -> bool {
+    true
+}
+
+#[derive(Debug, Serialize)]
+pub struct BulkSendInvoiceItemResult {
+    pub invoice_id: String,
+    pub invoice_number: String,
+    pub status: String, // "sent" | "skipped" | "failed"
+    pub email_sent: bool,
+    pub notification_sent: bool,
+    pub pdf_attached: bool,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BulkSendInvoiceResult {
+    pub sent_count: usize,
+    pub skipped_count: usize,
+    pub failed_count: usize,
+    pub items: Vec<BulkSendInvoiceItemResult>,
+}

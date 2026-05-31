@@ -39,6 +39,7 @@ pub fn router() -> Router<AppState> {
             "/invoices/customer-package/generate-due",
             post(generate_due_customer_package_invoices),
         )
+        .route("/invoices/bulk-send", post(bulk_send_invoices))
         .route(
             "/billing-collection/logs",
             get(list_billing_collection_logs),
@@ -790,6 +791,51 @@ async fn generate_due_customer_package_invoices(
                     error: e.to_string(),
                 }),
             )
+        })
+}
+
+/// `POST /api/payment/invoices/bulk-send` — fan-out send for multiple invoices.
+///
+/// Phase 3 of bulk-send-invoice. Auth: same `billing:manage` permission used
+/// by the rest of the manual billing routes. Tenant comes from the caller's
+/// JWT; per-invoice tenant ownership is enforced inside the service.
+async fn bulk_send_invoices(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<crate::services::payment_service::dto::BulkSendInvoiceRequest>,
+) -> Result<
+    Json<crate::services::payment_service::dto::BulkSendInvoiceResult>,
+    (StatusCode, Json<ErrorResponse>),
+> {
+    let claims = authenticate(&state, &headers).await?;
+    require_payment_manage_access(&state, &claims).await?;
+    let tenant_id = claims.tenant_id.clone().ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "No tenant context".to_string(),
+            }),
+        )
+    })?;
+
+    state
+        .payment_service
+        .bulk_send_invoices(&claims.sub, &tenant_id, req)
+        .await
+        .map(Json)
+        .map_err(|e| match e {
+            crate::error::AppError::Validation(_) => (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            ),
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            ),
         })
 }
 

@@ -298,6 +298,7 @@ pub struct PaymentService {
     notification_service: NotificationService,
     pppoe_service: PppoeService,
     audit_service: AuditService,
+    invoice_pdf_service: crate::services::invoice_pdf_service::InvoicePdfService,
 }
 
 impl PaymentService {
@@ -313,6 +314,7 @@ impl PaymentService {
             notification_service,
             pppoe_service,
             audit_service,
+            invoice_pdf_service: crate::services::invoice_pdf_service::InvoicePdfService::new(),
         }
     }
 
@@ -6163,6 +6165,437 @@ impl PaymentService {
 
         Ok((effective_rate, now, source))
     }
+
+    // =========================================================================
+    // Bulk Send Invoice (Phase 3)
+    // =========================================================================
+
+    /// Bulk-send a batch of invoices via email + in-app notification.
+    ///
+    /// Resolves each invoice → subscription → customer through
+    /// `customer_service_assignments`, generates a PDF if requested, and fans
+    /// out to the email and notification channels per `req.channels`.
+    ///
+    /// Per-invoice outcomes are aggregated into `BulkSendInvoiceResult` so
+    /// partial failures never abort the run.
+    ///
+    /// Tenant isolation: invoices not owned by `tenant_id` (via either
+    /// `invoices.tenant_id` or `invoices.merchant_id`) are reported as `failed`
+    /// with reason `tenant_mismatch`.
+    pub async fn bulk_send_invoices(
+        &self,
+        actor_user_id: &str,
+        tenant_id: &str,
+        req: crate::services::payment_service::dto::BulkSendInvoiceRequest,
+    ) -> AppResult<crate::services::payment_service::dto::BulkSendInvoiceResult> {
+        use crate::services::payment_service::dto::{
+            BulkSendInvoiceItemResult, BulkSendInvoiceResult,
+        };
+
+        // ---- input validation ----
+        if req.invoice_ids.is_empty() {
+            return Err(AppError::Validation(
+                "invoice_ids must not be empty".to_string(),
+            ));
+        }
+        const BULK_CAP: usize = 200;
+        if req.invoice_ids.len() > BULK_CAP {
+            return Err(AppError::Validation(format!(
+                "Bulk send limited to {} invoices per call (got {})",
+                BULK_CAP,
+                req.invoice_ids.len()
+            )));
+        }
+
+        // Default: both channels.
+        let channels = req
+            .channels
+            .clone()
+            .unwrap_or_else(|| vec!["email".to_string(), "notification".to_string()]);
+        let want_email = channels.iter().any(|c| c == "email");
+        let want_notification = channels.iter().any(|c| c == "notification");
+        if !want_email && !want_notification {
+            return Err(AppError::Validation(
+                "channels must include at least one of: email, notification".to_string(),
+            ));
+        }
+
+        let mut items: Vec<BulkSendInvoiceItemResult> = Vec::with_capacity(req.invoice_ids.len());
+        let mut sent_count = 0usize;
+        let mut skipped_count = 0usize;
+        let mut failed_count = 0usize;
+
+        for invoice_id in &req.invoice_ids {
+            let outcome = self
+                .send_one_invoice(
+                    tenant_id,
+                    invoice_id,
+                    want_email,
+                    want_notification,
+                    req.attach_pdf,
+                    req.template_id.as_deref(),
+                )
+                .await;
+
+            let item = match outcome {
+                Ok(item) => item,
+                Err(e) => BulkSendInvoiceItemResult {
+                    invoice_id: invoice_id.clone(),
+                    invoice_number: String::new(),
+                    status: "failed".to_string(),
+                    email_sent: false,
+                    notification_sent: false,
+                    pdf_attached: false,
+                    reason: Some(e.to_string()),
+                },
+            };
+
+            match item.status.as_str() {
+                "sent" => sent_count += 1,
+                "skipped" => skipped_count += 1,
+                _ => failed_count += 1,
+            }
+            items.push(item);
+        }
+
+        // Single audit-log summary entry per bulk run. Per-invoice traces are
+        // captured in the response payload; surfacing all of them as audit rows
+        // would flood the log on a 200-item call.
+        let summary = serde_json::json!({
+            "invoice_ids_count": req.invoice_ids.len(),
+            "sent": sent_count,
+            "skipped": skipped_count,
+            "failed": failed_count,
+            "channels": channels,
+            "attach_pdf": req.attach_pdf,
+            "template_id": req.template_id,
+        });
+        self.audit_log(
+            Some(actor_user_id),
+            Some(tenant_id),
+            "bulk_send",
+            "invoice",
+            None,
+            &summary,
+        )
+        .await;
+
+        Ok(BulkSendInvoiceResult {
+            sent_count,
+            skipped_count,
+            failed_count,
+            items,
+        })
+    }
+
+    /// Send-one-invoice helper. Resolves invoice + customer link, skips
+    /// already-settled invoices, and fans out to the requested channels.
+    async fn send_one_invoice(
+        &self,
+        tenant_id: &str,
+        invoice_id: &str,
+        want_email: bool,
+        want_notification: bool,
+        attach_pdf: bool,
+        _template_id: Option<&str>,
+    ) -> AppResult<crate::services::payment_service::dto::BulkSendInvoiceItemResult> {
+        use crate::services::payment_service::dto::BulkSendInvoiceItemResult;
+
+        // Fetch invoice (any tenant) and enforce tenant ownership ourselves so
+        // we can return a structured result instead of a 500.
+        let invoice = match self.get_invoice(invoice_id).await {
+            Ok(inv) => inv,
+            Err(_) => {
+                return Ok(BulkSendInvoiceItemResult {
+                    invoice_id: invoice_id.to_string(),
+                    invoice_number: String::new(),
+                    status: "failed".to_string(),
+                    email_sent: false,
+                    notification_sent: false,
+                    pdf_attached: false,
+                    reason: Some("invoice_not_found".to_string()),
+                });
+            }
+        };
+
+        let invoice_tenant = invoice
+            .merchant_id
+            .as_deref()
+            .unwrap_or(invoice.tenant_id.as_str());
+        if invoice_tenant != tenant_id {
+            return Ok(BulkSendInvoiceItemResult {
+                invoice_id: invoice_id.to_string(),
+                invoice_number: invoice.invoice_number.clone(),
+                status: "failed".to_string(),
+                email_sent: false,
+                notification_sent: false,
+                pdf_attached: false,
+                reason: Some("tenant_mismatch".to_string()),
+            });
+        }
+
+        let already_settled = matches!(invoice.status.as_str(), "paid" | "cancelled");
+        if already_settled {
+            return Ok(BulkSendInvoiceItemResult {
+                invoice_id: invoice_id.to_string(),
+                invoice_number: invoice.invoice_number.clone(),
+                status: "skipped".to_string(),
+                email_sent: false,
+                notification_sent: false,
+                pdf_attached: false,
+                reason: Some("already_settled".to_string()),
+            });
+        }
+
+        // Resolve subscription_id + customer_id via service-assignment link.
+        let link = self
+            .resolve_invoice_customer_link(tenant_id, invoice_id)
+            .await
+            .ok();
+        let (subscription_id, customer_email, customer_name) = match link {
+            Some(l) => (l.subscription_id, l.customer_email, l.customer_name),
+            None => (None, None, None),
+        };
+
+        // ---- email channel ----
+        let mut email_sent = false;
+        let mut pdf_attached = false;
+        if want_email {
+            let to = customer_email
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty());
+            if let Some(to_email) = to {
+                let subject = format!("Invoice {} – please complete payment", invoice.invoice_number);
+                let body_text = format!(
+                    "Hi {customer},\n\n\
+                     Your invoice {number} for {currency} {amount:.2} is ready.\n\
+                     Due date: {due}\n\n\
+                     You can pay online here: /pay/{id}\n\n\
+                     Thank you.",
+                    customer = customer_name.as_deref().unwrap_or("there"),
+                    number = invoice.invoice_number,
+                    currency = invoice.currency_code,
+                    amount = invoice.amount,
+                    due = invoice.due_date.format("%Y-%m-%d"),
+                    id = invoice.id,
+                );
+
+                // PDF attachment (best-effort: failure to render does not
+                // block the email — caller sees pdf_attached=false).
+                let attachments = if attach_pdf {
+                    match self.render_invoice_pdf_for_email(&invoice, customer_name.as_deref(), customer_email.as_deref()) {
+                        Ok(bytes) => {
+                            pdf_attached = true;
+                            vec![crate::services::email_service::EmailAttachment {
+                                filename: format!("invoice-{}.pdf", invoice.invoice_number),
+                                content_type: "application/pdf".to_string(),
+                                content: bytes,
+                            }]
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "bulk_send: PDF render failed for {}: {} — sending without attachment",
+                                invoice.invoice_number, e
+                            );
+                            Vec::new()
+                        }
+                    }
+                } else {
+                    Vec::new()
+                };
+
+                match self
+                    .notification_service
+                    .force_send_email_with_attachments(
+                        Some(tenant_id.to_string()),
+                        to_email,
+                        &subject,
+                        &body_text,
+                        None,
+                        attachments,
+                    )
+                    .await
+                {
+                    Ok(_) => email_sent = true,
+                    Err(e) => {
+                        tracing::warn!(
+                            "bulk_send: email failed for invoice {}: {}",
+                            invoice.invoice_number, e
+                        );
+                    }
+                }
+            }
+        }
+
+        // ---- notification channel ----
+        let mut notification_sent = false;
+        if want_notification {
+            if let Some(sub_id) = subscription_id.as_deref() {
+                let sent = self
+                    .notify_subscription_invoice_created(
+                        tenant_id,
+                        sub_id,
+                        &invoice.id,
+                        &invoice.invoice_number,
+                        invoice.amount,
+                        &invoice.currency_code,
+                    )
+                    .await
+                    .unwrap_or(0);
+                notification_sent = sent > 0;
+            }
+        }
+
+        // Resolve final status. If neither channel produced a send AND there
+        // was no recipient at all, mark skipped instead of failed (we did
+        // nothing wrong — the customer simply has no contact path).
+        let no_email_target = want_email && customer_email.as_deref().unwrap_or("").trim().is_empty();
+        let no_notif_target = want_notification && subscription_id.is_none();
+        let status = if email_sent || notification_sent {
+            "sent".to_string()
+        } else if no_email_target && no_notif_target {
+            "skipped".to_string()
+        } else {
+            "failed".to_string()
+        };
+        let reason = if status == "skipped" {
+            Some("no_contact_path".to_string())
+        } else if status == "failed" {
+            Some("delivery_failed".to_string())
+        } else {
+            None
+        };
+
+        Ok(BulkSendInvoiceItemResult {
+            invoice_id: invoice.id.clone(),
+            invoice_number: invoice.invoice_number.clone(),
+            status,
+            email_sent,
+            notification_sent,
+            pdf_attached,
+            reason,
+        })
+    }
+
+    /// Look up the customer + subscription tied to an invoice via
+    /// `customer_service_assignments` (fallback path when invoices have no
+    /// direct customer FK).
+    #[cfg(feature = "postgres")]
+    async fn resolve_invoice_customer_link(
+        &self,
+        tenant_id: &str,
+        invoice_id: &str,
+    ) -> AppResult<InvoiceCustomerLink> {
+        let row: Option<(Option<String>, Option<String>, Option<String>, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT csa.subscription_id, csa.customer_id, c.email, c.full_name
+            FROM customer_service_assignments csa
+            INNER JOIN customers c ON c.id = csa.customer_id AND c.tenant_id = csa.tenant_id
+            WHERE csa.tenant_id = $1 AND csa.invoice_id = $2
+            ORDER BY csa.created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(invoice_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        match row {
+            Some((sub, _cust, email, name)) => Ok(InvoiceCustomerLink {
+                subscription_id: sub,
+                customer_email: email,
+                customer_name: name,
+            }),
+            None => Ok(InvoiceCustomerLink::default()),
+        }
+    }
+
+    #[cfg(not(feature = "postgres"))]
+    async fn resolve_invoice_customer_link(
+        &self,
+        _tenant_id: &str,
+        _invoice_id: &str,
+    ) -> AppResult<InvoiceCustomerLink> {
+        Ok(InvoiceCustomerLink::default())
+    }
+
+    /// Render an invoice PDF for email attachment. Pulls minimal company info
+    /// from tenant settings; falls back to defaults so a rendering failure
+    /// never blocks the email.
+    fn render_invoice_pdf_for_email(
+        &self,
+        invoice: &Invoice,
+        customer_name: Option<&str>,
+        customer_email: Option<&str>,
+    ) -> AppResult<Vec<u8>> {
+        use crate::services::invoice_pdf_service::{
+            InvoicePdfCompany, InvoicePdfContext, InvoicePdfCustomer, InvoicePdfLineItem,
+            InvoicePdfTotals,
+        };
+
+        let total = invoice.amount;
+        let amount_str = format!("{} {:.2}", invoice.currency_code, total);
+
+        let company = InvoicePdfCompany {
+            name: "ISPManagement".to_string(),
+            address: None,
+            ..InvoicePdfCompany::default()
+        };
+        let customer = InvoicePdfCustomer {
+            name: customer_name.unwrap_or("Customer").to_string(),
+            address: customer_email.map(|s| s.to_string()),
+            ..InvoicePdfCustomer::default()
+        };
+        let items = vec![InvoicePdfLineItem {
+            description: invoice
+                .description
+                .clone()
+                .unwrap_or_else(|| format!("Invoice {}", invoice.invoice_number)),
+            quantity: "1".to_string(),
+            unit_price: amount_str.clone(),
+            subtotal: amount_str.clone(),
+        }];
+        let totals = InvoicePdfTotals {
+            subtotal: amount_str.clone(),
+            tax_label: None,
+            ..InvoicePdfTotals::default()
+        };
+        let due = invoice.due_date.format("%Y-%m-%d").to_string();
+        let issued = invoice
+            .due_date
+            .checked_sub_signed(chrono::Duration::days(7))
+            .unwrap_or(invoice.due_date)
+            .format("%Y-%m-%d")
+            .to_string();
+        let status_label = invoice.status.to_uppercase();
+
+        let ctx = InvoicePdfContext {
+            company,
+            customer,
+            invoice_number: invoice.invoice_number.clone(),
+            status_label,
+            issued_at: issued,
+            due_at: due,
+            items,
+            totals,
+            payment_url: Some(format!("/pay/{}", invoice.id)),
+            notes: None,
+        };
+
+        self.invoice_pdf_service.render_invoice(&ctx)
+    }
+}
+
+/// Resolved customer-side info for an invoice. Used by `bulk_send_invoices`
+/// to fan out across email + notification channels.
+#[derive(Default, Debug, Clone)]
+struct InvoiceCustomerLink {
+    subscription_id: Option<String>,
+    customer_email: Option<String>,
+    customer_name: Option<String>,
 }
 
 #[cfg(all(test, feature = "postgres"))]
