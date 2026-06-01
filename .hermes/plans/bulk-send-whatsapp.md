@@ -1,5 +1,10 @@
 # Plan: Bulk Send Invoice via WhatsApp (Channel ke-3)
 
+## Status: ✅ SELESAI (2026-05-31)
+- Phase 1 backend — commit `59ab6bc` (force_send_whatsapp + phone resolution + WA branch + DTO). cargo check clean.
+- Phase 2 frontend — commit `b97d92d` (channel-picker Modal + types + 7 i18n keys x4 file). svelte-check 0 error, i18n:check 0 missing.
+- Phase 3 verify — contract test live: API terima `channels:["whatsapp"]`, return `whatsapp_sent` field, HTTP 200 (bukan 400/deserialize). End-to-end real-send NOT dijalankan karena `wa_gateway_enabled=false` (master switch) + hindari kirim WA beneran tanpa konfirmasi. Provider terkonfigurasi: triwax.
+
 **Goal:** Tambah channel WhatsApp ke fitur bulk-send invoice yang sudah ada. Admin bisa pilih kirim invoice ke pelanggan via WhatsApp (selain email + in-app notification yang sudah jalan). Per-invoice result tetap `sent`/`skipped`/`failed` dengan flag `whatsapp_sent`.
 
 **Status infra existing (verified 2026-05-31):**
