@@ -3,8 +3,10 @@
 > **Revised 2026-06-01** after empirical verification. The original plan's "Phase 1 = CSS,
 > lowest risk" premise was **wrong** for this Svelte setup. See "Verified Findings" below.
 >
-> **Progress 2026-06-01:** Phase A ✅ done, Phase B ✅ done. `+page.svelte` 4,313 → 3,831
-> lines (−482, ~11%). 145 unit tests pass, svelte-check 0 errors. See "Execution Log" below.
+> **Progress 2026-06-01:** Phase A ✅ done, Phase B ✅ done (+ smoke test ✅).
+> Phase C (CSS extraction) ⛔ SKIPPED by decision — cosmetic only, app-wide blast radius.
+> `+page.svelte` 4,313 → 3,831 lines (−482, ~11%). 145 unit tests pass, svelte-check 0 errors.
+> **Refactor considered complete at Phases A+B.** See "Execution Log" below.
 
 ## Current State
 - **File:** `src/routes/(app)/admin/network/map/+page.svelte`
@@ -89,26 +91,32 @@
   comment explaining why.
 - **Savings:** −247 lines (template + migrated styles + `stateLabel`).
 - **Verify:** ✅ 145 tests pass, svelte-check 0 errors, no new warnings in changed files.
-- **Still pending:** visual smoke test (open modal in browser, dark mode + mobile). Low risk
-  since markup/styles are byte-identical, but not yet done.
+- **Smoke test:** ✅ DONE (2026-06-01). Map loads clean in dark mode, 0 JS errors (validates
+  extracted modules at runtime). Customer-drop modal verified at desktop + mobile width via
+  static preview using the real `global.css` tokens: status chips correct (green/amber/red),
+  "View" button correctly resolves `btn ghost btn-xs` (transparent, small), empty state renders,
+  no overflow at 351px. App is dark-only (no light theme), so only one theme to check.
 
-### Phase C — CSS extraction with NAMESPACE WRAPPER (was Phase 1) — MEDIUM RISK, DO LAST
-- **Do NOT** use `<style src>` (Finding 1) or bare global `import` (Finding 2).
-- **Safe approach:**
-  1. Add a unique root class on the page wrapper:
-     `<div class="page-content fade-in network-map-root" ...>`.
-  2. Move the `<style>` content into `networkMap.css`.
-  3. The 142 `:global(...)` selectors are already global → move as-is (safe).
-  4. Every **scoped** generic selector must be prefixed/namespaced under the root:
-     `.btn` → `.network-map-root .btn`, `.page-content` → `.network-map-root.page-content`, etc.
-  5. Import the namespaced CSS. Verify nothing leaks to other pages.
-- **Alternative (lower effort, keeps scoping):** leave CSS in the `.svelte` `<style>`
-  block as-is. It's the only place Svelte scoping is free. Line count in `.svelte` is
-  cosmetic — the real maintainability win is Phases A/B. Consider whether CSS extraction
-  is worth the namespacing risk at all.
-- **Savings:** ~1,200 lines moved out of `.svelte` (cosmetic, not behavioral).
-- **Verify:** manual visual check — light AND dark mode, desktop AND mobile (user tests
-  on mobile + dark mode). Diff button/layout styling on invoices/settings/dashboard.
+### Phase C — CSS extraction with NAMESPACE WRAPPER (was Phase 1) — ⛔ SKIPPED (decided 2026-06-01)
+- **Decision:** Skipped by user. CSS stays in the `.svelte` `<style>` block as-is.
+- **Why skipped:**
+  1. The win would be purely cosmetic (moving ~1,200 lines out), not behavioral —
+     Svelte's scoped `<style>` is the only place scoping is free.
+  2. Blast radius is the whole app: the block mixes already-global `:global(...)` rules
+     with **scoped generic selectors** (`.btn`, `.page-content`) that 50+ other pages
+     (invoices, settings, dashboard) depend on. A single mis-moved `.page-content` would
+     override layout app-wide.
+  3. Verified the block is NOT cleanly separable: `@media (max-width: 900px)` and
+     `@media (max-width: 560px)` contain scoped `.page-content` rules interleaved with
+     global `:global(.maplibregl-popup-content)` rules — extraction would require selective
+     surgery, not a clean cut.
+  4. Hard to verify without manual visual regression across many pages in light/dark + mobile.
+- **Conclusion:** Risk/effort not worth a cosmetic line-count reduction. The real
+  maintainability wins (tested pure-logic extraction, isolated modal) are in Phases A/B.
+- **If ever revisited:** must namespace under a unique `.network-map-root` wrapper, move
+  only true `:global()` rules unchanged, prefix every scoped generic selector, and run a
+  full visual regression on shared-class pages. Do NOT use `<style src>` (Finding 1) or a
+  bare global `import` (Finding 2).
 
 ### Phase D — State consolidation (was Phase 4) — HIGHEST COMPLEXITY, OPTIONAL
 - 107 `$state` vars. Group by feature into typed state holders if it improves clarity.
