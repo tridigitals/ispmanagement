@@ -36,6 +36,7 @@
   } from '$lib/components/network/networkMapActions';
   import {
     buildTopologyAssetAutoLinkFeatureCollection,
+    buildTopologyAssetPopupHtml,
     buildTopologyAssetRows,
     topologyAssetsToFeatureCollection,
     type TopologyAssetRow,
@@ -95,6 +96,7 @@
     syncTopologyAssetsIfNeeded,
     type NetworkMapCacheEntry,
   } from '$lib/components/network/networkMapData';
+  import { replaceTopologyAssetSourceData } from '$lib/components/network/networkMapLayers';
   import {
     emitInstallationRefreshSignal,
     emitWorkOrderUpdatedToParent,
@@ -158,6 +160,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import MapCanvasShell from '$lib/components/network/MapCanvasShell.svelte';
   import NetworkMapSearchBar from '$lib/components/network/NetworkMapSearchBar.svelte';
+  import NetworkMapAssetCustomerDropModal from '$lib/components/network/NetworkMapAssetCustomerDropModal.svelte';
   import { canAccessNetworkMap } from '$lib/utils/adminNetworkAccess';
   import { appendBackParam } from '$lib/utils/backNavigation';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
@@ -649,21 +652,6 @@
     }
   }
 
-  function escapePopupValue(input: unknown): string {
-    return String(input ?? '-')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
-  }
-
-  function popupToneForAssetStatus(status: string): 'ok' | 'warn' | 'muted' {
-    if (status === 'installed' || status === 'available') return 'ok';
-    if (status === 'reserved' || status === 'faulty') return 'warn';
-    return 'muted';
-  }
-
   function formatPopupStatusLabel(value: string) {
     const normalized = String(value || '').trim();
     if (!normalized) return '-';
@@ -672,17 +660,6 @@
       .split(/\s+/)
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(' ');
-  }
-
-  function customerDropStateLabel(state: TopologyAssetCustomerDropItem['visualState']) {
-    if (state === 'suspended')
-      return $t('admin.network.map.asset_customer_drop.state_suspended') || 'Suspended';
-    if (state === 'internet_disconnected') {
-      return (
-        $t('admin.network.map.asset_customer_drop.state_internet_disconnected') || 'Internet Off'
-      );
-    }
-    return $t('admin.network.map.asset_customer_drop.state_normal') || 'Normal';
   }
 
   async function closeCustomerDropModalAndFocus(item: TopologyAssetCustomerDropItem) {
@@ -784,118 +761,6 @@
     showAssetCustomerDropModal = false;
     assetCustomerDropModalTitle = '';
     assetCustomerDropItems = [];
-  }
-
-  function buildTopologyAssetPopupHtml(
-    row: TopologyAssetRow,
-    closeBtnId: string,
-    connectBtnId: string,
-    editBtnId: string,
-    customerDropBtnId: string,
-  ) {
-    const subtitle = row.locationLabel || row.assetTypeLabel;
-    const portUsage =
-      row.portCapacity != null && row.portCapacity > 0
-        ? {
-            total: row.portCapacity,
-            used: Math.max(row.portsUsed ?? 0, 0),
-            available: Math.max(row.portsAvailable ?? row.portCapacity - (row.portsUsed ?? 0), 0),
-          }
-        : null;
-    const usagePercent = portUsage ? Math.min((portUsage.used / portUsage.total) * 100, 100) : 0;
-    const portTone =
-      !portUsage || portUsage.used <= 0
-        ? 'muted'
-        : portUsage.available <= 0
-          ? 'danger'
-          : usagePercent >= 75
-            ? 'warn'
-            : 'ok';
-    const portStatusLabel = !portUsage
-      ? ''
-      : portUsage.available <= 0
-        ? $t('admin.network.map.popup.port_full') || 'Full'
-        : portUsage.used <= 0
-          ? $t('admin.network.map.popup.port_ready') || 'Ready'
-          : $t('admin.network.map.popup.port_left', { values: { count: portUsage.available } }) ||
-            `${portUsage.available} port left`;
-    const canConnectAsset = row.canAcceptConnections;
-
-    return `
-      <div class="nm-popup-card nm-popup-card-link">
-        <div class="nm-popup-head">
-          <div>
-            <div class="nm-popup-kicker">${escapePopupValue($t('admin.network.map.popup.asset_kicker') || 'FTTH Asset')}</div>
-            <div class="nm-popup-title">${escapePopupValue(row.name)}</div>
-            <div class="nm-popup-subtitle">${escapePopupValue(subtitle)}</div>
-          </div>
-          <span class="nm-popup-badge ${popupToneForAssetStatus(row.status)}">${escapePopupValue(row.status)}</span>
-        </div>
-        ${
-          portUsage
-            ? `<div class="nm-popup-usage-card">
-                <div class="nm-popup-usage-head">
-                  <div>
-                    <div class="nm-popup-usage-label">${escapePopupValue($t('admin.network.map.popup.port_usage') || 'Port Usage')}</div>
-                    <div class="nm-popup-usage-value">${escapePopupValue(
-                      $t('admin.network.map.popup.port_used', {
-                        values: { used: portUsage.used, total: portUsage.total },
-                      }) || `${portUsage.used}/${portUsage.total} used`,
-                    )}</div>
-                  </div>
-                  <span class="nm-popup-badge ${portTone}">${escapePopupValue(portStatusLabel)}</span>
-                </div>
-                <div class="nm-popup-usage-bar" aria-hidden="true">
-                  <span class="nm-popup-usage-fill ${portTone}" style="width: ${usagePercent}%"></span>
-                </div>
-                <div class="nm-popup-usage-meta">
-                  <span>${escapePopupValue(
-                    $t('admin.network.map.popup.port_available', {
-                      values: { count: portUsage.available },
-                    }) || `${portUsage.available} available`,
-                  )}</span>
-                  <span>${escapePopupValue(
-                    $t('admin.network.map.popup.port_total', {
-                      values: { count: portUsage.total },
-                    }) || `${portUsage.total} total`,
-                  )}</span>
-                </div>
-              </div>`
-            : ''
-        }
-        ${
-          row.assetType === 'odp'
-            ? `<div class="nm-popup-relation-list">
-                <button id="${customerDropBtnId}" class="nm-popup-relation-action" type="button">
-                  <div class="nm-popup-relation-copy">
-                    <div class="nm-popup-label">${escapePopupValue($t('admin.network.map.popup.view_customer') || 'View Customer')}</div>
-                    <div class="nm-popup-relation-hint">${escapePopupValue(
-                      $t('admin.network.map.popup.view_customer_hint') ||
-                        'Open connected customer list',
-                    )}</div>
-                  </div>
-                  <span class="nm-popup-relation-arrow" aria-hidden="true">›</span>
-                </button>
-              </div>`
-            : ''
-        }
-        <div class="nm-popup-actions nm-popup-actions-link">
-          ${
-            canManageFtthAssets
-              ? `<button id="${editBtnId}" class="nm-popup-btn" type="button">${escapePopupValue($t('common.edit') || 'Edit')}</button>`
-              : ''
-          }
-          <button id="${connectBtnId}" class="nm-popup-btn primary" type="button" ${canConnectAsset ? '' : 'disabled'}>${escapePopupValue(
-            canConnectAsset
-              ? $t('admin.network.map.popup.connect') || 'Connect'
-              : $t('admin.network.map.popup.port_full') || 'Full',
-          )}</button>
-          <button id="${closeBtnId}" class="nm-popup-btn nm-popup-btn-close" type="button">${escapePopupValue(
-            $t('common.close') || 'Close',
-          )}</button>
-        </div>
-      </div>
-    `;
   }
 
   function applyQuickMode(nextMode: NetworkMapQuickMode) {
@@ -1215,7 +1080,12 @@
     )
       .setLngLat(coords)
       .setHTML(
-        buildTopologyAssetPopupHtml(row, closeBtnId, connectBtnId, editBtnId, customerDropBtnId),
+        buildTopologyAssetPopupHtml({
+          row,
+          buttonIds: { closeBtnId, connectBtnId, editBtnId, customerDropBtnId },
+          canManageFtthAssets,
+          translate: $t,
+        }),
       );
     let cleanupNavigationDismiss: (() => void) | null = null;
 
@@ -1946,122 +1816,7 @@
 
   function replaceTopologyAssetOverlay(data: GeoJSON.FeatureCollection) {
     if (!map) return;
-    for (const layerId of [
-      'nm-topology-assets-label',
-      'nm-topology-assets-cluster-count',
-      'nm-topology-assets-cluster-circle',
-      'nm-topology-assets-icon',
-      'nm-topology-assets-circle',
-      'nm-topology-assets-halo',
-    ]) {
-      if (map.getLayer(layerId)) {
-        map.removeLayer(layerId);
-      }
-    }
-
-    if (map.getSource(SOURCE_TOPOLOGY_ASSETS)) {
-      map.removeSource(SOURCE_TOPOLOGY_ASSETS);
-    }
-
-    map.addSource(SOURCE_TOPOLOGY_ASSETS, {
-      type: 'geojson',
-      data: JSON.parse(JSON.stringify(data)),
-      cluster: true,
-      clusterMaxZoom: 14,
-      clusterRadius: 56,
-    });
-
-    map.addLayer({
-      id: 'nm-topology-assets-cluster-circle',
-      type: 'circle',
-      source: SOURCE_TOPOLOGY_ASSETS,
-      filter: ['has', 'point_count'],
-      paint: {
-        'circle-color': ['step', ['get', 'point_count'], '#0f766e', 12, '#0f766e', 36, '#155e75'],
-        'circle-radius': ['step', ['get', 'point_count'], 17, 12, 21, 36, 25],
-        'circle-opacity': 0.92,
-        'circle-stroke-width': 1.8,
-        'circle-stroke-color': '#e2e8f0',
-      },
-    });
-
-    if (map.getStyle()?.glyphs) {
-      map.addLayer({
-        id: 'nm-topology-assets-cluster-count',
-        type: 'symbol',
-        source: SOURCE_TOPOLOGY_ASSETS,
-        filter: ['has', 'point_count'],
-        layout: {
-          'text-field': ['to-string', ['get', 'point_count_abbreviated']],
-          'text-size': 11,
-          'text-allow-overlap': true,
-        },
-        paint: {
-          'text-color': '#f8fafc',
-        },
-      });
-    }
-
-    map.addLayer({
-      id: 'nm-topology-assets-halo',
-      type: 'circle',
-      source: SOURCE_TOPOLOGY_ASSETS,
-      filter: ['!', ['has', 'point_count']],
-      paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 9.5, 11, 12, 14, 14.5],
-        'circle-color': ['coalesce', ['get', 'marker_color'], '#64748b'],
-        'circle-opacity': 0.16,
-        'circle-blur': 0.08,
-        'circle-stroke-width': 0,
-      },
-    });
-
-    map.addLayer({
-      id: 'nm-topology-assets-circle',
-      type: 'circle',
-      source: SOURCE_TOPOLOGY_ASSETS,
-      filter: ['!', ['has', 'point_count']],
-      paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 7.4, 11, 9.2, 14, 11.2],
-        'circle-color': ['coalesce', ['get', 'marker_color'], '#64748b'],
-        'circle-opacity': 0.38,
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#e2e8f0',
-      },
-    });
-
-    map.addLayer({
-      id: 'nm-topology-assets-icon',
-      type: 'symbol',
-      source: SOURCE_TOPOLOGY_ASSETS,
-      filter: ['!', ['has', 'point_count']],
-      layout: {
-        'icon-image': [
-          'match',
-          ['get', 'asset_type'],
-          'olt',
-          'nm-node-glyph-olt',
-          'odf',
-          'nm-node-glyph-odf',
-          'odc',
-          'nm-node-glyph-odc',
-          'odp',
-          'nm-node-glyph-odp',
-          'fat',
-          'nm-node-glyph-odp',
-          'nap',
-          'nm-node-glyph-odp',
-          'splitter',
-          'nm-node-glyph-splitter',
-          'switch',
-          'nm-node-glyph-switch',
-          'nm-node-glyph-router',
-        ],
-        'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 1.14, 11, 1.3, 14, 1.46],
-        'icon-allow-overlap': true,
-        'icon-ignore-placement': true,
-      },
-    });
+    replaceTopologyAssetSourceData(map, data);
   }
 
   function syncWorkspaceHighlights() {
@@ -2966,88 +2721,13 @@
   />
 {/if}
 
-{#if showAssetCustomerDropModal}
-  <div
-    class="asset-customer-drop-modal-backdrop"
-    role="presentation"
-    tabindex="-1"
-    onclick={closeTopologyAssetCustomerDropModal}
-    onkeydown={(event) => {
-      if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        closeTopologyAssetCustomerDropModal();
-      }
-    }}
-  >
-    <div
-      class="asset-customer-drop-modal"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="asset-customer-drop-modal-title"
-      tabindex="0"
-      onclick={(event) => event.stopPropagation()}
-      onkeydown={(event) => event.stopPropagation()}
-    >
-      <div class="asset-customer-drop-modal-head">
-        <div>
-          <div class="asset-customer-drop-modal-kicker">
-            {$t('admin.network.map.asset_customer_drop.title') || 'Connected Customers'}
-          </div>
-          <h3 id="asset-customer-drop-modal-title">{assetCustomerDropModalTitle}</h3>
-        </div>
-        <button
-          class="asset-customer-drop-modal-close"
-          type="button"
-          onclick={closeTopologyAssetCustomerDropModal}
-        >
-          <Icon name="x" size={16} />
-        </button>
-      </div>
-
-      {#if assetCustomerDropItems.length > 0}
-        <div class="asset-customer-drop-list">
-          {#each assetCustomerDropItems as item (item.key)}
-            <article class="asset-customer-drop-card">
-              <div class="asset-customer-drop-card-main">
-                <div class="asset-customer-drop-card-copy">
-                  <div class="asset-customer-drop-card-head">
-                    <div class="asset-customer-drop-name">{item.customerName}</div>
-                    <span class={`asset-customer-drop-status ${item.visualState}`}>
-                      {customerDropStateLabel(item.visualState)}
-                    </span>
-                  </div>
-                  {#if item.locationLabel}
-                    <div class="asset-customer-drop-location">{item.locationLabel}</div>
-                  {/if}
-                  {#if item.serviceName}
-                    <div class="asset-customer-drop-service">{item.serviceName}</div>
-                  {/if}
-                </div>
-                <div class="asset-customer-drop-actions">
-                  <button
-                    class="btn ghost btn-xs"
-                    type="button"
-                    onclick={() => void closeCustomerDropModalAndFocus(item)}
-                  >
-                    {$t('admin.network.map.asset_customer_drop.view') || 'View'}
-                  </button>
-                </div>
-              </div>
-            </article>
-          {/each}
-        </div>
-      {:else}
-        <div class="asset-customer-drop-empty">
-          <Icon name="users" size={18} />
-          <span>
-            {$t('admin.network.map.asset_customer_drop.empty') ||
-              'No customers are connected to this asset yet.'}
-          </span>
-        </div>
-      {/if}
-    </div>
-  </div>
-{/if}
+<NetworkMapAssetCustomerDropModal
+  show={showAssetCustomerDropModal}
+  title={assetCustomerDropModalTitle}
+  items={assetCustomerDropItems}
+  onClose={closeTopologyAssetCustomerDropModal}
+  onView={(item) => void closeCustomerDropModalAndFocus(item)}
+/>
 
 {#if ConfirmDialogComponent}
   <ConfirmDialogComponent
@@ -3663,168 +3343,6 @@
     border-color: rgba(56, 189, 248, 0.2);
     color: #dbeafe;
     font-weight: 600;
-  }
-
-  .asset-customer-drop-modal-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-    display: grid;
-    place-items: center;
-    padding: 20px;
-    background: rgba(15, 23, 42, 0.72);
-  }
-
-  .asset-customer-drop-modal {
-    width: min(460px, calc(100vw - 24px));
-    max-height: min(72vh, 680px);
-    overflow: auto;
-    border-radius: var(--radius-lg);
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    background: rgba(15, 23, 42, 0.97);
-    box-shadow: 0 24px 64px rgba(2, 6, 23, 0.4);
-    padding: 14px;
-    color: #e2e8f0;
-  }
-
-  .asset-customer-drop-modal-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 10px;
-  }
-
-  .asset-customer-drop-modal-kicker {
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #93c5fd;
-    margin-bottom: 4px;
-  }
-
-  .asset-customer-drop-modal-head h3 {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 800;
-    color: #f8fafc;
-  }
-
-  .asset-customer-drop-modal-close {
-    width: 34px;
-    height: 34px;
-    display: inline-grid;
-    place-items: center;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    border-radius: 999px;
-    background: rgba(30, 41, 59, 0.84);
-    color: #cbd5e1;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
-  .asset-customer-drop-list {
-    display: grid;
-    gap: 8px;
-  }
-
-  .asset-customer-drop-card {
-    padding: 11px 12px;
-    border-radius: 14px;
-    border: 1px solid rgba(59, 130, 246, 0.12);
-    background: rgba(15, 23, 42, 0.72);
-  }
-
-  .asset-customer-drop-card-main {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 12px;
-    align-items: center;
-  }
-
-  .asset-customer-drop-card-copy {
-    min-width: 0;
-    display: grid;
-    gap: 4px;
-  }
-
-  .asset-customer-drop-card-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  .asset-customer-drop-name {
-    font-size: 0.88rem;
-    font-weight: 800;
-    color: #f8fafc;
-    line-height: 1.2;
-  }
-
-  .asset-customer-drop-location {
-    font-size: 0.76rem;
-    color: rgba(226, 232, 240, 0.72);
-    line-height: 1.25;
-  }
-
-  .asset-customer-drop-status {
-    display: inline-flex;
-    align-items: center;
-    min-height: 24px;
-    padding: 0 9px;
-    border-radius: 999px;
-    border: 1px solid rgba(251, 191, 36, 0.28);
-    background: rgba(30, 41, 59, 0.82);
-    color: #f8fafc;
-    font-size: 0.68rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .asset-customer-drop-status.normal {
-    color: #22c55e;
-    border-color: rgba(34, 197, 94, 0.34);
-    background: rgba(34, 197, 94, 0.12);
-  }
-
-  .asset-customer-drop-status.suspended {
-    color: #f59e0b;
-    border-color: rgba(245, 158, 11, 0.3);
-    background: rgba(245, 158, 11, 0.12);
-  }
-
-  .asset-customer-drop-status.internet_disconnected {
-    color: #f87171;
-    border-color: rgba(248, 113, 113, 0.32);
-    background: rgba(248, 113, 113, 0.12);
-  }
-
-  .asset-customer-drop-service {
-    font-size: 0.77rem;
-    color: #cbd5e1;
-    line-height: 1.25;
-  }
-
-  .asset-customer-drop-actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .asset-customer-drop-empty {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    min-height: 140px;
-    border-radius: var(--radius-lg);
-    border: 1px dashed rgba(148, 163, 184, 0.22);
-    color: rgba(226, 232, 240, 0.78);
-    text-align: center;
   }
 
   :global(.nm-popup-status-chips) {

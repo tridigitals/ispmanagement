@@ -582,3 +582,155 @@ function isActiveCustomerNode(node: Pick<NMNode, 'status'> | undefined) {
   const status = String(node?.status || '').trim().toLowerCase();
   return status === 'active' || status === 'up';
 }
+
+/**
+ * Minimal translator signature compatible with svelte-i18n's `$t`. Accepts a key
+ * plus optional interpolation values and returns the resolved string (possibly
+ * empty when the key is missing, which callers handle with `|| fallback`).
+ * The value type mirrors svelte-i18n's `InterpolationValues` so `$t` is assignable.
+ */
+export type TopologyAssetPopupTranslate = (
+  key: string,
+  options?: { values?: Record<string, string | number | boolean | Date | null | undefined> },
+) => string;
+
+export function escapeTopologyAssetPopupValue(input: unknown): string {
+  return String(input ?? '-')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+export function popupToneForAssetStatus(status: string): 'ok' | 'warn' | 'muted' {
+  if (status === 'installed' || status === 'available') return 'ok';
+  if (status === 'reserved' || status === 'faulty') return 'warn';
+  return 'muted';
+}
+
+export type TopologyAssetPopupButtonIds = {
+  closeBtnId: string;
+  connectBtnId: string;
+  editBtnId: string;
+  customerDropBtnId: string;
+};
+
+/**
+ * Pure HTML builder for the FTTH topology asset popup. Pre-resolved i18n is passed
+ * via `translate`; the component still owns map/state. Returns an HTML string.
+ */
+export function buildTopologyAssetPopupHtml(args: {
+  row: TopologyAssetRow;
+  buttonIds: TopologyAssetPopupButtonIds;
+  canManageFtthAssets: boolean;
+  translate: TopologyAssetPopupTranslate;
+}): string {
+  const { row, buttonIds, canManageFtthAssets, translate: t } = args;
+  const { closeBtnId, connectBtnId, editBtnId, customerDropBtnId } = buttonIds;
+  const esc = escapeTopologyAssetPopupValue;
+
+  const subtitle = row.locationLabel || row.assetTypeLabel;
+  const portUsage =
+    row.portCapacity != null && row.portCapacity > 0
+      ? {
+          total: row.portCapacity,
+          used: Math.max(row.portsUsed ?? 0, 0),
+          available: Math.max(row.portsAvailable ?? row.portCapacity - (row.portsUsed ?? 0), 0),
+        }
+      : null;
+  const usagePercent = portUsage ? Math.min((portUsage.used / portUsage.total) * 100, 100) : 0;
+  const portTone =
+    !portUsage || portUsage.used <= 0
+      ? 'muted'
+      : portUsage.available <= 0
+        ? 'danger'
+        : usagePercent >= 75
+          ? 'warn'
+          : 'ok';
+  const portStatusLabel = !portUsage
+    ? ''
+    : portUsage.available <= 0
+      ? t('admin.network.map.popup.port_full') || 'Full'
+      : portUsage.used <= 0
+        ? t('admin.network.map.popup.port_ready') || 'Ready'
+        : t('admin.network.map.popup.port_left', { values: { count: portUsage.available } }) ||
+          `${portUsage.available} port left`;
+  const canConnectAsset = row.canAcceptConnections;
+
+  return `
+      <div class="nm-popup-card nm-popup-card-link">
+        <div class="nm-popup-head">
+          <div>
+            <div class="nm-popup-kicker">${esc(t('admin.network.map.popup.asset_kicker') || 'FTTH Asset')}</div>
+            <div class="nm-popup-title">${esc(row.name)}</div>
+            <div class="nm-popup-subtitle">${esc(subtitle)}</div>
+          </div>
+          <span class="nm-popup-badge ${popupToneForAssetStatus(row.status)}">${esc(row.status)}</span>
+        </div>
+        ${
+          portUsage
+            ? `<div class="nm-popup-usage-card">
+                <div class="nm-popup-usage-head">
+                  <div>
+                    <div class="nm-popup-usage-label">${esc(t('admin.network.map.popup.port_usage') || 'Port Usage')}</div>
+                    <div class="nm-popup-usage-value">${esc(
+                      t('admin.network.map.popup.port_used', {
+                        values: { used: portUsage.used, total: portUsage.total },
+                      }) || `${portUsage.used}/${portUsage.total} used`,
+                    )}</div>
+                  </div>
+                  <span class="nm-popup-badge ${portTone}">${esc(portStatusLabel)}</span>
+                </div>
+                <div class="nm-popup-usage-bar" aria-hidden="true">
+                  <span class="nm-popup-usage-fill ${portTone}" style="width: ${usagePercent}%"></span>
+                </div>
+                <div class="nm-popup-usage-meta">
+                  <span>${esc(
+                    t('admin.network.map.popup.port_available', {
+                      values: { count: portUsage.available },
+                    }) || `${portUsage.available} available`,
+                  )}</span>
+                  <span>${esc(
+                    t('admin.network.map.popup.port_total', {
+                      values: { count: portUsage.total },
+                    }) || `${portUsage.total} total`,
+                  )}</span>
+                </div>
+              </div>`
+            : ''
+        }
+        ${
+          row.assetType === 'odp'
+            ? `<div class="nm-popup-relation-list">
+                <button id="${customerDropBtnId}" class="nm-popup-relation-action" type="button">
+                  <div class="nm-popup-relation-copy">
+                    <div class="nm-popup-label">${esc(t('admin.network.map.popup.view_customer') || 'View Customer')}</div>
+                    <div class="nm-popup-relation-hint">${esc(
+                      t('admin.network.map.popup.view_customer_hint') ||
+                        'Open connected customer list',
+                    )}</div>
+                  </div>
+                  <span class="nm-popup-relation-arrow" aria-hidden="true">›</span>
+                </button>
+              </div>`
+            : ''
+        }
+        <div class="nm-popup-actions nm-popup-actions-link">
+          ${
+            canManageFtthAssets
+              ? `<button id="${editBtnId}" class="nm-popup-btn" type="button">${esc(t('common.edit') || 'Edit')}</button>`
+              : ''
+          }
+          <button id="${connectBtnId}" class="nm-popup-btn primary" type="button" ${canConnectAsset ? '' : 'disabled'}>${esc(
+            canConnectAsset
+              ? t('admin.network.map.popup.connect') || 'Connect'
+              : t('admin.network.map.popup.port_full') || 'Full',
+          )}</button>
+          <button id="${closeBtnId}" class="nm-popup-btn nm-popup-btn-close" type="button">${esc(
+            t('common.close') || 'Close',
+          )}</button>
+        </div>
+      </div>
+    `;
+}
