@@ -1,0 +1,72 @@
+---
+name: Build Mobile Apps
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+  pull_request:
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test & Analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: stable
+          cache: true
+      - run: dart pub global activate melos
+      - run: melos bootstrap
+      - run: melos run analyze
+      - run: melos run test
+        if: always()
+
+  build-android:
+    name: Build Android (Customer)
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.ANDROID_KEYSTORE_REPO }}
+          path: keystore
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          cache: true
+      - run: echo "$KEYSTORE_BASE64" | base64 -d > apps/mobile-customer/android/app/upload-keystore.jks
+        env:
+          KEYSTORE_BASE64: ${{ secrets.CUSTOMER_KEYSTORE }}
+      - uses: gradle/actions/setup-gradle@v3
+      - run: melos bootstrap
+      - run: melos run build:customer:android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-customer-release
+          path: apps/mobile-customer/build/app/outputs/flutter-apk/app-release.apk
+
+  build-ios:
+    name: Build iOS (Customer)
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          cache: true
+      - run: melos bootstrap
+      - run: melos run build:customer:ios
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-customer-ios
+          path: apps/mobile-customer/build/ios/iphoneos/Runner.app

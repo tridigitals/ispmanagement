@@ -1,0 +1,47 @@
+name: isp_monorepo
+
+packages:
+  - apps/*
+  - packages/*
+
+command:
+  bootstrap:
+    runPubGetInParallel: true
+  version:
+    linkToCommits: false
+    workspaceChangelog: true
+
+scripts:
+  analyze:
+    description: Run dart analyze on all packages and apps
+    run: dart analyze .
+
+  format:
+    description: Format Dart code
+    run: dart format .
+
+  format:check:
+    description: Check Dart formatting
+    run: dart format --output=none --set-exit-if-changed .
+
+  test:
+    description: Run all tests
+    run: flutter test
+
+  build:customer:android:
+    description: Build Customer app Android APK
+    run: cd apps/mobile-customer && flutter build apk --release
+
+  build:customer:ios:
+    description: Build Customer app iOS
+    run: cd apps/mobile-customer && flutter build ios --release --no-codesign
+
+  codegen:
+    description: Generate API models and localizations
+    run: |
+      cd packages/api-client && dart run build_runner build --delete-conflicting-outputs
+      cd apps/mobile-customer && flutter gen-l10n
+
+  clean:
+    description: Clean all build artifacts
+    run: flutter clean && dart run build_runner clean

@@ -1,0 +1,100 @@
+name: mobile_customer
+description: ISP Management — Customer mobile app (Flutter, iOS + Android)
+version: 0.1.0+1
+publish_to: none
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Local monorepo packages
+  api_client:
+    path: ../../packages/api-client
+  ui_kit:
+    path: ../../packages/ui-kit
+
+  # State management
+  flutter_riverpod: ^2.5.1
+
+  # Navigation
+  go_router: ^14.6.1
+
+  # Networking
+  dio: ^5.7.0
+  web_socket_channel: ^3.0.1
+
+  # Storage
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.3
+
+  # UI
+  intl: ^0.19.0
+  flutter_svg: ^2.0.16
+  cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
+  pull_to_refresh: ^2.0.0
+  flutter_native_splash: ^2.4.4
+  flutter_launcher_icons: ^0.14.1
+  qr_flutter: ^4.1.0
+  connectivity_plus: ^6.1.0
+  url_launcher: ^6.3.1
+
+  # Auth
+  local_auth: ^2.3.0
+  otp: ^4.0.0
+
+  # Realtime
+  web_socket_channel: ^3.0.1
+
+  # Utils
+  equatable: ^2.0.5
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+  logger: ^2.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+  mocktail: ^1.0.4
+  integration_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.4
+
+flutter_native_splash:
+  color: "#08090D"
+  image: assets/branding/splash_logo.png
+  color_dark: "#08090D"
+  image_dark: assets/branding/splash_logo.png
+  android_12:
+    color: "#08090D"
+    image_dark: assets/branding/splash_logo.png
+    icon_background_color: "#08090D"
+  ios: true
+  android: true
+  web: false
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path_android: "assets/branding/app_icon_android.png"
+  image_path_ios: "assets/branding/app_icon_ios.png"
+  adaptive_icon_background: "#08090D"
+  adaptive_icon_foreground: "assets/branding/app_icon_foreground.png"
+  remove_alpha_ios: true
+
+flutter:
+  uses-material-design: true
+  generate: true
+  assets:
+    - assets/branding/

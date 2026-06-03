@@ -1,0 +1,19 @@
+name: isp_monorepo
+description: ISP Management monorepo - desktop (Tauri), mobile apps (Flutter), shared packages
+publish_to: none
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+workspace:
+  - apps/mobile-customer
+  - apps/mobile-admin
+  - apps/mobile-superadmin
+  - packages/api-client
+  - packages/ui-kit
+  - packages/config
+
+dev_dependencies:
+  melos: ^6.2.0
+  very_good_analysis: ^6.0.0
