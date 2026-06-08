@@ -5,9 +5,9 @@ import 'package:go_router/go_router.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
-import '../../../l10n/app_localizations.dart';
-import '../../../services/auth_providers.dart';
-import '../../../utils/form_validators.dart';
+import '../../l10n/app_localizations.dart';
+import '../../services/auth_providers.dart';
+import '../../utils/form_validators.dart';
 
 class RegisterWithInviteScreen extends ConsumerStatefulWidget {
   const RegisterWithInviteScreen({super.key});
@@ -89,7 +89,7 @@ class _State extends ConsumerState<RegisterWithInviteScreen> {
       },
       (err) => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(err.userMessage),
+          content: Text(err.message),
           backgroundColor: IspColors.danger,
         ),
       ),
@@ -150,7 +150,7 @@ class _State extends ConsumerState<RegisterWithInviteScreen> {
                   Container(
                     padding: const EdgeInsets.all(IspSpacing.md),
                     decoration: BoxDecoration(
-                      color: IspColors.success.withValues(alpha: 0.1),
+                      color: IspColors.success.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(IspRadii.md),
                     ),
                     child: Row(

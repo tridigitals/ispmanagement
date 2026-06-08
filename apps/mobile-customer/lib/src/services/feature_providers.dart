@@ -4,6 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_config.dart';
 import 'service_providers.dart';
 
+final announcementServiceProvider = Provider<AnnouncementService>((ref) {
+  return AnnouncementService(ref.watch(dioProvider));
+});
+
 final notificationServiceProvider = Provider<NotificationService>((ref) {
   return NotificationService(dio: ref.watch(dioProvider));
 });
@@ -16,5 +20,8 @@ final networkStatusServiceProvider = Provider<NetworkStatusService>((ref) {
 });
 
 final paymentServiceProvider = Provider<PaymentService>((ref) {
-  return PaymentService(dio: ref.watch(dioProvider));
+  return PaymentService(
+    dio: ref.watch(dioProvider),
+    storageService: ref.watch(storageServiceProvider),
+  );
 });

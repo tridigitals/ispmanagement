@@ -5,9 +5,9 @@ import 'package:go_router/go_router.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
-import '../../../l10n/app_localizations.dart';
-import '../../../services/auth_providers.dart';
-import '../../../utils/form_validators.dart';
+import '../../l10n/app_localizations.dart';
+import '../../services/auth_providers.dart';
+import '../../utils/form_validators.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -62,7 +62,7 @@ class _State extends ConsumerState<EditProfileScreen> {
       },
       (err) => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(err.userMessage),
+          content: Text(err.message),
           backgroundColor: IspColors.danger,
         ),
       ),

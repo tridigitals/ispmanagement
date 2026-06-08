@@ -1,5 +1,6 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:otp/otp.dart';
@@ -7,9 +8,9 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
-import '../../../l10n/app_localizations.dart';
-import '../../../services/auth_providers.dart';
-import '../../../utils/form_validators.dart';
+import '../../l10n/app_localizations.dart';
+import '../../services/auth_providers.dart';
+import '../../utils/form_validators.dart';
 
 class TwoFactorEnrollScreen extends ConsumerStatefulWidget {
   const TwoFactorEnrollScreen({super.key});
@@ -49,6 +50,7 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
     if (_enrollment == null) return '------';
     return OTP.generateTOTPCodeString(
       _enrollment!.secret,
+      DateTime.now().millisecondsSinceEpoch,
       interval: _enrollment!.periodSeconds,
       algorithm: Algorithm.SHA1,
       isGoogle: true,
@@ -78,7 +80,7 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
       },
       (err) => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(err.userMessage),
+          content: Text(err.message),
           backgroundColor: IspColors.danger,
         ),
       ),
@@ -134,14 +136,14 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
                                       BorderRadius.circular(IspRadii.md),
                                 ),
                                 child: QrImageView(
-                                  data: enrollment.otpAuthUri,
+                                  data: enrollment!.otpAuthUri,
                                   version: QrVersions.auto,
                                   size: 200,
                                 ),
                               ),
                               const SizedBox(height: IspSpacing.md),
                               SelectableText(
-                                enrollment.secret,
+                                enrollment!.secret,
                                 style: const TextStyle(
                                   fontFamily: 'monospace',
                                   fontSize: 14,

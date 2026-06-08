@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart';
 
-import 'package:mobile_customer/src/utils/error_state.dart';
-
 void main() {
   testWidgets('IspErrorState shows message and retry button', (tester) async {
     var retried = 0;

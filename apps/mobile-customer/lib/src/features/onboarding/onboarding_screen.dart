@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
-class OnboardingScreen extends StatefulWidget {
+import '../../services/missing_providers.dart';
+
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
   @override
-  State<OnboardingScreen> createState() => _State();
+  ConsumerState<OnboardingScreen> createState() => _State();
 }
 
-class _State extends State<OnboardingScreen> {
+class _State extends ConsumerState<OnboardingScreen> {
   final _controller = PageController();
   int _page = 0;
 
@@ -38,6 +41,14 @@ class _State extends State<OnboardingScreen> {
     ),
   ];
 
+  Future<void> _completeOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_completed', true);
+    // Update Riverpod provider so router redirect knows onboarding is done
+    ref.read(onboardingCompletedProvider.notifier).state = true;
+    if (mounted) context.go('/login');
+  }
+
   Future<void> _next() async {
     if (_page < _pages.length - 1) {
       await _controller.nextPage(
@@ -45,16 +56,12 @@ class _State extends State<OnboardingScreen> {
         curve: Curves.easeOut,
       );
     } else {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('onboarding_completed', true);
-      if (mounted) context.go('/login');
+      await _completeOnboarding();
     }
   }
 
-  void _skip() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_completed', true);
-    if (mounted) context.go('/login');
+  Future<void> _skip() async {
+    await _completeOnboarding();
   }
 
   @override
@@ -138,7 +145,7 @@ class _OnboardPage extends StatelessWidget {
             width: 160,
             height: 160,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: color.withOpacity(0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 80, color: color),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:api_client/api_client.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,8 +11,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
-import '../../../l10n/app_localizations.dart';
-import '../../../services/payment_providers.dart';
+import '../../l10n/app_localizations.dart';
+import '../../services/feature_providers.dart';
+import '../../services/payment_providers.dart';
+import '../../utils/loading_skeleton.dart';
 
 /// Active payment screen — shows VA number / QR / redirect URL with auto-poll.
 class PaymentInstructionScreen extends ConsumerStatefulWidget {
@@ -31,7 +34,6 @@ class PaymentInstructionScreen extends ConsumerStatefulWidget {
 class _PaymentInstructionScreenState
     extends ConsumerState<PaymentInstructionScreen> {
   Timer? _pollTimer;
-  int _secondsRemaining = 0;
 
   @override
   void initState() {
@@ -56,8 +58,11 @@ class _PaymentInstructionScreenState
     return Scaffold(
       appBar: AppBar(title: Text(l10n.paymentInstruction)),
       body: txnAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text(e.toString())),
+        loading: () => const _PaymentInstructionSkeleton(),
+        error: (e, _) => IspErrorState(
+          message: e.toString(),
+          onRetry: () => ref.invalidate(paymentStatusProvider(widget.transactionId)),
+        ),
         data: (txn) {
           // Stop polling once terminal state.
           if (txn.isPaid || txn.isExpired || txn.isFailed) {
@@ -73,19 +78,95 @@ class _PaymentInstructionScreenState
   }
 }
 
-class _Body extends StatelessWidget {
+class _Body extends ConsumerStatefulWidget {
   const _Body({required this.txn, required this.invoiceId});
   final PaymentTransaction txn;
   final String invoiceId;
 
   @override
+  ConsumerState<_Body> createState() => _BodyState();
+}
+
+class _BodyState extends ConsumerState<_Body> {
+  bool _uploadingProof = false;
+
+  Future<void> _pickAndUploadProof() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+      );
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.first;
+      if (file.path == null) return;
+
+      setState(() => _uploadingProof = true);
+
+      final ext = file.name.split('.').last.toLowerCase();
+      String contentType;
+      switch (ext) {
+        case 'jpg':
+        case 'jpeg':
+          contentType = 'image/jpeg';
+          break;
+        case 'png':
+          contentType = 'image/png';
+          break;
+        case 'pdf':
+          contentType = 'application/pdf';
+          break;
+        default:
+          contentType = 'application/octet-stream';
+      }
+
+      final svc = ref.read(paymentServiceProvider);
+      final res = await svc.submitPaymentProof(
+        invoiceId: widget.invoiceId,
+        filePath: file.path!,
+        fileName: file.name,
+        contentType: contentType,
+      );
+
+      if (!mounted) return;
+      res.fold(
+        (_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Bukti pembayaran berhasil diunggah'),
+              backgroundColor: IspColors.success,
+            ),
+          );
+        },
+        (error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gagal mengunggah: ${error.message}'),
+              backgroundColor: IspColors.danger,
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal memilih file: $e'),
+          backgroundColor: IspColors.danger,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _uploadingProof = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
     final l10n = AppLocalizations.of(context)!;
-    if (txn.isPaid) {
+    if (widget.txn.isPaid) {
       return _SuccessView(
-        amount: fmt.format(txn.amount),
-        onContinue: () => context.go('/invoices/$invoiceId'),
+        amount: fmt.format(widget.txn.amount),
+        onContinue: () => context.go('/invoices/${widget.invoiceId}'),
       );
     }
     return SingleChildScrollView(
@@ -97,7 +178,7 @@ class _Body extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(IspSpacing.lg),
             decoration: BoxDecoration(
-              color: IspColors.warning.withValues(alpha: 0.1),
+              color: IspColors.warning.withOpacity(0.1),
               borderRadius: BorderRadius.circular(IspRadii.lg),
             ),
             child: Column(
@@ -106,23 +187,23 @@ class _Body extends StatelessWidget {
                   l10n.totalPayment,
                   style: const TextStyle(color: IspColors.textTertiary),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: IspSpacing.xs),
                 Text(
-                  fmt.format(txn.amount),
+                  fmt.format(widget.txn.amount),
                   style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 12),
-                if (txn.expiredAt != null)
-                  _Countdown(expiresAt: txn.expiredAt!),
-                const SizedBox(height: 8),
+                const SizedBox(height: IspSpacing.md),
+                if (widget.txn.expiredAt != null)
+                  _Countdown(expiresAt: widget.txn.expiredAt!),
+                const SizedBox(height: IspSpacing.sm),
                 IspStatusBadge(
-                  label: txn.statusLabel,
-                  tone: txn.isPending
+                  label: widget.txn.statusLabel,
+                  tone: widget.txn.isPending
                       ? StatusTone.warning
-                      : txn.isExpired
+                      : widget.txn.isExpired
                           ? StatusTone.danger
                           : StatusTone.neutral,
                 ),
@@ -131,27 +212,42 @@ class _Body extends StatelessWidget {
           ),
           const SizedBox(height: IspSpacing.lg),
           // Payment-specific UI.
-          if (txn.method == PaymentMethod.qris && txn.qrCodeUrl != null)
-            _QrisView(qrUrl: txn.qrCodeUrl!)
-          else if (txn.method == PaymentMethod.virtualAccount &&
-              txn.vaNumber != null)
-            _VirtualAccountView(vaNumber: txn.vaNumber!)
-          else if (txn.method == PaymentMethod.ewallet &&
-              txn.paymentUrl != null)
+          if (widget.txn.method == PaymentMethod.qris && widget.txn.qrCodeUrl != null)
+            _QrisView(qrUrl: widget.txn.qrCodeUrl!)
+          else if (widget.txn.method == PaymentMethod.virtualAccount &&
+              widget.txn.vaNumber != null)
+            _VirtualAccountView(vaNumber: widget.txn.vaNumber!)
+          else if (widget.txn.method == PaymentMethod.ewallet &&
+              widget.txn.paymentUrl != null)
             _EWalletView(
-              paymentUrl: txn.paymentUrl!,
-              actions: txn.actions ?? const [],
+              paymentUrl: widget.txn.paymentUrl!,
+              actions: widget.txn.actions ?? const [],
             )
-          else if (txn.paymentCode != null)
-            _PaymentCodeView(code: txn.paymentCode!)
+          else if (widget.txn.paymentCode != null)
+            _PaymentCodeView(code: widget.txn.paymentCode!)
           else
             _GenericView(
               message:
-                  'Selesaikan pembayaran di aplikasi ${txn.method.label} Anda',
+                  'Selesaikan pembayaran di aplikasi ${widget.txn.method.label} Anda',
             ),
           const SizedBox(height: IspSpacing.lg),
+          // Upload payment proof button
+          OutlinedButton.icon(
+            onPressed: _uploadingProof ? null : _pickAndUploadProof,
+            icon: _uploadingProof
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.upload_file),
+            label: Text(_uploadingProof
+                ? 'Mengunggah...'
+                : 'Upload Bukti Pembayaran'),
+          ),
+          const SizedBox(height: IspSpacing.sm),
           OutlinedButton(
-            onPressed: () => context.go('/invoices/$invoiceId'),
+            onPressed: () => context.go('/invoices/${widget.invoiceId}'),
             child: const Text('Saya sudah bayar'),
           ),
         ],
@@ -166,34 +262,34 @@ class _QrisView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const Text(
-              'Scan QRIS dengan e-wallet Anda',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
+    return IspCard(
+      child: Column(
+        children: [
+          const Text(
+            'Scan QRIS dengan e-wallet Anda',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: IspSpacing.lg),
+          Container(
+            padding: const EdgeInsets.all(IspSpacing.lg),
+            decoration: BoxDecoration(
               color: Colors.white,
-              child: QrImageView(
-                data: qrUrl,
-                version: QrVersions.auto,
-                size: 240,
-                errorCorrectionLevel: QrErrorCorrectLevel.M,
-              ),
+              borderRadius: BorderRadius.circular(IspRadii.md),
             ),
-            const SizedBox(height: 12),
-            const Text(
-              'Berlaku untuk semua aplikasi e-wallet dan mobile banking',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: IspColors.textTertiary),
+            child: QrImageView(
+              data: qrUrl,
+              version: QrVersions.auto,
+              size: 240,
+              errorCorrectionLevel: QrErrorCorrectLevel.M,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: IspSpacing.md),
+          const Text(
+            'Berlaku untuk semua aplikasi e-wallet dan mobile banking',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: IspColors.textTertiary),
+          ),
+        ],
       ),
     );
   }
@@ -205,31 +301,28 @@ class _VirtualAccountView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const Text('Nomor Virtual Account',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 16),
-            SelectableText(
-              vaNumber,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.5,
-              ),
+    return IspCard(
+      child: Column(
+        children: [
+          const Text('Nomor Virtual Account',
+              style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: IspSpacing.lg),
+          SelectableText(
+            vaNumber,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.5,
             ),
-            const SizedBox(height: 12),
-            const Text(
-              'Lakukan transfer ke nomor VA di atas melalui mobile banking atau ATM. '
-              'Pembayaran akan otomatis terdeteksi dalam 1-2 menit.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: IspColors.textTertiary),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: IspSpacing.md),
+          const Text(
+            'Lakukan transfer ke nomor VA di atas melalui mobile banking atau ATM. '
+            'Pembayaran akan otomatis terdeteksi dalam 1-2 menit.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: IspColors.textTertiary),
+          ),
+        ],
       ),
     );
   }
@@ -242,39 +335,36 @@ class _EWalletView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const Icon(Icons.account_balance_wallet, size: 48),
-            const SizedBox(height: 16),
-            const Text(
-              'Selesaikan pembayaran di aplikasi e-wallet',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            for (final action in actions)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: ElevatedButton(
-                  onPressed: () => launchUrl(
-                    Uri.parse(action.url),
-                    mode: LaunchMode.externalApplication,
-                  ),
-                  child: Text('Buka ${action.name}'),
-                ),
-              ),
-            if (actions.isEmpty)
-              ElevatedButton(
+    return IspCard(
+      child: Column(
+        children: [
+          const Icon(Icons.account_balance_wallet, size: 48),
+          const SizedBox(height: IspSpacing.lg),
+          const Text(
+            'Selesaikan pembayaran di aplikasi e-wallet',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: IspSpacing.lg),
+          for (final action in actions)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: IspSpacing.xs),
+              child: ElevatedButton(
                 onPressed: () => launchUrl(
-                  Uri.parse(paymentUrl),
+                  Uri.parse(action.url),
                   mode: LaunchMode.externalApplication,
                 ),
-                child: const Text('Buka aplikasi'),
+                child: Text('Buka ${action.name}'),
               ),
-          ],
-        ),
+            ),
+          if (actions.isEmpty)
+            ElevatedButton(
+              onPressed: () => launchUrl(
+                Uri.parse(paymentUrl),
+                mode: LaunchMode.externalApplication,
+              ),
+              child: const Text('Buka aplikasi'),
+            ),
+        ],
       ),
     );
   }
@@ -285,24 +375,21 @@ class _PaymentCodeView extends StatelessWidget {
   final String code;
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const Text('Kode Pembayaran',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12),
-            SelectableText(
-              code,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.2,
-              ),
+    return IspCard(
+      child: Column(
+        children: [
+          const Text('Kode Pembayaran',
+              style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: IspSpacing.md),
+          SelectableText(
+            code,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -313,12 +400,9 @@ class _GenericView extends StatelessWidget {
   final String message;
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: Text(message, textAlign: TextAlign.center),
-        ),
+    return IspCard(
+      child: Center(
+        child: Text(message, textAlign: TextAlign.center),
       ),
     );
   }
@@ -384,7 +468,7 @@ class _SuccessView extends StatelessWidget {
               'Pembayaran Berhasil!',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: IspSpacing.sm),
             Text(
               amount,
               style: const TextStyle(
@@ -393,7 +477,7 @@ class _SuccessView extends StatelessWidget {
                 color: IspColors.success,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: IspSpacing.xl),
             ElevatedButton(
               onPressed: onContinue,
               child: const Text('Lihat Tagihan'),
@@ -401,6 +485,45 @@ class _SuccessView extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Skeleton loading state for payment instruction screen.
+class _PaymentInstructionSkeleton extends StatelessWidget {
+  const _PaymentInstructionSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(IspSpacing.lg),
+      children: [
+        // Status header skeleton
+        Container(
+          padding: const EdgeInsets.all(IspSpacing.lg),
+          decoration: BoxDecoration(
+            color: IspColors.bgSurface,
+            borderRadius: BorderRadius.circular(IspRadii.lg),
+          ),
+          child: const Column(
+            children: [
+              IspShimmer.line(width: 100),
+              SizedBox(height: IspSpacing.xs),
+              IspShimmer.line(width: 200, height: 28),
+              SizedBox(height: IspSpacing.md),
+              IspShimmer.line(width: 140),
+              SizedBox(height: IspSpacing.sm),
+              IspShimmer.line(width: 80, height: 24),
+            ],
+          ),
+        ),
+        const SizedBox(height: IspSpacing.lg),
+        // Payment method card skeleton
+        const IspSkeletonCard(height: 280),
+        const SizedBox(height: IspSpacing.lg),
+        // Button skeleton
+        const IspShimmer.box(height: 48),
+      ],
     );
   }
 }

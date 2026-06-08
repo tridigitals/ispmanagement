@@ -5,9 +5,9 @@ import 'package:go_router/go_router.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
-import '../../../l10n/app_localizations.dart';
-import '../../../services/auth_providers.dart';
-import '../../../utils/form_validators.dart';
+import '../../l10n/app_localizations.dart';
+import '../../services/auth_providers.dart';
+import '../../utils/form_validators.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -46,7 +46,7 @@ class _State extends ConsumerState<ForgotPasswordScreen> {
       _sending = false;
       _done = res.fold(
         (_) => 'Kami mengirim tautan reset ke email Anda. Cek inbox/spam.',
-        (err) => err.userMessage,
+        (err) => err.message,
       );
     });
   }
@@ -113,7 +113,7 @@ class _State extends ConsumerState<ForgotPasswordScreen> {
                   Container(
                     padding: const EdgeInsets.all(IspSpacing.md),
                     decoration: BoxDecoration(
-                      color: IspColors.success.withValues(alpha: 0.1),
+                      color: IspColors.success.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(IspRadii.md),
                     ),
                     child: Row(

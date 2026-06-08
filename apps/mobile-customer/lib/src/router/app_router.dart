@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-import 'package:ui_kit/ui_kit.dart';
-
+import '../features/announcements/announcement_detail_screen.dart';
+import '../features/announcements/announcements_screen.dart';
 import '../features/auth/forgot_password_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/otp_login_screen.dart';
@@ -20,32 +18,30 @@ import '../features/notifications/notification_inbox_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/payments/payment_instruction_screen.dart';
 import '../features/payments/payment_screen.dart';
+import '../features/payments/payment_webview_screen.dart';
 import '../features/profile/change_password_screen.dart';
 import '../features/profile/edit_profile_screen.dart';
+import '../features/profile/profile_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/subscriptions/subscription_detail_screen.dart';
 import '../features/tickets/new_ticket_screen.dart';
 import '../features/tickets/ticket_detail_screen.dart';
 import '../services/auth_providers.dart';
-import '../services/feature_providers.dart';
-import '../services/notification_service.dart';
+import '../services/missing_providers.dart';
 
 GoRouter buildAppRouter({
   required WidgetRef ref,
   required ProviderContainer container,
+  GlobalKey<NavigatorState>? navigatorKey,
 }) {
   return GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: '/',
-    refreshListenable: GoRouterRefreshStream(
-      container.listen(authControllerProvider, (_, __) {}),
-    ),
+    refreshListenable: container.read(authStateProvider),
     redirect: (context, state) async {
       final auth = container.read(authControllerProvider);
       final loggedIn = auth.isAuthenticated;
-      final onboardingDone = container
-              .read(onboardingCompletedProvider)
-              .valueOrNull ??
-          true;
+      final onboardingDone = container.read(onboardingCompletedProvider);
       final loc = state.matchedLocation;
       final isPublic = loc == '/login' ||
           loc == '/login/otp' ||
@@ -104,8 +100,12 @@ GoRouter buildAppRouter({
       ),
       GoRoute(
         path: '/2fa/verify',
+        redirect: (context, state) {
+          if (state.extra == null) return '/login';
+          return null;
+        },
         builder: (_, state) => TwoFactorVerifyScreen(
-          pendingToken: state.extra as String,
+          pendingToken: (state.extra as String?) ?? '',
         ),
       ),
       GoRoute(
@@ -141,6 +141,16 @@ GoRouter buildAppRouter({
             builder: (_, __) => const ContactScreen(),
           ),
           GoRoute(
+            path: 'announcements',
+            builder: (_, __) => const AnnouncementsScreen(),
+          ),
+          GoRoute(
+            path: 'announcements/:id',
+            builder: (_, state) => AnnouncementDetailScreen(
+              id: state.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
             path: 'subscriptions/:id',
             builder: (_, state) =>
                 SubscriptionDetailScreen(id: state.pathParameters['id']!),
@@ -164,10 +174,20 @@ GoRouter buildAppRouter({
             builder: (_, state) => PaymentScreen(
               invoiceId: state.pathParameters['invoiceId']!,
             ),
+            routes: [
+              GoRoute(
+                path: 'webview',
+                builder: (_, state) => PaymentWebViewScreen(
+                  paymentUrl: state.extra as String,
+                  invoiceId: state.pathParameters['invoiceId']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
-            path: 'payments/:transactionId/instructions',
+            path: 'payments/:invoiceId/:transactionId/instructions',
             builder: (_, state) => PaymentInstructionScreen(
+              invoiceId: state.pathParameters['invoiceId']!,
               transactionId: state.pathParameters['transactionId']!,
             ),
           ),

@@ -7,10 +7,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
-import '../../../l10n/app_localizations.dart';
-import '../../../services/auth_providers.dart';
-import '../../../services/feature_providers.dart';
-import '../../../services/notification_service.dart';
+import '../../l10n/app_localizations.dart';
+import '../../services/auth_providers.dart';
+import '../../services/feature_providers.dart';
+import '../../services/missing_providers.dart';
+import '../../services/settings_providers.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -23,10 +24,10 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(title: Text(l10n.settings)),
       body: ListView(
         children: [
-          const SizedBox(height: 8),
+          const SizedBox(height: IspSpacing.sm),
           _SectionHeader(label: l10n.account),
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          IspCard(
+            margin: const EdgeInsets.symmetric(horizontal: IspSpacing.md, vertical: IspSpacing.xs),
             child: Column(
               children: [
                 _SwitchTile(
@@ -63,17 +64,17 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: IspSpacing.lg),
           _SectionHeader(label: l10n.notifications),
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          IspCard(
+            margin: const EdgeInsets.symmetric(horizontal: IspSpacing.md, vertical: IspSpacing.xs),
             child: Column(
               children: [
                 _SwitchTile(
                   icon: Icons.receipt_long,
                   title: l10n.notifInvoice,
                   subtitle: l10n.notifInvoiceSub,
-                  value: ref.watch(notifInvoiceEnabledProvider).valueOrNull ?? true,
+                  value: ref.watch(notifInvoiceEnabledProvider),
                   onChanged: (v) => ref
                       .read(notifInvoiceEnabledProvider.notifier)
                       .set(v),
@@ -83,7 +84,7 @@ class SettingsScreen extends ConsumerWidget {
                   icon: Icons.warning_amber,
                   title: l10n.notifOutage,
                   subtitle: l10n.notifOutageSub,
-                  value: ref.watch(notifOutageEnabledProvider).valueOrNull ?? true,
+                  value: ref.watch(notifOutageEnabledProvider),
                   onChanged: (v) => ref
                       .read(notifOutageEnabledProvider.notifier)
                       .set(v),
@@ -93,7 +94,7 @@ class SettingsScreen extends ConsumerWidget {
                   icon: Icons.local_offer,
                   title: l10n.notifPromo,
                   subtitle: l10n.notifPromoSub,
-                  value: ref.watch(notifPromoEnabledProvider).valueOrNull ?? false,
+                  value: ref.watch(notifPromoEnabledProvider),
                   onChanged: (v) => ref
                       .read(notifPromoEnabledProvider.notifier)
                       .set(v),
@@ -101,24 +102,56 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: IspSpacing.lg),
+          _SectionHeader(label: 'Bahasa / Language'),
+          IspCard(
+            margin: const EdgeInsets.symmetric(horizontal: IspSpacing.md, vertical: IspSpacing.xs),
+            child: Column(
+              children: [
+                RadioListTile<Locale>(
+                  secondary: const Icon(Icons.language),
+                  title: const Text('Bahasa Indonesia'),
+                  value: const Locale('id'),
+                  groupValue: Localizations.localeOf(context),
+                  onChanged: (locale) {
+                    if (locale != null) {
+                      ref.read(localeProvider.notifier).setLocale(locale);
+                    }
+                  },
+                ),
+                const Divider(height: 1, color: IspColors.borderSubtle),
+                RadioListTile<Locale>(
+                  secondary: const Icon(Icons.language),
+                  title: const Text('English'),
+                  value: const Locale('en'),
+                  groupValue: Localizations.localeOf(context),
+                  onChanged: (locale) {
+                    if (locale != null) {
+                      ref.read(localeProvider.notifier).setLocale(locale);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: IspSpacing.lg),
           _SectionHeader(label: l10n.about),
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          IspCard(
+            margin: const EdgeInsets.symmetric(horizontal: IspSpacing.md, vertical: IspSpacing.xs),
             child: Column(
               children: [
                 ListTile(
                   leading: const Icon(Icons.privacy_tip_outlined),
                   title: Text(l10n.privacyPolicy),
                   trailing: const Icon(Icons.open_in_new),
-                  onTap: () => _openUrl('https://example.com/privacy'),
+                  onTap: () => _openUrl('https://tridigitals.com/privacy'),
                 ),
                 const Divider(height: 1, color: IspColors.borderSubtle),
                 ListTile(
                   leading: const Icon(Icons.description_outlined),
                   title: Text(l10n.termsOfService),
                   trailing: const Icon(Icons.open_in_new),
-                  onTap: () => _openUrl('https://example.com/terms'),
+                  onTap: () => _openUrl('https://tridigitals.com/terms'),
                 ),
                 const Divider(height: 1, color: IspColors.borderSubtle),
                 const ListTile(
@@ -132,7 +165,7 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: IspSpacing.xxl),
         ],
       ),
     );
@@ -165,9 +198,7 @@ class SettingsScreen extends ConsumerWidget {
           options: const AuthenticationOptions(stickyAuth: true),
         );
         if (ok) {
-          await ref
-              .read(biometricEnabledProvider.notifier)
-              .set(true);
+          await ref.read(biometricEnabledProvider.notifier).set(true);
         }
       } catch (e) {
         if (context.mounted) {
@@ -177,9 +208,7 @@ class SettingsScreen extends ConsumerWidget {
         }
       }
     } else {
-      await ref
-          .read(biometricEnabledProvider.notifier)
-          .set(false);
+      await ref.read(biometricEnabledProvider.notifier).set(false);
     }
   }
 
@@ -238,7 +267,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      padding: const EdgeInsets.fromLTRB(20, IspSpacing.lg, 20, IspSpacing.sm),
       child: Text(
         label.toUpperCase(),
         style: const TextStyle(

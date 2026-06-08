@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,7 +8,9 @@ import 'l10n/app_localizations.dart';
 import 'router/app_router.dart';
 import 'services/app_config.dart';
 import 'services/auth_providers.dart';
-import 'services/service_providers.dart';
+import 'services/fcm_service.dart';
+import 'services/realtime_listener.dart';
+import 'services/settings_providers.dart';
 import 'theme/app_theme.dart';
 
 class IspCustomerApp extends ConsumerStatefulWidget {
@@ -22,14 +23,28 @@ class _State extends ConsumerState<IspCustomerApp> {
   late final AppConfig _config;
   late final GoRouter _router;
   late final ProviderContainer _container;
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
-    _config = const AppConfig.fromEnv();
-    _container = ProviderScope.containerOf(context);
-    _router = buildAppRouter(ref: ref, container: _container);
+    _config = AppConfig.fromEnv();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+    _container = ProviderScope.containerOf(context, listen: false);
+    _router = buildAppRouter(
+      ref: ref,
+      container: _container,
+      navigatorKey: ref.read(navigatorKeyProvider),
+    );
     ref.read(apiClientProvider); // eagerly init
+    // Restore auth session from secure storage on app start.
+    Future.microtask(() => ref.read(authControllerProvider.notifier).bootstrap());
   }
 
   @override
@@ -38,6 +53,12 @@ class _State extends ConsumerState<IspCustomerApp> {
     ref.listen<AuthState>(authControllerProvider, (prev, next) {
       if (prev?.isAuthenticated != next.isAuthenticated) {
         _router.refresh();
+        // Init FCM after login. Use force=true so a logout→login cycle
+        // re-registers the device token (the Riverpod provider keeps the
+        // same FcmService instance alive across auth state changes).
+        if (next.isAuthenticated) {
+          ref.read(fcmServiceProvider).init(force: true);
+        }
       }
     });
 
@@ -45,7 +66,7 @@ class _State extends ConsumerState<IspCustomerApp> {
       title: _config.appTitle,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.dark,
+      themeMode: ref.watch(themeModeProvider),
       debugShowCheckedModeBanner: false,
       routerConfig: _router,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -58,7 +79,11 @@ class _State extends ConsumerState<IspCustomerApp> {
             textScaler:
                 mq.textScaler.clamp(minScaleFactor: 0.9, maxScaleFactor: 1.3),
           ),
-          child: IspToastOverlay(child: child ?? const SizedBox.shrink()),
+          child: IspToastOverlay(
+            child: RealtimeNotificationListener(
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
         );
       },
     );

@@ -1,13 +1,14 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
-import '../../../l10n/app_localizations.dart';
-import '../../../services/auth_providers.dart';
-import '../../../utils/form_validators.dart';
+import '../../l10n/app_localizations.dart';
+import '../../services/auth_providers.dart';
+import '../../utils/form_validators.dart';
 
 class OtpVerifyScreen extends ConsumerStatefulWidget {
   const OtpVerifyScreen({super.key, this.phone});
@@ -48,7 +49,7 @@ class _State extends ConsumerState<OtpVerifyScreen> {
       (_) => context.go('/'),
       (err) => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(err.userMessage),
+          content: Text(err.message),
           backgroundColor: IspColors.danger,
         ),
       ),
@@ -69,7 +70,7 @@ class _State extends ConsumerState<OtpVerifyScreen> {
         _startCooldown();
       },
       (err) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(err.userMessage)),
+        SnackBar(content: Text(err.message)),
       ),
     );
   }

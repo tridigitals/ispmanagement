@@ -2,9 +2,10 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../l10n/app_localizations.dart';
-import '../services/network_status_providers.dart';
 import 'package:ui_kit/ui_kit.dart';
+
+import '../../../l10n/app_localizations.dart';
+import '../../../services/network_status_providers.dart';
 
 /// Sticky banner that shows outage/maintenance status on the home screen.
 class NetworkStatusBanner extends ConsumerWidget {
@@ -58,7 +59,7 @@ class _Banner extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 0),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: color.withValues(alpha: 0.12),
+      color: color.withOpacity(0.12),
       child: Row(
         children: [
           Icon(icon, color: color, size: 20),

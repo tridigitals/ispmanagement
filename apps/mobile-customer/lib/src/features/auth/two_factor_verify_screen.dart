@@ -1,13 +1,14 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
-import '../../../l10n/app_localizations.dart';
-import '../../../services/auth_providers.dart';
-import '../../../utils/form_validators.dart';
+import '../../l10n/app_localizations.dart';
+import '../../services/auth_providers.dart';
+import '../../utils/form_validators.dart';
 
 /// 2FA verification at login. The login_screen should push this if the
 /// server returns `requires_2fa: true` from `/api/auth/login`.
@@ -41,9 +42,8 @@ class _State extends ConsumerState<TwoFactorVerifyScreen> {
     final res = await ref
         .read(authControllerProvider.notifier)
         .verify2fa(
-          pendingToken: widget.pendingToken,
+          tempToken: widget.pendingToken,
           code: _code.text.trim(),
-          isBackupCode: _usingBackup,
         );
     if (!mounted) return;
     setState(() => _verifying = false);
@@ -51,7 +51,7 @@ class _State extends ConsumerState<TwoFactorVerifyScreen> {
       (_) => context.go('/'),
       (err) => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(err.userMessage),
+          content: Text(err.message),
           backgroundColor: IspColors.danger,
         ),
       ),

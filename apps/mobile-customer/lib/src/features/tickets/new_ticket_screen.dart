@@ -1,11 +1,13 @@
+import 'package:api_client/api_client.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
-import '../../../l10n/app_localizations.dart';
-import '../../../services/service_providers.dart';
+import '../../l10n/app_localizations.dart';
+import '../../services/service_providers.dart';
 
 class NewTicketScreen extends ConsumerStatefulWidget {
   const NewTicketScreen({super.key});
@@ -21,6 +23,9 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
   String _priority = 'normal';
   bool _submitting = false;
 
+  /// Pending attachments: (filePath, fileName, contentType)
+  final List<_PendingAttachment> _pendingAttachments = [];
+
   @override
   void dispose() {
     _subjectCtrl.dispose();
@@ -28,23 +33,104 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
     super.dispose();
   }
 
+  Future<void> _pickFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      setState(() {
+        for (final file in result.files) {
+          if (file.path == null) continue;
+          if (_pendingAttachments.any((a) => a.filePath == file.path)) continue;
+          _pendingAttachments.add(_PendingAttachment(
+            filePath: file.path!,
+            fileName: file.name,
+            contentType: _guessContentType(file.name),
+            size: file.size,
+          ));
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memilih file: $e')),
+      );
+    }
+  }
+
+  void _removeAttachment(int index) {
+    setState(() => _pendingAttachments.removeAt(index));
+  }
+
+  Future<List<String>> _uploadPendingAttachments(String ticketId) async {
+    if (_pendingAttachments.isEmpty) return [];
+
+    final storageSvc = ref.read(storageServiceProvider);
+    final ids = <String>[];
+
+    for (final att in _pendingAttachments) {
+      final ServiceResult<String> res = await storageSvc.uploadFile(
+        filePath: att.filePath,
+        fileName: att.fileName,
+        contentType: att.contentType,
+        ticketId: ticketId,
+        supportTicketAttachment: true,
+      );
+      switch (res) {
+        case Success(:final data):
+          ids.add(data);
+        case Failure(:final exception):
+          throw exception.message;
+      }
+    }
+
+    return ids;
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitting = true);
-    final res = await ref.read(ticketServiceProvider).create(
-          subject: _subjectCtrl.text.trim(),
-          description: _descriptionCtrl.text.trim(),
-          priority: _priority,
-        );
-    if (!mounted) return;
-    setState(() => _submitting = false);
-    switch (res) {
-      case Success(:final data):
-        context.go('/tickets/${data.id}');
-      case Failure(:final exception):
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(exception.message)),
-        );
+
+    try {
+      // Create the ticket first. Attachment upload needs a ticket_id for customer authorization.
+      final svc = ref.read(ticketServiceProvider);
+      final ServiceResult<TicketModel> res = await svc.create(
+        subject: _subjectCtrl.text.trim(),
+        message: _descriptionCtrl.text.trim(),
+        priority: _priority,
+      );
+
+      if (!mounted) return;
+      switch (res) {
+        case Success(:final data):
+          final ticket = data!;
+          if (_pendingAttachments.isNotEmpty) {
+            final attachmentIds = await _uploadPendingAttachments(ticket.id);
+            if (attachmentIds.isNotEmpty) {
+              await svc.reply(
+                ticketId: ticket.id,
+                message: '(Lampiran)',
+                attachmentIds: attachmentIds,
+              );
+            }
+          }
+          if (!mounted) return;
+          context.go('/tickets/${ticket.id}');
+        case Failure(:final exception):
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(exception.message)),
+          );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengirim: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
@@ -58,40 +144,163 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
         child: ListView(
           padding: const EdgeInsets.all(IspSpacing.lg),
           children: [
-            TextFormField(
-              controller: _subjectCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Subjek',
-                prefixIcon: Icon(Icons.title),
+            // ── Subject ──
+            IspCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.title, size: 18, color: IspColors.primary),
+                      const SizedBox(width: IspSpacing.sm),
+                      Text(
+                        'Subjek',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: IspColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: IspSpacing.md),
+                  TextFormField(
+                    controller: _subjectCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Ringkasan masalah Anda',
+                    ),
+                    validator: (v) => (v == null || v.trim().length < 3) ? 'Subjek minimal 3 karakter' : null,
+                  ),
+                ],
               ),
-              validator: (v) => (v == null || v.trim().length < 3) ? 'Subjek minimal 3 karakter' : null,
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _descriptionCtrl,
-              maxLines: 6,
-              decoration: const InputDecoration(
-                labelText: 'Deskripsi masalah',
-                alignLabelWithHint: true,
+            const SizedBox(height: IspSpacing.md),
+
+            // ── Description ──
+            IspCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.description_outlined, size: 18, color: IspColors.primary),
+                      const SizedBox(width: IspSpacing.sm),
+                      Text(
+                        'Deskripsi Masalah',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: IspColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: IspSpacing.md),
+                  TextFormField(
+                    controller: _descriptionCtrl,
+                    maxLines: 6,
+                    decoration: const InputDecoration(
+                      hintText: 'Jelaskan masalah Anda secara detail...',
+                      alignLabelWithHint: true,
+                    ),
+                    validator: (v) => (v == null || v.trim().length < 10)
+                        ? 'Deskripsi minimal 10 karakter'
+                        : null,
+                  ),
+                ],
               ),
-              validator: (v) => (v == null || v.trim().length < 10)
-                  ? 'Deskripsi minimal 10 karakter'
-                  : null,
             ),
-            const SizedBox(height: 16),
-            Text('Prioritas', style: Theme.of(context).textTheme.labelLarge),
-            const SizedBox(height: 8),
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'low', label: Text('Rendah')),
-                ButtonSegment(value: 'normal', label: Text('Normal')),
-                ButtonSegment(value: 'high', label: Text('Tinggi')),
-                ButtonSegment(value: 'urgent', label: Text('Mendesak')),
-              ],
-              selected: {_priority},
-              onSelectionChanged: (v) => setState(() => _priority = v.first),
+            const SizedBox(height: IspSpacing.md),
+
+            // ── Priority ──
+            IspCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.flag_outlined, size: 18, color: IspColors.primary),
+                      const SizedBox(width: IspSpacing.sm),
+                      Text(
+                        'Prioritas',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: IspColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: IspSpacing.md),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'low', label: Text('Rendah')),
+                      ButtonSegment(value: 'normal', label: Text('Normal')),
+                      ButtonSegment(value: 'high', label: Text('Tinggi')),
+                      ButtonSegment(value: 'urgent', label: Text('Mendesak')),
+                    ],
+                    selected: {_priority},
+                    onSelectionChanged: (v) => setState(() => _priority = v.first),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: IspSpacing.md),
+
+            // ── Attachments ──
+            IspCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.attach_file, size: 18, color: IspColors.primary),
+                      const SizedBox(width: IspSpacing.sm),
+                      Text(
+                        'Lampiran',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: IspColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: IspSpacing.md),
+                  OutlinedButton.icon(
+                    onPressed: _submitting ? null : _pickFile,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Tambah File'),
+                  ),
+                  if (_pendingAttachments.isNotEmpty) ...[
+                    const SizedBox(height: IspSpacing.sm),
+                    Wrap(
+                      spacing: IspSpacing.sm,
+                      runSpacing: IspSpacing.xs,
+                      children: List.generate(_pendingAttachments.length, (i) {
+                        final att = _pendingAttachments[i];
+                        return Chip(
+                          avatar: Icon(
+                            att.isImage ? Icons.image : Icons.attach_file,
+                            size: 18,
+                          ),
+                          label: Text(
+                            att.fileName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          deleteIcon: const Icon(Icons.close, size: 18),
+                          onDeleted: () => _removeAttachment(i),
+                        );
+                      }),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: IspSpacing.xl),
+
+            // ── Submit button ──
             ElevatedButton.icon(
               onPressed: _submitting ? null : _submit,
               icon: _submitting
@@ -107,5 +316,51 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
         ),
       ),
     );
+  }
+}
+
+class _PendingAttachment {
+  const _PendingAttachment({
+    required this.filePath,
+    required this.fileName,
+    required this.contentType,
+    required this.size,
+  });
+  final String filePath;
+  final String fileName;
+  final String contentType;
+  final int size;
+
+  bool get isImage => contentType.startsWith('image/');
+}
+
+String _guessContentType(String fileName) {
+  final ext = fileName.split('.').last.toLowerCase();
+  switch (ext) {
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'gif':
+      return 'image/gif';
+    case 'webp':
+      return 'image/webp';
+    case 'pdf':
+      return 'application/pdf';
+    case 'doc':
+    case 'docx':
+      return 'application/msword';
+    case 'xls':
+    case 'xlsx':
+      return 'application/vnd.ms-excel';
+    case 'zip':
+      return 'application/zip';
+    case 'rar':
+      return 'application/x-rar-compressed';
+    case 'txt':
+      return 'text/plain';
+    default:
+      return 'application/octet-stream';
   }
 }

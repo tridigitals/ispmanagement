@@ -1,21 +1,76 @@
-import 'package:api_client/api_client.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
 
-import 'app_config.dart';
-import 'service_providers.dart';
+import 'package:api_client/api_client.dart' hide Success, Failure;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:result_dart/result_dart.dart';
 
+import 'feature_providers.dart';
+
 /// Holds the customer's notifications and provides mark-read actions.
+/// Auto-refreshes every 60 seconds to pick up new notifications.
 class NotificationsNotifier
     extends AsyncNotifier<List<NotificationModel>> {
+  Timer? _pollTimer;
+  int _currentPage = 1;
+  bool _hasMore = true;
+
+  /// Whether more pages are available for loading.
+  bool get hasMore => _hasMore;
+
   @override
   Future<List<NotificationModel>> build() async {
+    // Start periodic polling (15s — short until FCM background push is ready).
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => _refresh(),
+    );
+    ref.onDispose(() => _pollTimer?.cancel());
+
+    _currentPage = 1;
+    _hasMore = true;
+    return _fetch();
+  }
+
+  Future<List<NotificationModel>> _fetch() async {
     final svc = ref.watch(notificationServiceProvider);
     final res = await svc.list(page: 1, perPage: 50);
-    return switch (res) {
-      Success(:final data) => data.data,
-      Failure(:final exception) => throw exception.message,
-    };
+    return res.fold(
+      (paginated) {
+        _hasMore = paginated.hasMore;
+        _currentPage = 1;
+        return paginated.data;
+      },
+      (error) => throw Exception(error.message),
+    );
+  }
+
+  /// Silent refresh — doesn't show loading state.
+  Future<void> _refresh() async {
+    try {
+      final data = await _fetch();
+      state = AsyncData(data);
+    } catch (_) {
+      // Silent fail on background poll — keep existing state
+    }
+  }
+
+  /// Load next page and append to existing state.
+  Future<bool> loadMore() async {
+    if (!_hasMore) return false;
+    final svc = ref.read(notificationServiceProvider);
+    final nextPage = _currentPage + 1;
+    final res = await svc.list(page: nextPage, perPage: 50);
+    return res.fold(
+      (paginated) {
+        final current = state.valueOrNull ?? [];
+        _currentPage = nextPage;
+        _hasMore = paginated.hasMore;
+        state = AsyncData([...current, ...paginated.data]);
+        return true;
+      },
+      (error) => false,
+    );
   }
 
   Future<void> markRead(String id) async {
@@ -49,8 +104,8 @@ final unreadNotificationsCountProvider = FutureProvider<int>((ref) async {
   ref.watch(notificationsProvider);
   final svc = ref.watch(notificationServiceProvider);
   final res = await svc.unreadCount();
-  return switch (res) {
-    Success(:final data) => data,
-    Failure() => 0,
-  };
+  return res.fold(
+    (value) => value,
+    (error) => 0,
+  );
 });

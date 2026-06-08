@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:local_auth/local_auth.dart';
 
 import 'package:api_client/api_client.dart';
+import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../services/auth_providers.dart';
+import '../../services/missing_providers.dart';
 import '../../services/service_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -23,6 +26,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _show2fa = false;
   String? _tempToken;
   final _codeCtrl = TextEditingController();
+  bool _biometricAttempted = false;
+  bool _biometricLoading = false;
 
   @override
   void dispose() {
@@ -30,6 +35,81 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _passwordCtrl.dispose();
     _codeCtrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-prompt fingerprint after build completes
+    WidgetsBinding.instance.addPostFrameCallback((_) => _tryBiometricLogin());
+  }
+
+  Future<void> _tryBiometricLogin() async {
+    if (_biometricAttempted) return;
+    _biometricAttempted = true;
+
+    // Wait for biometric provider to finish loading
+    await ref.read(biometricEnabledProvider.future);
+
+    // Check if biometric is enabled
+    final biometricEnabled =
+        ref.read(biometricEnabledProvider).valueOrNull ?? false;
+    if (!biometricEnabled) return;
+
+    // Check if there's a stored session (token)
+    final authSvc = ref.read(authServiceProvider);
+    final hasSession = await authSvc.hasSession();
+    if (!hasSession) return; // No token = nothing to restore, skip prompt
+
+    // Check device supports biometric
+    final auth = LocalAuthentication();
+    final canCheck = await auth.canCheckBiometrics;
+    if (!canCheck) return;
+
+    if (!mounted) return;
+
+    setState(() => _biometricLoading = true);
+
+    try {
+      final ok = await auth.authenticate(
+        localizedReason: 'Gunakan fingerprint untuk login',
+        options: const AuthenticationOptions(
+          stickyAuth: true,
+          biometricOnly: true,
+        ),
+      );
+
+      if (!ok || !mounted) {
+        setState(() => _biometricLoading = false);
+        return;
+      }
+
+      // Fingerprint verified — restore session from stored token
+      final restored =
+          await ref.read(authControllerProvider.notifier).bootstrap();
+
+      if (mounted) {
+        if (restored) {
+          context.go('/');
+        } else {
+          // Token ada tapi /me gagal (expired/network). Minta user login manual.
+          setState(() {
+            _biometricLoading = false;
+            _biometricAttempted = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Sesi berakhir. Silakan login ulang dengan email & password.',
+              ),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) setState(() => _biometricLoading = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -40,24 +120,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       password: _passwordCtrl.text,
     );
     if (!mounted) return;
-    res.when(
-      success: (authResp) async {
-        if (authResp.requires2fa && authResp.tempToken != null) {
+    switch (res) {
+      case Success(:final data):
+        if (data.requires2fa && data.tempToken != null) {
           setState(() {
             _show2fa = true;
-            _tempToken = authResp.tempToken;
+            _tempToken = data.tempToken;
           });
         } else {
-          await ref.read(authControllerProvider.notifier).apply(authResp);
+          await ref.read(authControllerProvider.notifier).apply(data!);
           if (mounted) context.go('/');
         }
-      },
-      failure: (e) {
+      case Failure(:final exception):
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
+          SnackBar(content: Text(exception.message)),
         );
-      },
-    );
+    }
   }
 
   Future<void> _submit2fa() async {
@@ -68,17 +146,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           code: _codeCtrl.text.trim(),
         );
     if (!mounted) return;
-    res.when(
-      success: (auth) async {
-        await ref.read(authControllerProvider.notifier).apply(auth);
+    switch (res) {
+      case Success(:final data):
+        await ref.read(authControllerProvider.notifier).apply(data!);
         if (mounted) context.go('/');
-      },
-      failure: (e) {
+      case Failure(:final exception):
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
+          SnackBar(content: Text(exception.message)),
         );
-      },
-    );
+    }
   }
 
   @override
@@ -147,10 +223,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           : Text(l10n.login),
                     ),
                     const SizedBox(height: 12),
-                    OutlinedButton(
-                      onPressed: () => context.push('/register'),
-                      child: Text(l10n.createAccount),
-                    ),
+                    // Fingerprint button — show if biometric was enabled and session exists
+                    if (_biometricAttempted && !_biometricLoading)
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          _biometricAttempted = false;
+                          _tryBiometricLogin();
+                        },
+                        icon: const Icon(Icons.fingerprint, size: 24),
+                        label: Text(l10n.biometric),
+                      ),
+                    if (_biometricLoading)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              Icon(Icons.fingerprint,
+                                  size: 48, color: IspColors.primary),
+                              SizedBox(height: 8),
+                              Text(
+                                'Verifikasi sidik jari...',
+                                style: TextStyle(
+                                  color: IspColors.textTertiary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    if (!_biometricLoading) ...[
+                      const SizedBox(height: 12),
+                      OutlinedButton(
+                        onPressed: () => context.push('/register'),
+                        child: Text(l10n.createAccount),
+                      ),
+                    ],
                   ] else ...[
                     Text(
                       l10n.enter2faCode,

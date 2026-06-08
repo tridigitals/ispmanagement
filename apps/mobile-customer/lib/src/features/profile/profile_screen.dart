@@ -28,7 +28,7 @@ class ProfileScreen extends ConsumerWidget {
       ),
       body: ListView(
         children: [
-          const SizedBox(height: 24),
+          const SizedBox(height: IspSpacing.xl),
           Center(
             child: Column(
               children: [
@@ -42,7 +42,7 @@ class ProfileScreen extends ConsumerWidget {
                       ? const Icon(Icons.person, size: 48, color: IspColors.primary)
                       : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: IspSpacing.md),
                 Text(
                   user?.name ?? '—',
                   style: const TextStyle(
@@ -58,7 +58,7 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: IspSpacing.xl),
           _ProfileGroup(
             items: [
               _ProfileItem(
@@ -80,7 +80,7 @@ class ProfileScreen extends ConsumerWidget {
               _ProfileItem(
                 icon: Icons.lock_outline,
                 title: l10n.changePassword,
-                onTap: () {},
+                onTap: () => GoRouter.of(context).push('/change-password'),
               ),
             ],
           ),
@@ -95,14 +95,14 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: IspSpacing.xl),
           const Center(
             child: Text(
               'v0.1.0+1',
               style: TextStyle(color: IspColors.textTertiary, fontSize: 12),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: IspSpacing.xl),
         ],
       ),
     );
@@ -114,8 +114,8 @@ class _ProfileGroup extends StatelessWidget {
   final List<_ProfileItem> items;
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+    return IspCard(
+      margin: const EdgeInsets.symmetric(horizontal: IspSpacing.lg, vertical: IspSpacing.sm),
       child: Column(
         children: [
           for (var i = 0; i < items.length; i++) ...[
