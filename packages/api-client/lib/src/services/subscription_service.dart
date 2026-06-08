@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../api/api_client.dart';
+import '../models/paginated_response.dart';
 import '../api/api_endpoints.dart';
 import '../models/subscription_model.dart';
 import 'auth_service.dart';
@@ -35,7 +36,7 @@ class SubscriptionService {
   Future<ServiceResult<SubscriptionModel>> getById(String id) async {
     return _execute(() async {
       final res = await dio.get<Map<String, dynamic>>(
-        ApiEndpoints.withParam(ApiEndpoints.mySubscriptionById, 'id', id),
+        ApiEndpoints.mySubscriptionById(id),
       );
       return SubscriptionModel.fromJson(res.data ?? const {});
     });

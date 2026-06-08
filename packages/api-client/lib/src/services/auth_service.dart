@@ -44,6 +44,27 @@ class AuthResponse extends Equatable {
 /// Result wrapper for service operations.
 sealed class ServiceResult<T> {
   const ServiceResult();
+
+  W fold<W>(
+    W Function(T data) onSuccess,
+    W Function(ApiException exception) onFailure,
+  ) {
+    final self = this;
+    if (self is Success<T>) return onSuccess(self.data);
+    return onFailure((self as Failure<T>).exception);
+  }
+
+  T getOrThrow() {
+    final self = this;
+    if (self is Success<T>) return self.data;
+    throw (self as Failure<T>).exception;
+  }
+
+  T? getOrNull() {
+    final self = this;
+    if (self is Success<T>) return self.data;
+    return null;
+  }
 }
 
 class Success<T> extends ServiceResult<T> {
@@ -100,42 +121,33 @@ class AuthService {
     });
   }
 
-  /// Logout — clears token locally + notifies backend.
+  /// Logout — clears token locally.
+  ///
+  /// The backend has no `/api/auth/logout` endpoint, so this is a local-only
+  /// operation that removes stored credentials from secure storage.
   Future<void> logout() async {
-    try {
-      final token = await tokenStorage.readToken();
-      if (token != null) {
-        await dio.post(
-          ApiEndpoints.authLogout,
-          options: Options(headers: {'Authorization': 'Bearer $token'}),
-        );
-      }
-    } catch (_) {
-      // best-effort: local clear happens regardless
-    } finally {
-      await tokenStorage.clear();
-    }
+    await tokenStorage.clear();
   }
 
   /// Request password reset email.
-  Future<ServiceResult<void>> forgotPassword(String email) async {
+  Future<ServiceResult<bool>> forgotPassword(String email) async {
     return _execute(() async {
       await dio.post(ApiEndpoints.authForgotPassword, data: {'email': email});
-      return null;
+      return true;
     });
   }
 
   /// Complete password reset with token.
-  Future<ServiceResult<void>> resetPassword({
+  Future<ServiceResult<bool>> resetPassword({
     required String token,
     required String newPassword,
   }) async {
     return _execute(() async {
       await dio.post(ApiEndpoints.authResetPassword, data: {
         'token': token,
-        'new_password': newPassword,
+        'password': newPassword,
       });
-      return null;
+      return true;
     });
   }
 
@@ -152,7 +164,8 @@ class AuthService {
   /// Check if we have a saved session.
   Future<bool> hasSession() async {
     final token = await tokenStorage.readToken();
-    return token != null && token.isNotEmpty;
+    if (token == null) return false;
+    return token.isNotEmpty;
   }
 
   Future<ServiceResult<T>> _execute<T>(Future<T> Function() body) async {

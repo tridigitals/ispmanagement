@@ -121,39 +121,3 @@ class SubscriptionModel extends Equatable {
         graceUntil,
       ];
 }
-
-/// Paginated response wrapper that mirrors the API envelope.
-class PaginatedResponse<T> extends Equatable {
-  const PaginatedResponse({
-    required this.data,
-    required this.total,
-    this.page = 1,
-    this.perPage = 20,
-  });
-
-  factory PaginatedResponse.fromJson(
-    Map<String, dynamic> json,
-    T Function(Map<String, dynamic>) fromJsonT,
-  ) {
-    final rawData = json['data'];
-    final list = rawData is List
-        ? rawData.cast<Map<String, dynamic>>().map(fromJsonT).toList()
-        : <T>[];
-    return PaginatedResponse<T>(
-      data: list,
-      total: (json['total'] as num?)?.toInt() ?? list.length,
-      page: (json['page'] as num?)?.toInt() ?? 1,
-      perPage: (json['per_page'] as num?)?.toInt() ?? 20,
-    );
-  }
-
-  final List<T> data;
-  final int total;
-  final int page;
-  final int perPage;
-
-  bool get hasMore => page * perPage < total;
-
-  @override
-  List<Object?> get props => [data, total, page, perPage];
-}

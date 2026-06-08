@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../theme/theme.dart';
 
-enum StatusTone { neutral, success, warning, danger, info, primary }
-
 class IspStatusBadge extends StatelessWidget {
   const IspStatusBadge({
     required this.label,
@@ -19,13 +17,13 @@ class IspStatusBadge extends StatelessWidget {
   Color _bg() {
     switch (tone) {
       case StatusTone.success:
-        return IspColors.success.withValues(alpha: 0.15);
+        return IspColors.success.withOpacity(0.15);
       case StatusTone.warning:
-        return IspColors.warning.withValues(alpha: 0.15);
+        return IspColors.warning.withOpacity(0.15);
       case StatusTone.danger:
-        return IspColors.danger.withValues(alpha: 0.15);
+        return IspColors.danger.withOpacity(0.15);
       case StatusTone.info:
-        return IspColors.info.withValues(alpha: 0.15);
+        return IspColors.info.withOpacity(0.15);
       case StatusTone.primary:
         return IspColors.primarySubtle;
       case StatusTone.neutral:
@@ -57,7 +55,7 @@ class IspStatusBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: _bg(),
         borderRadius: BorderRadius.circular(IspRadii.pill),
-        border: Border.all(color: _fg().withValues(alpha: 0.2), width: 0.5),
+        border: Border.all(color: _fg().withOpacity(0.2), width: 0.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

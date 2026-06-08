@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/theme.dart';
+import 'isp_status_badge.dart';
 
 class IspProgressBar extends StatelessWidget {
   const IspProgressBar({
@@ -35,7 +36,7 @@ class IspProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final clamped = value.clamp(0, 1);
+    final clamped = value.clamp(0.0, 1.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

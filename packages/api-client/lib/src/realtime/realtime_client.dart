@@ -3,8 +3,8 @@ import 'dart:convert';
 
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-import 'api_endpoints.dart';
-import 'auth_token_storage.dart';
+import '../api/api_endpoints.dart';
+import '../auth/auth_token_storage.dart';
 
 /// Lightweight WebSocket client for realtime updates
 /// (notifications, ticket replies, payment status).

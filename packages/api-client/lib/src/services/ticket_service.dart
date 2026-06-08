@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../api/api_client.dart';
+import '../models/paginated_response.dart';
 import '../api/api_endpoints.dart';
 import '../models/ticket_model.dart';
 import 'auth_service.dart';
@@ -33,53 +34,76 @@ class TicketService {
   Future<ServiceResult<TicketModel>> getById(String id) async {
     return _execute(() async {
       final res = await dio.get<Map<String, dynamic>>(
-        ApiEndpoints.withParam(ApiEndpoints.myTicketById, 'id', id),
+        ApiEndpoints.myTicketById(id),
       );
-      return TicketModel.fromJson(res.data ?? const {});
+      final data = res.data ?? const {};
+      final ticketJson = data['ticket'] is Map<String, dynamic>
+          ? data['ticket'] as Map<String, dynamic>
+          : data;
+      return TicketModel.fromJson(ticketJson);
     });
   }
 
   Future<ServiceResult<TicketModel>> create({
     required String subject,
-    required String description,
+    required String message,
     String priority = 'normal',
-    String? subscriptionId,
+    List<String>? attachmentIds,
   }) async {
     return _execute(() async {
+      final body = <String, dynamic>{
+        'subject': subject,
+        'message': message,
+        'priority': priority,
+      };
+      if (attachmentIds != null && attachmentIds.isNotEmpty) {
+        body['attachment_ids'] = attachmentIds;
+      }
       final res = await dio.post<Map<String, dynamic>>(
         ApiEndpoints.createTicket,
-        data: {
-          'subject': subject,
-          'description': description,
-          'priority': priority,
-          if (subscriptionId != null) 'subscription_id': subscriptionId,
-        },
+        data: body,
       );
       return TicketModel.fromJson(res.data ?? const {});
     });
   }
 
-  Future<ServiceResult<List<TicketMessageModel>>> listMessages(String ticketId) async {
+  /// Fetch messages for a ticket.
+  /// [currentUserId] is used to determine which messages are from staff vs customer.
+  Future<ServiceResult<List<TicketMessageModel>>> listMessages(
+    String ticketId, {
+    String? currentUserId,
+  }) async {
     return _execute(() async {
-      final res = await dio.get<List<dynamic>>(
-        ApiEndpoints.withParam(ApiEndpoints.ticketMessages, 'id', ticketId),
+      final res = await dio.get<Map<String, dynamic>>(
+        ApiEndpoints.myTicketById(ticketId),
       );
-      final data = res.data ?? const [];
-      return data
-          .cast<Map<String, dynamic>>()
-          .map(TicketMessageModel.fromJson)
-          .toList();
+      final data = res.data ?? const {};
+      final messages = data['messages'];
+      if (messages is List) {
+        return messages
+            .whereType<Map<String, dynamic>>()
+            .map((json) => currentUserId != null
+                ? TicketMessageModel.fromTicketJson(json, currentUserId)
+                : TicketMessageModel.fromJson(json))
+            .toList();
+      }
+      return <TicketMessageModel>[];
     });
   }
 
   Future<ServiceResult<TicketMessageModel>> reply({
     required String ticketId,
-    required String body,
+    required String message,
+    List<String>? attachmentIds,
   }) async {
     return _execute(() async {
+      final body = <String, dynamic>{'message': message};
+      if (attachmentIds != null && attachmentIds.isNotEmpty) {
+        body['attachment_ids'] = attachmentIds;
+      }
       final res = await dio.post<Map<String, dynamic>>(
-        ApiEndpoints.withParam(ApiEndpoints.ticketMessages, 'id', ticketId),
-        data: {'body': body},
+        ApiEndpoints.ticketMessages(ticketId),
+        data: body,
       );
       return TicketMessageModel.fromJson(res.data ?? const {});
     });

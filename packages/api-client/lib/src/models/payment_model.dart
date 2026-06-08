@@ -19,7 +19,7 @@ enum PaymentStatus {
   refunded,
 }
 
-extension on PaymentStatus {
+extension PaymentStatusX on PaymentStatus {
   String get label {
     switch (this) {
       case PaymentStatus.pending:
@@ -55,7 +55,7 @@ enum PaymentMethod {
   unknown,
 }
 
-extension on PaymentMethod {
+extension PaymentMethodX on PaymentMethod {
   String get label {
     switch (this) {
       case PaymentMethod.virtualAccount:

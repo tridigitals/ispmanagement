@@ -18,6 +18,7 @@ class UserModel extends Equatable {
     this.tenantRole,
     this.twoFactorEnabled = false,
     this.permissions = const [],
+    this.phone,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => _$UserModelFromJson(json);
@@ -47,6 +48,8 @@ class UserModel extends Equatable {
 
   @JsonKey(name: 'two_factor_enabled')
   final bool twoFactorEnabled;
+
+  final String? phone;
 
   /// Permission keys for granular RBAC checks.
   final List<String> permissions;

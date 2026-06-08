@@ -3,10 +3,10 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'network_model.g.dart';
 
-/// Snapshot of the customer's current network status.
+/// Real-time snapshot of the customer's network connection.
 @JsonSerializable()
-class NetworkStatusModel extends Equatable {
-  const NetworkStatusModel({
+class NetworkSnapshotModel extends Equatable {
+  const NetworkSnapshotModel({
     required this.subscriptionId,
     required this.isOnline,
     required this.lastSeen,
@@ -18,9 +18,9 @@ class NetworkStatusModel extends Equatable {
     this.routerName,
   });
 
-  factory NetworkStatusModel.fromJson(Map<String, dynamic> json) =>
-      _$NetworkStatusModelFromJson(json);
-  Map<String, dynamic> toJson() => _$NetworkStatusModelToJson(this);
+  factory NetworkSnapshotModel.fromJson(Map<String, dynamic> json) =>
+      _$NetworkSnapshotModelFromJson(json);
+  Map<String, dynamic> toJson() => _$NetworkSnapshotModelToJson(this);
 
   @JsonKey(name: 'subscription_id')
   final String subscriptionId;

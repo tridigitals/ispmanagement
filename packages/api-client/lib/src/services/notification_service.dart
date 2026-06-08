@@ -1,21 +1,23 @@
 import 'package:dio/dio.dart';
-import 'package:result_dart/result_dart.dart';
 
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
 import '../models/notification_model.dart';
+import '../models/paginated_response.dart';
+import 'auth_service.dart';
 
 class NotificationService {
   NotificationService({required Dio dio}) : _dio = dio;
   final Dio _dio;
 
   /// List notifications (paginated).
-  Future<Result<PaginatedResponse<NotificationModel>, ApiException>> list({
+  Future<ServiceResult<PaginatedResponse<NotificationModel>>>
+      list({
     int page = 1,
     int perPage = 20,
     bool unreadOnly = false,
   }) async {
-    try {
+    return _execute(() async {
       final resp = await _dio.get<dynamic>(
         ApiEndpoints.notifications,
         queryParameters: {
@@ -24,45 +26,53 @@ class NotificationService {
           if (unreadOnly) 'unread_only': true,
         },
       );
-      return Success(
-        PaginatedResponse<NotificationModel>.fromJson(
-          resp.data as Map<String, dynamic>,
-          (j) => NotificationModel.fromJson(j),
-        ),
+      final raw = resp.data;
+      final json = raw is Map<String, dynamic>
+          ? raw
+          : (raw is Map ? raw.cast<String, dynamic>() : <String, dynamic>{});
+      return PaginatedResponse<NotificationModel>.fromJson(
+        json,
+        (j) => NotificationModel.fromJson(j),
       );
-    } on DioException catch (e) {
-      return Failure(ApiException.fromDio(e));
-    }
+    });
   }
 
   /// Mark a single notification as read.
-  Future<Result<void, ApiException>> markRead(String id) async {
-    try {
+  Future<ServiceResult<bool>> markRead(String id) async {
+    return _execute(() async {
       await _dio.post<dynamic>(ApiEndpoints.notificationRead(id));
-      return const Success(null);
-    } on DioException catch (e) {
-      return Failure(ApiException.fromDio(e));
-    }
+      return true;
+    });
   }
 
   /// Mark all as read.
-  Future<Result<void, ApiException>> markAllRead() async {
-    try {
+  Future<ServiceResult<bool>> markAllRead() async {
+    return _execute(() async {
       await _dio.post<dynamic>(ApiEndpoints.notificationsReadAll);
-      return const Success(null);
-    } on DioException catch (e) {
-      return Failure(ApiException.fromDio(e));
-    }
+      return true;
+    });
   }
 
   /// Unread count (lightweight).
-  Future<Result<int, ApiException>> unreadCount() async {
-    try {
+  Future<ServiceResult<int>> unreadCount() async {
+    return _execute(() async {
       final resp = await _dio.get<dynamic>(ApiEndpoints.notificationsUnreadCount);
-      final data = resp.data as Map<String, dynamic>;
-      return Success((data['count'] as num).toInt());
+      final raw = resp.data;
+      final data = raw is Map<String, dynamic>
+          ? raw
+          : (raw is Map ? raw.cast<String, dynamic>() : <String, dynamic>{});
+      return (data['count'] as num?)?.toInt() ?? 0;
+    });
+  }
+
+  Future<ServiceResult<T>> _execute<T extends Object>(Future<T> Function() body) async {
+    try {
+      final result = await body();
+      return Success(result);
     } on DioException catch (e) {
       return Failure(ApiException.fromDio(e));
+    } catch (e) {
+      return Failure(ApiException(message: e.toString()));
     }
   }
 }

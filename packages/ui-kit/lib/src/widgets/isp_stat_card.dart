@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/theme.dart';
+import 'isp_status_badge.dart';
 
 class IspStatCard extends StatelessWidget {
   const IspStatCard({
@@ -61,7 +62,7 @@ class IspStatCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.12),
+                        color: accent.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(IspRadii.sm),
                       ),
                       child: Icon(icon, size: 16, color: accent),

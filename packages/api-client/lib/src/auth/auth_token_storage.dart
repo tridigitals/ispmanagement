@@ -65,12 +65,33 @@ class AuthTokenStorage {
     return DateTime.now().isAfter(expiry);
   }
 
+  // ── Credential storage for auto re-login on 401 ──
+  static const _kEmailKey = 'stored_email';
+  static const _kPasswordKey = 'stored_password';
+
+  /// Save login credentials for auto re-login on 401.
+  Future<void> saveCredentials({
+    required String email,
+    required String password,
+  }) async {
+    await _storage.write(key: _kEmailKey, value: email);
+    await _storage.write(key: _kPasswordKey, value: password);
+  }
+
+  /// Read stored email for auto re-login.
+  Future<String?> readEmail() => _storage.read(key: _kEmailKey);
+
+  /// Read stored password for auto re-login.
+  Future<String?> readPassword() => _storage.read(key: _kPasswordKey);
+
   Future<void> clear() async {
     await _storage.delete(key: _kTokenKey);
     await _storage.delete(key: _kRefreshKey);
     await _storage.delete(key: _kUserIdKey);
     await _storage.delete(key: _kTenantIdKey);
     await _storage.delete(key: _kTokenExpiryKey);
+    await _storage.delete(key: _kEmailKey);
+    await _storage.delete(key: _kPasswordKey);
   }
 
   @visibleForTesting

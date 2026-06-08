@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
+
+import '../auth/auth_token_storage.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'api_endpoints.dart';
 
@@ -36,60 +37,16 @@ class ApiConfig {
   }
 }
 
-/// Secure storage for auth tokens.
-class AuthTokenStorage {
-  AuthTokenStorage({FlutterSecureStorage? storage})
-      : _storage = storage ??
-            const FlutterSecureStorage(
-              aOptions: AndroidOptions(encryptedSharedPreferences: true),
-              iOptions: IOSOptions(
-                accessibility: KeychainAccessibility.first_unlock,
-              ),
-            );
-
-  static const _kTokenKey = 'auth_token';
-  static const _kRefreshKey = 'refresh_token';
-  static const _kUserIdKey = 'user_id';
-  static const _kTenantIdKey = 'tenant_id';
-
-  final FlutterSecureStorage _storage;
-
-  Future<void> save({
-    required String token,
-    String? refreshToken,
-    String? userId,
-    String? tenantId,
-  }) async {
-    await _storage.write(key: _kTokenKey, value: token);
-    if (refreshToken != null) {
-      await _storage.write(key: _kRefreshKey, value: refreshToken);
-    }
-    if (userId != null) {
-      await _storage.write(key: _kUserIdKey, value: userId);
-    }
-    if (tenantId != null) {
-      await _storage.write(key: _kTenantIdKey, value: tenantId);
-    }
-  }
-
-  Future<String?> readToken() => _storage.read(key: _kTokenKey);
-  Future<String?> readRefresh() => _storage.read(key: _kRefreshKey);
-  Future<String?> readUserId() => _storage.read(key: _kUserIdKey);
-  Future<String?> readTenantId() => _storage.read(key: _kTenantIdKey);
-
-  Future<void> clear() async {
-    await _storage.delete(key: _kTokenKey);
-    await _storage.delete(key: _kRefreshKey);
-    await _storage.delete(key: _kUserIdKey);
-    await _storage.delete(key: _kTenantIdKey);
-  }
-}
-
 /// Build a configured [Dio] instance with auth interceptor + retry.
+///
+/// [onReLogin] — optional async callback that attempts to re-authenticate on
+/// 401. Should return the new token string on success, or null on failure.
+/// When provided and biometric is enabled, the interceptor will attempt
+/// auto re-login instead of immediately clearing the session.
 Dio buildDio({
   required ApiConfig config,
   required AuthTokenStorage tokenStorage,
-  TokenRefreshCallback? onTokenRefresh,
+  Future<String?> Function()? onReLogin,
 }) {
   final dio = Dio(
     BaseOptions(
@@ -106,7 +63,10 @@ Dio buildDio({
     ),
   );
 
-  dio.interceptors.add(AuthInterceptor(tokenStorage: tokenStorage, onTokenRefresh: onTokenRefresh));
+  dio.interceptors.add(AuthInterceptor(
+    tokenStorage: tokenStorage,
+    onReLogin: onReLogin,
+  ));
   dio.interceptors.add(RetryInterceptor(maxRetries: config.maxRetries));
   if (config.enableLogging) {
     dio.interceptors.add(LogInterceptor(
@@ -120,15 +80,17 @@ Dio buildDio({
   return dio;
 }
 
-/// Callback fired when a 401 is received and a fresh token is required.
-typedef TokenRefreshCallback = Future<String?> Function();
-
-/// Attaches Bearer token; on 401, attempts refresh and retries the request.
+/// Attaches Bearer token; on 401, clears stored token and propagates the error.
+///
+/// If [onReLogin] is provided (e.g. from the mobile app which can attempt
+/// auto re-login with stored credentials + biometric), the interceptor will
+/// attempt to re-authenticate on the first 401 before clearing the session.
 class AuthInterceptor extends Interceptor {
-  AuthInterceptor({required this.tokenStorage, this.onTokenRefresh});
+  AuthInterceptor({required this.tokenStorage, this.onReLogin});
 
   final AuthTokenStorage tokenStorage;
-  final TokenRefreshCallback? onTokenRefresh;
+  final Future<String?> Function()? onReLogin;
+  bool _isRefreshing = false;
 
   @override
   Future<void> onRequest(
@@ -144,25 +106,51 @@ class AuthInterceptor extends Interceptor {
 
   @override
   Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
-    final response = err.response;
-    final isAuthFailure = response?.statusCode == 401;
-    final isRefreshPath = err.requestOptions.path.contains('/auth/refresh');
-    if (isAuthFailure && !isRefreshPath && onTokenRefresh != null) {
-      final newToken = await onTokenRefresh!();
-      if (newToken != null) {
-        final retryOptions = err.requestOptions;
-        retryOptions.headers['Authorization'] = 'Bearer $newToken';
+    if (err.response?.statusCode == 401) {
+      // Avoid retry loops — if this was already a retried request, skip.
+      if (err.requestOptions.extra['is_401_retry'] == true) {
+        await tokenStorage.clear();
+        return handler.next(err);
+      }
+
+      if (onReLogin != null) {
+        if (_isRefreshing) {
+          // Another request is already refreshing — wait briefly and retry.
+          await Future<void>.delayed(const Duration(seconds: 2));
+          final newToken = await tokenStorage.readToken();
+          if (newToken != null && newToken.isNotEmpty) {
+            err.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+            err.requestOptions.extra['is_401_retry'] = true;
+            try {
+              final dio = Dio(BaseOptions(baseUrl: err.requestOptions.baseUrl));
+              final response = await dio.fetch(err.requestOptions);
+              return handler.resolve(response);
+            } on DioException catch (e) {
+              return handler.next(e);
+            }
+          }
+        }
+
+        _isRefreshing = true;
         try {
-          final dio = Dio(BaseOptions(
-            baseUrl: retryOptions.baseUrl,
-            headers: retryOptions.headers,
-          ));
-          final response = await dio.fetch(retryOptions);
-          return handler.resolve(response);
+          final newToken = await onReLogin!();
+          if (newToken != null && newToken.isNotEmpty) {
+            // Re-login succeeded — retry the original request.
+            err.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+            err.requestOptions.extra['is_401_retry'] = true;
+            final dio = Dio(BaseOptions(baseUrl: err.requestOptions.baseUrl));
+            final response = await dio.fetch(err.requestOptions);
+            return handler.resolve(response);
+          }
         } catch (_) {
-          // fall through
+          // Re-login failed — fall through to clear token.
+        } finally {
+          _isRefreshing = false;
         }
       }
+
+      // Re-login not available or failed — clear session.
+      await tokenStorage.clear();
     }
     handler.next(err);
   }

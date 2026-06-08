@@ -40,7 +40,39 @@ class InvoiceModel extends Equatable {
   });
 
   factory InvoiceModel.fromJson(Map<String, dynamic> json) =>
-      _$InvoiceModelFromJson(json);
+      _$InvoiceModelFromJson(_sanitizeJson(json));
+
+  static Map<String, dynamic> _sanitizeJson(Map<String, dynamic> json) {
+    final amount = (json['amount'] as num?)?.toDouble() ?? 0.0;
+    final amountPaid = (json['amount_paid'] as num?)?.toDouble() ?? 0.0;
+    final statusRaw = (json['status'] ?? 'pending').toString();
+    final status = switch (statusRaw) {
+      'unpaid' => 'unpaid',
+      'paid' => 'paid',
+      'overdue' => 'overdue',
+      'partial' => 'partial',
+      'cancelled' => 'cancelled',
+      'refunded' => 'refunded',
+      'pending' => 'pending',
+      _ => 'pending',
+    };
+    final due = json['due_date'] ?? json['dueDate'] ?? DateTime.now().toIso8601String();
+    final created = json['created_at'] ?? json['createdAt'] ?? DateTime.now().toIso8601String();
+    return <String, dynamic>{
+      'id': (json['id'] ?? '').toString(),
+      'invoice_number': (json['invoice_number'] ?? json['invoiceNumber'] ?? json['invoice_no'] ?? json['number'] ?? '').toString(),
+      'amount': amount,
+      'amount_paid': amountPaid,
+      'currency_code': (json['currency_code'] ?? json['currencyCode'] ?? 'IDR').toString(),
+      'status': status,
+      'due_date': due,
+      'created_at': created,
+      'subscription_id': json['subscription_id'] ?? json['subscriptionId'],
+      'subscription_label': json['subscription_label'] ?? json['subscriptionLabel'],
+      'paid_at': json['paid_at'] ?? json['paidAt'],
+      'notes': json['notes'] ?? json['description'] ?? json['memo'],
+    };
+  }
   Map<String, dynamic> toJson() => _$InvoiceModelToJson(this);
 
   final String id;
