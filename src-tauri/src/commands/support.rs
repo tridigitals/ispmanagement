@@ -13,7 +13,7 @@ use tauri::State;
 use uuid::Uuid;
 
 use super::announcements_support_common::{
-    normalize_priority, normalize_status, support_admin_user_ids,
+    normalize_category, normalize_priority, normalize_status, support_admin_user_ids,
 };
 
 #[cfg(feature = "postgres")]
@@ -185,6 +185,7 @@ pub async fn list_support_tickets(
     token: String,
     status: Option<String>,
     search: Option<String>,
+    category: Option<String>,
     page: Option<u32>,
     per_page: Option<u32>,
     auth_service: State<'_, AuthService>,
@@ -229,6 +230,7 @@ pub async fn list_support_tickets(
         .as_deref()
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty());
+    let category = normalize_category(category);
 
     let (rows, total): (Vec<SupportTicketListItem>, i64) = if can_all {
         let total: i64 = sqlx::query_scalar(
@@ -238,6 +240,7 @@ pub async fn list_support_tickets(
             LEFT JOIN users u ON u.id = t.created_by
             WHERE t.tenant_id = $1
               AND ($2::text IS NULL OR t.status = $2)
+              AND ($4::text IS NULL OR t.category = $4)
               AND (
                 $3::text IS NULL
                 OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
@@ -248,6 +251,7 @@ pub async fn list_support_tickets(
         .bind(&tenant_id)
         .bind(st.clone())
         .bind(search.clone())
+        .bind(category.clone())
         .fetch_one(&auth_service.pool)
         .await
         .map_err(|e| e.to_string())?;
@@ -263,13 +267,14 @@ pub async fn list_support_tickets(
             LEFT JOIN users u ON u.id = t.created_by
             WHERE t.tenant_id = $1
               AND ($2::text IS NULL OR t.status = $2)
+              AND ($4::text IS NULL OR t.category = $4)
               AND (
                 $3::text IS NULL
                 OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
                 OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%'
               )
             ORDER BY COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
-            LIMIT $4 OFFSET $5
+            LIMIT $5 OFFSET $6
         "#,
         )
         .bind(&tenant_id)
@@ -289,19 +294,21 @@ pub async fn list_support_tickets(
             FROM support_tickets t
             LEFT JOIN users u ON u.id = t.created_by
             WHERE t.tenant_id = $1
-              AND t.created_by = $2
-              AND ($3::text IS NULL OR t.status = $3)
+              AND ($2::text IS NULL OR t.status = $2)
+              AND ($4::text IS NULL OR t.category = $4)
               AND (
-                $4::text IS NULL
-                OR LOWER(t.subject) LIKE '%' || LOWER($4) || '%'
-                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($4) || '%'
+                $3::text IS NULL
+                OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
+                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%'
               )
+              AND t.created_by = $5
         "#,
         )
         .bind(&tenant_id)
-        .bind(&claims.sub)
         .bind(st.clone())
         .bind(search.clone())
+        .bind(category.clone())
+        .bind(&claims.sub)
         .fetch_one(&auth_service.pool)
         .await
         .map_err(|e| e.to_string())?;
@@ -316,27 +323,28 @@ pub async fn list_support_tickets(
             FROM support_tickets t
             LEFT JOIN users u ON u.id = t.created_by
             WHERE t.tenant_id = $1
-              AND t.created_by = $2
-              AND ($3::text IS NULL OR t.status = $3)
+              AND ($2::text IS NULL OR t.status = $2)
+              AND ($4::text IS NULL OR t.category = $4)
               AND (
-                $4::text IS NULL
-                OR LOWER(t.subject) LIKE '%' || LOWER($4) || '%'
-                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($4) || '%'
+                $3::text IS NULL
+                OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
+                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%'
               )
+              AND t.created_by = $7
             ORDER BY COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
             LIMIT $5 OFFSET $6
         "#,
         )
         .bind(&tenant_id)
-        .bind(&claims.sub)
         .bind(st)
         .bind(search)
+        .bind(category)
         .bind(per_page as i64)
         .bind(offset)
+        .bind(&claims.sub)
         .fetch_all(&auth_service.pool)
         .await
         .map_err(|e| e.to_string())?;
-
         (rows, total)
     };
 
@@ -433,6 +441,8 @@ pub async fn create_support_ticket(
     subject: String,
     message: String,
     priority: Option<String>,
+    category: Option<String>,
+    subscription_id: Option<String>,
     attachment_ids: Option<Vec<String>>,
     auth_service: State<'_, AuthService>,
     notification_service: State<'_, NotificationService>,
@@ -461,16 +471,17 @@ pub async fn create_support_ticket(
     let ticket_id = Uuid::new_v4().to_string();
     let msg_id = Uuid::new_v4().to_string();
     let priority = normalize_priority(priority);
+    let category = normalize_category(category);
 
     let mut tx = auth_service.pool.begin().await.map_err(|e| e.to_string())?;
 
     sqlx::query(
         r#"
         INSERT INTO support_tickets (
-            id, tenant_id, created_by, subject, status, priority, assigned_to,
-            created_at, updated_at, closed_at
+            id, tenant_id, created_by, subject, status, priority, category, subscription_id,
+            assigned_to, created_at, updated_at, closed_at
         )
-        VALUES ($1,$2,$3,$4,'open',$5,NULL,$6,$7,NULL)
+        VALUES ($1,$2,$3,$4,'open',$5,$6,$7,NULL,$8,$9,NULL)
     "#,
     )
     .bind(&ticket_id)
@@ -478,6 +489,8 @@ pub async fn create_support_ticket(
     .bind(&claims.sub)
     .bind(subject.trim())
     .bind(&priority)
+    .bind(&category)
+    .bind(&subscription_id)
     .bind(now)
     .bind(now)
     .execute(&mut *tx)
@@ -874,6 +887,7 @@ pub async fn update_support_ticket(
     id: String,
     status: Option<String>,
     priority: Option<String>,
+    category: Option<String>,
     assigned_to: Option<String>,
     auth_service: State<'_, AuthService>,
     audit_service: State<'_, AuditService>,
