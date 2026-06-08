@@ -27,7 +27,18 @@
     "db:seed:dev": "cargo run --manifest-path src-tauri/Cargo.toml --bin seed -- dev",
     "tauri": "tauri",
     "server:build": "cargo build --manifest-path src-tauri/Cargo.toml --release --no-default-features --features postgres --bin server",
-    "server:run": "cargo run --manifest-path src-tauri/Cargo.toml --release --no-default-features --features postgres --bin server"
+    "server:run": "cargo run --manifest-path src-tauri/Cargo.toml --release --no-default-features --features postgres --bin server",
+    "mobile:bootstrap": "dart pub global activate melos && melos bootstrap",
+    "mobile:codegen": "melos run codegen",
+    "mobile:format": "melos run format",
+    "mobile:format:check": "melos run format:check",
+    "mobile:test": "melos run test",
+    "mobile:analyze": "melos run analyze",
+    "mobile:run:customer": "cd apps/mobile-customer && flutter run",
+    "mobile:build:customer:android": "cd apps/mobile-customer && flutter build apk --release",
+    "mobile:build:customer:ios": "cd apps/mobile-customer && flutter build ios --release --no-codesign",
+    "openapi:rust": "bash tools/generate-openapi.sh",
+    "openapi:dart": "bash tools/generate-dart-client.sh"
   },
   "license": "MIT",
   "dependencies": {
@@ -36,6 +47,7 @@
     "@tauri-apps/plugin-fs": "^2.4.5",
     "@tauri-apps/plugin-notification": "^2.3.3",
     "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-store": "^2.4.3",
     "@tiptap/core": "^2.26.1",
     "@tiptap/extension-link": "^2.26.1",
     "@tiptap/extension-placeholder": "^2.26.1",
