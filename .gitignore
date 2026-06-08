@@ -14,9 +14,77 @@ static/pdfjs/
 .superpowers/
 .specify/
 src-tauri/target/
+src-tauri/target-*/
 target-radius-*/
 .worktrees/
 MixRadiusDB_Gasal_2026-04-11_101103.sql.gz
 target/
 .playwright-mcp/
 src-tauri/target*/
+
+# Storage runtime
+storage/
+
+# Root APK leaks
+*.apk
+
+# Firebase secrets
+firebase-service-account.json
+
+# ===== Monorepo / Workspaces =====
+/build/
+/.svelte-kit/
+/.melos_tool/
+melos_*.iml
+
+# ===== Flutter / Dart =====
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/.pub-cache/
+**/.pub/
+**/build/
+**/coverage/
+**/pubspec.lock
+
+# Mobile apps
+apps/*/android/.gradle/
+apps/*/android/captures/
+apps/*/android/local.properties
+apps/*/android/key.properties
+*.jks
+*.keystore
+apps/*/ios/Pods/
+apps/*/ios/.symlinks/
+apps/*/ios/Flutter/Flutter.framework
+apps/*/ios/Flutter/Flutter.podspec
+apps/*/ios/Runner.xcworkspace/xcuserdata/
+apps/*/ios/Runner.xcodeproj/xcuserdata/
+apps/*/ios/Runner.xcodeproj/project.xcworkspace/
+apps/*/macos/Pods/
+apps/*/macos/Flutter/ephemeral/
+apps/*/windows/flutter/ephemeral/
+apps/*/linux/flutter/ephemeral/
+
+# ===== Generated =====
+**/*.g.dart
+**/*.freezed.dart
+**/l10n/*.arb
+
+# ===== IDEs =====
+.idea/
+*.iml
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Secrets (NEVER commit) =====
+**/.env.local
+**/google-services.json
+**/GoogleService-Info.plist
+**/keystore.properties
