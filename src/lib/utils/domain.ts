@@ -3,6 +3,8 @@
  * Browser-side host hints are intentionally weak: tenant authority should come from the backend.
  */
 
+import { secureGetItem } from './tauri-store';
+
 function normalizeHostname(hostname: string): string {
   return String(hostname || '').trim().toLowerCase().replace(/\.+$/, '');
 }
@@ -30,13 +32,9 @@ function isLocalHostname(hostname: string): boolean {
 
 function getStoredTenantSlug(): string | null {
   try {
-    const rawUser = localStorage.getItem('auth_user') || sessionStorage.getItem('auth_user') || 'null';
-    const rawTenant =
-      localStorage.getItem('auth_tenant') || sessionStorage.getItem('auth_tenant') || 'null';
-    const rawActiveSlug =
-      localStorage.getItem('active_tenant_slug') ||
-      sessionStorage.getItem('active_tenant_slug') ||
-      '';
+    const rawUser = secureGetItem('auth_user') || 'null';
+    const rawTenant = secureGetItem('auth_tenant') || 'null';
+    const rawActiveSlug = secureGetItem('active_tenant_slug') || '';
     const authUser = JSON.parse(rawUser);
     const authTenant = JSON.parse(rawTenant);
     const tenantSlug = String(authUser?.tenant_slug || authTenant?.slug || rawActiveSlug || '').trim();

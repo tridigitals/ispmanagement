@@ -14,7 +14,11 @@
   },
   "audiences": {
     "all": "Semua pengguna",
-    "admins": "Admin saja"
+    "admins": "Admin saja",
+    "customers": "Pelanggan",
+    "active_subscribers": "Pelanggan aktif",
+    "suspended_subscribers": "Pelanggan suspend",
+    "target_package": "Paket tertentu"
   },
   "modes": {
     "post": "Posting",

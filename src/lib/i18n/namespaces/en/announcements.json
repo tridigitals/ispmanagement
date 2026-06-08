@@ -14,7 +14,11 @@
   },
   "audiences": {
     "all": "All users",
-    "admins": "Admins only"
+    "admins": "Admins only",
+    "customers": "Customers",
+    "active_subscribers": "Active subscribers",
+    "suspended_subscribers": "Suspended subscribers",
+    "target_package": "Specific package"
   },
   "modes": {
     "post": "Post",

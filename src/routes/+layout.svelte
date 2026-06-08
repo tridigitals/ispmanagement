@@ -21,6 +21,7 @@
   import { getApiBaseUrl } from '$lib/utils/apiUrl';
   import { normalizeLegacyBasePath, shouldLookupCustomDomain } from '$lib/utils/appBoot';
   import { formatDocumentTitle, isTenantScopedPath, resolvePageTitle } from '$lib/utils/pageTitle';
+  import { initTauriStore } from '$lib/utils/tauri-store';
   import type { Component } from 'svelte';
 
   let loading = true;
@@ -169,7 +170,9 @@
   }
 
   function registerServiceWorker() {
-    if (!('serviceWorker' in navigator)) return;
+    // Skip service worker in Tauri desktop — not needed and can cause caching issues.
+    const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+    if (!('serviceWorker' in navigator) || isTauri) return;
     void navigator.serviceWorker.register('/sw.js').catch((error) => {
       console.error('[SW] Registration failed:', error);
     });
@@ -236,6 +239,9 @@
         goto(legacyPath, { replaceState: true });
         return;
       }
+
+      // Initialize encrypted storage for Tauri desktop before any auth reads.
+      await initTauriStore();
 
       // Track real user activity, so idle users still expire by server timeout.
       const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];

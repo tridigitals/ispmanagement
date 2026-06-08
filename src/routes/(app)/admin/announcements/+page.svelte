@@ -38,7 +38,7 @@
   let activeTab = $state<'create' | 'history'>('create');
 
   let scope = $state<'tenant' | 'global'>('tenant');
-  let audience = $state<'all' | 'admins'>('all');
+  let audience = $state<'all' | 'admins' | 'customers' | 'active_subscribers' | 'suspended_subscribers'>('all');
   let severity = $state<'info' | 'success' | 'warning' | 'error'>('info');
   let mode = $state<'post' | 'banner'>('post');
   let deliverInApp = $state(true);
@@ -60,6 +60,9 @@
   const audienceOptions = [
     { label: get(t)('announcements.audiences.all') || 'All users', value: 'all' },
     { label: get(t)('announcements.audiences.admins') || 'Admins only', value: 'admins' },
+    { label: get(t)('announcements.audiences.customers') || 'Customers', value: 'customers' },
+    { label: get(t)('announcements.audiences.active_subscribers') || 'Active subscribers', value: 'active_subscribers' },
+    { label: get(t)('announcements.audiences.suspended_subscribers') || 'Suspended subscribers', value: 'suspended_subscribers' },
   ];
   const severityOptions = [
     { label: get(t)('announcements.severity.info') || 'Info', value: 'info' },

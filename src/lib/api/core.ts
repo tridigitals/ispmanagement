@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getApiBaseUrl } from '$lib/utils/apiUrl';
+import { secureGetItem, secureClearAuth } from '$lib/utils/tauri-store';
 
 const AUTH_STORAGE_KEYS = ['auth_token', 'auth_user', 'auth_tenant', 'active_tenant_slug'] as const;
 
@@ -588,15 +589,12 @@ const commandMap: Record<string, { method: string; path: string }> = {
 
 function hasStoredAuthToken(): boolean {
   if (typeof window === 'undefined') return false;
-  return !!(localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token'));
+  return !!secureGetItem('auth_token');
 }
 
 function clearStoredAuthData() {
   if (typeof window === 'undefined') return;
-  for (const key of AUTH_STORAGE_KEYS) {
-    localStorage.removeItem(key);
-    sessionStorage.removeItem(key);
-  }
+  secureClearAuth();
 }
 
 function handleAuthExpired(reason: string) {
@@ -704,7 +702,7 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       };
 
       const token =
-        args?.token || localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+        args?.token || secureGetItem('auth_token');
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       }
@@ -867,7 +865,7 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
 
 export function getTokenOrThrow(): string {
   if (typeof window === 'undefined') throw new Error('Client side only');
-  const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+  const token = secureGetItem('auth_token');
   if (!token) throw new Error('Authentication required');
   return token;
 }

@@ -183,6 +183,18 @@
           </div>
 
           <div class="form-row">
+            <label for="org-whatsapp">{tt('admin.settings.company.fields.whatsapp', 'WhatsApp')}</label>
+            <Input
+              id="org-whatsapp"
+              type="text"
+              value={localSettings['company_whatsapp'] || ''}
+              oninput={(e: Event) =>
+                handleChange('company_whatsapp', (e.target as HTMLInputElement).value)}
+              placeholder="+62 812-3456-7890"
+            />
+          </div>
+
+          <div class="form-row">
             <label for="org-npwp">{tt('admin.settings.company.fields.npwp', 'NPWP')}</label>
             <Input
               id="org-npwp"

@@ -4,6 +4,12 @@
  */
 import { writable, derived, get } from 'svelte/store';
 import type { User, Tenant, AuthResponse } from '$lib/api/types';
+import {
+  secureGetItem,
+  secureSetItem,
+  secureRemoveItem,
+  secureClearAuth,
+} from '$lib/utils/tauri-store';
 
 // Tracks whether backend/API is reachable. We keep sessions during transient outages.
 export const backendAvailable = writable(true);
@@ -36,23 +42,21 @@ function authDebugLog(message: string, meta?: Record<string, unknown>) {
   console.log(`[auth] ${message}`, meta || {});
 }
 
-// Get stored values (check local then session)
+// Get stored values (check secure storage or browser fallback)
 function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null;
-  const local = localStorage.getItem(TOKEN_KEY);
-  const session = sessionStorage.getItem(TOKEN_KEY);
-  return local || session;
+  return secureGetItem(TOKEN_KEY);
 }
 
 function getStoredUser(): User | null {
   if (typeof window === 'undefined') return null;
-  const stored = localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY);
+  const stored = secureGetItem(USER_KEY);
   return stored ? JSON.parse(stored) : null;
 }
 
 function getStoredTenant(): Tenant | null {
   if (typeof window === 'undefined') return null;
-  const stored = localStorage.getItem(TENANT_KEY) || sessionStorage.getItem(TENANT_KEY);
+  const stored = secureGetItem(TENANT_KEY);
   return stored ? JSON.parse(stored) : null;
 }
 
@@ -129,25 +133,23 @@ function getActiveStorage(): Storage | null {
   return null; // Not logged in or no storage
 }
 
-// Persist user changes to the active storage
+// Persist user changes to secure storage
 user.subscribe((value) => {
   if (typeof window === 'undefined') return;
-  const storage = getActiveStorage();
-  if (storage && value) {
-    storage.setItem(USER_KEY, JSON.stringify(value));
-  } else if (storage && !value) {
-    storage.removeItem(USER_KEY);
+  if (value) {
+    secureSetItem(USER_KEY, JSON.stringify(value));
+  } else {
+    secureRemoveItem(USER_KEY);
   }
 });
 
-// Persist tenant changes to active storage
+// Persist tenant changes to secure storage
 tenant.subscribe((value) => {
   if (typeof window === 'undefined') return;
-  const storage = getActiveStorage();
-  if (storage && value) {
-    storage.setItem(TENANT_KEY, JSON.stringify(value));
-  } else if (storage && !value) {
-    storage.removeItem(TENANT_KEY);
+  if (value) {
+    secureSetItem(TENANT_KEY, JSON.stringify(value));
+  } else {
+    secureRemoveItem(TENANT_KEY);
   }
 });
 
@@ -227,24 +229,18 @@ export function setAuthData(
 
   if (typeof window === 'undefined') return;
 
-  // Clear both first to ensure no duplicates
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
-  localStorage.removeItem(TENANT_KEY);
-  sessionStorage.removeItem(TOKEN_KEY);
-  sessionStorage.removeItem(USER_KEY);
-  sessionStorage.removeItem(TENANT_KEY);
+  // Clear all storage first to ensure no duplicates
+  secureClearAuth();
 
-  const storage = remember ? localStorage : sessionStorage;
-
-  storage.setItem(TOKEN_KEY, newToken);
-  storage.setItem(USER_KEY, JSON.stringify(mergedUser));
+  // Write to secure storage (Tauri encrypted or browser localStorage)
+  secureSetItem(TOKEN_KEY, newToken);
+  secureSetItem(USER_KEY, JSON.stringify(mergedUser));
   if (newTenant) {
-    storage.setItem(TENANT_KEY, JSON.stringify(newTenant));
+    secureSetItem(TENANT_KEY, JSON.stringify(newTenant));
   }
   const activeSlug = String(mergedUser.tenant_slug || newTenant?.slug || '').trim();
   if (activeSlug) {
-    storage.setItem(ACTIVE_TENANT_SLUG_KEY, activeSlug);
+    secureSetItem(ACTIVE_TENANT_SLUG_KEY, activeSlug);
   }
   lastCheckAuthAt = Date.now();
   lastCheckAuthResult = true;
@@ -256,14 +252,7 @@ export function logout(): void {
   tenant.set(null);
 
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
-  localStorage.removeItem(TENANT_KEY);
-  localStorage.removeItem(ACTIVE_TENANT_SLUG_KEY);
-  sessionStorage.removeItem(TOKEN_KEY);
-  sessionStorage.removeItem(USER_KEY);
-  sessionStorage.removeItem(TENANT_KEY);
-  sessionStorage.removeItem(ACTIVE_TENANT_SLUG_KEY);
+  secureClearAuth();
   checkAuthInFlight = null;
   lastCheckAuthAt = 0;
   lastCheckAuthResult = false;
@@ -377,16 +366,15 @@ export async function checkAuth(opts?: { force?: boolean }): Promise<boolean> {
     authVersion.update((v) => v + 1);
 
     // Also update storage so components get fresh data
-    const storage = localStorage.getItem(TOKEN_KEY) ? localStorage : sessionStorage;
     const refreshedUser = get(user);
-    if (refreshedUser) storage.setItem(USER_KEY, JSON.stringify(refreshedUser));
+    if (refreshedUser) secureSetItem(USER_KEY, JSON.stringify(refreshedUser));
     const $tenant = get(tenant);
     if ($tenant) {
-      storage.setItem(TENANT_KEY, JSON.stringify($tenant));
+      secureSetItem(TENANT_KEY, JSON.stringify($tenant));
     }
     const activeSlug = String(refreshedUser?.tenant_slug || $tenant?.slug || '').trim();
     if (activeSlug) {
-      storage.setItem(ACTIVE_TENANT_SLUG_KEY, activeSlug);
+      secureSetItem(ACTIVE_TENANT_SLUG_KEY, activeSlug);
     }
 
     return true;

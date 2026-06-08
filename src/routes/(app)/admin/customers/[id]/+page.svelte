@@ -8,6 +8,7 @@
   import { toast } from 'svelte-sonner';
   import { can } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
+  import { secureGetItem } from '$lib/utils/tauri-store';
   import {
     api,
     type AuditLog,
@@ -802,7 +803,7 @@
     if ($page.data?.tenant?.name) return $page.data.tenant.name;
     if (typeof localStorage === 'undefined') return '';
     try {
-      return JSON.parse(localStorage.getItem('auth_tenant') || '{}')?.name || '';
+      return JSON.parse(secureGetItem('auth_tenant') || '{}')?.name || '';
     } catch {
       return '';
     }

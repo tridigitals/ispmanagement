@@ -921,7 +921,7 @@ export interface CreateAnnouncementDto {
   title: string;
   body: string;
   severity?: 'info' | 'success' | 'warning' | 'error';
-  audience?: 'all' | 'admins';
+  audience?: 'all' | 'admins' | 'customers' | 'active_subscribers' | 'suspended_subscribers';
   mode?: 'post' | 'banner';
   format?: 'plain' | 'markdown' | 'html';
   deliver_in_app?: boolean;
@@ -936,7 +936,7 @@ export interface UpdateAnnouncementDto {
   title?: string;
   body?: string;
   severity?: 'info' | 'success' | 'warning' | 'error';
-  audience?: 'all' | 'admins';
+  audience?: 'all' | 'admins' | 'customers' | 'active_subscribers' | 'suspended_subscribers';
   mode?: 'post' | 'banner';
   format?: 'plain' | 'markdown' | 'html';
   deliver_in_app?: boolean;

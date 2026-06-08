@@ -2,13 +2,7 @@
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import Topbar from '$lib/components/layout/Topbar.svelte';
   import AnnouncementBanner from '$lib/components/layout/AnnouncementBanner.svelte';
-  import {
-    isAuthenticated,
-    isSuperAdmin,
-    is2FARequiredButDisabled,
-    can,
-    checkAuth,
-  } from '$lib/stores/auth';
+  import { isAuthenticated, isSuperAdmin, is2FARequiredButDisabled, can, checkAuth } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { page } from '$app/stores';
   import { user } from '$lib/stores/auth';
@@ -21,6 +15,7 @@
   import { openProfileModal, profileModal, setProfileModalLock } from '$lib/stores/profileModal';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
+  import { secureGetItem } from '$lib/utils/tauri-store';
 
   let { children } = $props();
 
@@ -338,9 +333,7 @@
   // Force leaving protected app routes when session is gone/expired.
   $effect(() => {
     const hasStoredToken =
-      (typeof localStorage !== 'undefined' &&
-        (localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token'))) ||
-      false;
+      (typeof window !== 'undefined' && !!secureGetItem('auth_token')) || false;
 
     if (!$isAuthenticated && !hasStoredToken) {
       debugLog('redirect-login-session-missing', {
@@ -356,9 +349,7 @@
     let cancelled = false;
     const runGuard = async () => {
       const hasStoredToken =
-        (typeof localStorage !== 'undefined' &&
-          (localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token'))) ||
-        false;
+        (typeof window !== 'undefined' && !!secureGetItem('auth_token')) || false;
 
       // Avoid false redirect while auth store is still hydrating/validating.
       if (!$isAuthenticated && !hasStoredToken) {

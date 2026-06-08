@@ -6,6 +6,7 @@
   import { get } from 'svelte/store';
   import { toast } from 'svelte-sonner';
   import { can } from '$lib/stores/auth';
+  import { secureGetItem } from '$lib/utils/tauri-store';
   import {
     api,
     type Customer,
@@ -416,7 +417,7 @@
     if (pageData?.tenant?.name) return pageData.tenant.name;
     if (typeof localStorage === 'undefined') return '';
     try {
-      return JSON.parse(localStorage.getItem('auth_tenant') || '{}')?.name || '';
+      return JSON.parse(secureGetItem('auth_tenant') || '{}')?.name || '';
     } catch {
       return '';
     }
