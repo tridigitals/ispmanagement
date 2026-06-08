@@ -86,7 +86,8 @@ pub(crate) fn norm_severity(s: Option<String>) -> String {
 
 pub(crate) fn norm_audience(a: Option<String>) -> String {
     match a.as_deref() {
-        Some("all") | Some("admins") => a.unwrap(),
+        Some("all") | Some("admins") | Some("customers") | Some("active_subscribers")
+        | Some("suspended_subscribers") => a.unwrap(),
         _ => "all".to_string(),
     }
 }
@@ -159,6 +160,84 @@ pub(crate) async fn support_admin_user_ids(
     )
     .bind(tenant_id)
     .bind(["support:read_all", "support:reply"])
+    .fetch_all(pool)
+    .await
+}
+
+/// Portal users linked to any customer in the tenant.
+#[cfg(feature = "postgres")]
+pub(crate) async fn customer_portal_user_ids(
+    pool: &sqlx::Pool<sqlx::Postgres>,
+    tenant_id: &str,
+) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT cu.user_id
+        FROM customer_users cu
+        JOIN customers c ON c.id = cu.customer_id
+        WHERE c.tenant_id = $1 AND c.is_active = true
+    "#,
+    )
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
+}
+
+/// Portal users linked to customers with at least one active subscription.
+#[cfg(feature = "postgres")]
+pub(crate) async fn active_subscriber_portal_user_ids(
+    pool: &sqlx::Pool<sqlx::Postgres>,
+    tenant_id: &str,
+) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT cu.user_id
+        FROM customer_users cu
+        JOIN customer_subscriptions cs ON cs.customer_id = cu.customer_id AND cs.tenant_id = cu.tenant_id
+        WHERE cu.tenant_id = $1 AND cs.status = 'active'
+    "#,
+    )
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
+}
+
+/// Portal users linked to customers with at least one suspended subscription.
+#[cfg(feature = "postgres")]
+pub(crate) async fn suspended_subscriber_portal_user_ids(
+    pool: &sqlx::Pool<sqlx::Postgres>,
+    tenant_id: &str,
+) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT cu.user_id
+        FROM customer_users cu
+        JOIN customer_subscriptions cs ON cs.customer_id = cu.customer_id AND cs.tenant_id = cu.tenant_id
+        WHERE cu.tenant_id = $1 AND cs.status = 'suspended'
+    "#,
+    )
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
+}
+
+/// Portal users linked to customers subscribed to a specific package.
+#[cfg(feature = "postgres")]
+pub(crate) async fn package_subscriber_portal_user_ids(
+    pool: &sqlx::Pool<sqlx::Postgres>,
+    tenant_id: &str,
+    package_id: &str,
+) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT cu.user_id
+        FROM customer_users cu
+        JOIN customer_subscriptions cs ON cs.customer_id = cu.customer_id AND cs.tenant_id = cu.tenant_id
+        WHERE cu.tenant_id = $1 AND cs.package_id = $2 AND cs.status IN ('active', 'suspended')
+    "#,
+    )
+    .bind(tenant_id)
+    .bind(package_id)
     .fetch_all(pool)
     .await
 }

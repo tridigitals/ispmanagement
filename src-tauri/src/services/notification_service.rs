@@ -3,7 +3,7 @@ use crate::error::{AppError, AppResult};
 use crate::http::WsHub;
 use crate::models::{
     CreatePushSubscriptionRequest, Notification, NotificationPreference, PaginatedResponse,
-    PushSubscription, UpdatePreferenceRequest,
+    PushSubscription, RegisterDeviceRequest, UpdatePreferenceRequest, UserDevice,
 };
 use crate::services::EmailOutboxService;
 use crate::services::WhatsappGatewayService;
@@ -477,6 +477,224 @@ impl NotificationService {
         Ok(())
     }
 
+    // ================= FCM Device Registration =================
+
+    pub async fn register_device(
+        &self,
+        user_id: &str,
+        req: RegisterDeviceRequest,
+    ) -> AppResult<()> {
+        let id = Uuid::new_v4().to_string();
+        let now = Utc::now();
+
+        let token_preview: String = req.fcm_token.chars().take(20).collect();
+        tracing::info!(
+            "[FCM] register_device user_id={} platform={} token={}...",
+            user_id,
+            req.platform,
+            token_preview
+        );
+
+        sqlx::query(
+            r#"
+            INSERT INTO user_devices (id, user_id, fcm_token, platform, device_info, updated_at, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (fcm_token) DO UPDATE SET
+                user_id = $2, platform = $4, device_info = $5, updated_at = $6
+            "#,
+        )
+        .bind(&id)
+        .bind(user_id)
+        .bind(&req.fcm_token)
+        .bind(&req.platform)
+        .bind(&req.device_info)
+        .bind(now)
+        .bind(now)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        tracing::info!("[FCM] register_device OK user_id={}", user_id);
+        Ok(())
+    }
+
+    pub async fn unregister_device(&self, user_id: &str, fcm_token: &str) -> AppResult<()> {
+        sqlx::query("DELETE FROM user_devices WHERE fcm_token = $1 AND user_id = $2")
+            .bind(fcm_token)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+        Ok(())
+    }
+
+    pub async fn send_fcm_push(
+        &self,
+        notif: &Notification,
+        user_id: &str,
+    ) -> AppResult<()> {
+        // Firebase v1 API requires a service account JSON file
+        let sa_path = match std::env::var("FIREBASE_SERVICE_ACCOUNT_PATH") {
+            Ok(p) if !p.is_empty() => p,
+            _ => {
+                tracing::warn!("FIREBASE_SERVICE_ACCOUNT_PATH not set, skipping FCM push");
+                return Ok(());
+            }
+        };
+
+        let devices = sqlx::query_as::<_, UserDevice>(
+            "SELECT * FROM user_devices WHERE user_id = $1",
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        if devices.is_empty() {
+            return Ok(());
+        }
+
+        // Get OAuth2 access token from service account
+        let access_token = match Self::get_firebase_access_token(&sa_path).await {
+            Ok(t) => t,
+            Err(e) => {
+                tracing::error!("Failed to get Firebase access token: {}", e);
+                return Ok(());
+            }
+        };
+
+        // Extract project_id from service account
+        let sa_json: serde_json::Value = match std::fs::read_to_string(&sa_path) {
+            Ok(s) => serde_json::from_str(&s).unwrap_or_default(),
+            _ => return Ok(()),
+        };
+        let project_id = sa_json["project_id"].as_str().unwrap_or("");
+
+        let client = reqwest::Client::new();
+        let url = format!(
+            "https://fcm.googleapis.com/v1/projects/{}/messages:send",
+            project_id
+        );
+
+        for device in &devices {
+            let payload = serde_json::json!({
+                "message": {
+                    "token": device.fcm_token,
+                    "notification": {
+                        "title": notif.title,
+                        "body": notif.message,
+                    },
+                    "data": {
+                        "notification_id": &notif.id,
+                        "category": &notif.category,
+                        "action_url": notif.action_url.as_deref().unwrap_or(""),
+                    },
+                    "android": {
+                        "priority": "high",
+                        "notification": {
+                            "channel_id": "high_importance_channel",
+                            "sound": "default",
+                        }
+                    }
+                }
+            });
+
+            match client
+                .post(&url)
+                .header("Authorization", format!("Bearer {}", access_token))
+                .header("Content-Type", "application/json")
+                .json(&payload)
+                .send()
+                .await
+            {
+                Ok(resp) => {
+                    let status = resp.status();
+                    if status.is_success() {
+                        tracing::info!("FCM v1 push sent to device {}", device.id);
+                    } else {
+                        let body = resp.text().await.unwrap_or_default();
+                        tracing::warn!("FCM v1 push failed ({}): {}", status, body);
+                        // If token expired, clear cache and retry once
+                        if status.as_u16() == 401 {
+                            tracing::info!("Token expired, will refresh on next attempt");
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("FCM v1 request error: {}", e);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get Firebase OAuth2 access token from service account JSON.
+    /// Uses JWT assertion flow (no extra deps beyond jsonwebtoken).
+    async fn get_firebase_access_token(sa_path: &str) -> Result<String, String> {
+        use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+
+        let sa_str = std::fs::read_to_string(sa_path)
+            .map_err(|e| format!("read service account: {}", e))?;
+        let sa: serde_json::Value = serde_json::from_str(&sa_str)
+            .map_err(|e| format!("parse service account: {}", e))?;
+
+        let client_email = sa["client_email"].as_str()
+            .ok_or("missing client_email")?;
+        let private_key_pem = sa["private_key"].as_str()
+            .ok_or("missing private_key")?;
+
+        let now = chrono::Utc::now().timestamp();
+
+        // JWT claims for Google OAuth2
+        #[derive(serde::Serialize)]
+        struct Claims {
+            iss: String,
+            scope: String,
+            aud: String,
+            iat: i64,
+            exp: i64,
+        }
+
+        let claims = Claims {
+            iss: client_email.to_string(),
+            scope: "https://www.googleapis.com/auth/firebase.messaging".to_string(),
+            aud: "https://oauth2.googleapis.com/token".to_string(),
+            iat: now,
+            exp: now + 3600,
+        };
+
+        let header = Header::new(Algorithm::RS256);
+        let key = EncodingKey::from_rsa_pem(private_key_pem.as_bytes())
+            .map_err(|e| format!("invalid RSA key: {}", e))?;
+        let jwt = encode(&header, &claims, &key)
+            .map_err(|e| format!("JWT encode: {}", e))?;
+
+        // Exchange JWT for access token
+        let client = reqwest::Client::new();
+        let resp = client
+            .post("https://oauth2.googleapis.com/token")
+            .form(&[
+                ("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer"),
+                ("assertion", &jwt),
+            ])
+            .send()
+            .await
+            .map_err(|e| format!("token request: {}", e))?;
+
+        if !resp.status().is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            return Err(format!("token exchange failed: {}", body));
+        }
+
+        let token_resp: serde_json::Value = resp.json().await
+            .map_err(|e| format!("parse token response: {}", e))?;
+
+        token_resp["access_token"].as_str()
+            .map(|s| s.to_string())
+            .ok_or_else(|| "no access_token in response".to_string())
+    }
+
     /// Send Push Notification using web-push-native
     pub async fn send_push_notification(
         &self,
@@ -702,9 +920,10 @@ impl NotificationService {
             }
         }
 
-        // 3. Push
+        // 3. Push (Web Push + FCM)
         if should_send("push", &notif.category) {
             let _ = self.send_push_notification(notif, &notif.user_id).await;
+            let _ = self.send_fcm_push(notif, &notif.user_id).await;
         }
 
         // 4. WhatsApp

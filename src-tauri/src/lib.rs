@@ -39,16 +39,12 @@ fn init_linux_webview_fallbacks() {
     }
 }
 
-/// Initialize logging
+/// Initialize logging — tauri-plugin-log handles desktop logging,
+/// so we only set up tracing for non-desktop or when plugin-log is absent.
 #[cfg(feature = "desktop")]
 fn init_logging() {
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
-        .with(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive("saas_tauri=debug".parse().unwrap()),
-        )
-        .init();
+    // tauri-plugin-log is the primary logger for desktop.
+    // Do NOT init tracing_subscriber here — it conflicts with plugin-log's global logger.
 }
 
 #[cfg_attr(all(feature = "desktop", mobile), tauri::mobile_entry_point)]
@@ -58,6 +54,8 @@ fn init_logging() {
 pub fn run() {
     use commands::audit::{list_audit_logs, list_tenant_audit_logs};
     use commands::*;
+    use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+    use tauri::tray::{TrayIconBuilder, TrayIconEvent};
     use tauri::Manager;
 
     // Load `.env` for local development (desktop Tauri).
@@ -75,7 +73,21 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_notification::init());
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(log::LevelFilter::Info)
+                .build(),
+        )
+        .plugin(tauri_plugin_shell::init());
+
+    // Updater only in production builds
+    #[cfg(not(debug_assertions))]
+    {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
 
     // Only enable single-instance in production to allow dev and prod to run simultaneously
     #[cfg(not(debug_assertions))]
@@ -94,11 +106,6 @@ pub fn run() {
 
             // Get app data directory
 
-            #[cfg(debug_assertions)]
-            if let Some(window) = app.get_webview_window("main") {
-                window.open_devtools();
-            }
-
             let app_data_dir = match app_handle.path().app_data_dir() {
                 Ok(path) => path,
                 Err(e) => {
@@ -114,8 +121,6 @@ pub fn run() {
                 #[cfg(windows)] show_error_dialog(&err);
                 return Err(err.into());
             }
-
-            info!("App data directory: {:?}", app_data_dir);
 
             info!("App data directory: {:?}", app_data_dir);
 
@@ -189,12 +194,57 @@ pub fn run() {
                 // but if VITE_USE_REMOTE_API is true, everything will work fine.
             }
 
+            // =========================================================
+            // SYSTEM TRAY
+            // =========================================================
+            let show_item = MenuItem::with_id(app, "show", "Buka ISP Management", true, None::<&str>)?;
+            let separator = PredefinedMenuItem::separator(app)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Keluar", true, None::<&str>)?;
+
+            let tray_menu = Menu::with_items(app, &[&show_item, &separator, &quit_item])?;
+
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().cloned().unwrap())
+                .menu(&tray_menu)
+                .tooltip("ISP Management")
+                .show_menu_on_left_click(true)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.unminimize();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click { .. } = event {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.unminimize();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+
+            info!("System tray initialized");
+
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
-                // Force exit to ensure background tasks (like HTTP server) are killed
-                window.app_handle().exit(0);
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // Hide window to tray instead of quitting.
+                // User can quit from tray menu "Keluar".
+                if let Err(e) = window.hide() {
+                    tracing::warn!("Failed to hide window: {}", e);
+                }
+                api.prevent_close();
             }
         })
         .invoke_handler(tauri::generate_handler![

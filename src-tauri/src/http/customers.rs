@@ -126,6 +126,7 @@ pub fn router() -> Router<AppState> {
             post(portal_order_request_subscription),
         )
         .route("/portal/checkout", post(portal_checkout_subscription))
+        .route("/portal/contact", get(portal_get_contact_info))
 }
 
 fn bearer_token(headers: &HeaderMap) -> AppResult<String> {
@@ -1021,4 +1022,32 @@ async fn delete_subscription(
         .delete_customer_subscription(&claims.sub, &tenant_id, &subscription_id, Some(&ip))
         .await?;
     Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+// GET /api/customers/portal/contact
+async fn portal_get_contact_info(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant_id, _claims) = tenant_and_claims(&state, &headers).await?;
+
+    let keys = [
+        "organization_name",
+        "company_phone",
+        "company_whatsapp",
+        "company_email",
+        "company_address",
+        "company_website",
+    ];
+
+    let mut contact = serde_json::Map::new();
+    for key in &keys {
+        if let Ok(Some(val)) = state.settings_service.get_value(Some(&tenant_id), key).await {
+            if !val.is_empty() {
+                contact.insert(key.to_string(), serde_json::Value::String(val));
+            }
+        }
+    }
+
+    Ok(Json(serde_json::Value::Object(contact)))
 }

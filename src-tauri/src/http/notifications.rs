@@ -1,8 +1,8 @@
 use crate::error::AppResult;
 use crate::http::AppState;
 use crate::models::{
-    CreatePushSubscriptionRequest, Notification, PaginatedResponse, UnsubscribePushRequest,
-    UpdatePreferenceRequest, UserResponse,
+    CreatePushSubscriptionRequest, Notification, PaginatedResponse, RegisterDeviceRequest,
+    UnregisterDeviceRequest, UnsubscribePushRequest, UpdatePreferenceRequest, UserResponse,
 };
 use crate::services::Claims;
 use axum::{
@@ -31,6 +31,7 @@ pub fn router() -> Router<AppState> {
         .route("/preferences", get(get_preferences).put(update_preference))
         .route("/push/subscribe", post(subscribe_push))
         .route("/push/unsubscribe", post(unsubscribe_push))
+        .route("/devices", post(register_device).delete(unregister_device))
         .route("/test", post(send_test_notification))
 }
 
@@ -347,6 +348,34 @@ async fn unsubscribe_push(
     state
         .notification_service
         .unsubscribe_push_for_user(&payload.endpoint, &user.id)
+        .await?;
+    Ok(Json(serde_json::json!({ "success": true })))
+}
+
+// POST /api/notifications/devices
+async fn register_device(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<RegisterDeviceRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    let user = get_current_user(&state, &headers).await?;
+    state
+        .notification_service
+        .register_device(&user.id, payload)
+        .await?;
+    Ok(Json(serde_json::json!({ "success": true })))
+}
+
+// DELETE /api/notifications/devices
+async fn unregister_device(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<UnregisterDeviceRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    let user = get_current_user(&state, &headers).await?;
+    state
+        .notification_service
+        .unregister_device(&user.id, &payload.fcm_token)
         .await?;
     Ok(Json(serde_json::json!({ "success": true })))
 }

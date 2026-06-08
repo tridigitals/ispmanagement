@@ -167,6 +167,80 @@ impl AnnouncementScheduler {
             .await
     }
 
+    #[cfg(feature = "postgres")]
+    async fn customer_portal_user_ids(
+        pool: &sqlx::Pool<sqlx::Postgres>,
+        tenant_id: &str,
+    ) -> Result<Vec<String>, sqlx::Error> {
+        sqlx::query_scalar(
+            r#"
+            SELECT DISTINCT cu.user_id
+            FROM customer_users cu
+            JOIN customers c ON c.id = cu.customer_id
+            WHERE c.tenant_id = $1 AND c.is_active = true
+        "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(pool)
+        .await
+    }
+
+    #[cfg(feature = "postgres")]
+    async fn active_subscriber_portal_user_ids(
+        pool: &sqlx::Pool<sqlx::Postgres>,
+        tenant_id: &str,
+    ) -> Result<Vec<String>, sqlx::Error> {
+        sqlx::query_scalar(
+            r#"
+            SELECT DISTINCT cu.user_id
+            FROM customer_users cu
+            JOIN customer_subscriptions cs ON cs.customer_id = cu.customer_id AND cs.tenant_id = cu.tenant_id
+            WHERE cu.tenant_id = $1 AND cs.status = 'active'
+        "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(pool)
+        .await
+    }
+
+    #[cfg(feature = "postgres")]
+    async fn suspended_subscriber_portal_user_ids(
+        pool: &sqlx::Pool<sqlx::Postgres>,
+        tenant_id: &str,
+    ) -> Result<Vec<String>, sqlx::Error> {
+        sqlx::query_scalar(
+            r#"
+            SELECT DISTINCT cu.user_id
+            FROM customer_users cu
+            JOIN customer_subscriptions cs ON cs.customer_id = cu.customer_id AND cs.tenant_id = cu.tenant_id
+            WHERE cu.tenant_id = $1 AND cs.status = 'suspended'
+        "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(pool)
+        .await
+    }
+
+    #[cfg(feature = "postgres")]
+    async fn package_subscriber_portal_user_ids(
+        pool: &sqlx::Pool<sqlx::Postgres>,
+        tenant_id: &str,
+        package_id: &str,
+    ) -> Result<Vec<String>, sqlx::Error> {
+        sqlx::query_scalar(
+            r#"
+            SELECT DISTINCT cu.user_id
+            FROM customer_users cu
+            JOIN customer_subscriptions cs ON cs.customer_id = cu.customer_id AND cs.tenant_id = cu.tenant_id
+            WHERE cu.tenant_id = $1 AND cs.package_id = $2 AND cs.status IN ('active', 'suspended')
+        "#,
+        )
+        .bind(tenant_id)
+        .bind(package_id)
+        .fetch_all(pool)
+        .await
+    }
+
     async fn send_announcement_notifications(
         pool: &DbPool,
         notification_service: &NotificationService,
@@ -181,14 +255,54 @@ impl AnnouncementScheduler {
         #[cfg(feature = "postgres")]
         {
             if let Some(tid) = announcement.tenant_id.as_deref() {
-                if announcement.audience == "admins" {
-                    recipients.extend(
-                        Self::tenant_admin_user_ids(pool, tid)
-                            .await
-                            .unwrap_or_default(),
-                    );
-                } else {
-                    recipients.extend(Self::tenant_user_ids(pool, tid).await.unwrap_or_default());
+                match announcement.audience.as_str() {
+                    "admins" => {
+                        recipients.extend(
+                            Self::tenant_admin_user_ids(pool, tid)
+                                .await
+                                .unwrap_or_default(),
+                        );
+                    }
+                    "customers" => {
+                        recipients.extend(
+                            Self::customer_portal_user_ids(pool, tid)
+                                .await
+                                .unwrap_or_default(),
+                        );
+                    }
+                    "active_subscribers" => {
+                        recipients.extend(
+                            Self::active_subscriber_portal_user_ids(pool, tid)
+                                .await
+                                .unwrap_or_default(),
+                        );
+                    }
+                    "suspended_subscribers" => {
+                        recipients.extend(
+                            Self::suspended_subscriber_portal_user_ids(pool, tid)
+                                .await
+                                .unwrap_or_default(),
+                        );
+                    }
+                    _ => {
+                        recipients.extend(Self::tenant_user_ids(pool, tid).await.unwrap_or_default());
+                        recipients.extend(
+                            Self::customer_portal_user_ids(pool, tid)
+                                .await
+                                .unwrap_or_default(),
+                        );
+                    }
+                }
+
+                if let Some(pkg_id) = announcement.target_package_id.as_deref() {
+                    let pkg_users: HashSet<String> = Self::package_subscriber_portal_user_ids(
+                        pool, tid, pkg_id,
+                    )
+                    .await
+                    .unwrap_or_default()
+                    .into_iter()
+                    .collect();
+                    recipients.retain(|u| pkg_users.contains(u));
                 }
             } else {
                 let ids: Vec<String> =
@@ -241,14 +355,54 @@ impl AnnouncementScheduler {
         let mut recipients: HashSet<String> = HashSet::new();
 
         if let Some(tid) = announcement.tenant_id.as_deref() {
-            if announcement.audience == "admins" {
-                recipients.extend(
-                    Self::tenant_admin_user_ids(pool, tid)
-                        .await
-                        .unwrap_or_default(),
-                );
-            } else {
-                recipients.extend(Self::tenant_user_ids(pool, tid).await.unwrap_or_default());
+            match announcement.audience.as_str() {
+                "admins" => {
+                    recipients.extend(
+                        Self::tenant_admin_user_ids(pool, tid)
+                            .await
+                            .unwrap_or_default(),
+                    );
+                }
+                "customers" => {
+                    recipients.extend(
+                        Self::customer_portal_user_ids(pool, tid)
+                            .await
+                            .unwrap_or_default(),
+                    );
+                }
+                "active_subscribers" => {
+                    recipients.extend(
+                        Self::active_subscriber_portal_user_ids(pool, tid)
+                            .await
+                            .unwrap_or_default(),
+                    );
+                }
+                "suspended_subscribers" => {
+                    recipients.extend(
+                        Self::suspended_subscriber_portal_user_ids(pool, tid)
+                            .await
+                            .unwrap_or_default(),
+                    );
+                }
+                _ => {
+                    recipients.extend(Self::tenant_user_ids(pool, tid).await.unwrap_or_default());
+                    recipients.extend(
+                        Self::customer_portal_user_ids(pool, tid)
+                            .await
+                            .unwrap_or_default(),
+                    );
+                }
+            }
+
+            if let Some(pkg_id) = announcement.target_package_id.as_deref() {
+                let pkg_users: HashSet<String> = Self::package_subscriber_portal_user_ids(
+                    pool, tid, pkg_id,
+                )
+                .await
+                .unwrap_or_default()
+                .into_iter()
+                .collect();
+                recipients.retain(|u| pkg_users.contains(u));
             }
         } else {
             let ids: Vec<String> =

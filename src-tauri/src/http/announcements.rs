@@ -15,9 +15,10 @@ use std::collections::HashSet;
 use uuid::Uuid;
 
 use super::announcements_support_common::{
-    ann_changed_fields, ann_snapshot_json, can_access_admin_audience, is_internal_tenant_member,
-    norm_audience, norm_format, norm_mode, norm_severity, strip_html_tags, tenant_admin_user_ids,
-    tenant_user_ids,
+    active_subscriber_portal_user_ids, ann_changed_fields, ann_snapshot_json,
+    can_access_admin_audience, customer_portal_user_ids, is_internal_tenant_member, norm_audience,
+    norm_format, norm_mode, norm_severity, package_subscriber_portal_user_ids, strip_html_tags,
+    suspended_subscriber_portal_user_ids, tenant_admin_user_ids, tenant_user_ids,
 };
 
 async fn auth_claims(
@@ -122,7 +123,15 @@ pub async fn get_one(
               AND (ends_at IS NULL OR ends_at > $3 OR notified_at IS NOT NULL)
               AND (
                 audience = 'all'
+                OR audience = 'customers'
+                OR audience = 'active_subscribers'
+                OR audience = 'suspended_subscribers'
                 OR (audience = 'admins' AND $4 = true)
+                OR (audience = 'target_package' AND EXISTS (
+                  SELECT 1 FROM customer_users cu
+                  JOIN customer_subscriptions cs ON cs.customer_id = cu.customer_id AND cs.tenant_id = cu.tenant_id
+                  WHERE cu.user_id = $1 AND cs.package_id = a.target_package_id AND cs.status IN ('active','suspended')
+                ))
               )
         "#,
         )
@@ -192,7 +201,15 @@ pub async fn list_active(
           AND (a.ends_at IS NULL OR a.ends_at > $3)
           AND (
             a.audience = 'all'
+            OR a.audience = 'customers'
+            OR a.audience = 'active_subscribers'
+            OR a.audience = 'suspended_subscribers'
             OR (a.audience = 'admins' AND $4 = true)
+            OR (a.audience = 'target_package' AND EXISTS (
+              SELECT 1 FROM customer_users cu
+              JOIN customer_subscriptions cs ON cs.customer_id = cu.customer_id AND cs.tenant_id = cu.tenant_id
+              WHERE cu.user_id = $1 AND cs.package_id = a.target_package_id AND cs.status IN ('active','suspended')
+            ))
           )
         ORDER BY a.starts_at DESC
         LIMIT 5
@@ -286,13 +303,13 @@ pub async fn list_recent(
 
         qb_count.push(" AND a.deliver_in_app = true AND a.starts_at <= ");
         qb_count.push_bind(now);
-        qb_count.push(" AND (a.audience = 'all' OR (a.audience = 'admins' AND ");
+        qb_count.push(" AND (a.audience IN ('all','customers','active_subscribers','suspended_subscribers') OR (a.audience = 'admins' AND ");
         qb_count.push_bind(is_admin);
         qb_count.push(" = true))");
 
         qb.push(" AND a.deliver_in_app = true AND a.starts_at <= ");
         qb.push_bind(now);
-        qb.push(" AND (a.audience = 'all' OR (a.audience = 'admins' AND ");
+        qb.push(" AND (a.audience IN ('all','customers','active_subscribers','suspended_subscribers') OR (a.audience = 'admins' AND ");
         qb.push_bind(is_admin);
         qb.push(" = true))");
 
@@ -563,10 +580,38 @@ async fn send_announcement_notifications(
     #[cfg(feature = "postgres")]
     {
         if let Some(tid) = announcement.tenant_id.as_deref() {
-            if announcement.audience == "admins" {
-                recipients.extend(tenant_admin_user_ids(&state.auth_service.pool, tid).await?);
-            } else {
-                recipients.extend(tenant_user_ids(&state.auth_service.pool, tid).await?);
+            match announcement.audience.as_str() {
+                "admins" => {
+                    recipients.extend(tenant_admin_user_ids(&state.auth_service.pool, tid).await?);
+                }
+                "customers" => {
+                    recipients.extend(customer_portal_user_ids(&state.auth_service.pool, tid).await?);
+                }
+                "active_subscribers" => {
+                    recipients.extend(
+                        active_subscriber_portal_user_ids(&state.auth_service.pool, tid).await?,
+                    );
+                }
+                "suspended_subscribers" => {
+                    recipients.extend(
+                        suspended_subscriber_portal_user_ids(&state.auth_service.pool, tid).await?,
+                    );
+                }
+                _ => {
+                    // "all" — tenant members + customer portal users
+                    recipients.extend(tenant_user_ids(&state.auth_service.pool, tid).await?);
+                    recipients.extend(customer_portal_user_ids(&state.auth_service.pool, tid).await?);
+                }
+            }
+
+            // Optional: narrow down to specific package subscribers
+            if let Some(pkg_id) = announcement.target_package_id.as_deref() {
+                let pkg_users: HashSet<String> =
+                    package_subscriber_portal_user_ids(&state.auth_service.pool, tid, pkg_id)
+                        .await?
+                        .into_iter()
+                        .collect();
+                recipients.retain(|u| pkg_users.contains(u));
             }
         } else {
             // Global: notify all users (simple baseline)
@@ -622,10 +667,36 @@ async fn send_announcement_emails(
     let mut recipients: HashSet<String> = HashSet::new();
 
     if let Some(tid) = announcement.tenant_id.as_deref() {
-        if announcement.audience == "admins" {
-            recipients.extend(tenant_admin_user_ids(&state.auth_service.pool, tid).await?);
-        } else {
-            recipients.extend(tenant_user_ids(&state.auth_service.pool, tid).await?);
+        match announcement.audience.as_str() {
+            "admins" => {
+                recipients.extend(tenant_admin_user_ids(&state.auth_service.pool, tid).await?);
+            }
+            "customers" => {
+                recipients.extend(customer_portal_user_ids(&state.auth_service.pool, tid).await?);
+            }
+            "active_subscribers" => {
+                recipients.extend(
+                    active_subscriber_portal_user_ids(&state.auth_service.pool, tid).await?,
+                );
+            }
+            "suspended_subscribers" => {
+                recipients.extend(
+                    suspended_subscriber_portal_user_ids(&state.auth_service.pool, tid).await?,
+                );
+            }
+            _ => {
+                recipients.extend(tenant_user_ids(&state.auth_service.pool, tid).await?);
+                recipients.extend(customer_portal_user_ids(&state.auth_service.pool, tid).await?);
+            }
+        }
+
+        if let Some(pkg_id) = announcement.target_package_id.as_deref() {
+            let pkg_users: HashSet<String> =
+                package_subscriber_portal_user_ids(&state.auth_service.pool, tid, pkg_id)
+                    .await?
+                    .into_iter()
+                    .collect();
+            recipients.retain(|u| pkg_users.contains(u));
         }
     } else {
         let ids: Vec<String> = sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")

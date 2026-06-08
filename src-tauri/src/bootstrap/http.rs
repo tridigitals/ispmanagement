@@ -627,6 +627,10 @@ pub async fn start_server_impl(
         .route("/api/storage/files/{id}", delete(storage::delete_file))
         .route("/api/storage/files/{id}/content", get(storage::serve_file))
         .route(
+            "/api/storage/files/{id}/ticket-content",
+            get(storage::serve_ticket_attachment),
+        )
+        .route(
             "/api/storage/files/{id}/download",
             get(storage::download_file),
         )

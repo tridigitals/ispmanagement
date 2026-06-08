@@ -25,6 +25,7 @@ pub mod tenant;
 pub mod trusted_device;
 pub mod user;
 pub mod user_address;
+pub mod user_device;
 pub mod whatsapp;
 
 pub use announcements::*;
@@ -52,6 +53,7 @@ pub use tenant::*;
 pub use trusted_device::*;
 pub use user::*;
 pub use user_address::*;
+pub use user_device::*;
 pub use whatsapp::*;
 
 #[derive(serde::Serialize, serde::Deserialize)]

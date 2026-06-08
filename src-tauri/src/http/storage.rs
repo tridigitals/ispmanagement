@@ -91,6 +91,42 @@ pub struct ListFileParams {
 #[derive(serde::Deserialize, Default)]
 pub struct UploadFileQuery {
     pub payment_invoice_id: Option<String>,
+    pub ticket_id: Option<String>,
+    pub support_ticket_attachment: Option<bool>,
+}
+
+async fn can_upload_ticket_attachment(
+    state: &AppState,
+    claims: &crate::services::Claims,
+    tenant_id: &str,
+    ticket_id: &str,
+) -> bool {
+    let created_by: Result<Option<String>, _> = sqlx::query_scalar(
+        r#"
+        SELECT created_by
+        FROM support_tickets
+        WHERE id = $1 AND tenant_id = $2
+        LIMIT 1
+        "#,
+    )
+    .bind(ticket_id)
+    .bind(tenant_id)
+    .fetch_optional(&state.auth_service.pool)
+    .await;
+
+    match created_by {
+        Ok(Some(owner)) if owner == claims.sub => true,
+        Ok(Some(_)) => state
+            .auth_service
+            .has_permission(&claims.sub, tenant_id, "support", "read_all")
+            .await
+            .unwrap_or(false),
+        Ok(None) => false,
+        Err(e) => {
+            warn!("[Upload] ticket attachment ownership check failed: {}", e);
+            false
+        }
+    }
 }
 
 async fn can_upload_payment_proof(
@@ -546,18 +582,35 @@ pub async fn upload_file_http(
             .is_ok();
 
         if !has_storage_upload {
-            let payment_invoice_id = query
-                .payment_invoice_id
+            let ticket_id = query
+                .ticket_id
                 .as_deref()
                 .map(str::trim)
                 .filter(|v| !v.is_empty());
+            let is_ticket_attachment = query.support_ticket_attachment.unwrap_or(false);
 
-            let Some(invoice_id) = payment_invoice_id else {
-                return (StatusCode::FORBIDDEN, "Forbidden").into_response();
-            };
+            if is_ticket_attachment {
+                let Some(ticket_id) = ticket_id else {
+                    return (StatusCode::FORBIDDEN, "Forbidden").into_response();
+                };
 
-            if !can_upload_payment_proof(&state, &claims, &tenant_id, invoice_id).await {
-                return (StatusCode::FORBIDDEN, "Forbidden").into_response();
+                if !can_upload_ticket_attachment(&state, &claims, &tenant_id, ticket_id).await {
+                    return (StatusCode::FORBIDDEN, "Forbidden").into_response();
+                }
+            } else {
+                let payment_invoice_id = query
+                    .payment_invoice_id
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|v| !v.is_empty());
+
+                let Some(invoice_id) = payment_invoice_id else {
+                    return (StatusCode::FORBIDDEN, "Forbidden").into_response();
+                };
+
+                if !can_upload_payment_proof(&state, &claims, &tenant_id, invoice_id).await {
+                    return (StatusCode::FORBIDDEN, "Forbidden").into_response();
+                }
             }
         }
     }
@@ -932,5 +985,121 @@ pub async fn complete_upload(
             Json(record).into_response()
         }
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+    }
+}
+
+/// Serve a file that is a ticket attachment.
+/// Authorization: user must be the ticket creator OR have support:read_all permission.
+/// This bypasses storage_files:read so customers can see attachments in their tickets.
+pub async fn serve_ticket_attachment(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(file_id): Path<String>,
+    Query(q): Query<FileAccessQuery>,
+) -> Response {
+    let token = match extract_auth_token(&headers, q.token.as_deref()) {
+        Ok(t) => t,
+        Err(resp) => return resp,
+    };
+
+    let claims = match state.auth_service.validate_token(&token).await {
+        Ok(c) => c,
+        Err(_) => return (StatusCode::UNAUTHORIZED, "Invalid Token").into_response(),
+    };
+
+    let tenant_id = match claims.tenant_id.clone() {
+        Some(tid) => tid,
+        None => return (StatusCode::FORBIDDEN, "No Tenant Context").into_response(),
+    };
+
+    // Check if this file is linked to a support ticket via support_ticket_attachments.
+    // Also fetch the ticket creator so we can verify access.
+    #[derive(sqlx::FromRow)]
+    struct TicketLink {
+        ticket_id: String,
+        created_by: Option<String>,
+    }
+
+    let link = sqlx::query_as::<_, TicketLink>(
+        r#"
+        SELECT t.id AS ticket_id, t.created_by
+        FROM support_ticket_attachments a
+        JOIN support_ticket_messages m ON m.id = a.message_id
+        JOIN support_tickets t ON t.id = m.ticket_id
+        WHERE a.file_id = $1 AND t.tenant_id = $2
+        LIMIT 1
+        "#,
+    )
+    .bind(&file_id)
+    .bind(&tenant_id)
+    .fetch_optional(&state.auth_service.pool)
+    .await;
+
+    let link = match link {
+        Ok(Some(l)) => l,
+        Ok(None) => {
+            return (StatusCode::NOT_FOUND, "Attachment not found").into_response();
+        }
+        Err(_) => {
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+
+    // Access: ticket creator OR staff with support:read_all
+    let is_creator = link.created_by.as_deref() == Some(claims.sub.as_str());
+    let is_staff = state
+        .auth_service
+        .has_permission(&claims.sub, &tenant_id, "support", "read_all")
+        .await
+        .unwrap_or(false);
+
+    if !is_creator && !is_staff {
+        return (StatusCode::FORBIDDEN, "Forbidden").into_response();
+    }
+
+    // Serve the file content (reuse the same logic as serve_file)
+    let (record, content) = match state.storage_service.get_file_content(&file_id).await {
+        Ok(res) => res,
+        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    };
+
+    match content {
+        crate::services::storage_service::StorageContent::Local(path) => {
+            let file_size = match tokio::fs::metadata(&path).await {
+                Ok(m) => m.len(),
+                Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            };
+
+            let file = match tokio::fs::File::open(path).await {
+                Ok(f) => f,
+                Err(_) => return StatusCode::NOT_FOUND.into_response(),
+            };
+            let stream = tokio_util::io::ReaderStream::new(file);
+            let body = Body::from_stream(stream);
+
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, &record.content_type)
+                .header(header::ACCEPT_RANGES, "bytes")
+                .header(header::CONTENT_LENGTH, file_size)
+                .header(
+                    header::CONTENT_DISPOSITION,
+                    format!("inline; filename=\"{}\"", record.original_name),
+                )
+                .body(body)
+                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+        }
+        crate::services::storage_service::StorageContent::S3(byte_stream) => {
+            let body = Body::from_stream(ReaderStream::new(byte_stream.into_async_read()));
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, &record.content_type)
+                .header(
+                    header::CONTENT_DISPOSITION,
+                    format!("inline; filename=\"{}\"", record.original_name),
+                )
+                .body(body)
+                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+        }
     }
 }

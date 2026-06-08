@@ -126,6 +126,30 @@ impl CustomerService {
             SELECT
               {subscription_columns},
               (
+                SELECT pa.address_pool
+                FROM pppoe_accounts pa
+                WHERE pa.tenant_id = cs.tenant_id
+                  AND pa.location_id = cs.location_id
+                ORDER BY pa.updated_at DESC, pa.created_at DESC
+                LIMIT 1
+              ) AS pppoe_address_pool,
+              (
+                SELECT iprm.isolation_pool
+                FROM isp_package_router_mappings iprm
+                WHERE iprm.tenant_id = cs.tenant_id
+                  AND iprm.package_id = cs.package_id
+                  AND iprm.router_id = cs.router_id
+                LIMIT 1
+              ) AS pppoe_isolation_pool,
+              (
+                SELECT pa.disabled
+                FROM pppoe_accounts pa
+                WHERE pa.tenant_id = cs.tenant_id
+                  AND pa.location_id = cs.location_id
+                ORDER BY pa.updated_at DESC, pa.created_at DESC
+                LIMIT 1
+              ) AS pppoe_disabled,
+              (
                 SELECT iwo.id
                 FROM installation_work_orders iwo
                 WHERE iwo.tenant_id = cs.tenant_id
@@ -214,6 +238,30 @@ impl CustomerService {
             r#"
             SELECT
               {subscription_columns},
+              (
+                SELECT pa.address_pool
+                FROM pppoe_accounts pa
+                WHERE pa.tenant_id = cs.tenant_id
+                  AND pa.location_id = cs.location_id
+                ORDER BY pa.updated_at DESC, pa.created_at DESC
+                LIMIT 1
+              ) AS pppoe_address_pool,
+              (
+                SELECT iprm.isolation_pool
+                FROM isp_package_router_mappings iprm
+                WHERE iprm.tenant_id = cs.tenant_id
+                  AND iprm.package_id = cs.package_id
+                  AND iprm.router_id = cs.router_id
+                LIMIT 1
+              ) AS pppoe_isolation_pool,
+              (
+                SELECT pa.disabled
+                FROM pppoe_accounts pa
+                WHERE pa.tenant_id = cs.tenant_id
+                  AND pa.location_id = cs.location_id
+                ORDER BY pa.updated_at DESC, pa.created_at DESC
+                LIMIT 1
+              ) AS pppoe_disabled,
               (
                 SELECT iwo.id
                 FROM installation_work_orders iwo
@@ -772,6 +820,30 @@ impl CustomerService {
             SELECT
               {subscription_columns},
               (
+                SELECT pa.address_pool
+                FROM pppoe_accounts pa
+                WHERE pa.tenant_id = cs.tenant_id
+                  AND pa.location_id = cs.location_id
+                ORDER BY pa.updated_at DESC, pa.created_at DESC
+                LIMIT 1
+              ) AS pppoe_address_pool,
+              (
+                SELECT iprm.isolation_pool
+                FROM isp_package_router_mappings iprm
+                WHERE iprm.tenant_id = cs.tenant_id
+                  AND iprm.package_id = cs.package_id
+                  AND iprm.router_id = cs.router_id
+                LIMIT 1
+              ) AS pppoe_isolation_pool,
+              (
+                SELECT pa.disabled
+                FROM pppoe_accounts pa
+                WHERE pa.tenant_id = cs.tenant_id
+                  AND pa.location_id = cs.location_id
+                ORDER BY pa.updated_at DESC, pa.created_at DESC
+                LIMIT 1
+              ) AS pppoe_disabled,
+              (
                 SELECT iwo.id
                 FROM installation_work_orders iwo
                 WHERE iwo.tenant_id = cs.tenant_id
@@ -846,6 +918,30 @@ impl CustomerService {
             r#"
             SELECT
               {subscription_columns},
+              (
+                SELECT pa.address_pool
+                FROM pppoe_accounts pa
+                WHERE pa.tenant_id = cs.tenant_id
+                  AND pa.location_id = cs.location_id
+                ORDER BY pa.updated_at DESC, pa.created_at DESC
+                LIMIT 1
+              ) AS pppoe_address_pool,
+              (
+                SELECT iprm.isolation_pool
+                FROM isp_package_router_mappings iprm
+                WHERE iprm.tenant_id = cs.tenant_id
+                  AND iprm.package_id = cs.package_id
+                  AND iprm.router_id = cs.router_id
+                LIMIT 1
+              ) AS pppoe_isolation_pool,
+              (
+                SELECT pa.disabled
+                FROM pppoe_accounts pa
+                WHERE pa.tenant_id = cs.tenant_id
+                  AND pa.location_id = cs.location_id
+                ORDER BY pa.updated_at DESC, pa.created_at DESC
+                LIMIT 1
+              ) AS pppoe_disabled,
               (
                 SELECT iwo.id
                 FROM installation_work_orders iwo

@@ -28,6 +28,9 @@ pub(crate) fn ann_snapshot_json(ann: &Announcement) -> serde_json::Value {
         "deliver_in_app": ann.deliver_in_app,
         "deliver_email": ann.deliver_email,
         "deliver_email_force": ann.deliver_email_force,
+        "deliver_whatsapp": ann.deliver_whatsapp,
+        "deliver_push": ann.deliver_push,
+        "target_package_id": ann.target_package_id,
         "starts_at": ann.starts_at.to_rfc3339(),
         "ends_at": ann.ends_at.map(|d| d.to_rfc3339()),
         "notified_at": ann.notified_at.map(|d| d.to_rfc3339()),
@@ -68,6 +71,15 @@ pub(crate) fn ann_changed_fields(before: &Announcement, after: &Announcement) ->
     if before.deliver_email_force != after.deliver_email_force {
         out.push("deliver_email_force");
     }
+    if before.deliver_whatsapp != after.deliver_whatsapp {
+        out.push("deliver_whatsapp");
+    }
+    if before.deliver_push != after.deliver_push {
+        out.push("deliver_push");
+    }
+    if before.target_package_id != after.target_package_id {
+        out.push("target_package_id");
+    }
     if before.starts_at != after.starts_at {
         out.push("starts_at");
     }
@@ -86,7 +98,7 @@ pub(crate) fn norm_severity(s: Option<String>) -> String {
 
 pub(crate) fn norm_audience(a: Option<String>) -> String {
     match a.as_deref() {
-        Some("all") | Some("admins") => a.unwrap(),
+        Some("all") | Some("admins") | Some("customers") | Some("active_subscribers") | Some("suspended_subscribers") => a.unwrap(),
         _ => "all".to_string(),
     }
 }
@@ -159,6 +171,84 @@ pub(crate) async fn support_admin_user_ids(
     )
     .bind(tenant_id)
     .bind(["support:read_all", "support:reply"])
+    .fetch_all(pool)
+    .await
+}
+
+/// Portal users linked to any customer in the tenant.
+#[cfg(feature = "postgres")]
+pub(crate) async fn customer_portal_user_ids(
+    pool: &sqlx::Pool<sqlx::Postgres>,
+    tenant_id: &str,
+) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT cu.user_id
+        FROM customer_users cu
+        JOIN customers c ON c.id = cu.customer_id
+        WHERE c.tenant_id = $1 AND c.is_active = true
+    "#,
+    )
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
+}
+
+/// Portal users linked to customers with at least one active subscription.
+#[cfg(feature = "postgres")]
+pub(crate) async fn active_subscriber_portal_user_ids(
+    pool: &sqlx::Pool<sqlx::Postgres>,
+    tenant_id: &str,
+) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT cu.user_id
+        FROM customer_users cu
+        JOIN customer_subscriptions cs ON cs.customer_id = cu.customer_id AND cs.tenant_id = cu.tenant_id
+        WHERE cu.tenant_id = $1 AND cs.status = 'active'
+    "#,
+    )
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
+}
+
+/// Portal users linked to customers with at least one suspended subscription.
+#[cfg(feature = "postgres")]
+pub(crate) async fn suspended_subscriber_portal_user_ids(
+    pool: &sqlx::Pool<sqlx::Postgres>,
+    tenant_id: &str,
+) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT cu.user_id
+        FROM customer_users cu
+        JOIN customer_subscriptions cs ON cs.customer_id = cu.customer_id AND cs.tenant_id = cu.tenant_id
+        WHERE cu.tenant_id = $1 AND cs.status = 'suspended'
+    "#,
+    )
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
+}
+
+/// Portal users linked to customers subscribed to a specific package.
+#[cfg(feature = "postgres")]
+pub(crate) async fn package_subscriber_portal_user_ids(
+    pool: &sqlx::Pool<sqlx::Postgres>,
+    tenant_id: &str,
+    package_id: &str,
+) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT cu.user_id
+        FROM customer_users cu
+        JOIN customer_subscriptions cs ON cs.customer_id = cu.customer_id AND cs.tenant_id = cu.tenant_id
+        WHERE cu.tenant_id = $1 AND cs.package_id = $2 AND cs.status IN ('active', 'suspended')
+    "#,
+    )
+    .bind(tenant_id)
+    .bind(package_id)
     .fetch_all(pool)
     .await
 }
