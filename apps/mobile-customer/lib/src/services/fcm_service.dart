@@ -10,10 +10,45 @@ import 'package:go_router/go_router.dart';
 import 'app_config.dart';
 
 /// Background handler — must be a top-level function.
+///
+/// Called when the app receives a message while in the background or
+/// terminated. For data-only messages we must display a local notification
+/// ourselves because Android won't show anything automatically.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint('[FCM] Background message: ${message.messageId}');
+
+  // Only show local notification for data-only messages (no notification payload).
+  // Messages with a `notification` field are displayed automatically by Android.
+  final data = message.data;
+  final title = data['title'] as String? ?? 'ISP Customer';
+  final body = data['body'] as String? ?? '';
+
+  if (message.notification == null && body.isNotEmpty) {
+    final localNotif = FlutterLocalNotificationsPlugin();
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(android: androidSettings);
+    await localNotif.initialize(initSettings);
+
+    await localNotif.show(
+      message.hashCode,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'high_importance_channel',
+          'Notifikasi Penting',
+          channelDescription: 'Tagihan, gangguan, dan info langganan ISP',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        ),
+      ),
+      payload: data['action_url'] as String?,
+    );
+  }
 }
 
 /// Android notification channel for high-importance messages.

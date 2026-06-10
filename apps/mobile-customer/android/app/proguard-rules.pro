@@ -49,3 +49,13 @@
 
 # FileProvider parses provider_paths XML when share_plus shares downloaded files.
 -keep class androidx.core.content.FileProvider { *; }
+
+# flutter_local_notifications — keep plugin + Android internals
+-keep class com.dexterous.flutterlocalnotifications.** { *; }
+-keep class com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver { *; }
+-keep class com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver { *; }
+-dontwarn com.dexterous.flutterlocalnotifications.**
+
+# firebase_messaging — keep service classes for background message delivery
+-keep class io.flutter.plugins.firebase.messaging.** { *; }
+-keep class com.google.firebase.messaging.** { *; }
