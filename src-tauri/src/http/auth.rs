@@ -376,9 +376,9 @@ pub async fn verify_2fa_setup(
 }
 
 #[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct Disable2FADto {
-    code: String,
+    #[serde(default)]
+    code: Option<String>,
 }
 
 /// Disable 2FA
@@ -394,9 +394,20 @@ pub async fn disable_2fa(
         .ok_or_else(|| crate::error::AppError::Unauthorized)?;
 
     let claims = state.auth_service.validate_token(auth_header).await?;
+    let code = payload.code.as_deref().unwrap_or("");
+
+    // If no code provided, generate OTP first (user must confirm with code)
+    if code.is_empty() {
+        state.auth_service.generate_email_otp(&claims.sub).await?;
+        return Ok(Json(json!({
+            "requires_verification": true,
+            "message": "OTP sent to email. Please send again with code."
+        })));
+    }
+
     state
         .auth_service
-        .disable_2fa(&claims.sub, &payload.code)
+        .disable_2fa(&claims.sub, code)
         .await?;
 
     Ok(Json(json!({
