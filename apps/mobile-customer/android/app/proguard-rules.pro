@@ -40,3 +40,12 @@
 
 # flutter_cache_manager
 -keep class com.example.flutter_cache_manager_example.** { *; }
+
+# Android framework XmlResourceParser implements org.xmlpull.v1.XmlPullParser at runtime.
+# Keep these names stable so R8 does not rewrite the interface to an obfuscated name.
+-keep class org.xmlpull.v1.** { *; }
+-keep interface org.xmlpull.v1.** { *; }
+-dontwarn org.xmlpull.v1.**
+
+# FileProvider parses provider_paths XML when share_plus shares downloaded files.
+-keep class androidx.core.content.FileProvider { *; }

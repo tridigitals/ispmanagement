@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 
 import 'package:api_client/api_client.dart';
 
@@ -140,7 +139,10 @@ Future<String> generateReceiptPdf(InvoiceModel inv) async {
             ),
             cellStyle: const pw.TextStyle(fontSize: 10),
             cellAlignment: pw.Alignment.centerLeft,
-            headerAlignments: {0: pw.Alignment.centerLeft, 1: pw.Alignment.centerRight},
+            headerAlignments: {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.centerRight
+            },
             data: [
               ['Deskripsi', 'Jumlah'],
               [

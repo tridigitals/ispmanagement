@@ -30,6 +30,7 @@
 
   let status = $state<'open' | 'pending' | 'closed'>('open');
   let priority = $state<'low' | 'normal' | 'high' | 'urgent'>('normal');
+  let category = $state<'general' | 'billing' | 'technical' | 'installation' | null>(null);
   let assignedTo = $state<string | null>(null);
 
   let teamMembers = $state<TeamMember[]>([]);
@@ -57,6 +58,14 @@
     { label: get(t)('support.priorities.normal') || 'Normal', value: 'normal' },
     { label: get(t)('support.priorities.high') || 'High', value: 'high' },
     { label: get(t)('support.priorities.urgent') || 'Urgent', value: 'urgent' },
+  ];
+
+  const categoryOptions = [
+    { label: get(t)('common.na') || '—', value: '' },
+    { label: get(t)('support.categories.general') || 'General', value: 'general' },
+    { label: get(t)('support.categories.billing') || 'Billing', value: 'billing' },
+    { label: get(t)('support.categories.technical') || 'Technical', value: 'technical' },
+    { label: get(t)('support.categories.installation') || 'Installation', value: 'installation' },
   ];
 
   $effect(() => {
@@ -101,6 +110,7 @@
       detail = await api.support.get(id);
       status = (detail.ticket.status as any) || 'open';
       priority = (detail.ticket.priority as any) || 'normal';
+      category = (detail.ticket.category as any) || null;
       assignedTo = detail.ticket.assigned_to || null;
     } catch (e: any) {
       toast.error(e?.message || e);
@@ -117,6 +127,7 @@
       const updated = await api.support.update(id, {
         status,
         priority,
+        category: category || undefined,
         assignedTo: assignedTo || null,
       });
       detail = { ...detail, ticket: updated as any };
@@ -247,6 +258,11 @@
               options={priorityOptions}
             />
             <Select
+              label={$t('admin.support.fields.category') || 'Category'}
+              bind:value={category}
+              options={categoryOptions}
+            />
+            <Select
               label={$t('admin.support.fields.assignee') || 'Assignee'}
               bind:value={assignedTo}
               options={memberOptions}
@@ -257,6 +273,23 @@
               'Assignee expects a team member user_id. Leave empty to keep unassigned.'}
           </p>
         </div>
+
+        {#if detail.ticket.satisfactionRating}
+        <div class="panel">
+          <div class="panel-title">⭐ Satisfaction Rating</div>
+          <div class="satisfaction-display">
+            <div class="rating-stars">
+              {#each [1,2,3,4,5] as star}
+                <span class="star" class:filled={star <= (detail.ticket.satisfactionRating ?? 0)}>★</span>
+              {/each}
+              <span class="rating-num">{detail.ticket.satisfactionRating}/5</span>
+            </div>
+            {#if detail.ticket.satisfactionComment}
+              <p class="rating-comment">"{detail.ticket.satisfactionComment}"</p>
+            {/if}
+          </div>
+        </div>
+        {/if}
 
         <div class="panel">
           <div class="panel-title">{$t('admin.support.panels.reply') || 'Reply'}</div>
@@ -637,6 +670,36 @@
     font-weight: 800;
     font-size: 0.9rem;
     margin-bottom: 0.6rem;
+  }
+
+  .satisfaction-display {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .rating-stars {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+  }
+  .star {
+    font-size: 1.3rem;
+    color: var(--border-subtle, #e2e8f0);
+  }
+  .star.filled {
+    color: #f59e0b;
+  }
+  .rating-num {
+    margin-left: 0.5rem;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .rating-comment {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: 0;
   }
 
   .file-col {

@@ -71,10 +71,7 @@ class _RealtimeNotificationListenerState
       final notification = NotificationModel.fromJson(data);
 
       // Inject into the notification list provider (prepend).
-      final current = ref.read(notificationsProvider).valueOrNull ?? [];
-      if (current.any((n) => n.id == notification.id)) return; // dedupe
-      ref.read(notificationsProvider.notifier).state =
-          AsyncData([notification, ...current]);
+      ref.read(notificationsProvider.notifier).injectRealtime(notification);
 
       // Show non-intrusive snackbar.
       _showNotificationSnackbar(
@@ -130,7 +127,8 @@ class _RealtimeNotificationListenerState
         SnackBar(
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           duration: const Duration(seconds: 4),
           content: Row(
             children: [
@@ -154,7 +152,8 @@ class _RealtimeNotificationListenerState
                         body,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, color: Colors.white70),
+                        style: const TextStyle(
+                            fontSize: 12, color: Colors.white70),
                       ),
                   ],
                 ),

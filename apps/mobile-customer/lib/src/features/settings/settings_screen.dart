@@ -1,4 +1,3 @@
-import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,7 +8,6 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../services/auth_providers.dart';
-import '../../services/feature_providers.dart';
 import '../../services/missing_providers.dart';
 import '../../services/settings_providers.dart';
 
@@ -18,7 +16,7 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     final user = ref.watch(currentUserProvider);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settings)),
@@ -27,14 +25,16 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: IspSpacing.sm),
           _SectionHeader(label: l10n.account),
           IspCard(
-            margin: const EdgeInsets.symmetric(horizontal: IspSpacing.md, vertical: IspSpacing.xs),
+            margin: const EdgeInsets.symmetric(
+                horizontal: IspSpacing.md, vertical: IspSpacing.xs),
             child: Column(
               children: [
                 _SwitchTile(
                   icon: Icons.fingerprint,
                   title: l10n.biometric,
                   subtitle: l10n.biometricSub,
-                  value: ref.watch(biometricEnabledProvider).valueOrNull ?? false,
+                  value:
+                      ref.watch(biometricEnabledProvider).valueOrNull ?? false,
                   onChanged: (v) => _toggleBiometric(context, ref, v),
                 ),
                 const Divider(height: 1, color: IspColors.borderSubtle),
@@ -52,14 +52,14 @@ class SettingsScreen extends ConsumerWidget {
                   leading: const Icon(Icons.lock_outline),
                   title: Text(l10n.changePassword),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/change-password'),
+                  onTap: () => GoRouter.of(context).push('/change-password'),
                 ),
                 const Divider(height: 1, color: IspColors.borderSubtle),
                 ListTile(
                   leading: const Icon(Icons.edit_outlined),
                   title: Text(l10n.editProfile),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/edit-profile'),
+                  onTap: () => GoRouter.of(context).push('/edit-profile'),
                 ),
               ],
             ),
@@ -67,7 +67,8 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: IspSpacing.lg),
           _SectionHeader(label: l10n.notifications),
           IspCard(
-            margin: const EdgeInsets.symmetric(horizontal: IspSpacing.md, vertical: IspSpacing.xs),
+            margin: const EdgeInsets.symmetric(
+                horizontal: IspSpacing.md, vertical: IspSpacing.xs),
             child: Column(
               children: [
                 _SwitchTile(
@@ -75,9 +76,8 @@ class SettingsScreen extends ConsumerWidget {
                   title: l10n.notifInvoice,
                   subtitle: l10n.notifInvoiceSub,
                   value: ref.watch(notifInvoiceEnabledProvider),
-                  onChanged: (v) => ref
-                      .read(notifInvoiceEnabledProvider.notifier)
-                      .set(v),
+                  onChanged: (v) =>
+                      ref.read(notifInvoiceEnabledProvider.notifier).set(v),
                 ),
                 const Divider(height: 1, color: IspColors.borderSubtle),
                 _SwitchTile(
@@ -85,9 +85,8 @@ class SettingsScreen extends ConsumerWidget {
                   title: l10n.notifOutage,
                   subtitle: l10n.notifOutageSub,
                   value: ref.watch(notifOutageEnabledProvider),
-                  onChanged: (v) => ref
-                      .read(notifOutageEnabledProvider.notifier)
-                      .set(v),
+                  onChanged: (v) =>
+                      ref.read(notifOutageEnabledProvider.notifier).set(v),
                 ),
                 const Divider(height: 1, color: IspColors.borderSubtle),
                 _SwitchTile(
@@ -95,9 +94,8 @@ class SettingsScreen extends ConsumerWidget {
                   title: l10n.notifPromo,
                   subtitle: l10n.notifPromoSub,
                   value: ref.watch(notifPromoEnabledProvider),
-                  onChanged: (v) => ref
-                      .read(notifPromoEnabledProvider.notifier)
-                      .set(v),
+                  onChanged: (v) =>
+                      ref.read(notifPromoEnabledProvider.notifier).set(v),
                 ),
               ],
             ),
@@ -105,7 +103,8 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: IspSpacing.lg),
           _SectionHeader(label: 'Bahasa / Language'),
           IspCard(
-            margin: const EdgeInsets.symmetric(horizontal: IspSpacing.md, vertical: IspSpacing.xs),
+            margin: const EdgeInsets.symmetric(
+                horizontal: IspSpacing.md, vertical: IspSpacing.xs),
             child: Column(
               children: [
                 RadioListTile<Locale>(
@@ -137,7 +136,8 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: IspSpacing.lg),
           _SectionHeader(label: l10n.about),
           IspCard(
-            margin: const EdgeInsets.symmetric(horizontal: IspSpacing.md, vertical: IspSpacing.xs),
+            margin: const EdgeInsets.symmetric(
+                horizontal: IspSpacing.md, vertical: IspSpacing.xs),
             child: Column(
               children: [
                 ListTile(
@@ -176,6 +176,7 @@ class SettingsScreen extends ConsumerWidget {
     WidgetRef ref,
     bool enable,
   ) async {
+    final l10n = AppLocalizations.of(context);
     if (enable) {
       final auth = LocalAuthentication();
       try {
@@ -183,18 +184,13 @@ class SettingsScreen extends ConsumerWidget {
         if (!canCheck) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  AppLocalizations.of(context)!.biometricNotAvailable,
-                ),
-              ),
+              SnackBar(content: Text(l10n.biometricNotAvailable)),
             );
           }
           return;
         }
         final ok = await auth.authenticate(
-          localizedReason:
-              AppLocalizations.of(context)!.biometricEnableReason,
+          localizedReason: l10n.biometricEnableReason,
           options: const AuthenticationOptions(stickyAuth: true),
         );
         if (ok) {
@@ -218,20 +214,20 @@ class SettingsScreen extends ConsumerWidget {
     bool enable,
   ) async {
     if (enable) {
-      context.push('/security/2fa/enroll');
+      GoRouter.of(context).push('/security/2fa/enroll');
     } else {
       // Confirm before disabling
       final confirm = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          title: Text(AppLocalizations.of(context)!.disable2faConfirmTitle),
+          title: Text(AppLocalizations.of(context).disable2faConfirmTitle),
           content: Text(
-            AppLocalizations.of(context)!.disable2faConfirmBody,
+            AppLocalizations.of(context).disable2faConfirmBody,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: Text(AppLocalizations.of(context)!.cancel),
+              child: Text(AppLocalizations.of(context).cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
@@ -239,16 +235,14 @@ class SettingsScreen extends ConsumerWidget {
                 backgroundColor: IspColors.danger,
               ),
               child: Text(
-                AppLocalizations.of(context)!.disable,
+                AppLocalizations.of(context).disable,
               ),
             ),
           ],
         ),
       );
       if (confirm == true) {
-        await ref
-            .read(authControllerProvider.notifier)
-            .disable2fa();
+        await ref.read(authControllerProvider.notifier).disable2fa();
       }
     }
   }

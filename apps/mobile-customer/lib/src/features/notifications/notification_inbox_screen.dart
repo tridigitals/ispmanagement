@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../../services/feature_providers.dart';
 import '../../services/notifications_providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/loading_skeleton.dart';
@@ -43,7 +42,7 @@ class _NotificationInboxScreenState
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     final async = ref.watch(notificationsProvider);
 
     return Scaffold(
@@ -208,15 +207,11 @@ class _NotificationTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Material(
-      color: item.isUnread
-          ? AppColors.surfaceElevated
-          : Colors.transparent,
+      color: item.isUnread ? AppColors.surfaceElevated : Colors.transparent,
       child: InkWell(
         onTap: () async {
           if (item.isUnread) {
-            await ref
-                .read(notificationsProvider.notifier)
-                .markRead(item.id);
+            await ref.read(notificationsProvider.notifier).markRead(item.id);
           }
           final target = _resolveTarget(item);
           if (target != null && context.mounted) {

@@ -1,4 +1,3 @@
-import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,7 +37,8 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
 
   Future<void> _enroll() async {
     setState(() => _loading = true);
-    final res = await ref.read(authControllerProvider.notifier).start2faEnroll();
+    final res =
+        await ref.read(authControllerProvider.notifier).start2faEnroll();
     if (!mounted) return;
     setState(() {
       _loading = false;
@@ -61,19 +61,18 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
     if (!_form.currentState!.validate()) return;
     if (_enrollment == null) return;
     setState(() => _loading = true);
-    final res = await ref
-        .read(authControllerProvider.notifier)
-        .confirm2faEnroll(
-          enrollmentId: _enrollment!.enrollmentId,
-          code: _code.text.trim(),
-        );
+    final res =
+        await ref.read(authControllerProvider.notifier).confirm2faEnroll(
+              enrollmentId: _enrollment!.enrollmentId,
+              code: _code.text.trim(),
+            );
     if (!mounted) return;
     setState(() => _loading = false);
     res.fold(
       (_) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context)!.twoFaEnabled),
+            content: Text(AppLocalizations.of(context).twoFaEnabled),
           ),
         );
         context.pop();
@@ -89,7 +88,7 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     final enrollment = _enrollment;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.enable2fa)),
@@ -118,8 +117,7 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
                       const SizedBox(height: 6),
                       Text(
                         l10n.twoFaSub,
-                        style:
-                            const TextStyle(color: IspColors.textTertiary),
+                        style: const TextStyle(color: IspColors.textTertiary),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: IspSpacing.xxl),
@@ -143,7 +141,7 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
                               ),
                               const SizedBox(height: IspSpacing.md),
                               SelectableText(
-                                enrollment!.secret,
+                                enrollment.secret,
                                 style: const TextStyle(
                                   fontFamily: 'monospace',
                                   fontSize: 14,

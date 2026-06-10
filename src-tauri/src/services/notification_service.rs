@@ -858,7 +858,7 @@ impl NotificationService {
                 .iter()
                 .any(|p| p.channel == channel && p.category == category)
             {
-                if channel == "in_app" {
+                if channel == "in_app" || channel == "push" {
                     return true;
                 }
 

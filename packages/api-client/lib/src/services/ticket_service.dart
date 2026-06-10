@@ -14,6 +14,7 @@ class TicketService {
     int page = 1,
     int perPage = 20,
     String? status,
+    String? category,
   }) async {
     return _execute(() async {
       final res = await dio.get<Map<String, dynamic>>(
@@ -22,6 +23,7 @@ class TicketService {
           'page': page,
           'per_page': perPage,
           if (status != null) 'status': status,
+          if (category != null) 'category': category,
         },
       );
       return PaginatedResponse<TicketModel>.fromJson(
@@ -48,6 +50,8 @@ class TicketService {
     required String subject,
     required String message,
     String priority = 'normal',
+    String? category,
+    String? subscriptionId,
     List<String>? attachmentIds,
   }) async {
     return _execute(() async {
@@ -56,6 +60,8 @@ class TicketService {
         'message': message,
         'priority': priority,
       };
+      if (category != null) body['category'] = category;
+      if (subscriptionId != null) body['subscription_id'] = subscriptionId;
       if (attachmentIds != null && attachmentIds.isNotEmpty) {
         body['attachment_ids'] = attachmentIds;
       }
@@ -63,7 +69,11 @@ class TicketService {
         ApiEndpoints.createTicket,
         data: body,
       );
-      return TicketModel.fromJson(res.data ?? const {});
+      final responseData = res.data ?? const {};
+      final ticketJson = responseData['ticket'] is Map<String, dynamic>
+          ? responseData['ticket'] as Map<String, dynamic>
+          : responseData;
+      return TicketModel.fromJson(ticketJson);
     });
   }
 
@@ -106,6 +116,22 @@ class TicketService {
         data: body,
       );
       return TicketMessageModel.fromJson(res.data ?? const {});
+    });
+  }
+
+  Future<ServiceResult<void>> submitSatisfaction({
+    required String ticketId,
+    required int rating,
+    String? comment,
+  }) async {
+    return _execute(() async {
+      await dio.post<dynamic>(
+        ApiEndpoints.ticketSatisfaction(ticketId),
+        data: {
+          'rating': rating,
+          if (comment != null && comment.isNotEmpty) 'comment': comment,
+        },
+      );
     });
   }
 

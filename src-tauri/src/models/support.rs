@@ -11,6 +11,10 @@ pub struct SupportTicket {
     pub status: String,
     pub priority: String,
     pub assigned_to: Option<String>,
+    pub category: Option<String>,
+    pub subscription_id: Option<String>,
+    pub satisfaction_rating: Option<i32>,
+    pub satisfaction_comment: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub closed_at: Option<DateTime<Utc>>,
@@ -25,6 +29,7 @@ pub struct SupportTicketListItem {
     pub subject: String,
     pub status: String,
     pub priority: String,
+    pub category: Option<String>,
     pub assigned_to: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -67,6 +72,9 @@ pub struct CreateSupportTicketDto {
     pub subject: String,
     pub message: String,
     pub priority: Option<String>, // low|normal|high|urgent
+    pub category: Option<String>, // general|billing|technical|installation
+    #[serde(alias = "subscription_id")]
+    pub subscription_id: Option<String>,
     #[serde(alias = "attachment_ids")]
     pub attachment_ids: Option<Vec<String>>,
 }
@@ -86,8 +94,15 @@ pub struct ReplySupportTicketDto {
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 pub struct UpdateSupportTicketDto {
-    pub status: Option<String>,   // open|pending|closed
-    pub priority: Option<String>, // low|normal|high|urgent
-    #[serde(alias = "assigned_to")]
+    pub status: Option<String>,    // open|pending|closed
+    pub priority: Option<String>,  // low|normal|high|urgent
+    pub category: Option<String>,  // general|billing|technical|installation
     pub assigned_to: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SatisfactionDto {
+    pub rating: i32,
+    pub comment: Option<String>,
 }

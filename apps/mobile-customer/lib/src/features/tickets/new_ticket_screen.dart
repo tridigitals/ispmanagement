@@ -21,10 +21,36 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
   final _subjectCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
   String _priority = 'normal';
+  String? _category;
+  String? _subscriptionId;
   bool _submitting = false;
+  List<SubscriptionModel> _subscriptions = [];
+  bool _loadingSubs = true;
 
   /// Pending attachments: (filePath, fileName, contentType)
   final List<_PendingAttachment> _pendingAttachments = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSubscriptions();
+  }
+
+  Future<void> _loadSubscriptions() async {
+    try {
+      final svc = ref.read(subscriptionServiceProvider);
+      final result = await svc.list(perPage: 50);
+      final paginated = result.getOrThrow();
+      if (!mounted) return;
+      setState(() {
+        _subscriptions = paginated.data;
+        _loadingSubs = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingSubs = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -45,12 +71,14 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
         for (final file in result.files) {
           if (file.path == null) continue;
           if (_pendingAttachments.any((a) => a.filePath == file.path)) continue;
-          _pendingAttachments.add(_PendingAttachment(
-            filePath: file.path!,
-            fileName: file.name,
-            contentType: _guessContentType(file.name),
-            size: file.size,
-          ));
+          _pendingAttachments.add(
+            _PendingAttachment(
+              filePath: file.path!,
+              fileName: file.name,
+              contentType: _guessContentType(file.name),
+              size: file.size,
+            ),
+          );
         }
       });
     } catch (e) {
@@ -101,12 +129,14 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
         subject: _subjectCtrl.text.trim(),
         message: _descriptionCtrl.text.trim(),
         priority: _priority,
+        category: _category,
+        subscriptionId: _subscriptionId,
       );
 
       if (!mounted) return;
       switch (res) {
         case Success(:final data):
-          final ticket = data!;
+          final ticket = data;
           if (_pendingAttachments.isNotEmpty) {
             final attachmentIds = await _uploadPendingAttachments(ticket.id);
             if (attachmentIds.isNotEmpty) {
@@ -136,7 +166,7 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.newTicket)),
       body: Form(
@@ -151,7 +181,8 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.title, size: 18, color: IspColors.primary),
+                      const Icon(Icons.title,
+                          size: 18, color: IspColors.primary),
                       const SizedBox(width: IspSpacing.sm),
                       Text(
                         'Subjek',
@@ -169,7 +200,9 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                     decoration: const InputDecoration(
                       hintText: 'Ringkasan masalah Anda',
                     ),
-                    validator: (v) => (v == null || v.trim().length < 3) ? 'Subjek minimal 3 karakter' : null,
+                    validator: (v) => (v == null || v.trim().length < 3)
+                        ? 'Subjek minimal 3 karakter'
+                        : null,
                   ),
                 ],
               ),
@@ -183,7 +216,8 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.description_outlined, size: 18, color: IspColors.primary),
+                      const Icon(Icons.description_outlined,
+                          size: 18, color: IspColors.primary),
                       const SizedBox(width: IspSpacing.sm),
                       Text(
                         'Deskripsi Masalah',
@@ -219,7 +253,8 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.flag_outlined, size: 18, color: IspColors.primary),
+                      const Icon(Icons.flag_outlined,
+                          size: 18, color: IspColors.primary),
                       const SizedBox(width: IspSpacing.sm),
                       Text(
                         'Prioritas',
@@ -232,16 +267,131 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                     ],
                   ),
                   const SizedBox(height: IspSpacing.md),
-                  SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(value: 'low', label: Text('Rendah')),
-                      ButtonSegment(value: 'normal', label: Text('Normal')),
-                      ButtonSegment(value: 'high', label: Text('Tinggi')),
-                      ButtonSegment(value: 'urgent', label: Text('Mendesak')),
+                  DropdownButtonFormField<String>(
+                    value: _priority,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'low', child: Text('Rendah')),
+                      DropdownMenuItem(value: 'normal', child: Text('Normal')),
+                      DropdownMenuItem(value: 'high', child: Text('Tinggi')),
+                      DropdownMenuItem(
+                          value: 'urgent', child: Text('Mendesak')),
                     ],
-                    selected: {_priority},
-                    onSelectionChanged: (v) => setState(() => _priority = v.first),
+                    onChanged: (v) {
+                      if (v != null) setState(() => _priority = v);
+                    },
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: IspSpacing.md),
+
+            // ── Category ──
+            IspCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.category_outlined,
+                          size: 18, color: IspColors.primary),
+                      const SizedBox(width: IspSpacing.sm),
+                      Text(
+                        'Kategori',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: IspColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: IspSpacing.md),
+                  DropdownButtonFormField<String>(
+                    value: _category,
+                    isExpanded: true,
+                    hint: const Text('Pilih kategori (opsional)'),
+                    decoration: const InputDecoration(
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                          value: null, child: Text('Tidak terkait')),
+                      DropdownMenuItem(value: 'general', child: Text('Umum')),
+                      DropdownMenuItem(
+                          value: 'billing', child: Text('Tagihan')),
+                      DropdownMenuItem(
+                          value: 'technical', child: Text('Teknis')),
+                      DropdownMenuItem(
+                          value: 'installation', child: Text('Instalasi')),
+                    ],
+                    onChanged: (v) => setState(() => _category = v),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: IspSpacing.md),
+
+            // ── Subscription ──
+            IspCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.wifi_outlined,
+                          size: 18, color: IspColors.primary),
+                      const SizedBox(width: IspSpacing.sm),
+                      Text(
+                        'Langganan Terkait',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: IspColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: IspSpacing.md),
+                  if (_loadingSubs)
+                    const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  else
+                    DropdownButtonFormField<String>(
+                      value: _subscriptionId,
+                      isExpanded: true,
+                      hint: const Text('Tidak terkait langganan'),
+                      decoration: const InputDecoration(
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      items: [
+                        const DropdownMenuItem(
+                            value: null, child: Text('Tidak terkait')),
+                        ..._subscriptions.map(
+                          (s) => DropdownMenuItem(
+                            value: s.id,
+                            child: Text(
+                              s.packageName ?? 'Langganan',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) => setState(() => _subscriptionId = v),
+                    ),
                 ],
               ),
             ),
@@ -254,7 +404,8 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.attach_file, size: 18, color: IspColors.primary),
+                      const Icon(Icons.attach_file,
+                          size: 18, color: IspColors.primary),
                       const SizedBox(width: IspSpacing.sm),
                       Text(
                         'Lampiran',

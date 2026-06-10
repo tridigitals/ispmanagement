@@ -7,7 +7,6 @@ import 'package:api_client/api_client.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../../services/missing_providers.dart';
 import '../../services/service_providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/loading_skeleton.dart';
@@ -79,7 +78,8 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
 
   bool _onScroll(Notification notification) {
     if (notification is ScrollNotification &&
-        notification.metrics.extentAfter < notification.metrics.maxScrollExtent * 0.1) {
+        notification.metrics.extentAfter <
+            notification.metrics.maxScrollExtent * 0.1) {
       _loadMore();
     }
     return false;
@@ -87,7 +87,7 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
 
     // Still loading initial
     if (!_initialLoaded) {
@@ -243,7 +243,8 @@ class _SubscriptionTile extends StatelessWidget {
               // ── Router + Location ──
               Row(
                 children: [
-                  const Icon(Icons.router, size: 15, color: AppColors.textMuted),
+                  const Icon(Icons.router,
+                      size: 15, color: AppColors.textMuted),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -257,7 +258,8 @@ class _SubscriptionTile extends StatelessWidget {
                   ),
                   if (sub.locationLabel != null && sub.routerName != null) ...[
                     const SizedBox(width: 8),
-                    const Icon(Icons.location_on_outlined, size: 14, color: AppColors.textMuted),
+                    const Icon(Icons.location_on_outlined,
+                        size: 14, color: AppColors.textMuted),
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(

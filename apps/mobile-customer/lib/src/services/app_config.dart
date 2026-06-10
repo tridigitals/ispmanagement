@@ -87,13 +87,18 @@ Future<String?> _attemptReLogin(
 
   // Use a plain Dio without interceptors to avoid recursion.
   final config = ref.read(apiConfigProvider);
-  final plainDio = Dio(BaseOptions(
-    baseUrl: config.baseUrl,
-    connectTimeout: config.timeout,
-    sendTimeout: config.timeout,
-    receiveTimeout: config.timeout,
-    headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
-  ));
+  final plainDio = Dio(
+    BaseOptions(
+      baseUrl: config.baseUrl,
+      connectTimeout: config.timeout,
+      sendTimeout: config.timeout,
+      receiveTimeout: config.timeout,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+    ),
+  );
   final authSvc = AuthService(dio: plainDio, tokenStorage: storage);
   final result = await authSvc.login(email: email, password: password);
   switch (result) {

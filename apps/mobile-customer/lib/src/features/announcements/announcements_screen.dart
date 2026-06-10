@@ -8,7 +8,6 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../services/feature_providers.dart';
-import '../../services/missing_providers.dart';
 
 // ── Provider ──────────────────────────────────────────────
 
@@ -35,7 +34,7 @@ class AnnouncementsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n?.announcements ?? 'Pengumuman'),
+        title: Text(l10n.announcements ?? 'Pengumuman'),
       ),
       body: announcements.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -43,14 +42,15 @@ class AnnouncementsScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: IspColors.danger),
+              const Icon(Icons.error_outline,
+                  size: 48, color: IspColors.danger),
               const SizedBox(height: IspSpacing.md),
               Text(e.toString(), textAlign: TextAlign.center),
               const SizedBox(height: IspSpacing.lg),
               OutlinedButton.icon(
                 onPressed: () => ref.invalidate(announcementsListProvider(1)),
                 icon: const Icon(Icons.refresh),
-                label: Text(l10n?.retry ?? 'Coba Lagi'),
+                label: Text(l10n.retry ?? 'Coba Lagi'),
               ),
             ],
           ),
@@ -62,11 +62,14 @@ class AnnouncementsScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.campaign_outlined,
-                      size: 64, color: IspColors.textTertiary),
+                  const Icon(
+                    Icons.campaign_outlined,
+                    size: 64,
+                    color: IspColors.textTertiary,
+                  ),
                   const SizedBox(height: IspSpacing.md),
                   Text(
-                    l10n?.noAnnouncements ?? 'Belum ada pengumuman',
+                    l10n.noAnnouncements ?? 'Belum ada pengumuman',
                     style: const TextStyle(
                       fontSize: 16,
                       color: IspColors.textSecondary,
@@ -83,7 +86,8 @@ class AnnouncementsScreen extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(IspSpacing.lg),
               itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: IspSpacing.md),
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: IspSpacing.md),
               itemBuilder: (_, i) => _AnnouncementCard(item: items[i]),
             ),
           );
@@ -102,9 +106,8 @@ class _AnnouncementCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFmt = DateFormat('d MMM yyyy', 'id_ID');
-    final date = item.createdAt != null
-        ? DateTime.tryParse(item.createdAt!)
-        : null;
+    final date =
+        item.createdAt != null ? DateTime.tryParse(item.createdAt!) : null;
 
     return Card(
       clipBehavior: Clip.antiAlias,

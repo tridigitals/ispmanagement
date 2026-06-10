@@ -76,7 +76,8 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
 
   bool _onScroll(Notification notification) {
     if (notification is ScrollNotification &&
-        notification.metrics.extentAfter < notification.metrics.maxScrollExtent * 0.1) {
+        notification.metrics.extentAfter <
+            notification.metrics.maxScrollExtent * 0.1) {
       _loadMore();
     }
     return false;
@@ -84,7 +85,7 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
 
     if (!_initialLoaded) {
       return CustomScrollView(
@@ -92,7 +93,8 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
           SliverAppBar(title: Text(l10n.myInvoices), pinned: true),
           const SliverFillRemaining(
             hasScrollBody: false,
-            child: Center(child: CircularProgressIndicator(color: AppColors.accent)),
+            child: Center(
+                child: CircularProgressIndicator(color: AppColors.accent)),
           ),
         ],
       );
@@ -108,11 +110,14 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline, size: 48, color: AppColors.danger),
+                  const Icon(Icons.error_outline,
+                      size: 48, color: AppColors.danger),
                   const SizedBox(height: 12),
-                  Text(_initialError.toString(),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.textSecondary)),
+                  Text(
+                    _initialError.toString(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
                     onPressed: () {
@@ -123,7 +128,7 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
                       _loadInitial();
                     },
                     icon: const Icon(Icons.refresh),
-                    label: Text(l10n.retry ?? 'Coba Lagi'),
+                    label: Text(l10n.retry),
                   ),
                 ],
               ),
@@ -143,11 +148,14 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.receipt_long_outlined,
-                      size: 64, color: AppColors.textMuted),
+                  const Icon(
+                    Icons.receipt_long_outlined,
+                    size: 64,
+                    color: AppColors.textMuted,
+                  ),
                   const SizedBox(height: 12),
                   Text(
-                    l10n.noInvoicesYet ?? 'Belum ada tagihan',
+                    l10n.noInvoicesYet,
                     style: const TextStyle(color: AppColors.textMuted),
                   ),
                 ],
@@ -255,7 +263,7 @@ class _InvoiceTile extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                '${l10n?.dueOn ?? 'Jatuh tempo'} ${dateFmt.format(inv.dueDate)}',
+                '${l10n.dueOn ?? 'Jatuh tempo'} ${dateFmt.format(inv.dueDate)}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: AppColors.textMuted,

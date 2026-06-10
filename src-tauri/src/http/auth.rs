@@ -612,3 +612,107 @@ pub async fn revoke_trusted_device(
 
     Ok(Json(json!({ "success": true })))
 }
+
+/// Change password (authenticated user)
+pub async fn change_password(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<ChangePasswordDto>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let auth_header = headers
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .ok_or_else(|| crate::error::AppError::Unauthorized)?;
+
+    let claims = state.auth_service.validate_token(auth_header).await?;
+    state
+        .auth_service
+        .change_password(&claims.sub, &payload.current_password, &payload.new_password)
+        .await?;
+
+    Ok(Json(json!({ "success": true })))
+}
+
+/// Update current user profile (authenticated user)
+pub async fn update_me(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<UpdateMeDto>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let auth_header = headers
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .ok_or_else(|| crate::error::AppError::Unauthorized)?;
+
+    let claims = state.auth_service.validate_token(auth_header).await?;
+
+    let mut updates = Vec::new();
+    let mut idx = 1u32;
+    if payload.name.is_some() {
+        updates.push(format!("name = ${}", idx));
+        idx += 1;
+    }
+    if payload.phone.is_some() {
+        updates.push(format!("phone = ${}", idx));
+        idx += 1;
+    }
+    if payload.email.is_some() {
+        updates.push(format!("email = ${}", idx));
+        idx += 1;
+    }
+
+    if updates.is_empty() {
+        return Err(crate::error::AppError::Validation(
+            "No fields to update".to_string(),
+        ));
+    }
+
+    updates.push(format!("updated_at = ${}", idx));
+
+    let query_str = format!(
+        "UPDATE users SET {} WHERE id = ${}",
+        updates.join(", "),
+        idx + 1
+    );
+
+    let mut query = sqlx::query(&query_str);
+    if let Some(ref name) = payload.name {
+        query = query.bind(name);
+    }
+    if let Some(ref phone) = payload.phone {
+        query = query.bind(phone);
+    }
+    if let Some(ref email) = payload.email {
+        query = query.bind(email);
+    }
+
+    #[cfg(feature = "postgres")]
+    {
+        query = query.bind(chrono::Utc::now());
+    }
+    #[cfg(not(feature = "postgres"))]
+    {
+        query = query.bind(chrono::Utc::now().to_rfc3339());
+    }
+
+    query = query.bind(&claims.sub);
+    query.execute(&state.auth_service.pool).await?;
+
+    Ok(Json(json!({ "success": true })))
+}
+
+#[derive(serde::Deserialize)]
+pub struct ChangePasswordDto {
+    current_password: String,
+    new_password: String,
+}
+
+#[derive(serde::Deserialize)]
+pub struct UpdateMeDto {
+    name: Option<String>,
+    phone: Option<String>,
+    email: Option<String>,
+}
+

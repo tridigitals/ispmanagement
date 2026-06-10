@@ -11,7 +11,8 @@ import '../../services/app_config.dart';
 final contactInfoProvider = FutureProvider<Map<String, String>>((ref) async {
   final dio = ref.read(dioProvider);
   try {
-    final res = await dio.get<Map<String, dynamic>>('/api/customers/portal/contact');
+    final res =
+        await dio.get<Map<String, dynamic>>('/api/customers/portal/contact');
     final data = res.data ?? {};
     return data.map((k, v) => MapEntry(k, v?.toString() ?? ''));
   } catch (_) {
@@ -24,7 +25,7 @@ class ContactScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     final contactAsync = ref.watch(contactInfoProvider);
 
     return Scaffold(
@@ -98,8 +99,8 @@ class ContactScreen extends ConsumerWidget {
             color: IspColors.primary,
             title: l10n.officeAddress,
             subtitle: address,
-            onTap: () =>
-                _launch('https://maps.google.com/?q=${Uri.encodeComponent(address)}'),
+            onTap: () => _launch(
+                'https://maps.google.com/?q=${Uri.encodeComponent(address)}'),
           ),
         if (website.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -116,7 +117,8 @@ class ContactScreen extends ConsumerWidget {
           const Center(
             child: Column(
               children: [
-                Icon(Icons.contact_support_outlined, size: 48, color: IspColors.textTertiary),
+                Icon(Icons.contact_support_outlined,
+                    size: 48, color: IspColors.textTertiary),
                 SizedBox(height: 12),
                 Text(
                   'Informasi kontak belum tersedia',

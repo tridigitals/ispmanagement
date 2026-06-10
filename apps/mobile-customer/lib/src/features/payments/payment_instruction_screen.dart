@@ -52,7 +52,7 @@ class _PaymentInstructionScreenState
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     final txnAsync = ref.watch(paymentStatusProvider(widget.transactionId));
 
     return Scaffold(
@@ -61,7 +61,8 @@ class _PaymentInstructionScreenState
         loading: () => const _PaymentInstructionSkeleton(),
         error: (e, _) => IspErrorState(
           message: e.toString(),
-          onRetry: () => ref.invalidate(paymentStatusProvider(widget.transactionId)),
+          onRetry: () =>
+              ref.invalidate(paymentStatusProvider(widget.transactionId)),
         ),
         data: (txn) {
           // Stop polling once terminal state.
@@ -162,7 +163,7 @@ class _BodyState extends ConsumerState<_Body> {
   @override
   Widget build(BuildContext context) {
     final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     if (widget.txn.isPaid) {
       return _SuccessView(
         amount: fmt.format(widget.txn.amount),
@@ -212,7 +213,8 @@ class _BodyState extends ConsumerState<_Body> {
           ),
           const SizedBox(height: IspSpacing.lg),
           // Payment-specific UI.
-          if (widget.txn.method == PaymentMethod.qris && widget.txn.qrCodeUrl != null)
+          if (widget.txn.method == PaymentMethod.qris &&
+              widget.txn.qrCodeUrl != null)
             _QrisView(qrUrl: widget.txn.qrCodeUrl!)
           else if (widget.txn.method == PaymentMethod.virtualAccount &&
               widget.txn.vaNumber != null)
@@ -241,9 +243,9 @@ class _BodyState extends ConsumerState<_Body> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.upload_file),
-            label: Text(_uploadingProof
-                ? 'Mengunggah...'
-                : 'Upload Bukti Pembayaran'),
+            label: Text(
+              _uploadingProof ? 'Mengunggah...' : 'Upload Bukti Pembayaran',
+            ),
           ),
           const SizedBox(height: IspSpacing.sm),
           OutlinedButton(
@@ -304,8 +306,10 @@ class _VirtualAccountView extends StatelessWidget {
     return IspCard(
       child: Column(
         children: [
-          const Text('Nomor Virtual Account',
-              style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text(
+            'Nomor Virtual Account',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: IspSpacing.lg),
           SelectableText(
             vaNumber,
@@ -378,8 +382,10 @@ class _PaymentCodeView extends StatelessWidget {
     return IspCard(
       child: Column(
         children: [
-          const Text('Kode Pembayaran',
-              style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text(
+            'Kode Pembayaran',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: IspSpacing.md),
           SelectableText(
             code,
@@ -424,7 +430,8 @@ class _Countdown extends StatelessWidget {
         if (sec <= 0) {
           return const Text(
             'Batas waktu habis',
-            style: TextStyle(color: IspColors.danger, fontWeight: FontWeight.w600),
+            style:
+                TextStyle(color: IspColors.danger, fontWeight: FontWeight.w600),
           );
         }
         final h = (sec ~/ 3600).toString().padLeft(2, '0');

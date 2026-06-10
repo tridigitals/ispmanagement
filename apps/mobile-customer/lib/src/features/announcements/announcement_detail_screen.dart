@@ -34,7 +34,7 @@ class AnnouncementDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n?.announcementDetail ?? 'Detail Pengumuman'),
+        title: Text(l10n.announcementDetail ?? 'Detail Pengumuman'),
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -42,23 +42,22 @@ class AnnouncementDetailScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: IspColors.danger),
+              const Icon(Icons.error_outline,
+                  size: 48, color: IspColors.danger),
               const SizedBox(height: IspSpacing.md),
               Text(e.toString(), textAlign: TextAlign.center),
               const SizedBox(height: IspSpacing.lg),
               OutlinedButton.icon(
-                onPressed: () =>
-                    ref.invalidate(announcementDetailProvider(id)),
+                onPressed: () => ref.invalidate(announcementDetailProvider(id)),
                 icon: const Icon(Icons.refresh),
-                label: Text(l10n?.retry ?? 'Coba Lagi'),
+                label: Text(l10n.retry ?? 'Coba Lagi'),
               ),
             ],
           ),
         ),
         data: (item) {
-          final startDate = item.startsAt != null
-              ? DateTime.tryParse(item.startsAt!)
-              : null;
+          final startDate =
+              item.startsAt != null ? DateTime.tryParse(item.startsAt!) : null;
           final endDate =
               item.endsAt != null ? DateTime.tryParse(item.endsAt!) : null;
 
@@ -85,7 +84,7 @@ class AnnouncementDetailScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          l10n?.details ?? 'Detail',
+                          l10n.details ?? 'Detail',
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -96,23 +95,23 @@ class AnnouncementDetailScreen extends ConsumerWidget {
                         if (startDate != null)
                           _DetailRow(
                             icon: Icons.event_outlined,
-                            label: l10n?.startsAt ?? 'Mulai',
+                            label: l10n.startsAt ?? 'Mulai',
                             value: dateFmt.format(startDate),
                           ),
                         if (endDate != null)
                           _DetailRow(
                             icon: Icons.event_busy_outlined,
-                            label: l10n?.endsAt ?? 'Berakhir',
+                            label: l10n.endsAt ?? 'Berakhir',
                             value: dateFmt.format(endDate),
                           ),
                         _DetailRow(
                           icon: Icons.flag_outlined,
-                          label: l10n?.severity ?? 'Severity',
+                          label: l10n.severity ?? 'Severity',
                           value: item.severityLabel,
                         ),
                         _DetailRow(
                           icon: Icons.group_outlined,
-                          label: l10n?.audience ?? 'Audience',
+                          label: l10n.audience ?? 'Audience',
                           value: item.audience,
                         ),
                       ],
@@ -135,9 +134,8 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFmt = DateFormat('d MMM yyyy, HH:mm', 'id_ID');
-    final date = item.createdAt != null
-        ? DateTime.tryParse(item.createdAt!)
-        : null;
+    final date =
+        item.createdAt != null ? DateTime.tryParse(item.createdAt!) : null;
 
     final Color color;
     final IconData icon;
@@ -174,8 +172,7 @@ class _Header extends StatelessWidget {
               Icon(icon, color: color, size: 20),
               const SizedBox(width: IspSpacing.sm),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(IspRadii.pill),

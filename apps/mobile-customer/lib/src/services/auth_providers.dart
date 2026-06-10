@@ -7,20 +7,6 @@ import 'app_config.dart';
 import 'missing_providers.dart';
 import 'service_providers.dart';
 
-/// Invite validation result (stub).
-class InviteValidation {
-  const InviteValidation({
-    required this.code,
-    required this.customerName,
-    required this.packageName,
-    required this.isValid,
-  });
-  final String code;
-  final String customerName;
-  final String packageName;
-  final bool isValid;
-}
-
 /// Two-factor enrollment data (stub).
 class TwoFactorEnrollment {
   const TwoFactorEnrollment({
@@ -43,7 +29,8 @@ class AuthState {
   final bool isLoading;
 
   bool get isAuthenticated => user != null;
-  AuthState copyWith({UserModel? user, bool? isLoading, bool clearUser = false}) {
+  AuthState copyWith(
+      {UserModel? user, bool? isLoading, bool clearUser = false}) {
     return AuthState(
       user: clearUser ? null : (user ?? this.user),
       isLoading: isLoading ?? this.isLoading,
@@ -100,84 +87,6 @@ class AuthController extends Notifier<AuthState> {
     return ref.read(authServiceProvider).forgotPassword(email);
   }
 
-  Future<ServiceResult<bool>> requestOtp({required String phone}) async {
-    // Stub: make direct API call
-    try {
-      final dio = ref.read(dioProvider);
-      await dio.post('/api/auth/otp/request', data: {'phone': phone});
-      return const Success(true);
-    } on Exception catch (e) {
-      return Failure(ApiException(message: e.toString()));
-    }
-  }
-
-  Future<ServiceResult<AuthResponse>> loginWithOtp({
-    required String phone,
-    required String code,
-  }) async {
-    // Stub: make direct API call
-    try {
-      final dio = ref.read(dioProvider);
-      final res = await dio.post<Map<String, dynamic>>(
-        '/api/auth/otp/verify',
-        data: {'phone': phone, 'code': code},
-      );
-      final auth = AuthResponse.fromJson(res.data ?? const {});
-      await apply(auth);
-      return Success(auth);
-    } on Exception catch (e) {
-      return Failure(ApiException(message: e.toString()));
-    }
-  }
-
-  Future<ServiceResult<InviteValidation>> validateInvite({
-    required String code,
-  }) async {
-    try {
-      final dio = ref.read(dioProvider);
-      final res = await dio.post<Map<String, dynamic>>(
-        '/api/auth/invite/validate',
-        data: {'code': code},
-      );
-      final data = res.data ?? const {};
-      return Success(InviteValidation(
-        code: code,
-        customerName: (data['customer_name'] as String?) ?? '',
-        packageName: (data['package_name'] as String?) ?? '',
-        isValid: (data['is_valid'] as bool?) ?? false,
-      ));
-    } on Exception catch (e) {
-      return Failure(ApiException(message: e.toString()));
-    }
-  }
-
-  Future<ServiceResult<AuthResponse>> acceptInvite({
-    required String code,
-    required String name,
-    required String email,
-    required String phone,
-    required String password,
-  }) async {
-    try {
-      final dio = ref.read(dioProvider);
-      final res = await dio.post<Map<String, dynamic>>(
-        '/api/auth/invite/accept',
-        data: {
-          'code': code,
-          'name': name,
-          'email': email,
-          'phone': phone,
-          'password': password,
-        },
-      );
-      final auth = AuthResponse.fromJson(res.data ?? const {});
-      await apply(auth);
-      return Success(auth);
-    } on Exception catch (e) {
-      return Failure(ApiException(message: e.toString()));
-    }
-  }
-
   Future<ServiceResult<TwoFactorEnrollment>> start2faEnroll() async {
     try {
       final dio = ref.read(dioProvider);
@@ -185,14 +94,17 @@ class AuthController extends Notifier<AuthState> {
       final data = res.data ?? const {};
       final secret = (data['secret'] as String?) ?? '';
       // Backend returns {secret, qr} — construct otpAuthUri from secret
-      final otpAuthUri = 'otpauth://totp/ISPManagement:$secret?secret=$secret&issuer=ISPManagement&algorithm=SHA1&digits=6&period=30';
-      return Success(TwoFactorEnrollment(
-        enrollmentId: secret, // use secret as identifier
-        secret: secret,
-        otpAuthUri: otpAuthUri,
-        periodSeconds: 30,
-        backupCodes: const [],
-      ));
+      final otpAuthUri =
+          'otpauth://totp/ISPManagement:$secret?secret=$secret&issuer=ISPManagement&algorithm=SHA1&digits=6&period=30';
+      return Success(
+        TwoFactorEnrollment(
+          enrollmentId: secret, // use secret as identifier
+          secret: secret,
+          otpAuthUri: otpAuthUri,
+          periodSeconds: 30,
+          backupCodes: const [],
+        ),
+      );
     } on Exception catch (e) {
       return Failure(ApiException(message: e.toString()));
     }
@@ -204,10 +116,13 @@ class AuthController extends Notifier<AuthState> {
   }) async {
     try {
       final dio = ref.read(dioProvider);
-      await dio.post('/api/auth/2fa/verify-setup', data: {
-        'secret': enrollmentId, // enrollmentId is actually the secret
-        'code': code,
-      });
+      await dio.post(
+        '/api/auth/2fa/verify-setup',
+        data: {
+          'secret': enrollmentId, // enrollmentId is actually the secret
+          'code': code,
+        },
+      );
       // Refresh user state
       final me = await ref.read(authServiceProvider).me();
       if (me is Success<UserModel>) {
@@ -225,10 +140,13 @@ class AuthController extends Notifier<AuthState> {
   }) async {
     try {
       final dio = ref.read(dioProvider);
-      await dio.post('/api/auth/change-password', data: {
-        'current_password': current,
-        'new_password': next,
-      });
+      await dio.post(
+        '/api/auth/change-password',
+        data: {
+          'current_password': current,
+          'new_password': next,
+        },
+      );
       return const Success(true);
     } on Exception catch (e) {
       return Failure(ApiException(message: e.toString()));
@@ -242,11 +160,14 @@ class AuthController extends Notifier<AuthState> {
   }) async {
     try {
       final dio = ref.read(dioProvider);
-      await dio.put('/api/auth/profile', data: {
-        if (name != null) 'name': name,
-        if (phone != null) 'phone': phone,
-        if (email != null) 'email': email,
-      });
+      await dio.put(
+        '/api/auth/me',
+        data: {
+          if (name != null) 'name': name,
+          if (phone != null) 'phone': phone,
+          if (email != null) 'email': email,
+        },
+      );
       // Refresh user state
       final me = await ref.read(authServiceProvider).me();
       if (me is Success<UserModel>) {

@@ -260,6 +260,14 @@ pub(crate) fn normalize_priority(p: Option<String>) -> String {
     }
 }
 
+pub(crate) fn normalize_category(c: Option<String>) -> Option<String> {
+    match c.as_deref().map(|s| s.to_lowercase()).as_deref() {
+        Some("general") | Some("billing") | Some("technical") | Some("installation") => c,
+        Some(_) => None,
+        None => None,
+    }
+}
+
 pub(crate) fn normalize_status(s: Option<String>) -> Option<String> {
     match s.as_deref() {
         Some("open") | Some("pending") | Some("closed") => s,

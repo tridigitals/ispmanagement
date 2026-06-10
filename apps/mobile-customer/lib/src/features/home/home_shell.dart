@@ -6,7 +6,6 @@ import 'package:api_client/api_client.dart' show NotificationModel;
 
 import '../../l10n/app_localizations.dart';
 import '../../services/auth_providers.dart';
-import '../../services/feature_providers.dart';
 import '../../services/notifications_providers.dart';
 import '../../services/missing_providers.dart';
 import '../../theme/app_theme.dart';
@@ -25,7 +24,6 @@ class HomeShell extends ConsumerStatefulWidget {
 class _State extends ConsumerState<HomeShell> {
   int _tab = 0;
   bool _gateChecked = false;
-  bool _tabInitialized = false;
   Set<String> _knownIds = {};
   bool _notificationsInitialised = false;
 
@@ -33,8 +31,8 @@ class _State extends ConsumerState<HomeShell> {
   String _normalizeAction(String? actionUrl) {
     if (actionUrl == null || actionUrl.isEmpty) return '/notifications';
     if (actionUrl.startsWith('/support/')) return '/?tab=3';
-    if (actionUrl.startsWith('/pay/') ||
-        actionUrl.startsWith('/invoices')) return '/?tab=2';
+    if (actionUrl.startsWith('/pay/') || actionUrl.startsWith('/invoices'))
+      return '/?tab=2';
     if (actionUrl.startsWith('/subscriptions/') ||
         actionUrl.startsWith('/services')) return '/?tab=1';
     if (actionUrl.startsWith('/announcements/')) return '/?tab=0';
@@ -124,14 +122,12 @@ class _State extends ConsumerState<HomeShell> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_tabInitialized) {
-      _tabInitialized = true;
-      final tabStr = GoRouterState.of(context).uri.queryParameters['tab'];
-      if (tabStr != null) {
-        final tabIdx = int.tryParse(tabStr);
-        if (tabIdx != null && tabIdx >= 0 && tabIdx < 5) {
-          _tab = tabIdx;
-        }
+    // Always sync tab from URL query param so go('/?tab=N') works at any time.
+    final tabStr = GoRouterState.of(context).uri.queryParameters['tab'];
+    if (tabStr != null) {
+      final tabIdx = int.tryParse(tabStr);
+      if (tabIdx != null && tabIdx >= 0 && tabIdx < 5 && tabIdx != _tab) {
+        setState(() => _tab = tabIdx);
       }
     }
   }
@@ -139,11 +135,10 @@ class _State extends ConsumerState<HomeShell> {
   Future<void> _checkOnboarding() async {
     if (_gateChecked) return;
     _gateChecked = true;
-    final ok = ref.read(biometricEnabledProvider);
+    final ok = ref.read(biometricEnabledProvider).valueOrNull;
     if (ok == true) {
-      final res = await ref
-          .read(authControllerProvider.notifier)
-          .tryBiometricUnlock();
+      final res =
+          await ref.read(authControllerProvider.notifier).tryBiometricUnlock();
       res.fold(
         (_) {
           // success, stay
@@ -158,11 +153,12 @@ class _State extends ConsumerState<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     final notifState = ref.watch(notificationsProvider);
 
     // Detect new notifications arriving via polling.
-    final currentIds = notifState.valueOrNull?.map((n) => n.id).toSet() ?? <String>{};
+    final currentIds =
+        notifState.valueOrNull?.map((n) => n.id).toSet() ?? <String>{};
     if (notifState.hasValue) {
       if (!_notificationsInitialised) {
         _knownIds = currentIds;
@@ -175,7 +171,7 @@ class _State extends ConsumerState<HomeShell> {
           final newNotif = notifs
               .where((n) => newIds.contains(n.id) && n.readAt == null)
               .toList()
-            ..sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
+            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
           if (newNotif.isNotEmpty) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) _showNotificationToast(context, newNotif.first);

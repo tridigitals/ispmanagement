@@ -44,7 +44,8 @@ class _State extends ConsumerState<IspCustomerApp> {
     );
     ref.read(apiClientProvider); // eagerly init
     // Restore auth session from secure storage on app start.
-    Future.microtask(() => ref.read(authControllerProvider.notifier).bootstrap());
+    Future.microtask(
+        () => ref.read(authControllerProvider.notifier).bootstrap());
   }
 
   @override

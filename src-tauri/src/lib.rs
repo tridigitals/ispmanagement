@@ -434,6 +434,7 @@ pub fn run() {
                                     get_support_ticket,
                                     reply_support_ticket,
                                     update_support_ticket,
+                                    submit_ticket_satisfaction,
                                     // Customers (tenant scoped)
                                     list_customers,
                                     get_customer_summary,

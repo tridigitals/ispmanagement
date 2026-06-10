@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:api_client/api_client.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -8,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -16,7 +16,6 @@ import 'package:ui_kit/ui_kit.dart';
 import '../../services/app_config.dart';
 import '../../services/auth_providers.dart';
 import '../../services/service_providers.dart';
-import '../../utils/loading_skeleton.dart';
 import 'ticket_satisfaction_survey.dart';
 
 /// Current user's ID for staff detection.
@@ -29,7 +28,8 @@ final _authTokenProvider = FutureProvider<String?>((ref) async {
   return ref.read(tokenStorageProvider).readToken();
 });
 
-final ticketByIdProvider = FutureProvider.family<TicketModel, String>((ref, id) async {
+final ticketByIdProvider =
+    FutureProvider.family<TicketModel, String>((ref, id) async {
   final svc = ref.watch(ticketServiceProvider);
   final ServiceResult<TicketModel> res = await svc.getById(id);
   return switch (res) {
@@ -110,12 +110,14 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
           if (file.path == null) continue;
           // Avoid duplicates
           if (_pendingAttachments.any((a) => a.filePath == file.path)) continue;
-          _pendingAttachments.add(_PendingAttachment(
-            filePath: file.path!,
-            fileName: file.name,
-            contentType: _guessContentType(file.name),
-            size: file.size,
-          ));
+          _pendingAttachments.add(
+            _PendingAttachment(
+              filePath: file.path!,
+              fileName: file.name,
+              contentType: _guessContentType(file.name),
+              size: file.size,
+            ),
+          );
         }
       });
     } catch (e) {
@@ -173,9 +175,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
         attachmentIds = await _uploadPendingAttachments();
       }
 
-      final res = await ref
-          .read(ticketServiceProvider)
-          .reply(
+      final res = await ref.read(ticketServiceProvider).reply(
             ticketId: widget.id,
             message: text.isEmpty ? '(Lampiran)' : text,
             attachmentIds: attachmentIds.isEmpty ? null : attachmentIds,
@@ -236,33 +236,79 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
           ticketAsync.when(
             loading: () => const SizedBox.shrink(),
             error: (_, __) => const SizedBox.shrink(),
-            data: (ticket) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: IspSpacing.lg, vertical: IspSpacing.sm),
-              decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(color: IspColors.borderSubtle)),
-              ),
-              child: Row(
-                children: [
-                  IspStatusBadge(
-                    label: ticket.statusLabel(),
-                    tone: ticket.isOpen ? StatusTone.warning : StatusTone.success,
+            data: (ticket) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: IspSpacing.lg, vertical: IspSpacing.sm),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                        bottom: BorderSide(color: IspColors.borderSubtle)),
                   ),
-                  const SizedBox(width: IspSpacing.sm),
-                  IspStatusBadge(
-                    label: ticket.priorityLabel(),
-                    tone: ticket.priority == TicketPriority.urgent
-                        ? StatusTone.danger
-                        : ticket.priority == TicketPriority.high
+                  child: Row(
+                    children: [
+                      IspStatusBadge(
+                        label: ticket.statusLabel(),
+                        tone: ticket.isOpen
                             ? StatusTone.warning
-                            : StatusTone.neutral,
+                            : StatusTone.success,
+                      ),
+                      const SizedBox(width: IspSpacing.sm),
+                      IspStatusBadge(
+                        label: ticket.priorityLabel(),
+                        tone: ticket.priority == TicketPriority.urgent
+                            ? StatusTone.danger
+                            : ticket.priority == TicketPriority.high
+                                ? StatusTone.warning
+                                : StatusTone.neutral,
+                      ),
+                      if (ticket.category != null &&
+                          ticket.category!.isNotEmpty) ...[
+                        const SizedBox(width: IspSpacing.sm),
+                        IspStatusBadge(
+                          label: ticket.categoryLabel(),
+                          tone: StatusTone.neutral,
+                        ),
+                      ],
+                      const Spacer(),
+                      Text(
+                        dateFmt.format(ticket.createdAt),
+                        style: const TextStyle(
+                            fontSize: 11, color: IspColors.textTertiary),
+                      ),
+                    ],
                   ),
-                  const Spacer(),
-                  Text(
-                    dateFmt.format(ticket.createdAt),
-                    style: const TextStyle(fontSize: 11, color: IspColors.textTertiary),
+                ),
+                // Subscription link
+                if (ticket.subscriptionId != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: IspSpacing.lg, vertical: IspSpacing.xs),
+                    child: GestureDetector(
+                      onTap: () => GoRouter.of(context)
+                          .push('/subscriptions/${ticket.subscriptionId}'),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.wifi_outlined,
+                              size: 14, color: IspColors.primary),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Lihat langganan terkait',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: IspColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_forward_ios,
+                              size: 10, color: IspColors.primary),
+                        ],
+                      ),
+                    ),
                   ),
-                ],
-              ),
+              ],
             ),
           ),
           // Messages
@@ -278,7 +324,8 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                   return const IspEmptyState(
                     icon: Icons.chat_bubble_outline,
                     title: 'Belum ada pesan',
-                    message: 'Kirim pesan pertama Anda untuk memulai percakapan',
+                    message:
+                        'Kirim pesan pertama Anda untuk memulai percakapan',
                   );
                 }
                 return ListView.builder(
@@ -297,8 +344,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
             ),
           ),
           // Pending attachments preview
-          if (_pendingAttachments.isNotEmpty)
-            _buildPendingAttachmentsPreview(),
+          if (_pendingAttachments.isNotEmpty) _buildPendingAttachmentsPreview(),
           // Satisfaction survey (shown when ticket is closed/resolved)
           ticketAsync.maybeWhen(
             data: (ticket) => ticket.isClosed
@@ -329,7 +375,8 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                       controller: _messageCtrl,
                       minLines: 1,
                       maxLines: 4,
-                      decoration: const InputDecoration(hintText: 'Tulis pesan...'),
+                      decoration:
+                          const InputDecoration(hintText: 'Tulis pesan...'),
                       onSubmitted: (_) => _send(),
                     ),
                   ),
@@ -338,7 +385,8 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                     onPressed: _sending || _uploading ? null : _send,
                     icon: (_sending || _uploading)
                         ? const SizedBox(
-                            width: 16, height: 16,
+                            width: 16,
+                            height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.send),
@@ -355,7 +403,8 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
   Widget _buildPendingAttachmentsPreview() {
     return Container(
       constraints: const BoxConstraints(maxHeight: 100),
-      padding: const EdgeInsets.symmetric(horizontal: IspSpacing.md, vertical: IspSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+          horizontal: IspSpacing.md, vertical: IspSpacing.sm),
       decoration: const BoxDecoration(
         color: IspColors.bgTertiary,
         border: Border(top: BorderSide(color: IspColors.borderSubtle)),
@@ -504,12 +553,14 @@ class _MessageBubble extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.shield, size: 12, color: IspColors.primary),
+                    const Icon(Icons.shield,
+                        size: 12, color: IspColors.primary),
                     const SizedBox(width: IspSpacing.xs),
                     Text(
                       message.authorName,
                       style: const TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                         color: IspColors.primary,
                       ),
                     ),
@@ -520,18 +571,21 @@ class _MessageBubble extends StatelessWidget {
             if (message.body.isNotEmpty)
               Text(
                 message.body,
-                style: TextStyle(color: isStaff ? IspColors.textPrimary : Colors.white),
+                style: TextStyle(
+                    color: isStaff ? IspColors.textPrimary : Colors.white),
               ),
             // Attachments
             if (message.attachments.isNotEmpty) ...[
               const SizedBox(height: IspSpacing.sm),
-              ...message.attachments.map((att) => _AttachmentWidget(
-                attachment: att,
-                baseUrl: baseUrl,
-                tokenFuture: tokenFuture,
-                isStaff: isStaff,
-                dio: dio,
-              )),
+              ...message.attachments.map(
+                (att) => _AttachmentWidget(
+                  attachment: att,
+                  baseUrl: baseUrl,
+                  tokenFuture: tokenFuture,
+                  isStaff: isStaff,
+                  dio: dio,
+                ),
+              ),
             ],
             const SizedBox(height: IspSpacing.xs),
             Text(
@@ -566,7 +620,8 @@ class _AttachmentWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fileUrl = '$baseUrl/api/storage/files/${attachment.id}/ticket-content';
+    final fileUrl =
+        '$baseUrl/api/storage/files/${attachment.id}/ticket-content';
 
     if (attachment.isImage) {
       return FutureBuilder<String?>(
@@ -588,7 +643,8 @@ class _AttachmentWidget extends StatelessWidget {
             width: 220,
             fit: BoxFit.cover,
             placeholder: (_, __) => _buildImageLoading(),
-            errorWidget: (_, __, ___) => _buildImageError(context, 'Gagal memuat'),
+            errorWidget: (_, __, ___) =>
+                _buildImageError(context, 'Gagal memuat'),
             imageBuilder: (context, provider) => GestureDetector(
               onTap: () => _openFullImageUrl(context, fileUrl, token),
               child: ClipRRect(
@@ -610,11 +666,13 @@ class _AttachmentWidget extends StatelessWidget {
       future: tokenFuture,
       builder: (_, snap) {
         final token = snap.data ?? '';
-        final downloadUrl = '$baseUrl/api/storage/files/${attachment.id}/ticket-content?token=$token';
+        final downloadUrl =
+            '$baseUrl/api/storage/files/${attachment.id}/ticket-content?token=$token';
         return Padding(
           padding: const EdgeInsets.only(bottom: IspSpacing.xs),
           child: InkWell(
-            onTap: () => launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication),
+            onTap: () => launchUrl(Uri.parse(downloadUrl),
+                mode: LaunchMode.externalApplication),
             borderRadius: BorderRadius.circular(IspRadii.sm),
             child: Container(
               padding: const EdgeInsets.all(IspSpacing.sm),
@@ -641,14 +699,17 @@ class _AttachmentWidget extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 12,
-                            color: isStaff ? IspColors.textPrimary : Colors.white,
+                            color:
+                                isStaff ? IspColors.textPrimary : Colors.white,
                           ),
                         ),
                         Text(
                           attachment.humanSize,
                           style: TextStyle(
                             fontSize: 10,
-                            color: isStaff ? IspColors.textTertiary : Colors.white60,
+                            color: isStaff
+                                ? IspColors.textTertiary
+                                : Colors.white60,
                           ),
                         ),
                       ],
@@ -674,7 +735,8 @@ class _AttachmentWidget extends StatelessWidget {
     if (contentType.startsWith('video/')) return Icons.videocam;
     if (contentType.startsWith('audio/')) return Icons.audiotrack;
     if (contentType.contains('pdf')) return Icons.picture_as_pdf;
-    if (contentType.contains('zip') || contentType.contains('rar')) return Icons.archive;
+    if (contentType.contains('zip') || contentType.contains('rar'))
+      return Icons.archive;
     return Icons.attach_file;
   }
 
@@ -722,7 +784,8 @@ class _AttachmentWidget extends StatelessWidget {
           TextButton.icon(
             onPressed: () {
               // Clear cache for this key, force CachedNetworkImage to retry
-              DefaultCacheManager().removeFile('ticket-attachment-${attachment.id}');
+              DefaultCacheManager()
+                  .removeFile('ticket-attachment-${attachment.id}');
               (context as Element).markNeedsBuild();
             },
             icon: const Icon(Icons.refresh, size: 12),

@@ -23,6 +23,7 @@
   let tickets = $state<SupportTicketListItem[]>([]);
   let searchQuery = $state('');
   let statusFilter = $state<'all' | 'open' | 'pending' | 'closed'>('all');
+  let categoryFilter = $state<'all' | 'general' | 'billing' | 'technical' | 'installation'>('all');
   let stats = $state<SupportTicketStats>({ all: 0, open: 0, pending: 0, closed: 0 });
   let total = $state(0);
   let pageNum = $state(1);
@@ -31,8 +32,17 @@
 
   let hasMore = $derived(tickets.length < total);
 
+  const categoryOptions = [
+    { label: get(t)('support.categories.all') || 'All', value: 'all' },
+    { label: get(t)('support.categories.general') || 'General', value: 'general' },
+    { label: get(t)('support.categories.billing') || 'Billing', value: 'billing' },
+    { label: get(t)('support.categories.technical') || 'Technical', value: 'technical' },
+    { label: get(t)('support.categories.installation') || 'Installation', value: 'installation' },
+  ];
+
   const columns = $derived.by(() => [
     { key: 'subject', label: $t('admin.support.columns.subject') || 'Subject' },
+    { key: 'category', label: $t('admin.support.columns.category') || 'Category' },
     { key: 'user', label: $t('admin.support.columns.user') || 'User' },
     { key: 'status', label: $t('admin.support.columns.status') || 'Status' },
     { key: 'priority', label: $t('admin.support.columns.priority') || 'Priority' },
@@ -78,6 +88,7 @@
     try {
       const res: PaginatedResponse<SupportTicketListItem> = await api.support.list({
         status: statusFilter === 'all' ? undefined : statusFilter,
+        category: categoryFilter === 'all' ? undefined : categoryFilter,
         search: searchQuery.trim() || undefined,
         page: pageNum,
         perPage,
@@ -98,6 +109,7 @@
       pageNum += 1;
       const res: PaginatedResponse<SupportTicketListItem> = await api.support.list({
         status: statusFilter === 'all' ? undefined : statusFilter,
+        category: categoryFilter === 'all' ? undefined : categoryFilter,
         search: searchQuery.trim() || undefined,
         page: pageNum,
         perPage,
@@ -118,6 +130,12 @@
   function setStatusFilter(v: typeof statusFilter) {
     if (statusFilter === v) return;
     statusFilter = v;
+    void load(true);
+  }
+
+  function setCategoryFilter(v: typeof categoryFilter) {
+    if (categoryFilter === v) return;
+    categoryFilter = v;
     void load(true);
   }
 </script>
@@ -205,6 +223,18 @@
         </button>
       {/if}
     </div>
+    <div class="category-filter">
+      {#each categoryOptions as opt}
+        <button
+          class="cat-btn"
+          class:active={categoryFilter === opt.value}
+          type="button"
+          onclick={() => setCategoryFilter(opt.value as any)}
+        >
+          {opt.label}
+        </button>
+      {/each}
+    </div>
   </div>
 
   <Table
@@ -223,6 +253,14 @@
         <span class="badge status {item.status}"
           >{$t(`support.status.${item.status}`) || item.status}</span
         >
+      {:else if key === 'category'}
+        {#if item.category}
+          <span class="badge category {item.category}">
+            {$t(`support.categories.${item.category}`) || item.category}
+          </span>
+        {:else}
+          <span class="mono">—</span>
+        {/if}
       {:else if key === 'user'}
         <span class="user">{item.created_by_name || $t('common.na') || '—'}</span>
       {:else if key === 'priority'}
@@ -424,6 +462,39 @@
     background: var(--bg-hover);
   }
 
+  .category-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .cat-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition:
+      border-color 0.12s ease,
+      color 0.12s ease;
+  }
+
+  .cat-btn:hover {
+    border-color: rgba(99, 102, 241, 0.35);
+    color: var(--text-primary);
+  }
+
+  .cat-btn.active {
+    border-color: rgba(99, 102, 241, 0.5);
+    background: rgba(99, 102, 241, 0.1);
+    color: rgba(99, 102, 241, 0.95);
+  }
+
   .link {
     display: flex;
     flex-direction: column;
@@ -498,6 +569,27 @@
     border-color: rgba(34, 197, 94, 0.25);
     color: rgba(34, 197, 94, 0.9);
     background: rgba(34, 197, 94, 0.06);
+  }
+
+  .badge.category.general {
+    border-color: rgba(156, 163, 175, 0.35);
+    color: var(--text-secondary);
+    background: rgba(156, 163, 175, 0.06);
+  }
+  .badge.category.billing {
+    border-color: rgba(59, 130, 246, 0.35);
+    color: rgba(59, 130, 246, 0.95);
+    background: rgba(59, 130, 246, 0.08);
+  }
+  .badge.category.technical {
+    border-color: rgba(139, 92, 246, 0.35);
+    color: rgba(139, 92, 246, 0.95);
+    background: rgba(139, 92, 246, 0.08);
+  }
+  .badge.category.installation {
+    border-color: rgba(34, 197, 94, 0.35);
+    color: rgba(34, 197, 94, 0.95);
+    background: rgba(34, 197, 94, 0.08);
   }
 
   .count {

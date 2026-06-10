@@ -2,14 +2,12 @@ import 'dart:async';
 
 import 'package:api_client/api_client.dart' hide Success, Failure;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:result_dart/result_dart.dart';
 
 import 'feature_providers.dart';
 
 /// Holds the customer's notifications and provides mark-read actions.
 /// Auto-refreshes every 60 seconds to pick up new notifications.
-class NotificationsNotifier
-    extends AsyncNotifier<List<NotificationModel>> {
+class NotificationsNotifier extends AsyncNotifier<List<NotificationModel>> {
   Timer? _pollTimer;
   int _currentPage = 1;
   bool _hasMore = true;
@@ -82,6 +80,13 @@ class NotificationsNotifier
         if (n.id == id) n.copyWith(readAt: DateTime.now()) else n,
     ]);
     await ref.read(notificationServiceProvider).markRead(id);
+  }
+
+  /// Inject a realtime notification (WebSocket) into the state.
+  void injectRealtime(NotificationModel notification) {
+    final current = state.valueOrNull ?? [];
+    if (current.any((n) => n.id == notification.id)) return; // dedupe
+    state = AsyncData([notification, ...current]);
   }
 
   Future<void> markAllRead() async {

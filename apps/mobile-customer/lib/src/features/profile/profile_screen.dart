@@ -13,7 +13,7 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     final user = ref.watch(currentUserProvider);
     final unread = ref.watch(unreadNotificationsCountProvider).valueOrNull ?? 0;
     return Scaffold(
@@ -22,7 +22,7 @@ class ProfileScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () => context.push('/settings'),
+            onPressed: () => GoRouter.of(context).push('/settings'),
           ),
         ],
       ),
@@ -39,7 +39,8 @@ class ProfileScreen extends ConsumerWidget {
                       ? NetworkImage(user!.avatarUrl!)
                       : null,
                   child: user?.avatarUrl == null
-                      ? const Icon(Icons.person, size: 48, color: IspColors.primary)
+                      ? const Icon(Icons.person,
+                          size: 48, color: IspColors.primary)
                       : null,
                 ),
                 const SizedBox(height: IspSpacing.md),
@@ -52,7 +53,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 if (user?.email != null)
                   Text(
-                    user!.email!,
+                    user!.email,
                     style: const TextStyle(color: IspColors.textTertiary),
                   ),
               ],
@@ -64,18 +65,18 @@ class ProfileScreen extends ConsumerWidget {
               _ProfileItem(
                 icon: Icons.help_outline,
                 title: l10n.faq,
-                onTap: () => context.push('/faq'),
+                onTap: () => GoRouter.of(context).push('/faq'),
               ),
               _ProfileItem(
                 icon: Icons.support_agent_outlined,
                 title: l10n.contactUs,
-                onTap: () => context.push('/contact'),
+                onTap: () => GoRouter.of(context).push('/contact'),
               ),
               _ProfileItem(
                 icon: Icons.notifications_outlined,
                 title: l10n.notifications,
                 badge: unread > 0 ? '$unread' : null,
-                onTap: () => context.push('/notifications'),
+                onTap: () => GoRouter.of(context).push('/notifications'),
               ),
               _ProfileItem(
                 icon: Icons.lock_outline,
@@ -115,7 +116,8 @@ class _ProfileGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IspCard(
-      margin: const EdgeInsets.symmetric(horizontal: IspSpacing.lg, vertical: IspSpacing.sm),
+      margin: const EdgeInsets.symmetric(
+          horizontal: IspSpacing.lg, vertical: IspSpacing.sm),
       child: Column(
         children: [
           for (var i = 0; i < items.length; i++) ...[

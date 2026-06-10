@@ -1,4 +1,3 @@
-import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -35,9 +34,7 @@ class _State extends ConsumerState<ForgotPasswordScreen> {
       _sending = true;
       _done = null;
     });
-    final res = await ref
-        .read(authControllerProvider.notifier)
-        .forgotPassword(
+    final res = await ref.read(authControllerProvider.notifier).forgotPassword(
           email: _email.text.trim(),
           reason: _reason.text.trim().isEmpty ? null : _reason.text.trim(),
         );
@@ -53,7 +50,7 @@ class _State extends ConsumerState<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.forgotPassword)),
       body: SafeArea(

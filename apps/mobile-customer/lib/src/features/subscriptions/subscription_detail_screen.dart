@@ -42,7 +42,8 @@ class SubscriptionDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-          title: Text(l10n?.subscriptionDetail ?? 'Detail Langganan')),
+        title: Text(l10n.subscriptionDetail ?? 'Detail Langganan'),
+      ),
       body: subAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
@@ -51,16 +52,18 @@ class SubscriptionDetailScreen extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline,
-                    size: 48, color: IspColors.danger),
+                const Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: IspColors.danger,
+                ),
                 const SizedBox(height: IspSpacing.md),
                 Text(e.toString(), textAlign: TextAlign.center),
                 const SizedBox(height: IspSpacing.lg),
                 OutlinedButton.icon(
-                  onPressed: () =>
-                      ref.invalidate(subscriptionByIdProvider(id)),
+                  onPressed: () => ref.invalidate(subscriptionByIdProvider(id)),
                   icon: const Icon(Icons.refresh),
-                  label: Text(l10n?.retry ?? 'Coba Lagi'),
+                  label: Text(l10n.retry ?? 'Coba Lagi'),
                 ),
               ],
             ),
@@ -89,23 +92,23 @@ class SubscriptionDetailScreen extends ConsumerWidget {
 
               // ── Connection details ───────────────────────
               _SectionCard(
-                title: l10n?.connectionDetails ?? 'Detail Koneksi',
+                title: l10n.connectionDetails ?? 'Detail Koneksi',
                 icon: Icons.settings_ethernet,
                 children: [
                   _DetailRow(
                     icon: Icons.router,
-                    label: l10n?.router ?? 'Router',
+                    label: l10n.router ?? 'Router',
                     value: sub.routerName ?? '-',
                   ),
                   _DetailRow(
                     icon: Icons.location_on_outlined,
-                    label: l10n?.location ?? 'Lokasi',
+                    label: l10n.location ?? 'Lokasi',
                     value: sub.locationLabel ?? '-',
                   ),
                   if (sub.notes != null && sub.notes!.isNotEmpty)
                     _DetailRow(
                       icon: Icons.note_outlined,
-                      label: l10n?.notes ?? 'Catatan',
+                      label: l10n.notes ?? 'Catatan',
                       value: sub.notes!,
                     ),
                 ],
@@ -114,36 +117,35 @@ class SubscriptionDetailScreen extends ConsumerWidget {
 
               // ── Billing info ─────────────────────────────
               _SectionCard(
-                title: l10n?.billingInfo ?? 'Informasi Tagihan',
+                title: l10n.billingInfo ?? 'Informasi Tagihan',
                 icon: Icons.receipt_long_outlined,
                 children: [
                   _DetailRow(
                     icon: Icons.payments_outlined,
-                    label: l10n?.price ?? 'Harga',
-                    value:
-                        '${fmt.format(sub.price)} / ${sub.billingCycle}',
+                    label: l10n.price ?? 'Harga',
+                    value: '${fmt.format(sub.price)} / ${sub.billingCycle}',
                   ),
                   _DetailRow(
                     icon: Icons.calendar_today_outlined,
-                    label: l10n?.cycle ?? 'Siklus',
+                    label: l10n.cycle ?? 'Siklus',
                     value: _billingCycleLabel(sub.billingCycle),
                   ),
                   if (sub.startsAt != null)
                     _DetailRow(
                       icon: Icons.event_available_outlined,
-                      label: l10n?.startsAt ?? 'Mulai',
+                      label: l10n.startsAt ?? 'Mulai',
                       value: dateFmt.format(sub.startsAt!),
                     ),
                   if (sub.endsAt != null)
                     _DetailRow(
                       icon: Icons.event_busy_outlined,
-                      label: l10n?.endsAt ?? 'Berakhir',
+                      label: l10n.endsAt ?? 'Berakhir',
                       value: dateFmt.format(sub.endsAt!),
                     ),
                   if (sub.graceUntil != null)
                     _DetailRow(
                       icon: Icons.hourglass_bottom_outlined,
-                      label: l10n?.gracePeriod ?? 'Masa tenggang',
+                      label: l10n.gracePeriod ?? 'Masa tenggang',
                       value: dateFmt.format(sub.graceUntil!),
                     ),
                 ],
@@ -159,9 +161,10 @@ class SubscriptionDetailScreen extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => context.push('/tickets/new'),
+                      onPressed: () =>
+                          GoRouter.of(context).push('/tickets/new'),
                       icon: const Icon(Icons.report_problem_outlined),
-                      label: Text(l10n?.reportOutage ?? 'Lapor Gangguan'),
+                      label: Text(l10n.reportOutage ?? 'Lapor Gangguan'),
                     ),
                   ),
                   const SizedBox(width: IspSpacing.md),
@@ -224,7 +227,7 @@ class _HeroHeader extends StatelessWidget {
   });
   final SubscriptionModel sub;
   final NumberFormat fmt;
-  final AppLocalizations? l10n;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
@@ -251,8 +254,7 @@ class _HeroHeader extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  sub.packageName ??
-                      (l10n?.internetPackage ?? 'Paket Internet'),
+                  sub.packageName ?? (l10n.internetPackage ?? 'Paket Internet'),
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
@@ -281,8 +283,7 @@ class _HeroHeader extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             '/ ${sub.billingCycle}',
-            style:
-                const TextStyle(color: Colors.white60, fontSize: 14),
+            style: const TextStyle(color: Colors.white60, fontSize: 14),
           ),
           const SizedBox(height: IspSpacing.lg),
           // Router + Location chips
@@ -292,11 +293,14 @@ class _HeroHeader extends StatelessWidget {
             children: [
               if (sub.routerName != null)
                 _InfoChip(
-                    icon: Icons.router, label: sub.routerName!),
+                  icon: Icons.router,
+                  label: sub.routerName!,
+                ),
               if (sub.locationLabel != null)
                 _InfoChip(
-                    icon: Icons.location_on_outlined,
-                    label: sub.locationLabel!),
+                  icon: Icons.location_on_outlined,
+                  label: sub.locationLabel!,
+                ),
             ],
           ),
         ],
@@ -365,7 +369,7 @@ class _HeroHeader extends StatelessWidget {
 class _SpeedSection extends StatelessWidget {
   const _SpeedSection({required this.sub, required this.l10n});
   final SubscriptionModel sub;
-  final AppLocalizations? l10n;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
@@ -377,7 +381,7 @@ class _SpeedSection extends StatelessWidget {
               child: IspStatCard(
                 label: 'Download',
                 value: sub.packageName ?? '-',
-                helper: l10n?.internetPackage ?? 'Paket',
+                helper: l10n.internetPackage ?? 'Paket',
                 icon: Icons.arrow_downward_rounded,
                 tone: StatusTone.info,
               ),
@@ -387,7 +391,7 @@ class _SpeedSection extends StatelessWidget {
               child: IspStatCard(
                 label: 'Upload',
                 value: sub.packageName ?? '-',
-                helper: l10n?.internetPackage ?? 'Paket',
+                helper: l10n.internetPackage ?? 'Paket',
                 icon: Icons.arrow_upward_rounded,
                 tone: StatusTone.primary,
               ),
@@ -400,7 +404,7 @@ class _SpeedSection extends StatelessWidget {
           child: OutlinedButton.icon(
             onPressed: () => _openSpeedTest(context),
             icon: const Icon(Icons.speed, size: 18),
-            label: Text(l10n?.speedTest ?? 'Test Kecepatan'),
+            label: Text(l10n.speedTest ?? 'Test Kecepatan'),
           ),
         ),
       ],
@@ -516,8 +520,7 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.12),
         borderRadius: BorderRadius.circular(IspRadii.pill),
@@ -546,7 +549,7 @@ class _InfoChip extends StatelessWidget {
 class _InstallationTracker extends StatelessWidget {
   const _InstallationTracker({required this.sub, required this.l10n});
   final SubscriptionModel sub;
-  final AppLocalizations? l10n;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
@@ -565,7 +568,8 @@ class _InstallationTracker extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.construction, size: 18, color: IspColors.primary),
+                const Icon(Icons.construction,
+                    size: 18, color: IspColors.primary),
                 const SizedBox(width: IspSpacing.sm),
                 Text(
                   'Progres Pemasangan',
@@ -592,21 +596,22 @@ class _InstallationTracker extends StatelessWidget {
                         height: 28,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: step.done
-                              ? IspColors.success
-                              : IspColors.border,
+                          color:
+                              step.done ? IspColors.success : IspColors.border,
                         ),
                         child: Icon(
                           step.done ? Icons.check : step.icon,
                           size: 16,
-                          color: step.done ? Colors.white : IspColors.textTertiary,
+                          color:
+                              step.done ? Colors.white : IspColors.textTertiary,
                         ),
                       ),
                       if (!isLast)
                         Container(
                           width: 2,
                           height: 24,
-                          color: step.done ? IspColors.success : IspColors.border,
+                          color:
+                              step.done ? IspColors.success : IspColors.border,
                         ),
                     ],
                   ),
@@ -617,8 +622,11 @@ class _InstallationTracker extends StatelessWidget {
                       step.label,
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: step.done ? FontWeight.w600 : FontWeight.w400,
-                        color: step.done ? IspColors.textPrimary : IspColors.textTertiary,
+                        fontWeight:
+                            step.done ? FontWeight.w600 : FontWeight.w400,
+                        color: step.done
+                            ? IspColors.textPrimary
+                            : IspColors.textTertiary,
                       ),
                     ),
                   ),
@@ -647,7 +655,6 @@ class _PackageSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
     final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
 
     return Column(

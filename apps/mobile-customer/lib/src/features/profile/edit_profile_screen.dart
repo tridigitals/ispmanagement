@@ -1,4 +1,3 @@
-import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -42,9 +41,7 @@ class _State extends ConsumerState<EditProfileScreen> {
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
     setState(() => _saving = true);
-    final res = await ref
-        .read(authControllerProvider.notifier)
-        .updateProfile(
+    final res = await ref.read(authControllerProvider.notifier).updateProfile(
           name: _name.text.trim(),
           email: _email.text.trim(),
           phone: _phone.text.trim(),
@@ -55,7 +52,7 @@ class _State extends ConsumerState<EditProfileScreen> {
       (_) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context)!.profileUpdated),
+            content: Text(AppLocalizations.of(context).profileUpdated),
           ),
         );
         context.pop();
@@ -71,7 +68,7 @@ class _State extends ConsumerState<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.editProfile)),
       body: SafeArea(

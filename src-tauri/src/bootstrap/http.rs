@@ -391,6 +391,9 @@ pub async fn start_server_impl(
             "/api/auth/trusted-devices/{device_id}",
             delete(auth::revoke_trusted_device),
         )
+        // Self-service auth routes
+        .route("/api/auth/change-password", post(auth::change_password))
+        .route("/api/auth/me", put(auth::update_me))
         // User Routes
         .route(
             "/api/users",
@@ -525,6 +528,10 @@ pub async fn start_server_impl(
         .route(
             "/api/support/tickets/{id}/messages",
             post(support::reply_support_ticket),
+        )
+        .route(
+            "/api/support/tickets/{id}/satisfaction",
+            post(support::submit_ticket_satisfaction),
         )
         // Plans Routes
         .nest("/api/plans", plans::plan_routes())

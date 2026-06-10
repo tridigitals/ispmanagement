@@ -2,7 +2,7 @@ use super::AppState;
 use crate::models::{
     CreateSupportTicketDto, FileRecord, PaginatedResponse, ReplySupportTicketDto, SupportTicket,
     SupportTicketDetail, SupportTicketListItem, SupportTicketMessage,
-    SupportTicketMessageWithAttachments, UpdateSupportTicketDto,
+    SupportTicketMessageWithAttachments, SatisfactionDto, UpdateSupportTicketDto,
 };
 use axum::{
     extract::{Path, Query, State},
@@ -1160,6 +1160,50 @@ async fn fetch_attachments_map_pg(
     }
 
     Ok(map)
+}
+
+/// Submit satisfaction rating for a closed ticket (customer only).
+pub async fn submit_ticket_satisfaction(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<SatisfactionDto>,
+) -> Result<(), crate::error::AppError> {
+    let claims = auth_claims(&state, &headers).await?;
+
+    if body.rating < 1 || body.rating > 5 {
+        return Err(crate::error::AppError::Validation(
+            "Rating must be between 1 and 5".to_string(),
+        ));
+    }
+
+    // Verify ticket exists, is closed, and belongs to this user
+    let exists = sqlx::query_scalar::<_, String>(
+        "SELECT id FROM support_tickets WHERE id = $1 AND created_by = $2 AND status = 'closed'",
+    )
+    .bind(&id)
+    .bind(&claims.sub)
+    .fetch_optional(&state.auth_service.pool)
+    .await
+    .map_err(crate::error::AppError::from)?;
+
+    if exists.is_none() {
+        return Err(crate::error::AppError::NotFound(
+            "Ticket not found or not eligible for rating".to_string(),
+        ));
+    }
+
+    sqlx::query(
+        "UPDATE support_tickets SET satisfaction_rating = $1, satisfaction_comment = $2, updated_at = NOW() WHERE id = $3",
+    )
+    .bind(body.rating)
+    .bind(body.comment.as_deref())
+    .bind(&id)
+    .execute(&state.auth_service.pool)
+    .await
+    .map_err(crate::error::AppError::from)?;
+
+    Ok(())
 }
 
 #[cfg(test)]

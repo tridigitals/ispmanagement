@@ -28,7 +28,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     final channelsAsync = ref.watch(
       paymentChannelsProvider(widget.invoiceId),
     );
@@ -92,13 +92,15 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                     ),
                   ),
                   const SizedBox(height: IspSpacing.md),
-                  ...channels.map((ch) => Padding(
-                    padding: const EdgeInsets.only(bottom: IspSpacing.sm),
-                    child: _PaymentChannelTile(
-                      channel: ch,
-                      onTap: () => _payChannel(context, ref, ch),
+                  ...channels.map(
+                    (ch) => Padding(
+                      padding: const EdgeInsets.only(bottom: IspSpacing.sm),
+                      child: _PaymentChannelTile(
+                        channel: ch,
+                        onTap: () => _payChannel(context, ref, ch),
+                      ),
                     ),
-                  )),
+                  ),
                 ],
               );
             },
@@ -109,7 +111,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   }
 
   Future<void> _pay(
-      BuildContext context, WidgetRef ref, String gateway) async {
+    BuildContext context,
+    WidgetRef ref,
+    String gateway,
+  ) async {
     final l10n = AppLocalizations.of(context);
     final svc = ref.read(paymentServiceProvider);
     final result = gateway == 'midtrans'
@@ -128,8 +133,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         } else if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text(
-                    l10n?.noPaymentUrl ?? 'Tidak ada URL pembayaran')),
+              content: Text(
+                l10n.noPaymentUrl ?? 'Tidak ada URL pembayaran',
+              ),
+            ),
           );
         }
       },
@@ -144,7 +151,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   }
 
   Future<void> _payChannel(
-      BuildContext context, WidgetRef ref, PaymentChannel channel) async {
+    BuildContext context,
+    WidgetRef ref,
+    PaymentChannel channel,
+  ) async {
     final l10n = AppLocalizations.of(context);
     final svc = ref.read(paymentServiceProvider);
 
@@ -167,8 +177,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         } else if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text(
-                    l10n?.noPaymentUrl ?? 'Tidak ada URL pembayaran')),
+              content: Text(
+                l10n.noPaymentUrl ?? 'Tidak ada URL pembayaran',
+              ),
+            ),
           );
         }
       },

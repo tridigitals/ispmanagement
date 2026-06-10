@@ -35,8 +35,7 @@ class _State extends ConsumerState<OnboardingScreen> {
     _OnboardPage(
       icon: Icons.headset_mic,
       title: 'Lapor Gangguan Cepat',
-      body:
-          'Buat tiket dukungan dan lacak status perbaikan secara real-time.',
+      body: 'Buat tiket dukungan dan lacak status perbaikan secara real-time.',
       color: IspColors.warning,
     ),
   ];
@@ -97,9 +96,8 @@ class _State extends ConsumerState<OnboardingScreen> {
                   width: _page == i ? 24 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: _page == i
-                        ? IspColors.primary
-                        : IspColors.bgTertiary,
+                    color:
+                        _page == i ? IspColors.primary : IspColors.bgTertiary,
                     borderRadius: BorderRadius.circular(IspRadii.pill),
                   ),
                 ),

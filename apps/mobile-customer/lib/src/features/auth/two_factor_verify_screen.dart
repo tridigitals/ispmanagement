@@ -1,4 +1,3 @@
-import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,9 +38,7 @@ class _State extends ConsumerState<TwoFactorVerifyScreen> {
   Future<void> _verify() async {
     if (!_form.currentState!.validate()) return;
     setState(() => _verifying = true);
-    final res = await ref
-        .read(authControllerProvider.notifier)
-        .verify2fa(
+    final res = await ref.read(authControllerProvider.notifier).verify2fa(
           tempToken: widget.pendingToken,
           code: _code.text.trim(),
         );
@@ -60,7 +57,7 @@ class _State extends ConsumerState<TwoFactorVerifyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.verify2fa)),
       body: SafeArea(
@@ -89,9 +86,8 @@ class _State extends ConsumerState<TwoFactorVerifyScreen> {
                 const SizedBox(height: IspSpacing.xxl),
                 TextFormField(
                   controller: _code,
-                  keyboardType: _usingBackup
-                      ? TextInputType.text
-                      : TextInputType.number,
+                  keyboardType:
+                      _usingBackup ? TextInputType.text : TextInputType.number,
                   maxLength: _usingBackup ? 12 : 6,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
@@ -100,9 +96,7 @@ class _State extends ConsumerState<TwoFactorVerifyScreen> {
                     letterSpacing: 8,
                   ),
                   decoration: InputDecoration(
-                    labelText: _usingBackup
-                        ? l10n.backupCode
-                        : l10n.otpCode,
+                    labelText: _usingBackup ? l10n.backupCode : l10n.otpCode,
                     counterText: '',
                     hintText: _usingBackup ? 'XXXX-XXXX' : '123 456',
                   ),
@@ -120,11 +114,10 @@ class _State extends ConsumerState<TwoFactorVerifyScreen> {
                 const SizedBox(height: IspSpacing.lg),
                 Center(
                   child: TextButton(
-                    onPressed: () => setState(() => _usingBackup = !_usingBackup),
+                    onPressed: () =>
+                        setState(() => _usingBackup = !_usingBackup),
                     child: Text(
-                      _usingBackup
-                          ? l10n.useAuthenticator
-                          : l10n.useBackupCode,
+                      _usingBackup ? l10n.useAuthenticator : l10n.useBackupCode,
                     ),
                   ),
                 ),

@@ -16,8 +16,7 @@ class AnnouncementBanner extends ConsumerStatefulWidget {
   const AnnouncementBanner({super.key});
 
   @override
-  ConsumerState<AnnouncementBanner> createState() =>
-      _AnnouncementBannerState();
+  ConsumerState<AnnouncementBanner> createState() => _AnnouncementBannerState();
 }
 
 class _AnnouncementBannerState extends ConsumerState<AnnouncementBanner>

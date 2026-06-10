@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'service_providers.dart';
-
 /// Theme mode (light/dark/system) persisted in SharedPreferences.
 final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(
   ThemeModeNotifier.new,
@@ -54,7 +52,8 @@ class LocaleNotifier extends Notifier<Locale> {
   }
 
   Future<void> toggle() async {
-    final next = state.languageCode == 'id' ? const Locale('en') : const Locale('id');
+    final next =
+        state.languageCode == 'id' ? const Locale('en') : const Locale('id');
     await _prefs?.setString(_kKey, next.languageCode);
     state = next;
   }

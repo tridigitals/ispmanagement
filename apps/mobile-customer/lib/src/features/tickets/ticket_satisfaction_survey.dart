@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:api_client/api_client.dart';
+import 'package:ui_kit/ui_kit.dart';
 
 import '../../services/settings_providers.dart';
+import '../../services/service_providers.dart';
 
 /// Local-only ticket satisfaction rating.
 /// Stores ratings in SharedPreferences keyed by ticket ID.
@@ -62,6 +65,16 @@ class _TicketSatisfactionSurveyState
   Future<void> _submit() async {
     if (_rating == 0) return;
 
+    // Call backend
+    final svc = ref.read(ticketServiceProvider);
+    final result = await svc.submitSatisfaction(
+      ticketId: widget.ticketId,
+      rating: _rating,
+      comment:
+          _commentCtrl.text.trim().isNotEmpty ? _commentCtrl.text.trim() : null,
+    );
+
+    // Cache locally too (for offline / re-entry)
     final prefs = ref.read(sharedPreferencesProvider).valueOrNull;
     if (prefs != null) {
       await prefs.setInt('ticket_rating_${widget.ticketId}', _rating);
@@ -72,13 +85,26 @@ class _TicketSatisfactionSurveyState
         );
       }
     }
+
+    if (result is Failure) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengirim: ${(result).exception.message}'),
+            backgroundColor: IspColors.danger,
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() => _submitted = true);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Terima kasih atas penilaian Anda!'),
-          backgroundColor: Color(0xFF10B981),
+          backgroundColor: IspColors.success,
         ),
       );
     }
@@ -92,9 +118,9 @@ class _TicketSatisfactionSurveyState
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F9FF),
+        color: IspColors.bgTertiary,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFBAE6FD)),
+        border: Border.all(color: IspColors.border),
       ),
       child: _submitted ? _buildSubmitted() : _buildForm(),
     );
@@ -106,7 +132,7 @@ class _TicketSatisfactionSurveyState
       children: [
         Row(
           children: [
-            const Icon(Icons.rate_review, size: 20, color: Color(0xFF0284C7)),
+            const Icon(Icons.rate_review, size: 20, color: IspColors.primary),
             const SizedBox(width: 8),
             const Expanded(
               child: Text(
@@ -114,7 +140,7 @@ class _TicketSatisfactionSurveyState
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF0C4A6E),
+                  color: IspColors.textPrimary,
                 ),
               ),
             ),
@@ -134,8 +160,8 @@ class _TicketSatisfactionSurveyState
                   starNum <= _rating ? Icons.star : Icons.star_border,
                   size: 36,
                   color: starNum <= _rating
-                      ? const Color(0xFFF59E0B)
-                      : const Color(0xFFCBD5E1),
+                      ? IspColors.warning
+                      : IspColors.textMuted,
                 ),
               ),
             );
@@ -161,16 +187,25 @@ class _TicketSatisfactionSurveyState
           maxLines: 2,
           decoration: InputDecoration(
             hintText: 'Komentar (opsional)',
-            hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+            hintStyle:
+                const TextStyle(fontSize: 13, color: IspColors.textTertiary),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+              borderSide: const BorderSide(color: IspColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: IspColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: IspColors.primary),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             isDense: true,
           ),
-          style: const TextStyle(fontSize: 13),
+          style: const TextStyle(fontSize: 13, color: IspColors.textPrimary),
         ),
         const SizedBox(height: 12),
         SizedBox(
@@ -178,7 +213,7 @@ class _TicketSatisfactionSurveyState
           child: ElevatedButton(
             onPressed: _rating > 0 ? _submit : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0284C7),
+              backgroundColor: IspColors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 10),
               shape: RoundedRectangleBorder(
@@ -207,8 +242,8 @@ class _TicketSatisfactionSurveyState
                 (i + 1) <= _rating ? Icons.star : Icons.star_border,
                 size: 24,
                 color: (i + 1) <= _rating
-                    ? const Color(0xFFF59E0B)
-                    : const Color(0xFFCBD5E1),
+                    ? IspColors.warning
+                    : IspColors.textMuted,
               ),
             );
           }),
@@ -219,7 +254,7 @@ class _TicketSatisfactionSurveyState
           style: const TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: Color(0xFF0C4A6E),
+            color: IspColors.textPrimary,
           ),
         ),
         if (_commentCtrl.text.trim().isNotEmpty) ...[
@@ -229,7 +264,7 @@ class _TicketSatisfactionSurveyState
             style: const TextStyle(
               fontSize: 12,
               fontStyle: FontStyle.italic,
-              color: Color(0xFF64748B),
+              color: IspColors.textTertiary,
             ),
             textAlign: TextAlign.center,
           ),
@@ -256,8 +291,8 @@ class _TicketSatisfactionSurveyState
   }
 
   Color _ratingColor(int rating) {
-    if (rating <= 2) return const Color(0xFFEF4444);
-    if (rating == 3) return const Color(0xFFF59E0B);
-    return const Color(0xFF10B981);
+    if (rating <= 2) return IspColors.danger;
+    if (rating == 3) return IspColors.warning;
+    return IspColors.success;
   }
 }

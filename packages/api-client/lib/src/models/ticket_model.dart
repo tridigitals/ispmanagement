@@ -31,6 +31,17 @@ enum TicketPriority {
   urgent,
 }
 
+enum TicketCategory {
+  @JsonValue('general')
+  general,
+  @JsonValue('billing')
+  billing,
+  @JsonValue('technical')
+  technical,
+  @JsonValue('installation')
+  installation,
+}
+
 /// Support ticket (tiket gangguan / permintaan).
 @JsonSerializable()
 class TicketModel extends Equatable {
@@ -45,6 +56,9 @@ class TicketModel extends Equatable {
     this.subscriptionId,
     this.assignedToName,
     this.unreadCount = 0,
+    this.category,
+    this.satisfactionRating,
+    this.satisfactionComment,
   });
 
   factory TicketModel.fromJson(Map<String, dynamic> json) =>
@@ -73,6 +87,11 @@ class TicketModel extends Equatable {
   final String? assignedToName;
   @JsonKey(name: 'unread_count')
   final int unreadCount;
+  final String? category;
+  @JsonKey(name: 'satisfaction_rating')
+  final int? satisfactionRating;
+  @JsonKey(name: 'satisfaction_comment')
+  final String? satisfactionComment;
 
   bool get isOpen => status == TicketStatus.open || status == TicketStatus.inProgress;
   bool get isClosed =>
@@ -112,6 +131,21 @@ class TicketModel extends Equatable {
     }
   }
 
+  String categoryLabel() {
+    switch (category) {
+      case 'general':
+        return 'Umum';
+      case 'billing':
+        return 'Tagihan';
+      case 'technical':
+        return 'Teknis';
+      case 'installation':
+        return 'Instalasi';
+      default:
+        return 'Umum';
+    }
+  }
+
   @override
   List<Object?> get props => [
         id,
@@ -123,6 +157,9 @@ class TicketModel extends Equatable {
         subscriptionId,
         assignedToName,
         unreadCount,
+        category,
+        satisfactionRating,
+        satisfactionComment,
       ];
 }
 

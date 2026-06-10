@@ -159,7 +159,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         audit_service.clone(),
     );
     announcement_scheduler.start().await;
-    radius_service.start().await?;
+    if let Err(e) = radius_service.start().await {
+        tracing::warn!("RADIUS service failed to start (port may be in use): {}. Continuing without RADIUS.", e);
+    }
 
     let scheduler = BackupScheduler::new(
         pool.clone(),

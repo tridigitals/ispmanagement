@@ -1,4 +1,3 @@
-import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -36,9 +35,7 @@ class _State extends ConsumerState<ChangePasswordScreen> {
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
     setState(() => _saving = true);
-    final res = await ref
-        .read(authControllerProvider.notifier)
-        .changePassword(
+    final res = await ref.read(authControllerProvider.notifier).changePassword(
           current: _current.text,
           next: _new.text,
         );
@@ -48,7 +45,7 @@ class _State extends ConsumerState<ChangePasswordScreen> {
       (_) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context)!.passwordChanged),
+            content: Text(AppLocalizations.of(context).passwordChanged),
           ),
         );
         context.pop();
@@ -64,7 +61,7 @@ class _State extends ConsumerState<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.changePassword)),
       body: SafeArea(
@@ -92,9 +89,11 @@ class _State extends ConsumerState<ChangePasswordScreen> {
                     labelText: l10n.currentPassword,
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      icon: Icon(_hideCurrent
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined),
+                      icon: Icon(
+                        _hideCurrent
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
                       onPressed: () =>
                           setState(() => _hideCurrent = !_hideCurrent),
                     ),
@@ -111,9 +110,11 @@ class _State extends ConsumerState<ChangePasswordScreen> {
                     prefixIcon: const Icon(Icons.lock_outline),
                     helperText: l10n.passwordRule,
                     suffixIcon: IconButton(
-                      icon: Icon(_hideNew
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined),
+                      icon: Icon(
+                        _hideNew
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
                       onPressed: () => setState(() => _hideNew = !_hideNew),
                     ),
                   ),
@@ -127,9 +128,11 @@ class _State extends ConsumerState<ChangePasswordScreen> {
                     labelText: l10n.confirmNewPassword,
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      icon: Icon(_hideConfirm
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined),
+                      icon: Icon(
+                        _hideConfirm
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
                       onPressed: () =>
                           setState(() => _hideConfirm = !_hideConfirm),
                     ),

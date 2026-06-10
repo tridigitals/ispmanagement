@@ -16,15 +16,13 @@ final mySubscriptionsProvider =
   return result.getOrThrow().data;
 });
 
-final myInvoicesProvider =
-    FutureProvider<List<InvoiceModel>>((ref) async {
+final myInvoicesProvider = FutureProvider<List<InvoiceModel>>((ref) async {
   final svc = ref.watch(invoiceServiceProvider);
   final result = await svc.list();
   return result.getOrThrow().data;
 });
 
-final myTicketsProvider =
-    FutureProvider<List<TicketModel>>((ref) async {
+final myTicketsProvider = FutureProvider<List<TicketModel>>((ref) async {
   final svc = ref.watch(ticketServiceProvider);
   final result = await svc.list();
   return result.getOrThrow().data;
@@ -75,7 +73,8 @@ class BiometricEnabledNotifier extends AsyncNotifier<bool> {
 
 final biometricEnabledProvider =
     AsyncNotifierProvider<BiometricEnabledNotifier, bool>(
-        BiometricEnabledNotifier.new);
+  BiometricEnabledNotifier.new,
+);
 
 /// Persisted boolean notifier backed by SharedPreferences.
 class PersistedBoolNotifier extends Notifier<bool> {
@@ -106,10 +105,8 @@ final notifOutageEnabledProvider =
   () => PersistedBoolNotifier('notif_outage', true),
 );
 
-final notifPromoEnabledProvider =
-    NotifierProvider<PersistedBoolNotifier, bool>(
+final notifPromoEnabledProvider = NotifierProvider<PersistedBoolNotifier, bool>(
   () => PersistedBoolNotifier('notif_promo', false),
 );
 
-final onboardingCompletedProvider =
-    StateProvider<bool>((ref) => false);
+final onboardingCompletedProvider = StateProvider<bool>((ref) => false);

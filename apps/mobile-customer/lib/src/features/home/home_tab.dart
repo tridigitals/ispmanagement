@@ -92,11 +92,11 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                       ),
                   ],
                 ),
-                onPressed: () => context.push('/notifications'),
+                onPressed: () => GoRouter.of(context).push('/notifications'),
               ),
               IconButton(
                 icon: const Icon(Icons.account_circle_outlined),
-                onPressed: () => context.push('/profile'),
+                onPressed: () => GoRouter.of(context).push('/profile'),
               ),
             ],
           ),
@@ -135,7 +135,6 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   }
 }
 
-
 // ─── Primary subscription hero ──────────────────────────────────
 
 class _PrimarySubscription extends ConsumerStatefulWidget {
@@ -168,8 +167,9 @@ class _PrimarySubscriptionState extends ConsumerState<_PrimarySubscription> {
           return _EmptyState(label: l10n.noSubscription);
         }
         // Sort: active first
-        final sorted = [...page]
-          ..sort((a, b) => a.isActive == b.isActive ? 0 : (a.isActive ? -1 : 1));
+        final sorted = [
+          ...page
+        ]..sort((a, b) => a.isActive == b.isActive ? 0 : (a.isActive ? -1 : 1));
 
         return Column(
           children: [
@@ -260,7 +260,8 @@ class _SubscriptionHeroCard extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            (sub.packageName ?? l10n.internetPackage).toUpperCase(),
+                            (sub.packageName ?? l10n.internetPackage)
+                                .toUpperCase(),
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 12,
@@ -350,7 +351,6 @@ class _SubscriptionHeroCard extends StatelessWidget {
   }
 }
 
-
 // ─── Recent invoices ────────────────────────────────────────────
 
 class _RecentInvoices extends StatelessWidget {
@@ -378,7 +378,7 @@ class _RecentInvoices extends StatelessWidget {
                 ),
               ),
               TextButton(
-                onPressed: () => GoRouter.of(context).go('/invoices'),
+                onPressed: () => GoRouter.of(context).go('/?tab=2'),
                 child: Text(l10n.seeAll),
               ),
             ],
@@ -416,7 +416,8 @@ class _RecentInvoices extends StatelessWidget {
                   return Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: () => context.push('/invoices/${inv.id}'),
+                      onTap: () =>
+                          GoRouter.of(context).push('/invoices/${inv.id}'),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,

@@ -128,7 +128,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             _tempToken = data.tempToken;
           });
         } else {
-          await ref.read(authControllerProvider.notifier).apply(data!);
+          await ref.read(authControllerProvider.notifier).apply(data);
           if (mounted) context.go('/');
         }
       case Failure(:final exception):
@@ -148,7 +148,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
     switch (res) {
       case Success(:final data):
-        await ref.read(authControllerProvider.notifier).apply(data!);
+        await ref.read(authControllerProvider.notifier).apply(data);
         if (mounted) context.go('/');
       case Failure(:final exception):
         ScaffoldMessenger.of(context).showSnackBar(
@@ -159,7 +159,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     final loading = ref.watch(authControllerProvider).isLoading;
     return Scaffold(
       body: SafeArea(
@@ -183,8 +183,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         labelText: l10n.email,
                         prefixIcon: const Icon(Icons.alternate_email),
                       ),
-                      validator: (v) =>
-                          (v == null || !v.contains('@')) ? l10n.invalidEmail : null,
+                      validator: (v) => (v == null || !v.contains('@'))
+                          ? l10n.invalidEmail
+                          : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -196,12 +197,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         labelText: l10n.password,
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
+                          icon: Icon(_obscure
+                              ? Icons.visibility
+                              : Icons.visibility_off),
                           onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
-                      validator: (v) =>
-                          (v == null || v.length < 6) ? l10n.passwordTooShort : null,
+                      validator: (v) => (v == null || v.length < 6)
+                          ? l10n.passwordTooShort
+                          : null,
                     ),
                     const SizedBox(height: 8),
                     Align(
@@ -239,8 +243,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         child: Center(
                           child: Column(
                             children: [
-                              Icon(Icons.fingerprint,
-                                  size: 48, color: IspColors.primary),
+                              Icon(
+                                Icons.fingerprint,
+                                size: 48,
+                                color: IspColors.primary,
+                              ),
                               SizedBox(height: 8),
                               Text(
                                 'Verifikasi sidik jari...',
@@ -253,13 +260,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                       ),
-                    if (!_biometricLoading) ...[
-                      const SizedBox(height: 12),
-                      OutlinedButton(
-                        onPressed: () => context.push('/register'),
-                        child: Text(l10n.createAccount),
-                      ),
-                    ],
                   ] else ...[
                     Text(
                       l10n.enter2faCode,
@@ -314,7 +314,8 @@ class _BrandHeader extends StatelessWidget {
             color: IspColors.primarySubtle,
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.wifi_tethering, size: 40, color: IspColors.primary),
+          child: const Icon(Icons.wifi_tethering,
+              size: 40, color: IspColors.primary),
         ),
         const SizedBox(height: 16),
         Text(

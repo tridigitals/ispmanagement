@@ -1,18 +1,13 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../l10n/app_localizations.dart';
-import 'feature_providers.dart';
 import 'app_config.dart';
-import 'service_providers.dart';
 
 /// Background handler — must be a top-level function.
 @pragma('vm:entry-point')
@@ -111,10 +106,13 @@ class FcmService {
       debugPrint('[FCM] Token: ${token.substring(0, 20)}...');
 
       final dio = _ref.read(dioProvider);
-      await dio.post('/api/notifications/devices', data: {
-        'fcm_token': token,
-        'platform': 'android',
-      });
+      await dio.post(
+        '/api/notifications/devices',
+        data: {
+          'fcm_token': token,
+          'platform': 'android',
+        },
+      );
       debugPrint('[FCM] Token registered OK');
     } catch (e) {
       debugPrint('[FCM] Token registration failed: $e');

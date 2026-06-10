@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
@@ -187,9 +188,12 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: IspSpacing.md),
-                  _InfoRow(label: 'Jatuh tempo', value: dateFmt.format(inv.dueDate)),
+                  _InfoRow(
+                      label: 'Jatuh tempo', value: dateFmt.format(inv.dueDate)),
                   if (inv.paidAt != null)
-                    _InfoRow(label: 'Dibayar pada', value: dateFmt.format(inv.paidAt!)),
+                    _InfoRow(
+                        label: 'Dibayar pada',
+                        value: dateFmt.format(inv.paidAt!)),
                   if (inv.subscriptionLabel != null)
                     _InfoRow(label: 'Layanan', value: inv.subscriptionLabel!),
                   if (inv.notes != null && inv.notes!.isNotEmpty)
@@ -202,7 +206,8 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
             // ── Actions ──
             if (!inv.isPaid) ...[
               ElevatedButton.icon(
-                onPressed: () => context.push('/payments/${inv.id}'),
+                onPressed: () =>
+                    GoRouter.of(context).push('/payments/${inv.id}'),
                 icon: const Icon(Icons.payment),
                 label: const Text('Bayar Sekarang'),
               ),
@@ -216,13 +221,13 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.upload_file),
-                label: Text(_uploadingProof
-                    ? 'Mengunggah...'
-                    : 'Upload Bukti Pembayaran'),
+                label: Text(
+                  _uploadingProof ? 'Mengunggah...' : 'Upload Bukti Pembayaran',
+                ),
               ),
               const SizedBox(height: IspSpacing.sm),
               OutlinedButton.icon(
-                onPressed: () => context.push('/tickets/new'),
+                onPressed: () => GoRouter.of(context).push('/tickets/new'),
                 icon: const Icon(Icons.help_outline),
                 label: const Text('Butuh Bantuan?'),
               ),
@@ -250,17 +255,16 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
     _showLoading(context);
     try {
       final path = await generateReceiptPdf(inv);
-      final bytes = await io.File(path).readAsBytes();
       if (!context.mounted) return;
       Navigator.of(context).pop(); // dismiss loading
 
-      await Printing.sharePdf(
-        bytes: bytes,
-        filename: 'struk_${inv.invoiceNumber}.pdf',
+      await Share.shareXFiles(
+        [XFile(path)],
+        subject: 'Bukti Pembayaran ${inv.invoiceNumber}',
       );
     } catch (e) {
       if (!context.mounted) return;
-      Navigator.of(context).pop();
+      try { Navigator.of(context).pop(); } catch (_) {}
       _showError(context, 'Gagal membuat PDF: $e');
     }
   }
@@ -329,7 +333,8 @@ class _InfoRow extends StatelessWidget {
             width: 120,
             child: Text(
               label,
-              style: const TextStyle(color: IspColors.textTertiary, fontSize: 13),
+              style:
+                  const TextStyle(color: IspColors.textTertiary, fontSize: 13),
             ),
           ),
           Expanded(

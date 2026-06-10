@@ -300,7 +300,9 @@ export interface SupportTicketListItem {
   subject: string;
   status: 'open' | 'pending' | 'closed' | string;
   priority: 'low' | 'normal' | 'high' | 'urgent' | string;
+  category: 'general' | 'billing' | 'technical' | 'installation' | null;
   assigned_to: string | null;
+  subscription_id: string | null;
   created_at: string;
   updated_at: string;
   closed_at: string | null;
@@ -332,7 +334,11 @@ export interface SupportTicket {
   subject: string;
   status: string;
   priority: string;
+  category: string | null;
+  subscription_id: string | null;
   assigned_to: string | null;
+  satisfaction_rating: number | null;
+  satisfaction_comment: string | null;
   created_at: string;
   updated_at: string;
   closed_at: string | null;

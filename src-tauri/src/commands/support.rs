@@ -949,6 +949,7 @@ pub async fn update_support_ticket(
     let new_status = status.unwrap_or(existing.status);
     let new_priority = priority.unwrap_or(existing.priority);
     let assigned_to = assigned_to.or(existing.assigned_to);
+    let new_category = category.or(existing.category);
     let closed_at = if new_status == "closed" {
         Some(now)
     } else {
@@ -961,15 +962,17 @@ pub async fn update_support_ticket(
         SET status = $1,
             priority = $2,
             assigned_to = $3,
-            updated_at = $4,
-            closed_at = $5
-        WHERE id = $6 AND tenant_id = $7
+            category = $4,
+            updated_at = $5,
+            closed_at = $6
+        WHERE id = $7 AND tenant_id = $8
         RETURNING *
     "#,
     )
     .bind(new_status)
     .bind(new_priority)
     .bind(assigned_to)
+    .bind(new_category)
     .bind(now)
     .bind(closed_at)
     .bind(&id)
@@ -1203,6 +1206,63 @@ async fn fetch_attachments_map_pg(
     }
 
     Ok(map)
+}
+
+/// Submit a satisfaction rating for a closed ticket.
+/// Customer-only — the ticket must be closed and belong to the caller.
+#[tauri::command]
+pub async fn submit_ticket_satisfaction(
+    token: String,
+    ticket_id: String,
+    rating: i32,
+    comment: Option<String>,
+    auth_service: State<'_, AuthService>,
+) -> Result<(), String> {
+    if rating < 1 || rating > 5 {
+        return Err("Rating must be between 1 and 5".to_string());
+    }
+
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let tenant_id = claims.tenant_id.as_deref().ok_or("Tenant context required")?;
+    let customer_id: String = sqlx::query_scalar(
+        "SELECT customer_id FROM customer_users WHERE tenant_id = $1 AND user_id = $2 LIMIT 1",
+    )
+    .bind(tenant_id)
+    .bind(&claims.sub)
+    .fetch_optional(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?
+    .ok_or_else(|| "Customer context required".to_string())?;
+
+    // Verify ticket exists, is closed, and belongs to this customer
+    let ticket = sqlx::query_scalar::<_, String>(
+        "SELECT id FROM support_tickets WHERE id = $1 AND created_by = $2 AND status = 'closed'",
+    )
+    .bind(&ticket_id)
+    .bind(&customer_id)
+    .fetch_optional(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    if ticket.is_none() {
+        return Err("Ticket not found or not eligible for rating".to_string());
+    }
+
+    sqlx::query(
+        "UPDATE support_tickets SET satisfaction_rating = $1, satisfaction_comment = $2, updated_at = NOW() WHERE id = $3",
+    )
+    .bind(rating)
+    .bind(comment.as_deref())
+    .bind(&ticket_id)
+    .execute(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
 #[cfg(test)]

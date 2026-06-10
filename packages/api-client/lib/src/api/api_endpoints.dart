@@ -17,7 +17,7 @@ class ApiEndpoints {
   static const String authForgotPassword = '/api/auth/forgot-password';
   static const String authResetPassword = '/api/auth/reset-password';
   /// NOTE: Backend has no change-password endpoint. Not implemented.
-  static const String authChangePassword = '/api/auth/change-password'; // unused — kept for reference
+  static const String authChangePassword = '/api/auth/change-password';
   static const String auth2faVerify = '/api/auth/2fa/verify';
   static const String auth2faEnable = '/api/auth/2fa/enable';
 
@@ -67,6 +67,8 @@ class ApiEndpoints {
   static String ticketMessages(String id) =>
       '/api/support/tickets/$id/messages';
   static const String createTicket = '/api/support/tickets';
+  static String ticketSatisfaction(String id) =>
+      '/api/support/tickets/$id/satisfaction';
 
   // ── Storage / Files ──
   // Backend: /api/storage/files/{id}/content (src-tauri/src/http/storage.rs)

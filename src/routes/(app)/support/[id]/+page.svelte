@@ -150,6 +150,11 @@
               <span class="badge priority {detail.ticket.priority}">
                 {$t(`support.priorities.${detail.ticket.priority}`) || detail.ticket.priority}
               </span>
+              {#if detail.ticket.category}
+                <span class="badge category {detail.ticket.category}">
+                  {$t(`support.categories.${detail.ticket.category}`) || detail.ticket.category}
+                </span>
+              {/if}
             </div>
           </div>
           <div class="subrow">
@@ -160,6 +165,13 @@
               {formatDateTime(detail.ticket.updated_at, { timeZone: $appSettings.app_timezone })}
             </span>
           </div>
+          {#if detail.ticket.subscription_id}
+            <div class="subrow">
+              <a href="/subscriptions/{detail.ticket.subscription_id}" class="subscription-link">
+                {$t('support.detail.view_subscription') || 'View related subscription'} →
+              </a>
+            </div>
+          {/if}
         </div>
 
         <div class="reply">
@@ -176,9 +188,23 @@
             <div class="closed-note">
               <Icon name="lock" size={16} />
               <span>
-                {$t('support.detail.closed_notice') || 'This ticket is closed. You can’t reply.'}
+                {$t('support.detail.closed_notice') || 'This ticket is closed. You can\u2019t reply.'}
               </span>
             </div>
+
+            {#if detail.ticket.satisfaction_rating}
+              <div class="satisfaction-display">
+                <div class="rating-stars">
+                  {#each [1,2,3,4,5] as star}
+                    <span class="star" class:filled={star <= (detail.ticket.satisfaction_rating ?? 0)}>★</span>
+                  {/each}
+                  <span class="rating-num">{detail.ticket.satisfaction_rating}/5</span>
+                </div>
+                {#if detail.ticket.satisfaction_comment}
+                  <p class="rating-comment">"{detail.ticket.satisfaction_comment}"</p>
+                {/if}
+              </div>
+            {/if}
           {/if}
 
           <textarea
@@ -683,6 +709,37 @@
     color: rgba(245, 158, 11, 0.95);
     font-weight: 800;
     font-size: 0.9rem;
+  }
+
+  .satisfaction-display {
+    margin-top: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .rating-stars {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+  }
+  .star {
+    font-size: 1.2rem;
+    color: var(--border-subtle, #e2e8f0);
+  }
+  .star.filled {
+    color: #f59e0b;
+  }
+  .rating-num {
+    margin-left: 0.5rem;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .rating-comment {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: 0;
   }
 
   .mono {

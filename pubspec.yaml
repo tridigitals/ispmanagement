@@ -3,13 +3,12 @@ description: ISP Management monorepo - desktop (Tauri), mobile apps (Flutter), s
 publish_to: none
 
 environment:
-  sdk: ">=3.4.0 <4.0.0"
+  sdk: ">=3.5.0 <4.0.0"
   flutter: ">=3.22.0"
 
 workspace:
   - apps/mobile-customer
   - apps/mobile-admin
-  - apps/mobile-superadmin
   - packages/api-client
   - packages/ui-kit
   - packages/config

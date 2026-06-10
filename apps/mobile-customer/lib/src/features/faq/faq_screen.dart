@@ -31,8 +31,7 @@ const _faqItems = <_FaqItem>[
   ),
   _FaqItem(
     question: 'Kapan tagihan saya terbit?',
-    answer:
-        'Tagihan terbit otomatis 7 hari sebelum tanggal jatuh tempo. '
+    answer: 'Tagihan terbit otomatis 7 hari sebelum tanggal jatuh tempo. '
         'Anda akan menerima notifikasi push dan email.',
     category: 'Tagihan',
   ),

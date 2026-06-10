@@ -34,9 +34,13 @@
   let subject = $state('');
   let message = $state('');
   let priority = $state<'low' | 'normal' | 'high' | 'urgent'>('normal');
+  let category = $state<'general' | 'billing' | 'technical' | 'installation'>('general');
+  let subscriptionId = $state<string | undefined>(undefined);
+  let subscriptions = $state<Array<{ id: string; label: string }>>([]);
   let attachments = $state<File[]>([]);
 
   let statusFilter = $state<'all' | 'open' | 'pending' | 'closed'>('all');
+  let categoryFilter = $state<'all' | 'general' | 'billing' | 'technical' | 'installation'>('all');
 
   let hasMore = $derived(tickets.length < total);
   let ready = $state(false);
@@ -46,6 +50,21 @@
     { label: get(t)('support.priorities.normal') || 'Normal', value: 'normal' },
     { label: get(t)('support.priorities.high') || 'High', value: 'high' },
     { label: get(t)('support.priorities.urgent') || 'Urgent', value: 'urgent' },
+  ];
+
+  const categoryOptions = [
+    { label: get(t)('support.categories.all') || 'All', value: 'all' },
+    { label: get(t)('support.categories.general') || 'General', value: 'general' },
+    { label: get(t)('support.categories.billing') || 'Billing', value: 'billing' },
+    { label: get(t)('support.categories.technical') || 'Technical', value: 'technical' },
+    { label: get(t)('support.categories.installation') || 'Installation', value: 'installation' },
+  ];
+
+  const createCategoryOptions = [
+    { label: get(t)('support.categories.general') || 'General', value: 'general' },
+    { label: get(t)('support.categories.billing') || 'Billing', value: 'billing' },
+    { label: get(t)('support.categories.technical') || 'Technical', value: 'technical' },
+    { label: get(t)('support.categories.installation') || 'Installation', value: 'installation' },
   ];
 
   function onPickFiles(e: Event) {
@@ -60,6 +79,14 @@
     }
     await refreshStats();
     await loadTickets(true);
+    // Load subscriptions for the create modal
+    try {
+      const res = await api.customers.portal.listSubscriptions({ per_page: 50, status: 'active' });
+      subscriptions = (res.data || []).map((s: any) => ({
+        id: s.id,
+        label: s.package_name || s.plan_name || 'Langganan',
+      }));
+    } catch (_) { /* ignore */ }
     ready = true;
   });
 
@@ -91,6 +118,7 @@
       const res: PaginatedResponse<SupportTicketListItem> = await api.support.list({
         status: statusFilter === 'all' ? undefined : statusFilter,
         search: searchQuery.trim() || undefined,
+        category: categoryFilter === 'all' ? undefined : categoryFilter,
         page: pageNum,
         perPage,
       });
@@ -111,6 +139,7 @@
       const res: PaginatedResponse<SupportTicketListItem> = await api.support.list({
         status: statusFilter === 'all' ? undefined : statusFilter,
         search: searchQuery.trim() || undefined,
+        category: categoryFilter === 'all' ? undefined : categoryFilter,
         page: pageNum,
         perPage,
       });
@@ -143,12 +172,14 @@
         ids.push(record.id);
       }
 
-      const detail = await api.support.create(subject, message, priority, ids);
+      const detail = await api.support.create(subject, message, priority, category, subscriptionId, ids);
       toast.success(get(t)('support.toasts.created') || 'Ticket created');
       showCreate = false;
       subject = '';
       message = '';
       priority = 'normal';
+      category = 'general';
+      subscriptionId = undefined;
       attachments = [];
       await refreshStats();
       await loadTickets(true);
@@ -219,6 +250,23 @@
             {$t('support.actions.new') || 'New Ticket'}
           </button>
         {/if}
+      </div>
+
+      <!-- Category filter row -->
+      <div class="category-filter">
+        {#each categoryOptions as opt}
+          <button
+            class="cat-btn"
+            class:active={categoryFilter === opt.value}
+            type="button"
+            onclick={() => {
+              categoryFilter = opt.value as any;
+              void loadTickets(true);
+            }}
+          >
+            {opt.label}
+          </button>
+        {/each}
       </div>
     </div>
   </header>
@@ -305,6 +353,11 @@
               <span class="badge priority {item.priority}">
                 {$t(`support.priorities.${item.priority}`) || item.priority}
               </span>
+              {#if item.category}
+                <span class="badge category {item.category}">
+                  {$t(`support.categories.${item.category}`) || item.category}
+                </span>
+              {/if}
             </div>
           </div>
           <div class="card-bottom">
@@ -363,6 +416,23 @@
           'Describe your issue or request...'}
       ></textarea>
     </div>
+
+    <Select
+      label={$t('support.fields.category') || 'Category'}
+      bind:value={category}
+      options={createCategoryOptions}
+    />
+
+    {#if subscriptions.length > 0}
+      <Select
+        label="Langganan Terkait (opsional)"
+        bind:value={subscriptionId}
+        options={[
+          { label: 'Tidak terkait', value: undefined },
+          ...subscriptions.map(s => ({ label: s.label, value: s.id })),
+        ]}
+      />
+    {/if}
 
     <Select
       label={$t('support.fields.priority') || 'Priority'}
@@ -526,6 +596,34 @@
   }
 
   .filter button.active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.35);
+    color: var(--text-primary);
+  }
+
+  .category-filter {
+    display: inline-flex;
+    gap: 0.35rem;
+    padding: 0.3rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+    margin-top: 0.5rem;
+  }
+
+  .cat-btn {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 0.35rem 0.6rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: capitalize;
+  }
+
+  .cat-btn.active {
     background: rgba(99, 102, 241, 0.15);
     border-color: rgba(99, 102, 241, 0.35);
     color: var(--text-primary);
@@ -804,6 +902,27 @@
     border-color: rgba(34, 197, 94, 0.25);
     color: rgba(34, 197, 94, 0.9);
     background: rgba(34, 197, 94, 0.06);
+  }
+
+  .badge.category.general {
+    border-color: rgba(156, 163, 175, 0.3);
+    color: var(--text-secondary);
+    background: rgba(156, 163, 175, 0.06);
+  }
+  .badge.category.billing {
+    border-color: rgba(139, 92, 246, 0.3);
+    color: rgba(139, 92, 246, 0.9);
+    background: rgba(139, 92, 246, 0.06);
+  }
+  .badge.category.technical {
+    border-color: rgba(59, 130, 246, 0.3);
+    color: rgba(59, 130, 246, 0.9);
+    background: rgba(59, 130, 246, 0.06);
+  }
+  .badge.category.installation {
+    border-color: rgba(16, 185, 129, 0.3);
+    color: rgba(16, 185, 129, 0.9);
+    background: rgba(16, 185, 129, 0.06);
   }
 
   .card-bottom {

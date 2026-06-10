@@ -12,6 +12,7 @@ export const support = {
   list: (params?: {
     status?: string;
     search?: string;
+    category?: string;
     page?: number;
     perPage?: number;
   }): Promise<PaginatedResponse<SupportTicketListItem>> =>
@@ -19,6 +20,7 @@ export const support = {
       token: getTokenOrThrow(),
       status: params?.status,
       search: params?.search,
+      category: params?.category,
       page: params?.page,
       per_page: params?.perPage,
     }),
@@ -30,6 +32,8 @@ export const support = {
     subject: string,
     message: string,
     priority?: string,
+    category?: string,
+    subscriptionId?: string,
     attachmentIds?: string[],
   ): Promise<SupportTicketDetail> =>
     safeInvoke('create_support_ticket', {
@@ -37,6 +41,9 @@ export const support = {
       subject,
       message,
       priority,
+      category,
+      subscriptionId,
+      subscription_id: subscriptionId,
       attachmentIds,
       attachment_ids: attachmentIds,
     }),
@@ -62,14 +69,28 @@ export const support = {
 
   update: (
     id: string,
-    data: { status?: string; priority?: string; assignedTo?: string | null },
+    data: { status?: string; priority?: string; category?: string; assignedTo?: string | null },
   ): Promise<SupportTicket> =>
     safeInvoke('update_support_ticket', {
       token: getTokenOrThrow(),
       id,
       status: data.status,
       priority: data.priority,
+      category: data.category,
       assignedTo: data.assignedTo ?? undefined,
       assigned_to: data.assignedTo ?? undefined,
+    }),
+
+  submitSatisfaction: (
+    id: string,
+    rating: number,
+    comment?: string,
+  ): Promise<void> =>
+    safeInvoke('submit_ticket_satisfaction', {
+      token: getTokenOrThrow(),
+      ticketId: id,
+      ticket_id: id,
+      rating,
+      comment,
     }),
 };

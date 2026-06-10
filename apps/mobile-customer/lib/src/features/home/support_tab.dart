@@ -24,6 +24,7 @@ class _SupportTabState extends ConsumerState<SupportTab> {
   bool _loadingMore = false;
   bool _initialLoaded = false;
   Object? _initialError;
+  String? _categoryFilter;
 
   @override
   void initState() {
@@ -34,7 +35,8 @@ class _SupportTabState extends ConsumerState<SupportTab> {
   Future<void> _loadInitial() async {
     try {
       final svc = ref.read(ticketServiceProvider);
-      final result = await svc.list(page: 1, perPage: 20);
+      final result =
+          await svc.list(page: 1, perPage: 20, category: _categoryFilter);
       final paginated = result.getOrThrow();
       if (!mounted) return;
       setState(() {
@@ -59,7 +61,8 @@ class _SupportTabState extends ConsumerState<SupportTab> {
     setState(() => _loadingMore = true);
     try {
       final svc = ref.read(ticketServiceProvider);
-      final result = await svc.list(page: _page + 1, perPage: 20);
+      final result = await svc.list(
+          page: _page + 1, perPage: 20, category: _categoryFilter);
       final paginated = result.getOrThrow();
       if (!mounted) return;
       setState(() {
@@ -76,15 +79,28 @@ class _SupportTabState extends ConsumerState<SupportTab> {
 
   bool _onScroll(Notification notification) {
     if (notification is ScrollNotification &&
-        notification.metrics.extentAfter < notification.metrics.maxScrollExtent * 0.1) {
+        notification.metrics.extentAfter <
+            notification.metrics.maxScrollExtent * 0.1) {
       _loadMore();
     }
     return false;
   }
 
+  void _setCategoryFilter(String? cat) {
+    if (cat == _categoryFilter) return;
+    setState(() {
+      _categoryFilter = cat;
+      _items.clear();
+      _page = 1;
+      _hasMore = true;
+      _initialLoaded = false;
+    });
+    _loadInitial();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
 
     if (!_initialLoaded) {
       return CustomScrollView(
@@ -95,13 +111,14 @@ class _SupportTabState extends ConsumerState<SupportTab> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.add),
-                onPressed: () => context.push('/tickets/new'),
+                onPressed: () => GoRouter.of(context).push('/tickets/new'),
               ),
             ],
           ),
           const SliverFillRemaining(
             hasScrollBody: false,
-            child: Center(child: CircularProgressIndicator(color: AppColors.accent)),
+            child: Center(
+                child: CircularProgressIndicator(color: AppColors.accent)),
           ),
         ],
       );
@@ -116,7 +133,7 @@ class _SupportTabState extends ConsumerState<SupportTab> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.add),
-                onPressed: () => context.push('/tickets/new'),
+                onPressed: () => GoRouter.of(context).push('/tickets/new'),
               ),
             ],
           ),
@@ -142,7 +159,7 @@ class _SupportTabState extends ConsumerState<SupportTab> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.add),
-                onPressed: () => context.push('/tickets/new'),
+                onPressed: () => GoRouter.of(context).push('/tickets/new'),
               ),
             ],
           ),
@@ -153,7 +170,7 @@ class _SupportTabState extends ConsumerState<SupportTab> {
               title: l10n.noTickets,
               subtitle: l10n.createFirstTicket,
               actionLabel: l10n.newTicket,
-              onAction: () => context.push('/tickets/new'),
+              onAction: () => GoRouter.of(context).push('/tickets/new'),
             ),
           ),
         ],
@@ -181,9 +198,52 @@ class _SupportTabState extends ConsumerState<SupportTab> {
               actions: [
                 IconButton(
                   icon: const Icon(Icons.add),
-                  onPressed: () => context.push('/tickets/new'),
+                  onPressed: () => GoRouter.of(context).push('/tickets/new'),
                 ),
               ],
+            ),
+            // Category filter chips
+            SliverToBoxAdapter(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _FilterChip(
+                        label: 'Semua',
+                        selected: _categoryFilter == null,
+                        onTap: () => _setCategoryFilter(null),
+                      ),
+                      const SizedBox(width: 8),
+                      _FilterChip(
+                        label: 'Umum',
+                        selected: _categoryFilter == 'general',
+                        onTap: () => _setCategoryFilter('general'),
+                      ),
+                      const SizedBox(width: 8),
+                      _FilterChip(
+                        label: 'Tagihan',
+                        selected: _categoryFilter == 'billing',
+                        onTap: () => _setCategoryFilter('billing'),
+                      ),
+                      const SizedBox(width: 8),
+                      _FilterChip(
+                        label: 'Teknis',
+                        selected: _categoryFilter == 'technical',
+                        onTap: () => _setCategoryFilter('technical'),
+                      ),
+                      const SizedBox(width: 8),
+                      _FilterChip(
+                        label: 'Instalasi',
+                        selected: _categoryFilter == 'installation',
+                        onTap: () => _setCategoryFilter('installation'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
             SliverPadding(
               padding: const EdgeInsets.only(bottom: 100),
@@ -230,7 +290,7 @@ class _TicketTile extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.push('/tickets/${t.id}'),
+        onTap: () => GoRouter.of(context).push('/tickets/${t.id}'),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           decoration: const BoxDecoration(
@@ -258,7 +318,9 @@ class _TicketTile extends StatelessWidget {
                   if (t.unreadCount > 0)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.accent,
                         borderRadius: BorderRadius.circular(9999),
@@ -266,7 +328,9 @@ class _TicketTile extends StatelessWidget {
                       child: Text(
                         '${t.unreadCount}',
                         style: const TextStyle(
-                            color: Colors.white, fontSize: 11),
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                 ],
@@ -282,6 +346,13 @@ class _TicketTile extends StatelessWidget {
                             ? StatusTone.neutral
                             : StatusTone.warning,
                   ),
+                  if (t.category != null && t.category!.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    IspStatusBadge(
+                      label: t.categoryLabel(),
+                      tone: StatusTone.neutral,
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   Text(
                     '· ${dateFmt.format(t.updatedAt)}',
@@ -359,6 +430,43 @@ class _EmptyState extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.accent : AppColors.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? AppColors.accent : AppColors.border,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : AppColors.textSecondary,
+          ),
+        ),
       ),
     );
   }

@@ -13,7 +13,7 @@ class NetworkStatusBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     final async = ref.watch(networkStatusProvider);
 
     return async.maybeWhen(
@@ -34,25 +34,25 @@ class _Banner extends StatelessWidget {
   Widget build(BuildContext context) {
     final (icon, color, text) = switch (status.status) {
       NetworkOperationalStatus.majorOutage => (
-        Icons.signal_wifi_off,
-        IspColors.danger,
-        'Tidak ada koneksi di area ${status.area}',
-      ),
+          Icons.signal_wifi_off,
+          IspColors.danger,
+          'Tidak ada koneksi di area ${status.area}',
+        ),
       NetworkOperationalStatus.partialOutage => (
-        Icons.warning_amber_rounded,
-        IspColors.warning,
-        'Gangguan sebagian di ${status.area}',
-      ),
+          Icons.warning_amber_rounded,
+          IspColors.warning,
+          'Gangguan sebagian di ${status.area}',
+        ),
       NetworkOperationalStatus.degraded => (
-        Icons.network_check,
-        IspColors.warning,
-        'Koneksi lambat di ${status.area}',
-      ),
+          Icons.network_check,
+          IspColors.warning,
+          'Koneksi lambat di ${status.area}',
+        ),
       NetworkOperationalStatus.maintenance => (
-        Icons.engineering,
-        IspColors.info,
-        'Pemeliharaan jaringan di ${status.area}',
-      ),
+          Icons.engineering,
+          IspColors.info,
+          'Pemeliharaan jaringan di ${status.area}',
+        ),
       _ => (Icons.info_outline, IspColors.info, status.statusLabel),
     };
 
