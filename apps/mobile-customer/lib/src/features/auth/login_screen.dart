@@ -128,7 +128,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             _tempToken = data.tempToken;
           });
         } else {
-          await ref.read(authControllerProvider.notifier).apply(data);
           if (mounted) context.go('/');
         }
       case Failure(:final exception):

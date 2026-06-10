@@ -57,7 +57,9 @@ class AuthController extends Notifier<AuthState> {
       case Success(:final data):
         final storage = ref.read(tokenStorageProvider);
         await storage.saveCredentials(email: email, password: password);
-        await apply(data);
+        if (!data.requires2fa) {
+          await apply(data);
+        }
       case Failure():
         break;
     }

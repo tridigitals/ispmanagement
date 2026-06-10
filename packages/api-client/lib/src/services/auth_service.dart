@@ -13,7 +13,7 @@ part 'auth_service.g.dart';
 @JsonSerializable()
 class AuthResponse extends Equatable {
   const AuthResponse({
-    required this.token,
+    this.token,
     required this.user,
     this.refreshToken,
     this.requires2fa = false,
@@ -24,7 +24,7 @@ class AuthResponse extends Equatable {
       _$AuthResponseFromJson(json);
   Map<String, dynamic> toJson() => _$AuthResponseToJson(this);
 
-  final String token;
+  final String? token;
 
   @JsonKey(name: 'refresh_token')
   final String? refreshToken;
@@ -153,8 +153,10 @@ class AuthService {
 
   /// Persist tokens & user info locally.
   Future<void> persistSession(AuthResponse auth) async {
+    final t = auth.token;
+    if (t == null || t.isEmpty) return; // 2FA challenge — no token yet
     await tokenStorage.save(
-      token: auth.token,
+      token: t,
       refreshToken: auth.refreshToken,
       userId: auth.user.id,
       tenantId: auth.user.tenantId,
