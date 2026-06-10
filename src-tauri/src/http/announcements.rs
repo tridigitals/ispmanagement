@@ -130,7 +130,7 @@ pub async fn get_one(
                 OR (audience = 'target_package' AND EXISTS (
                   SELECT 1 FROM customer_users cu
                   JOIN customer_subscriptions cs ON cs.customer_id = cu.customer_id AND cs.tenant_id = cu.tenant_id
-                  WHERE cu.user_id = $1 AND cs.package_id = a.target_package_id AND cs.status IN ('active','suspended')
+                  WHERE cu.user_id = $5 AND cs.package_id = a.target_package_id AND cs.status IN ('active','suspended')
                 ))
               )
         "#,
@@ -139,6 +139,7 @@ pub async fn get_one(
         .bind(tenant_id.as_deref())
         .bind(now)
         .bind(is_admin)
+        .bind(&user_id)
         .fetch_one(&state.auth_service.pool)
         .await?
     };
