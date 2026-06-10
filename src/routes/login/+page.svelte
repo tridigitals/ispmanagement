@@ -23,7 +23,7 @@
   let activeField = '';
 
   // 2FA State
-  let step = 'login'; // 'login' | '2fa-select' | '2fa-totp' | '2fa-email'
+  let step = 'login'; // 'login' | '2fa-select' | '2fa-totp' | '2fa-email' | '2fa-setup'
   // State to track 2FA input
   let twoFactorCode = '';
   let tempToken = '';
@@ -31,6 +31,15 @@
   let selected2FAMethod = '';
   let emailOtpSent = false;
   let emailOtpSending = false;
+
+  // 2FA Setup (forced enrollment) state
+  let setupMethod = 'totp'; // 'totp' | 'email'
+  let setupQr = '';
+  let setupSecret = '';
+  let setupCode = '';
+  let setupLoading = false;
+  let setupEmailSent = false;
+
   let isTauriApp = false;
   let isCustomDomain = false;
   let customerRegistrationEnabled = false;
@@ -173,6 +182,58 @@
     goToRoleHome();
   }
 
+  async function start2FASetupEnrollment() {
+    setupLoading = true;
+    error = '';
+    try {
+      if (setupMethod === 'email') {
+        await authApi.requestEmail2FASetupTemp(tempToken);
+        setupEmailSent = true;
+      } else {
+        const result = await authApi.enable2FATemp(tempToken);
+        setupQr = result.qr;
+        setupSecret = result.secret;
+      }
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err);
+    } finally {
+      setupLoading = false;
+    }
+  }
+
+  async function changeSetupMethod(method: 'totp' | 'email') {
+    setupMethod = method;
+    setupEmailSent = false;
+    setupQr = '';
+    setupSecret = '';
+    setupCode = '';
+    await start2FASetupEnrollment();
+  }
+
+  async function handle2FASetupVerify() {
+    if (!setupCode || setupCode.length < 6) return;
+    error = '';
+    loading = true;
+    try {
+      let response: any;
+      if (setupMethod === 'email') {
+        response = await authApi.verifyEmail2FASetupTemp(tempToken, setupCode);
+      } else {
+        response = await authApi.verify2FASetupTemp(tempToken, setupSecret, setupCode);
+      }
+
+      if (response.token) {
+        const { setAuthData } = await import('$lib/stores/auth');
+        setAuthData(response.token, response.user, rememberMe, response.tenant);
+        redirectUser(response.user, response.tenant);
+      }
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err);
+    } finally {
+      loading = false;
+    }
+  }
+
   async function handleSubmit(e: Event) {
     e.preventDefault();
     error = '';
@@ -180,6 +241,14 @@
 
     try {
       const response = await login(email, password, rememberMe);
+
+      if (response.requires_2fa_setup) {
+        // Forced 2FA enrollment — tenant requires 2FA, user hasn't set it up yet
+        tempToken = response.temp_token || '';
+        step = '2fa-setup';
+        start2FASetupEnrollment();
+        return;
+      }
 
       if (response.requires_2fa) {
         tempToken = response.temp_token || '';
@@ -308,6 +377,8 @@
             Authenticator App
           {:else if step === '2fa-email'}
             Email Verification
+          {:else if step === '2fa-setup'}
+            Security Setup Required
           {/if}
         </h2>
         <p>
@@ -319,6 +390,8 @@
             Enter the 6-digit code from your authenticator app
           {:else if step === '2fa-email'}
             Enter the 6-digit code sent to your email
+          {:else if step === '2fa-setup'}
+            Your organization requires two-factor authentication. Please set it up to continue.
           {/if}
         </p>
       </div>
@@ -560,6 +633,121 @@
             {$t('auth.2fa.back_to_login') || 'Back to Login'}
           </button>
         </form>
+      {:else if step === '2fa-setup'}
+        <!-- Forced 2FA Enrollment -->
+        <div class="setup-flow">
+          {#if setupLoading}
+            <div style="text-align: center; padding: 2rem 0;">
+              <div class="spinner" style="margin: 0 auto 1rem;"></div>
+              <span>Preparing setup...</span>
+            </div>
+          {:else if setupMethod === 'totp'}
+            <div class="method-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+              <button
+                class="btn {setupMethod === 'totp' ? 'btn-primary' : 'btn-outline'} btn-sm"
+                on:click={() => changeSetupMethod('totp')}
+              >
+                <Icon name="smartphone" size={16} />
+                Authenticator
+              </button>
+              <button
+                class="btn {setupMethod === 'email' ? 'btn-primary' : 'btn-outline'} btn-sm"
+                on:click={() => changeSetupMethod('email')}
+              >
+                <Icon name="mail" size={16} />
+                Email
+              </button>
+            </div>
+            <div class="qr-section" style="text-align: center; margin-bottom: 1.5rem;">
+              <span class="step-label" style="display: block; margin-bottom: 1rem;">1. Scan this QR code with your authenticator app</span>
+              <div class="qr-wrapper" style="background: white; padding: 1rem; border-radius: 8px; display: inline-block;">
+                <img src="data:image/png;base64,{setupQr}" alt="QR Code" style="width: 180px; height: 180px;" />
+              </div>
+              <p style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted); word-break: break-all;">
+                Key: {setupSecret}
+              </p>
+            </div>
+            <form on:submit|preventDefault={handle2FASetupVerify}>
+              <div class="input-group" class:focus={activeField === 'setup'}>
+                <label for="setup-code">2. Enter the verification code</label>
+                <div class="field">
+                  <span class="icon"><Icon name="shield" size={18} /></span>
+                  <input
+                    type="text"
+                    id="setup-code"
+                    bind:value={setupCode}
+                    on:focus={() => (activeField = 'setup')}
+                    on:blur={() => (activeField = '')}
+                    placeholder="000000"
+                    maxlength="6"
+                    required
+                    style="letter-spacing: 0.5em; text-align: center;"
+                  />
+                </div>
+              </div>
+              <button type="submit" class="btn-primary full-width" disabled={loading || setupCode.length < 6}>
+                {#if loading}
+                  <div class="spinner"></div>
+                {:else}
+                  Activate & Login
+                {/if}
+              </button>
+            </form>
+          {:else}
+            <!-- Email 2FA Setup -->
+            <div class="method-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+              <button
+                class="btn {setupMethod === 'totp' ? 'btn-primary' : 'btn-outline'} btn-sm"
+                on:click={() => changeSetupMethod('totp')}
+              >
+                <Icon name="smartphone" size={16} />
+                Authenticator
+              </button>
+              <button
+                class="btn {setupMethod === 'email' ? 'btn-primary' : 'btn-outline'} btn-sm"
+                on:click={() => changeSetupMethod('email')}
+              >
+                <Icon name="mail" size={16} />
+                Email
+              </button>
+            </div>
+            {#if setupEmailSent}
+              <div style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-success); border-radius: 8px; color: var(--text-success);">
+                <Icon name="check-circle" size={18} />
+                <span>A verification code has been sent to your email.</span>
+              </div>
+            {/if}
+            <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+              We'll send a verification code to your registered email address.
+            </p>
+            <form on:submit|preventDefault={handle2FASetupVerify}>
+              <div class="input-group" class:focus={activeField === 'setup'}>
+                <label for="setup-email-code">Enter verification code</label>
+                <div class="field">
+                  <span class="icon"><Icon name="mail" size={18} /></span>
+                  <input
+                    type="text"
+                    id="setup-email-code"
+                    bind:value={setupCode}
+                    on:focus={() => (activeField = 'setup')}
+                    on:blur={() => (activeField = '')}
+                    placeholder="000000"
+                    maxlength="6"
+                    required
+                    style="letter-spacing: 0.5em; text-align: center;"
+                  />
+                </div>
+              </div>
+              <button type="submit" class="btn-primary full-width" disabled={loading || setupCode.length < 6}>
+                {#if loading}
+                  <div class="spinner"></div>
+                {:else}
+                  Verify & Login
+                {/if}
+              </button>
+            </form>
+          {/if}
+        </div>
       {/if}
 
       {#if $allowRegistration && !isTauriApp && isCustomDomain && customerRegistrationEnabled}

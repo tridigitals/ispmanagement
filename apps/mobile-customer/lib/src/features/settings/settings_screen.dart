@@ -42,10 +42,15 @@ class SettingsScreen extends ConsumerWidget {
                   icon: Icons.security,
                   title: l10n.twoFactorAuth,
                   subtitle: user?.twoFactorEnabled == true
-                      ? l10n.twoFaOn
+                      ? (user?.enforce2fa == true
+                          ? l10n.twoFaRequired
+                          : l10n.twoFaOn)
                       : l10n.twoFaOff,
                   value: user?.twoFactorEnabled == true,
-                  onChanged: (v) => _toggle2fa(context, ref, v),
+                  onChanged: user?.twoFactorEnabled == true &&
+                          user?.enforce2fa == true
+                      ? null // Prevent disabling when enforced
+                      : (v) => _toggle2fa(context, ref, v),
                 ),
                 const Divider(height: 1, color: IspColors.borderSubtle),
                 ListTile(
@@ -287,7 +292,7 @@ class _SwitchTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
   @override
   Widget build(BuildContext context) {
     return SwitchListTile(

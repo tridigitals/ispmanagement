@@ -323,6 +323,109 @@ pub async fn get_2fa_methods(
     Ok(Json(methods))
 }
 
+// ==================== 2FA Setup Endpoints (temp_token variants for forced enrollment) ====================
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct TempTokenDto {
+    temp_token: String,
+}
+
+/// Enable 2FA from temp token (forced enrollment flow): Generate Secret & QR Code
+pub async fn enable_2fa_temp(
+    State(state): State<AppState>,
+    Json(payload): Json<TempTokenDto>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let claims = state
+        .auth_service
+        .validate_2fa_token(&payload.temp_token)
+        .await?;
+    let (secret, qr) = state.auth_service.enable_2fa(&claims.sub).await?;
+
+    Ok(Json(json!({
+        "secret": secret,
+        "qr": qr
+    })))
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct Verify2FASetupTempDto {
+    temp_token: String,
+    secret: String,
+    code: String,
+}
+
+/// Verify 2FA Setup from temp token (forced enrollment): Activate 2FA + complete login
+pub async fn verify_2fa_setup_temp(
+    State(state): State<AppState>,
+    Json(payload): Json<Verify2FASetupTempDto>,
+) -> Result<Json<AuthResponse>, crate::error::AppError> {
+    let claims = state
+        .auth_service
+        .validate_2fa_token(&payload.temp_token)
+        .await?;
+    // Activate 2FA for the user
+    state
+        .auth_service
+        .verify_2fa_setup(&claims.sub, &payload.secret, &payload.code)
+        .await?;
+    // Complete login: generate proper JWT session
+    let user = state.auth_service.get_user_by_id(&claims.sub).await?;
+    let response = state.auth_service.complete_login(user).await?;
+
+    Ok(Json(response))
+}
+
+/// Request Email 2FA Setup from temp token (forced enrollment): Send OTP to email
+pub async fn request_email_2fa_setup_temp(
+    State(state): State<AppState>,
+    Json(payload): Json<TempTokenDto>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let claims = state
+        .auth_service
+        .validate_2fa_token(&payload.temp_token)
+        .await?;
+    state
+        .auth_service
+        .request_email_2fa_setup(&claims.sub)
+        .await?;
+
+    Ok(Json(json!({
+        "message": "OTP sent to email"
+    })))
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct VerifyEmail2FASetupTempDto {
+    temp_token: String,
+    code: String,
+}
+
+/// Verify Email 2FA Setup from temp token (forced enrollment): Activate email 2FA + complete login
+pub async fn verify_email_2fa_setup_temp(
+    State(state): State<AppState>,
+    Json(payload): Json<VerifyEmail2FASetupTempDto>,
+) -> Result<Json<AuthResponse>, crate::error::AppError> {
+    let claims = state
+        .auth_service
+        .validate_2fa_token(&payload.temp_token)
+        .await?;
+    state
+        .auth_service
+        .verify_email_2fa_setup(&claims.sub, &payload.code)
+        .await?;
+    // Complete login after successful 2FA setup
+    let user = state.auth_service.get_user_by_id(&claims.sub).await?;
+    let response = state.auth_service.complete_login(user).await?;
+
+    Ok(Json(response))
+}
+
 // ==================== 2FA Setup Endpoints ====================
 
 /// Enable 2FA: Generate Secret & QR Code

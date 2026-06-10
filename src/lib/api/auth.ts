@@ -53,6 +53,19 @@ export const auth = {
   set2FAPreference: (method: string): Promise<void> =>
     safeInvoke('set_2fa_preference', { token: getTokenOrThrow(), method }),
 
+  // Temp-token 2FA Setup (forced enrollment — uses temp_token, not JWT)
+  enable2FATemp: (tempToken: string): Promise<{ secret: string; qr: string }> =>
+    safeInvoke('enable_2fa_temp', { tempToken }),
+
+  verify2FASetupTemp: (tempToken: string, secret: string, code: string): Promise<AuthResponse> =>
+    safeInvoke('verify_2fa_setup_temp', { tempToken, secret, code }),
+
+  requestEmail2FASetupTemp: (tempToken: string): Promise<void> =>
+    safeInvoke('request_email_2fa_setup_temp', { tempToken }),
+
+  verifyEmail2FASetupTemp: (tempToken: string, code: string): Promise<AuthResponse> =>
+    safeInvoke('verify_email_2fa_setup_temp', { tempToken, code }),
+
   requestEmail2FASetup: (): Promise<void> =>
     safeInvoke('request_email_2fa_setup', { token: getTokenOrThrow() }),
 

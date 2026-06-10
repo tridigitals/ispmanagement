@@ -212,6 +212,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get twoFaOff => 'Off';
 
   @override
+  String get twoFaRequired => 'Required by organization';
+
+  @override
   String get twoFaEnabled => '2FA enabled successfully';
 
   @override

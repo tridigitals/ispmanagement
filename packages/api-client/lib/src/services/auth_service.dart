@@ -17,6 +17,7 @@ class AuthResponse extends Equatable {
     required this.user,
     this.refreshToken,
     this.requires2fa = false,
+    this.requires2faSetup = false,
     this.tempToken,
   });
 
@@ -33,12 +34,16 @@ class AuthResponse extends Equatable {
   @JsonKey(name: 'requires_2fa')
   final bool requires2fa;
 
-  /// Temporary token used during 2FA challenge.
+  /// Whether 2FA setup is required by the tenant (forced enrollment).
+  @JsonKey(name: 'requires_2fa_setup')
+  final bool requires2faSetup;
+
+  /// Temporary token used during 2FA challenge or forced enrollment.
   @JsonKey(name: 'temp_token')
   final String? tempToken;
 
   @override
-  List<Object?> get props => [token, refreshToken, user, requires2fa, tempToken];
+  List<Object?> get props => [token, refreshToken, user, requires2fa, requires2faSetup, tempToken];
 }
 
 /// Result wrapper for service operations.
@@ -108,6 +113,61 @@ class AuthService {
       final res = await dio.post<Map<String, dynamic>>(
         ApiEndpoints.auth2faVerify,
         data: {'tempToken': tempToken, 'code': code, 'method': method},
+      );
+      return AuthResponse.fromJson(res.data ?? const {});
+    });
+  }
+
+  // ── Temp-token 2FA Setup (forced enrollment — no JWT required) ──
+
+  /// Enable 2FA from temp token: generate secret & QR code.
+  Future<ServiceResult<Map<String, dynamic>>> enable2faTemp(
+    String tempToken,
+  ) async {
+    return _execute(() async {
+      final res = await dio.post<Map<String, dynamic>>(
+        ApiEndpoints.auth2faTempEnable,
+        data: {'tempToken': tempToken},
+      );
+      return res.data ?? {};
+    });
+  }
+
+  /// Verify 2FA setup + complete login (TOTP).
+  Future<ServiceResult<AuthResponse>> verify2faSetupTemp({
+    required String tempToken,
+    required String secret,
+    required String code,
+  }) async {
+    return _execute(() async {
+      final res = await dio.post<Map<String, dynamic>>(
+        ApiEndpoints.auth2faTempVerifySetup,
+        data: {'tempToken': tempToken, 'secret': secret, 'code': code},
+      );
+      return AuthResponse.fromJson(res.data ?? const {});
+    });
+  }
+
+  /// Request email OTP for 2FA setup (temp token).
+  Future<ServiceResult<bool>> requestEmail2faSetupTemp(
+    String tempToken,
+  ) async {
+    return _execute(() async {
+      await dio.post(ApiEndpoints.auth2faTempEmailEnableRequest,
+          data: {'tempToken': tempToken});
+      return true;
+    });
+  }
+
+  /// Verify email 2FA setup + complete login.
+  Future<ServiceResult<AuthResponse>> verifyEmail2faSetupTemp({
+    required String tempToken,
+    required String code,
+  }) async {
+    return _execute(() async {
+      final res = await dio.post<Map<String, dynamic>>(
+        ApiEndpoints.auth2faTempEmailEnableVerify,
+        data: {'tempToken': tempToken, 'code': code},
       );
       return AuthResponse.fromJson(res.data ?? const {});
     });

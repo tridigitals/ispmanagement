@@ -197,6 +197,7 @@ export interface AuthResponse {
   expires_at?: string;
   message?: string;
   requires_2fa?: boolean;
+  requires_2fa_setup?: boolean;
   temp_token?: string;
   available_2fa_methods?: string[];
 }

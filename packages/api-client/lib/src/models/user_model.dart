@@ -17,6 +17,7 @@ class UserModel extends Equatable {
     this.tenantSlug,
     this.tenantRole,
     this.twoFactorEnabled = false,
+    @JsonKey(name: 'enforce_2fa') this.enforce2fa = false,
     this.permissions = const [],
     this.phone,
   });
@@ -49,6 +50,9 @@ class UserModel extends Equatable {
   @JsonKey(name: 'two_factor_enabled')
   final bool twoFactorEnabled;
 
+  @JsonKey(name: 'enforce_2fa')
+  final bool enforce2fa;
+
   final String? phone;
 
   /// Permission keys for granular RBAC checks.
@@ -77,6 +81,7 @@ class UserModel extends Equatable {
         tenantSlug,
         tenantRole,
         twoFactorEnabled,
+        enforce2fa,
         permissions,
       ];
 }

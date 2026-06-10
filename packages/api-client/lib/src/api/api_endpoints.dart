@@ -21,6 +21,15 @@ class ApiEndpoints {
   static const String auth2faVerify = '/api/auth/2fa/verify';
   static const String auth2faEnable = '/api/auth/2fa/enable';
 
+  // Temp token 2FA setup (forced enrollment — uses temp_token, not JWT)
+  static const String auth2faTempEnable = '/api/auth/2fa/temp/enable';
+  static const String auth2faTempVerifySetup =
+      '/api/auth/2fa/temp/verify-setup';
+  static const String auth2faTempEmailEnableRequest =
+      '/api/auth/2fa/temp/email/enable-request';
+  static const String auth2faTempEmailEnableVerify =
+      '/api/auth/2fa/temp/email/enable-verify';
+
   // ── Portal / Me ──
   // Backend: /api/auth/me returns user info (no separate /api/portal/me)
   static const String me = '/api/auth/me';

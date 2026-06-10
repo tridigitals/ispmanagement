@@ -57,7 +57,7 @@ class AuthController extends Notifier<AuthState> {
       case Success(:final data):
         final storage = ref.read(tokenStorageProvider);
         await storage.saveCredentials(email: email, password: password);
-        if (!data.requires2fa) {
+        if (!data.requires2fa && !data.requires2faSetup) {
           await apply(data);
         }
       case Failure():
@@ -131,6 +131,73 @@ class AuthController extends Notifier<AuthState> {
         state = AuthState(user: me.data);
       }
       return const Success(true);
+    } on Exception catch (e) {
+      return Failure(ApiException(message: e.toString()));
+    }
+  }
+
+  // ── Temp-token 2FA enrollment (forced setup at login) ──
+
+  Future<ServiceResult<TwoFactorEnrollment>> start2faEnrollTemp(
+    String tempToken,
+  ) async {
+    try {
+      final dio = ref.read(dioProvider);
+      final res = await dio.post<Map<String, dynamic>>(
+        '/api/auth/2fa/temp/enable',
+        data: {'tempToken': tempToken},
+      );
+      final data = res.data ?? const {};
+      final secret = (data['secret'] as String?) ?? '';
+      final otpAuthUri =
+          'otpauth://totp/ISPManagement:$secret?secret=$secret&issuer=ISPManagement&algorithm=SHA1&digits=6&period=30';
+      return Success(
+        TwoFactorEnrollment(
+          enrollmentId: secret,
+          secret: secret,
+          otpAuthUri: otpAuthUri,
+          periodSeconds: 30,
+          backupCodes: const [],
+        ),
+      );
+    } on Exception catch (e) {
+      return Failure(ApiException(message: e.toString()));
+    }
+  }
+
+  Future<ServiceResult<AuthResponse>> confirm2faEnrollTemp({
+    required String tempToken,
+    required String secret,
+    required String code,
+  }) async {
+    try {
+      final dio = ref.read(dioProvider);
+      final res = await dio.post<Map<String, dynamic>>(
+        '/api/auth/2fa/temp/verify-setup',
+        data: {'tempToken': tempToken, 'secret': secret, 'code': code},
+      );
+      final authResponse = AuthResponse.fromJson(res.data ?? const {});
+      // Apply session
+      await apply(authResponse);
+      return Success(authResponse);
+    } on Exception catch (e) {
+      return Failure(ApiException(message: e.toString()));
+    }
+  }
+
+  Future<ServiceResult<AuthResponse>> confirmEmail2faEnrollTemp({
+    required String tempToken,
+    required String code,
+  }) async {
+    try {
+      final dio = ref.read(dioProvider);
+      final res = await dio.post<Map<String, dynamic>>(
+        '/api/auth/2fa/temp/email/enable-verify',
+        data: {'tempToken': tempToken, 'code': code},
+      );
+      final authResponse = AuthResponse.fromJson(res.data ?? const {});
+      await apply(authResponse);
+      return Success(authResponse);
     } on Exception catch (e) {
       return Failure(ApiException(message: e.toString()));
     }

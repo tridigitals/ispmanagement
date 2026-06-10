@@ -497,6 +497,12 @@ abstract class AppLocalizations {
   /// **'Off'**
   String get twoFaOff;
 
+  /// No description provided for @twoFaRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required by organization'**
+  String get twoFaRequired;
+
   /// No description provided for @twoFaEnabled.
   ///
   /// In en, this message translates to:

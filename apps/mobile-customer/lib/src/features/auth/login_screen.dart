@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +9,7 @@ import 'package:api_client/api_client.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../services/app_config.dart';
 import '../../services/auth_providers.dart';
 import '../../services/missing_providers.dart';
 import '../../services/service_providers.dart';
@@ -24,8 +27,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
   bool _show2fa = false;
+  bool _show2faSetup = false;
+  String? _setupSecret;
+  String? _setupQr;
+  bool _setupLoading = false;
+  bool _setupEmailSent = false;
+  String? _setupMethod = 'totp';
   String? _tempToken;
   final _codeCtrl = TextEditingController();
+  final _setupCodeCtrl = TextEditingController();
   bool _biometricAttempted = false;
   bool _biometricLoading = false;
 
@@ -34,6 +44,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _codeCtrl.dispose();
+    _setupCodeCtrl.dispose();
     super.dispose();
   }
 
@@ -122,7 +133,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
     switch (res) {
       case Success(:final data):
-        if (data.requires2fa && data.tempToken != null) {
+        if (data.requires2faSetup && data.tempToken != null) {
+          setState(() {
+            _show2faSetup = true;
+            _tempToken = data.tempToken;
+          });
+          _start2faSetup();
+        } else if (data.requires2fa && data.tempToken != null) {
           setState(() {
             _show2fa = true;
             _tempToken = data.tempToken;
@@ -134,6 +151,88 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(exception.message)),
         );
+    }
+  }
+
+  Future<void> _start2faSetup() async {
+    setState(() => _setupLoading = true);
+    try {
+      if (_setupMethod == 'email') {
+        final dio = ref.read(dioProvider);
+        await dio.post('/api/auth/2fa/temp/email/enable-request',
+            data: {'tempToken': _tempToken});
+        setState(() => _setupEmailSent = true);
+      } else {
+        final dio = ref.read(dioProvider);
+        final res = await dio.post<Map<String, dynamic>>(
+          '/api/auth/2fa/temp/enable',
+          data: {'tempToken': _tempToken},
+        );
+        final data = res.data ?? const {};
+        setState(() {
+          _setupSecret = (data['secret'] as String?) ?? '';
+          _setupQr = (data['qr'] as String?) ?? '';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _setupLoading = false);
+    }
+  }
+
+  Future<void> _switchSetupMethod(String method) async {
+    if (_setupMethod == method) return;
+    setState(() {
+      _setupMethod = method;
+      _setupSecret = null;
+      _setupQr = null;
+      _setupEmailSent = false;
+      _setupCodeCtrl.clear();
+    });
+    await _start2faSetup();
+  }
+
+  Future<void> _submit2faSetup() async {
+    if (_tempToken == null) return;
+    if (_setupCodeCtrl.text.length < 4) return;
+    setState(() => _setupLoading = true);
+    try {
+      final dio = ref.read(dioProvider);
+      Map<String, dynamic> payload;
+      String endpoint;
+      if (_setupMethod == 'email') {
+        endpoint = '/api/auth/2fa/temp/email/enable-verify';
+        payload = {'tempToken': _tempToken, 'code': _setupCodeCtrl.text.trim()};
+      } else {
+        endpoint = '/api/auth/2fa/temp/verify-setup';
+        payload = {
+          'tempToken': _tempToken,
+          'secret': _setupSecret,
+          'code': _setupCodeCtrl.text.trim(),
+        };
+      }
+      final res = await dio.post<Map<String, dynamic>>(endpoint, data: payload);
+      final authResponse = AuthResponse.fromJson(res.data ?? const {});
+      if (mounted) {
+        await ref.read(authControllerProvider.notifier).apply(authResponse);
+        context.go('/');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: IspColors.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _setupLoading = false);
     }
   }
 
@@ -173,7 +272,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   const _BrandHeader(),
                   const SizedBox(height: 32),
-                  if (!_show2fa) ...[
+                  if (_show2faSetup) ...[
+                    _build2FASetupUI(),
+                  ] else if (_show2fa) ...[
+                    Text(
+                      l10n.enter2faCode,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    TextField(
+                      controller: _codeCtrl,
+                      maxLength: 6,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        letterSpacing: 8,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: '••••••',
+                        counterText: '',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: loading ? null : _submit2fa,
+                      child: Text(l10n.verify),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => _show2fa = false),
+                      child: Text(l10n.back),
+                    ),
+                  ] else ...[
                     TextFormField(
                       controller: _emailCtrl,
                       keyboardType: TextInputType.emailAddress,
@@ -259,42 +391,207 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                       ),
-                  ] else ...[
-                    Text(
-                      l10n.enter2faCode,
-                      style: Theme.of(context).textTheme.titleMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    TextField(
-                      controller: _codeCtrl,
-                      maxLength: 6,
-                      keyboardType: TextInputType.number,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        letterSpacing: 8,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: '••••••',
-                        counterText: '',
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: loading ? null : _submit2fa,
-                      child: Text(l10n.verify),
-                    ),
-                    TextButton(
-                      onPressed: () => setState(() => _show2fa = false),
-                      child: Text(l10n.back),
-                    ),
                   ],
                 ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _build2FASetupUI() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Security Setup Required',
+          style: Theme.of(context).textTheme.titleMedium,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Your organization requires 2FA. Please set it up.',
+          style: const TextStyle(color: IspColors.textTertiary),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 16),
+        if (_setupLoading)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else ...[
+          // Method tabs
+          Row(
+            children: [
+              Expanded(
+                child: _SetupMethodTab(
+                  icon: Icons.smartphone,
+                  label: 'Authenticator',
+                  selected: _setupMethod == 'totp',
+                  onTap: () => _switchSetupMethod('totp'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _SetupMethodTab(
+                  icon: Icons.email_outlined,
+                  label: 'Email',
+                  selected: _setupMethod == 'email',
+                  onTap: () => _switchSetupMethod('email'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_setupMethod == 'totp') ...[
+            if (_setupQr != null) ...[
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Image.memory(
+                    const Base64Decoder().convert(_setupQr!),
+                    width: 180,
+                    height: 180,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Key: ${_setupSecret ?? ""}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                  color: IspColors.textTertiary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+            const SizedBox(height: 16),
+            TextField(
+              controller: _setupCodeCtrl,
+              maxLength: 6,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 24,
+                letterSpacing: 8,
+                fontWeight: FontWeight.w600,
+              ),
+              decoration: const InputDecoration(
+                hintText: '••••••',
+                counterText: '',
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _setupLoading ? null : _submit2faSetup,
+              child: const Text('Activate & Login'),
+            ),
+          ] else ...[
+            if (_setupEmailSent)
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Color(0x1F10B981),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle,
+                        color: IspColors.success, size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Verification code sent to your email.',
+                        style: TextStyle(
+                            color: IspColors.success, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            TextField(
+              controller: _setupCodeCtrl,
+              maxLength: 6,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 24,
+                letterSpacing: 8,
+                fontWeight: FontWeight.w600,
+              ),
+              decoration: const InputDecoration(
+                hintText: '••••••',
+                counterText: '',
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _setupLoading ? null : _submit2faSetup,
+              child: const Text('Verify & Login'),
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+}
+
+class _SetupMethodTab extends StatelessWidget {
+  const _SetupMethodTab({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? IspColors.primary : IspColors.border,
+            width: selected ? 2 : 1,
+          ),
+          color: selected ? IspColors.primarySubtle : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: selected ? IspColors.primary : IspColors.textTertiary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                color: selected ? IspColors.primary : IspColors.textSecondary,
+              ),
+            ),
+          ],
         ),
       ),
     );

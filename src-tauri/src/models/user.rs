@@ -126,6 +126,7 @@ pub struct UserResponse {
     pub tenant_slug: Option<String>,
     pub tenant_role: Option<String>,
     pub tenant_custom_domain: Option<String>,
+    pub enforce_2fa: bool,
 }
 
 impl From<User> for UserResponse {
@@ -148,6 +149,7 @@ impl From<User> for UserResponse {
             tenant_slug: None,          // Populated by service
             tenant_role: None,          // Populated by service
             tenant_custom_domain: None, // Populated by service
+            enforce_2fa: false,         // Populated by service
         }
     }
 }

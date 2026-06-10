@@ -385,6 +385,20 @@ pub async fn start_server_impl(
             "/api/auth/2fa/email/enable-verify",
             post(auth::verify_email_2fa_setup),
         )
+        // 2FA Temp Token Routes (forced enrollment — no JWT required)
+        .route("/api/auth/2fa/temp/enable", post(auth::enable_2fa_temp))
+        .route(
+            "/api/auth/2fa/temp/verify-setup",
+            post(auth::verify_2fa_setup_temp),
+        )
+        .route(
+            "/api/auth/2fa/temp/email/enable-request",
+            post(auth::request_email_2fa_setup_temp),
+        )
+        .route(
+            "/api/auth/2fa/temp/email/enable-verify",
+            post(auth::verify_email_2fa_setup_temp),
+        )
         // Trusted Devices Routes
         .route("/api/auth/trusted-devices", get(auth::list_trusted_devices))
         .route(

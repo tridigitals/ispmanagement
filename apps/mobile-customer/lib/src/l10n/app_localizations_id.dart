@@ -212,6 +212,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get twoFaOff => 'Nonaktif';
 
   @override
+  String get twoFaRequired => 'Diwajibkan organisasi';
+
+  @override
   String get twoFaEnabled => 'Autentikasi 2 faktor berhasil diaktifkan';
 
   @override
