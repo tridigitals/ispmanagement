@@ -114,20 +114,20 @@ pub async fn get_one(
     } else {
         sqlx::query_as(
             r#"
-            SELECT *
-            FROM announcements
-            WHERE id = $1
-              AND deliver_in_app = true
-              AND ($2::text IS NULL OR tenant_id IS NULL OR tenant_id = $2)
-              AND starts_at <= $3
-              AND (ends_at IS NULL OR ends_at > $3 OR notified_at IS NOT NULL)
+            SELECT a.*
+            FROM announcements a
+            WHERE a.id = $1
+              AND a.deliver_in_app = true
+              AND ($2::text IS NULL OR a.tenant_id IS NULL OR a.tenant_id = $2)
+              AND a.starts_at <= $3
+              AND (a.ends_at IS NULL OR a.ends_at > $3 OR a.notified_at IS NOT NULL)
               AND (
-                audience = 'all'
-                OR audience = 'customers'
-                OR audience = 'active_subscribers'
-                OR audience = 'suspended_subscribers'
-                OR (audience = 'admins' AND $4 = true)
-                OR (audience = 'target_package' AND EXISTS (
+                a.audience = 'all'
+                OR a.audience = 'customers'
+                OR a.audience = 'active_subscribers'
+                OR a.audience = 'suspended_subscribers'
+                OR (a.audience = 'admins' AND $4 = true)
+                OR (a.audience = 'target_package' AND EXISTS (
                   SELECT 1 FROM customer_users cu
                   JOIN customer_subscriptions cs ON cs.customer_id = cu.customer_id AND cs.tenant_id = cu.tenant_id
                   WHERE cu.user_id = $5 AND cs.package_id = a.target_package_id AND cs.status IN ('active','suspended')
