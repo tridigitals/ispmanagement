@@ -5,9 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:api_client/api_client.dart' show NotificationModel;
 
 import '../../l10n/app_localizations.dart';
-import '../../services/auth_providers.dart';
 import '../../services/notifications_providers.dart';
-import '../../services/missing_providers.dart';
 import '../../theme/app_theme.dart';
 import './home_tab.dart';
 import 'invoices_tab.dart';
@@ -23,7 +21,6 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _State extends ConsumerState<HomeShell> {
   int _tab = 0;
-  bool _gateChecked = false;
   Set<String> _knownIds = {};
   bool _notificationsInitialised = false;
 
@@ -133,22 +130,7 @@ class _State extends ConsumerState<HomeShell> {
   }
 
   Future<void> _checkOnboarding() async {
-    if (_gateChecked) return;
-    _gateChecked = true;
-    final ok = ref.read(biometricEnabledProvider).valueOrNull;
-    if (ok == true) {
-      final res =
-          await ref.read(authControllerProvider.notifier).tryBiometricUnlock();
-      res.fold(
-        (_) {
-          // success, stay
-        },
-        (_) {
-          // failed — go to login
-          if (mounted) context.go('/login');
-        },
-      );
-    }
+    // Biometric auth is handled in LoginScreen — no duplicate prompt here.
   }
 
   @override
