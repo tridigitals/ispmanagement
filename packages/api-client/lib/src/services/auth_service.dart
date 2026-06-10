@@ -107,7 +107,7 @@ class AuthService {
     return _execute(() async {
       final res = await dio.post<Map<String, dynamic>>(
         ApiEndpoints.auth2faVerify,
-        data: {'temp_token': tempToken, 'code': code, 'method': method},
+        data: {'tempToken': tempToken, 'code': code, 'method': method},
       );
       return AuthResponse.fromJson(res.data ?? const {});
     });
