@@ -230,7 +230,6 @@ pub async fn validate_token(
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[serde(deny_unknown_fields)]
 pub struct Verify2faDto {
     temp_token: String,
     code: String,
