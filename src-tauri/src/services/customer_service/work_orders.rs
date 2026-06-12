@@ -333,7 +333,10 @@ impl CustomerService {
               COALESCE(wo.router_id, cs.router_id) AS router_id,
               wo.status, wo.assigned_to, wo.scheduled_at, wo.completed_at, wo.notes, wo.created_at, wo.updated_at,
               c.name AS customer_name,
+              c.phone AS customer_phone,
               l.label AS location_label,
+              l.latitude AS location_latitude,
+              l.longitude AS location_longitude,
               p.name AS package_name,
               p.provisioning_type AS package_provisioning_type,
               r.name AS router_name,
@@ -424,7 +427,10 @@ impl CustomerService {
               COALESCE(wo.router_id, cs.router_id) AS router_id,
               wo.status, wo.assigned_to, wo.scheduled_at, wo.completed_at, wo.notes, wo.created_at, wo.updated_at,
               c.name AS customer_name,
+              c.phone AS customer_phone,
               l.label AS location_label,
+              l.latitude AS location_latitude,
+              l.longitude AS location_longitude,
               p.name AS package_name,
               p.provisioning_type AS package_provisioning_type,
               r.name AS router_name,
@@ -510,6 +516,178 @@ impl CustomerService {
         .await?;
 
         Ok(rows)
+    }
+
+    pub async fn get_installation_work_order(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        work_order_id: &str,
+    ) -> AppResult<InstallationWorkOrderView> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "read")
+            .await?;
+
+        let actor_role_name = self.get_actor_role_name(tenant_id, actor_id).await?;
+        let is_admin_owner = matches!(actor_role_name.as_deref(), Some("owner") | Some("admin"));
+        let can_manage_work_orders = self
+            .auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "manage")
+            .await
+            .is_ok();
+        let has_full_visibility = is_admin_owner
+            || (can_manage_work_orders && !Self::is_technician_role(actor_role_name.as_deref()));
+        let visibility_mode = self
+            .resolve_installation_work_order_visibility_mode(tenant_id)
+            .await;
+        let can_view_unassigned = has_full_visibility
+            || Self::should_non_admin_see_unassigned_installation_work_orders(visibility_mode);
+
+        #[cfg(feature = "postgres")]
+        let row: Option<InstallationWorkOrderView> = sqlx::query_as(
+            r#"
+            SELECT
+              wo.id, wo.tenant_id, wo.subscription_id, wo.invoice_id, wo.customer_id, wo.location_id,
+              cs.package_id AS package_id,
+              COALESCE(wo.router_id, cs.router_id) AS router_id,
+              wo.status, wo.assigned_to, wo.scheduled_at, wo.completed_at, wo.notes, wo.created_at, wo.updated_at,
+              c.name AS customer_name,
+              c.phone AS customer_phone,
+              l.label AS location_label,
+              l.latitude AS location_latitude,
+              l.longitude AS location_longitude,
+              p.name AS package_name,
+              p.provisioning_type AS package_provisioning_type,
+              r.name AS router_name,
+              u.name AS assigned_to_name,
+              u.email AS assigned_to_email,
+              csa.id AS assignment_id,
+              csa.status AS assignment_status,
+              cs.status AS subscription_status,
+              cs.starts_at AS subscription_starts_at,
+              cs.grace_until AS subscription_grace_until,
+              EXISTS(
+                SELECT 1
+                FROM invoices i
+                WHERE i.tenant_id = wo.tenant_id
+                  AND (
+                    i.external_id = 'pkgsub:' || wo.subscription_id
+                    OR i.external_id LIKE 'pkgsub:' || wo.subscription_id || ':%'
+                  )
+              ) AS has_customer_package_invoice,
+              csa.selected_zone_id AS selected_zone_id,
+              sz.name AS selected_zone_name,
+              csa.selected_node_id AS selected_node_id,
+              nn.name AS selected_node_name,
+              csa.selected_node_score::float8 AS selected_node_score,
+              csa.path_node_ids AS path_node_ids,
+              csa.path_link_ids AS path_link_ids
+            FROM installation_work_orders wo
+            LEFT JOIN customers c ON c.tenant_id = wo.tenant_id AND c.id = wo.customer_id
+            LEFT JOIN customer_locations l ON l.tenant_id = wo.tenant_id AND l.id = wo.location_id
+            LEFT JOIN customer_subscriptions cs ON cs.tenant_id = wo.tenant_id AND cs.id = wo.subscription_id
+            LEFT JOIN isp_packages p ON p.tenant_id = wo.tenant_id AND p.id = cs.package_id
+            LEFT JOIN mikrotik_routers r
+              ON r.tenant_id = wo.tenant_id
+             AND r.id = COALESCE(wo.router_id, cs.router_id)
+            LEFT JOIN users u ON u.id = wo.assigned_to
+            LEFT JOIN customer_service_assignments csa ON csa.tenant_id = wo.tenant_id AND csa.work_order_id = wo.id
+            LEFT JOIN service_zones sz ON sz.tenant_id = wo.tenant_id::uuid AND sz.id::text = csa.selected_zone_id
+            LEFT JOIN network_nodes nn ON nn.tenant_id = wo.tenant_id::uuid AND nn.id::text = csa.selected_node_id
+            WHERE wo.tenant_id = $1 AND wo.id = $2
+              AND (
+                $3::bool
+                OR wo.assigned_to = $4
+                OR (
+                  $5::bool
+                  AND wo.status = 'pending'
+                  AND (wo.assigned_to IS NULL OR btrim(wo.assigned_to) = '')
+                )
+              )
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .bind(has_full_visibility)
+        .bind(actor_id)
+        .bind(can_view_unassigned)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let row: Option<InstallationWorkOrderView> = sqlx::query_as(
+            r#"
+            SELECT
+              wo.id, wo.tenant_id, wo.subscription_id, wo.invoice_id, wo.customer_id, wo.location_id,
+              cs.package_id AS package_id,
+              COALESCE(wo.router_id, cs.router_id) AS router_id,
+              wo.status, wo.assigned_to, wo.scheduled_at, wo.completed_at, wo.notes, wo.created_at, wo.updated_at,
+              c.name AS customer_name,
+              c.phone AS customer_phone,
+              l.label AS location_label,
+              l.latitude AS location_latitude,
+              l.longitude AS location_longitude,
+              p.name AS package_name,
+              p.provisioning_type AS package_provisioning_type,
+              r.name AS router_name,
+              u.name AS assigned_to_name,
+              u.email AS assigned_to_email,
+              csa.id AS assignment_id,
+              csa.status AS assignment_status,
+              cs.status AS subscription_status,
+              cs.starts_at AS subscription_starts_at,
+              cs.grace_until AS subscription_grace_until,
+              EXISTS(
+                SELECT 1
+                FROM invoices i
+                WHERE i.tenant_id = wo.tenant_id
+                  AND (
+                    i.external_id = 'pkgsub:' || wo.subscription_id
+                    OR i.external_id LIKE 'pkgsub:' || wo.subscription_id || ':%'
+                  )
+              ) AS has_customer_package_invoice,
+              csa.selected_zone_id AS selected_zone_id,
+              sz.name AS selected_zone_name,
+              csa.selected_node_id AS selected_node_id,
+              nn.name AS selected_node_name,
+              csa.selected_node_score AS selected_node_score,
+              csa.path_node_ids AS path_node_ids,
+              csa.path_link_ids AS path_link_ids
+            FROM installation_work_orders wo
+            LEFT JOIN customers c ON c.tenant_id = wo.tenant_id AND c.id = wo.customer_id
+            LEFT JOIN customer_locations l ON l.tenant_id = wo.tenant_id AND l.id = wo.location_id
+            LEFT JOIN customer_subscriptions cs ON cs.tenant_id = wo.tenant_id AND cs.id = wo.subscription_id
+            LEFT JOIN isp_packages p ON p.tenant_id = wo.tenant_id AND p.id = cs.package_id
+            LEFT JOIN mikrotik_routers r
+              ON r.tenant_id = wo.tenant_id
+             AND r.id = COALESCE(wo.router_id, cs.router_id)
+            LEFT JOIN users u ON u.id = wo.assigned_to
+            LEFT JOIN customer_service_assignments csa ON csa.tenant_id = wo.tenant_id AND csa.work_order_id = wo.id
+            LEFT JOIN service_zones sz ON sz.tenant_id = wo.tenant_id AND sz.id = csa.selected_zone_id
+            LEFT JOIN network_nodes nn ON nn.tenant_id = wo.tenant_id AND nn.id = csa.selected_node_id
+            WHERE wo.tenant_id = ? AND wo.id = ?
+              AND (
+                ? = 1
+                OR wo.assigned_to = ?
+                OR (
+                  ? = 1
+                  AND wo.status = 'pending'
+                  AND (wo.assigned_to IS NULL OR trim(wo.assigned_to) = '')
+                )
+              )
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .bind(if has_full_visibility { 1 } else { 0 })
+        .bind(actor_id)
+        .bind(if can_view_unassigned { 1 } else { 0 })
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.ok_or_else(|| AppError::NotFound("Work order not found".to_string()))
     }
 
     pub async fn assign_installation_work_order(

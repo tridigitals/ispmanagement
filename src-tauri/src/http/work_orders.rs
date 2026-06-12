@@ -19,6 +19,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/", get(list_work_orders))
         .route("/assignees", get(list_work_order_assignees))
+        .route("/{id}", get(get_work_order))
         .route("/{id}/assign", post(assign_work_order))
         .route("/{id}/claim", post(claim_work_order))
         .route("/{id}/release", post(release_work_order))
@@ -97,6 +98,19 @@ async fn list_work_order_assignees(
         .list_installation_assignees(&claims.sub, &tenant_id)
         .await?;
     Ok(Json(rows))
+}
+
+async fn get_work_order(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<InstallationWorkOrderView>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let row = state
+        .customer_service
+        .get_installation_work_order(&claims.sub, &tenant_id, &id)
+        .await?;
+    Ok(Json(row))
 }
 
 async fn assign_work_order(
