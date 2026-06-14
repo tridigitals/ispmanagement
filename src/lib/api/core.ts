@@ -17,6 +17,8 @@ const commandMap: Record<string, { method: string; path: string }> = {
   validate_token: { method: 'POST', path: '/auth/validate' },
   get_auth_settings: { method: 'GET', path: '/auth/settings' },
   get_current_user: { method: 'GET', path: '/auth/me' },
+  update_me: { method: 'PUT', path: '/auth/me' },
+  upload_avatar: { method: 'POST', path: '/auth/avatar' },
   enable_2fa: { method: 'POST', path: '/auth/2fa/enable' },
   verify_2fa_setup: { method: 'POST', path: '/auth/2fa/verify-setup' },
   disable_2fa: { method: 'POST', path: '/auth/2fa/disable' },
@@ -291,6 +293,7 @@ const commandMap: Record<string, { method: string; path: string }> = {
     method: 'POST',
     path: '/payment/invoices/bulk-send',
   },
+  get_billing_analytics: { method: 'GET', path: '/payment/billing/analytics' },
   list_billing_collection_logs: { method: 'GET', path: '/payment/billing-collection/logs' },
   list_invoice_reminder_logs: {
     method: 'GET',

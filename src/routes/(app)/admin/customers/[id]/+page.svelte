@@ -9,6 +9,7 @@
   import { can } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { secureGetItem } from '$lib/utils/tauri-store';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import {
     api,
     type AuditLog,
@@ -242,6 +243,10 @@
 
   // Deletes
   let showDeleteCustomer = $state(false);
+  let showSubDeleteConfirm = $state(false);
+  let subToDeleteId = $state<string | null>(null);
+  let showPppoeDeleteConfirm = $state(false);
+  let pppoeToDeleteId = $state<string | null>(null);
   let deletingCustomer = $state(false);
 
   const locationsResourceLoader = createCustomerDetailResourceLoader<CustomerLocation[]>();
@@ -1336,8 +1341,15 @@
   }
 
   async function deleteSubscription(id: string) {
-    if (!confirm('Delete this subscription?')) return;
+    subToDeleteId = id;
+    showSubDeleteConfirm = true;
+  }
+
+  async function confirmDeleteSubscription() {
+    const id = subToDeleteId;
+    if (!id) return;
     deletingSubscription = id;
+    showSubDeleteConfirm = false;
     try {
       await api.customers.subscriptions.delete(id);
       toast.success('Subscription deleted');
@@ -1582,10 +1594,16 @@
   }
 
   async function deletePppoe(row: PppoeAccountPublic) {
-    if (!confirm(get(t)('admin.customers.pppoe.confirm_delete') || 'Delete this PPPoE account?'))
-      return;
+    pppoeToDeleteId = row.id;
+    showPppoeDeleteConfirm = true;
+  }
+
+  async function confirmDeletePppoe() {
+    const id = pppoeToDeleteId;
+    if (!id) return;
+    showPppoeDeleteConfirm = false;
     try {
-      await api.pppoe.accounts.delete(row.id);
+      await api.pppoe.accounts.delete(id);
       toast.success(get(t)('admin.customers.pppoe.toasts.deleted') || 'Deleted');
       await loadPppoeAccounts({ force: true });
     } catch (e: any) {
@@ -2464,6 +2482,28 @@
     {/if}
   {/snippet}
 </Modal>
+
+<ConfirmDialog
+  bind:show={showSubDeleteConfirm}
+  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
+  message={$t('common.confirm_delete') || 'Are you sure? This action cannot be undone.'}
+  confirmText={$t('common.delete') || 'Delete'}
+  cancelText={$t('common.cancel') || 'Cancel'}
+  type="danger"
+  onconfirm={confirmDeleteSubscription}
+  oncancel={() => { subToDeleteId = null; }}
+/>
+
+<ConfirmDialog
+  bind:show={showPppoeDeleteConfirm}
+  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
+  message={$t('admin.customers.pppoe.confirm_delete') || 'Delete this PPPoE account?'}
+  confirmText={$t('common.delete') || 'Delete'}
+  cancelText={$t('common.cancel') || 'Cancel'}
+  type="danger"
+  onconfirm={confirmDeletePppoe}
+  oncancel={() => { pppoeToDeleteId = null; }}
+/>
 
 <style>
   .page-content {

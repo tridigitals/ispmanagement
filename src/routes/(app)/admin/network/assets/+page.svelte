@@ -43,6 +43,7 @@
   import { getNetworkAssetPortOccupancySummary } from '$lib/utils/networkAssetOccupancy';
   import { loadNetworkAssetFormModal } from './networkAssetsPageModules';
   import { buildNetworkAssetMapUrl } from './networkAssetMapNavigation';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 
   type DeferredComponent = any;
   type AssetDraft = {
@@ -67,6 +68,8 @@
   let q = $state('');
   let assetType = $state('all');
   let status = $state('all');
+  let showDeleteConfirm = $state(false);
+  let deleteTarget = $state<NetworkAssetListItem | null>(null);
   let editing = $state<NetworkAssetListItem | null>(null);
   let draft = $state<AssetDraft>(emptyDraft());
   const editingConnectionItems = $derived.by(() =>
@@ -231,8 +234,15 @@
     }
   }
 
-  async function remove(row: NetworkAssetListItem) {
-    if (!confirm(`Delete asset "${row.name}"?`)) return;
+  function remove(row: NetworkAssetListItem) {
+    deleteTarget = row;
+    showDeleteConfirm = true;
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    const row = deleteTarget;
+    deleteTarget = null;
     try {
       await api.networkAssets.delete(row.id);
       rows = rows.filter((item) => item.id !== row.id);
@@ -418,6 +428,17 @@
         onsave={save}
       />
 {/if}
+
+<ConfirmDialog
+  bind:show={showDeleteConfirm}
+  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
+  message={(deleteTarget ? `Delete asset "${deleteTarget.name}"?` : '') || $t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
+  confirmText={$t('common.delete') || 'Delete'}
+  cancelText={$t('common.cancel') || 'Cancel'}
+  type="danger"
+  onconfirm={handleConfirmDelete}
+  oncancel={() => { deleteTarget = null; }}
+/>
 
 <style>
   .page-content {

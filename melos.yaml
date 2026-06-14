@@ -28,6 +28,10 @@ scripts:
     description: Run all tests
     run: flutter test
 
+  build:technician:android:
+    description: Build Technician app Android APK
+    run: cd apps/mobile-customer && flutter build apk --release
+
   build:customer:android:
     description: Build Customer app Android APK
     run: cd apps/mobile-customer && flutter build apk --release

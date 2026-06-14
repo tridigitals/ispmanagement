@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/isp_theme_colors.dart';
 import '../theme/theme.dart';
 import 'isp_button.dart';
 
@@ -20,6 +21,7 @@ class IspErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(IspSpacing.xl),
@@ -29,24 +31,25 @@ class IspErrorState extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(IspSpacing.lg),
               decoration: BoxDecoration(
-                color: IspColors.danger.withOpacity(0.1),
+                color: isp.dangerSurface,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 40, color: IspColors.danger),
+              child: Icon(icon, size: 40, color: isp.danger),
             ),
             const SizedBox(height: IspSpacing.lg),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
+                color: isp.textPrimary,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               message,
-              style: const TextStyle(color: IspColors.textTertiary),
+              style: TextStyle(color: isp.textMuted),
               textAlign: TextAlign.center,
             ),
             if (onRetry != null) ...[

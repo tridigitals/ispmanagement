@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/isp_theme_colors.dart';
 import '../theme/theme.dart';
 
 /// Primary call-to-action button used throughout the app.
@@ -21,24 +22,25 @@ class IspPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
     final isDisabled = onPressed == null || loading;
     final btn = FilledButton(
       onPressed: isDisabled ? null : onPressed,
       style: FilledButton.styleFrom(
-        backgroundColor: IspColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: isp.accent,
+        foregroundColor: isp.textInverse,
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(IspRadii.md),
         ),
       ),
       child: loading
-          ? const SizedBox(
+          ? SizedBox(
               height: 18,
               width: 18,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                valueColor: AlwaysStoppedAnimation<Color>(isp.textInverse),
               ),
             )
           : Row(
@@ -74,13 +76,14 @@ class IspSecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
-          foregroundColor: IspColors.primary,
-          side: const BorderSide(color: IspColors.primary),
+          foregroundColor: isp.accent,
+          side: BorderSide(color: isp.accent),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(IspRadii.md),

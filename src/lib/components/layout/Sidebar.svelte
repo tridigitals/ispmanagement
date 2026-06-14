@@ -460,6 +460,12 @@
             href: `${tenantPrefix}/admin/invoices/collection`,
             show: $can('read', 'billing') || $can('manage', 'billing'),
           },
+          {
+            label: $t('sidebar.billing_dashboard') || 'Dashboard',
+            icon: 'bar-chart-2',
+            href: `${tenantPrefix}/admin/billing`,
+            show: $can('read', 'billing') || $can('manage', 'billing'),
+          },
         ]),
       },
       {

@@ -40,6 +40,7 @@ pub fn router() -> Router<AppState> {
             post(generate_due_customer_package_invoices),
         )
         .route("/invoices/bulk-send", post(bulk_send_invoices))
+        .route("/billing/analytics", get(get_billing_analytics))
         .route(
             "/billing-collection/logs",
             get(list_billing_collection_logs),
@@ -854,6 +855,52 @@ async fn bulk_send_invoices(
                 }),
             ),
         })
+}
+
+/// `GET /api/payment/billing/analytics` — aggregated billing metrics.
+///
+/// Returns MRR, ARR, collection rate, aging report, churn, and revenue trend.
+/// Auth: `billing:read` scope. Tenant comes from JWT.
+async fn get_billing_analytics(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<
+    Json<crate::services::payment_service::analytics::BillingAnalytics>,
+    (StatusCode, Json<ErrorResponse>),
+> {
+    let claims = authenticate(&state, &headers).await?;
+    let scope = resolve_payment_read_scope(&state, &claims).await?;
+    if !matches!(scope, PaymentReadScope::Billing) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "Billing read access required".to_string(),
+            }),
+        ));
+    }
+    let tenant_id = claims.tenant_id.clone().ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Tenant context required".to_string(),
+            }),
+        )
+    })?;
+
+    crate::services::payment_service::analytics::compute_billing_analytics_for_service(
+        &state.payment_service,
+        &tenant_id,
+    )
+    .await
+    .map(Json)
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: e.to_string(),
+            }),
+        )
+    })
 }
 
 async fn list_billing_collection_logs(

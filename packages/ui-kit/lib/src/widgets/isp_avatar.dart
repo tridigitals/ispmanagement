@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/theme.dart';
+import '../theme/isp_theme_colors.dart';
 
 /// Circle avatar with fallback to initials when no image is provided.
 class IspAvatar extends StatelessWidget {
@@ -19,7 +19,8 @@ class IspAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = backgroundColor ?? IspColors.primarySubtle;
+    final isp = context.isp;
+    final bgColor = backgroundColor ?? isp.accentSurface;
 
     return Container(
       width: size,
@@ -27,7 +28,7 @@ class IspAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: bgColor,
-        border: Border.all(color: IspColors.borderSubtle),
+        border: Border.all(color: isp.borderSubtle),
       ),
       clipBehavior: Clip.antiAlias,
       child: imageUrl != null && imageUrl!.isNotEmpty
@@ -36,13 +37,13 @@ class IspAvatar extends StatelessWidget {
               fit: BoxFit.cover,
               width: size,
               height: size,
-              errorBuilder: (_, __, ___) => _fallback(bgColor),
+              errorBuilder: (_, __, ___) => _fallback(bgColor, isp),
             )
-          : _fallback(bgColor),
+          : _fallback(bgColor, isp),
     );
   }
 
-  Widget _fallback(Color bgColor) {
+  Widget _fallback(Color bgColor, IspThemeColors isp) {
     final text = (initials != null && initials!.isNotEmpty)
         ? initials!.substring(0, initials!.length.clamp(0, 2)).toUpperCase()
         : '?';
@@ -52,7 +53,7 @@ class IspAvatar extends StatelessWidget {
         style: TextStyle(
           fontSize: size * 0.38,
           fontWeight: FontWeight.w600,
-          color: IspColors.primary,
+          color: isp.accent,
         ),
       ),
     );

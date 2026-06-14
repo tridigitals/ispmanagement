@@ -12,6 +12,9 @@
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { toast } from '$lib/stores/toast';
+  import { t } from 'svelte-i18n';
+  import { get } from 'svelte/store';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import MixRadiusBatchReportDrawer from './MixRadiusBatchReportDrawer.svelte';
   import MixRadiusExecutionStep from './MixRadiusExecutionStep.svelte';
@@ -72,6 +75,8 @@
   let historyPage = $state(1);
   let historyTotal = $state(0);
   let deletingBatchId = $state<string | null>(null);
+  let showBatchDeleteConfirm = $state(false);
+  let batchToDelete = $state<MixradiusBatchHistoryItem | null>(null);
   let reportOpen = $state(false);
   let reportLoading = $state(false);
   let reportBatch = $state<MixradiusImportBatch | null>(null);
@@ -360,12 +365,14 @@
 
   async function deleteBatch(item: MixradiusBatchHistoryItem) {
     if (deletingBatchId) return;
-    const confirmed =
-      typeof window === 'undefined'
-        ? false
-        : window.confirm(`Hapus batch "${item.title}"? Data staging batch ini akan dihapus permanen.`);
-    if (!confirmed) return;
+    batchToDelete = item;
+    showBatchDeleteConfirm = true;
+  }
 
+  async function confirmDeleteBatch() {
+    const item = batchToDelete;
+    if (!item) return;
+    showBatchDeleteConfirm = false;
     deletingBatchId = item.id;
     try {
       await api.mixradiusImport.remove(item.id);
@@ -559,6 +566,17 @@
     reportBatch = null;
   }}
 />
+<ConfirmDialog
+  bind:show={showBatchDeleteConfirm}
+  title={get(t)('common.confirm_delete_title') || 'Confirm Delete'}
+  message={batchToDelete ? `Hapus batch "${batchToDelete.title}"? Data staging batch ini akan dihapus permanen.` : ''}
+  confirmText={get(t)('common.delete') || 'Delete'}
+  cancelText={get(t)('common.cancel') || 'Cancel'}
+  type="danger"
+  onconfirm={confirmDeleteBatch}
+  oncancel={() => { batchToDelete = null; }}
+/>
+
 
 <style>
   .page-content {

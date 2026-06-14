@@ -11,6 +11,7 @@
   import ResponsiveTabs from '$lib/components/ui/ResponsiveTabs.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import { formatDateTime } from '$lib/utils/date';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 
   let loading = $state(true);
   let loadingMore = $state(false);
@@ -29,6 +30,11 @@
   let detailLoading = $state(false);
   let detailItem = $state<EmailOutboxItem | null>(null);
   let detailTab = $state<'text' | 'html'>('text');
+
+  let showDeleteConfirm = $state(false);
+  let deleteTargetId = $state<string | null>(null);
+  let deleteMode = $state<'single' | 'bulk'>('single');
+
   const detailTabs = $derived.by(() => [
     { id: 'text', label: $t('admin.email_outbox.details.text') || 'Text' },
     {
@@ -156,22 +162,10 @@
     }
   }
 
-  async function bulkDeleteSelected() {
+  function confirmBulkDelete() {
     if (!selectedIds.length) return;
-    const ok = confirm(
-      ($t('admin.email_outbox.confirm_bulk_delete') || 'Delete selected outbox items?') +
-        ` (${selectedIds.length})`,
-    );
-    if (!ok) return;
-    try {
-      const res = await api.emailOutbox.deleteBulk(selectedIds);
-      toast.success(($t('common.deleted') || 'Deleted') + ` (${res.count})`);
-      selectedIds = [];
-      await refreshStats();
-      await load(true);
-    } catch (e: any) {
-      toast.error(e?.message || e);
-    }
+    deleteMode = 'bulk';
+    showDeleteConfirm = true;
   }
 
   async function exportCsv() {
@@ -271,20 +265,42 @@
     }
   }
 
-  async function remove(id: string) {
+  function confirmRemove(id: string) {
     if (busyId) return;
-    const ok = confirm($t('admin.email_outbox.confirm_delete') || 'Delete this outbox item?');
-    if (!ok) return;
-    busyId = id;
-    try {
-      await api.emailOutbox.delete(id);
-      toast.success($t('common.deleted') || 'Deleted');
-      await refreshStats();
-      await load(true);
-    } catch (e: any) {
-      toast.error(e?.message || e);
-    } finally {
-      busyId = null;
+    deleteTargetId = id;
+    deleteMode = 'single';
+    showDeleteConfirm = true;
+  }
+
+  async function handleConfirmDelete() {
+    if (deleteMode === 'bulk') {
+      try {
+        const res = await api.emailOutbox.deleteBulk(selectedIds);
+        toast.success(($t('common.deleted') || 'Deleted') + ` (${res.count})`);
+        selectedIds = [];
+        await refreshStats();
+        await load(true);
+      } catch (e: any) {
+        toast.error(e?.message || e);
+      } finally {
+        showDeleteConfirm = false;
+        deleteTargetId = null;
+      }
+    } else {
+      if (!deleteTargetId) return;
+      busyId = deleteTargetId;
+      try {
+        await api.emailOutbox.delete(deleteTargetId);
+        toast.success($t('common.deleted') || 'Deleted');
+        await refreshStats();
+        await load(true);
+      } catch (e: any) {
+        toast.error(e?.message || e);
+      } finally {
+        busyId = null;
+        showDeleteConfirm = false;
+        deleteTargetId = null;
+      }
     }
   }
 </script>
@@ -434,7 +450,7 @@
           <button
             class="btn btn-secondary danger-btn"
             type="button"
-            onclick={bulkDeleteSelected}
+            onclick={confirmBulkDelete}
             disabled={!$can('delete', 'email_outbox')}
           >
             <Icon name="trash-2" size={16} />
@@ -506,7 +522,7 @@
             class="icon-btn danger"
             title={$t('common.delete') || 'Delete'}
             {disabled}
-            onclick={() => remove(item.id)}
+            onclick={() => confirmRemove(item.id)}
           >
             <Icon name="trash-2" size={16} />
           </button>
@@ -606,6 +622,17 @@
     {/if}
   {/snippet}
 </Modal>
+
+<ConfirmDialog
+  bind:show={showDeleteConfirm}
+  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
+  message={$t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
+  confirmText={$t('common.delete') || 'Delete'}
+  cancelText={$t('common.cancel') || 'Cancel'}
+  type="danger"
+  onconfirm={handleConfirmDelete}
+  oncancel={() => { deleteTargetId = null; }}
+/>
 
 <style>
   .page-content {

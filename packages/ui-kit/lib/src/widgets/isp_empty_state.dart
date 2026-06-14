@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/isp_theme_colors.dart';
 import '../theme/theme.dart';
 import 'isp_button.dart';
 
@@ -22,20 +23,22 @@ class IspEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(IspSpacing.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: IspColors.textTertiary),
+            Icon(icon, size: 48, color: isp.textMuted),
             const SizedBox(height: IspSpacing.md),
             if (title != null) ...[
               Text(
                 title!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
+                  color: isp.textPrimary,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -43,7 +46,7 @@ class IspEmptyState extends StatelessWidget {
             ],
             Text(
               message,
-              style: const TextStyle(color: IspColors.textTertiary),
+              style: TextStyle(color: isp.textMuted),
               textAlign: TextAlign.center,
             ),
             if (actionLabel != null && onAction != null) ...[

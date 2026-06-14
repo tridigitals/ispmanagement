@@ -66,8 +66,11 @@
     "title": "Riwayat"
   },
   "empty": "Belum ada pengumuman.",
+  "empty_desc": "Buat pengumuman pertama untuk menjangkau pengguna Anda.",
+  "empty_cta": "Buat pengumuman pertama",
   "empty_feed": "Belum ada pengumuman.",
-  "confirm_delete": "Hapus pengumuman ini?",
+  "confirm_delete": "Apakah Anda yakin ingin menghapus pengumuman ini secara permanen? Tindakan ini tidak dapat dibatalkan.",
+  "confirm_delete_title": "Hapus Pengumuman",
   "hints": {
     "schedule": "Kosongkan tanggal untuk publish sekarang. Tanggal berakhir mengatur kapan banner berhenti tampil.",
     "rich": "Tip: Buat singkat dan jelas. Link boleh; gambar sebaiknya lewat cover."

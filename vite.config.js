@@ -199,7 +199,7 @@ export default defineConfig(async ({ mode }) => {
         : undefined,
       watch: {
         // 3. tell Vite to ignore watching `src-tauri`
-        ignored: ['**/src-tauri/**'],
+        ignored: ['**/src-tauri/**', '**/apps/*/build/**', '**/apps/**/.dart_tool/**', '**/packages/*/build/**'],
       },
       cors: true, // Enable CORS (or customize via VITE_CORS_ORIGIN if needed)
     },

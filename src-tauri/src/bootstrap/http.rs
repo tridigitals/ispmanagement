@@ -408,6 +408,8 @@ pub async fn start_server_impl(
         // Self-service auth routes
         .route("/api/auth/change-password", post(auth::change_password))
         .route("/api/auth/me", put(auth::update_me))
+        .route("/api/auth/avatar", post(auth::upload_avatar))
+        .route("/api/auth/avatar/{tenant_id}/{filename}", get(auth::serve_avatar))
         // User Routes
         .route(
             "/api/users",

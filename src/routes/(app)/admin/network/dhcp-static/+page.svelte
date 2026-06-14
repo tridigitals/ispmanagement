@@ -14,6 +14,7 @@
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import { toast } from '$lib/stores/toast';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { buildDhcpStaticQueueRateLimitPresets } from '$lib/utils/dhcpStaticQueuePresets';
@@ -59,6 +60,8 @@
   let showCreate = $state(false);
   let showEdit = $state(false);
   let editRow = $state<DhcpStaticServicePublic | null>(null);
+  let showDeleteConfirm = $state(false);
+  let deleteTarget = $state<DhcpStaticServicePublic | null>(null);
   let dhcpServerLookupToken = 0;
 
   let formCustomerId = $state('');
@@ -275,16 +278,15 @@
     }
   }
 
-  async function deleteRow(row: DhcpStaticServicePublic) {
-    if (
-      !confirm(
-        tr(
-          'admin.network.dhcp_static.confirm_delete',
-          'Delete this DHCP static service?',
-        ),
-      )
-    )
-      return;
+  function deleteRow(row: DhcpStaticServicePublic) {
+    deleteTarget = row;
+    showDeleteConfirm = true;
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    const row = deleteTarget;
+    deleteTarget = null;
     try {
       await api.dhcpStatic.services.delete(row.id);
       toast.success(tr('admin.network.dhcp_static.toasts.deleted', 'Deleted'));
@@ -1210,6 +1212,17 @@
     </button>
   </div>
 </Modal>
+
+<ConfirmDialog
+  bind:show={showDeleteConfirm}
+  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
+  message={$t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
+  confirmText={$t('common.delete') || 'Delete'}
+  cancelText={$t('common.cancel') || 'Cancel'}
+  type="danger"
+  onconfirm={handleConfirmDelete}
+  oncancel={() => { deleteTarget = null; }}
+/>
 
 <style>
   .page-content {

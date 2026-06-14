@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/isp_theme_colors.dart';
 import '../theme/theme.dart';
 
 /// Section header with a title on the left and an optional "See All" action.
@@ -17,6 +18,7 @@ class IspSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: IspSpacing.lg,
@@ -27,10 +29,10 @@ class IspSectionHeader extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: IspColors.textPrimary,
+                color: isp.textPrimary,
               ),
             ),
           ),
@@ -39,10 +41,10 @@ class IspSectionHeader extends StatelessWidget {
               onTap: onAction,
               child: Text(
                 actionLabel!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: IspColors.primary,
+                  color: isp.accent,
                 ),
               ),
             ),

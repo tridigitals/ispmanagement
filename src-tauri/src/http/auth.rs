@@ -5,10 +5,11 @@ use crate::services::{AuthResponse, AuthSettings};
 use axum::{
     extract::ConnectInfo,
     extract::State,
-    http::{HeaderMap, StatusCode},
+    http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     Json,
 };
+use base64::{engine::general_purpose, Engine as _};
 use serde_json::json;
 use std::net::SocketAddr;
 
@@ -827,5 +828,149 @@ pub struct UpdateMeDto {
     name: Option<String>,
     phone: Option<String>,
     email: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+pub struct UploadAvatarRequest {
+    /// Base64-encoded image content (JPEG, PNG, or WebP)
+    content: String,
+}
+
+/// Upload avatar for the current user.
+/// Accepts base64-encoded image (JPEG/PNG/WebP), max 5MB.
+pub async fn upload_avatar(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<UploadAvatarRequest>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let auth_header = headers
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .ok_or_else(|| crate::error::AppError::Unauthorized)?;
+    let claims = state.auth_service.validate_token(auth_header).await?;
+
+    // Decode base64
+    let bytes = general_purpose::STANDARD
+        .decode(&payload.content)
+        .map_err(|e| crate::error::AppError::Validation(format!("Invalid base64: {}", e)))?;
+
+    // Validate size (max 5MB)
+    if bytes.len() > 5 * 1024 * 1024 {
+        return Err(crate::error::AppError::Validation(
+            "Ukuran gambar maksimal 5MB".to_string(),
+        ));
+    }
+
+    // Detect format from magic bytes
+    let ext = if bytes.len() >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF {
+        "jpg"
+    } else if bytes.len() >= 8
+        && bytes[0] == 0x89
+        && bytes[1] == 0x50
+        && bytes[2] == 0x4E
+        && bytes[3] == 0x47
+    {
+        "png"
+    } else if bytes.len() >= 12
+        && bytes[0] == 0x52
+        && bytes[1] == 0x49
+        && bytes[2] == 0x46
+        && bytes[3] == 0x46
+        && bytes[8] == 0x57
+        && bytes[9] == 0x45
+        && bytes[10] == 0x42
+        && bytes[11] == 0x50
+    {
+        "webp"
+    } else {
+        return Err(crate::error::AppError::Validation(
+            "Format gambar tidak didukung. Gunakan JPEG, PNG, atau WebP.".to_string(),
+        ));
+    };
+
+    // Build upload path: uploads/{tenant_id}/avatars/{user_id}.{ext}
+    let tenant_id = claims.tenant_id.as_deref().unwrap_or("system");
+    let avatars_dir = state
+        .app_data_dir
+        .join("uploads")
+        .join(tenant_id)
+        .join("avatars");
+
+    if !avatars_dir.exists() {
+        tokio::fs::create_dir_all(&avatars_dir)
+            .await
+            .map_err(|e| crate::error::AppError::Internal(e.to_string()))?;
+    }
+
+    let filename = format!("{}.{}", claims.sub, ext);
+    let file_path = avatars_dir.join(&filename);
+    tokio::fs::write(&file_path, &bytes)
+        .await
+        .map_err(|e| crate::error::AppError::Internal(e.to_string()))?;
+
+    // Build the avatar URL (relative path for serving)
+    let avatar_url = format!("/api/auth/avatar/{}/{}", tenant_id, filename);
+
+    // Update users.avatar_url
+    #[cfg(feature = "postgres")]
+    sqlx::query("UPDATE users SET avatar_url = $1, updated_at = $2 WHERE id = $3")
+        .bind(&avatar_url)
+        .bind(chrono::Utc::now())
+        .bind(&claims.sub)
+        .execute(&state.auth_service.pool)
+        .await?;
+
+    #[cfg(not(feature = "postgres"))]
+    sqlx::query("UPDATE users SET avatar_url = ?, updated_at = ? WHERE id = ?")
+        .bind(&avatar_url)
+        .bind(chrono::Utc::now().to_rfc3339())
+        .bind(&claims.sub)
+        .execute(&state.auth_service.pool)
+        .await?;
+
+    Ok(Json(json!({ "success": true, "avatar_url": avatar_url })))
+}
+
+/// Serve avatar image file.
+pub async fn serve_avatar(
+    State(state): State<AppState>,
+    axum::extract::Path((tenant_id, filename)): axum::extract::Path<(String, String)>,
+) -> Result<Response, crate::error::AppError> {
+    // Sanitize path components to prevent directory traversal
+    if tenant_id.contains("..") || filename.contains("..") || filename.contains('/') {
+        return Err(crate::error::AppError::Validation("Invalid path".to_string()));
+    }
+
+    let file_path = state
+        .app_data_dir
+        .join("uploads")
+        .join(&tenant_id)
+        .join("avatars")
+        .join(&filename);
+
+    if !file_path.exists() {
+        return Err(crate::error::AppError::NotFound("Avatar not found".to_string()));
+    }
+
+    let bytes = tokio::fs::read(&file_path)
+        .await
+        .map_err(|e| crate::error::AppError::Internal(e.to_string()))?;
+
+    let content_type = if filename.ends_with(".jpg") || filename.ends_with(".jpeg") {
+        "image/jpeg"
+    } else if filename.ends_with(".png") {
+        "image/png"
+    } else if filename.ends_with(".webp") {
+        "image/webp"
+    } else {
+        "application/octet-stream"
+    };
+
+    Ok((
+        [(header::CONTENT_TYPE, content_type)],
+        bytes,
+    )
+        .into_response())
 }
 

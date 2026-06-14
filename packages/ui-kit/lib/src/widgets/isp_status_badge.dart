@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/isp_theme_colors.dart';
 import '../theme/theme.dart';
 
 class IspStatusBadge extends StatelessWidget {
@@ -14,54 +15,56 @@ class IspStatusBadge extends StatelessWidget {
   final StatusTone tone;
   final IconData? icon;
 
-  Color _bg() {
+  Color _bg(IspThemeColors isp) {
     switch (tone) {
       case StatusTone.success:
-        return IspColors.success.withOpacity(0.15);
+        return isp.successSurface;
       case StatusTone.warning:
-        return IspColors.warning.withOpacity(0.15);
+        return isp.warningSurface;
       case StatusTone.danger:
-        return IspColors.danger.withOpacity(0.15);
+        return isp.dangerSurface;
       case StatusTone.info:
-        return IspColors.info.withOpacity(0.15);
+        return isp.infoSurface;
       case StatusTone.primary:
-        return IspColors.primarySubtle;
+        return isp.accentSurface;
       case StatusTone.neutral:
-        return IspColors.bgTertiary;
+        return isp.surfaceTertiary;
     }
   }
 
-  Color _fg() {
+  Color _fg(IspThemeColors isp) {
     switch (tone) {
       case StatusTone.success:
-        return IspColors.success;
+        return isp.success;
       case StatusTone.warning:
-        return IspColors.warning;
+        return isp.warning;
       case StatusTone.danger:
-        return IspColors.danger;
+        return isp.danger;
       case StatusTone.info:
-        return IspColors.info;
+        return isp.info;
       case StatusTone.primary:
-        return IspColors.primary;
+        return isp.accent;
       case StatusTone.neutral:
-        return IspColors.textSecondary;
+        return isp.textSecondary;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
+    final fg = _fg(isp);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _bg(),
+        color: _bg(isp),
         borderRadius: BorderRadius.circular(IspRadii.pill),
-        border: Border.all(color: _fg().withOpacity(0.2), width: 0.5),
+        border: Border.all(color: fg.withOpacity(0.2), width: 0.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 12, color: _fg()),
+            Icon(icon, size: 12, color: fg),
             const SizedBox(width: 4),
           ],
           Text(
@@ -69,7 +72,7 @@ class IspStatusBadge extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: _fg(),
+              color: fg,
             ),
           ),
         ],

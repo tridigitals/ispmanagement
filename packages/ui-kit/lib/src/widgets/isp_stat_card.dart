@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/isp_theme_colors.dart';
 import '../theme/theme.dart';
 import 'isp_status_badge.dart';
 
@@ -21,28 +22,29 @@ class IspStatCard extends StatelessWidget {
   final StatusTone tone;
   final VoidCallback? onTap;
 
-  Color _accent() {
+  Color _accent(IspThemeColors isp) {
     switch (tone) {
       case StatusTone.success:
-        return IspColors.success;
+        return isp.success;
       case StatusTone.warning:
-        return IspColors.warning;
+        return isp.warning;
       case StatusTone.danger:
-        return IspColors.danger;
+        return isp.danger;
       case StatusTone.info:
-        return IspColors.info;
+        return isp.info;
       case StatusTone.primary:
-        return IspColors.primary;
+        return isp.accent;
       case StatusTone.neutral:
-        return IspColors.textSecondary;
+        return isp.textSecondary;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final accent = _accent();
+    final isp = context.isp;
+    final accent = _accent(isp);
     return Material(
-      color: IspColors.bgSurface,
+      color: isp.surface,
       borderRadius: BorderRadius.circular(IspRadii.lg),
       child: InkWell(
         onTap: onTap,
@@ -51,7 +53,7 @@ class IspStatCard extends StatelessWidget {
           padding: const EdgeInsets.all(IspSpacing.lg),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(IspRadii.lg),
-            border: Border.all(color: IspColors.borderSubtle),
+            border: Border.all(color: isp.borderSubtle),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -72,9 +74,9 @@ class IspStatCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: IspColors.textTertiary,
+                        color: isp.textMuted,
                         fontWeight: FontWeight.w500,
                       ),
                       maxLines: 1,
@@ -86,10 +88,10 @@ class IspStatCard extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: IspColors.textPrimary,
+                  color: isp.textPrimary,
                   height: 1.1,
                 ),
               ),
@@ -97,9 +99,9 @@ class IspStatCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   helper!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: IspColors.textTertiary,
+                    color: isp.textMuted,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

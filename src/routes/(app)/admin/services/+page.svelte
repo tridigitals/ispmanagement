@@ -14,6 +14,7 @@
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import { loadServicesRouterMappingHelpers } from './servicesPageDeferredModules';
   import { loadServicesDialogs } from './servicesPageModules';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { canAccessServiceCatalog } from '$lib/utils/serviceCatalogAccess';
 
@@ -94,6 +95,9 @@
   let profileSuggestions = $state<ProfileSuggestion[]>([]);
   let poolSuggestions = $state<PoolSuggestion[]>([]);
   let loadingMeta = $state(false);
+
+  let showDeleteConfirm = $state(false);
+  let deleteTargetId = $state<string | null>(null);
 
   const routerOptions = $derived.by(() => routers.map((r) => ({ label: r.name, value: r.id })));
 
@@ -523,22 +527,23 @@
     }
   }
 
-  async function deletePackage(p: IspPackage) {
+  function confirmDeletePackage(p: IspPackage) {
     if (!$can('manage', 'isp_packages')) return;
-    if (
-      !confirm(
-        $t('admin.services.confirm_delete') ||
-          $t('admin.network.packages.confirm_delete') ||
-          'Delete this service?',
-      )
-    )
-      return;
+    deleteTargetId = p.id;
+    showDeleteConfirm = true;
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTargetId) return;
     try {
-      await api.ispPackages.packages.delete(p.id);
+      await api.ispPackages.packages.delete(deleteTargetId);
       toast.success($t('common.deleted') || 'Deleted');
       await Promise.all([loadPackages(), loadMappings()]);
     } catch (e: any) {
       toast.error(e?.message || e);
+    } finally {
+      showDeleteConfirm = false;
+      deleteTargetId = null;
     }
   }
 
@@ -838,7 +843,7 @@
                 <button
                   class="btn-icon danger"
                   title={$t('common.delete') || 'Delete'}
-                  onclick={() => deletePackage(row)}
+                  onclick={() => confirmDeletePackage(row)}
                 >
                   <Icon name="trash-2" size={16} />
                 </button>
@@ -913,6 +918,17 @@
     </div>
   {/if}
 {/if}
+
+<ConfirmDialog
+  bind:show={showDeleteConfirm}
+  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
+  message={$t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
+  confirmText={$t('common.delete') || 'Delete'}
+  cancelText={$t('common.cancel') || 'Cancel'}
+  type="danger"
+  onconfirm={handleConfirmDelete}
+  oncancel={() => { deleteTargetId = null; }}
+/>
 
 <style>
   .page-content {

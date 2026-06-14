@@ -2,7 +2,38 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import { t } from 'svelte-i18n';
 
-  let { profileData = $bindable(), loading = false, initials, onSave } = $props();
+  let { profileData = $bindable(), loading = false, initials, onSave, onAvatarUpload } = $props();
+
+  let fileInput: HTMLInputElement;
+
+  function handleAvatarClick() {
+    fileInput?.click();
+  }
+
+  function handleFileSelect(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    // Validate type
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      alert('Format gambar tidak didukung. Gunakan JPEG, PNG, atau WebP.');
+      return;
+    }
+    // Validate size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ukuran gambar maksimal 5MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(',')[1];
+      onAvatarUpload?.(base64);
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
+  }
 </script>
 
 <div class="card section fade-in-up">
@@ -19,14 +50,28 @@
 
   <div class="profile-header-edit">
     <div class="avatar-large-wrapper">
-      <div class="avatar-large">{initials}</div>
+      <div class="avatar-large">
+        {#if profileData.avatar_url}
+          <img src={profileData.avatar_url} alt="Avatar" class="avatar-img" />
+        {:else}
+          {initials}
+        {/if}
+      </div>
       <button
         class="avatar-edit-btn"
         title={$t('profile.general.change_avatar') || 'Change Avatar'}
         type="button"
+        onclick={handleAvatarClick}
       >
         <Icon name="camera" size={16} />
       </button>
+      <input
+        bind:this={fileInput}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        class="hidden"
+        onchange={handleFileSelect}
+      />
     </div>
     <div class="profile-header-text">
       <h3>
@@ -54,8 +99,8 @@
             type="text"
             id="full-name"
             class="form-input with-icon"
-            placeholder={$t('profile.general.display_name_placeholder')}
-            bind:value={profileData.name}
+            value={profileData.name}
+            disabled
           />
         </div>
       </div>
@@ -68,8 +113,22 @@
             type="email"
             id="email"
             class="form-input with-icon"
-            placeholder={$t('profile.general.email_placeholder')}
-            bind:value={profileData.email}
+            value={profileData.email}
+            disabled
+          />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="phone">{$t('profile.general.phone') || 'Phone'}</label>
+        <div class="input-wrapper">
+          <Icon name="phone" size={18} class="input-icon" />
+          <input
+            type="tel"
+            id="phone"
+            class="form-input with-icon"
+            placeholder={$t('profile.general.phone_placeholder') || 'Enter phone number'}
+            bind:value={profileData.phone}
           />
         </div>
       </div>
@@ -147,6 +206,17 @@
     font-weight: 700;
     border: 4px solid var(--bg-surface);
     box-shadow: 0 0 0 1px var(--border-subtle);
+    overflow: hidden;
+  }
+
+  .avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .hidden {
+    display: none;
   }
 
   .avatar-edit-btn {

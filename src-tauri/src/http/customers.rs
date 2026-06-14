@@ -110,6 +110,10 @@ pub fn router() -> Router<AppState> {
         )
         .route("/portal/my-subscriptions", get(list_my_subscriptions))
         .route(
+            "/portal/my-subscriptions/{subscription_id}",
+            get(get_my_subscription),
+        )
+        .route(
             "/portal/my-subscriptions/{subscription_id}/installation-tracker",
             get(portal_get_installation_tracker),
         )
@@ -127,6 +131,7 @@ pub fn router() -> Router<AppState> {
         )
         .route("/portal/checkout", post(portal_checkout_subscription))
         .route("/portal/contact", get(portal_get_contact_info))
+        .route("/portal/network-status", get(portal_get_network_status))
 }
 
 fn bearer_token(headers: &HeaderMap) -> AppResult<String> {
@@ -747,6 +752,20 @@ async fn list_my_subscriptions(
     Ok(Json(rows))
 }
 
+// GET /api/customers/portal/my-subscriptions/{id}
+async fn get_my_subscription(
+    State(state): State<AppState>,
+    Path(subscription_id): Path<String>,
+    headers: HeaderMap,
+) -> AppResult<Json<CustomerSubscriptionView>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let row = state
+        .customer_service
+        .get_my_subscription(&claims.sub, &tenant_id, &subscription_id)
+        .await?;
+    Ok(Json(row))
+}
+
 // GET /api/customers/portal/my-subscriptions/stats
 async fn get_my_subscription_stats(
     State(state): State<AppState>,
@@ -1050,4 +1069,37 @@ async fn portal_get_contact_info(
     }
 
     Ok(Json(serde_json::Value::Object(contact)))
+}
+
+// GET /api/customers/portal/network-status
+//
+// Returns the current operational status of the ISP's network. Backed by
+// the `network_status` setting in the settings table (JSON-encoded) so that
+// the admin can update it from the web admin without a code deploy.
+//
+// Default (when not set) is `{ status: "operational", area: "Semua Area" }`
+// so the home banner shows nothing (NetworkStatusBanner hides when normal).
+async fn portal_get_network_status(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant_id, _claims) = tenant_and_claims(&state, &headers).await?;
+
+    let raw = state
+        .settings_service
+        .get_value(Some(&tenant_id), "network_status")
+        .await
+        .ok()
+        .flatten()
+        .filter(|v| !v.is_empty());
+
+    let payload = match raw.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()) {
+        Some(v) => v,
+        None => serde_json::json!({
+            "status": "operational",
+            "area": "Semua Area",
+        }),
+    };
+
+    Ok(Json(payload))
 }

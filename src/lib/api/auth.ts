@@ -15,6 +15,12 @@ export const auth = {
 
   getCurrentUser: (token: string): Promise<User> => safeInvoke('get_current_user', { token }),
 
+  updateMe: (data: { name?: string; phone?: string; email?: string }): Promise<{ success: boolean }> =>
+    safeInvoke('update_me', data),
+
+  uploadAvatar: (base64Content: string): Promise<{ success: boolean; avatar_url: string }> =>
+    safeInvoke('upload_avatar', { content: base64Content }),
+
   validateToken: (token: string): Promise<boolean> => safeInvoke('validate_token', { token }),
 
   verifyEmail: (token: string): Promise<AuthResponse> => safeInvoke('verify_email', { token }),

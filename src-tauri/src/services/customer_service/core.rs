@@ -1626,7 +1626,7 @@ impl CustomerService {
         if let Some(name) = dto.name {
             customer.name = name;
         }
-        if let Some(email) = dto.email {
+        if let Some(ref email) = dto.email {
             let v = email.trim().to_string();
             customer.email = if v.is_empty() { None } else { Some(v) };
         }
@@ -1692,6 +1692,45 @@ impl CustomerService {
                 ip_address,
             )
             .await;
+
+        // Sync customer email to linked users table
+        if let Some(ref email) = dto.email {
+            let new_email = email.trim();
+            if !new_email.is_empty() {
+                #[cfg(feature = "postgres")]
+                sqlx::query(
+                    r#"
+                    UPDATE users SET email = $1, updated_at = NOW()
+                    WHERE id IN (
+                        SELECT user_id FROM customer_users
+                        WHERE customer_id = $2 AND tenant_id = $3
+                    )
+                    "#,
+                )
+                .bind(new_email)
+                .bind(customer_id)
+                .bind(tenant_id)
+                .execute(&self.pool)
+                .await?;
+
+                #[cfg(feature = "sqlite")]
+                sqlx::query(
+                    r#"
+                    UPDATE users SET email = ?, updated_at = ?
+                    WHERE id IN (
+                        SELECT user_id FROM customer_users
+                        WHERE customer_id = ? AND tenant_id = ?
+                    )
+                    "#,
+                )
+                .bind(new_email)
+                .bind(chrono::Utc::now().to_rfc3339())
+                .bind(customer_id)
+                .bind(tenant_id)
+                .execute(&self.pool)
+                .await?;
+            }
+        }
 
         if dto.is_active.is_some() {
             self.sync_customer_pppoe_disabled_state(tenant_id, customer_id, customer.is_active)

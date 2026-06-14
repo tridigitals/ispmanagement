@@ -155,6 +155,9 @@
     if (path.startsWith('/admin/billing-logs')) {
       return $can('read', 'billing') || $can('manage', 'billing');
     }
+    if (path.startsWith('/admin/billing')) {
+      return $can('read', 'billing') || $can('manage', 'billing');
+    }
     if (path.startsWith('/admin/announcements')) {
       if (path === '/admin/announcements' || path === '/admin/announcements/') {
         return $can('manage', 'announcements');

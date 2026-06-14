@@ -1,6 +1,7 @@
 //! Payment Service - Manages invoices and bank accounts
 
 mod core;
+pub mod analytics;
 pub mod dto;
 mod integration;
 mod mapper;

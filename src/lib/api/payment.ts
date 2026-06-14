@@ -10,6 +10,7 @@ import type {
   FxRate,
   Invoice,
   InvoiceReminderLogView,
+  BillingAnalytics,
 } from './types';
 
 export const payment = {
@@ -182,4 +183,7 @@ export const payment = {
       token: getTokenOrThrow(),
       ...body,
     }),
+
+  getBillingAnalytics: (): Promise<BillingAnalytics> =>
+    safeInvoke('get_billing_analytics', { token: getTokenOrThrow() }),
 };

@@ -46,6 +46,9 @@ pub struct User {
     pub totp_enabled: bool,
     #[serde(default)]
     pub email_2fa_enabled: bool,
+    // Phone number
+    #[serde(default)]
+    pub phone: Option<String>,
     // Registration status (active, pending, rejected)
     #[serde(default)]
     pub registration_status: String,
@@ -86,6 +89,7 @@ impl User {
             preferred_2fa_method: Some("totp".to_string()),
             totp_enabled: false,
             email_2fa_enabled: false,
+            phone: None,
             registration_status: "active".to_string(),
             pending_review_message: None,
             approved_at: None,
@@ -121,6 +125,7 @@ pub struct UserResponse {
     pub totp_enabled: bool,
     pub email_2fa_enabled: bool,
     pub registration_status: String,
+    pub phone: Option<String>,
     pub created_at: DateTime<Utc>,
     pub permissions: Vec<String>,
     pub tenant_slug: Option<String>,
@@ -144,6 +149,7 @@ impl From<User> for UserResponse {
             totp_enabled: user.totp_enabled,
             email_2fa_enabled: user.email_2fa_enabled,
             registration_status: user.registration_status,
+            phone: user.phone,
             created_at: user.created_at,
             permissions: vec![],        // Populated by service
             tenant_slug: None,          // Populated by service

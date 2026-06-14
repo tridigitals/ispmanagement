@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/isp_theme_colors.dart';
 import '../theme/theme.dart';
 
 /// Shimmer-style loading placeholder using a pulse animation.
@@ -71,6 +72,7 @@ class _IspShimmerState extends State<IspShimmer>
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
     final radius = widget.borderRadius ??
         (widget.width == widget.height ? (widget.width ?? 0) / 2 : IspRadii.md);
 
@@ -81,7 +83,7 @@ class _IspShimmerState extends State<IspShimmer>
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            color: IspColors.bgTertiary.withOpacity(_animation.value),
+            color: isp.surfaceTertiary.withOpacity(_animation.value),
             borderRadius: BorderRadius.circular(radius),
           ),
         );

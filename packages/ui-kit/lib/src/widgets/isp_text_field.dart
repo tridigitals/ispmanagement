@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/isp_theme_colors.dart';
 import '../theme/theme.dart';
 
 /// Themed text field with consistent Isp styling.
@@ -39,6 +40,7 @@ class IspTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
@@ -49,20 +51,17 @@ class IspTextField extends StatelessWidget {
       onChanged: onChanged,
       onFieldSubmitted: onSubmitted,
       autofocus: autofocus,
-      style: const TextStyle(
-        fontSize: 15,
-        color: IspColors.textPrimary,
-      ),
+      style: TextStyle(fontSize: 15, color: isp.textPrimary),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         errorText: errorText,
         prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon, size: 20, color: IspColors.textTertiary)
+            ? Icon(prefixIcon, size: 20, color: isp.textMuted)
             : null,
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: IspColors.bgTertiary,
+        fillColor: isp.surfaceTertiary,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: IspSpacing.lg,
           vertical: IspSpacing.md + 2,
@@ -73,23 +72,23 @@ class IspTextField extends StatelessWidget {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(IspRadii.md),
-          borderSide: const BorderSide(color: IspColors.borderSubtle),
+          borderSide: BorderSide(color: isp.borderSubtle),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(IspRadii.md),
-          borderSide: const BorderSide(color: IspColors.primary, width: 1.5),
+          borderSide: BorderSide(color: isp.accent, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(IspRadii.md),
-          borderSide: const BorderSide(color: IspColors.danger),
+          borderSide: BorderSide(color: isp.danger),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(IspRadii.md),
-          borderSide: const BorderSide(color: IspColors.danger, width: 1.5),
+          borderSide: BorderSide(color: isp.danger, width: 1.5),
         ),
-        labelStyle: const TextStyle(color: IspColors.textTertiary),
-        hintStyle: const TextStyle(color: IspColors.textMuted),
-        errorStyle: const TextStyle(color: IspColors.danger, fontSize: 12),
+        labelStyle: TextStyle(color: isp.textMuted),
+        hintStyle: TextStyle(color: isp.textMuted),
+        errorStyle: TextStyle(color: isp.danger, fontSize: 12),
       ),
     );
   }

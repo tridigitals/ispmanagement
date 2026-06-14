@@ -71,6 +71,8 @@
     name: '',
     email: '',
     role: '',
+    phone: '',
+    avatar_url: '',
   });
 
   // Password State
@@ -171,6 +173,8 @@
         name: $user.name,
         email: $user.email,
         role: $user.role,
+        phone: $user.phone || '',
+        avatar_url: $user.avatar_url || '',
       };
       twoFactorData.enabled = $user.two_factor_enabled || false;
       loadTrustedDevices();
@@ -238,14 +242,35 @@
     if (!$token) return;
     loading = true;
     try {
-      await api.users.update(profileData.id, {
-        name: profileData.name,
-        email: profileData.email,
-      });
-      user.update((u) => (u ? { ...u, name: profileData.name, email: profileData.email } : null));
+      await api.auth.updateMe({ phone: profileData.phone });
+      user.update((u) => (u ? { ...u, phone: profileData.phone } : null));
       showMessage('success', $t('profile.messages.profile_updated'));
     } catch (error: any) {
-      showMessage('error', error.toString() || $t('profile.messages.update_failed'));
+      const msg =
+        error?.message ||
+        (typeof error === 'string' ? error : '') ||
+        $t('profile.messages.update_failed') ||
+        'Gagal memperbarui profil';
+      showMessage('error', msg);
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function handleAvatarUpload(base64Content: string) {
+    if (!$token) return;
+    loading = true;
+    try {
+      const result = await api.auth.uploadAvatar(base64Content);
+      profileData.avatar_url = result.avatar_url;
+      user.update((u) => (u ? { ...u, avatar_url: result.avatar_url } : null));
+      showMessage('success', 'Foto profil berhasil diperbarui');
+    } catch (error: any) {
+      const msg =
+        error?.message ||
+        (typeof error === 'string' ? error : '') ||
+        'Gagal mengunggah foto profil';
+      showMessage('error', msg);
     } finally {
       loading = false;
     }
@@ -536,7 +561,7 @@
           <span>{$t('common.loading') || 'Loading...'}</span>
         </div>
       {:else if activeTab === 'general' && GeneralTabComponent}
-        <GeneralTabComponent bind:profileData {loading} {initials} onSave={saveProfile} />
+        <GeneralTabComponent bind:profileData {loading} {initials} onSave={saveProfile} onAvatarUpload={handleAvatarUpload} />
       {:else if activeTab === 'security' && SecurityTabComponent}
         <SecurityTabComponent
           user={$user}

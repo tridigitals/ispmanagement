@@ -17,6 +17,7 @@ export interface User {
   tenant_custom_domain?: string;
   preferred_2fa_method?: string;
   registration_status?: string;
+  phone?: string | null;
 }
 
 export interface UserAddress {
@@ -1165,6 +1166,33 @@ export interface WhatsAppEventPreference {
   whatsapp: boolean;
   email: boolean;
   in_app: boolean;
+}
+
+// ── Billing Analytics ─────────────────────────────────────────────
+
+export interface AgingReport {
+  current: number;
+  days_31_60: number;
+  days_61_90: number;
+  over_90: number;
+}
+
+export interface RevenueTrendPoint {
+  month: string;
+  revenue: number;
+}
+
+export interface BillingAnalytics {
+  mrr: number;
+  arr: number;
+  total_revenue: number;
+  collection_rate: number;
+  avg_days_to_pay: number;
+  aging: AgingReport;
+  churn_rate: number;
+  active_subscriptions: number;
+  total_customers: number;
+  revenue_trend: RevenueTrendPoint[];
 }
 
 export interface WhatsAppTestSendRequest {

@@ -14,6 +14,7 @@
   } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 
   const variableGroups = [
     {
@@ -64,6 +65,9 @@
     $can('read', 'communication_templates') || $can('manage', 'communication_templates'),
   );
   const canManageTemplates = $derived($can('manage', 'communication_templates'));
+
+  let showDeleteConfirm = $state(false);
+  let deleteTargetId = $state<string | null>(null);
 
   onMount(async () => {
     if (!canReadTemplates) {
@@ -156,15 +160,23 @@
     }
   }
 
-  async function deleteTemplate(template: MessageTemplate) {
+  function confirmDeleteTemplate(template: MessageTemplate) {
     if (!canManageTemplates) return;
-    if (!confirm(($t('admin.message_templates.confirm_delete') || 'Delete template "{name}"?').replace('{name}', template.name))) return;
+    deleteTargetId = template.id;
+    showDeleteConfirm = true;
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTargetId) return;
     try {
-      await api.messageTemplates.delete(template.id);
+      await api.messageTemplates.delete(deleteTargetId);
       toast.success($t('admin.message_templates.toasts.deleted') || 'Message template deleted');
       await loadTemplates();
     } catch (e: any) {
       toast.error(e?.message || $t('admin.message_templates.toasts.delete_failed') || 'Failed to delete message template');
+    } finally {
+      showDeleteConfirm = false;
+      deleteTargetId = null;
     }
   }
 
@@ -261,7 +273,7 @@
               <Icon name="pencil" size={16} />
             </button>
             {#if canManageTemplates}
-              <button class="btn-icon danger" title="Delete" onclick={() => deleteTemplate(template)}>
+              <button class="btn-icon danger" title="Delete" onclick={() => confirmDeleteTemplate(template)}>
                 <Icon name="trash-2" size={16} />
               </button>
             {/if}
@@ -376,6 +388,17 @@
     </button>
   </div>
 </Modal>
+
+<ConfirmDialog
+  bind:show={showDeleteConfirm}
+  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
+  message={$t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
+  confirmText={$t('common.delete') || 'Delete'}
+  cancelText={$t('common.cancel') || 'Cancel'}
+  type="danger"
+  onconfirm={handleConfirmDelete}
+  oncancel={() => { deleteTargetId = null; }}
+/>
 
 <style>
   .page-content {

@@ -28,6 +28,7 @@
   import { appendBackParam } from '$lib/utils/backNavigation';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { loadPppoeAccountModal } from './pppoePageModules';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 
   type RouterRow = { id: string; name: string; host?: string; port?: number };
   type CustomerRow = { id: string; name: string };
@@ -44,6 +45,8 @@
   let refreshing = $state(false);
   let autoApplyOnSave = $state(false);
   let retryingIds = $state<string[]>([]);
+  let showDeleteConfirm = $state(false);
+  let deleteTarget = $state<PppoeAccountPublic | null>(null);
 
   let q = $state('');
   let routerId = $state('');
@@ -517,10 +520,16 @@
     }
   }
 
-  async function deleteAccount(row: PppoeAccountPublic) {
+  function deleteAccount(row: PppoeAccountPublic) {
     if (!$can('manage', 'pppoe')) return;
-    if (!confirm($t('admin.customers.pppoe.confirm_delete') || 'Delete this PPPoE account?'))
-      return;
+    deleteTarget = row;
+    showDeleteConfirm = true;
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    const row = deleteTarget;
+    deleteTarget = null;
     try {
       await api.pppoe.accounts.delete(row.id);
       toast.success($t('common.deleted') || 'Deleted');
@@ -1084,6 +1093,17 @@
     {sourceCreateActionLabel}
   />
 {/if}
+
+<ConfirmDialog
+  bind:show={showDeleteConfirm}
+  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
+  message={$t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
+  confirmText={$t('common.delete') || 'Delete'}
+  cancelText={$t('common.cancel') || 'Cancel'}
+  type="danger"
+  onconfirm={handleConfirmDelete}
+  oncancel={() => { deleteTarget = null; }}
+/>
 
 <style>
   .page-content {

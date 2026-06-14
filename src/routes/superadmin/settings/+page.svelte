@@ -16,6 +16,7 @@
     type SettingsTabId,
   } from './settingsPageModules';
   import { WHATSAPP_GATEWAY_SETTING_KEYS } from '$lib/utils/whatsappGateway';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 
   let loading = $state(true);
   let saving = $state(false);
@@ -30,6 +31,9 @@
   let newAccountNumber = $state('');
   let newAccountHolder = $state('');
   let addingBank = $state(false);
+
+  let showBankDeleteConfirm = $state(false);
+  let bankToDeleteId = $state<string | null>(null);
 
   // Maintenance
   let maintenanceMode = $state(false);
@@ -879,7 +883,14 @@
   }
 
   async function deleteBank(id: string) {
-    if (!confirm(get(t)('superadmin.settings.confirm.are_you_sure') || 'Are you sure?')) return;
+    bankToDeleteId = id;
+    showBankDeleteConfirm = true;
+  }
+
+  async function confirmDeleteBank() {
+    const id = bankToDeleteId;
+    if (!id) return;
+    showBankDeleteConfirm = false;
     try {
       await api.payment.deleteBank(id);
       bankAccounts = bankAccounts.filter((b) => b.id !== id);
@@ -1228,6 +1239,17 @@
     </main>
   </div>
 </div>
+
+<ConfirmDialog
+  bind:show={showBankDeleteConfirm}
+  title={$t('superadmin.settings.confirm.are_you_sure') || 'Are you sure?'}
+  message={$t('superadmin.settings.confirm.bank_delete_message') || 'This will permanently remove the bank account.'}
+  confirmText={$t('common.delete') || 'Delete'}
+  cancelText={$t('common.cancel') || 'Cancel'}
+  type="warning"
+  onconfirm={confirmDeleteBank}
+  oncancel={() => { bankToDeleteId = null; }}
+/>
 
 <style>
   .page-container {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/isp_theme_colors.dart';
 import '../theme/theme.dart';
 
 class IspListItem extends StatelessWidget {
@@ -20,6 +21,7 @@ class IspListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -29,8 +31,8 @@ class IspListItem extends StatelessWidget {
             horizontal: IspSpacing.lg,
             vertical: IspSpacing.md,
           ),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: IspColors.borderSubtle)),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: isp.borderSubtle)),
           ),
           child: Row(
             children: [
@@ -44,19 +46,19 @@ class IspListItem extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
-                        color: IspColors.textPrimary,
+                        color: isp.textPrimary,
                       ),
                     ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 2),
                       Text(
                         subtitle!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: IspColors.textTertiary,
+                          color: isp.textMuted,
                         ),
                       ),
                     ],

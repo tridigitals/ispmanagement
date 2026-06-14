@@ -14,6 +14,7 @@
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
   import { loadRouterFormModal } from './routersPageModules';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 
   type RouterRow = {
     id: string;
@@ -44,6 +45,8 @@
 
   let showModal = $state(false);
   let editing: RouterRow | null = $state(null);
+  let showDeleteConfirm = $state(false);
+  let deleteTarget = $state<RouterRow | null>(null);
   let RouterFormModalComponent = $state<Component<any> | null>(null);
 
   let formName = $state('');
@@ -288,9 +291,15 @@
     }
   }
 
-  async function remove(r: RouterRow) {
-    const ok = confirm(`${$t('common.delete') || 'Delete'}: ${r.name}?`);
-    if (!ok) return;
+  function remove(r: RouterRow) {
+    deleteTarget = r;
+    showDeleteConfirm = true;
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    const r = deleteTarget;
+    deleteTarget = null;
     try {
       await api.mikrotik.routers.delete(r.id);
       toast.success($t('admin.network.routers.toasts.deleted') || 'Router deleted');
@@ -464,6 +473,17 @@
     onSubmit={() => void save()}
   />
 {/if}
+
+<ConfirmDialog
+  bind:show={showDeleteConfirm}
+  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
+  message={$t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
+  confirmText={$t('common.delete') || 'Delete'}
+  cancelText={$t('common.cancel') || 'Cancel'}
+  type="danger"
+  onconfirm={handleConfirmDelete}
+  oncancel={() => { deleteTarget = null; }}
+/>
 
 <style>
   .page-content {

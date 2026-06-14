@@ -134,6 +134,25 @@ class ApiEndpoints {
   // ── Realtime ──
   static const String wsRealtime = '/api/ws';
 
+  // ── Work Orders (admin/technician) ──
+  // Backend: /api/admin/work-orders (src-tauri/src/http/work_orders.rs)
+  static const String workOrders = '/api/admin/work-orders';
+  static String workOrderById(String id) => '/api/admin/work-orders/$id';
+  static String workOrderClaim(String id) => '/api/admin/work-orders/$id/claim';
+  static String workOrderStart(String id) => '/api/admin/work-orders/$id/start';
+  static String workOrderComplete(String id) =>
+      '/api/admin/work-orders/$id/complete';
+  static String workOrderCancel(String id) =>
+      '/api/admin/work-orders/$id/cancel';
+  static String workOrderReopen(String id) =>
+      '/api/admin/work-orders/$id/reopen';
+  static String workOrderRescheduleRequest(String id) =>
+      '/api/admin/work-orders/$id/reschedule-request';
+  static String workOrderRescheduleApprove(String id) =>
+      '/api/admin/work-orders/$id/reschedule-request/approve';
+  static String workOrderRescheduleReject(String id) =>
+      '/api/admin/work-orders/$id/reschedule-request/reject';
+
   /// Build URL with path parameter substitution.
   static String withParam(String endpoint, String name, String value) {
     return endpoint.replaceAll('{$name}', value);

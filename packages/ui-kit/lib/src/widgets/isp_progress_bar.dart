@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/isp_theme_colors.dart';
 import '../theme/theme.dart';
 import 'isp_status_badge.dart';
 
@@ -17,25 +18,26 @@ class IspProgressBar extends StatelessWidget {
   final StatusTone tone;
   final double height;
 
-  Color _color() {
+  Color _color(IspThemeColors isp) {
     switch (tone) {
       case StatusTone.success:
-        return IspColors.success;
+        return isp.success;
       case StatusTone.warning:
-        return IspColors.warning;
+        return isp.warning;
       case StatusTone.danger:
-        return IspColors.danger;
+        return isp.danger;
       case StatusTone.info:
-        return IspColors.info;
+        return isp.info;
       case StatusTone.primary:
-        return IspColors.primary;
+        return isp.accent;
       case StatusTone.neutral:
-        return IspColors.textTertiary;
+        return isp.textMuted;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
     final clamped = value.clamp(0.0, 1.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,9 +45,9 @@ class IspProgressBar extends StatelessWidget {
         if (label != null) ...[
           Text(
             label!,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
-              color: IspColors.textTertiary,
+              color: isp.textMuted,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -56,8 +58,8 @@ class IspProgressBar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: clamped,
             minHeight: height,
-            backgroundColor: IspColors.bgTertiary,
-            valueColor: AlwaysStoppedAnimation<Color>(_color()),
+            backgroundColor: isp.surfaceTertiary,
+            valueColor: AlwaysStoppedAnimation<Color>(_color(isp)),
           ),
         ),
       ],

@@ -3005,8 +3005,11 @@
       "title": "History"
     },
     "empty": "No announcements yet.",
+    "empty_desc": "Create your first broadcast to reach your users.",
+    "empty_cta": "Create your first announcement",
     "empty_feed": "No announcements yet.",
-    "confirm_delete": "Delete this announcement?",
+    "confirm_delete": "Are you sure you want to permanently delete this announcement? This action cannot be undone.",
+    "confirm_delete_title": "Delete Announcement",
     "hints": {
       "schedule": "Leave dates empty to publish immediately. End date controls when the banner stops showing.",
       "rich": "Tip: Keep it concise. Links are allowed; images should be added as cover."
