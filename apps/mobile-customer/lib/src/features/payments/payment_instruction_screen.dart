@@ -35,6 +35,18 @@ class _PaymentInstructionScreenState
     extends ConsumerState<PaymentInstructionScreen> {
   Timer? _pollTimer;
 
+  late final IspThemeColors isp;
+
+
+
+  @override
+
+
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    isp = context.isp;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -52,7 +64,9 @@ class _PaymentInstructionScreenState
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+
+final isp = context.isp;
+final l10n = AppLocalizations.of(context);
     final txnAsync = ref.watch(paymentStatusProvider(widget.transactionId));
 
     return Scaffold(
@@ -89,6 +103,18 @@ class _Body extends ConsumerStatefulWidget {
 }
 
 class _BodyState extends ConsumerState<_Body> {
+
+  late final IspThemeColors isp;
+
+
+
+  @override
+
+
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    isp = context.isp;
+  }
   bool _uploadingProof = false;
 
   Future<void> _pickAndUploadProof() async {
@@ -132,9 +158,9 @@ class _BodyState extends ConsumerState<_Body> {
       res.fold(
         (_) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Bukti pembayaran berhasil diunggah'),
-              backgroundColor: IspColors.success,
+              backgroundColor: isp.success,
             ),
           );
         },
@@ -142,7 +168,7 @@ class _BodyState extends ConsumerState<_Body> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Gagal mengunggah: ${error.message}'),
-              backgroundColor: IspColors.danger,
+              backgroundColor: isp.danger,
             ),
           );
         },
@@ -152,7 +178,7 @@ class _BodyState extends ConsumerState<_Body> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Gagal memilih file: $e'),
-          backgroundColor: IspColors.danger,
+          backgroundColor: isp.danger,
         ),
       );
     } finally {
@@ -162,7 +188,9 @@ class _BodyState extends ConsumerState<_Body> {
 
   @override
   Widget build(BuildContext context) {
-    final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
+
+final isp = context.isp;
+final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
     final l10n = AppLocalizations.of(context);
     if (widget.txn.isPaid) {
       return _SuccessView(
@@ -179,14 +207,14 @@ class _BodyState extends ConsumerState<_Body> {
           Container(
             padding: const EdgeInsets.all(IspSpacing.lg),
             decoration: BoxDecoration(
-              color: IspColors.warning.withOpacity(0.1),
+              color: isp.warning.withOpacity(0.1),
               borderRadius: BorderRadius.circular(IspRadii.lg),
             ),
             child: Column(
               children: [
                 Text(
                   l10n.totalPayment,
-                  style: const TextStyle(color: IspColors.textTertiary),
+                  style: TextStyle(color: isp.textMuted),
                 ),
                 const SizedBox(height: IspSpacing.xs),
                 Text(
@@ -264,7 +292,9 @@ class _QrisView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IspCard(
+
+final isp = context.isp;
+return IspCard(
       child: Column(
         children: [
           const Text(
@@ -286,10 +316,10 @@ class _QrisView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: IspSpacing.md),
-          const Text(
+          Text(
             'Berlaku untuk semua aplikasi e-wallet dan mobile banking',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: IspColors.textTertiary),
+            style: TextStyle(fontSize: 12, color: isp.textMuted),
           ),
         ],
       ),
@@ -303,7 +333,9 @@ class _VirtualAccountView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IspCard(
+
+final isp = context.isp;
+return IspCard(
       child: Column(
         children: [
           const Text(
@@ -320,11 +352,11 @@ class _VirtualAccountView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: IspSpacing.md),
-          const Text(
+          Text(
             'Lakukan transfer ke nomor VA di atas melalui mobile banking atau ATM. '
             'Pembayaran akan otomatis terdeteksi dalam 1-2 menit.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: IspColors.textTertiary),
+            style: TextStyle(fontSize: 12, color: isp.textMuted),
           ),
         ],
       ),
@@ -339,7 +371,9 @@ class _EWalletView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IspCard(
+
+final isp = context.isp;
+return IspCard(
       child: Column(
         children: [
           const Icon(Icons.account_balance_wallet, size: 48),
@@ -379,7 +413,9 @@ class _PaymentCodeView extends StatelessWidget {
   final String code;
   @override
   Widget build(BuildContext context) {
-    return IspCard(
+
+final isp = context.isp;
+return IspCard(
       child: Column(
         children: [
           const Text(
@@ -406,7 +442,9 @@ class _GenericView extends StatelessWidget {
   final String message;
   @override
   Widget build(BuildContext context) {
-    return IspCard(
+
+final isp = context.isp;
+return IspCard(
       child: Center(
         child: Text(message, textAlign: TextAlign.center),
       ),
@@ -420,7 +458,9 @@ class _Countdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<int>(
+
+final isp = context.isp;
+return StreamBuilder<int>(
       stream: Stream.periodic(const Duration(seconds: 1), (_) {
         return expiresAt.difference(DateTime.now()).inSeconds;
       }),
@@ -428,10 +468,10 @@ class _Countdown extends StatelessWidget {
       builder: (context, snap) {
         final sec = snap.data ?? 0;
         if (sec <= 0) {
-          return const Text(
+          return Text(
             'Batas waktu habis',
             style:
-                TextStyle(color: IspColors.danger, fontWeight: FontWeight.w600),
+                TextStyle(color: isp.danger, fontWeight: FontWeight.w600),
           );
         }
         final h = (sec ~/ 3600).toString().padLeft(2, '0');
@@ -439,10 +479,10 @@ class _Countdown extends StatelessWidget {
         final s = (sec % 60).toString().padLeft(2, '0');
         return Text(
           'Batas waktu: $h:$m:$s',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: IspColors.warning,
+            color: isp.warning,
           ),
         );
       },
@@ -456,7 +496,9 @@ class _SuccessView extends StatelessWidget {
   final VoidCallback onContinue;
   @override
   Widget build(BuildContext context) {
-    return Center(
+
+final isp = context.isp;
+return Center(
       child: Padding(
         padding: const EdgeInsets.all(IspSpacing.xl),
         child: Column(
@@ -464,8 +506,8 @@ class _SuccessView extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(IspSpacing.lg),
-              decoration: const BoxDecoration(
-                color: IspColors.success,
+              decoration: BoxDecoration(
+                color: isp.success,
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.check, color: Colors.white, size: 64),
@@ -478,10 +520,10 @@ class _SuccessView extends StatelessWidget {
             const SizedBox(height: IspSpacing.sm),
             Text(
               amount,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w800,
-                color: IspColors.success,
+                color: isp.success,
               ),
             ),
             const SizedBox(height: IspSpacing.xl),
@@ -502,14 +544,16 @@ class _PaymentInstructionSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+
+final isp = context.isp;
+return ListView(
       padding: const EdgeInsets.all(IspSpacing.lg),
       children: [
         // Status header skeleton
         Container(
           padding: const EdgeInsets.all(IspSpacing.lg),
           decoration: BoxDecoration(
-            color: IspColors.bgSurface,
+            color: isp.surface,
             borderRadius: BorderRadius.circular(IspRadii.lg),
           ),
           child: const Column(

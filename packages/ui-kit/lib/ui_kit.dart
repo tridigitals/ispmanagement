@@ -1,6 +1,7 @@
 /// Public API for the ui_kit package.
 library;
 
+export 'src/theme/isp_theme_colors.dart';
 export 'src/theme/theme.dart';
 export 'src/widgets/isp_avatar.dart';
 export 'src/widgets/isp_button.dart';

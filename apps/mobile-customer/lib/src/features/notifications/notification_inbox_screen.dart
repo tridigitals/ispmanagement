@@ -42,7 +42,9 @@ class _NotificationInboxScreenState
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+
+
+    final isp = context.isp;    final l10n = AppLocalizations.of(context);
     final async = ref.watch(notificationsProvider);
 
     return Scaffold(
@@ -74,7 +76,7 @@ class _NotificationInboxScreenState
           return NotificationListener<ScrollNotification>(
             onNotification: _onScroll,
             child: RefreshIndicator(
-              color: AppColors.accent,
+              color: isp.accent,
               onRefresh: () async {
                 ref.invalidate(notificationsProvider);
                 await ref.read(notificationsProvider.future);
@@ -84,7 +86,7 @@ class _NotificationInboxScreenState
                 itemBuilder: (context, index) {
                   if (index == list.length) {
                     return _loadingMore
-                        ? const Padding(
+                        ? Padding(
                             padding: EdgeInsets.all(24),
                             child: Center(
                               child: SizedBox(
@@ -92,7 +94,7 @@ class _NotificationInboxScreenState
                                 height: 24,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: AppColors.accent,
+                                  color: isp.accent,
                                 ),
                               ),
                             ),
@@ -206,8 +208,9 @@ class _NotificationTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isp = context.isp;
     return Material(
-      color: item.isUnread ? AppColors.surfaceElevated : Colors.transparent,
+      color: item.isUnread ? isp.surfaceElevated : Colors.transparent,
       child: InkWell(
         onTap: () async {
           if (item.isUnread) {
@@ -227,7 +230,7 @@ class _NotificationTile extends ConsumerWidget {
                       'Halaman tidak tersedia di mobile',
                       style: TextStyle(color: Colors.white),
                     ),
-                    backgroundColor: AppColors.warning,
+                    backgroundColor: isp.warning,
                     duration: const Duration(seconds: 2),
                   ),
                 );
@@ -237,9 +240,9 @@ class _NotificationTile extends ConsumerWidget {
         },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: AppColors.border, width: 0.5),
+              bottom: BorderSide(color: isp.border, width: 0.5),
             ),
           ),
           child: Row(
@@ -257,7 +260,7 @@ class _NotificationTile extends ConsumerWidget {
                         fontSize: 14,
                         fontWeight:
                             item.isUnread ? FontWeight.w600 : FontWeight.w500,
-                        color: AppColors.textPrimary,
+                        color: isp.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -265,17 +268,17 @@ class _NotificationTile extends ConsumerWidget {
                       item.body,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.textSecondary,
+                        color: isp.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       item.categoryLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textMuted,
+                        color: isp.textMuted,
                       ),
                     ),
                   ],
@@ -283,9 +286,9 @@ class _NotificationTile extends ConsumerWidget {
               ),
               if (item.isUnread) ...[
                 const SizedBox(width: 8),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(top: 6),
-                  child: Icon(Icons.circle, color: AppColors.accent, size: 10),
+                  child: Icon(Icons.circle, color: isp.accent, size: 10),
                 ),
               ],
             ],
@@ -302,36 +305,38 @@ class _IconFor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final IconData icon;
+
+
+    final isp = context.isp;    final IconData icon;
     final Color color;
     switch (category) {
       case NotificationCategory.invoice:
         icon = Icons.receipt_long;
-        color = AppColors.warning;
+        color = isp.warning;
         break;
       case NotificationCategory.ticket:
         icon = Icons.support_agent;
-        color = AppColors.info;
+        color = isp.info;
         break;
       case NotificationCategory.outage:
         icon = Icons.warning_amber;
-        color = AppColors.danger;
+        color = isp.danger;
         break;
       case NotificationCategory.payment:
         icon = Icons.payment;
-        color = AppColors.success;
+        color = isp.success;
         break;
       case NotificationCategory.subscription:
         icon = Icons.wifi;
-        color = AppColors.accent;
+        color = isp.accent;
         break;
       case NotificationCategory.promo:
         icon = Icons.local_offer;
-        color = AppColors.accent;
+        color = isp.accent;
         break;
       case NotificationCategory.system:
         icon = Icons.info_outline;
-        color = AppColors.textMuted;
+        color = isp.textMuted;
         break;
     }
     return Container(

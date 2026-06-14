@@ -29,6 +29,7 @@ class AnnouncementsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isp = context.isp;
     final l10n = AppLocalizations.of(context);
     final announcements = ref.watch(announcementsListProvider(1));
 
@@ -42,8 +43,8 @@ class AnnouncementsScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline,
-                  size: 48, color: IspColors.danger),
+              Icon(Icons.error_outline,
+                  size: 48, color: isp.danger),
               const SizedBox(height: IspSpacing.md),
               Text(e.toString(), textAlign: TextAlign.center),
               const SizedBox(height: IspSpacing.lg),
@@ -62,17 +63,17 @@ class AnnouncementsScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.campaign_outlined,
                     size: 64,
-                    color: IspColors.textTertiary,
+                    color: isp.textMuted,
                   ),
                   const SizedBox(height: IspSpacing.md),
                   Text(
                     l10n.noAnnouncements ?? 'Belum ada pengumuman',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
-                      color: IspColors.textSecondary,
+                      color: isp.textSecondary,
                     ),
                   ),
                 ],
@@ -105,7 +106,9 @@ class _AnnouncementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFmt = DateFormat('d MMM yyyy', 'id_ID');
+
+
+    final isp = context.isp;    final dateFmt = DateFormat('d MMM yyyy', 'id_ID');
     final date =
         item.createdAt != null ? DateTime.tryParse(item.createdAt!) : null;
 
@@ -125,9 +128,9 @@ class _AnnouncementCard extends StatelessWidget {
                   if (date != null)
                     Text(
                       dateFmt.format(date),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: IspColors.textTertiary,
+                        color: isp.textMuted,
                       ),
                     ),
                 ],
@@ -145,9 +148,9 @@ class _AnnouncementCard extends StatelessWidget {
                 item.plainBody,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: IspColors.textSecondary,
+                  color: isp.textSecondary,
                 ),
               ),
             ],
@@ -164,23 +167,25 @@ class _SeverityChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color;
+
+
+    final isp = context.isp;    final Color color;
     final IconData icon;
     switch (severity) {
       case 'success':
-        color = IspColors.success;
+        color = isp.success;
         icon = Icons.check_circle_outline;
         break;
       case 'warning':
-        color = IspColors.warning;
+        color = isp.warning;
         icon = Icons.warning_amber_outlined;
         break;
       case 'error':
-        color = IspColors.danger;
+        color = isp.danger;
         icon = Icons.error_outline;
         break;
       default:
-        color = IspColors.info;
+        color = isp.info;
         icon = Icons.info_outline;
     }
 

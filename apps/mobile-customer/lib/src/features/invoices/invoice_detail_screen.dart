@@ -26,6 +26,18 @@ class InvoiceDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
+
+  late final IspThemeColors isp;
+
+
+
+  @override
+
+
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    isp = context.isp;
+  }
   bool _uploadingProof = false;
 
   Future<void> _pickAndUploadProof() async {
@@ -69,9 +81,9 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
       res.fold(
         (_) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Bukti pembayaran berhasil diunggah'),
-              backgroundColor: IspColors.success,
+              backgroundColor: isp.success,
             ),
           );
         },
@@ -79,7 +91,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Gagal mengunggah: ${error.message}'),
-              backgroundColor: IspColors.danger,
+              backgroundColor: isp.danger,
             ),
           );
         },
@@ -89,7 +101,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Gagal memilih file: $e'),
-          backgroundColor: IspColors.danger,
+          backgroundColor: isp.danger,
         ),
       );
     } finally {
@@ -99,7 +111,9 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
+
+final isp = context.isp;
+final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
     final dateFmt = DateFormat('d MMMM yyyy', 'id_ID');
     final invAsync = ref.watch(invoiceByIdProvider(widget.id));
 
@@ -181,10 +195,10 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
                 children: [
                   Text(
                     'Informasi Tagihan',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: IspColors.textSecondary,
+                      color: isp.textSecondary,
                     ),
                   ),
                   const SizedBox(height: IspSpacing.md),
@@ -313,7 +327,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
 
   void _showError(BuildContext context, String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: IspColors.danger),
+      SnackBar(content: Text(msg), backgroundColor: isp.danger),
     );
   }
 }
@@ -324,7 +338,9 @@ class _InfoRow extends StatelessWidget {
   final String value;
   @override
   Widget build(BuildContext context) {
-    return Padding(
+
+final isp = context.isp;
+return Padding(
       padding: const EdgeInsets.symmetric(vertical: IspSpacing.sm),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,7 +350,7 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               label,
               style:
-                  const TextStyle(color: IspColors.textTertiary, fontSize: 13),
+                  TextStyle(color: isp.textMuted, fontSize: 13),
             ),
           ),
           Expanded(
@@ -355,7 +371,9 @@ class _InvoiceDetailSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+
+final isp = context.isp;
+return ListView(
       padding: const EdgeInsets.all(IspSpacing.lg),
       children: [
         // Hero card skeleton

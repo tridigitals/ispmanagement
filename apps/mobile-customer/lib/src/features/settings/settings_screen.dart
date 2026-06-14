@@ -16,7 +16,8 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+final l10n = AppLocalizations.of(context);
     final user = ref.watch(currentUserProvider);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settings)),
@@ -37,7 +38,7 @@ class SettingsScreen extends ConsumerWidget {
                       ref.watch(biometricEnabledProvider).valueOrNull ?? false,
                   onChanged: (v) => _toggleBiometric(context, ref, v),
                 ),
-                const Divider(height: 1, color: IspColors.borderSubtle),
+                Divider(height: 1, color: isp.borderSubtle),
                 _SwitchTile(
                   icon: Icons.security,
                   title: l10n.twoFactorAuth,
@@ -52,14 +53,14 @@ class SettingsScreen extends ConsumerWidget {
                       ? null // Prevent disabling when enforced
                       : (v) => _toggle2fa(context, ref, v),
                 ),
-                const Divider(height: 1, color: IspColors.borderSubtle),
+                Divider(height: 1, color: isp.borderSubtle),
                 ListTile(
                   leading: const Icon(Icons.lock_outline),
                   title: Text(l10n.changePassword),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => GoRouter.of(context).push('/change-password'),
                 ),
-                const Divider(height: 1, color: IspColors.borderSubtle),
+                Divider(height: 1, color: isp.borderSubtle),
                 ListTile(
                   leading: const Icon(Icons.edit_outlined),
                   title: Text(l10n.editProfile),
@@ -84,7 +85,7 @@ class SettingsScreen extends ConsumerWidget {
                   onChanged: (v) =>
                       ref.read(notifInvoiceEnabledProvider.notifier).set(v),
                 ),
-                const Divider(height: 1, color: IspColors.borderSubtle),
+                Divider(height: 1, color: isp.borderSubtle),
                 _SwitchTile(
                   icon: Icons.warning_amber,
                   title: l10n.notifOutage,
@@ -93,7 +94,7 @@ class SettingsScreen extends ConsumerWidget {
                   onChanged: (v) =>
                       ref.read(notifOutageEnabledProvider.notifier).set(v),
                 ),
-                const Divider(height: 1, color: IspColors.borderSubtle),
+                Divider(height: 1, color: isp.borderSubtle),
                 _SwitchTile(
                   icon: Icons.local_offer,
                   title: l10n.notifPromo,
@@ -123,7 +124,7 @@ class SettingsScreen extends ConsumerWidget {
                     }
                   },
                 ),
-                const Divider(height: 1, color: IspColors.borderSubtle),
+                Divider(height: 1, color: isp.borderSubtle),
                 RadioListTile<Locale>(
                   secondary: const Icon(Icons.language),
                   title: const Text('English'),
@@ -151,20 +152,20 @@ class SettingsScreen extends ConsumerWidget {
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () => _openUrl('https://tridigitals.com/privacy'),
                 ),
-                const Divider(height: 1, color: IspColors.borderSubtle),
+                Divider(height: 1, color: isp.borderSubtle),
                 ListTile(
                   leading: const Icon(Icons.description_outlined),
                   title: Text(l10n.termsOfService),
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () => _openUrl('https://tridigitals.com/terms'),
                 ),
-                const Divider(height: 1, color: IspColors.borderSubtle),
-                const ListTile(
+                Divider(height: 1, color: isp.borderSubtle),
+                ListTile(
                   leading: Icon(Icons.info_outline),
                   title: Text('Versi Aplikasi'),
                   trailing: Text(
                     '0.1.0+1',
-                    style: TextStyle(color: IspColors.textTertiary),
+                    style: TextStyle(color: isp.textMuted),
                   ),
                 ),
               ],
@@ -224,23 +225,23 @@ class SettingsScreen extends ConsumerWidget {
       // Confirm before disabling
       final confirm = await showDialog<bool>(
         context: context,
-        builder: (_) => AlertDialog(
-          title: Text(AppLocalizations.of(context).disable2faConfirmTitle),
+        builder: (ctx) => AlertDialog(
+          title: Text(AppLocalizations.of(ctx).disable2faConfirmTitle),
           content: Text(
-            AppLocalizations.of(context).disable2faConfirmBody,
+            AppLocalizations.of(ctx).disable2faConfirmBody,
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(AppLocalizations.of(context).cancel),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(AppLocalizations.of(ctx).cancel),
             ),
             FilledButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(ctx, true),
               style: FilledButton.styleFrom(
-                backgroundColor: IspColors.danger,
+                backgroundColor: ctx.isp.danger,
               ),
               child: Text(
-                AppLocalizations.of(context).disable,
+                AppLocalizations.of(ctx).disable,
               ),
             ),
           ],
@@ -265,14 +266,16 @@ class _SectionHeader extends StatelessWidget {
   final String label;
   @override
   Widget build(BuildContext context) {
-    return Padding(
+
+
+    final isp = context.isp;    return Padding(
       padding: const EdgeInsets.fromLTRB(20, IspSpacing.lg, 20, IspSpacing.sm),
       child: Text(
         label.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           letterSpacing: 1.2,
-          color: IspColors.textTertiary,
+          color: isp.textMuted,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -295,7 +298,9 @@ class _SwitchTile extends StatelessWidget {
   final ValueChanged<bool>? onChanged;
   @override
   Widget build(BuildContext context) {
-    return SwitchListTile(
+
+
+    final isp = context.isp;    return SwitchListTile(
       secondary: Icon(icon),
       title: Text(title),
       subtitle: Text(subtitle),

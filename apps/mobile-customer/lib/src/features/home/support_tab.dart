@@ -100,7 +100,9 @@ class _SupportTabState extends ConsumerState<SupportTab> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+
+
+    final isp = context.isp;    final l10n = AppLocalizations.of(context);
 
     if (!_initialLoaded) {
       return CustomScrollView(
@@ -115,10 +117,10 @@ class _SupportTabState extends ConsumerState<SupportTab> {
               ),
             ],
           ),
-          const SliverFillRemaining(
+          SliverFillRemaining(
             hasScrollBody: false,
             child: Center(
-                child: CircularProgressIndicator(color: AppColors.accent)),
+                child: CircularProgressIndicator(color: isp.accent)),
           ),
         ],
       );
@@ -142,7 +144,7 @@ class _SupportTabState extends ConsumerState<SupportTab> {
             child: Center(
               child: Text(
                 _initialError.toString(),
-                style: const TextStyle(color: AppColors.textSecondary),
+                style: TextStyle(color: isp.textSecondary),
               ),
             ),
           ),
@@ -180,7 +182,7 @@ class _SupportTabState extends ConsumerState<SupportTab> {
     return NotificationListener<ScrollNotification>(
       onNotification: _onScroll,
       child: RefreshIndicator(
-        color: AppColors.accent,
+        color: isp.accent,
         onRefresh: () async {
           setState(() {
             _items.clear();
@@ -252,7 +254,7 @@ class _SupportTabState extends ConsumerState<SupportTab> {
                   (context, index) {
                     if (index == _items.length) {
                       return _loadingMore
-                          ? const Padding(
+                          ? Padding(
                               padding: EdgeInsets.all(24),
                               child: Center(
                                 child: SizedBox(
@@ -260,7 +262,7 @@ class _SupportTabState extends ConsumerState<SupportTab> {
                                   height: 24,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: AppColors.accent,
+                                    color: isp.accent,
                                   ),
                                 ),
                               ),
@@ -286,16 +288,18 @@ class _TicketTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFmt = DateFormat('d MMM', 'id_ID');
+
+
+    final isp = context.isp;    final dateFmt = DateFormat('d MMM', 'id_ID');
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () => GoRouter.of(context).push('/tickets/${t.id}'),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: AppColors.border, width: 0.5),
+              bottom: BorderSide(color: isp.border, width: 0.5),
             ),
           ),
           child: Column(
@@ -306,10 +310,10 @@ class _TicketTile extends StatelessWidget {
                   Expanded(
                     child: Text(
                       t.subject,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: isp.textPrimary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -322,7 +326,7 @@ class _TicketTile extends StatelessWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.accent,
+                        color: isp.accent,
                         borderRadius: BorderRadius.circular(9999),
                       ),
                       child: Text(
@@ -356,9 +360,9 @@ class _TicketTile extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     '· ${dateFmt.format(t.updatedAt)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textMuted,
+                      color: isp.textMuted,
                     ),
                   ),
                 ],
@@ -388,7 +392,9 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+
+
+    final isp = context.isp;    return Padding(
       padding: const EdgeInsets.all(40),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -396,19 +402,19 @@ class _EmptyState extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: isp.surface,
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: isp.border),
             ),
-            child: Icon(icon, size: 48, color: AppColors.textMuted),
+            child: Icon(icon, size: 48, color: isp.textMuted),
           ),
           const SizedBox(height: 20),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: isp.textPrimary,
             ),
           ),
           if (subtitle != null) ...[
@@ -416,9 +422,9 @@ class _EmptyState extends StatelessWidget {
             Text(
               subtitle!,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: AppColors.textMuted,
+                color: isp.textMuted,
               ),
             ),
           ],
@@ -448,15 +454,17 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+
+
+    final isp = context.isp;    return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? AppColors.accent : AppColors.surface,
+          color: selected ? isp.accent : isp.surface,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? AppColors.accent : AppColors.border,
+            color: selected ? isp.accent : isp.border,
           ),
         ),
         child: Text(
@@ -464,7 +472,7 @@ class _FilterChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : AppColors.textSecondary,
+            color: selected ? Colors.white : isp.textSecondary,
           ),
         ),
       ),

@@ -17,26 +17,26 @@ class _State extends ConsumerState<OnboardingScreen> {
   final _controller = PageController();
   int _page = 0;
 
-  static const _pages = <_OnboardPage>[
+  static final _pages = <_OnboardPage>[
     _OnboardPage(
       icon: Icons.wifi_tethering,
       title: 'Kelola Internet Anda',
       body:
           'Pantau paket, tagihan, dan tiket dukungan langsung dari genggaman Anda.',
-      color: IspColors.primary,
+      color: const Color(0xFF6C5CE7), // accent
     ),
     _OnboardPage(
       icon: Icons.receipt_long,
       title: 'Bayar Tagihan Mudah',
       body:
           'Virtual Account, e-wallet, QRIS, dan kartu kredit. Bayar di mana saja.',
-      color: IspColors.success,
+      color: const Color(0xFF22C55E), // success
     ),
     _OnboardPage(
       icon: Icons.headset_mic,
       title: 'Lapor Gangguan Cepat',
       body: 'Buat tiket dukungan dan lacak status perbaikan secara real-time.',
-      color: IspColors.warning,
+      color: const Color(0xFFF59E0B), // warning
     ),
   ];
 
@@ -97,7 +97,7 @@ class _State extends ConsumerState<OnboardingScreen> {
                   height: 8,
                   decoration: BoxDecoration(
                     color:
-                        _page == i ? IspColors.primary : IspColors.bgTertiary,
+                        _page == i ? context.isp.accent : context.isp.surfaceTertiary,
                     borderRadius: BorderRadius.circular(IspRadii.pill),
                   ),
                 ),
@@ -134,6 +134,7 @@ class _OnboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: IspSpacing.xl),
       child: Column(
@@ -160,8 +161,8 @@ class _OnboardPage extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             body,
-            style: const TextStyle(
-              color: IspColors.textTertiary,
+            style: TextStyle(
+              color: context.isp.textMuted,
               fontSize: 14,
             ),
             textAlign: TextAlign.center,

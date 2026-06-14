@@ -35,7 +35,8 @@ class SubscriptionDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+final l10n = AppLocalizations.of(context);
     final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
     final dateFmt = DateFormat('d MMM yyyy', 'id_ID');
     final subAsync = ref.watch(subscriptionByIdProvider(id));
@@ -52,10 +53,10 @@ class SubscriptionDetailScreen extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.error_outline,
                   size: 48,
-                  color: IspColors.danger,
+                  color: isp.danger,
                 ),
                 const SizedBox(height: IspSpacing.md),
                 Text(e.toString(), textAlign: TextAlign.center),
@@ -231,7 +232,9 @@ class _HeroHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+
+
+    final isp = context.isp;    return Container(
       padding: const EdgeInsets.all(IspSpacing.xl),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -373,7 +376,9 @@ class _SpeedSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+
+
+    final isp = context.isp;    return Column(
       children: [
         Row(
           children: [
@@ -434,7 +439,9 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+
+
+    final isp = context.isp;    return Card(
       child: Padding(
         padding: const EdgeInsets.all(IspSpacing.lg),
         child: Column(
@@ -442,14 +449,14 @@ class _SectionCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(icon, size: 18, color: IspColors.primary),
+                Icon(icon, size: 18, color: isp.accent),
                 const SizedBox(width: IspSpacing.sm),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: IspColors.textSecondary,
+                    color: isp.textSecondary,
                   ),
                 ),
               ],
@@ -478,29 +485,31 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+
+
+    final isp = context.isp;    return Padding(
       padding: const EdgeInsets.symmetric(vertical: IspSpacing.sm),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: IspColors.textTertiary),
+          Icon(icon, size: 16, color: isp.textMuted),
           const SizedBox(width: IspSpacing.sm),
           SizedBox(
             width: 90,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: IspColors.textTertiary,
+                color: isp.textMuted,
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: IspColors.textPrimary,
+                color: isp.textPrimary,
               ),
             ),
           ),
@@ -519,7 +528,9 @@ class _InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+
+
+    final isp = context.isp;    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.12),
@@ -553,7 +564,9 @@ class _InstallationTracker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final steps = [
+
+
+    final isp = context.isp;    final steps = [
       _Step('Pendaftaran', Icons.app_registration, true),
       _Step('Penjadwalan', Icons.event, true),
       _Step('Pemasangan', Icons.build, false),
@@ -568,15 +581,15 @@ class _InstallationTracker extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.construction,
-                    size: 18, color: IspColors.primary),
+                Icon(Icons.construction,
+                    size: 18, color: isp.accent),
                 const SizedBox(width: IspSpacing.sm),
                 Text(
                   'Progres Pemasangan',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: IspColors.textSecondary,
+                    color: isp.textSecondary,
                   ),
                 ),
               ],
@@ -597,13 +610,13 @@ class _InstallationTracker extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color:
-                              step.done ? IspColors.success : IspColors.border,
+                              step.done ? isp.success : isp.border,
                         ),
                         child: Icon(
                           step.done ? Icons.check : step.icon,
                           size: 16,
                           color:
-                              step.done ? Colors.white : IspColors.textTertiary,
+                              step.done ? Colors.white : isp.textMuted,
                         ),
                       ),
                       if (!isLast)
@@ -611,7 +624,7 @@ class _InstallationTracker extends StatelessWidget {
                           width: 2,
                           height: 24,
                           color:
-                              step.done ? IspColors.success : IspColors.border,
+                              step.done ? isp.success : isp.border,
                         ),
                     ],
                   ),
@@ -625,8 +638,8 @@ class _InstallationTracker extends StatelessWidget {
                         fontWeight:
                             step.done ? FontWeight.w600 : FontWeight.w400,
                         color: step.done
-                            ? IspColors.textPrimary
-                            : IspColors.textTertiary,
+                            ? isp.textPrimary
+                            : isp.textMuted,
                       ),
                     ),
                   ),
@@ -655,7 +668,8 @@ class _PackageSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
+    final isp = context.isp;
+final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
 
     return Column(
       children: [
@@ -665,7 +679,7 @@ class _PackageSheet extends ConsumerWidget {
           width: 40,
           height: 4,
           decoration: BoxDecoration(
-            color: IspColors.border,
+            color: isp.border,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -713,8 +727,8 @@ class _PackageSheet extends ConsumerWidget {
               Text(
                 'Hubungi admin untuk mengubah paket',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: IspColors.textTertiary,
+                style: TextStyle(
+                  color: isp.textMuted,
                   fontSize: 13,
                 ),
               ),
@@ -744,17 +758,19 @@ class _PackageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+
+
+    final isp = context.isp;    return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: Container(
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: IspColors.primary.withOpacity(0.1),
+            color: isp.accent.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.wifi, color: IspColors.primary),
+          child: Icon(Icons.wifi, color: isp.accent),
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(speed),

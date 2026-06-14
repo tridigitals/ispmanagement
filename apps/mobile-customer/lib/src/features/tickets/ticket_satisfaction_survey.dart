@@ -28,6 +28,13 @@ class _TicketSatisfactionSurveyState
   final _commentCtrl = TextEditingController();
   bool _submitted = false;
   bool _loading = true;
+  late final IspThemeColors isp;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    isp = context.isp;
+  }
 
   @override
   void initState() {
@@ -91,7 +98,7 @@ class _TicketSatisfactionSurveyState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal mengirim: ${(result).exception.message}'),
-            backgroundColor: IspColors.danger,
+            backgroundColor: isp.danger,
           ),
         );
       }
@@ -102,9 +109,9 @@ class _TicketSatisfactionSurveyState
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Terima kasih atas penilaian Anda!'),
-          backgroundColor: IspColors.success,
+          backgroundColor: isp.success,
         ),
       );
     }
@@ -112,15 +119,17 @@ class _TicketSatisfactionSurveyState
 
   @override
   Widget build(BuildContext context) {
+
+
     if (_loading) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: IspColors.bgTertiary,
+        color: isp.surfaceTertiary,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: IspColors.border),
+        border: Border.all(color: isp.border),
       ),
       child: _submitted ? _buildSubmitted() : _buildForm(),
     );
@@ -132,15 +141,15 @@ class _TicketSatisfactionSurveyState
       children: [
         Row(
           children: [
-            const Icon(Icons.rate_review, size: 20, color: IspColors.primary),
+            Icon(Icons.rate_review, size: 20, color: isp.accent),
             const SizedBox(width: 8),
-            const Expanded(
+            Expanded(
               child: Text(
                 'Bagaimana pelayanan kami?',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: IspColors.textPrimary,
+                  color: isp.textPrimary,
                 ),
               ),
             ),
@@ -160,8 +169,8 @@ class _TicketSatisfactionSurveyState
                   starNum <= _rating ? Icons.star : Icons.star_border,
                   size: 36,
                   color: starNum <= _rating
-                      ? IspColors.warning
-                      : IspColors.textMuted,
+                      ? isp.warning
+                      : isp.textMuted,
                 ),
               ),
             );
@@ -188,24 +197,24 @@ class _TicketSatisfactionSurveyState
           decoration: InputDecoration(
             hintText: 'Komentar (opsional)',
             hintStyle:
-                const TextStyle(fontSize: 13, color: IspColors.textTertiary),
+                TextStyle(fontSize: 13, color: isp.textMuted),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: IspColors.border),
+              borderSide: BorderSide(color: isp.border),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: IspColors.border),
+              borderSide: BorderSide(color: isp.border),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: IspColors.primary),
+              borderSide: BorderSide(color: isp.accent),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             isDense: true,
           ),
-          style: const TextStyle(fontSize: 13, color: IspColors.textPrimary),
+          style: TextStyle(fontSize: 13, color: isp.textPrimary),
         ),
         const SizedBox(height: 12),
         SizedBox(
@@ -213,7 +222,7 @@ class _TicketSatisfactionSurveyState
           child: ElevatedButton(
             onPressed: _rating > 0 ? _submit : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: IspColors.primary,
+              backgroundColor: isp.accent,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 10),
               shape: RoundedRectangleBorder(
@@ -242,8 +251,8 @@ class _TicketSatisfactionSurveyState
                 (i + 1) <= _rating ? Icons.star : Icons.star_border,
                 size: 24,
                 color: (i + 1) <= _rating
-                    ? IspColors.warning
-                    : IspColors.textMuted,
+                    ? isp.warning
+                    : isp.textMuted,
               ),
             );
           }),
@@ -251,20 +260,20 @@ class _TicketSatisfactionSurveyState
         const SizedBox(height: 8),
         Text(
           'Terima kasih atas penilaian Anda!',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: IspColors.textPrimary,
+            color: isp.textPrimary,
           ),
         ),
         if (_commentCtrl.text.trim().isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
             '"${_commentCtrl.text.trim()}"',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontStyle: FontStyle.italic,
-              color: IspColors.textTertiary,
+              color: isp.textMuted,
             ),
             textAlign: TextAlign.center,
           ),
@@ -291,8 +300,8 @@ class _TicketSatisfactionSurveyState
   }
 
   Color _ratingColor(int rating) {
-    if (rating <= 2) return IspColors.danger;
-    if (rating == 3) return IspColors.warning;
-    return IspColors.success;
+    if (rating <= 2) return isp.danger;
+    if (rating == 3) return isp.warning;
+    return isp.success;
   }
 }

@@ -1,6 +1,6 @@
 name: mobile_customer
 description: ISP Management — Customer mobile app (Flutter, iOS + Android)
-version: 0.1.0+2
+version: 0.1.0+5
 publish_to: none
 
 environment:
@@ -49,6 +49,9 @@ dependencies:
   url_launcher: ^6.3.1
   share_plus: ^10.1.4
   file_picker: ^8.0.0
+  image_picker: ^1.1.2
+  permission_handler: ^11.3.1
+  app_settings: ^5.1.1
   webview_flutter: ^4.10.0
   pdf: ^3.10.8
   printing: ^5.12.0

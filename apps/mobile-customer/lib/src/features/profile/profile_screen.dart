@@ -13,7 +13,8 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+final l10n = AppLocalizations.of(context);
     final user = ref.watch(currentUserProvider);
     final unread = ref.watch(unreadNotificationsCountProvider).valueOrNull ?? 0;
     return Scaffold(
@@ -34,13 +35,13 @@ class ProfileScreen extends ConsumerWidget {
               children: [
                 CircleAvatar(
                   radius: 48,
-                  backgroundColor: IspColors.primarySubtle,
+                  backgroundColor: isp.accentSurface,
                   backgroundImage: user?.avatarUrl != null
                       ? NetworkImage(user!.avatarUrl!)
                       : null,
                   child: user?.avatarUrl == null
-                      ? const Icon(Icons.person,
-                          size: 48, color: IspColors.primary)
+                      ? Icon(Icons.person,
+                          size: 48, color: isp.accent)
                       : null,
                 ),
                 const SizedBox(height: IspSpacing.md),
@@ -54,7 +55,7 @@ class ProfileScreen extends ConsumerWidget {
                 if (user?.email != null)
                   Text(
                     user!.email,
-                    style: const TextStyle(color: IspColors.textTertiary),
+                    style: TextStyle(color: isp.textMuted),
                   ),
               ],
             ),
@@ -90,17 +91,17 @@ class ProfileScreen extends ConsumerWidget {
               _ProfileItem(
                 icon: Icons.logout,
                 title: l10n.logout,
-                iconColor: IspColors.danger,
-                titleColor: IspColors.danger,
+                iconColor: isp.danger,
+                titleColor: isp.danger,
                 onTap: () => ref.read(authControllerProvider.notifier).logout(),
               ),
             ],
           ),
           const SizedBox(height: IspSpacing.xl),
-          const Center(
+          Center(
             child: Text(
               'v0.1.0+1',
-              style: TextStyle(color: IspColors.textTertiary, fontSize: 12),
+              style: TextStyle(color: isp.textMuted, fontSize: 12),
             ),
           ),
           const SizedBox(height: IspSpacing.xl),
@@ -115,7 +116,9 @@ class _ProfileGroup extends StatelessWidget {
   final List<_ProfileItem> items;
   @override
   Widget build(BuildContext context) {
-    return IspCard(
+
+
+    final isp = context.isp;    return IspCard(
       margin: const EdgeInsets.symmetric(
           horizontal: IspSpacing.lg, vertical: IspSpacing.sm),
       child: Column(
@@ -123,7 +126,7 @@ class _ProfileGroup extends StatelessWidget {
           for (var i = 0; i < items.length; i++) ...[
             items[i],
             if (i < items.length - 1)
-              const Divider(height: 1, color: IspColors.borderSubtle),
+              Divider(height: 1, color: isp.borderSubtle),
           ],
         ],
       ),
@@ -148,14 +151,16 @@ class _ProfileItem extends StatelessWidget {
   final Color? titleColor;
   @override
   Widget build(BuildContext context) {
-    return ListTile(
+
+
+    final isp = context.isp;    return ListTile(
       leading: Icon(icon, color: iconColor),
       title: Text(title, style: TextStyle(color: titleColor)),
       trailing: badge != null
           ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: IspColors.danger,
+                color: isp.danger,
                 borderRadius: BorderRadius.circular(IspRadii.pill),
               ),
               child: Text(
@@ -167,7 +172,7 @@ class _ProfileItem extends StatelessWidget {
                 ),
               ),
             )
-          : const Icon(Icons.chevron_right, color: IspColors.textTertiary),
+          : Icon(Icons.chevron_right, color: isp.textMuted),
       onTap: onTap,
     );
   }

@@ -28,7 +28,9 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+
+
+    final isp = context.isp;    final l10n = AppLocalizations.of(context);
     final channelsAsync = ref.watch(
       paymentChannelsProvider(widget.invoiceId),
     );
@@ -40,9 +42,9 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         children: [
           Text(
             'Pilih metode pembayaran yang Anda inginkan',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: IspColors.textTertiary,
+              color: isp.textMuted,
             ),
           ),
           const SizedBox(height: IspSpacing.lg),
@@ -85,10 +87,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                   const SizedBox(height: IspSpacing.md),
                   Text(
                     'Metode Lainnya',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: IspColors.textSecondary,
+                      color: isp.textSecondary,
                     ),
                   ),
                   const SizedBox(height: IspSpacing.md),
@@ -210,7 +212,9 @@ class _PaymentMethodTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IspCard(
+
+
+    final isp = context.isp;    return IspCard(
       onTap: onTap,
       child: Row(
         children: [
@@ -218,10 +222,10 @@ class _PaymentMethodTile extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: IspColors.primarySubtle,
+              color: isp.accentSurface,
               borderRadius: BorderRadius.circular(IspRadii.md),
             ),
-            child: Icon(icon, color: IspColors.primary, size: 28),
+            child: Icon(icon, color: isp.accent, size: 28),
           ),
           const SizedBox(width: IspSpacing.lg),
           Expanded(
@@ -238,15 +242,15 @@ class _PaymentMethodTile extends StatelessWidget {
                 const SizedBox(height: IspSpacing.xs),
                 Text(
                   description,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: IspColors.textTertiary,
+                    color: isp.textMuted,
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: IspColors.textTertiary),
+          Icon(Icons.chevron_right, color: isp.textMuted),
         ],
       ),
     );
@@ -265,7 +269,9 @@ class _PaymentChannelTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IspCard(
+
+
+    final isp = context.isp;    return IspCard(
       onTap: onTap,
       child: Row(
         children: [
@@ -273,12 +279,12 @@ class _PaymentChannelTile extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: IspColors.bgTertiary,
+              color: isp.surfaceTertiary,
               borderRadius: BorderRadius.circular(IspRadii.md),
             ),
             child: Icon(
               _iconForMethod(channel.method),
-              color: IspColors.primary,
+              color: isp.accent,
               size: 22,
             ),
           ),
@@ -297,15 +303,15 @@ class _PaymentChannelTile extends StatelessWidget {
                 const SizedBox(height: IspSpacing.xs),
                 Text(
                   '${channel.methodLabel}${channel.fee > 0 ? ' • Biaya: Rp ${channel.fee.toStringAsFixed(0)}' : ''}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: IspColors.textTertiary,
+                    color: isp.textMuted,
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: IspColors.textTertiary),
+          Icon(Icons.chevron_right, color: isp.textMuted),
         ],
       ),
     );

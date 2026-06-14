@@ -24,6 +24,13 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
+  late final IspThemeColors isp;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    isp = context.isp;
+  }
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
   bool _show2fa = false;
@@ -227,7 +234,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString()),
-            backgroundColor: IspColors.danger,
+            backgroundColor: isp.danger,
           ),
         );
       }
@@ -257,6 +264,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+
+
     final l10n = AppLocalizations.of(context);
     final loading = ref.watch(authControllerProvider).isLoading;
     return Scaffold(
@@ -369,7 +378,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         label: Text(l10n.biometric),
                       ),
                     if (_biometricLoading)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.symmetric(vertical: 12),
                         child: Center(
                           child: Column(
@@ -377,13 +386,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               Icon(
                                 Icons.fingerprint,
                                 size: 48,
-                                color: IspColors.primary,
+                                color: isp.accent,
                               ),
                               SizedBox(height: 8),
                               Text(
                                 'Verifikasi sidik jari...',
                                 style: TextStyle(
-                                  color: IspColors.textTertiary,
+                                  color: isp.textMuted,
                                   fontSize: 13,
                                 ),
                               ),
@@ -413,7 +422,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const SizedBox(height: 4),
         Text(
           'Your organization requires 2FA. Please set it up.',
-          style: const TextStyle(color: IspColors.textTertiary),
+          style: TextStyle(color: isp.textMuted),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
@@ -467,10 +476,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: 8),
               Text(
                 'Key: ${_setupSecret ?? ""}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontFamily: 'monospace',
-                  color: IspColors.textTertiary,
+                  color: isp.textMuted,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -505,16 +514,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   color: Color(0x1F10B981),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(Icons.check_circle,
-                        color: IspColors.success, size: 18),
+                        color: isp.success, size: 18),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Verification code sent to your email.',
                         style: TextStyle(
-                            color: IspColors.success, fontSize: 13),
+                            color: isp.success, fontSize: 13),
                       ),
                     ),
                   ],
@@ -562,17 +571,19 @@ class _SetupMethodTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+
+
+    final isp = context.isp;    return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: selected ? IspColors.primary : IspColors.border,
+            color: selected ? isp.accent : isp.border,
             width: selected ? 2 : 1,
           ),
-          color: selected ? IspColors.primarySubtle : null,
+          color: selected ? isp.accentSurface : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -580,7 +591,7 @@ class _SetupMethodTab extends StatelessWidget {
             Icon(
               icon,
               size: 16,
-              color: selected ? IspColors.primary : IspColors.textTertiary,
+              color: selected ? isp.accent : isp.textMuted,
             ),
             const SizedBox(width: 6),
             Text(
@@ -588,7 +599,7 @@ class _SetupMethodTab extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                color: selected ? IspColors.primary : IspColors.textSecondary,
+                color: selected ? isp.accent : isp.textSecondary,
               ),
             ),
           ],
@@ -602,16 +613,18 @@ class _BrandHeader extends StatelessWidget {
   const _BrandHeader();
   @override
   Widget build(BuildContext context) {
-    return Column(
+
+
+    final isp = context.isp;    return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: IspColors.primarySubtle,
+            color: isp.accentSurface,
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.wifi_tethering,
-              size: 40, color: IspColors.primary),
+          child: Icon(Icons.wifi_tethering,
+              size: 40, color: isp.accent),
         ),
         const SizedBox(height: 16),
         Text(
@@ -624,7 +637,7 @@ class _BrandHeader extends StatelessWidget {
         Text(
           'Kelola langganan internet Anda',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: IspColors.textTertiary,
+                color: isp.textMuted,
               ),
         ),
       ],

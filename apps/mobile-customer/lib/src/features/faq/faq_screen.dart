@@ -95,7 +95,9 @@ class _FaqScreenState extends State<FaqScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final categories = ['Semua', ..._faqItems.map((i) => i.category).toSet()];
+
+
+    final isp = context.isp;    final categories = ['Semua', ..._faqItems.map((i) => i.category).toSet()];
     return Scaffold(
       appBar: AppBar(title: const Text('FAQ')),
       body: Column(
@@ -156,7 +158,9 @@ class _FaqTileState extends State<_FaqTile> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+
+
+    final isp = context.isp;    return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(IspRadii.lg),
         onTap: () => setState(() => _expanded = !_expanded),
@@ -178,7 +182,7 @@ class _FaqTileState extends State<_FaqTile> {
                   ),
                   Icon(
                     _expanded ? Icons.expand_less : Icons.expand_more,
-                    color: IspColors.textTertiary,
+                    color: isp.textMuted,
                   ),
                 ],
               ),
@@ -186,9 +190,9 @@ class _FaqTileState extends State<_FaqTile> {
                 const SizedBox(height: 12),
                 Text(
                   widget.item.answer,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: IspColors.textSecondary,
+                    color: isp.textSecondary,
                     height: 1.5,
                   ),
                 ),

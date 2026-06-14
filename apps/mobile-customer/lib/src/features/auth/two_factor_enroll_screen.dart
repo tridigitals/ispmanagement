@@ -18,6 +18,18 @@ class TwoFactorEnrollScreen extends ConsumerStatefulWidget {
 }
 
 class _State extends ConsumerState<TwoFactorEnrollScreen> {
+
+  late final IspThemeColors isp;
+
+
+
+  @override
+
+
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    isp = context.isp;
+  }
   final _form = GlobalKey<FormState>();
   final _code = TextEditingController();
   bool _loading = false;
@@ -80,7 +92,7 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
       (err) => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(err.message),
-          backgroundColor: IspColors.danger,
+          backgroundColor: isp.danger,
         ),
       ),
     );
@@ -88,7 +100,9 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+
+
+    final isp = context.isp;    final l10n = AppLocalizations.of(context);
     final enrollment = _enrollment;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.enable2fa)),
@@ -117,7 +131,7 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
                       const SizedBox(height: 6),
                       Text(
                         l10n.twoFaSub,
-                        style: const TextStyle(color: IspColors.textTertiary),
+                        style: TextStyle(color: isp.textMuted),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: IspSpacing.xxl),

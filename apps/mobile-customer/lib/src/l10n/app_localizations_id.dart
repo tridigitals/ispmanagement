@@ -341,6 +341,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get report => 'Lapor';
 
   @override
+  String get share => 'Bagikan';
+
+  @override
   String get unpaidBills => 'Tagihan Belum Bayar';
 
   @override

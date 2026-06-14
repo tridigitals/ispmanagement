@@ -34,7 +34,9 @@ class HomeTab extends ConsumerStatefulWidget {
 class _HomeTabState extends ConsumerState<HomeTab> {
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+
+
+    final isp = context.isp;    final l10n = AppLocalizations.of(context);
     final user = ref.watch(currentUserProvider);
     final subState = ref.watch(mySubscriptionsProvider);
     final invState = ref.watch(myInvoicesProvider);
@@ -50,7 +52,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
           ref.read(myInvoicesProvider.future),
         ]);
       },
-      color: AppColors.accent,
+      color: isp.accent,
       child: CustomScrollView(
         slivers: [
           // ── App bar ──
@@ -71,8 +73,8 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                         right: -2,
                         child: Container(
                           padding: const EdgeInsets.all(3),
-                          decoration: const BoxDecoration(
-                            color: AppColors.danger,
+                          decoration: BoxDecoration(
+                            color: isp.danger,
                             shape: BoxShape.circle,
                           ),
                           constraints: const BoxConstraints(
@@ -158,7 +160,9 @@ class _PrimarySubscriptionState extends ConsumerState<_PrimarySubscription> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+
+
+    final isp = context.isp;    final l10n = AppLocalizations.of(context);
     return widget.subState.when(
       loading: () => const IspSkeletonCard(height: 220),
       error: (e, _) => _ErrorCard(message: e.toString()),
@@ -198,8 +202,8 @@ class _PrimarySubscriptionState extends ConsumerState<_PrimarySubscription> {
                     height: 6,
                     decoration: BoxDecoration(
                       color: i == _currentPage
-                          ? AppColors.accent
-                          : AppColors.border,
+                          ? isp.accent
+                          : isp.border,
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
@@ -219,7 +223,9 @@ class _SubscriptionHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+
+
+    final isp = context.isp;    final l10n = AppLocalizations.of(context);
     final fmt = NumberFormat.simpleCurrency(name: sub.currencyCode);
 
     return Material(
@@ -229,9 +235,9 @@ class _SubscriptionHeroCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(_kCardRadius),
         child: Ink(
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: isp.surface,
             borderRadius: BorderRadius.circular(_kCardRadius),
-            border: Border.all(color: AppColors.border, width: 1),
+            border: Border.all(color: isp.border, width: 1),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,12 +245,12 @@ class _SubscriptionHeroCard extends StatelessWidget {
               // Accent line at top
               Container(
                 height: 3,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   borderRadius: BorderRadius.vertical(
                     top: Radius.circular(_kCardRadius),
                   ),
                   gradient: LinearGradient(
-                    colors: [AppColors.accent, AppColors.accentLight],
+                    colors: [isp.accent, isp.accentLight],
                   ),
                 ),
               ),
@@ -262,8 +268,8 @@ class _SubscriptionHeroCard extends StatelessWidget {
                           child: Text(
                             (sub.packageName ?? l10n.internetPackage)
                                 .toUpperCase(),
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
+                            style: TextStyle(
+                              color: isp.textSecondary,
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                               letterSpacing: 1,
@@ -287,8 +293,8 @@ class _SubscriptionHeroCard extends StatelessWidget {
                     // Price — dominant element
                     Text(
                       fmt.format(sub.price),
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
+                      style: TextStyle(
+                        color: isp.textPrimary,
                         fontSize: 44,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -1.5,
@@ -298,8 +304,8 @@ class _SubscriptionHeroCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       '/ ${sub.billingCycle}',
-                      style: const TextStyle(
-                        color: AppColors.textMuted,
+                      style: TextStyle(
+                        color: isp.textMuted,
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
                       ),
@@ -312,12 +318,12 @@ class _SubscriptionHeroCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppColors.accent.withOpacity(0.12),
+                            color: isp.accent.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.router,
-                            color: AppColors.accent,
+                            color: isp.accent,
                             size: 16,
                           ),
                         ),
@@ -325,17 +331,17 @@ class _SubscriptionHeroCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             sub.routerName ?? sub.locationLabel ?? '-',
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
+                            style: TextStyle(
+                              color: isp.textSecondary,
                               fontSize: 14,
                               fontWeight: FontWeight.w400,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const Icon(
+                        Icon(
                           Icons.chevron_right_rounded,
-                          color: AppColors.textMuted,
+                          color: isp.textMuted,
                           size: 22,
                         ),
                       ],
@@ -359,7 +365,9 @@ class _RecentInvoices extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+
+
+    final isp = context.isp;    final l10n = AppLocalizations.of(context);
     final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,10 +379,10 @@ class _RecentInvoices extends StatelessWidget {
             children: [
               Text(
                 l10n.recentInvoices,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: isp.textPrimary,
                 ),
               ),
               TextButton(
@@ -387,21 +395,21 @@ class _RecentInvoices extends StatelessWidget {
         const SizedBox(height: _kElementSpacing),
         Container(
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: isp.surface,
             borderRadius: BorderRadius.circular(_kCardRadius),
-            border: Border.all(color: AppColors.border, width: 1),
+            border: Border.all(color: isp.border, width: 1),
           ),
           child: invState.when(
             loading: () => const IspSkeletonList(itemCount: 3),
             error: (e, _) => _ErrorCard(message: e.toString()),
             data: (page) {
               if (page.isEmpty) {
-                return const Padding(
+                return Padding(
                   padding: EdgeInsets.all(24),
                   child: Center(
                     child: Text(
                       'No invoices',
-                      style: TextStyle(color: AppColors.textMuted),
+                      style: TextStyle(color: isp.textMuted),
                     ),
                   ),
                 );
@@ -409,10 +417,10 @@ class _RecentInvoices extends StatelessWidget {
               return Column(
                 children: page.take(5).map((inv) {
                   final statusColor = inv.isPaid
-                      ? AppColors.success
+                      ? isp.success
                       : inv.isOverdue
-                          ? AppColors.danger
-                          : AppColors.warning;
+                          ? isp.danger
+                          : isp.warning;
                   return Material(
                     color: Colors.transparent,
                     child: InkWell(
@@ -423,10 +431,10 @@ class _RecentInvoices extends StatelessWidget {
                           horizontal: 16,
                           vertical: 14,
                         ),
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           border: Border(
                             bottom: BorderSide(
-                              color: AppColors.border,
+                              color: isp.border,
                               width: 0.5,
                             ),
                           ),
@@ -437,13 +445,13 @@ class _RecentInvoices extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: AppColors.surfaceElevated,
+                                color: isp.surfaceElevated,
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.receipt_outlined,
                                 size: 18,
-                                color: AppColors.textSecondary,
+                                color: isp.textSecondary,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -454,10 +462,10 @@ class _RecentInvoices extends StatelessWidget {
                                 children: [
                                   Text(
                                     inv.invoiceNumber,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary,
+                                      color: isp.textPrimary,
                                     ),
                                   ),
                                   if (inv.subscriptionLabel != null ||
@@ -465,9 +473,9 @@ class _RecentInvoices extends StatelessWidget {
                                     const SizedBox(height: 2),
                                     Text(
                                       inv.subscriptionLabel ?? inv.notes ?? '',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
-                                        color: AppColors.textMuted,
+                                        color: isp.textMuted,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -482,10 +490,10 @@ class _RecentInvoices extends StatelessWidget {
                               children: [
                                 Text(
                                   fmt.format(inv.amount),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 14,
-                                    color: AppColors.textPrimary,
+                                    color: isp.textPrimary,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -532,27 +540,29 @@ class _ErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+
+
+    final isp = context.isp;    return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.danger.withOpacity(0.1),
+        color: isp.danger.withOpacity(0.1),
         borderRadius: BorderRadius.circular(_kCardRadius),
         border: Border.all(
-          color: AppColors.danger.withOpacity(0.25),
+          color: isp.danger.withOpacity(0.25),
           width: 1,
         ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, color: AppColors.danger),
+          Icon(Icons.error_outline, color: isp.danger),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: AppColors.textPrimary,
+                color: isp.textPrimary,
               ),
             ),
           ),
@@ -570,26 +580,28 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+
+
+    final isp = context.isp;    return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isp.surface,
         borderRadius: BorderRadius.circular(_kCardRadius),
-        border: Border.all(color: AppColors.border, width: 1),
+        border: Border.all(color: isp.border, width: 1),
       ),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.inbox_outlined,
               size: 48,
-              color: AppColors.textMuted,
+              color: isp.textMuted,
             ),
             const SizedBox(height: 12),
             Text(
               label,
-              style: const TextStyle(color: AppColors.textMuted),
+              style: TextStyle(color: isp.textMuted),
             ),
           ],
         ),

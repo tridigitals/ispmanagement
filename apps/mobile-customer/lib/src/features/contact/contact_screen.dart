@@ -25,6 +25,7 @@ class ContactScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isp = context.isp;
     final l10n = AppLocalizations.of(context);
     final contactAsync = ref.watch(contactInfoProvider);
 
@@ -43,6 +44,7 @@ class ContactScreen extends ConsumerWidget {
     AppLocalizations l10n,
     Map<String, String> contact,
   ) {
+    final isp = context.isp;
     final phone = contact['company_phone'] ?? '';
     final whatsapp = contact['company_whatsapp'] ?? '';
     final email = contact['company_email'] ?? '';
@@ -66,7 +68,7 @@ class ContactScreen extends ConsumerWidget {
         if (phone.isNotEmpty)
           _ContactCard(
             icon: Icons.phone,
-            color: IspColors.success,
+            color: isp.success,
             title: 'Telepon',
             subtitle: phone,
             onTap: () => _launch('tel:$phone'),
@@ -75,7 +77,7 @@ class ContactScreen extends ConsumerWidget {
         if (whatsapp.isNotEmpty)
           _ContactCard(
             icon: Icons.chat_bubble,
-            color: IspColors.success,
+            color: isp.success,
             title: 'WhatsApp',
             subtitle: whatsapp,
             onTap: () {
@@ -87,7 +89,7 @@ class ContactScreen extends ConsumerWidget {
         if (email.isNotEmpty)
           _ContactCard(
             icon: Icons.email_outlined,
-            color: IspColors.info,
+            color: isp.info,
             title: 'Email',
             subtitle: email,
             onTap: () => _launch('mailto:$email'),
@@ -96,7 +98,7 @@ class ContactScreen extends ConsumerWidget {
         if (address.isNotEmpty)
           _ContactCard(
             icon: Icons.location_on_outlined,
-            color: IspColors.primary,
+            color: isp.accent,
             title: l10n.officeAddress,
             subtitle: address,
             onTap: () => _launch(
@@ -106,7 +108,7 @@ class ContactScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           _ContactCard(
             icon: Icons.language,
-            color: IspColors.info,
+            color: isp.info,
             title: 'Website',
             subtitle: website,
             onTap: () => _launch(website),
@@ -114,15 +116,15 @@ class ContactScreen extends ConsumerWidget {
         ],
         if (phone.isEmpty && whatsapp.isEmpty && email.isEmpty) ...[
           const SizedBox(height: 48),
-          const Center(
+          Center(
             child: Column(
               children: [
                 Icon(Icons.contact_support_outlined,
-                    size: 48, color: IspColors.textTertiary),
+                    size: 48, color: isp.textMuted),
                 SizedBox(height: 12),
                 Text(
                   'Informasi kontak belum tersedia',
-                  style: TextStyle(color: IspColors.textTertiary),
+                  style: TextStyle(color: isp.textMuted),
                 ),
               ],
             ),
@@ -134,17 +136,17 @@ class ContactScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                const Icon(Icons.access_time, color: IspColors.textTertiary),
+                Icon(Icons.access_time, color: isp.textMuted),
                 const SizedBox(height: 8),
                 Text(
                   l10n.serviceHours,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Senin - Minggu\n24 jam (gangguan)\n08:00 - 21:00 (admin)',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: IspColors.textTertiary),
+                  style: TextStyle(color: isp.textMuted),
                 ),
               ],
             ),
@@ -178,7 +180,9 @@ class _ContactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+
+
+    final isp = context.isp;    return Card(
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(IspRadii.lg),
@@ -209,15 +213,15 @@ class _ContactCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: IspColors.textTertiary,
+                        color: isp.textMuted,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: IspColors.textTertiary),
+              Icon(Icons.chevron_right, color: isp.textMuted),
             ],
           ),
         ),

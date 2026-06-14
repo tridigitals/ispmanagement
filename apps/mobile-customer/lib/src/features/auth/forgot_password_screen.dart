@@ -50,7 +50,9 @@ class _State extends ConsumerState<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+
+
+    final isp = context.isp;    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.forgotPassword)),
       body: SafeArea(
@@ -62,10 +64,10 @@ class _State extends ConsumerState<ForgotPasswordScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: IspSpacing.xl),
-                const Icon(
+                Icon(
                   Icons.lock_reset_outlined,
                   size: 64,
-                  color: IspColors.primary,
+                  color: isp.accent,
                 ),
                 const SizedBox(height: IspSpacing.lg),
                 Text(
@@ -79,7 +81,7 @@ class _State extends ConsumerState<ForgotPasswordScreen> {
                 const SizedBox(height: 6),
                 Text(
                   l10n.forgotPasswordSub,
-                  style: const TextStyle(color: IspColors.textTertiary),
+                  style: TextStyle(color: isp.textMuted),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: IspSpacing.xxl),
@@ -110,20 +112,20 @@ class _State extends ConsumerState<ForgotPasswordScreen> {
                   Container(
                     padding: const EdgeInsets.all(IspSpacing.md),
                     decoration: BoxDecoration(
-                      color: IspColors.success.withOpacity(0.1),
+                      color: isp.success.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(IspRadii.md),
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.check_circle_outline,
-                          color: IspColors.success,
+                          color: isp.success,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _done!,
-                            style: const TextStyle(color: IspColors.success),
+                            style: TextStyle(color: isp.success),
                           ),
                         ),
                       ],

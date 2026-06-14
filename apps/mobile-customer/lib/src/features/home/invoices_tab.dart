@@ -85,16 +85,18 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+
+
+    final isp = context.isp;    final l10n = AppLocalizations.of(context);
 
     if (!_initialLoaded) {
       return CustomScrollView(
         slivers: [
           SliverAppBar(title: Text(l10n.myInvoices), pinned: true),
-          const SliverFillRemaining(
+          SliverFillRemaining(
             hasScrollBody: false,
             child: Center(
-                child: CircularProgressIndicator(color: AppColors.accent)),
+                child: CircularProgressIndicator(color: isp.accent)),
           ),
         ],
       );
@@ -110,13 +112,13 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline,
-                      size: 48, color: AppColors.danger),
+                  Icon(Icons.error_outline,
+                      size: 48, color: isp.danger),
                   const SizedBox(height: 12),
                   Text(
                     _initialError.toString(),
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.textSecondary),
+                    style: TextStyle(color: isp.textSecondary),
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
@@ -148,15 +150,15 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.receipt_long_outlined,
                     size: 64,
-                    color: AppColors.textMuted,
+                    color: isp.textMuted,
                   ),
                   const SizedBox(height: 12),
                   Text(
                     l10n.noInvoicesYet,
-                    style: const TextStyle(color: AppColors.textMuted),
+                    style: TextStyle(color: isp.textMuted),
                   ),
                 ],
               ),
@@ -169,7 +171,7 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
     return NotificationListener<ScrollNotification>(
       onNotification: _onScroll,
       child: RefreshIndicator(
-        color: AppColors.accent,
+        color: isp.accent,
         onRefresh: () async {
           setState(() {
             _items.clear();
@@ -189,7 +191,7 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
                   (context, index) {
                     if (index == _items.length) {
                       return _loadingMore
-                          ? const Padding(
+                          ? Padding(
                               padding: EdgeInsets.all(24),
                               child: Center(
                                 child: SizedBox(
@@ -197,7 +199,7 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
                                   height: 24,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: AppColors.accent,
+                                    color: isp.accent,
                                   ),
                                 ),
                               ),
@@ -223,7 +225,9 @@ class _InvoiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fmt = NumberFormat.simpleCurrency(name: inv.currencyCode);
+
+
+    final isp = context.isp;    final fmt = NumberFormat.simpleCurrency(name: inv.currencyCode);
     final dateFmt = DateFormat('d MMM yyyy', 'id_ID');
     final l10n = AppLocalizations.of(context);
     return Material(
@@ -232,9 +236,9 @@ class _InvoiceTile extends StatelessWidget {
         onTap: () => GoRouter.of(context).push('/invoices/${inv.id}'),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: AppColors.border, width: 0.5),
+              bottom: BorderSide(color: isp.border, width: 0.5),
             ),
           ),
           child: Column(
@@ -245,10 +249,10 @@ class _InvoiceTile extends StatelessWidget {
                 children: [
                   Text(
                     inv.invoiceNumber,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: isp.textPrimary,
                     ),
                   ),
                   IspStatusBadge(
@@ -264,18 +268,18 @@ class _InvoiceTile extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 '${l10n.dueOn ?? 'Jatuh tempo'} ${dateFmt.format(inv.dueDate)}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: AppColors.textMuted,
+                  color: isp.textMuted,
                 ),
               ),
               const SizedBox(height: 12),
               Text(
                 fmt.format(inv.amount),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: isp.textPrimary,
                 ),
               ),
             ],

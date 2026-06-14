@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -20,6 +21,7 @@ class HomeShell extends ConsumerStatefulWidget {
 }
 
 class _State extends ConsumerState<HomeShell> {
+  late final IspThemeColors isp;
   int _tab = 0;
   Set<String> _knownIds = {};
   bool _notificationsInitialised = false;
@@ -84,7 +86,7 @@ class _State extends ConsumerState<HomeShell> {
             ),
           ],
         ),
-        backgroundColor: AppColors.accent,
+        backgroundColor: isp.accent,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 76),
         shape: RoundedRectangleBorder(
@@ -135,7 +137,9 @@ class _State extends ConsumerState<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+
+final isp = context.isp;
+final l10n = AppLocalizations.of(context);
     final notifState = ref.watch(notificationsProvider);
 
     // Detect new notifications arriving via polling.
@@ -236,12 +240,14 @@ class _CleanNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+
+final isp = context.isp;
+return Container(
       height: 64,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
+      decoration: BoxDecoration(
+        color: isp.surface,
         border: Border(
-          top: BorderSide(color: AppColors.border, width: 1),
+          top: BorderSide(color: isp.border, width: 1),
         ),
       ),
       child: Row(
@@ -273,7 +279,9 @@ class _NavBarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+
+final isp = context.isp;
+return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
@@ -284,7 +292,7 @@ class _NavBarItem extends StatelessWidget {
             : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: isSelected
             ? BoxDecoration(
-                color: AppColors.accent,
+                color: isp.accent,
                 borderRadius: BorderRadius.circular(9999),
               )
             : null,
@@ -293,7 +301,7 @@ class _NavBarItem extends StatelessWidget {
           children: [
             Icon(
               isSelected ? destination.selectedIcon : destination.icon,
-              color: isSelected ? Colors.white : AppColors.textMuted,
+              color: isSelected ? Colors.white : isp.textMuted,
               size: isSelected ? 20 : 24,
             ),
             if (isSelected) ...[

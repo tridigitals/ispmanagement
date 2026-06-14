@@ -32,28 +32,30 @@ class _Banner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (icon, color, text) = switch (status.status) {
+
+
+    final isp = context.isp;    final (icon, color, text) = switch (status.status) {
       NetworkOperationalStatus.majorOutage => (
           Icons.signal_wifi_off,
-          IspColors.danger,
+          isp.danger,
           'Tidak ada koneksi di area ${status.area}',
         ),
       NetworkOperationalStatus.partialOutage => (
           Icons.warning_amber_rounded,
-          IspColors.warning,
+          isp.warning,
           'Gangguan sebagian di ${status.area}',
         ),
       NetworkOperationalStatus.degraded => (
           Icons.network_check,
-          IspColors.warning,
+          isp.warning,
           'Koneksi lambat di ${status.area}',
         ),
       NetworkOperationalStatus.maintenance => (
           Icons.engineering,
-          IspColors.info,
+          isp.info,
           'Pemeliharaan jaringan di ${status.area}',
         ),
-      _ => (Icons.info_outline, IspColors.info, status.statusLabel),
+      _ => (Icons.info_outline, isp.info, status.statusLabel),
     };
 
     return Container(
@@ -80,9 +82,9 @@ class _Banner extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     status.message!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: IspColors.textTertiary,
+                      color: isp.textMuted,
                     ),
                   ),
                 ],
@@ -90,9 +92,9 @@ class _Banner extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     'Estimasi pulih: ${_fmtTime(status.eta!)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: IspColors.textTertiary,
+                      color: isp.textMuted,
                     ),
                   ),
                 ],

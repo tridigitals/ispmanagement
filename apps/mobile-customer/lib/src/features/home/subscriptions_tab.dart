@@ -87,7 +87,9 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+
+
+    final isp = context.isp;    final l10n = AppLocalizations.of(context);
 
     // Still loading initial
     if (!_initialLoaded) {
@@ -144,7 +146,7 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
     return NotificationListener<ScrollNotification>(
       onNotification: _onScroll,
       child: RefreshIndicator(
-        color: AppColors.accent,
+        color: isp.accent,
         onRefresh: () async {
           setState(() {
             _items.clear();
@@ -165,7 +167,7 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
                     if (index == _items.length) {
                       // Load-more indicator
                       return _loadingMore
-                          ? const Padding(
+                          ? Padding(
                               padding: EdgeInsets.all(24),
                               child: Center(
                                 child: SizedBox(
@@ -173,7 +175,7 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
                                   height: 24,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: AppColors.accent,
+                                    color: isp.accent,
                                   ),
                                 ),
                               ),
@@ -199,16 +201,18 @@ class _SubscriptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fmt = NumberFormat.simpleCurrency(name: sub.currencyCode);
+
+
+    final isp = context.isp;    final fmt = NumberFormat.simpleCurrency(name: sub.currencyCode);
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () => GoRouter.of(context).push('/subscriptions/${sub.id}'),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: AppColors.border, width: 0.5),
+              bottom: BorderSide(color: isp.border, width: 0.5),
             ),
           ),
           child: Column(
@@ -221,10 +225,10 @@ class _SubscriptionTile extends StatelessWidget {
                   Expanded(
                     child: Text(
                       sub.packageName ?? 'Paket',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: isp.textPrimary,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -243,30 +247,30 @@ class _SubscriptionTile extends StatelessWidget {
               // ── Router + Location ──
               Row(
                 children: [
-                  const Icon(Icons.router,
-                      size: 15, color: AppColors.textMuted),
+                  Icon(Icons.router,
+                      size: 15, color: isp.textMuted),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       sub.routerName ?? sub.locationLabel ?? '-',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.textMuted,
+                        color: isp.textMuted,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (sub.locationLabel != null && sub.routerName != null) ...[
                     const SizedBox(width: 8),
-                    const Icon(Icons.location_on_outlined,
-                        size: 14, color: AppColors.textMuted),
+                    Icon(Icons.location_on_outlined,
+                        size: 14, color: isp.textMuted),
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
                         sub.locationLabel!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textMuted,
+                          color: isp.textMuted,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -284,17 +288,17 @@ class _SubscriptionTile extends StatelessWidget {
                     children: [
                       Text(
                         fmt.format(sub.price),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: isp.textPrimary,
                         ),
                       ),
                       Text(
                         '/ ${sub.billingCycle}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textMuted,
+                          color: isp.textMuted,
                         ),
                       ),
                     ],
@@ -302,13 +306,13 @@ class _SubscriptionTile extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: AppColors.accent.withOpacity(0.12),
+                      color: isp.accent.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.arrow_forward_ios,
                       size: 14,
-                      color: AppColors.accent,
+                      color: isp.accent,
                     ),
                   ),
                 ],

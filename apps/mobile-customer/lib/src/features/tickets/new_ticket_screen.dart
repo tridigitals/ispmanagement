@@ -166,7 +166,9 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+
+
+    final isp = context.isp;    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.newTicket)),
       body: Form(
@@ -181,15 +183,15 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.title,
-                          size: 18, color: IspColors.primary),
+                      Icon(Icons.title,
+                          size: 18, color: isp.accent),
                       const SizedBox(width: IspSpacing.sm),
                       Text(
                         'Subjek',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: IspColors.textSecondary,
+                          color: isp.textSecondary,
                         ),
                       ),
                     ],
@@ -216,15 +218,15 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.description_outlined,
-                          size: 18, color: IspColors.primary),
+                      Icon(Icons.description_outlined,
+                          size: 18, color: isp.accent),
                       const SizedBox(width: IspSpacing.sm),
                       Text(
                         'Deskripsi Masalah',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: IspColors.textSecondary,
+                          color: isp.textSecondary,
                         ),
                       ),
                     ],
@@ -253,15 +255,15 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.flag_outlined,
-                          size: 18, color: IspColors.primary),
+                      Icon(Icons.flag_outlined,
+                          size: 18, color: isp.accent),
                       const SizedBox(width: IspSpacing.sm),
                       Text(
                         'Prioritas',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: IspColors.textSecondary,
+                          color: isp.textSecondary,
                         ),
                       ),
                     ],
@@ -297,15 +299,15 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.category_outlined,
-                          size: 18, color: IspColors.primary),
+                      Icon(Icons.category_outlined,
+                          size: 18, color: isp.accent),
                       const SizedBox(width: IspSpacing.sm),
                       Text(
                         'Kategori',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: IspColors.textSecondary,
+                          color: isp.textSecondary,
                         ),
                       ),
                     ],
@@ -344,15 +346,15 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.wifi_outlined,
-                          size: 18, color: IspColors.primary),
+                      Icon(Icons.wifi_outlined,
+                          size: 18, color: isp.accent),
                       const SizedBox(width: IspSpacing.sm),
                       Text(
                         'Langganan Terkait',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: IspColors.textSecondary,
+                          color: isp.textSecondary,
                         ),
                       ),
                     ],
@@ -404,15 +406,15 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.attach_file,
-                          size: 18, color: IspColors.primary),
+                      Icon(Icons.attach_file,
+                          size: 18, color: isp.accent),
                       const SizedBox(width: IspSpacing.sm),
                       Text(
                         'Lampiran',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: IspColors.textSecondary,
+                          color: isp.textSecondary,
                         ),
                       ),
                     ],

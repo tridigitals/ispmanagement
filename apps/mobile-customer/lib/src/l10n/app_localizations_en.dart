@@ -341,6 +341,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get report => 'Report';
 
   @override
+  String get share => 'Share';
+
+  @override
   String get unpaidBills => 'Unpaid Bills';
 
   @override

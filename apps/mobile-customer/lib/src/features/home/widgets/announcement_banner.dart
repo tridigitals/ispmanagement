@@ -67,7 +67,9 @@ class _AnnouncementBannerState extends ConsumerState<AnnouncementBanner>
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(activeAnnouncementsProvider);
+
+
+    final isp = context.isp;    final async = ref.watch(activeAnnouncementsProvider);
 
     return async.when(
       loading: () => const SizedBox.shrink(),
@@ -140,7 +142,9 @@ class _AnnouncementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+
+
+    final isp = context.isp;    return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -148,18 +152,18 @@ class _AnnouncementCard extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              IspColors.warning.withOpacity(0.22),
-              IspColors.warning.withOpacity(0.08),
+              isp.warning.withOpacity(0.22),
+              isp.warning.withOpacity(0.08),
             ],
           ),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: IspColors.warning.withOpacity(0.45),
+            color: isp.warning.withOpacity(0.45),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: IspColors.warning.withOpacity(0.12),
+              color: isp.warning.withOpacity(0.12),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -173,13 +177,13 @@ class _AnnouncementCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: IspColors.warning.withOpacity(0.20),
+                  color: isp.warning.withOpacity(0.20),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.campaign_rounded,
                   size: 22,
-                  color: IspColors.warning,
+                  color: isp.warning,
                 ),
               ),
             ),
@@ -194,10 +198,10 @@ class _AnnouncementCard extends StatelessWidget {
                     announcement.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: IspColors.warning,
+                      color: isp.warning,
                       height: 1.3,
                     ),
                   ),
@@ -210,7 +214,7 @@ class _AnnouncementCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
-                        color: IspColors.warning.withOpacity(0.75),
+                        color: isp.warning.withOpacity(0.75),
                         height: 1.3,
                       ),
                     ),
@@ -223,7 +227,7 @@ class _AnnouncementCard extends StatelessWidget {
             Icon(
               Icons.arrow_forward_ios_rounded,
               size: 14,
-              color: IspColors.warning.withOpacity(0.55),
+              color: isp.warning.withOpacity(0.55),
             ),
             const SizedBox(width: 6),
             // Dismiss
@@ -234,7 +238,7 @@ class _AnnouncementCard extends StatelessWidget {
                 child: Icon(
                   Icons.close_rounded,
                   size: 16,
-                  color: IspColors.warning.withOpacity(0.35),
+                  color: isp.warning.withOpacity(0.35),
                 ),
               ),
             ),
@@ -252,7 +256,9 @@ class _DotsIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+
+
+    final isp = context.isp;    return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: List.generate(total, (i) {
@@ -264,8 +270,8 @@ class _DotsIndicator extends StatelessWidget {
           height: 5,
           decoration: BoxDecoration(
             color: active
-                ? IspColors.warning
-                : IspColors.warning.withOpacity(0.20),
+                ? isp.warning
+                : isp.warning.withOpacity(0.20),
             borderRadius: BorderRadius.circular(3),
           ),
         );

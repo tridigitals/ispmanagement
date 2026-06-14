@@ -24,6 +24,18 @@ class TwoFactorVerifyScreen extends ConsumerStatefulWidget {
 }
 
 class _State extends ConsumerState<TwoFactorVerifyScreen> {
+
+  late final IspThemeColors isp;
+
+
+
+  @override
+
+
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    isp = context.isp;
+  }
   final _form = GlobalKey<FormState>();
   final _code = TextEditingController();
   bool _verifying = false;
@@ -49,7 +61,7 @@ class _State extends ConsumerState<TwoFactorVerifyScreen> {
       (err) => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(err.message),
-          backgroundColor: IspColors.danger,
+          backgroundColor: isp.danger,
         ),
       ),
     );
@@ -57,7 +69,9 @@ class _State extends ConsumerState<TwoFactorVerifyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+
+
+final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.verify2fa)),
       body: SafeArea(
@@ -69,10 +83,10 @@ class _State extends ConsumerState<TwoFactorVerifyScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: IspSpacing.xl),
-                const Icon(
+                Icon(
                   Icons.security_outlined,
                   size: 64,
-                  color: IspColors.primary,
+                  color: isp.accent,
                 ),
                 const SizedBox(height: IspSpacing.lg),
                 Text(

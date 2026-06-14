@@ -62,6 +62,13 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
     with WidgetsBindingObserver {
   final _messageCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
+  late final IspThemeColors isp;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    isp = context.isp;
+  }
   bool _sending = false;
   bool _uploading = false;
   Timer? _autoRefreshTimer;
@@ -213,7 +220,9 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    final ticketAsync = ref.watch(ticketByIdProvider(widget.id));
+
+
+    final isp = context.isp;    final ticketAsync = ref.watch(ticketByIdProvider(widget.id));
     final messagesAsync = ref.watch(ticketMessagesProvider(widget.id));
     final dateFmt = DateFormat('d MMM yyyy HH:mm', 'id_ID');
 
@@ -242,9 +251,9 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: IspSpacing.lg, vertical: IspSpacing.sm),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     border: Border(
-                        bottom: BorderSide(color: IspColors.borderSubtle)),
+                        bottom: BorderSide(color: isp.borderSubtle)),
                   ),
                   child: Row(
                     children: [
@@ -274,8 +283,8 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                       const Spacer(),
                       Text(
                         dateFmt.format(ticket.createdAt),
-                        style: const TextStyle(
-                            fontSize: 11, color: IspColors.textTertiary),
+                        style: TextStyle(
+                            fontSize: 11, color: isp.textMuted),
                       ),
                     ],
                   ),
@@ -290,20 +299,20 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                           .push('/subscriptions/${ticket.subscriptionId}'),
                       child: Row(
                         children: [
-                          const Icon(Icons.wifi_outlined,
-                              size: 14, color: IspColors.primary),
+                          Icon(Icons.wifi_outlined,
+                              size: 14, color: isp.accent),
                           const SizedBox(width: 6),
                           Text(
                             'Lihat langganan terkait',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: IspColors.primary,
+                              color: isp.accent,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           const SizedBox(width: 4),
-                          const Icon(Icons.arrow_forward_ios,
-                              size: 10, color: IspColors.primary),
+                          Icon(Icons.arrow_forward_ios,
+                              size: 10, color: isp.accent),
                         ],
                       ),
                     ),
@@ -357,9 +366,9 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
             top: false,
             child: Container(
               padding: const EdgeInsets.all(IspSpacing.md),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: IspColors.bgSecondary,
-                border: Border(top: BorderSide(color: IspColors.borderSubtle)),
+                border: Border(top: BorderSide(color: isp.borderSubtle)),
               ),
               child: Row(
                 children: [
@@ -405,9 +414,9 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
       constraints: const BoxConstraints(maxHeight: 100),
       padding: const EdgeInsets.symmetric(
           horizontal: IspSpacing.md, vertical: IspSpacing.sm),
-      decoration: const BoxDecoration(
-        color: IspColors.bgTertiary,
-        border: Border(top: BorderSide(color: IspColors.borderSubtle)),
+      decoration: BoxDecoration(
+        color: isp.surfaceTertiary,
+        border: Border(top: BorderSide(color: isp.borderSubtle)),
       ),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
@@ -487,7 +496,9 @@ class _MessagesSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
+
+
+    final isp = context.isp;    return ListView.builder(
       padding: const EdgeInsets.all(IspSpacing.lg),
       itemCount: 4,
       itemBuilder: (_, i) {
@@ -526,7 +537,9 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isStaff = message.isFromStaff;
+
+
+    final isp = context.isp;    final isStaff = message.isFromStaff;
     return Align(
       alignment: isStaff ? Alignment.centerLeft : Alignment.centerRight,
       child: Container(
@@ -534,7 +547,7 @@ class _MessageBubble extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         constraints: const BoxConstraints(maxWidth: 300),
         decoration: BoxDecoration(
-          color: isStaff ? IspColors.bgTertiary : IspColors.primary,
+          color: isStaff ? isp.surfaceTertiary : isp.accent,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(IspRadii.lg),
             topRight: const Radius.circular(IspRadii.lg),
@@ -553,15 +566,15 @@ class _MessageBubble extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.shield,
-                        size: 12, color: IspColors.primary),
+                    Icon(Icons.shield,
+                        size: 12, color: isp.accent),
                     const SizedBox(width: IspSpacing.xs),
                     Text(
                       message.authorName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: IspColors.primary,
+                        color: isp.accent,
                       ),
                     ),
                   ],
@@ -572,7 +585,7 @@ class _MessageBubble extends StatelessWidget {
               Text(
                 message.body,
                 style: TextStyle(
-                    color: isStaff ? IspColors.textPrimary : Colors.white),
+                    color: isStaff ? isp.textPrimary : Colors.white),
               ),
             // Attachments
             if (message.attachments.isNotEmpty) ...[
@@ -592,7 +605,7 @@ class _MessageBubble extends StatelessWidget {
               dateFmt.format(message.createdAt),
               style: TextStyle(
                 fontSize: 10,
-                color: isStaff ? IspColors.textTertiary : Colors.white70,
+                color: isStaff ? isp.textMuted : Colors.white70,
               ),
             ),
           ],
@@ -620,7 +633,9 @@ class _AttachmentWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fileUrl =
+
+
+    final isp = context.isp;    final fileUrl =
         '$baseUrl/api/storage/files/${attachment.id}/ticket-content';
 
     if (attachment.isImage) {
@@ -628,7 +643,7 @@ class _AttachmentWidget extends StatelessWidget {
         future: tokenFuture,
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return _buildImageLoading();
+            return _buildImageLoading(context);
           }
           final token = snap.data;
           if (token == null || token.isEmpty) {
@@ -642,7 +657,7 @@ class _AttachmentWidget extends StatelessWidget {
             cacheKey: 'ticket-attachment-${attachment.id}',
             width: 220,
             fit: BoxFit.cover,
-            placeholder: (_, __) => _buildImageLoading(),
+            placeholder: (_, __) => _buildImageLoading(context),
             errorWidget: (_, __, ___) =>
                 _buildImageError(context, 'Gagal memuat'),
             imageBuilder: (context, provider) => GestureDetector(
@@ -686,7 +701,7 @@ class _AttachmentWidget extends StatelessWidget {
                   Icon(
                     _fileIcon(attachment.contentType),
                     size: 20,
-                    color: isStaff ? IspColors.textPrimary : Colors.white,
+                    color: isStaff ? isp.textPrimary : Colors.white,
                   ),
                   const SizedBox(width: IspSpacing.sm),
                   Flexible(
@@ -700,7 +715,7 @@ class _AttachmentWidget extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             color:
-                                isStaff ? IspColors.textPrimary : Colors.white,
+                                isStaff ? isp.textPrimary : Colors.white,
                           ),
                         ),
                         Text(
@@ -708,7 +723,7 @@ class _AttachmentWidget extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 10,
                             color: isStaff
-                                ? IspColors.textTertiary
+                                ? isp.textMuted
                                 : Colors.white60,
                           ),
                         ),
@@ -719,7 +734,7 @@ class _AttachmentWidget extends StatelessWidget {
                   Icon(
                     Icons.download,
                     size: 16,
-                    color: isStaff ? IspColors.textTertiary : Colors.white60,
+                    color: isStaff ? isp.textMuted : Colors.white60,
                   ),
                 ],
               ),
@@ -740,20 +755,22 @@ class _AttachmentWidget extends StatelessWidget {
     return Icons.attach_file;
   }
 
-  Widget _buildImageLoading() {
+  Widget _buildImageLoading(BuildContext context) {
+    final isp = context.isp;
     return Container(
       width: 220,
       height: 120,
       alignment: Alignment.center,
       child: CircularProgressIndicator(
         strokeWidth: 2,
-        color: isStaff ? IspColors.primary : Colors.white70,
+        color: isStaff ? isp.accent : Colors.white70,
       ),
     );
   }
 
   /// Error state with retry button so user isn't stuck on broken image.
   Widget _buildImageError(BuildContext context, String message) {
+    final isp = context.isp;
     return Container(
       width: 220,
       height: 80,
@@ -769,7 +786,7 @@ class _AttachmentWidget extends StatelessWidget {
         children: [
           Icon(
             Icons.broken_image,
-            color: isStaff ? IspColors.textTertiary : Colors.white54,
+            color: isStaff ? isp.textMuted : Colors.white54,
           ),
           const SizedBox(height: 4),
           Text(
@@ -777,7 +794,7 @@ class _AttachmentWidget extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 10,
-              color: isStaff ? IspColors.textTertiary : Colors.white54,
+              color: isStaff ? isp.textMuted : Colors.white54,
             ),
           ),
           const SizedBox(height: 4),

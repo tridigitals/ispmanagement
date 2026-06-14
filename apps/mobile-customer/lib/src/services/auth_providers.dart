@@ -248,6 +248,33 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  /// Upload avatar (base64 image content). Returns the new avatar URL.
+  Future<ServiceResult<String>> uploadAvatar(String base64Content) async {
+    try {
+      final dio = ref.read(dioProvider);
+      final res = await dio.post<Map<String, dynamic>>(
+        '/api/auth/avatar',
+        data: {'content': base64Content},
+      );
+      final data = res.data;
+      if (data == null) {
+        return Failure(ApiException(message: 'Empty response from server'));
+      }
+      final avatarUrl = data['avatar_url'] as String?;
+      if (avatarUrl == null || avatarUrl.isEmpty) {
+        return Failure(ApiException(message: 'No avatar URL returned'));
+      }
+      // Refresh user state with new avatar
+      final me = await ref.read(authServiceProvider).me();
+      if (me is Success<UserModel>) {
+        state = AuthState(user: me.data);
+      }
+      return Success(avatarUrl);
+    } on Exception catch (e) {
+      return Failure(ApiException(message: e.toString()));
+    }
+  }
+
   Future<ServiceResult<bool>> disable2fa() async {
     try {
       final dio = ref.read(dioProvider);
