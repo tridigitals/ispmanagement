@@ -29,6 +29,7 @@ class ProfileScreen extends ConsumerWidget {
       body: ListView(
         children: [
           const SizedBox(height: IspSpacing.xl),
+          // Avatar + Name + Email
           Center(
             child: Column(
               children: [
@@ -39,8 +40,7 @@ class ProfileScreen extends ConsumerWidget {
                       ? NetworkImage(_buildAbsoluteUrl(apiBaseUrl, user!.avatarUrl!))
                       : null,
                   child: user?.avatarUrl == null
-                      ? Icon(Icons.person,
-                          size: 48, color: isp.accent)
+                      ? Icon(Icons.person, size: 48, color: isp.accent)
                       : null,
                 ),
                 const SizedBox(height: IspSpacing.md),
@@ -60,6 +60,7 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: IspSpacing.xl),
+          // Edit Profile
           _ProfileGroup(
             items: [
               _ProfileItem(
@@ -70,6 +71,7 @@ class ProfileScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: IspSpacing.md),
+          // Menu items
           _ProfileGroup(
             items: [
               _ProfileItem(
@@ -96,15 +98,14 @@ class ProfileScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: IspSpacing.md),
-          _ProfileGroup(
-            items: [
-              _ThemeToggleItem(
-                themeMode: themeMode,
-                onChanged: (mode) =>
-                    ref.read(themeModeProvider.notifier).set(mode),
-              ),
-            ],
+          // Theme toggle
+          _ThemeToggleCard(
+            themeMode: themeMode,
+            onChanged: (mode) =>
+                ref.read(themeModeProvider.notifier).set(mode),
           ),
+          const SizedBox(height: IspSpacing.md),
+          // Logout
           _ProfileGroup(
             items: [
               _ProfileItem(
@@ -119,7 +120,7 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: IspSpacing.xl),
           Center(
             child: Text(
-              'v0.1.0+6',
+              'v0.1.0+7',
               style: TextStyle(color: isp.textMuted, fontSize: 12),
             ),
           ),
@@ -134,6 +135,8 @@ class ProfileScreen extends ConsumerWidget {
     return '$baseUrl$url';
   }
 }
+
+// ─── Profile Group Card ────────────────────────────────────────
 
 class _ProfileGroup extends StatelessWidget {
   const _ProfileGroup({required this.items});
@@ -156,6 +159,8 @@ class _ProfileGroup extends StatelessWidget {
     );
   }
 }
+
+// ─── Profile List Item ─────────────────────────────────────────
 
 class _ProfileItem extends StatelessWidget {
   const _ProfileItem({
@@ -200,43 +205,112 @@ class _ProfileItem extends StatelessWidget {
   }
 }
 
-class _ThemeToggleItem extends StatelessWidget {
-  const _ThemeToggleItem({
+// ─── Theme Toggle Card ─────────────────────────────────────────
+
+class _ThemeToggleCard extends StatelessWidget {
+  const _ThemeToggleCard({
     required this.themeMode,
     required this.onChanged,
   });
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onChanged;
+
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
-    return ListTile(
-      leading: Icon(
-        themeMode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
-        color: isp.accent,
+
+    return IspCard(
+      margin: const EdgeInsets.symmetric(
+          horizontal: IspSpacing.lg, vertical: IspSpacing.sm),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              themeMode == ThemeMode.dark
+                  ? Icons.dark_mode
+                  : Icons.light_mode,
+              color: isp.accent,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l10n.darkMode,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            // Compact toggle buttons
+            _buildToggle(isp),
+          ],
+        ),
       ),
-      title: Text(l10n.darkMode),
-      trailing: SegmentedButton<ThemeMode>(
-        segments: [
-          ButtonSegment(
-            value: ThemeMode.light,
-            icon: const Icon(Icons.light_mode, size: 18),
+    );
+  }
+
+  Widget _buildToggle(IspThemeColors isp) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isp.surfaceElevated,
+        borderRadius: BorderRadius.circular(IspRadii.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ToggleBtn(
+            icon: Icons.light_mode,
+            isSelected: themeMode == ThemeMode.light,
+            isp: isp,
+            onTap: () => onChanged(ThemeMode.light),
           ),
-          ButtonSegment(
-            value: ThemeMode.system,
-            icon: const Icon(Icons.brightness_auto, size: 18),
+          _ToggleBtn(
+            icon: Icons.brightness_auto,
+            isSelected: themeMode == ThemeMode.system,
+            isp: isp,
+            onTap: () => onChanged(ThemeMode.system),
           ),
-          ButtonSegment(
-            value: ThemeMode.dark,
-            icon: const Icon(Icons.dark_mode, size: 18),
+          _ToggleBtn(
+            icon: Icons.dark_mode,
+            isSelected: themeMode == ThemeMode.dark,
+            isp: isp,
+            onTap: () => onChanged(ThemeMode.dark),
           ),
         ],
-        selected: {themeMode},
-        onSelectionChanged: (modes) => onChanged(modes.first),
-        style: ButtonStyle(
-          visualDensity: VisualDensity.compact,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
+}
+
+class _ToggleBtn extends StatelessWidget {
+  const _ToggleBtn({
+    required this.icon,
+    required this.isSelected,
+    required this.isp,
+    required this.onTap,
+  });
+  final IconData icon;
+  final bool isSelected;
+  final IspThemeColors isp;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isSelected ? isp.accent : Colors.transparent,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: isSelected ? Colors.white : isp.textMuted,
         ),
       ),
     );
