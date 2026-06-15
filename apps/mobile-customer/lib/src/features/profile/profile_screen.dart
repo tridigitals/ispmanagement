@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../services/app_config.dart';
 import '../../services/auth_providers.dart';
 import '../../services/notifications_providers.dart';
+import '../../services/settings_providers.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -14,18 +16,15 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isp = context.isp;
-final l10n = AppLocalizations.of(context);
+    final l10n = AppLocalizations.of(context);
     final user = ref.watch(currentUserProvider);
     final unread = ref.watch(unreadNotificationsCountProvider).valueOrNull ?? 0;
+    final apiBaseUrl = ref.watch(appConfigProvider).apiBaseUrl;
+    final themeMode = ref.watch(themeModeProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.profile),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => GoRouter.of(context).push('/settings'),
-          ),
-        ],
       ),
       body: ListView(
         children: [
@@ -37,7 +36,7 @@ final l10n = AppLocalizations.of(context);
                   radius: 48,
                   backgroundColor: isp.accentSurface,
                   backgroundImage: user?.avatarUrl != null
-                      ? NetworkImage(user!.avatarUrl!)
+                      ? NetworkImage(_buildAbsoluteUrl(apiBaseUrl, user!.avatarUrl!))
                       : null,
                   child: user?.avatarUrl == null
                       ? Icon(Icons.person,
@@ -64,6 +63,16 @@ final l10n = AppLocalizations.of(context);
           _ProfileGroup(
             items: [
               _ProfileItem(
+                icon: Icons.edit_outlined,
+                title: l10n.editProfile,
+                onTap: () => GoRouter.of(context).push('/edit-profile'),
+              ),
+            ],
+          ),
+          const SizedBox(height: IspSpacing.md),
+          _ProfileGroup(
+            items: [
+              _ProfileItem(
                 icon: Icons.help_outline,
                 title: l10n.faq,
                 onTap: () => GoRouter.of(context).push('/faq'),
@@ -86,6 +95,16 @@ final l10n = AppLocalizations.of(context);
               ),
             ],
           ),
+          const SizedBox(height: IspSpacing.md),
+          _ProfileGroup(
+            items: [
+              _ThemeToggleItem(
+                themeMode: themeMode,
+                onChanged: (mode) =>
+                    ref.read(themeModeProvider.notifier).set(mode),
+              ),
+            ],
+          ),
           _ProfileGroup(
             items: [
               _ProfileItem(
@@ -100,7 +119,7 @@ final l10n = AppLocalizations.of(context);
           const SizedBox(height: IspSpacing.xl),
           Center(
             child: Text(
-              'v0.1.0+1',
+              'v0.1.0+6',
               style: TextStyle(color: isp.textMuted, fontSize: 12),
             ),
           ),
@@ -109,16 +128,20 @@ final l10n = AppLocalizations.of(context);
       ),
     );
   }
+
+  String _buildAbsoluteUrl(String baseUrl, String url) {
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return '$baseUrl$url';
+  }
 }
 
 class _ProfileGroup extends StatelessWidget {
   const _ProfileGroup({required this.items});
-  final List<_ProfileItem> items;
+  final List<Widget> items;
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return IspCard(
+    final isp = context.isp;
+    return IspCard(
       margin: const EdgeInsets.symmetric(
           horizontal: IspSpacing.lg, vertical: IspSpacing.sm),
       child: Column(
@@ -151,9 +174,8 @@ class _ProfileItem extends StatelessWidget {
   final Color? titleColor;
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return ListTile(
+    final isp = context.isp;
+    return ListTile(
       leading: Icon(icon, color: iconColor),
       title: Text(title, style: TextStyle(color: titleColor)),
       trailing: badge != null
@@ -174,6 +196,49 @@ class _ProfileItem extends StatelessWidget {
             )
           : Icon(Icons.chevron_right, color: isp.textMuted),
       onTap: onTap,
+    );
+  }
+}
+
+class _ThemeToggleItem extends StatelessWidget {
+  const _ThemeToggleItem({
+    required this.themeMode,
+    required this.onChanged,
+  });
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode> onChanged;
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
+    return ListTile(
+      leading: Icon(
+        themeMode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
+        color: isp.accent,
+      ),
+      title: Text(l10n.darkMode),
+      trailing: SegmentedButton<ThemeMode>(
+        segments: [
+          ButtonSegment(
+            value: ThemeMode.light,
+            icon: const Icon(Icons.light_mode, size: 18),
+          ),
+          ButtonSegment(
+            value: ThemeMode.system,
+            icon: const Icon(Icons.brightness_auto, size: 18),
+          ),
+          ButtonSegment(
+            value: ThemeMode.dark,
+            icon: const Icon(Icons.dark_mode, size: 18),
+          ),
+        ],
+        selected: {themeMode},
+        onSelectionChanged: (modes) => onChanged(modes.first),
+        style: ButtonStyle(
+          visualDensity: VisualDensity.compact,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      ),
     );
   }
 }

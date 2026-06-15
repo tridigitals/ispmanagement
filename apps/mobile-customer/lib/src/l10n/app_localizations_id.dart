@@ -426,4 +426,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get details => 'Detail';
+
+  @override
+  String get darkMode => 'Mode Gelap';
 }
