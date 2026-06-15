@@ -91,7 +91,7 @@ class IspSkeletonCard extends StatelessWidget {
         padding: const EdgeInsets.all(IspSpacing.lg),
         child: Shimmer.fromColors(
           baseColor: isp.surfaceTertiary,
-          highlightColor: IspColors.bgHover,
+          highlightColor: isp.surfaceHover,
           child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

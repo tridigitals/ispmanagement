@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart';
 
 // ─── Revolut + Linear Design Tokens ─────────────────────────────
 // Dark, clean, premium palette. No glassmorphism, no excessive effects.
@@ -69,6 +70,7 @@ class AppTheme {
       canvasColor: AppColors.lightSurface,
       cardColor: AppColors.lightSurface,
       dividerColor: AppColors.lightBorder,
+      extensions: [IspThemeColors.light],
       splashFactory: InkRipple.splashFactory,
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.lightSurface,
@@ -222,6 +224,7 @@ class AppTheme {
       canvasColor: AppColors.surface,
       cardColor: AppColors.surface,
       dividerColor: AppColors.border,
+      extensions: [IspThemeColors.dark],
       splashFactory: InkRipple.splashFactory,
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.bg,

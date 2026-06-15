@@ -367,7 +367,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
             child: Container(
               padding: const EdgeInsets.all(IspSpacing.md),
               decoration: BoxDecoration(
-                color: IspColors.bgSecondary,
+                color: isp.surface,
                 border: Border(top: BorderSide(color: isp.borderSubtle)),
               ),
               child: Row(
