@@ -200,6 +200,7 @@ pub struct SupportTicketStats {
 #[derive(Deserialize)]
 pub struct ListParams {
     pub status: Option<String>,
+    pub category: Option<String>,
     pub search: Option<String>,
     pub page: Option<u32>,
     pub per_page: Option<u32>,
@@ -256,6 +257,12 @@ pub async fn list_support_tickets(
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty());
 
+    let category = params
+        .category
+        .as_deref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
     let (rows, total): (Vec<SupportTicketListItem>, i64) = if can_all {
         let total: i64 = sqlx::query_scalar(
             r#"
@@ -264,16 +271,16 @@ pub async fn list_support_tickets(
             LEFT JOIN users u ON u.id = t.created_by
             WHERE t.tenant_id = $1
               AND ($2::text IS NULL OR t.status = $2)
-              AND (
-                $3::text IS NULL
+              AND ($3::text IS NULL
                 OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
-                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%'
-              )
+                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%')
+              AND ($4::text IS NULL OR t.category = $4)
         "#,
         )
         .bind(&tenant_id)
         .bind(st.clone())
         .bind(search.clone())
+        .bind(category.clone())
         .fetch_one(&state.auth_service.pool)
         .await?;
 
@@ -288,18 +295,18 @@ pub async fn list_support_tickets(
             LEFT JOIN users u ON u.id = t.created_by
             WHERE t.tenant_id = $1
               AND ($2::text IS NULL OR t.status = $2)
-              AND (
-                $3::text IS NULL
+              AND ($3::text IS NULL
                 OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
-                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%'
-              )
+                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%')
+              AND ($4::text IS NULL OR t.category = $4)
             ORDER BY COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
-            LIMIT $4 OFFSET $5
+            LIMIT $5 OFFSET $6
         "#,
         )
         .bind(&tenant_id)
         .bind(st)
         .bind(search)
+        .bind(category)
         .bind(per_page as i64)
         .bind(offset)
         .fetch_all(&state.auth_service.pool)
@@ -315,17 +322,17 @@ pub async fn list_support_tickets(
             WHERE t.tenant_id = $1
               AND t.created_by = $2
               AND ($3::text IS NULL OR t.status = $3)
-              AND (
-                $4::text IS NULL
+              AND ($4::text IS NULL
                 OR LOWER(t.subject) LIKE '%' || LOWER($4) || '%'
-                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($4) || '%'
-              )
+                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($4) || '%')
+              AND ($5::text IS NULL OR t.category = $5)
         "#,
         )
         .bind(&tenant_id)
         .bind(&claims.sub)
         .bind(st.clone())
         .bind(search.clone())
+        .bind(category.clone())
         .fetch_one(&state.auth_service.pool)
         .await?;
 
@@ -341,19 +348,19 @@ pub async fn list_support_tickets(
             WHERE t.tenant_id = $1
               AND t.created_by = $2
               AND ($3::text IS NULL OR t.status = $3)
-              AND (
-                $4::text IS NULL
+              AND ($4::text IS NULL
                 OR LOWER(t.subject) LIKE '%' || LOWER($4) || '%'
-                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($4) || '%'
-              )
+                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($4) || '%')
+              AND ($5::text IS NULL OR t.category = $5)
             ORDER BY COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
-            LIMIT $5 OFFSET $6
+            LIMIT $6 OFFSET $7
         "#,
         )
         .bind(&tenant_id)
         .bind(&claims.sub)
         .bind(st)
         .bind(search)
+        .bind(category)
         .bind(per_page as i64)
         .bind(offset)
         .fetch_all(&state.auth_service.pool)

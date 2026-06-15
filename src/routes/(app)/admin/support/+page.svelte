@@ -14,7 +14,6 @@
   import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
   import { toast } from '$lib/stores/toast';
   import { t } from 'svelte-i18n';
-  import { get } from 'svelte/store';
   import { formatDateTime } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
 
@@ -32,13 +31,13 @@
 
   let hasMore = $derived(tickets.length < total);
 
-  const categoryOptions = [
-    { label: get(t)('support.categories.all') || 'All', value: 'all' },
-    { label: get(t)('support.categories.general') || 'General', value: 'general' },
-    { label: get(t)('support.categories.billing') || 'Billing', value: 'billing' },
-    { label: get(t)('support.categories.technical') || 'Technical', value: 'technical' },
-    { label: get(t)('support.categories.installation') || 'Installation', value: 'installation' },
-  ];
+  const categoryOptions = $derived([
+    { label: $t('support.categories.all') || 'All', value: 'all' },
+    { label: $t('support.categories.general') || 'General', value: 'general' },
+    { label: $t('support.categories.billing') || 'Billing', value: 'billing' },
+    { label: $t('support.categories.technical') || 'Technical', value: 'technical' },
+    { label: $t('support.categories.installation') || 'Installation', value: 'installation' },
+  ]);
 
   const columns = $derived.by(() => [
     { key: 'subject', label: $t('admin.support.columns.subject') || 'Subject' },
@@ -248,6 +247,11 @@
       {#if key === 'subject'}
         <button class="link" type="button" onclick={() => open(item.id)}>
           {item.subject}
+          {#if item.subscription_id}
+            <span class="sub-link" title={$t('support.detail.view_subscription') || 'Langganan'}>
+              <Icon name="link" size={12} />
+            </span>
+          {/if}
         </button>
       {:else if key === 'status'}
         <span class="badge status {item.status}"
@@ -505,6 +509,14 @@
     cursor: pointer;
     text-align: left;
     font-weight: 900;
+  }
+
+  .sub-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    color: rgba(99, 102, 241, 0.7);
+    margin-left: 0.3rem;
   }
 
   .mono {

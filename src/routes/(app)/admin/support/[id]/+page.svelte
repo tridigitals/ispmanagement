@@ -227,6 +227,14 @@
           {$t('support.detail.updated') || 'Updated'}:
           {formatDateTime(detail.ticket.updated_at, { timeZone: $appSettings.app_timezone })}
         </span>
+        {#if detail.ticket.subscription_id}
+          <span class="dot"></span>
+          <span class="subscription-badge">
+            <Icon name="link" size={13} />
+            {$t('support.detail.view_subscription') || 'Langganan'}:
+            <code>{detail.ticket.subscription_id.slice(0, 8)}</code>
+          </span>
+        {/if}
       </div>
     </div>
 
@@ -915,6 +923,28 @@
     height: 4px;
     border-radius: 999px;
     background: var(--border-color);
+  }
+
+  .subscription-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+  }
+
+  .subscription-badge code {
+    font-family:
+      'SF Mono',
+      'Fira Code',
+      'Cascadia Code',
+      monospace;
+    font-size: 0.78rem;
+    color: rgba(99, 102, 241, 0.9);
   }
 
   .loading {

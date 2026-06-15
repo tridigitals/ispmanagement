@@ -30,6 +30,7 @@ pub struct SupportTicketListItem {
     pub status: String,
     pub priority: String,
     pub category: Option<String>,
+    pub subscription_id: Option<String>,
     pub assigned_to: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

@@ -5240,7 +5240,8 @@
       "not_found": "Tiket tidak ditemukan",
       "thread": "Percakapan",
       "messages": "pesan",
-      "closed_notice": "Tiket ini sudah ditutup. Kamu tidak bisa membalas."
+      "closed_notice": "Tiket ini sudah ditutup. Kamu tidak bisa membalas.",
+      "view_subscription": "Langganan terkait"
     },
     "create": {
       "title": "Buat Tiket"

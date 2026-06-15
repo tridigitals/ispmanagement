@@ -5240,7 +5240,8 @@
       "not_found": "Ticket not found",
       "thread": "Conversation",
       "messages": "messages",
-      "closed_notice": "This ticket is closed. You can’t reply."
+      "closed_notice": "This ticket is closed. You can’t reply.",
+      "view_subscription": "View related subscription"
     },
     "create": {
       "title": "Create Ticket"

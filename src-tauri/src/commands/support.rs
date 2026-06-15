@@ -280,6 +280,7 @@ pub async fn list_support_tickets(
         .bind(&tenant_id)
         .bind(st)
         .bind(search)
+        .bind(category)
         .bind(per_page as i64)
         .bind(offset)
         .fetch_all(&auth_service.pool)
