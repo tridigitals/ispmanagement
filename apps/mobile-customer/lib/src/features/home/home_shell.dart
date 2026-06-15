@@ -7,6 +7,7 @@ import 'package:api_client/api_client.dart' show NotificationModel;
 
 import '../../l10n/app_localizations.dart';
 import '../../services/notifications_providers.dart';
+import '../../services/settings_providers.dart';
 import '../../theme/app_theme.dart';
 import './home_tab.dart';
 import 'invoices_tab.dart';
@@ -22,7 +23,6 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _State extends ConsumerState<HomeShell> {
   late final IspThemeColors isp;
-  int _tab = 0;
   Set<String> _knownIds = {};
   bool _notificationsInitialised = false;
 
@@ -125,8 +125,8 @@ class _State extends ConsumerState<HomeShell> {
     final tabStr = GoRouterState.of(context).uri.queryParameters['tab'];
     if (tabStr != null) {
       final tabIdx = int.tryParse(tabStr);
-      if (tabIdx != null && tabIdx >= 0 && tabIdx < 5 && tabIdx != _tab) {
-        setState(() => _tab = tabIdx);
+      if (tabIdx != null && tabIdx >= 0 && tabIdx < 5) {
+        ref.read(currentTabProvider.notifier).state = tabIdx;
       }
     }
   }
@@ -141,6 +141,7 @@ class _State extends ConsumerState<HomeShell> {
 final isp = context.isp;
 final l10n = AppLocalizations.of(context);
     final notifState = ref.watch(notificationsProvider);
+    final tab = ref.watch(currentTabProvider);
 
     // Detect new notifications arriving via polling.
     final currentIds =
@@ -176,10 +177,11 @@ final l10n = AppLocalizations.of(context);
       ProfileScreen(),
     ];
     return Scaffold(
-      body: IndexedStack(index: _tab, children: pages),
+      body: IndexedStack(index: tab, children: pages),
       bottomNavigationBar: _CleanNavBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
+        selectedIndex: tab,
+        onDestinationSelected: (i) =>
+            ref.read(currentTabProvider.notifier).state = i,
         destinations: [
           _NavDestination(
             icon: Icons.home_outlined,
@@ -212,20 +214,7 @@ final l10n = AppLocalizations.of(context);
   }
 }
 
-// ── Nav destination data ──────────────────────────────────────────
-
-class _NavDestination {
-  const _NavDestination({
-    required this.icon,
-    required this.selectedIcon,
-    required this.label,
-  });
-  final IconData icon;
-  final IconData selectedIcon;
-  final String label;
-}
-
-// ── Clean flat bottom nav bar (Revolut + Linear style) ────────────
+// ─── Clean NavBar ──────────────────────────────────────────────
 
 class _CleanNavBar extends StatelessWidget {
   const _CleanNavBar({
@@ -240,84 +229,73 @@ class _CleanNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-final isp = context.isp;
-return Container(
-      height: 64,
+    final isp = context.isp;
+    return Container(
       decoration: BoxDecoration(
         color: isp.surface,
-        border: Border(
-          top: BorderSide(color: isp.border, width: 1),
-        ),
+        border: Border(top: BorderSide(color: isp.borderSubtle)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: List.generate(destinations.length, (index) {
-          final dest = destinations[index];
-          final isSelected = index == selectedIndex;
-          return _NavBarItem(
-            destination: dest,
-            isSelected: isSelected,
-            onTap: () => onDestinationSelected(index),
-          );
-        }),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          child: Row(
+            children: List.generate(destinations.length, (i) {
+              final d = destinations[i];
+              final selected = i == selectedIndex;
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => onDestinationSelected(i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? isp.accent.withOpacity(0.12)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(IspRadii.pill),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          selected ? d.selectedIcon : d.icon,
+                          size: 22,
+                          color: selected ? isp.accent : isp.textMuted,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          d.label,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight:
+                                selected ? FontWeight.w600 : FontWeight.w400,
+                            color: selected ? isp.accent : isp.textMuted,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
       ),
     );
   }
 }
 
-class _NavBarItem extends StatelessWidget {
-  const _NavBarItem({
-    required this.destination,
-    required this.isSelected,
-    required this.onTap,
+class _NavDestination {
+  const _NavDestination({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
   });
-
-  final _NavDestination destination;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-
-final isp = context.isp;
-return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-        padding: isSelected
-            ? const EdgeInsets.symmetric(horizontal: 16, vertical: 8)
-            : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: isSelected
-            ? BoxDecoration(
-                color: isp.accent,
-                borderRadius: BorderRadius.circular(9999),
-              )
-            : null,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isSelected ? destination.selectedIcon : destination.icon,
-              color: isSelected ? Colors.white : isp.textMuted,
-              size: isSelected ? 20 : 24,
-            ),
-            if (isSelected) ...[
-              const SizedBox(width: 6),
-              Text(
-                destination.label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
 }

@@ -64,6 +64,9 @@ class LocaleNotifier extends Notifier<Locale> {
   }
 }
 
+/// Current bottom nav tab index (persisted across navigation).
+final currentTabProvider = StateProvider<int>((ref) => 0);
+
 /// Async-loaded SharedPreferences (initialized in main()).
 final sharedPreferencesProvider = FutureProvider<SharedPreferences>((ref) {
   return SharedPreferences.getInstance();
