@@ -5191,7 +5191,9 @@
       "message_placeholder": "Describe your issue or request...",
       "attachments": "Attachments",
       "reply": "Reply",
-      "reply_placeholder": "Write your reply..."
+      "reply_placeholder": "Write your reply...",
+      "subscription": "Related Subscription (optional)",
+      "no_subscription": "Not linked"
     },
     "filters": {
       "aria": "Filter tickets",
@@ -5242,6 +5244,17 @@
     },
     "create": {
       "title": "Create Ticket"
+    },
+    "categories": {
+      "all": "All",
+      "general": "General",
+      "billing": "Billing",
+      "technical": "Technical",
+      "installation": "Installation"
+    },
+    "satisfaction": {
+      "title": "⭐ Satisfaction Rating",
+      "no_rating": "No rating yet"
     }
   },
   "topbar": {

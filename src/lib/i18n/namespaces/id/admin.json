@@ -2184,7 +2184,8 @@
       "status": "Status",
       "priority": "Prioritas",
       "updated": "Diperbarui",
-      "messages": "Pesan"
+      "messages": "Pesan",
+      "category": "Kategori"
     },
     "panels": {
       "manage": "Kelola",

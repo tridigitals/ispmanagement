@@ -34,8 +34,8 @@
   let assignedTo = $state<string | null>(null);
 
   let teamMembers = $state<TeamMember[]>([]);
-  let memberOptions = $derived([
-    { label: get(t)('common.na') || '—', value: '' },
+  const memberOptions = $derived([
+    { label: $t('common.na') || '—', value: '' },
     ...teamMembers.map((m) => ({ label: `${m.name} (${m.email})`, value: m.user_id })),
   ]);
 
@@ -47,26 +47,26 @@
   let lightboxIndex = $state(0);
   let LightboxComponent = $state<any>(null);
 
-  const statusOptions = [
-    { label: get(t)('support.status.open') || 'Open', value: 'open' },
-    { label: get(t)('support.status.pending') || 'Pending', value: 'pending' },
-    { label: get(t)('support.status.closed') || 'Closed', value: 'closed' },
-  ];
+  const statusOptions = $derived([
+    { label: $t('support.status.open') || 'Open', value: 'open' },
+    { label: $t('support.status.pending') || 'Pending', value: 'pending' },
+    { label: $t('support.status.closed') || 'Closed', value: 'closed' },
+  ]);
 
-  const priorityOptions = [
-    { label: get(t)('support.priorities.low') || 'Low', value: 'low' },
-    { label: get(t)('support.priorities.normal') || 'Normal', value: 'normal' },
-    { label: get(t)('support.priorities.high') || 'High', value: 'high' },
-    { label: get(t)('support.priorities.urgent') || 'Urgent', value: 'urgent' },
-  ];
+  const priorityOptions = $derived([
+    { label: $t('support.priorities.low') || 'Low', value: 'low' },
+    { label: $t('support.priorities.normal') || 'Normal', value: 'normal' },
+    { label: $t('support.priorities.high') || 'High', value: 'high' },
+    { label: $t('support.priorities.urgent') || 'Urgent', value: 'urgent' },
+  ]);
 
-  const categoryOptions = [
-    { label: get(t)('common.na') || '—', value: '' },
-    { label: get(t)('support.categories.general') || 'General', value: 'general' },
-    { label: get(t)('support.categories.billing') || 'Billing', value: 'billing' },
-    { label: get(t)('support.categories.technical') || 'Technical', value: 'technical' },
-    { label: get(t)('support.categories.installation') || 'Installation', value: 'installation' },
-  ];
+  const categoryOptions = $derived([
+    { label: $t('common.na') || '—', value: '' },
+    { label: $t('support.categories.general') || 'General', value: 'general' },
+    { label: $t('support.categories.billing') || 'Billing', value: 'billing' },
+    { label: $t('support.categories.technical') || 'Technical', value: 'technical' },
+    { label: $t('support.categories.installation') || 'Installation', value: 'installation' },
+  ]);
 
   $effect(() => {
     if (!lightboxOpen) return;
@@ -274,18 +274,18 @@
           </p>
         </div>
 
-        {#if detail.ticket.satisfactionRating}
+        {#if detail.ticket.satisfaction_rating}
         <div class="panel">
-          <div class="panel-title">⭐ Satisfaction Rating</div>
+          <div class="panel-title">{$t('support.satisfaction.title') || '⭐ Satisfaction Rating'}</div>
           <div class="satisfaction-display">
             <div class="rating-stars">
               {#each [1,2,3,4,5] as star}
-                <span class="star" class:filled={star <= (detail.ticket.satisfactionRating ?? 0)}>★</span>
+                <span class="star" class:filled={star <= (detail.ticket.satisfaction_rating ?? 0)}>★</span>
               {/each}
-              <span class="rating-num">{detail.ticket.satisfactionRating}/5</span>
+              <span class="rating-num">{detail.ticket.satisfaction_rating}/5</span>
             </div>
-            {#if detail.ticket.satisfactionComment}
-              <p class="rating-comment">"{detail.ticket.satisfactionComment}"</p>
+            {#if detail.ticket.satisfaction_comment}
+              <p class="rating-comment">"{detail.ticket.satisfaction_comment}"</p>
             {/if}
           </div>
         </div>

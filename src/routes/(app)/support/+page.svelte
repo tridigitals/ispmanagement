@@ -81,7 +81,7 @@
     await loadTickets(true);
     // Load subscriptions for the create modal
     try {
-      const res = await api.customers.portal.listSubscriptions({ per_page: 50, status: 'active' });
+      const res = await api.customers.portal.mySubscriptions({ per_page: 50, status: 'active' });
       subscriptions = (res.data || []).map((s: any) => ({
         id: s.id,
         label: s.package_name || s.plan_name || 'Langganan',
@@ -425,10 +425,10 @@
 
     {#if subscriptions.length > 0}
       <Select
-        label="Langganan Terkait (opsional)"
+        label={$t('support.fields.subscription') || 'Langganan Terkait (opsional)'}
         bind:value={subscriptionId}
         options={[
-          { label: 'Tidak terkait', value: undefined },
+          { label: $t('support.fields.no_subscription') || 'Tidak terkait', value: undefined },
           ...subscriptions.map(s => ({ label: s.label, value: s.id })),
         ]}
       />

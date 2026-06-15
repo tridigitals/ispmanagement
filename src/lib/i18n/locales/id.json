@@ -5191,7 +5191,9 @@
       "message_placeholder": "Jelaskan masalah atau permintaan Anda...",
       "attachments": "Lampiran",
       "reply": "Balas",
-      "reply_placeholder": "Tulis balasan Anda..."
+      "reply_placeholder": "Tulis balasan Anda...",
+      "subscription": "Langganan Terkait (opsional)",
+      "no_subscription": "Tidak terkait"
     },
     "filters": {
       "aria": "Filter tiket",
@@ -5242,6 +5244,17 @@
     },
     "create": {
       "title": "Buat Tiket"
+    },
+    "categories": {
+      "all": "Semua",
+      "general": "Umum",
+      "billing": "Tagihan",
+      "technical": "Teknis",
+      "installation": "Instalasi"
+    },
+    "satisfaction": {
+      "title": "⭐ Penilaian Kepuasan",
+      "no_rating": "Belum ada penilaian"
     }
   },
   "topbar": {

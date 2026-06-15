@@ -2431,7 +2431,8 @@
       "status": "Status",
       "priority": "Priority",
       "updated": "Updated",
-      "messages": "Messages"
+      "messages": "Messages",
+      "category": "Category"
     },
     "panels": {
       "manage": "Manage",
