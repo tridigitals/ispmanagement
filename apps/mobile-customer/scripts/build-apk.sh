@@ -46,6 +46,17 @@ if [[ "${SKIP_FIX:-0}" != "1" ]]; then
     -e 's|"../packages/ui-kit"|"file://'"$PROJECT_ROOT"'/packages/ui-kit"|g' \
     "$APP_DART_TOOL/package_config.json"
   echo "   ui-kit + api-client paths → absolute file://"
+
+  # Fix .flutter-plugins-dependencies — root's resolution:workspace mode means
+  # sub-app doesn't generate its own plugin list, so Gradle misses Firebase + other
+  # native plugins. Copy from root to sub-app.
+  if [[ -f "$PROJECT_ROOT/.flutter-plugins-dependencies" ]]; then
+    cp "$PROJECT_ROOT/.flutter-plugins-dependencies" "$APP_DIR/.flutter-plugins-dependencies"
+    echo "   .flutter-plugins-dependencies copied from monorepo root"
+  fi
+  if [[ -f "$PROJECT_ROOT/.flutter-plugins" ]]; then
+    cp "$PROJECT_ROOT/.flutter-plugins" "$APP_DIR/.flutter-plugins"
+  fi
 fi
 
 # Step 2: Determine build number + name
