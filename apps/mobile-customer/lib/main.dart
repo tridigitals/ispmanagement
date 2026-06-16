@@ -17,7 +17,10 @@ import 'src/services/missing_providers.dart';
 /// Empty string = Sentry disabled (dev / local builds).
 const _sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
 
-/// Visible error widget for release builds (default ErrorWidget is gray box).
+/// Track whether real app has started (prevents double-start).
+bool _appStarted = false;
+
+/// Visible error widget for release builds.
 Widget _visibleErrorWidget(FlutterErrorDetails details) {
   return Container(
     color: const Color(0xFFFFEBEE),
@@ -49,8 +52,10 @@ Widget _visibleErrorWidget(FlutterErrorDetails details) {
   );
 }
 
-Future<void> main() async {
-  // Surface widget-tree errors (red screen) instead of blank gray.
+/// Entry point — shows loading screen immediately, then initializes
+/// services in background. Timer safety net ensures app always starts.
+void main() {
+  // Surface widget-tree errors instead of blank gray.
   ErrorWidget.builder = _visibleErrorWidget;
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
@@ -59,81 +64,28 @@ Future<void> main() async {
     }
   };
 
-  // Capture all uncaught Flutter errors → Sentry.
-  await runZonedGuarded<Future<void>>(() async {
-    WidgetsFlutterBinding.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized();
 
-    // ── Phase 1: show visible screen immediately ──
-    _runLoadingScreen();
+  // Phase 1: Show loading screen IMMEDIATELY (synchronous).
+  _showLoadingScreen();
 
-    // ── Phase 2: init services with individual error handling ──
-    String? initError;
-
-    // Firebase init (may hang on some devices — timeout after 10s)
-    try {
-      await Firebase.initializeApp().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          throw TimeoutException('Firebase.initializeApp() timed out after 10s');
-        },
-      );
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    } catch (e, st) {
-      initError = 'Firebase init failed: $e';
-      debugPrint(initError);
-      debugPrint('$st');
-      // Continue without Firebase — app should still work
-    }
-
-    // SharedPreferences
-    SharedPreferences prefs;
-    try {
-      prefs = await SharedPreferences.getInstance();
-    } catch (e) {
-      initError = 'SharedPreferences failed: $e';
-      prefs = await SharedPreferences.getInstance(); // fallback
-    }
-
-    final onboardingDone = prefs.getBool('onboarding_completed') ?? false;
-
-    if (_sentryDsn.isNotEmpty) {
-      await SentryFlutter.init(
-        (options) {
-          options.dsn = _sentryDsn;
-          options.tracesSampleRate = 0.2;
-          options.profilesSampleRate = 0.1;
-          options.environment = const String.fromEnvironment(
-            'SENTRY_ENV',
-            defaultValue: 'production',
-          );
-          options.release = const String.fromEnvironment(
-            'SENTRY_RELEASE',
-            defaultValue: 'mobile-customer@0.1.0',
-          );
-          options.sendDefaultPii = false;
-          options.beforeSend = (event, hint) {
-            if (event.throwable is NetworkException) return null;
-            return event;
-          };
-        },
-        appRunner: () => _runApp(prefs, onboardingDone, initError),
-      );
-    } else {
-      _runApp(prefs, onboardingDone, initError);
-    }
-  }, (error, stack) async {
-    if (_sentryDsn.isNotEmpty) {
-      await Sentry.captureException(error, stackTrace: stack);
-    }
-    if (kDebugMode) {
-      debugPrint('[Uncaught] $error\n$stack');
+  // Phase 2: Safety net — force app start after 8 seconds no matter what.
+  // This Timer is scheduled BEFORE any async work, so it fires even if
+  // Firebase or SharedPreferences hang the event loop.
+  Timer(const Duration(seconds: 8), () {
+    if (!_appStarted) {
+      debugPrint('[safety] 8s elapsed — forcing app start without services');
+      _startApp(null, false, initError: 'Initialization timeout (8s)');
     }
   });
+
+  // Phase 3: Init services in background (fire-and-forget).
+  // Errors are caught locally; if anything fails, app still starts.
+  _initServices();
 }
 
-/// Show a loading screen immediately so the user sees something
-/// even if Firebase or other init takes time.
-void _runLoadingScreen() {
+/// Shows a minimal loading screen while services initialize.
+void _showLoadingScreen() {
   runApp(
     const MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -157,13 +109,97 @@ void _runLoadingScreen() {
   );
 }
 
-void _runApp(SharedPreferences prefs, bool onboardingDone, String? initError) {
+/// Initialize Firebase, SharedPreferences, Sentry.
+/// On ANY failure, starts the app with error info.
+Future<void> _initServices() async {
+  String? initError;
+
+  // ── Firebase (5s timeout) ──
+  try {
+    await Firebase.initializeApp().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        throw TimeoutException('Firebase timeout (5s)');
+      },
+    );
+    // Register FCM background handler
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    debugPrint('[init] Firebase OK');
+  } catch (e, st) {
+    initError = 'Firebase init failed: $e';
+    debugPrint('[init] $initError');
+    debugPrint('$st');
+    // Continue without Firebase — app should still work
+  }
+
+  // ── SharedPreferences ──
+  SharedPreferences? prefs;
+  try {
+    prefs = await SharedPreferences.getInstance();
+    debugPrint('[init] SharedPreferences OK');
+  } catch (e) {
+    initError = (initError != null) ? '$initError\nPrefs failed: $e' : 'Prefs failed: $e';
+    debugPrint('[init] SharedPreferences failed: $e');
+    // Continue without prefs — defaults will be used
+  }
+
+  final onboardingDone = prefs?.getBool('onboarding_completed') ?? false;
+
+  // ── Sentry (optional) ──
+  if (_sentryDsn.isNotEmpty) {
+    try {
+      await SentryFlutter.init(
+        (options) {
+          options.dsn = _sentryDsn;
+          options.tracesSampleRate = 0.2;
+          options.profilesSampleRate = 0.1;
+          options.environment = const String.fromEnvironment(
+            'SENTRY_ENV',
+            defaultValue: 'production',
+          );
+          options.release = const String.fromEnvironment(
+            'SENTRY_RELEASE',
+            defaultValue: 'mobile-customer@0.1.0',
+          );
+          options.sendDefaultPii = false;
+          options.beforeSend = (event, hint) {
+            if (event.throwable is NetworkException) return null;
+            return event;
+          };
+        },
+        appRunner: () => _startApp(prefs, onboardingDone, initError: initError),
+      );
+    } catch (e) {
+      debugPrint('[init] Sentry init failed: $e');
+      _startApp(prefs, onboardingDone, initError: initError);
+    }
+  } else {
+    _startApp(prefs, onboardingDone, initError: initError);
+  }
+}
+
+/// Start the real app. Safe to call multiple times (idempotent).
+void _startApp(
+  SharedPreferences? prefs,
+  bool onboardingDone, {
+  String? initError,
+}) {
+  if (_appStarted) return; // Already started (by timer or by _initServices)
+  _appStarted = true;
+  debugPrint('[start] App starting — onboardingDone=$onboardingDone, error=$initError');
+
+  final List<Override> overrides = [
+    onboardingCompletedProvider.overrideWith((ref) => onboardingDone),
+  ];
+
+  // Only override SharedPreferences if we actually got an instance.
+  if (prefs != null) {
+    overrides.add(sharedPreferencesProvider.overrideWith((ref) => prefs));
+  }
+
   runApp(
     ProviderScope(
-      overrides: [
-        onboardingCompletedProvider.overrideWith((ref) => onboardingDone),
-        sharedPreferencesProvider.overrideWith((ref) => prefs),
-      ],
+      overrides: overrides,
       child: IspCustomerApp(initError: initError),
     ),
   );
