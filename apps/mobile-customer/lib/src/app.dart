@@ -14,7 +14,9 @@ import 'services/settings_providers.dart';
 import 'theme/app_theme.dart';
 
 class IspCustomerApp extends ConsumerStatefulWidget {
-  const IspCustomerApp({super.key});
+  const IspCustomerApp({super.key, this.initError});
+  /// Optional error message from main() init phase (Firebase, SharedPreferences, etc.)
+  final String? initError;
   @override
   ConsumerState<IspCustomerApp> createState() => _State();
 }
@@ -75,7 +77,7 @@ class _State extends ConsumerState<IspCustomerApp> {
       builder: (context, child) {
         // Lock orientation to portrait (mobile-only app).
         final mq = MediaQuery.of(context);
-        return MediaQuery(
+        Widget w = MediaQuery(
           data: mq.copyWith(
             textScaler:
                 mq.textScaler.clamp(minScaleFactor: 0.9, maxScaleFactor: 1.3),
@@ -86,6 +88,32 @@ class _State extends ConsumerState<IspCustomerApp> {
             ),
           ),
         );
+
+        // Show init error banner if any service failed during startup.
+        if (widget.initError != null) {
+          w = Column(
+            children: [
+              Material(
+                color: const Color(0xFFC62828),
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text(
+                      '⚠ ${widget.initError}',
+                      style: const TextStyle(color: Colors.white, fontSize: 11),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(child: w),
+            ],
+          );
+        }
+
+        return w;
       },
     );
   }

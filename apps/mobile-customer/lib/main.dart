@@ -62,18 +62,45 @@ Future<void> main() async {
   // Capture all uncaught Flutter errors → Sentry.
   await runZonedGuarded<Future<void>>(() async {
     WidgetsFlutterBinding.ensureInitialized();
-    // Firebase init.
-    await Firebase.initializeApp();
-    // Register FCM background handler.
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    final prefs = await SharedPreferences.getInstance();
+
+    // ── Phase 1: show visible screen immediately ──
+    _runLoadingScreen();
+
+    // ── Phase 2: init services with individual error handling ──
+    String? initError;
+
+    // Firebase init (may hang on some devices — timeout after 10s)
+    try {
+      await Firebase.initializeApp().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw TimeoutException('Firebase.initializeApp() timed out after 10s');
+        },
+      );
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    } catch (e, st) {
+      initError = 'Firebase init failed: $e';
+      debugPrint(initError);
+      debugPrint('$st');
+      // Continue without Firebase — app should still work
+    }
+
+    // SharedPreferences
+    SharedPreferences prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+    } catch (e) {
+      initError = 'SharedPreferences failed: $e';
+      prefs = await SharedPreferences.getInstance(); // fallback
+    }
+
     final onboardingDone = prefs.getBool('onboarding_completed') ?? false;
 
     if (_sentryDsn.isNotEmpty) {
       await SentryFlutter.init(
         (options) {
           options.dsn = _sentryDsn;
-          options.tracesSampleRate = 0.2; // 20% perf traces
+          options.tracesSampleRate = 0.2;
           options.profilesSampleRate = 0.1;
           options.environment = const String.fromEnvironment(
             'SENTRY_ENV',
@@ -83,21 +110,18 @@ Future<void> main() async {
             'SENTRY_RELEASE',
             defaultValue: 'mobile-customer@0.1.0',
           );
-          // Don't send PII (email, IP) by default
           options.sendDefaultPii = false;
-          // Drop noisy errors
           options.beforeSend = (event, hint) {
             if (event.throwable is NetworkException) return null;
             return event;
           };
         },
-        appRunner: () => _runApp(prefs, onboardingDone),
+        appRunner: () => _runApp(prefs, onboardingDone, initError),
       );
     } else {
-      _runApp(prefs, onboardingDone);
+      _runApp(prefs, onboardingDone, initError);
     }
   }, (error, stack) async {
-    // Final safety net — any uncaught async error lands here.
     if (_sentryDsn.isNotEmpty) {
       await Sentry.captureException(error, stackTrace: stack);
     }
@@ -107,14 +131,40 @@ Future<void> main() async {
   });
 }
 
-void _runApp(SharedPreferences prefs, bool onboardingDone) {
+/// Show a loading screen immediately so the user sees something
+/// even if Firebase or other init takes time.
+void _runLoadingScreen() {
+  runApp(
+    const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: Color(0xFF08090D),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Color(0xFF8B9CFF)),
+              SizedBox(height: 16),
+              Text(
+                'Memuat...',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+void _runApp(SharedPreferences prefs, bool onboardingDone, String? initError) {
   runApp(
     ProviderScope(
       overrides: [
         onboardingCompletedProvider.overrideWith((ref) => onboardingDone),
         sharedPreferencesProvider.overrideWith((ref) => prefs),
       ],
-      child: const IspCustomerApp(),
+      child: IspCustomerApp(initError: initError),
     ),
   );
 }
