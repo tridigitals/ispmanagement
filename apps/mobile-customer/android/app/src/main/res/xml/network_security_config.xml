@@ -5,7 +5,12 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+    <!-- Production API domain (HTTPS) -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">api-isp-management.tridigitals.com</domain>
+    </domain-config>
+    <!-- Development / direct IP access (HTTP) — remove when SSL is configured -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">103.190.112.214</domain>
     </domain-config>
 </network-security-config>
