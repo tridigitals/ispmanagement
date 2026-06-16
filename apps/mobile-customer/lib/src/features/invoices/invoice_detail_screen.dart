@@ -135,10 +135,10 @@ final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: inv.isPaid
-                      ? [const Color(0xFF10B981), const Color(0xFF059669)]
+                      ? [IspColors.success, IspColors.success.withOpacity(0.85)]
                       : inv.isOverdue
-                          ? [const Color(0xFFEF4444), const Color(0xFFDC2626)]
-                          : [const Color(0xFF8B9CFF), const Color(0xFF6677EE)],
+                          ? [IspColors.danger, IspColors.danger.withOpacity(0.85)]
+                          : [IspColors.primary, IspColors.info],
                 ),
                 borderRadius: BorderRadius.circular(IspRadii.xl),
                 boxShadow: IspShadows.md,

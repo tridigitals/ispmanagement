@@ -11,6 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../services/app_config.dart';
 import '../../services/auth_providers.dart';
 import '../../utils/form_validators.dart';
 
@@ -350,12 +351,10 @@ class _State extends ConsumerState<EditProfileScreen> {
   }
 
   /// Convert relative URL like `/api/auth/avatar/...` to absolute URL
-  /// using the app's API base.
+  /// using the app's API base from config.
   String _buildAbsoluteUrl(String url) {
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    // We don't have direct access to dio's baseUrl here; construct via known env.
-    const apiBase = String.fromEnvironment('API_BASE_URL',
-        defaultValue: 'http://103.190.112.214:3000');
+    final apiBase = ref.read(appConfigProvider).apiBaseUrl;
     return '$apiBase$url';
   }
 }

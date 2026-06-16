@@ -10,14 +10,10 @@ import '../../services/app_config.dart';
 /// Fetch contact info from portal API.
 final contactInfoProvider = FutureProvider<Map<String, String>>((ref) async {
   final dio = ref.read(dioProvider);
-  try {
-    final res =
-        await dio.get<Map<String, dynamic>>('/api/customers/portal/contact');
-    final data = res.data ?? {};
-    return data.map((k, v) => MapEntry(k, v?.toString() ?? ''));
-  } catch (_) {
-    return {};
-  }
+  final res =
+      await dio.get<Map<String, dynamic>>('/api/customers/portal/contact');
+  final data = res.data ?? {};
+  return data.map((k, v) => MapEntry(k, v?.toString() ?? ''));
 });
 
 class ContactScreen extends ConsumerWidget {
@@ -33,7 +29,27 @@ class ContactScreen extends ConsumerWidget {
       appBar: AppBar(title: Text(l10n.contactUs)),
       body: contactAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => _buildFallback(context, l10n, {}),
+        error: (err, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(IspSpacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, color: IspColors.danger, size: 48),
+                const SizedBox(height: IspSpacing.md),
+                Text(
+                  'Gagal memuat kontak',
+                  style: const TextStyle(color: IspColors.textSecondary),
+                ),
+                const SizedBox(height: IspSpacing.lg),
+                IspSecondaryButton(
+                  label: l10n.retry,
+                  onPressed: () => ref.invalidate(contactInfoProvider),
+                ),
+              ],
+            ),
+          ),
+        ),
         data: (contact) => _buildFallback(context, l10n, contact),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
@@ -6,6 +7,13 @@ import 'package:local_auth/local_auth.dart';
 import 'app_config.dart';
 import 'missing_providers.dart';
 import 'service_providers.dart';
+
+/// Converts any exception to a user-friendly ApiException.
+/// Parses DioException to extract server-side error messages.
+ApiException _toApiException(Object e) {
+  if (e is DioException) return ApiException.fromDio(e);
+  return ApiException(message: e.toString());
+}
 
 /// Two-factor enrollment data (stub).
 class TwoFactorEnrollment {
@@ -108,7 +116,7 @@ class AuthController extends Notifier<AuthState> {
         ),
       );
     } on Exception catch (e) {
-      return Failure(ApiException(message: e.toString()));
+      return Failure(_toApiException(e));
     }
   }
 
@@ -132,7 +140,7 @@ class AuthController extends Notifier<AuthState> {
       }
       return const Success(true);
     } on Exception catch (e) {
-      return Failure(ApiException(message: e.toString()));
+      return Failure(_toApiException(e));
     }
   }
 
@@ -161,7 +169,7 @@ class AuthController extends Notifier<AuthState> {
         ),
       );
     } on Exception catch (e) {
-      return Failure(ApiException(message: e.toString()));
+      return Failure(_toApiException(e));
     }
   }
 
@@ -181,7 +189,7 @@ class AuthController extends Notifier<AuthState> {
       await apply(authResponse);
       return Success(authResponse);
     } on Exception catch (e) {
-      return Failure(ApiException(message: e.toString()));
+      return Failure(_toApiException(e));
     }
   }
 
@@ -199,7 +207,7 @@ class AuthController extends Notifier<AuthState> {
       await apply(authResponse);
       return Success(authResponse);
     } on Exception catch (e) {
-      return Failure(ApiException(message: e.toString()));
+      return Failure(_toApiException(e));
     }
   }
 
@@ -218,7 +226,7 @@ class AuthController extends Notifier<AuthState> {
       );
       return const Success(true);
     } on Exception catch (e) {
-      return Failure(ApiException(message: e.toString()));
+      return Failure(_toApiException(e));
     }
   }
 
@@ -244,7 +252,7 @@ class AuthController extends Notifier<AuthState> {
       }
       return const Success(true);
     } on Exception catch (e) {
-      return Failure(ApiException(message: e.toString()));
+      return Failure(_toApiException(e));
     }
   }
 
@@ -271,7 +279,7 @@ class AuthController extends Notifier<AuthState> {
       }
       return Success(avatarUrl);
     } on Exception catch (e) {
-      return Failure(ApiException(message: e.toString()));
+      return Failure(_toApiException(e));
     }
   }
 
@@ -286,7 +294,7 @@ class AuthController extends Notifier<AuthState> {
       }
       return const Success(true);
     } on Exception catch (e) {
-      return Failure(ApiException(message: e.toString()));
+      return Failure(_toApiException(e));
     }
   }
 
@@ -317,7 +325,7 @@ class AuthController extends Notifier<AuthState> {
       }
       return Failure(ApiException(message: 'No session found'));
     } on Exception catch (e) {
-      return Failure(ApiException(message: e.toString()));
+      return Failure(_toApiException(e));
     }
   }
 

@@ -339,30 +339,30 @@ class _HeroHeader extends StatelessWidget {
   Color _gradientStart() {
     switch (sub.status) {
       case SubscriptionStatus.active:
-        return const Color(0xFF8B9CFF);
+        return IspColors.primary;
       case SubscriptionStatus.suspended:
-        return const Color(0xFFF59E0B);
+        return IspColors.warning;
       case SubscriptionStatus.cancelled:
-        return const Color(0xFFEF4444);
+        return IspColors.danger;
       case SubscriptionStatus.grace:
-        return const Color(0xFFF59E0B);
+        return IspColors.warning;
       default:
-        return const Color(0xFF6B7280);
+        return IspColors.textMuted;
     }
   }
 
   Color _gradientEnd() {
     switch (sub.status) {
       case SubscriptionStatus.active:
-        return const Color(0xFF6677EE);
+        return IspColors.info;
       case SubscriptionStatus.suspended:
-        return const Color(0xFFD97706);
+        return IspColors.warning;
       case SubscriptionStatus.cancelled:
-        return const Color(0xFFDC2626);
+        return IspColors.danger;
       case SubscriptionStatus.grace:
-        return const Color(0xFFD97706);
+        return IspColors.warning;
       default:
-        return const Color(0xFF4B5563);
+        return IspColors.textMuted;
     }
   }
 }
