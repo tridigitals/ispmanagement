@@ -62,15 +62,22 @@ class AuthController extends Notifier<AuthState> {
             password: password,
           );
       // Save credentials for auto re-login on 401 (used with biometric).
+      // This is fire-and-forget — it MUST NOT block the login flow. The
+      // credentials are only used for biometric re-login on 401, which is
+      // a non-critical path. If storage is wedged, we don't want login to hang.
       switch (res) {
         case Success(:final data):
-          try {
-            final storage = ref.read(tokenStorageProvider);
-            await storage.saveCredentials(email: email, password: password)
-                .timeout(const Duration(seconds: 5));
-          } catch (e) {
-            debugPrint('[auth] saveCredentials failed: $e');
-          }
+          // ignore: unawaited_futures, discarded_futures
+          Future(() async {
+            try {
+              final storage = ref.read(tokenStorageProvider);
+              await storage
+                  .saveCredentials(email: email, password: password)
+                  .timeout(const Duration(seconds: 5));
+            } catch (e) {
+              debugPrint('[auth] saveCredentials failed: $e');
+            }
+          });
           if (!data.requires2fa && !data.requires2faSetup) {
             await apply(data);
           }
@@ -341,13 +348,19 @@ class AuthController extends Notifier<AuthState> {
   }
 
   /// Persist the auth response (token + user) into local state.
+  ///
+  /// Token storage uses an in-memory cache (set in save() before any
+  /// native I/O), so this method does NOT block on the native storage
+  /// even if Android Keystore is wedged. The persistSession().timeout(5s)
+  /// remains as a safety net but should rarely fire.
   Future<void> apply(AuthResponse auth) async {
     try {
       await ref.read(authServiceProvider).persistSession(auth)
           .timeout(const Duration(seconds: 5));
     } catch (e) {
-      debugPrint('[auth] persistSession failed: $e');
-      // Still set user state even if storage fails — they're logged in
+      debugPrint('[auth] persistSession timed out (relying on cache): $e');
+      // Still set user state — in-memory cache ensures auth flow works
+      // for this session even if storage write hung.
     }
     state = AuthState(user: auth.user);
   }

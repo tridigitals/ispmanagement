@@ -32,6 +32,18 @@ class AuthTokenStorage {
 
   final FlutterSecureStorage _storage;
 
+  // ── In-memory cache ────────────────────────────────────────────────
+  // FlutterSecureStorage is backed by Android Keystore (EncryptedSharedPreferences).
+  // On some Android 12/13 devices, every read/write can hang for 5-30+ seconds
+  // while the keystore locks the prefs file. Without a cache, every API call
+  // (which goes through AuthInterceptor.onRequest → readToken) would block.
+  //
+  // Strategy: set the cache synchronously on save(), and read from cache first
+  // on readToken(). The auth flow works for the current session even if the
+  // native storage is wedged. On app restart, the cache is empty and the
+  // user will need to re-login if storage truly failed to persist.
+  String? _cachedToken;
+
   /// Read a key with a 5s timeout + try-catch. Returns null on any failure.
   /// This is the ONLY entry point to `_storage.read` — never call directly.
   Future<String?> _safeRead(String key) async {
@@ -69,25 +81,56 @@ class AuthTokenStorage {
     String? tenantId,
     DateTime? expiresAt,
   }) async {
-    await _safeWrite(_kTokenKey, token);
-    if (refreshToken != null) {
-      await _safeWrite(_kRefreshKey, refreshToken);
-    }
-    if (userId != null) {
-      await _safeWrite(_kUserIdKey, userId);
-    }
-    if (tenantId != null) {
-      await _safeWrite(_kTenantIdKey, tenantId);
-    }
-    if (expiresAt != null) {
-      await _safeWrite(
-        _kTokenExpiryKey,
-        expiresAt.toIso8601String(),
-      );
-    }
+    // 1. Set in-memory cache SYNCHRONOUSLY — this is the source of truth for
+    //    the active session. readToken() will return this without touching
+    //    the (potentially wedged) native storage. AuthInterceptor.onRequest
+    //    → readToken() is called on every API call, so this is the hot path.
+    _cachedToken = token;
+
+    // 2. Fire-and-forget the native storage writes. We do NOT await — if
+    //    Android Keystore is wedged, awaiting would block the entire login
+    //    flow for 5s+ (timeout) or forever. The auth flow continues via the
+    //    cache. On app restart, if the cache is empty, the user re-logs in.
+    //
+    //    Note: This is a void async function launched in a microtask via
+    //    Future(). Errors are caught and logged — they cannot escape.
+    // ignore: unawaited_futures, discarded_futures
+    Future(() async {
+      try {
+        await _safeWrite(_kTokenKey, token);
+        if (refreshToken != null) {
+          await _safeWrite(_kRefreshKey, refreshToken);
+        }
+        if (userId != null) {
+          await _safeWrite(_kUserIdKey, userId);
+        }
+        if (tenantId != null) {
+          await _safeWrite(_kTenantIdKey, tenantId);
+        }
+        if (expiresAt != null) {
+          await _safeWrite(
+            _kTokenExpiryKey,
+            expiresAt.toIso8601String(),
+          );
+        }
+      } catch (e) {
+        debugPrint('[auth] background persist failed: $e');
+      }
+    });
   }
 
-  Future<String?> readToken() => _safeRead(_kTokenKey);
+  /// Read token — cache first, storage as fallback.
+  /// On app restart, cache is empty so we fall through to storage.
+  Future<String?> readToken() async {
+    if (_cachedToken != null && _cachedToken!.isNotEmpty) {
+      return _cachedToken;
+    }
+    final t = await _safeRead(_kTokenKey);
+    if (t != null && t.isNotEmpty) {
+      _cachedToken = t; // populate cache from storage on cold start
+    }
+    return t;
+  }
   Future<String?> readRefresh() => _safeRead(_kRefreshKey);
   Future<String?> readUserId() => _safeRead(_kUserIdKey);
   Future<String?> readTenantId() => _safeRead(_kTenantIdKey);
@@ -123,7 +166,9 @@ class AuthTokenStorage {
   Future<String?> readPassword() => _safeRead(_kPasswordKey);
 
   Future<void> clear() async {
-    // Use individual safe writes — clear() is best-effort during logout
+    // Clear in-memory cache FIRST — auth flow is immediately logged out.
+    _cachedToken = null;
+    // Use individual safe deletes — clear() is best-effort during logout
     // and a hang here would freeze the logout flow.
     for (final key in [
       _kTokenKey,
