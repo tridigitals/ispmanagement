@@ -1,6 +1,6 @@
 name: mobile_customer
 description: ISP Management — Customer mobile app (Flutter, iOS + Android)
-version: 0.1.0+8
+version: 0.1.0+9
 publish_to: none
 
 environment:
