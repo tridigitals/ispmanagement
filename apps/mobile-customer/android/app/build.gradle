@@ -61,10 +61,12 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.release
-            // Enable R8 (code shrink + obfuscation) + resource shrinking.
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Temporarily disabled R8 to debug blank screen — re-enable + add proguard rules
+            // for the new packages (flutter_local_notifications, file_picker, etc.) once
+            // we confirm the blank screen is from minification.
+            minifyEnabled false
+            shrinkResources false
+            // proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
             // applicationIdSuffix removed — google-services.json only has base package
