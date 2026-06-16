@@ -76,7 +76,14 @@ Future<String?> _attemptReLogin(
   const secure = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
-  final bioVal = await secure.read(key: 'biometric_enabled');
+  String? bioVal;
+  try {
+    bioVal = await secure
+        .read(key: 'biometric_enabled')
+        .timeout(const Duration(seconds: 5), onTimeout: () => null);
+  } catch (_) {
+    // Storage hang on Android 12/13 — fall through, no re-login.
+  }
   if (bioVal != 'true') return null;
 
   final email = await storage.readEmail();

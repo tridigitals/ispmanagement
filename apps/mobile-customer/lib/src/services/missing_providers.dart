@@ -60,14 +60,28 @@ class BiometricEnabledNotifier extends AsyncNotifier<bool> {
   @override
   Future<bool> build() async {
     final storage = ref.watch(secureStorageProvider);
-    final val = await storage.read(key: 'biometric_enabled');
-    return val == 'true';
+    try {
+      final val = await storage.read(key: 'biometric_enabled').timeout(
+            const Duration(seconds: 5),
+            onTimeout: () => null,
+          );
+      return val == 'true';
+    } catch (e) {
+      // Hang on Android 12/13 — treat as "biometric not configured"
+      // so login screen doesn't get stuck here.
+      return false;
+    }
   }
 
   Future<void> set(bool enabled) async {
     state = AsyncData(enabled);
     final storage = ref.read(secureStorageProvider);
-    await storage.write(key: 'biometric_enabled', value: enabled.toString());
+    try {
+      await storage.write(key: 'biometric_enabled', value: enabled.toString())
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      // Best-effort — UI state is already updated.
+    }
   }
 }
 
