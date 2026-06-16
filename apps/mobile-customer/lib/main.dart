@@ -17,7 +17,48 @@ import 'src/services/missing_providers.dart';
 /// Empty string = Sentry disabled (dev / local builds).
 const _sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
 
+/// Visible error widget for release builds (default ErrorWidget is gray box).
+Widget _visibleErrorWidget(FlutterErrorDetails details) {
+  return Container(
+    color: const Color(0xFFFFEBEE),
+    padding: const EdgeInsets.all(16),
+    alignment: Alignment.center,
+    child: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline, color: Color(0xFFC62828), size: 48),
+          const SizedBox(height: 12),
+          const Text(
+            'Terjadi kesalahan render',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFFB71C1C),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            details.exceptionAsString(),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF424242)),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 Future<void> main() async {
+  // Surface widget-tree errors (red screen) instead of blank gray.
+  ErrorWidget.builder = _visibleErrorWidget;
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    if (_sentryDsn.isNotEmpty) {
+      Sentry.captureException(details.exception, stackTrace: details.stack);
+    }
+  };
+
   // Capture all uncaught Flutter errors → Sentry.
   await runZonedGuarded<Future<void>>(() async {
     WidgetsFlutterBinding.ensureInitialized();
