@@ -16,11 +16,11 @@ class AppConfig {
     return const AppConfig(
       apiBaseUrl: String.fromEnvironment(
         'API_BASE_URL',
-        defaultValue: 'https://api-isp-management.tridigitals.com',
+        defaultValue: 'http://103.190.112.214:3000',
       ),
       wsBaseUrl: String.fromEnvironment(
         'WS_BASE_URL',
-        defaultValue: 'wss://api-isp-management.tridigitals.com',
+        defaultValue: 'ws://103.190.112.214:3000',
       ),
       appName: 'ISP Customer',
       appVersion: '0.1.0+1',

@@ -72,9 +72,16 @@ fi
 echo "📦 Building mobile-customer v${BUILD_NAME}+${BUILD_NUMBER}"
 
 # Step 3: Build APK
+# API_BASE_URL is baked in at compile time so the app knows where to connect.
+API_BASE_URL="${API_BASE_URL:-http://103.190.112.214:3000}"
+WS_BASE_URL="${WS_BASE_URL:-ws://103.190.112.214:3000}"
+echo "   API_BASE_URL=$API_BASE_URL"
+
 flutter build apk --release --no-pub \
   --build-number="$BUILD_NUMBER" \
-  --build-name="$BUILD_NAME"
+  --build-name="$BUILD_NAME" \
+  --dart-define=API_BASE_URL="$API_BASE_URL" \
+  --dart-define=WS_BASE_URL="$WS_BASE_URL" 
 
 APK_SRC="$APP_DIR/build/app/outputs/flutter-apk/app-release.apk"
 APK_DST="/tmp/app-release.apk"

@@ -10,9 +10,9 @@ import 'api_endpoints.dart';
 class ApiConfig {
   const ApiConfig({
     required this.baseUrl,
-    this.timeout = const Duration(seconds: 30),
+    this.timeout = const Duration(seconds: 15),
     this.enableLogging = kDebugMode,
-    this.maxRetries = 3,
+    this.maxRetries = 1,
   });
 
   /// Base URL of the API (e.g. `https://api-isp-management.tridigitals.com`).
@@ -31,7 +31,7 @@ class ApiConfig {
   static ApiConfig fromEnv() {
     const baseUrl = String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'https://api-isp-management.tridigitals.com',
+      defaultValue: 'http://103.190.112.214:3000',
     );
     return const ApiConfig(baseUrl: baseUrl);
   }

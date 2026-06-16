@@ -64,7 +64,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _tryBiometricLogin() async {
     if (_biometricAttempted) return;
-    _biometricAttempted = true;
 
     // Wait for biometric provider to finish loading
     await ref.read(biometricEnabledProvider.future);
@@ -72,20 +71,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     // Check if biometric is enabled
     final biometricEnabled =
         ref.read(biometricEnabledProvider).valueOrNull ?? false;
-    if (!biometricEnabled) return;
+    if (!biometricEnabled) {
+      _biometricAttempted = true; // Don't retry — biometric not configured
+      return;
+    }
 
     // Check if there's a stored session (token)
     final authSvc = ref.read(authServiceProvider);
     final hasSession = await authSvc.hasSession();
-    if (!hasSession) return; // No token = nothing to restore, skip prompt
+    if (!hasSession) {
+      _biometricAttempted = true; // Don't retry — no session
+      return;
+    }
 
     // Check device supports biometric
     final auth = LocalAuthentication();
     final canCheck = await auth.canCheckBiometrics;
-    if (!canCheck) return;
+    if (!canCheck) {
+      _biometricAttempted = true; // Don't retry — device doesn't support
+      return;
+    }
 
     if (!mounted) return;
 
+    // All checks passed — now mark as attempted and show loading
+    _biometricAttempted = true;
     setState(() => _biometricLoading = true);
 
     try {

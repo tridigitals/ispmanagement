@@ -56,23 +56,34 @@ class AuthController extends Notifier<AuthState> {
     required String password,
   }) async {
     state = state.copyWith(isLoading: true);
-    final res = await ref.read(authServiceProvider).login(
-          email: email,
-          password: password,
-        );
-    // Save credentials for auto re-login on 401 (used with biometric).
-    switch (res) {
-      case Success(:final data):
-        final storage = ref.read(tokenStorageProvider);
-        await storage.saveCredentials(email: email, password: password);
-        if (!data.requires2fa && !data.requires2faSetup) {
-          await apply(data);
-        }
-      case Failure():
-        break;
+    try {
+      final res = await ref.read(authServiceProvider).login(
+            email: email,
+            password: password,
+          );
+      // Save credentials for auto re-login on 401 (used with biometric).
+      switch (res) {
+        case Success(:final data):
+          try {
+            final storage = ref.read(tokenStorageProvider);
+            await storage.saveCredentials(email: email, password: password)
+                .timeout(const Duration(seconds: 5));
+          } catch (e) {
+            debugPrint('[auth] saveCredentials failed: $e');
+          }
+          if (!data.requires2fa && !data.requires2faSetup) {
+            await apply(data);
+          }
+        case Failure():
+          break;
+      }
+      return res;
+    } catch (e) {
+      debugPrint('[auth] login error: $e');
+      return Failure(_toApiException(e));
+    } finally {
+      state = state.copyWith(isLoading: false);
     }
-    state = state.copyWith(isLoading: false);
-    return res;
   }
 
   Future<ServiceResult<AuthResponse>> verify2fa({
@@ -331,7 +342,13 @@ class AuthController extends Notifier<AuthState> {
 
   /// Persist the auth response (token + user) into local state.
   Future<void> apply(AuthResponse auth) async {
-    await ref.read(authServiceProvider).persistSession(auth);
+    try {
+      await ref.read(authServiceProvider).persistSession(auth)
+          .timeout(const Duration(seconds: 5));
+    } catch (e) {
+      debugPrint('[auth] persistSession failed: $e');
+      // Still set user state even if storage fails — they're logged in
+    }
     state = AuthState(user: auth.user);
   }
 
