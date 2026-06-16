@@ -1,7 +1,0 @@
-# melos_managed_dependency_overrides: api_client,ui_kit,package_info_plus
-dependency_overrides:
-  api_client:
-    path: ../../packages/api-client
-  ui_kit:
-    path: ../../packages/ui-kit
-  package_info_plus: ^8.0.0

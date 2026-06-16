@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
@@ -124,27 +123,8 @@ class _State extends ConsumerState<EditProfileScreen> {
   }
 
   Future<File?> _captureFromCamera() async {
-    // Explicit permission request before invoking camera.
-    final status = await Permission.camera.request();
-    if (status.isPermanentlyDenied) {
-      if (!mounted) return null;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Izin kamera ditolak permanen. Buka Settings untuk mengaktifkan.',
-          ),
-          backgroundColor: isp.danger,
-          action: SnackBarAction(
-          label: 'Settings',
-          textColor: Colors.white,
-          onPressed: () => openAppSettings(),
-          ),
-        ),
-      );
-      return null;
-    }
-    if (!status.isGranted) return null;
-
+    // Let image_picker handle permissions internally — do NOT use permission_handler
+    // which conflicts with image_picker and blocks the permission dialog.
     try {
       final picked = await _imagePicker.pickImage(
         source: ImageSource.camera,
