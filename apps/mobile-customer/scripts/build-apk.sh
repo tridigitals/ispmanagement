@@ -77,7 +77,7 @@ flutter build apk --release --no-pub \
   --build-name="$BUILD_NAME"
 
 APK_SRC="$APP_DIR/build/app/outputs/flutter-apk/app-release.apk"
-APK_DST="/home/xtrabit/app-release.apk"
+APK_DST="/tmp/app-release.apk"
 
 if [[ -f "$APK_SRC" ]]; then
   cp "$APK_SRC" "$APK_DST"

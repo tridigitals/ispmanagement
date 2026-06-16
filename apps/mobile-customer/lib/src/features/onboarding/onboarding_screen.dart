@@ -41,11 +41,17 @@ class _State extends ConsumerState<OnboardingScreen> {
   ];
 
   Future<void> _completeOnboarding() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_completed', true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('onboarding_completed', true);
+    } catch (e) {
+      debugPrint('[onboarding] SharedPreferences error: $e');
+      // Continue anyway — user should still proceed to login
+    }
     // Update Riverpod provider so router redirect knows onboarding is done
+    if (!mounted) return;
     ref.read(onboardingCompletedProvider.notifier).state = true;
-    if (mounted) context.go('/login');
+    context.go('/login');
   }
 
   Future<void> _next() async {

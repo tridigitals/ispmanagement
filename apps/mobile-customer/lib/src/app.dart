@@ -89,28 +89,10 @@ class _State extends ConsumerState<IspCustomerApp> {
           ),
         );
 
-        // Show init error banner if any service failed during startup.
+        // Log init errors to console only — don't show a banner that
+        // interferes with the UI.  Firebase failures are non-critical.
         if (widget.initError != null) {
-          w = Column(
-            children: [
-              Material(
-                color: const Color(0xFFC62828),
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Text(
-                      '⚠ ${widget.initError}',
-                      style: const TextStyle(color: Colors.white, fontSize: 11),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(child: w),
-            ],
-          );
+          debugPrint('[app] Init warning: ${widget.initError}');
         }
 
         return w;
