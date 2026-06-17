@@ -90,9 +90,10 @@ class FcmService {
     debugPrint('[FCM] init() running (force=$force)');
 
     try {
+      debugPrint('[FCM] Step 1/6: _initInternal starting');
       await _initInternal();
       _initialized = true;
-      debugPrint('[FCM] init OK');
+      debugPrint('[FCM] init OK — all steps completed');
     } catch (e, st) {
       debugPrint('[FCM] init error: $e\n$st');
     } finally {
@@ -101,6 +102,7 @@ class FcmService {
   }
 
   Future<void> _initInternal() async {
+    debugPrint('[FCM] Step 1/6: LocalNotification init');
     // Local notification init — fast.
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -115,9 +117,11 @@ class FcmService {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_channel);
+    debugPrint('[FCM] Step 2/6: NotificationChannel created');
 
     // Request permission (Android 13+). Wrapped in 5s timeout — this call
     // can hang on some devices if the system dialog is interrupted.
+    debugPrint('[FCM] Step 3/6: Requesting permission...');
     final settings = await FirebaseMessaging.instance
         .requestPermission(
           alert: true,
@@ -146,6 +150,7 @@ class FcmService {
     });
     debugPrint('[FCM] Permission: ${settings.authorizationStatus}');
 
+    debugPrint('[FCM] Step 4/6: Setting up foreground + background listeners');
     // Listen foreground messages.
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
 
@@ -154,6 +159,7 @@ class FcmService {
 
     // Cold start — check if opened from notification. 3s timeout: this is
     // best-effort and shouldn't block app startup.
+    debugPrint('[FCM] Step 5/6: Checking getInitialMessage...');
     try {
       final initial = await FirebaseMessaging.instance
           .getInitialMessage()
@@ -168,6 +174,7 @@ class FcmService {
     }
 
     // Register token — with built-in retry on null/error.
+    debugPrint('[FCM] Step 6/6: Registering token with backend...');
     await _registerTokenWithRetry();
 
     // Listen for token refresh (e.g., Firebase rotates the token).

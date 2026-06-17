@@ -8,7 +8,7 @@ import 'package:api_client/api_client.dart' show NotificationModel;
 import '../../l10n/app_localizations.dart';
 import '../../services/notifications_providers.dart';
 import '../../services/settings_providers.dart';
-import '../../theme/app_theme.dart';
+import '../../services/fcm_service.dart';
 import './home_tab.dart';
 import 'invoices_tab.dart';
 import 'subscriptions_tab.dart';
@@ -177,7 +177,49 @@ final l10n = AppLocalizations.of(context);
       ProfileScreen(),
     ];
     return Scaffold(
-      body: IndexedStack(index: tab, children: pages),
+      body: Column(
+        children: [
+          // ─── FCM Debug Banner (temporary) ───────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            color: Colors.amber.shade900,
+            child: Row(
+              children: [
+                const Icon(Icons.bug_report, color: Colors.white, size: 16),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    '🔧 FCM Debug: Tap to re-init notification',
+                    style: TextStyle(color: Colors.white, fontSize: 11),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    debugPrint('[DEBUG] User tapped FCM re-init');
+                    ref.read(fcmServiceProvider).init(force: true);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'Re-init',
+                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // ─── Main Content ───────────────────────────────────────
+          Expanded(
+            child: IndexedStack(index: tab, children: pages),
+          ),
+        ],
+      ),
       bottomNavigationBar: _CleanNavBar(
         selectedIndex: tab,
         onDestinationSelected: (i) =>
