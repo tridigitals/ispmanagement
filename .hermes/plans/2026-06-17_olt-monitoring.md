@@ -2355,9 +2355,9 @@ Admin revoke:
 | 3.4 | Service Registration | ⏳ Pending | |
 | 4.1 | HTTP Handlers | ✅ Done | `326e8db` — 12 handlers + RBAC guards |
 | 4.2 | Route Registration | ✅ Done | Mounted at `/api/admin/olts` |
-| 5.1 | NetworkAsset Link | ⏳ Pending | |
-| 5.2 | Asset Type Enum | ⏳ Pending | |
-| 5.3 | Alert Pipeline | ⏳ Pending | |
+| 5.1 | NetworkAsset Link | ✅ Done | `2855690` — auto-create asset on OLT create |
+| 5.2 | Asset Type Enum | ✅ Done | olt_*, ont/onu added to asset_group_for_type |
+| 5.3 | Alert Pipeline | ✅ Done | Low-signal → notification to tenant admins |
 | 6.1 | Background Poller | ⏳ Pending | |
 | 7.1 | Public Token System | ⏳ Pending | Migration + token logic |
 | 7.2 | Public Traffic Endpoint | ⏳ Pending | NO-AUTH endpoints |
