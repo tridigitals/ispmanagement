@@ -43,6 +43,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _tempToken;
   final _codeCtrl = TextEditingController();
   final _setupCodeCtrl = TextEditingController();
+  // Biometric button visibility: only true when ALL preconditions pass
+  // (biometric enabled in storage + has session token + device supports it).
+  // Set to false on first install / cleared storage / no prior login.
+  bool _biometricAvailable = false;
+  // Marks that we've already run the auto-prompt (so initState postFrame
+  // callback doesn't loop forever). Independent of availability — even when
+  // checks fail, we still want to skip the auto-prompt on rebuilds.
   bool _biometricAttempted = false;
   bool _biometricLoading = false;
 
@@ -68,35 +75,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     // Wait for biometric provider to finish loading
     await ref.read(biometricEnabledProvider.future);
 
-    // Check if biometric is enabled
+    // Check if biometric is enabled — first install OR user never enabled
+    // biometric → button stays hidden forever (no point showing it).
     final biometricEnabled =
         ref.read(biometricEnabledProvider).valueOrNull ?? false;
     if (!biometricEnabled) {
-      _biometricAttempted = true; // Don't retry — biometric not configured
+      _biometricAttempted = true; // skip auto-prompt on rebuild
       return;
     }
 
-    // Check if there's a stored session (token)
+    // Check if there's a stored session (token) — required to restore login.
+    // If user logged out and cleared token, button stays hidden.
     final authSvc = ref.read(authServiceProvider);
     final hasSession = await authSvc.hasSession();
     if (!hasSession) {
-      _biometricAttempted = true; // Don't retry — no session
+      _biometricAttempted = true;
       return;
     }
 
-    // Check device supports biometric
+    // Check device supports biometric hardware.
     final auth = LocalAuthentication();
     final canCheck = await auth.canCheckBiometrics;
     if (!canCheck) {
-      _biometricAttempted = true; // Don't retry — device doesn't support
+      _biometricAttempted = true;
       return;
     }
 
     if (!mounted) return;
 
-    // All checks passed — now mark as attempted and show loading
+    // All checks passed — biometric IS available. Show the button AND
+    // auto-prompt the user.
     _biometricAttempted = true;
-    setState(() => _biometricLoading = true);
+    setState(() {
+      _biometricAvailable = true;
+      _biometricLoading = true;
+    });
 
     try {
       final ok = await auth.authenticate(
@@ -377,8 +390,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           : Text(l10n.login),
                     ),
                     const SizedBox(height: 12),
-                    // Fingerprint button — show if biometric was enabled and session exists
-                    if (_biometricAttempted && !_biometricLoading)
+                    // Fingerprint button — only visible when ALL preconditions
+                    // pass: biometric enabled in settings, session token exists,
+                    // device supports biometric hardware. Hidden on first install
+                    // or when user hasn't enabled biometric.
+                    if (_biometricAvailable && !_biometricLoading)
                       OutlinedButton.icon(
                         onPressed: () {
                           _biometricAttempted = false;
