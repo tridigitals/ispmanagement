@@ -68,6 +68,7 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
     // Show bottom sheet asking the user to pick a source — same UX as
     // profile avatar upload. Camera path uses image_picker which shows
     // the system CAMERA permission dialog automatically on first use.
+    final isp = context.isp; // local — class doesn't have a persistent field
     final source = await showModalBottomSheet<_AttachmentSource>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -110,6 +111,7 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
   /// image_picker handles the CAMERA permission request internally and shows
   /// the system permission dialog on first use.
   Future<void> _captureFromCamera() async {
+    final isp = context.isp; // local — class doesn't have a persistent field
     try {
       final picker = ImagePicker();
       final picked = await picker.pickImage(
