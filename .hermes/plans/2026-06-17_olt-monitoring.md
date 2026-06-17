@@ -2353,8 +2353,8 @@ Admin revoke:
 | 3.2 | CRUD Operations | ⏳ Pending | |
 | 3.3 | Monitoring Methods | ⏳ Pending | |
 | 3.4 | Service Registration | ⏳ Pending | |
-| 4.1 | HTTP Handlers | ⏳ Pending | With RBAC guards |
-| 4.2 | Route Registration | ⏳ Pending | |
+| 4.1 | HTTP Handlers | ✅ Done | `326e8db` — 12 handlers + RBAC guards |
+| 4.2 | Route Registration | ✅ Done | Mounted at `/api/admin/olts` |
 | 5.1 | NetworkAsset Link | ⏳ Pending | |
 | 5.2 | Asset Type Enum | ⏳ Pending | |
 | 5.3 | Alert Pipeline | ⏳ Pending | |
