@@ -179,6 +179,8 @@ final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: Column(
         children: [
+          // ─── Safe Area top padding ────────────────────────────
+          SizedBox(height: MediaQuery.of(context).padding.top),
           // ─── FCM Debug Banner (temporary) ───────────────────────
           Container(
             width: double.infinity,
