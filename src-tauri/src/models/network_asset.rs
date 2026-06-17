@@ -29,6 +29,8 @@ pub struct NetworkAsset {
 impl NetworkAsset {
     pub fn asset_group_for_type(asset_type: &str) -> &'static str {
         match asset_type {
+            t if t.starts_with("olt_") => "olt",
+            "ont" | "onu" => "cpe",
             "switch" | "router" | "media_converter" | "odf" | "ups" => "infrastructure",
             _ => "access_fiber",
         }

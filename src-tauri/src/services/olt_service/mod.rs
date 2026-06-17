@@ -114,6 +114,41 @@ impl OltService {
             )
             .await;
 
+        // ── Auto-create NetworkAsset ──────────────────────
+        let asset_type = format!("olt_{}", olt.olt_type);
+        let vendor = match olt.olt_type.as_str() {
+            "hioso_ha7302cst" => "HIOSO",
+            "vsol_epon" => "VSOL",
+            _ => "Unknown",
+        };
+        let now = Utc::now();
+        let asset_id = Uuid::new_v4().to_string();
+        let metadata = serde_json::json!({
+            "olt_id": olt.id,
+            "host": olt.host,
+            "olt_type": olt.olt_type,
+        });
+
+        // Use raw SQL to avoid circular dependency with NetworkAssetService
+        let _ = sqlx::query(
+            "INSERT INTO public.network_assets
+             (id, tenant_id, asset_group, asset_type, name, vendor, status, notes, metadata, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+        )
+        .bind(&asset_id)
+        .bind(tenant_id)
+        .bind("olt")
+        .bind(&asset_type)
+        .bind(&olt.name)
+        .bind(vendor)
+        .bind("active")
+        .bind(&olt.description)
+        .bind(metadata)
+        .bind(now)
+        .bind(now)
+        .execute(&self.pool)
+        .await;
+
         Ok(olt)
     }
 
@@ -484,6 +519,61 @@ impl OltService {
             .execute(&self.pool)
             .await?;
         }
+
+        // ── Low-signal alert pipeline ─────────────────────
+        // Check for ONUs with dangerously low RX power and notify tenant admins
+        const LOW_SIGNAL_DBM: f64 = -24.0;
+        const LOW_SIGNAL_FLOOR_DBM: f64 = -50.0;
+
+        for onu in onus {
+            if onu.status != "Online" {
+                continue;
+            }
+            let rx: f64 = match onu.rx.replace("dBm", "").trim().parse() {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            if rx > LOW_SIGNAL_DBM || rx < LOW_SIGNAL_FLOOR_DBM {
+                continue;
+            }
+
+            // Find admin users for this tenant to receive the alert
+            let admin_users: Vec<(String,)> = sqlx::query_as(
+                "SELECT u.id::text FROM users u
+                 WHERE u.tenant_id = $1::uuid
+                   AND u.role IN ('owner', 'admin')
+                 LIMIT 3",
+            )
+            .bind(tenant_id)
+            .fetch_all(&self.pool)
+            .await
+            .unwrap_or_default();
+
+            let title = "⚠️ Sinyal ONU Rendah".to_string();
+            let message = format!(
+                "ONU {} (MAC: {}) di OLT — sinyal rendah: {:.1} dBm",
+                onu.name, onu.mac, rx,
+            );
+
+            for (user_id,) in &admin_users {
+                let _ = self
+                    .notification_service
+                    .create_notification(
+                        user_id.clone(),
+                        Some(tenant_id.to_string()),
+                        title.clone(),
+                        message.clone(),
+                        "warning".to_string(),
+                        "olt_alert".to_string(),
+                        Some(format!("/admin/olts/{}", olt_id)),
+                    )
+                    .await;
+            }
+
+            // Throttle: only alert for the first low-signal ONU per save cycle
+            break;
+        }
+
         Ok(())
     }
 
