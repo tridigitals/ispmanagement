@@ -69,89 +69,163 @@ class FcmService {
   FcmService(this._ref);
   final Ref _ref;
   bool _initialized = false;
+  bool _inFlight = false;
 
-  /// Initialize FCM — call after every successful login.
+  /// Initialize FCM — call after every successful login AND on every app start.
   ///
-  /// The Riverpod provider keeps the same instance alive for the app's
-  /// lifetime, so on logout→login we still need a way to retry token
-  /// registration. We expose [force] for that case and re-run register
-  /// every time we land on an authenticated state.
+  /// Why both: a cold start with a still-valid session doesn't transition
+  /// through an auth state change (state goes from null→authenticated during
+  /// bootstrap, but timing is fragile). On top of that, FCM tokens can be
+  /// invalidated by Firebase at any time (uninstall, app data clear, 270-day
+  /// expiry, etc.) so we re-register on every app open.
+  ///
+  /// Robustness: every step has a timeout, and failures are caught locally.
+  /// The whole init is fire-and-forget — callers do NOT await.
   Future<void> init({bool force = false}) async {
+    if (_inFlight) return; // already running
     if (_initialized && !force) return;
-    _initialized = true;
+    _inFlight = true;
+    // NOTE: we DON'T set _initialized=true here. Setting it on success lets
+    // a failed init get retried on the next call.
     debugPrint('[FCM] init() running (force=$force)');
 
     try {
-      // Local notification init.
-      const androidSettings =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
-      const initSettings = InitializationSettings(android: androidSettings);
-      await _localNotif.initialize(
-        initSettings,
-        onDidReceiveNotificationResponse: _onLocalNotifTap,
+      await _initInternal();
+      _initialized = true;
+      debugPrint('[FCM] init OK');
+    } catch (e, st) {
+      debugPrint('[FCM] init error: $e\n$st');
+    } finally {
+      _inFlight = false;
+    }
+  }
+
+  Future<void> _initInternal() async {
+    // Local notification init — fast.
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(android: androidSettings);
+    await _localNotif.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: _onLocalNotifTap,
+    );
+
+    // Create Android channel.
+    await _localNotif
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(_channel);
+
+    // Request permission (Android 13+). Wrapped in 5s timeout — this call
+    // can hang on some devices if the system dialog is interrupted.
+    final settings = await FirebaseMessaging.instance
+        .requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          provisional: false,
+        )
+        .timeout(const Duration(seconds: 5), onTimeout: () {
+      debugPrint('[FCM] requestPermission timeout (5s) — assuming granted');
+      // Return a default-allowed value so init continues. If the user did
+      // deny, the actual FCM call will still fail downstream.
+      return NotificationSettings(
+        alert: AppleNotificationSetting.enabled,
+        announcement: AppleNotificationSetting.enabled,
+        authorizationStatus: AuthorizationStatus.authorized,
+        badge: AppleNotificationSetting.enabled,
+        carPlay: AppleNotificationSetting.enabled,
+        lockScreen: AppleNotificationSetting.enabled,
+        notificationCenter: AppleNotificationSetting.enabled,
+        showPreviews: AppleShowPreviewSetting.always,
+        timeSensitive: AppleNotificationSetting.enabled,
+        criticalAlert: AppleNotificationSetting.disabled,
+        sound: AppleNotificationSetting.enabled,
+        providesAppNotificationSettings: AppleNotificationSetting.disabled,
       );
+    });
+    debugPrint('[FCM] Permission: ${settings.authorizationStatus}');
 
-      // Create Android channel.
-      await _localNotif
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(_channel);
+    // Listen foreground messages.
+    FirebaseMessaging.onMessage.listen(_onForegroundMessage);
 
-      // Request permission (Android 13+).
-      final settings = await FirebaseMessaging.instance.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        provisional: false,
-      );
-      debugPrint('[FCM] Permission: ${settings.authorizationStatus}');
+    // Listen tap when app in background.
+    FirebaseMessaging.onMessageOpenedApp.listen(_onMessageTapped);
 
-      // Listen foreground messages.
-      FirebaseMessaging.onMessage.listen(_onForegroundMessage);
-
-      // Listen tap when app in background.
-      FirebaseMessaging.onMessageOpenedApp.listen(_onMessageTapped);
-
-      // Cold start — check if opened from notification.
-      final initial = await FirebaseMessaging.instance.getInitialMessage();
+    // Cold start — check if opened from notification. 3s timeout: this is
+    // best-effort and shouldn't block app startup.
+    try {
+      final initial = await FirebaseMessaging.instance
+          .getInitialMessage()
+          .timeout(const Duration(seconds: 3));
       if (initial != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _onMessageTapped(initial);
         });
       }
-
-      // Register token.
-      await _registerToken();
-
-      // Listen for token refresh.
-      FirebaseMessaging.instance.onTokenRefresh.listen((_) => _registerToken());
-    } catch (e, st) {
-      debugPrint('[FCM] Init error: $e\n$st');
+    } catch (e) {
+      debugPrint('[FCM] getInitialMessage failed: $e');
     }
+
+    // Register token — with built-in retry on null/error.
+    await _registerTokenWithRetry();
+
+    // Listen for token refresh (e.g., Firebase rotates the token).
+    FirebaseMessaging.instance.onTokenRefresh.listen((_) {
+      debugPrint('[FCM] Token refresh — re-registering');
+      // ignore: discarded_futures
+      _registerTokenWithRetry();
+    });
   }
 
-  /// Register FCM token with backend.
-  Future<void> _registerToken() async {
-    try {
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token == null) {
-        debugPrint('[FCM] Token is null!');
-        return;
+  /// Register FCM token with backend, with 1 retry on null/error.
+  Future<void> _registerTokenWithRetry() async {
+    for (var attempt = 1; attempt <= 2; attempt++) {
+      try {
+        final ok = await _registerToken();
+        if (ok) return;
+        // Token was null — wait 2s and retry (Firebase may need a moment
+        // to provision a token after first install).
+        if (attempt == 1) {
+          debugPrint('[FCM] No token yet, retrying in 2s…');
+          await Future.delayed(const Duration(seconds: 2));
+        }
+      } catch (e) {
+        debugPrint('[FCM] Register attempt $attempt failed: $e');
+        if (attempt == 1) {
+          await Future.delayed(const Duration(seconds: 2));
+        }
       }
-      debugPrint('[FCM] Token: ${token.substring(0, 20)}...');
-
-      final dio = _ref.read(dioProvider);
-      await dio.post(
-        '/api/notifications/devices',
-        data: {
-          'fcm_token': token,
-          'platform': 'android',
-        },
-      );
-      debugPrint('[FCM] Token registered OK');
-    } catch (e) {
-      debugPrint('[FCM] Token registration failed: $e');
     }
+    debugPrint('[FCM] All register attempts failed');
+  }
+
+  /// Returns true on success, false on null token, throws on transport error.
+  Future<bool> _registerToken() async {
+    final token = await FirebaseMessaging.instance
+        .getToken()
+        .timeout(const Duration(seconds: 10), onTimeout: () {
+      debugPrint('[FCM] getToken timeout (10s)');
+      return null;
+    });
+    if (token == null) {
+      debugPrint('[FCM] Token is null');
+      return false;
+    }
+    debugPrint('[FCM] Token: ${token.substring(0, 20)}…');
+
+    final dio = _ref.read(dioProvider);
+    await dio
+        .post(
+          '/api/notifications/devices',
+          data: {
+            'fcm_token': token,
+            'platform': 'android',
+          },
+        )
+        .timeout(const Duration(seconds: 10));
+    debugPrint('[FCM] Token registered OK');
+    return true;
   }
 
   /// Foreground message — show local notification.

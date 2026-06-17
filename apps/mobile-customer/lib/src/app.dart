@@ -48,6 +48,31 @@ class _State extends ConsumerState<IspCustomerApp> {
     // Restore auth session from secure storage on app start.
     Future.microtask(
         () => ref.read(authControllerProvider.notifier).bootstrap());
+    // FCM safety net: also call init after bootstrap completes, regardless
+    // of whether the auth state changed. The `ref.listen` below covers the
+    // state-change case, but a cold start with a still-valid session may
+    // not transition through the listener reliably (and the FCM token can
+    // be invalidated by Firebase at any time). init() is idempotent and
+    // uses force=false on this path, so it's a no-op if already done.
+    _scheduleFcmBootstrap();
+  }
+
+  /// Run FCM init 1.5s after app start. By that point bootstrap() has
+  /// either restored the session or fallen back to the login screen. We
+  /// unconditionally try to init — FCM service itself is idempotent and
+  /// will no-op if the user isn't authenticated yet.
+  void _scheduleFcmBootstrap() {
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      // ignore: discarded_futures
+      ref.read(fcmServiceProvider).init();
+    });
+    // Second safety net: if the first attempt silently failed (e.g.,
+    // Firebase was still warming up), try again 8s after start. The
+    // FcmService guards against double-init via the _inFlight flag.
+    Future.delayed(const Duration(seconds: 8), () {
+      // ignore: discarded_futures
+      ref.read(fcmServiceProvider).init();
+    });
   }
 
   @override
