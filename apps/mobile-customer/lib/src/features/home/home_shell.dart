@@ -182,39 +182,53 @@ final l10n = AppLocalizations.of(context);
           // ─── Safe Area top padding ────────────────────────────
           SizedBox(height: MediaQuery.of(context).padding.top),
           // ─── FCM Debug Banner (temporary) ───────────────────────
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            color: Colors.amber.shade900,
-            child: Row(
-              children: [
-                const Icon(Icons.bug_report, color: Colors.white, size: 16),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    '🔧 FCM Debug: Tap to re-init notification',
-                    style: TextStyle(color: Colors.white, fontSize: 11),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    debugPrint('[DEBUG] User tapped FCM re-init');
-                    ref.read(fcmServiceProvider).init(force: true);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4),
+          Consumer(
+            builder: (context, ref, _) {
+              final status = ref.watch(fcmStatusProvider);
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                color: status.startsWith('✅')
+                    ? Colors.green.shade800
+                    : status.startsWith('❌')
+                        ? Colors.red.shade800
+                        : Colors.amber.shade900,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.bug_report, color: Colors.white, size: 14),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'FCM: $status',
+                            style: const TextStyle(color: Colors.white, fontSize: 11),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            ref.read(fcmServiceProvider).init(force: true);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Re-init',
+                              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    child: const Text(
-                      'Re-init',
-                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
           // ─── Main Content ───────────────────────────────────────
           Expanded(
