@@ -71,10 +71,9 @@ class FcmService {
   bool _initialized = false;
   bool _inFlight = false;
 
-  /// Visible status for debug banner.
+  /// Step-level logging — written to debug log only (no UI banner).
   void _status(String msg) {
     debugPrint('[FCM] $msg');
-    _ref.read(fcmStatusProvider.notifier).state = msg;
   }
 
   /// Initialize FCM — call after every successful login AND on every app start.
@@ -311,9 +310,6 @@ class FcmService {
 }
 
 /// Riverpod provider for FCM service.
-/// Debug status visible on home screen banner.
-final fcmStatusProvider = StateProvider<String>((ref) => 'Waiting…');
-
 final fcmServiceProvider = Provider<FcmService>((ref) {
   return FcmService(ref);
 });

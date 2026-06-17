@@ -78,18 +78,22 @@ WS_BASE_URL="${WS_BASE_URL:-ws://103.190.112.214:3000}"
 echo "   API_BASE_URL=$API_BASE_URL"
 
 flutter build apk --release --no-pub \
+  --target-platform android-arm64 \
   --build-number="$BUILD_NUMBER" \
   --build-name="$BUILD_NAME" \
   --dart-define=API_BASE_URL="$API_BASE_URL" \
-  --dart-define=WS_BASE_URL="$WS_BASE_URL" 
+  --dart-define=WS_BASE_URL="$WS_BASE_URL"
 
+# arm64-only build produces a single APK at app-release.apk (smaller than universal)
 APK_SRC="$APP_DIR/build/app/outputs/flutter-apk/app-release.apk"
 APK_DST="/tmp/app-release.apk"
 
 if [[ -f "$APK_SRC" ]]; then
   cp "$APK_SRC" "$APK_DST"
-  echo "✅ APK ready: $APK_DST ($(du -h "$APK_DST" | cut -f1))"
+  APK_SIZE=$(du -h "$APK_DST" | cut -f1)
+  echo "✅ APK ready: $APK_DST ($APK_SIZE)"
   echo "   Download: http://103.190.112.214:9999/app-release.apk"
+  echo "   Architecture: arm64-v8a only (smaller than universal)"
 else
   echo "❌ Build failed — APK not found at $APK_SRC"
   exit 1
