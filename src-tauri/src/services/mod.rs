@@ -36,6 +36,7 @@ pub mod dhcp_static_service;
 pub mod isp_package_service;
 pub mod mikrotik_service;
 pub mod notification_service;
+pub mod olt_service;
 pub mod payment_service;
 pub mod plan_service;
 pub mod pppoe_service;
