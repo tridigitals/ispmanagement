@@ -30,7 +30,7 @@ use std::{collections::HashMap, time::Instant};
 use crate::http::{
     announcements, audit, auth, backup, customer_communication, customers, dhcp_static,
     email_outbox, install, isp_packages, message_templates, middleware, mikrotik, mixradius_import,
-    network_assets, network_mapping, notifications, payment, plans, pppoe, public,
+    network_assets, network_mapping, notifications, olt, payment, plans, pppoe, public,
     registration_approvals, roles, settings, storage, superadmin, support, system, team, tenant,
     users, websocket, whatsapp, work_orders, AppState, SecurityRuntimeConfig, WsHub,
 };
@@ -205,6 +205,12 @@ pub async fn start_server_impl(
         }
     });
 
+    let olt_service = Arc::new(crate::services::OltService::new(
+        pool.clone(),
+        notification_service.clone(),
+        audit_service.clone(),
+    ));
+
     let state = AppState {
         auth_service: Arc::new(auth_service),
         user_service: Arc::new(user_service),
@@ -233,6 +239,7 @@ pub async fn start_server_impl(
         isp_package_service: Arc::new(isp_package_service),
         network_asset_service: Arc::new(network_asset_service),
         network_mapping_service: Arc::new(network_mapping_service),
+        olt_service,
         backup_service: Arc::new(backup_service),
         ws_hub,
         app_data_dir,
@@ -588,6 +595,8 @@ pub async fn start_server_impl(
         .nest("/api/admin/network-assets", network_assets::router())
         // Network topology mapping (tenant scoped)
         .nest("/api/admin/network-mapping", network_mapping::router())
+        // OLT monitoring (tenant scoped)
+        .nest("/api/admin/olts", olt::router())
         // Settings Routes
         .route(
             "/api/settings",

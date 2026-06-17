@@ -2,7 +2,7 @@ use crate::services::{
     AuditService, AuthService, CustomerService, DhcpStaticServiceManager, EmailService,
     IspPackageService, ManagedRadiusService, MessageTemplateService, MikrotikService,
     MixradiusImportService, NetworkAssetService, NetworkMappingService, NotificationService,
-    PaymentService, PlanService, PppoeService, RadiusService, RoleService, SettingsService,
+    OltService, PaymentService, PlanService, PppoeService, RadiusService, RoleService, SettingsService,
     StorageService, SystemService, TeamService, UserService, WhatsappGatewayService,
 };
 use std::path::PathBuf;
@@ -29,6 +29,7 @@ pub mod mixradius_import;
 pub mod network_assets;
 pub mod network_mapping;
 pub mod notifications;
+pub mod olt;
 pub mod payment;
 pub mod plans;
 pub mod pppoe;
@@ -89,6 +90,7 @@ pub struct AppState {
     pub isp_package_service: Arc<IspPackageService>,
     pub network_asset_service: Arc<NetworkAssetService>,
     pub network_mapping_service: Arc<NetworkMappingService>,
+    pub olt_service: Arc<OltService>,
     pub backup_service: Arc<crate::services::BackupService>,
     pub ws_hub: Arc<WsHub>,
     pub app_data_dir: PathBuf,
