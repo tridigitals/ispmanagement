@@ -17,8 +17,7 @@ use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
 use crate::services::audit_service::AuditService;
 use crate::services::notification_service::NotificationService;
 use chrono::Utc;
-use drivers::{create_driver, OltDriver};
-use sqlx::Row;
+use drivers::create_driver;
 use uuid::Uuid;
 
 pub fn pool_ref(pool: &DbPool) -> &DbPool {
@@ -154,9 +153,13 @@ impl OltService {
 
         self.audit_service
             .log(
-                tenant_id,
+                None,
+                Some(tenant_id),
                 "olt_updated",
-                &format!("Updated OLT: {}", name),
+                "olt",
+                Some(id),
+                Some(&format!("Updated OLT: {}", name)),
+                None,
             )
             .await;
 
@@ -174,9 +177,13 @@ impl OltService {
 
         self.audit_service
             .log(
-                tenant_id,
+                None,
+                Some(tenant_id),
                 "olt_deleted",
-                &format!("Deleted OLT: {}", olt.name),
+                "olt",
+                Some(id),
+                Some(&format!("Deleted OLT: {}", olt.name)),
+                None,
             )
             .await;
 
@@ -421,12 +428,16 @@ impl OltService {
         if ok {
             self.audit_service
                 .log(
-                    tenant_id,
+                    None,
+                    Some(tenant_id),
                     "onu_reboot",
-                    &format!(
+                    "olt_onu",
+                    Some(&req.onu_id),
+                    Some(&format!(
                         "Rebooted ONU {} on OLT {}",
                         req.onu_name, olt.name
-                    ),
+                    )),
+                    None,
                 )
                 .await;
 
