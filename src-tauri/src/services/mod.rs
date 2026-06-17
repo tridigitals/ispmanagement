@@ -61,6 +61,7 @@ pub use mixradius_import_service::MixradiusImportService;
 pub use network_asset_service::NetworkAssetService;
 pub use network_mapping_service::NetworkMappingService;
 pub use notification_service::NotificationService;
+pub use olt_service::OltService;
 pub use payment_service::{
     BillingCollectionRunResult, BulkGenerateInvoicesResult, DuitkuPaymentMethod, PaymentService,
 };
