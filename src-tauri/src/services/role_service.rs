@@ -225,6 +225,10 @@ impl RoleService {
                 "manage",
                 "Manage WhatsApp and email message templates",
             ),
+            // OLT Monitoring (tenant scoped)
+            ("olt", "read", "View OLT devices and ONU status"),
+            ("olt", "manage", "Manage OLT inventory, reboot ONU, test connections"),
+            ("olt_onu_history", "read", "View ONU signal history and graphs"),
         ]
     }
 
@@ -307,6 +311,9 @@ impl RoleService {
                     "email_outbox:delete",
                     "communication_templates:read",
                     "communication_templates:manage",
+                    "olt:read",
+                    "olt:manage",
+                    "olt_onu_history:read",
                 ],
             ),
             (
@@ -381,6 +388,9 @@ impl RoleService {
                     "email_outbox:delete",
                     "communication_templates:read",
                     "communication_templates:manage",
+                    "olt:read",
+                    "olt:manage",
+                    "olt_onu_history:read",
                 ],
             ),
             (
@@ -402,6 +412,7 @@ impl RoleService {
                     "isp_packages:read",
                     "work_orders:read",
                     "announcements:read",
+                    "olt:read",
                 ],
             ),
             (
@@ -438,6 +449,8 @@ impl RoleService {
                     "support:update",
                     "support:internal",
                     "announcements:read",
+                    "olt:read",
+                    "olt_onu_history:read",
                 ],
             ),
             (
@@ -493,6 +506,8 @@ impl RoleService {
                     "storage_files:read",
                     "storage_files:upload",
                     "announcements:read",
+                    "olt:read",
+                    "olt_onu_history:read",
                 ],
             ),
             (
