@@ -18,6 +18,8 @@ use crate::services::audit_service::AuditService;
 use crate::services::notification_service::NotificationService;
 use chrono::Utc;
 use drivers::create_driver;
+use std::sync::Arc;
+use tokio::time::{interval, Duration};
 use uuid::Uuid;
 
 pub fn pool_ref(pool: &DbPool) -> &DbPool {
@@ -593,5 +595,62 @@ impl OltService {
         .fetch_all(&self.pool)
         .await?;
         Ok(records)
+    }
+
+    // ── Background Poller ────────────────────────────────
+
+    /// Start background OLT poller. Returns immediately, runs forever.
+    /// Polls all OLTs every 30 seconds and pushes stats via WebSocket.
+    pub fn start_poller(self: Arc<Self>, ws_hub: Arc<crate::http::WsHub>) {
+        tokio::spawn(async move {
+            // Wait 5 seconds before first poll to let the server fully start
+            tokio::time::sleep(Duration::from_secs(5)).await;
+
+            let mut tick = interval(Duration::from_secs(30));
+            loop {
+                tick.tick().await;
+                if let Err(e) = self.poll_all_olts(&ws_hub).await {
+                    tracing::warn!("OLT poller cycle error: {}", e);
+                }
+            }
+        });
+    }
+
+    /// Poll all OLTs across all tenants and push updates via WebSocket
+    async fn poll_all_olts(
+        &self,
+        ws_hub: &crate::http::WsHub,
+    ) -> AppResult<()> {
+        // Query all tenants with OLTs
+        let rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT DISTINCT tenant_id::text FROM public.olts WHERE tenant_id IS NOT NULL",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        for (tenant_id,) in &rows {
+            let olts = self.list_olts(tenant_id).await.unwrap_or_default();
+
+            for olt in &olts {
+                match self.get_olt_stats(&olt.id, tenant_id, true).await {
+                    Ok(resp) => {
+                        // Push to WebSocket for real-time UI updates
+                        ws_hub.broadcast(crate::http::WsEvent::OltStatsUpdate {
+                            tenant_id: tenant_id.clone(),
+                            olt_id: olt.id.clone(),
+                            olt_name: olt.name.clone(),
+                            is_online: resp.is_online,
+                            stats: serde_json::to_value(&resp.data)
+                                .unwrap_or(serde_json::json!({})),
+                        });
+                    }
+                    Err(e) => {
+                        tracing::warn!("Poll failed for OLT {}: {}", olt.name, e);
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 }

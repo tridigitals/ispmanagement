@@ -158,25 +158,14 @@ final l10n = AppLocalizations.of(context);
                 _InstallationTracker(sub: sub, l10n: l10n),
                 const SizedBox(height: IspSpacing.lg),
               ],
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () =>
-                          GoRouter.of(context).push('/tickets/new'),
-                      icon: const Icon(Icons.report_problem_outlined),
-                      label: Text(l10n.reportOutage ?? 'Lapor Gangguan'),
-                    ),
-                  ),
-                  const SizedBox(width: IspSpacing.md),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _showUpgradeSheet(context, ref),
-                      icon: const Icon(Icons.upgrade),
-                      label: Text('Ubah Paket'),
-                    ),
-                  ),
-                ],
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      GoRouter.of(context).push('/tickets/new'),
+                  icon: const Icon(Icons.report_problem_outlined),
+                  label: Text(l10n.reportOutage ?? 'Lapor Gangguan'),
+                ),
               ),
             ],
           ),
@@ -198,23 +187,6 @@ final l10n = AppLocalizations.of(context);
       default:
         return cycle;
     }
-  }
-
-  void _showUpgradeSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        maxChildSize: 0.9,
-        minChildSize: 0.3,
-        expand: false,
-        builder: (ctx, scrollCtrl) => _PackageSheet(scrollCtrl: scrollCtrl),
-      ),
-    );
   }
 }
 
@@ -658,128 +630,4 @@ class _Step {
   final String label;
   final IconData icon;
   final bool done;
-}
-
-// ── Package upgrade sheet ───────────────────────────────────
-
-class _PackageSheet extends ConsumerWidget {
-  const _PackageSheet({required this.scrollCtrl});
-  final ScrollController scrollCtrl;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isp = context.isp;
-final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
-
-    return Column(
-      children: [
-        // Handle bar
-        Container(
-          margin: const EdgeInsets.only(top: 12, bottom: 8),
-          width: 40,
-          height: 4,
-          decoration: BoxDecoration(
-            color: isp.border,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          child: Text(
-            'Paket Tersedia',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-          ),
-        ),
-        Expanded(
-          child: ListView(
-            controller: scrollCtrl,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            children: [
-              _PackageCard(
-                name: 'Paket Basic',
-                speed: '10 Mbps',
-                price: 150000,
-                fmt: fmt,
-                onTap: () => Navigator.pop(context),
-              ),
-              _PackageCard(
-                name: 'Paket Standard',
-                speed: '20 Mbps',
-                price: 250000,
-                fmt: fmt,
-                onTap: () => Navigator.pop(context),
-              ),
-              _PackageCard(
-                name: 'Paket Premium',
-                speed: '50 Mbps',
-                price: 450000,
-                fmt: fmt,
-                onTap: () => Navigator.pop(context),
-              ),
-              _PackageCard(
-                name: 'Paket Ultimate',
-                speed: '100 Mbps',
-                price: 750000,
-                fmt: fmt,
-                onTap: () => Navigator.pop(context),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Hubungi admin untuk mengubah paket',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: isp.textMuted,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 40),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PackageCard extends StatelessWidget {
-  const _PackageCard({
-    required this.name,
-    required this.speed,
-    required this.price,
-    required this.fmt,
-    required this.onTap,
-  });
-
-  final String name;
-  final String speed;
-  final double price;
-  final NumberFormat fmt;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: isp.accent.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(Icons.wifi, color: isp.accent),
-        ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(speed),
-        trailing: Text(
-          fmt.format(price),
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-        ),
-        onTap: onTap,
-      ),
-    );
-  }
 }

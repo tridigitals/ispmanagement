@@ -211,6 +211,9 @@ pub async fn start_server_impl(
         audit_service.clone(),
     ));
 
+    // Start background OLT poller (polls every 30s, pushes via WebSocket)
+    olt_service.clone().start_poller(ws_hub.clone());
+
     let state = AppState {
         auth_service: Arc::new(auth_service),
         user_service: Arc::new(user_service),

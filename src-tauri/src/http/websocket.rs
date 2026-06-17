@@ -65,6 +65,15 @@ pub enum WsEvent {
         ticket_id: String,
         message_id: String,
     },
+
+    /// OLT stats updated by background poller
+    OltStatsUpdate {
+        tenant_id: String,
+        olt_id: String,
+        olt_name: String,
+        is_online: bool,
+        stats: serde_json::Value,
+    },
 }
 
 /// WebSocket connection manager
