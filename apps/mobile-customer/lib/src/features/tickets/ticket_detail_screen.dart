@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -17,6 +18,10 @@ import '../../services/app_config.dart';
 import '../../services/auth_providers.dart';
 import '../../services/service_providers.dart';
 import 'ticket_satisfaction_survey.dart';
+
+/// Source for ticket attachments — mirrors the profile-upload pattern so
+/// camera permission flow is consistent across the app.
+enum _AttachmentSource { camera, files }
 
 /// Current user's ID for staff detection.
 final _currentUserIdProvider = Provider<String?>((ref) {
@@ -105,6 +110,89 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
   }
 
   Future<void> _pickFile() async {
+    // Show bottom sheet asking the user to pick a source — same UX as
+    // profile avatar upload. Camera path uses image_picker which shows
+    // the system CAMERA permission dialog automatically on first use.
+    final source = await showModalBottomSheet<_AttachmentSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.photo_camera_outlined, color: isp.accent),
+              title: const Text('Ambil Foto'),
+              subtitle: const Text(
+                'Kamera — perlu izin akses kamera',
+                style: TextStyle(fontSize: 12),
+              ),
+              onTap: () => Navigator.pop(ctx, _AttachmentSource.camera),
+            ),
+            ListTile(
+              leading: Icon(Icons.folder_open_outlined, color: isp.accent),
+              title: const Text('Pilih File'),
+              subtitle: const Text(
+                'PDF, gambar, dokumen — dari penyimpanan perangkat',
+                style: TextStyle(fontSize: 12),
+              ),
+              onTap: () => Navigator.pop(ctx, _AttachmentSource.files),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    if (source == _AttachmentSource.camera) {
+      await _captureFromCamera();
+    } else {
+      await _pickFromFiles();
+    }
+  }
+
+  /// Capture a single photo via system camera.
+  /// image_picker handles the CAMERA permission request internally and shows
+  /// the system permission dialog on first use.
+  Future<void> _captureFromCamera() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 90,
+      );
+      if (picked == null || !mounted) return;
+
+      final size = await picked.length();
+      if (!mounted) return;
+
+      setState(() {
+        if (!_pendingAttachments.any((a) => a.filePath == picked.path)) {
+          _pendingAttachments.add(
+            _PendingAttachment(
+              filePath: picked.path,
+              fileName: picked.name,
+              contentType: 'image/jpeg',
+              size: size,
+            ),
+          );
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal membuka kamera: $e'),
+          backgroundColor: isp.danger,
+        ),
+      );
+    }
+  }
+
+  /// Pick one or more files via system file explorer (SAF — no permission needed).
+  Future<void> _pickFromFiles() async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.any,
