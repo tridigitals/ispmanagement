@@ -387,7 +387,7 @@
             <input id="olt-user" type="text" bind:value={formUsername} placeholder="admin" />
           </div>
           <div class="form-group flex-1">
-            <label for="olt-pass">Password {editing ? '' : '<span class="req">*</span>'}</label>
+            <label for="olt-pass">Password {@html editing ? '' : '<span class="req">*</span>'}</label>
             <input id="olt-pass" type="password" bind:value={formPassword} placeholder={editing ? 'Kosongkan jika tidak diubah' : '••••••'} />
           </div>
         </div>
