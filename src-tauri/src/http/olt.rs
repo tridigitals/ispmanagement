@@ -202,6 +202,29 @@ async fn get_all_onus(
     ))
 }
 
+/// GET /api/admin/olts/{id}/onu-customer
+/// Returns ONUs on this OLT enriched with linked customer_id from
+/// network_assets (via OnuLinker MAC lookup).
+async fn get_olt_onu_customer(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant, "olt", "read")
+        .await?;
+
+    let onus = state
+        .olt_service
+        .get_olt_onus_with_customer(&id, &tenant)
+        .await?;
+    Ok(Json(
+        serde_json::to_value(onus).map_err(|e| AppError::Internal(e.to_string()))?,
+    ))
+}
+
 // ── Control Handlers ─────────────────────────────────────────
 
 /// POST /api/admin/olts/{id}/reboot-onu
@@ -339,6 +362,7 @@ pub fn router() -> Router<AppState> {
         .route("/{id}/details", get(get_olt_all_details))
         .route("/{id}/reboot-onu", post(reboot_onu))
         .route("/{id}/onu-history", get(get_onu_history))
+        .route("/{id}/onu-customer", get(get_olt_onu_customer))
         .route(
             "/{id}/public-tokens",
             get(list_public_tokens).post(create_public_token),

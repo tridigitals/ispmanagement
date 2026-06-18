@@ -227,3 +227,24 @@ pub struct CreatePublicTokenRequest {
     pub enabled: bool,
     pub expires_at: Option<String>,
 }
+
+// ── ONU with customer link (Sprint B.6) ────────────────────
+
+/// Enriched ONU with linked network_asset + customer info.
+/// Returned by `GET /api/admin/olts/{id}/onu-customer`.
+#[derive(Debug, Clone, Serialize)]
+pub struct OnuWithCustomer {
+    pub onu_id: String,
+    pub name: String,
+    pub mac: String,
+    pub status: String,
+    pub rx: String,
+    pub tx: Option<String>,
+    pub distance: Option<String>,
+    pub temperature: Option<String>,
+    pub pon: String,
+    pub olt_id: String,
+    pub asset_id: Option<String>,
+    pub customer_id: Option<String>,
+    pub linked_at: Option<DateTime<Utc>>,
+}

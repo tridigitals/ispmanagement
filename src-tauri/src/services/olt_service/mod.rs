@@ -550,6 +550,63 @@ impl OltService {
         })
     }
 
+    /// Get all ONUs on a single OLT, enriched with linked network_asset
+    /// + customer_id via OnuLinker. Used by `GET /api/admin/olts/{id}/onu-customer`.
+    pub async fn get_olt_onus_with_customer(
+        &self,
+        olt_id: &str,
+        tenant_id: &str,
+    ) -> AppResult<Vec<crate::models::OnuWithCustomer>> {
+        use crate::models::OnuWithCustomer;
+
+        let olt = self.get_olt(olt_id, tenant_id).await?;
+        let password = decrypt_secret_opt(&olt.password_enc.clone().unwrap_or_default())
+            .unwrap_or_default()
+            .unwrap_or_default();
+
+        let mut driver = create_driver(&olt.olt_type)?;
+        driver
+            .connect(&olt.host, olt.port as u16, &olt.username, &password)
+            .await
+            .map_err(|e| AppError::Internal(format!("OLT connection failed: {}", e)))?;
+
+        let stats = driver.get_global_stats().await?;
+        let mut all_onus: Vec<OltOnuDetail> = Vec::new();
+        for p in &stats.pon_ports {
+            if let Ok(onus) = driver.get_pon_onu_details(&p.name).await {
+                all_onus.extend(onus);
+            }
+        }
+        driver.disconnect().await.ok();
+
+        let mut result = Vec::with_capacity(all_onus.len());
+        for onu in all_onus {
+            let link = self
+                .onu_linker
+                .lookup_by_mac(tenant_id, &onu.mac)
+                .await
+                .ok()
+                .flatten();
+            result.push(OnuWithCustomer {
+                onu_id: onu.onu_id,
+                name: onu.name,
+                mac: onu.mac,
+                status: onu.status,
+                rx: onu.rx,
+                tx: onu.tx,
+                distance: onu.distance,
+                temperature: onu.temperature,
+                pon: onu.pon,
+                olt_id: olt.id.clone(),
+                asset_id: link.as_ref().map(|l| l.asset_id.clone()),
+                customer_id: link.as_ref().and_then(|l| l.customer_id.clone()),
+                linked_at: None,
+            });
+        }
+
+        Ok(result)
+    }
+
     /// Reboot an ONU on a specific OLT
     pub async fn reboot_onu(
         &self,
