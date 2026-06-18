@@ -592,6 +592,19 @@ const commandMap: Record<string, { method: string; path: string }> = {
   list_backups: { method: 'GET', path: '/backups' },
   create_backup: { method: 'POST', path: '/backups' },
   delete_backup: { method: 'DELETE', path: '/backups/:filename' },
+  list_olts: { method: 'GET', path: '/admin/olts' },
+  create_olt: { method: 'POST', path: '/admin/olts' },
+  test_olt_connection: { method: 'POST', path: '/admin/olts/test' },
+  get_olt: { method: 'GET', path: '/admin/olts/:id' },
+  update_olt: { method: 'PUT', path: '/admin/olts/:id' },
+  delete_olt: { method: 'DELETE', path: '/admin/olts/:id' },
+  get_olt_stats: { method: 'GET', path: '/admin/olts/:id/stats' },
+  get_olt_details: { method: 'GET', path: '/admin/olts/:id/details' },
+  reboot_olt_onu: { method: 'POST', path: '/admin/olts/:id/reboot-onu' },
+  list_olt_onu_history: { method: 'GET', path: '/admin/olts/:id/onu-history' },
+  list_olt_public_tokens: { method: 'GET', path: '/admin/olts/:id/public-tokens' },
+  create_olt_public_token: { method: 'POST', path: '/admin/olts/:id/public-tokens' },
+  delete_olt_public_token: { method: 'DELETE', path: '/admin/olts/:id/public-tokens/:token_id' },
 };
 
 function hasStoredAuthToken(): boolean {

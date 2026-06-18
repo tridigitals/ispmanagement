@@ -375,6 +375,12 @@
             show: $can('read', 'ftth_assets') || $can('manage', 'ftth_assets'),
           },
           {
+            label: $t('sidebar.olt_monitoring') || 'OLT Monitoring',
+            icon: 'radio',
+            href: `${tenantPrefix}/admin/network/olts`,
+            show: $can('read', 'router_inventory') || $can('manage', 'router_inventory'),
+          },
+          {
             label: $t('sidebar.imports') || 'Imports',
             icon: 'download',
             href: `${tenantPrefix}/admin/network/import`,

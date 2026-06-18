@@ -32,6 +32,7 @@
   "dhcp_static": "DHCP Static",
   "ftth_assets": "Aset FTTH",
   "imports": "Import",
+  "olt_monitoring": "Monitoring OLT",
   "ppp_profiles": "Profil PPP",
   "ip_pools": "Pool IP",
   "services": "Layanan",

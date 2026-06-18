@@ -28,6 +28,7 @@ import { team } from './team';
 import { users } from './users';
 import { whatsapp } from './whatsapp';
 import { workOrders } from './workOrders';
+import { olt } from './olt';
 export { announcements } from './announcements';
 export { audit } from './audit';
 export { auth } from './auth';
@@ -58,6 +59,7 @@ export { team } from './team';
 export { users } from './users';
 export { whatsapp } from './whatsapp';
 export { workOrders } from './workOrders';
+export { olt } from './olt';
 export type * from './types';
 // Combined API object
 export const api = {
@@ -90,6 +92,7 @@ export const api = {
   notifications,
   emailOutbox,
   backup,
+  olt,
 };
 
 export default api;
