@@ -24,6 +24,8 @@ class RealtimeNotificationListener extends ConsumerStatefulWidget {
 class _RealtimeNotificationListenerState
     extends ConsumerState<RealtimeNotificationListener> {
   StreamSubscription<Map<String, dynamic>>? _sub;
+  RealtimeClient? _channel;
+  bool _connected = false;
 
   @override
   void initState() {
@@ -32,16 +34,19 @@ class _RealtimeNotificationListenerState
     WidgetsBinding.instance.addPostFrameCallback((_) => _connect());
   }
 
+  void _connect() {
+    final client = ref.read(realtimeClientProvider);
+    _channel = client;
+    _sub?.cancel();
+    _sub = client.stream.listen(_onEvent);
+    client.connect();
+    _connected = true;
+  }
+
   @override
   void dispose() {
     _sub?.cancel();
     super.dispose();
-  }
-
-  void _connect() {
-    final client = ref.read(realtimeClientProvider);
-    _sub?.cancel();
-    _sub = client.stream.listen(_onEvent);
   }
 
   void _onEvent(Map<String, dynamic> event) {

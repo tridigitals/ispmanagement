@@ -100,6 +100,11 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 icon: const Icon(Icons.account_circle_outlined),
                 onPressed: () => GoRouter.of(context).push('/profile'),
               ),
+              IconButton(
+                icon: const Icon(Icons.settings_outlined),
+                tooltip: l10n.settings,
+                onPressed: () => GoRouter.of(context).push('/settings'),
+              ),
             ],
           ),
 

@@ -25,10 +25,14 @@ class _State extends ConsumerState<HomeShell> {
   Set<String> _knownIds = {};
   bool _notificationsInitialised = false;
 
-  /// Normalize action_url → in-app tab route.
+  /// Normalize action_url → in-app route.
   String _normalizeAction(String? actionUrl) {
     if (actionUrl == null || actionUrl.isEmpty) return '/notifications';
-    if (actionUrl.startsWith('/support/')) return '/?tab=3';
+    // /support/{id} → /tickets/{id} (direct to ticket detail)
+    if (actionUrl.startsWith('/support/')) {
+      final id = actionUrl.substring('/support/'.length);
+      if (id.isNotEmpty) return '/tickets/$id';
+    }
     if (actionUrl.startsWith('/pay/') || actionUrl.startsWith('/invoices'))
       return '/?tab=2';
     if (actionUrl.startsWith('/subscriptions/') ||
@@ -97,7 +101,7 @@ class _State extends ConsumerState<HomeShell> {
           textColor: Colors.white,
           onPressed: () {
             try {
-              if (route == '/notifications') {
+              if (route == '/notifications' || route.startsWith('/tickets/')) {
                 context.push(route);
               } else {
                 context.go(route);

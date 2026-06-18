@@ -36,8 +36,13 @@ class RealtimeClient {
 
   Future<void> connect() async {
     if (_disposed) return;
+    if (_channel != null) return; // already connected
     final token = await tokenStorage.readToken();
-    if (token == null) return;
+    if (token == null) {
+      // Token not yet available (pre-login). Schedule retry.
+      _scheduleReconnect();
+      return;
+    }
 
     final wsUrl = baseUrl
         .replaceFirst('https://', 'wss://')
