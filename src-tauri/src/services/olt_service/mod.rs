@@ -511,11 +511,20 @@ impl OltService {
         onus: &[OltOnuDetail],
     ) -> AppResult<()> {
         for onu in onus {
-            let rx: Option<f64> = onu.rx.replace("dBm", "").trim().parse().ok();
-            let tx: Option<f64> = onu
+            // Parse signal values as f32 (DB column type is `real` = float4)
+            let rx: Option<f32> = onu.rx.replace("dBm", "").trim().parse().ok();
+            let tx: Option<f32> = onu
                 .tx
                 .as_ref()
                 .and_then(|s| s.replace("dBm", "").trim().parse().ok());
+            let dist: Option<f32> = onu
+                .distance
+                .as_ref()
+                .and_then(|s| s.replace("km", "").trim().parse().ok());
+            let temp: Option<f32> = onu
+                .temperature
+                .as_ref()
+                .and_then(|s| s.trim().parse().ok());
 
             sqlx::query(
                 "INSERT INTO public.olt_onu_history (id, olt_id, tenant_id, onu_id, pon, mac, name, status, rx_power, tx_power, distance, temperature)
@@ -531,8 +540,8 @@ impl OltService {
             .bind(&onu.status)
             .bind(rx)
             .bind(tx)
-            .bind(onu.distance.as_ref().and_then(|s| s.replace("km", "").trim().parse::<f64>().ok()))
-            .bind(onu.temperature.as_ref().and_then(|s| s.trim().parse::<f64>().ok()))
+            .bind(dist)
+            .bind(temp)
             .execute(&self.pool)
             .await?;
         }

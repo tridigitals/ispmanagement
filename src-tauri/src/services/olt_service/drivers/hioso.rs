@@ -340,12 +340,13 @@ impl OltDriver for HiosoHa7302cstDriver {
             let mut on = 0;
             let mut off = 0;
             for part in stats_str.split(',') {
-                if let Some(v) = part.strip_prefix("Total=") {
-                    t = v.parse().unwrap_or(0);
+                let part = part.trim();
+                if let Some(v) = part.strip_prefix("ONU Total=").or_else(|| part.strip_prefix("Total=")) {
+                    t = v.trim().parse().unwrap_or(0);
                 } else if let Some(v) = part.strip_prefix("Online=") {
-                    on = v.parse().unwrap_or(0);
+                    on = v.trim().parse().unwrap_or(0);
                 } else if let Some(v) = part.strip_prefix("Offline=") {
-                    off = v.parse().unwrap_or(0);
+                    off = v.trim().parse().unwrap_or(0);
                 }
             }
 
