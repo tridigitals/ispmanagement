@@ -43,7 +43,7 @@ jobs:
         with:
           flutter-version: '3.24.0'
           cache: true
-      - run: echo "$KEYSTORE_BASE64" | base64 -d > apps/mobile-customer/android/app/upload-keystore.jks
+      - run: echo "$KEYSTORE_BASE64" | base64 -d > apps/mobile-customer/android/app/release-key.jks
         env:
           KEYSTORE_BASE64: ${{ secrets.CUSTOMER_KEYSTORE }}
       - uses: gradle/actions/setup-gradle@v3

@@ -134,13 +134,13 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
         run: |
-          # Decode signing key (base64)
-          echo "$SIGNING_KEY" | base64 -d > android/app/upload-keystore.jks
+          # Decode signing key (base64) — same release-key.jks as local builds
+          echo "$SIGNING_KEY" | base64 -d > android/app/release-key.jks
           cat > android/key.properties <<EOF
           storePassword=$STORE_PASSWORD
           keyPassword=$KEY_PASSWORD
           keyAlias=$KEY_ALIAS
-          storeFile=upload-keystore.jks
+          storeFile=release-key.jks
           EOF
           flutter build apk --release
           flutter build appbundle --release
