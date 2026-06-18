@@ -8,6 +8,7 @@ import 'package:api_client/api_client.dart' show NotificationModel;
 import '../../l10n/app_localizations.dart';
 import '../../services/notifications_providers.dart';
 import '../../services/settings_providers.dart';
+import '../../services/auth_providers.dart';
 import './home_tab.dart';
 import 'invoices_tab.dart';
 import 'subscriptions_tab.dart';
@@ -64,11 +65,21 @@ class _State extends ConsumerState<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-
-final isp = context.isp;
-final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
     final notifState = ref.watch(notificationsProvider);
     final tab = ref.watch(currentTabProvider);
+    final user = ref.watch(currentUserProvider);
+    final unread = ref.watch(unreadNotificationsCountProvider).valueOrNull ?? 0;
+
+    // Tab titles matching bottom nav labels
+    final tabTitles = [
+      '${l10n.hiPrefix}, ${user?.name.split(' ').first ?? ''} 👋',
+      l10n.mySubscriptions,
+      l10n.myInvoices,
+      l10n.support,
+      l10n.profile,
+    ];
 
     final pages = const [
       HomeTab(),
@@ -77,7 +88,61 @@ final l10n = AppLocalizations.of(context);
       SupportTab(),
       ProfileScreen(),
     ];
+
     return Scaffold(
+      appBar: AppBar(
+        // Title: greeting on home tab, tab label on others
+        title: Text(tabTitles[tab]),
+        automaticallyImplyLeading: false,
+        actions: [
+          // Bell / notifications
+          IconButton(
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_outlined),
+                if (unread > 0)
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: isp.danger,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 14,
+                        minHeight: 14,
+                      ),
+                      child: Text(
+                        unread > 9 ? '9+' : '$unread',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            onPressed: () => GoRouter.of(context).push('/notifications'),
+          ),
+          // Account
+          IconButton(
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: () => GoRouter.of(context).push('/profile'),
+          ),
+          // Settings
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: l10n.settings,
+            onPressed: () => GoRouter.of(context).push('/settings'),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: IndexedStack(index: tab, children: pages),
       ),
