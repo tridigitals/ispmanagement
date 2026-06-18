@@ -11,7 +11,7 @@ use crate::error::{AppError, AppResult};
 use crate::models::{
     AllOnusResponse, CreateNetworkAssetRequest, CreateOltRequest, Olt, OltAllDetailsResponse,
     OltOnuDetail, OltOnuHistoryRecord, OltPublicToken, OltStatsResponse, RebootOnuRequest,
-    TestConnectionResponse, UpdateOltRequest,
+    TestConnectionResponse, UpdateNetworkAssetRequest, UpdateOltRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
 use crate::services::audit_service::AuditService;
@@ -172,21 +172,22 @@ impl OltService {
 
     pub async fn update_olt(
         &self,
+        actor_id: &str,
         id: &str,
         tenant_id: &str,
         req: UpdateOltRequest,
     ) -> AppResult<Olt> {
         let existing = self.get_olt(id, tenant_id).await?;
 
-        let name = req.name.unwrap_or(existing.name);
-        let description = req.description.or(existing.description);
-        let host = req.host.unwrap_or(existing.host);
+        let name = req.name.unwrap_or(existing.name.clone());
+        let description = req.description.or_else(|| existing.description.clone());
+        let host = req.host.unwrap_or(existing.host.clone());
         let port = req.port.unwrap_or(existing.port);
-        let username = req.username.unwrap_or(existing.username);
+        let username = req.username.unwrap_or(existing.username.clone());
         let password_enc = if let Some(ref pw) = req.password {
             Some(encrypt_secret(pw)?)
         } else {
-            existing.password_enc
+            existing.password_enc.clone()
         };
 
         sqlx::query(
@@ -206,7 +207,7 @@ impl OltService {
 
         self.audit_service
             .log(
-                None,
+                Some(actor_id),
                 Some(tenant_id),
                 "olt_updated",
                 "olt",
@@ -216,10 +217,48 @@ impl OltService {
             )
             .await;
 
+        // ── Sync NetworkAsset (if exists) ─────────────────
+        if let Some(asset_id) = self.find_asset_id_by_olt_id(tenant_id, id).await? {
+            let update_dto = UpdateNetworkAssetRequest {
+                asset_type: None,
+                name: Some(name.clone()),
+                code: None,
+                vendor: None,
+                model: None,
+                serial_number: None,
+                status: None,
+                customer_id: None,
+                location_id: None,
+                work_order_id: None,
+                parent_asset_id: None,
+                latitude: None,
+                longitude: None,
+                notes: description.clone(),
+                metadata: None,
+            };
+            if let Err(e) = self
+                .network_asset_service
+                .update_asset(actor_id, tenant_id, &asset_id, update_dto)
+                .await
+            {
+                tracing::warn!(
+                    "Failed to sync NetworkAsset {} for OLT {}: {}",
+                    asset_id,
+                    id,
+                    e
+                );
+            }
+        }
+
         self.get_olt(id, tenant_id).await
     }
 
-    pub async fn delete_olt(&self, id: &str, tenant_id: &str) -> AppResult<()> {
+    pub async fn delete_olt(
+        &self,
+        actor_id: &str,
+        id: &str,
+        tenant_id: &str,
+    ) -> AppResult<()> {
         let olt = self.get_olt(id, tenant_id).await?;
 
         sqlx::query("DELETE FROM public.olts WHERE id = $1 AND tenant_id = $2")
@@ -230,7 +269,7 @@ impl OltService {
 
         self.audit_service
             .log(
-                None,
+                Some(actor_id),
                 Some(tenant_id),
                 "olt_deleted",
                 "olt",
@@ -240,7 +279,42 @@ impl OltService {
             )
             .await;
 
+        // ── Cascade delete NetworkAsset (if exists) ───────
+        if let Some(asset_id) = self.find_asset_id_by_olt_id(tenant_id, id).await? {
+            if let Err(e) = self
+                .network_asset_service
+                .delete_asset(actor_id, tenant_id, &asset_id)
+                .await
+            {
+                tracing::warn!(
+                    "Failed to delete NetworkAsset {} for OLT {}: {}",
+                    asset_id,
+                    id,
+                    e
+                );
+            }
+        }
+
         Ok(())
+    }
+
+    /// Find the NetworkAsset ID linked to an OLT (via metadata->>'olt_id').
+    /// Returns None if no asset exists.
+    async fn find_asset_id_by_olt_id(
+        &self,
+        tenant_id: &str,
+        olt_id: &str,
+    ) -> AppResult<Option<String>> {
+        let row: Option<(String,)> = sqlx::query_as(
+            "SELECT id FROM public.network_assets
+             WHERE tenant_id = $1 AND asset_type = 'olt' AND metadata->>'olt_id' = $2
+             LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(olt_id)
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(row.map(|(id,)| id))
     }
 
     // ── Connection & Monitoring ───────────────────────────

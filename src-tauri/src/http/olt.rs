@@ -120,7 +120,7 @@ async fn update_olt(
         .check_permission(&claims.sub, &tenant, "olt", "manage")
         .await?;
 
-    let olt = state.olt_service.update_olt(&id, &tenant, payload).await?;
+    let olt = state.olt_service.update_olt(&claims.sub, &id, &tenant, payload).await?;
     Ok(Json(serde_json::json!({ "status": "success", "data": olt })))
 }
 
@@ -136,7 +136,7 @@ async fn delete_olt(
         .check_permission(&claims.sub, &tenant, "olt", "manage")
         .await?;
 
-    state.olt_service.delete_olt(&id, &tenant).await?;
+    state.olt_service.delete_olt(&claims.sub, &id, &tenant).await?;
     Ok(Json(serde_json::json!({ "status": "success" })))
 }
 
