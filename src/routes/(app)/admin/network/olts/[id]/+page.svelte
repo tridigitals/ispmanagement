@@ -72,6 +72,47 @@
   let historyLoading = $state(false);
   let tokensLoading = $state(false);
   let refreshInFlight = $state(false);
+
+  // Sort state for DataTable
+  let onuSortKey = $state<string | null>(null);
+  let onuSortDir = $state<'asc' | 'desc' | null>(null);
+  let historySortKey = $state<string | null>(null);
+  let historySortDir = $state<'asc' | 'desc' | null>(null);
+
+  function handleOnuSort(key: string) {
+    if (onuSortKey === key) {
+      onuSortDir = onuSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      onuSortKey = key;
+      onuSortDir = 'asc';
+    }
+  }
+  function handleHistorySort(key: string) {
+    if (historySortKey === key) {
+      historySortDir = historySortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      historySortKey = key;
+      historySortDir = 'asc';
+    }
+  }
+
+  // Sorted ONU data (client-side since we load all at once)
+  const sortedOnus = $derived.by(() => {
+    if (!onuSortKey || !onuSortDir) return onus;
+    return [...onus].sort((a: any, b: any) => {
+      let va = a[onuSortKey], vb = b[onuSortKey];
+      // Map compound columns to real fields
+      if (onuSortKey === 'onu') { va = a.name || a.onu_id; vb = b.name || b.onu_id; }
+      if (onuSortKey === 'port') { va = a.pon; vb = b.pon; }
+      if (onuSortKey === 'signal') { va = parseFloat(a.rx) || -999; vb = parseFloat(b.rx) || -999; }
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      if (typeof va === 'string') va = va.toLowerCase();
+      if (typeof vb === 'string') vb = vb.toLowerCase();
+      const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+      return onuSortDir === 'asc' ? cmp : -cmp;
+    });
+  });
   let forceRefresh = $state(false);
 
   // Token form
@@ -476,7 +517,8 @@
       <div class="table-wrap">
         <Table
           columns={onuColumns}
-          data={onus}
+          data={sortedOnus}
+          keyField="onu_id"
           loading={false}
           emptyText="Tidak ada ONU"
           mobileView={isMobile ? 'card' : 'scroll'}
@@ -484,6 +526,9 @@
           searchPlaceholder="Cari ONU ID, nama, atau MAC..."
           pagination={true}
           pageSize={25}
+          sortKey={onuSortKey}
+          sortDirection={onuSortDir}
+          onsort={handleOnuSort}
         >
           {#snippet cell({ item, key }: any)}
             {#if key === 'onu'}
@@ -542,6 +587,7 @@
         <Table
           columns={historyColumns}
           data={history}
+          keyField="id"
           loading={historyLoading}
           emptyText="Tidak ada riwayat"
           mobileView={isMobile ? 'card' : 'scroll'}
@@ -549,6 +595,9 @@
           searchPlaceholder="Cari ONU ID atau nama..."
           pagination={true}
           pageSize={25}
+          sortKey={historySortKey}
+          sortDirection={historySortDir}
+          onsort={handleHistorySort}
         >
           {#snippet cell({ item, key }: any)}
             {#if key === 'time'}
