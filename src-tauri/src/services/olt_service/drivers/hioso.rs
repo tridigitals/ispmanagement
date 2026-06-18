@@ -67,15 +67,16 @@ impl HiosoHa7302cstDriver {
     /// Parse JavaScript array tokens between single quotes.
     /// Handles multiline declarations, common across HIOSO firmware revisions.
     fn parse_js_array_tokens(html: &str, var_name: &str) -> Vec<String> {
-        // Strategy: find `var <name> = new Array(` and extract every single-quoted token
-        // that appears before the statement-closing `);`.
-        //
-        // We avoid a single regex because the array literal may span many lines
-        // (thousands of ONUs) and may contain escaped quotes inside values.
-
-        let needle = format!("var {} = new Array(", var_name);
-        let start = match html.find(&needle) {
-            Some(pos) => pos + needle.len(),
+        // Find `var <name>` first, then find `new Array(` after it,
+        // regardless of whitespace or other characters in between.
+        let decl = format!("var {}", var_name);
+        let decl_pos = match html.find(&decl) {
+            Some(pos) => pos,
+            None => return vec![],
+        };
+        let new_array_marker = "new Array(";
+        let start = match html[decl_pos..].find(new_array_marker) {
+            Some(pos) => decl_pos + pos + new_array_marker.len(),
             None => return vec![],
         };
 
