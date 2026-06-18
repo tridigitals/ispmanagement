@@ -9,8 +9,8 @@ pub mod drivers;
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    AllOnusResponse, CreateOltRequest, Olt, OltAllDetailsResponse, OltOnuDetail,
-    OltOnuHistoryRecord, OltPublicToken, OltStatsResponse, RebootOnuRequest,
+    AllOnusResponse, CreateNetworkAssetRequest, CreateOltRequest, Olt, OltAllDetailsResponse,
+    OltOnuDetail, OltOnuHistoryRecord, OltPublicToken, OltStatsResponse, RebootOnuRequest,
     TestConnectionResponse, UpdateOltRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
@@ -75,6 +75,7 @@ impl OltService {
 
     pub async fn create_olt(
         &self,
+        actor_id: &str,
         tenant_id: &str,
         req: CreateOltRequest,
     ) -> AppResult<Olt> {
@@ -110,7 +111,7 @@ impl OltService {
 
         self.audit_service
             .log(
-                None,
+                Some(actor_id),
                 Some(tenant_id),
                 "olt_created",
                 "olt",
@@ -120,40 +121,51 @@ impl OltService {
             )
             .await;
 
-        // ── Auto-create NetworkAsset ──────────────────────
-        let asset_type = format!("olt_{}", olt.olt_type);
+        // ── Auto-create NetworkAsset via NetworkAssetService ──
         let vendor = match olt.olt_type.as_str() {
             "hioso_ha7302cst" => "HIOSO",
             "vsol_epon" => "VSOL",
             _ => "Unknown",
         };
-        let now = Utc::now();
-        let asset_id = Uuid::new_v4().to_string();
         let metadata = serde_json::json!({
             "olt_id": olt.id,
             "host": olt.host,
             "olt_type": olt.olt_type,
         });
 
-        // Use raw SQL to avoid circular dependency with NetworkAssetService
-        let _ = sqlx::query(
-            "INSERT INTO public.network_assets
-             (id, tenant_id, asset_group, asset_type, name, vendor, status, notes, metadata, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
-        )
-        .bind(&asset_id)
-        .bind(tenant_id)
-        .bind("olt")
-        .bind(&asset_type)
-        .bind(&olt.name)
-        .bind(vendor)
-        .bind("active")
-        .bind(&olt.description)
-        .bind(metadata)
-        .bind(now)
-        .bind(now)
-        .execute(&self.pool)
-        .await;
+        let asset_input = CreateNetworkAssetRequest {
+            asset_type: "olt".into(),
+            name: olt.name.clone(),
+            code: None,
+            vendor: Some(vendor.to_string()),
+            model: None,
+            serial_number: None,
+            status: Some("available".into()),
+            customer_id: None,
+            location_id: None,
+            work_order_id: None,
+            parent_asset_id: None,
+            latitude: None,
+            longitude: None,
+            notes: olt.description.clone(),
+            metadata: Some(metadata),
+        };
+        match self
+            .network_asset_service
+            .create_asset(actor_id, tenant_id, asset_input)
+            .await
+        {
+            Ok(asset) => tracing::info!(
+                "Created NetworkAsset {} for OLT {}",
+                asset.id,
+                olt.id
+            ),
+            Err(e) => tracing::warn!(
+                "Failed to create NetworkAsset for OLT {}: {}",
+                olt.id,
+                e
+            ),
+        }
 
         Ok(olt)
     }

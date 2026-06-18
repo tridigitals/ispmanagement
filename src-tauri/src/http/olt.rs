@@ -103,7 +103,7 @@ async fn create_olt(
         .check_permission(&claims.sub, &tenant, "olt", "manage")
         .await?;
 
-    let olt = state.olt_service.create_olt(&tenant, payload).await?;
+    let olt = state.olt_service.create_olt(&claims.sub, &tenant, payload).await?;
     Ok(Json(serde_json::json!({ "status": "success", "data": olt })))
 }
 
