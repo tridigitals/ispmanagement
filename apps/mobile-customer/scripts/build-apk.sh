@@ -41,11 +41,25 @@ if [[ "${SKIP_FIX:-0}" != "1" ]]; then
   echo "🔧 Patching package_config.json paths..."
   mkdir -p "$APP_DART_TOOL"
   cp "$MONOREPO_DART_TOOL/package_config.json" "$APP_DART_TOOL/package_config.json"
-  sed -i \
-    -e 's|"../packages/api-client"|"file://'"$PROJECT_ROOT"'/packages/api-client"|g' \
-    -e 's|"../packages/ui-kit"|"file://'"$PROJECT_ROOT"'/packages/ui-kit"|g' \
-    "$APP_DART_TOOL/package_config.json"
-  echo "   ui-kit + api-client paths → absolute file://"
+  # Fix ALL relative paths to absolute file:// URIs (not just api-client + ui-kit)
+  python3 -c "
+import json
+from pathlib import Path
+config_path = Path('$APP_DART_TOOL/package_config.json')
+root_dot = Path('$MONOREPO_DART_TOOL')
+with open(config_path) as f:
+    config = json.load(f)
+fixed = 0
+for pkg in config['packages']:
+    uri = pkg['rootUri']
+    if not uri.startswith('file://'):
+        abs_path = (root_dot / uri).resolve()
+        pkg['rootUri'] = abs_path.as_uri()
+        fixed += 1
+with open(config_path, 'w') as f:
+    json.dump(config, f, indent=2)
+print(f'   Fixed {fixed} relative paths → absolute file://')
+"
 
   # Fix .flutter-plugins-dependencies — root's resolution:workspace mode means
   # sub-app doesn't generate its own plugin list, so Gradle misses Firebase + other
