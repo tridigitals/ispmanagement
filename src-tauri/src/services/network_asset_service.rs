@@ -759,6 +759,16 @@ impl NetworkAssetService {
         } else {
             current.parent_asset_id.clone()
         };
+        let olt_id = if dto.olt_id.is_some() {
+            Self::clean_text(dto.olt_id)
+        } else {
+            current.olt_id.clone()
+        };
+        let pon_port = if dto.pon_port.is_some() {
+            Self::clean_text(dto.pon_port)
+        } else {
+            current.pon_port.clone()
+        };
         let latitude = if dto.latitude.is_some() {
             dto.latitude
         } else {
@@ -828,10 +838,12 @@ impl NetworkAssetService {
                 location_id = $12,
                 work_order_id = $13,
                 parent_asset_id = $14,
-                latitude = $15,
-                longitude = $16,
-                notes = $17,
-                metadata = $18
+                olt_id = $15,
+                pon_port = $16,
+                latitude = $17,
+                longitude = $18,
+                notes = $19,
+                metadata = $20
             WHERE tenant_id = $1 AND id = $2
             "#,
         )
@@ -849,6 +861,8 @@ impl NetworkAssetService {
         .bind(&location_id)
         .bind(&work_order_id)
         .bind(&parent_asset_id)
+        .bind(&olt_id)
+        .bind(&pon_port)
         .bind(&latitude)
         .bind(&longitude)
         .bind(&notes)
@@ -873,10 +887,12 @@ impl NetworkAssetService {
                 location_id = ?12,
                 work_order_id = ?13,
                 parent_asset_id = ?14,
-                latitude = ?15,
-                longitude = ?16,
-                notes = ?17,
-                metadata = ?18
+                olt_id = ?15,
+                pon_port = ?16,
+                latitude = ?17,
+                longitude = ?18,
+                notes = ?19,
+                metadata = ?20
             WHERE tenant_id = ?1 AND id = ?2
             "#,
         )
@@ -894,6 +910,8 @@ impl NetworkAssetService {
         .bind(&location_id)
         .bind(&work_order_id)
         .bind(&parent_asset_id)
+        .bind(&olt_id)
+        .bind(&pon_port)
         .bind(&latitude)
         .bind(&longitude)
         .bind(&notes)
