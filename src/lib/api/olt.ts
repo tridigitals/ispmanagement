@@ -10,89 +10,99 @@ export interface Olt {
   port: number;
   username: string;
   is_online?: boolean;
-  last_seen_at?: string | null;
+  last_polled_at?: string | null;
+  last_updated?: string | null;
   last_error?: string | null;
+  last_stats?: any;
   created_at?: string;
   updated_at?: string;
 }
 
-export interface OltStats {
-  olt_id: string;
-  olt_name: string;
-  is_online: boolean;
-  olt_type: string;
-  system_info?: {
-    uptime?: string | null;
-    firmware_version?: string | null;
-    serial_number?: string | null;
-    model?: string | null;
-    [key: string]: any;
-  } | null;
-  pon_ports?: PonPort[];
-  onu_summary?: {
-    total: number;
-    online: number;
-    offline: number;
-    low_signal: number;
-  };
+export interface PonPort {
+  name: string;
+  total: number;
+  online: number;
+  offline: number;
   [key: string]: any;
 }
 
-export interface PonPort {
-  port_id: string;
-  port_name: string;
-  status?: string | null;
-  onu_count?: number;
-  online_count?: number;
-  offline_count?: number;
+export interface OltStats {
+  name?: string;
+  ip?: string;
+  pon_ports?: PonPort[];
+  total_onus: number;
+  online_onus: number;
+  offline_onus: number;
+  low_onus: number;
+  risk_onus: number;
   [key: string]: any;
+}
+
+export interface OltSystemInfo {
+  name: string;
+  model: string;
+  version: string;
+  address: string;
+}
+
+export interface OltStatsResponse {
+  status: string;
+  data: OltStats;
+  info?: OltSystemInfo | null;
+  cached: boolean;
+  is_online: boolean;
+  updated_at?: string | null;
 }
 
 export interface OltDetails {
-  olt_id: string;
-  olt_name: string;
-  is_online: boolean;
-  stats: OltStats;
+  status: string;
+  info: OltSystemInfo;
   onus: OnuDetail[];
+  stats: OltStats;
 }
 
 export interface OnuDetail {
   onu_id: string;
-  onu_name?: string | null;
-  serial_number?: string | null;
-  status?: string | null;
-  pon_port?: string | null;
-  rx_power?: number | null;
-  tx_power?: number | null;
-  distance_m?: number | null;
-  uptime_seconds?: number | null;
-  last_down_reason?: string | null;
-  model?: string | null;
+  name: string;
+  mac: string;
+  status: string;
+  rx: string;
+  tx?: string | null;
+  distance?: string | null;
+  temperature?: string | null;
+  pon: string;
+  olt_id?: string | null;
+  olt_name?: string | null;
   [key: string]: any;
 }
 
 export interface OltTestResult {
-  ok: boolean;
-  message?: string;
-  latency_ms?: number;
-  firmware_version?: string;
+  success: boolean;
+  info?: OltSystemInfo | null;
+  error?: string | null;
   [key: string]: any;
 }
 
 export interface OltOnuHistoryEntry {
   id: string;
   olt_id: string;
+  tenant_id: string;
   onu_id: string;
-  onu_name?: string | null;
-  event_type: string;
-  message?: string | null;
-  details?: any;
-  created_at: string;
+  pon: string;
+  mac?: string | null;
+  name?: string | null;
+  status: string;
+  rx_power?: number | null;
+  tx_power?: number | null;
+  distance?: number | null;
+  temperature?: number | null;
+  recorded_at: string;
 }
 
 export interface OltPublicToken {
   id: string;
   olt_id: string;
+  tenant_id?: string;
   token: string;
   description?: string | null;
   enabled: boolean;
@@ -100,9 +110,15 @@ export interface OltPublicToken {
   created_at: string;
 }
 
+/** Unwrap { status, data } envelope from backend responses */
+function unwrap<T>(res: any): T {
+  if (res && typeof res === 'object' && 'data' in res) return res.data as T;
+  return res as T;
+}
+
 export const olt = {
   list: (): Promise<Olt[]> =>
-    safeInvoke('list_olts', { token: getTokenOrThrow() }),
+    safeInvoke('list_olts', { token: getTokenOrThrow() }).then((r: any) => unwrap<Olt[]>(r)),
 
   create: (data: {
     name: string;
@@ -123,7 +139,7 @@ export const olt = {
       port: data.port,
       username: data.username,
       password: data.password,
-    }),
+    }).then((r: any) => unwrap<Olt>(r)),
 
   test: (data: {
     host: string;
@@ -140,10 +156,10 @@ export const olt = {
       password: data.password,
       olt_type: data.olt_type,
       oltType: data.olt_type,
-    }),
+    }) as Promise<OltTestResult>,
 
   get: (id: string): Promise<Olt> =>
-    safeInvoke('get_olt', { token: getTokenOrThrow(), id }),
+    safeInvoke('get_olt', { token: getTokenOrThrow(), id }).then((r: any) => unwrap<Olt>(r)),
 
   update: (
     id: string,
@@ -160,21 +176,21 @@ export const olt = {
       token: getTokenOrThrow(),
       id,
       ...data,
-    }),
+    }).then((r: any) => unwrap<Olt>(r)),
 
   delete: (id: string): Promise<void> =>
-    safeInvoke('delete_olt', { token: getTokenOrThrow(), id }),
+    safeInvoke('delete_olt', { token: getTokenOrThrow(), id }) as Promise<void>,
 
-  stats: (id: string, forceRefresh?: boolean): Promise<OltStats> =>
+  stats: (id: string, forceRefresh?: boolean): Promise<OltStatsResponse> =>
     safeInvoke('get_olt_stats', {
       token: getTokenOrThrow(),
       id,
       force_refresh: forceRefresh ?? false,
       forceRefresh: forceRefresh ?? false,
-    }),
+    }) as Promise<OltStatsResponse>,
 
   details: (id: string): Promise<OltDetails> =>
-    safeInvoke('get_olt_details', { token: getTokenOrThrow(), id }),
+    safeInvoke('get_olt_details', { token: getTokenOrThrow(), id }) as Promise<OltDetails>,
 
   rebootOnu: (id: string, onuId: string, onuName: string): Promise<any> =>
     safeInvoke('reboot_olt_onu', {
@@ -193,10 +209,12 @@ export const olt = {
       token: getTokenOrThrow(),
       id,
       limit: limit ?? 200,
-    }),
+    }).then((r: any) => unwrap<OltOnuHistoryEntry[]>(r)),
 
   listPublicTokens: (id: string): Promise<OltPublicToken[]> =>
-    safeInvoke('list_olt_public_tokens', { token: getTokenOrThrow(), id }),
+    safeInvoke('list_olt_public_tokens', { token: getTokenOrThrow(), id }).then((r: any) =>
+      unwrap<OltPublicToken[]>(r),
+    ),
 
   createPublicToken: (
     id: string,
@@ -213,7 +231,7 @@ export const olt = {
       enabled: data.enabled,
       expires_at: data.expires_at ?? null,
       expiresAt: data.expires_at ?? null,
-    }),
+    }).then((r: any) => unwrap<OltPublicToken>(r)),
 
   deletePublicToken: (id: string, tokenId: string): Promise<void> =>
     safeInvoke('delete_olt_public_token', {
@@ -221,5 +239,5 @@ export const olt = {
       id,
       token_id: tokenId,
       tokenId,
-    }),
+    }) as Promise<void>,
 };

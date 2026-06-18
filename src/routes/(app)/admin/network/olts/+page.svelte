@@ -196,10 +196,10 @@
         password: '', // Backend uses stored credentials
         olt_type: o.olt_type,
       });
-      if (result?.ok) {
-        toast.success(`Koneksi berhasil! ${result.firmware_version || ''} ${result.latency_ms != null ? `(${result.latency_ms}ms)` : ''}`);
+      if (result?.success) {
+        toast.success(`Koneksi berhasil! ${result.info?.model || ''} ${result.info?.version ? `v${result.info.version}` : ''}`);
       } else {
-        toast.error(result?.message || 'Gagal terhubung.');
+        toast.error(result?.error || 'Gagal terhubung.');
       }
       await loadSilent();
     } catch (e: any) {
@@ -316,9 +316,9 @@
             {item.is_online ? 'Online' : 'Offline'}
           </span>
         {:else if key === 'seen'}
-          {#if item.last_seen_at}
-            <span class="muted" title={formatDateTime(item.last_seen_at, { timeZone: $appSettings.app_timezone })}>
-              {timeAgo(item.last_seen_at)}
+          {#if item.last_polled_at}
+            <span class="muted" title={formatDateTime(item.last_polled_at, { timeZone: $appSettings.app_timezone })}>
+              {timeAgo(item.last_polled_at)}
             </span>
           {:else}
             <span class="muted">—</span>

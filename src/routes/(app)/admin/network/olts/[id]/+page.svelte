@@ -62,6 +62,7 @@
   let olt = $state<Olt | null>(null);
   let stats = $state<OltStats | null>(null);
   let onus = $state<OnuDetail[]>([]);
+  let details = $state<OltDetails | null>(null);
   let history = $state<OltOnuHistoryEntry[]>([]);
   let publicTokens = $state<OltPublicToken[]>([]);
   let isMobile = $state(false);
@@ -181,17 +182,17 @@
       return;
     }
     try {
-      const [details] = await Promise.all([
-        api.olt.details(id) as any,
+      const [detailsResp] = await Promise.all([
+        api.olt.details(id),
       ]);
-      olt = details?.stats ? { id: details.olt_id, name: details.olt_name, is_online: details.is_online, ...((olt || {}) as any) } as any : olt;
+      details = detailsResp;
       // Fetch basic OLT info too
       try {
         const oltInfo = await api.olt.get(id) as any;
         if (oltInfo) olt = oltInfo;
       } catch { /* use details data */ }
-      stats = details?.stats || null;
-      onus = details?.onus || [];
+      stats = detailsResp?.stats || null;
+      onus = detailsResp?.onus || [];
     } catch (e: any) {
       if (!opts?.silent) toast.error(e?.message || e);
     } finally {
@@ -238,9 +239,10 @@
     if (!id) return;
     refreshing = true;
     try {
-      const details = await api.olt.details(id) as any;
-      stats = details?.stats || null;
-      onus = details?.onus || [];
+      const detailsResp = await api.olt.details(id);
+      details = detailsResp;
+      stats = detailsResp?.stats || null;
+      onus = detailsResp?.onus || [];
       toast.success('Data diperbarui.');
     } catch (e: any) {
       toast.error(e?.message || e);
@@ -356,8 +358,8 @@
       <span class="badge" class:online={olt.is_online} class:offline={!olt.is_online}>
         {olt.is_online ? 'Online' : 'Offline'}
       </span>
-      {#if olt.last_seen_at}
-        <span class="muted">Terakhir dilihat: {timeAgo(olt.last_seen_at)}</span>
+      {#if olt.last_polled_at}
+        <span class="muted">Terakhir dilihat: {timeAgo(olt.last_polled_at)}</span>
       {/if}
       {#if olt.last_error}
         <span class="error-text">{olt.last_error}</span>
@@ -387,52 +389,46 @@
       <div class="stat-grid">
         <div class="stat-card">
           <div class="stat-top"><span class="stat-label">ONU Total</span><Icon name="list" size={14} /></div>
-          <div class="stat-value">{stats?.onu_summary?.total ?? onuStats.total}</div>
+          <div class="stat-value">{stats?.total_onus ?? onuStats.total}</div>
         </div>
         <div class="stat-card tone-ok">
           <div class="stat-top"><span class="stat-label">ONU Online</span><Icon name="check-circle" size={14} /></div>
-          <div class="stat-value">{stats?.onu_summary?.online ?? onuStats.online}</div>
+          <div class="stat-value">{stats?.online_onus ?? onuStats.online}</div>
         </div>
         <div class="stat-card tone-bad">
           <div class="stat-top"><span class="stat-label">ONU Offline</span><Icon name="alert-circle" size={14} /></div>
-          <div class="stat-value">{stats?.onu_summary?.offline ?? onuStats.offline}</div>
+          <div class="stat-value">{stats?.offline_onus ?? onuStats.offline}</div>
         </div>
         <div class="stat-card tone-warn">
           <div class="stat-top"><span class="stat-label">Sinyal Lemah</span><Icon name="alert-triangle" size={14} /></div>
-          <div class="stat-value">{stats?.onu_summary?.low_signal ?? onuStats.low}</div>
+          <div class="stat-value">{stats?.low_onus ?? onuStats.low}</div>
         </div>
       </div>
 
-      {#if stats?.system_info}
+      {#if details?.info}
         <div class="section-card">
           <h4 class="section-title">Informasi Sistem</h4>
           <div class="info-grid">
-            {#if stats.system_info.model}
+            {#if details.info.model}
               <div class="info-item">
                 <span class="info-label">Model</span>
-                <span class="info-value">{stats.system_info.model}</span>
+                <span class="info-value">{details.info.model}</span>
               </div>
             {/if}
-            {#if stats.system_info.serial_number}
+            {#if details.info.version}
               <div class="info-item">
-                <span class="info-label">Serial Number</span>
-                <span class="info-value mono">{stats.system_info.serial_number}</span>
+                <span class="info-label">Version</span>
+                <span class="info-value mono">{details.info.version}</span>
               </div>
             {/if}
-            {#if stats.system_info.firmware_version}
+            {#if details.info.address}
               <div class="info-item">
-                <span class="info-label">Firmware</span>
-                <span class="info-value mono">{stats.system_info.firmware_version}</span>
+                <span class="info-label">Address</span>
+                <span class="info-value mono">{details.info.address}</span>
               </div>
             {/if}
-            {#if stats.system_info.uptime}
-              <div class="info-item">
-                <span class="info-label">Uptime</span>
-                <span class="info-value">{stats.system_info.uptime}</span>
-              </div>
-            {/if}
-            {#each Object.entries(stats.system_info) as [key, val]}
-              {#if !['model', 'serial_number', 'firmware_version', 'uptime'].includes(key) && val != null}
+            {#each Object.entries(details.info) as [key, val]}
+              {#if !['name', 'model', 'version', 'address'].includes(key) && val != null}
                 <div class="info-item">
                   <span class="info-label">{key}</span>
                   <span class="info-value">{val}</span>
@@ -449,11 +445,11 @@
           <div class="table-wrap">
             <Table
               columns={[
-                { key: 'port_name', label: 'Port' },
+                { key: 'name', label: 'Port' },
                 { key: 'status', label: 'Status' },
-                { key: 'onu_count', label: 'ONU' },
-                { key: 'online_count', label: 'Online' },
-                { key: 'offline_count', label: 'Offline' },
+                { key: 'total', label: 'ONU' },
+                { key: 'online', label: 'Online' },
+                { key: 'offline', label: 'Offline' },
               ]}
               data={stats.pon_ports}
               loading={false}
@@ -461,8 +457,8 @@
               mobileView={isMobile ? 'card' : 'scroll'}
             >
               {#snippet cell({ item, key }: any)}
-                {#if key === 'port_name'}
-                  <span class="name">{item.port_name}</span>
+                {#if key === 'name'}
+                  <span class="name">{item.name}</span>
                 {:else if key === 'status'}
                   <span class="badge" class:online={item.status === 'active' || item.status === 'online'} class:offline={item.status !== 'active' && item.status !== 'online'}>
                     {item.status || '—'}
@@ -502,42 +498,42 @@
           {#snippet cell({ item, key }: any)}
             {#if key === 'onu'}
               <div class="name-cell">
-                <span class="name">{item.onu_name || item.onu_id}</span>
+                <span class="name">{item.name || item.onu_id}</span>
                 <div class="muted">ID: {item.onu_id}</div>
-                {#if item.serial_number}
-                  <div class="muted mono">SN: {item.serial_number}</div>
+                {#if item.mac}
+                  <div class="muted mono">MAC: {item.mac}</div>
                 {/if}
-                {#if item.model}
-                  <div class="muted">{item.model}</div>
+                {#if item.temperature}
+                  <div class="muted">Temp: {item.temperature}°C</div>
                 {/if}
               </div>
             {:else if key === 'port'}
-              <span class="mono">{item.pon_port || '—'}</span>
+              <span class="mono">{item.pon || '—'}</span>
             {:else if key === 'status'}
               <span class="badge" class:online={item.status === 'online'} class:offline={item.status !== 'online'}>
                 {item.status || '—'}
               </span>
             {:else if key === 'signal'}
-              {#if item.rx_power != null}
+              {#if item.rx != null && item.rx !== '--'}
                 <div class="signal-cell">
-                  <span class="signal-value" style="color: {signalColor(item.rx_power)}">
-                    {item.rx_power.toFixed(2)}
+                  <span class="signal-value" style="color: {signalColor(parseFloat(item.rx))}">
+                    {parseFloat(item.rx).toFixed(2)}
                   </span>
-                  <span class="signal-label" style="color: {signalColor(item.rx_power)}">
-                    {signalLabel(item.rx_power)}
+                  <span class="signal-label" style="color: {signalColor(parseFloat(item.rx))}">
+                    {signalLabel(parseFloat(item.rx))}
                   </span>
                 </div>
               {:else}
                 <span class="muted">—</span>
               {/if}
             {:else if key === 'distance'}
-              {#if item.distance_m != null}
-                <span class="mono">{item.distance_m}m</span>
+              {#if item.distance != null}
+                <span class="mono">{item.distance}km</span>
               {:else}
                 <span class="muted">—</span>
               {/if}
             {:else if key === 'uptime'}
-              <span class="muted">{formatUptime(item.uptime_seconds)}</span>
+              <span class="muted">{item.temperature ? `${item.temperature}°C` : '—'}</span>
             {:else if key === 'actions'}
               {#if $can('manage', 'router_inventory')}
                 <button class="icon-btn danger" type="button" onclick={() => promptReboot(item)} title="Reboot ONU">
@@ -562,15 +558,15 @@
         >
           {#snippet cell({ item, key }: any)}
             {#if key === 'time'}
-              <span class="muted" title={formatDateTime(item.created_at, { timeZone: $appSettings.app_timezone })}>
-                {timeAgo(item.created_at)}
+              <span class="muted" title={formatDateTime(item.recorded_at, { timeZone: $appSettings.app_timezone })}>
+                {timeAgo(item.recorded_at)}
               </span>
             {:else if key === 'onu'}
-              <span class="name">{item.onu_name || item.onu_id}</span>
+              <span class="name">{item.name || item.onu_id}</span>
             {:else if key === 'event'}
-              <span class="chip">{item.event_type}</span>
+              <span class="chip">{item.status}</span>
             {:else if key === 'message'}
-              <span class="muted">{item.message || '—'}</span>
+              <span class="muted">RX: {item.rx_power ?? '—'} dBm | PON: {item.pon}</span>
             {/if}
           {/snippet}
         </Table>
@@ -675,7 +671,7 @@
 <ConfirmDialog
   bind:show={showRebootConfirm}
   title="Konfirmasi Reboot ONU"
-  message={rebootTarget ? `Yakin ingin me-reboot ONU "${rebootTarget.onu_name || rebootTarget.onu_id}"? ONU akan restart.` : ''}
+  message={rebootTarget ? `Yakin ingin me-reboot ONU "${rebootTarget.name || rebootTarget.onu_id}"? ONU akan restart.` : ''}
   confirmText="Reboot"
   cancelText="Batal"
   type="danger"
