@@ -15,6 +15,7 @@ use crate::models::{
 };
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
 use crate::services::audit_service::AuditService;
+use crate::services::network_asset_service::NetworkAssetService;
 use crate::services::notification_service::NotificationService;
 use chrono::Utc;
 use drivers::create_driver;
@@ -30,6 +31,7 @@ pub struct OltService {
     pool: DbPool,
     notification_service: NotificationService,
     audit_service: AuditService,
+    network_asset_service: Arc<NetworkAssetService>,
 }
 
 impl OltService {
@@ -37,11 +39,13 @@ impl OltService {
         pool: DbPool,
         notification_service: NotificationService,
         audit_service: AuditService,
+        network_asset_service: Arc<NetworkAssetService>,
     ) -> Self {
         Self {
             pool,
             notification_service,
             audit_service,
+            network_asset_service,
         }
     }
 
