@@ -212,6 +212,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get twoFaOff => 'Nonaktif';
 
   @override
+  String get twoFaRequired => 'Diwajibkan organisasi';
+
+  @override
   String get twoFaEnabled => 'Autentikasi 2 faktor berhasil diaktifkan';
 
   @override
@@ -338,6 +341,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get report => 'Lapor';
 
   @override
+  String get share => 'Bagikan';
+
+  @override
   String get unpaidBills => 'Tagihan Belum Bayar';
 
   @override
@@ -416,8 +422,256 @@ class AppLocalizationsId extends AppLocalizations {
   String get severity => 'Tingkat';
 
   @override
-  String get audience => 'Audience';
+  String get audience => 'Audiens';
 
   @override
   String get details => 'Detail';
+
+  @override
+  String get darkMode => 'Mode Gelap';
+
+  @override
+  String get ticketStatusOpen => 'Terbuka';
+
+  @override
+  String get ticketStatusInProgress => 'Ditangani';
+
+  @override
+  String get ticketStatusWaitingCustomer => 'Menunggu Pelanggan';
+
+  @override
+  String get ticketStatusWaitingStaff => 'Menunggu Tim';
+
+  @override
+  String get ticketStatusResolved => 'Selesai';
+
+  @override
+  String get ticketStatusClosed => 'Ditutup';
+
+  @override
+  String get ticketStatusCancelled => 'Dibatalkan';
+
+  @override
+  String get ticketPriorityLow => 'Rendah';
+
+  @override
+  String get ticketPriorityNormal => 'Normal';
+
+  @override
+  String get ticketPriorityHigh => 'Tinggi';
+
+  @override
+  String get ticketPriorityUrgent => 'Mendesak';
+
+  @override
+  String get ticketCategoryGeneral => 'Umum';
+
+  @override
+  String get ticketCategoryBilling => 'Tagihan';
+
+  @override
+  String get ticketCategoryTechnical => 'Teknis';
+
+  @override
+  String get ticketCategoryInstallation => 'Instalasi';
+
+  @override
+  String get ticketActionCamera => 'Ambil Foto';
+
+  @override
+  String get ticketActionFile => 'Pilih File';
+
+  @override
+  String get ticketActionCameraSub => 'Kamera — perlu izin akses kamera';
+
+  @override
+  String get ticketActionFileSub => 'PDF, gambar, dokumen — dari penyimpanan perangkat';
+
+  @override
+  String ticketErrorCameraFailed(Object error) {
+    return 'Gagal membuka kamera: $error';
+  }
+
+  @override
+  String ticketErrorFileFailed(Object error) {
+    return 'Gagal memilih file: $error';
+  }
+
+  @override
+  String ticketErrorSendFailed(Object error) {
+    return 'Gagal mengirim: $error';
+  }
+
+  @override
+  String ticketErrorReplyFailed(Object error) {
+    return 'Gagal membalas: $error';
+  }
+
+  @override
+  String get ticketErrorLoadFailed => 'Gagal memuat tiket';
+
+  @override
+  String get ticketFieldSubject => 'Subjek';
+
+  @override
+  String get ticketFieldSubjectHint => 'Ringkasan masalah';
+
+  @override
+  String get ticketFieldDescription => 'Deskripsi';
+
+  @override
+  String get ticketFieldDescriptionHint => 'Jelaskan masalah Anda...';
+
+  @override
+  String get ticketFieldReply => 'Tulis pesan...';
+
+  @override
+  String get ticketFieldAttachments => 'Lampiran';
+
+  @override
+  String get ticketFieldSubscription => 'Langganan Terkait (opsional)';
+
+  @override
+  String get ticketFieldNoSubscription => 'Tidak terkait';
+
+  @override
+  String get ticketValidationSubjectShort => 'Subjek minimal 3 karakter';
+
+  @override
+  String get ticketValidationDescriptionShort => 'Deskripsi minimal 10 karakter';
+
+  @override
+  String get ticketButtonAdd => 'Tambah';
+
+  @override
+  String get ticketButtonSend => 'Kirim Tiket';
+
+  @override
+  String get ticketButtonSending => 'Mengirim...';
+
+  @override
+  String get ticketButtonSubmitReply => 'Kirim Balasan';
+
+  @override
+  String get ticketButtonSendingReply => 'Mengirim...';
+
+  @override
+  String get ticketButtonAttach => 'Lampirkan';
+
+  @override
+  String get ticketButtonClose => 'Tutup Tiket';
+
+  @override
+  String get ticketButtonReopen => 'Buka Ulang';
+
+  @override
+  String get ticketButtonAssign => 'Tugaskan';
+
+  @override
+  String get ticketButtonEscalate => 'Eskalasi';
+
+  @override
+  String get ticketToastCreated => 'Tiket terkirim — tim kami akan menindak lanjuti';
+
+  @override
+  String get ticketToastReplySent => 'Balasan terkirim';
+
+  @override
+  String get ticketToastClosed => 'Tiket ditutup';
+
+  @override
+  String get ticketToastReopened => 'Tiket dibuka ulang';
+
+  @override
+  String get ticketQuickActionNoInternet => 'Internet Mati';
+
+  @override
+  String get ticketQuickActionNoInternetSubject => 'Internet tidak bisa diakses';
+
+  @override
+  String get ticketQuickActionNoInternetDesc => 'Koneksi internet di lokasi saya tidak dapat diakses. Mohon dicek.';
+
+  @override
+  String get ticketQuickActionSlow => 'WiFi Lemot';
+
+  @override
+  String get ticketQuickActionSlowSubject => 'WiFi lambat / sering putus';
+
+  @override
+  String get ticketQuickActionSlowDesc => 'Koneksi WiFi terasa lambat atau tidak stabil. Mohon dicek.';
+
+  @override
+  String get ticketQuickActionOther => 'Lainnya';
+
+  @override
+  String get ticketAuthorYou => 'Anda';
+
+  @override
+  String get ticketAuthorSupport => 'Dukungan';
+
+  @override
+  String get ticketAuthorCustomer => 'Pelanggan';
+
+  @override
+  String get ticketAuthorStaff => 'Staf';
+
+  @override
+  String get ticketAuthorAnonymous => 'Anonim';
+
+  @override
+  String get ticketViewSubscription => 'Lihat langganan terkait';
+
+  @override
+  String get ticketConversation => 'Percakapan';
+
+  @override
+  String get ticketNoMessages => 'Belum ada pesan';
+
+  @override
+  String get ticketNoMessagesHint => 'Kirim pesan pertama Anda untuk memulai percakapan';
+
+  @override
+  String get ticketClosedNotice => 'Tiket ini sudah ditutup. Anda tidak bisa membalas.';
+
+  @override
+  String get ticketAssignee => 'Penanggung Jawab';
+
+  @override
+  String get ticketUnassigned => 'Belum ditugaskan';
+
+  @override
+  String get ticketSatisfaction => 'Kepuasan';
+
+  @override
+  String get ticketRateHint => 'Seberapa puas Anda?';
+
+  @override
+  String get ticketCommentOptional => 'Komentar (opsional)';
+
+  @override
+  String get ticketSubmitRating => 'Kirim Penilaian';
+
+  @override
+  String get ticketAdminListTitle => 'Tiket Support';
+
+  @override
+  String get ticketAdminTabAll => 'Semua';
+
+  @override
+  String get ticketAdminTabOpen => 'Terbuka';
+
+  @override
+  String get ticketAdminTabInProgress => 'Dikerjakan';
+
+  @override
+  String get ticketAdminTabClosed => 'Selesai';
+
+  @override
+  String get ticketAdminEmpty => 'Belum ada tiket';
+
+  @override
+  String get ticketAdminFilterAll => 'Semua kategori';
+
+  @override
+  String get ticketAdminFilterOpen => 'Hanya yang terbuka';
 }

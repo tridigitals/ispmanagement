@@ -1,6 +1,8 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:api_client/api_client.dart';
-import 'package:mobile_admin/src/services/app_config.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'app_config.dart';
+import 'service_providers.dart';
 
 class AuthState {
   final String? token;
@@ -31,8 +33,9 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final ApiClient _api;
+  final Ref _ref;
 
-  AuthNotifier(this._api) : super(const AuthState());
+  AuthNotifier(this._api, this._ref) : super(const AuthState());
 
   Future<void> login(String email, String password) async {
     state = state.copyWith(isLoading: true, error: null);
@@ -43,6 +46,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
       });
       final token = res.data['token'] as String;
       final user = res.data['user'] as Map<String, dynamic>;
+
+      // Persist token via AuthTokenStorage so the Dio interceptor picks
+      // it up on subsequent requests. Failure here is non-fatal —
+      // admin is still authenticated for this session.
+      try {
+        await _ref.read(tokenStorageProvider).saveToken(token);
+      } catch (_) {/* secure storage may fail on emulator */}
+
       state = AuthState(token: token, user: user);
     } on Exception catch (e) {
       state = AuthState(error: e.toString());
@@ -50,6 +61,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   void logout() {
+    try {
+      _ref.read(tokenStorageProvider).deleteToken();
+    } catch (_) {}
     state = const AuthState();
   }
 }
@@ -61,5 +75,5 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final api = ref.watch(apiClientProvider);
-  return AuthNotifier(api);
+  return AuthNotifier(api, ref);
 });
