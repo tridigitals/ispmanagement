@@ -374,9 +374,9 @@
               {@const isCustomer =
                 !!detail.ticket.created_by && m.author_id === detail.ticket.created_by}
               {@const mine = !isCustomer}
-              {@const who = isCustomer
+              {@const who = m.author_name || (isCustomer
                 ? $t('support.labels.customer') || 'Customer'
-                : $t('support.labels.staff') || 'Staff'}
+                : $t('support.labels.staff') || 'Staff')}
               <div class="msg" class:mine class:internal={m.is_internal}>
                 <div class="msg-top" class:mine>
                   <div class="avatar" class:mine class:internal={m.is_internal}>

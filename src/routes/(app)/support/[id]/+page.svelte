@@ -266,9 +266,9 @@
           <div class="chat">
             {#each detail.messages as m (m.id)}
               {@const mine = !!detail.ticket.created_by && m.author_id === detail.ticket.created_by}
-              {@const label = mine
+              {@const label = m.author_name || (mine
                 ? $t('common.you') || 'You'
-                : $t('support.labels.support') || 'Support'}
+                : $t('support.labels.support') || 'Support')}
               <div class="msg" class:mine>
                 <div class="msg-top">
                   <div class="avatar" class:mine>

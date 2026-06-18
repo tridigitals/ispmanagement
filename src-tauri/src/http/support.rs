@@ -490,9 +490,9 @@ pub async fn create_support_ticket(
         r#"
         INSERT INTO support_tickets (
             id, tenant_id, created_by, subject, status, priority, assigned_to,
-            created_at, updated_at, closed_at
+            category, subscription_id, created_at, updated_at, closed_at
         )
-        VALUES ($1,$2,$3,$4,'open',$5,NULL,$6,$7,NULL)
+        VALUES ($1,$2,$3,$4,'open',$5,NULL,$6,$7,$8,$9,NULL)
     "#,
     )
     .bind(&ticket_id)
@@ -500,20 +500,35 @@ pub async fn create_support_ticket(
     .bind(&claims.sub)
     .bind(dto.subject.trim())
     .bind(&priority)
+    .bind(dto.category.as_deref())
+    .bind(dto.subscription_id.as_deref())
     .bind(now)
     .bind(now)
     .execute(&mut *tx)
     .await?;
 
+    // Look up the creator's display name once so the very first message
+    // (which IS the ticket body) carries it for the UI to render.
+    let creator_name: Option<String> = sqlx::query_scalar(
+        "SELECT name FROM users WHERE id = $1",
+    )
+    .bind(&claims.sub)
+    .fetch_optional(&mut *tx)
+    .await
+    .ok()
+    .flatten()
+    .filter(|s: &String| !s.trim().is_empty());
+
     sqlx::query(
         r#"
-        INSERT INTO support_ticket_messages (id, ticket_id, author_id, body, is_internal, created_at)
-        VALUES ($1,$2,$3,$4,false,$5)
+        INSERT INTO support_ticket_messages (id, ticket_id, author_id, author_name, body, is_internal, created_at)
+        VALUES ($1,$2,$3,$4,$5,false,$6)
     "#,
     )
     .bind(&msg_id)
     .bind(&ticket_id)
     .bind(&claims.sub)
+    .bind(creator_name.as_deref())
     .bind(dto.message.trim())
     .bind(now)
     .execute(&mut *tx)
@@ -602,6 +617,7 @@ pub async fn create_support_ticket(
             id: m.id.clone(),
             ticket_id: m.ticket_id,
             author_id: m.author_id,
+            author_name: m.author_name,
             body: m.body,
             is_internal: m.is_internal,
             created_at: m.created_at,
@@ -691,6 +707,7 @@ pub async fn get_support_ticket(
             id: m.id.clone(),
             ticket_id: m.ticket_id,
             author_id: m.author_id,
+            author_name: m.author_name,
             body: m.body,
             is_internal: m.is_internal,
             created_at: m.created_at,
@@ -766,15 +783,29 @@ pub async fn reply_support_ticket(
         .apply_rls_context_tx(&mut tx, &claims)
         .await?;
 
+    // Look up the author's display name at reply time. We snapshot the
+    // name into the row so historical messages keep their sender label
+    // even if the user later renames or is deleted.
+    let author_name: Option<String> = sqlx::query_scalar(
+        "SELECT name FROM users WHERE id = $1",
+    )
+    .bind(&claims.sub)
+    .fetch_optional(&state.auth_service.pool)
+    .await
+    .ok()
+    .flatten()
+    .filter(|s: &String| !s.trim().is_empty());
+
     sqlx::query(
         r#"
-        INSERT INTO support_ticket_messages (id, ticket_id, author_id, body, is_internal, created_at)
-        VALUES ($1,$2,$3,$4,$5,$6)
+        INSERT INTO support_ticket_messages (id, ticket_id, author_id, author_name, body, is_internal, created_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7)
     "#,
     )
     .bind(&msg_id)
     .bind(&id)
     .bind(&claims.sub)
+    .bind(author_name.as_deref())
     .bind(dto.message.trim())
     .bind(is_internal)
     .bind(now)
@@ -856,6 +887,7 @@ pub async fn reply_support_ticket(
         id: msg.id.clone(),
         ticket_id: msg.ticket_id,
         author_id: msg.author_id,
+        author_name: msg.author_name,
         body: msg.body,
         is_internal: msg.is_internal,
         created_at: msg.created_at,

@@ -228,13 +228,15 @@ class TicketMessageModel extends Equatable {
     final authorId = sanitized['author_id'] as String?;
     final isStaff = authorId != null && authorId != currentUserId;
     sanitized['is_from_staff'] = isStaff;
-    if (isStaff) {
-      sanitized['author_name'] = 'Admin';
-      sanitized['author_role'] = 'staff';
-    } else {
-      sanitized['author_name'] = 'Anda';
-      sanitized['author_role'] = 'customer';
+    // Prefer the API-supplied author_name (server resolves it from
+    // users.name at message-create time). Fall back to a generic label
+    // only when the API didn't include one (e.g. messages created before
+    // the author_name column was added).
+    final apiName = sanitized['author_name'] as String?;
+    if (apiName == null || apiName.isEmpty || apiName == 'Pelanggan') {
+      sanitized['author_name'] = isStaff ? 'Dukungan' : 'Anda';
     }
+    sanitized['author_role'] = isStaff ? 'staff' : 'customer';
     return _$TicketMessageModelFromJson(sanitized);
   }
 

@@ -323,6 +323,10 @@ export interface SupportTicketMessage {
   id: string;
   ticket_id: string;
   author_id: string | null;
+  /** Display name resolved from users.name at message-create time. May be
+   * null if the author user was deleted (FK ON DELETE SET NULL) — UI
+   * should fall back to a generic label in that case. */
+  author_name: string | null;
   body: string;
   is_internal: boolean;
   created_at: string;

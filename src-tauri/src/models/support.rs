@@ -44,6 +44,11 @@ pub struct SupportTicketMessage {
     pub id: String,
     pub ticket_id: String,
     pub author_id: Option<String>,
+    /// Resolved display name of the author at the time the message was
+    /// created. Populated from the `users.name` column. May be None if
+    /// the user was deleted (author_id → NULL via FK ON DELETE SET NULL)
+    /// — the UI should fall back to a generic placeholder in that case.
+    pub author_name: Option<String>,
     pub body: String,
     pub is_internal: bool,
     pub created_at: DateTime<Utc>,
@@ -54,6 +59,7 @@ pub struct SupportTicketMessageWithAttachments {
     pub id: String,
     pub ticket_id: String,
     pub author_id: Option<String>,
+    pub author_name: Option<String>,
     pub body: String,
     pub is_internal: bool,
     pub created_at: DateTime<Utc>,
