@@ -403,14 +403,13 @@
                 {#if key === 'name'}
                   <span class="name">{item.name}</span>
                 {:else if key === 'status'}
-                  {@const ponStatus = item.online > 0 && item.offline === 0 ? 'active' : item.online > 0 ? 'degraded' : item.total > 0 ? 'down' : 'empty'}
                   <span
                     class="badge"
-                    class:online={ponStatus === 'active'}
-                    class:warning={ponStatus === 'degraded'}
-                    class:offline={ponStatus === 'down'}
+                    class:online={item.online > 0 && item.offline === 0}
+                    class:warning={item.online > 0 && item.offline > 0}
+                    class:offline={item.online === 0 && item.total > 0}
                   >
-                    {ponStatus === 'active' ? 'Active' : ponStatus === 'degraded' ? 'Degraded' : ponStatus === 'down' ? 'Down' : 'Empty'}
+                    {item.online > 0 && item.offline === 0 ? 'Active' : item.online > 0 ? 'Degraded' : item.total > 0 ? 'Down' : 'Empty'}
                   </span>
                 {:else}
                   <span class="mono">{item[key] ?? '—'}</span>
@@ -459,8 +458,11 @@
             {:else if key === 'port'}
               <span class="mono">{item.pon || '—'}</span>
             {:else if key === 'status'}
-              {@const isOnline = typeof item.status === 'string' && (item.status.toLowerCase() === 'online' || item.status.toLowerCase() === 'up')}
-              <span class="badge" class:online={isOnline} class:offline={!isOnline}>
+              <span
+                class="badge"
+                class:online={typeof item.status === 'string' && (item.status.toLowerCase() === 'online' || item.status.toLowerCase() === 'up')}
+                class:offline={!(typeof item.status === 'string' && (item.status.toLowerCase() === 'online' || item.status.toLowerCase() === 'up'))}
+              >
                 {item.status || '—'}
               </span>
             {:else if key === 'signal'}
@@ -529,8 +531,11 @@
             {:else if key === 'mac'}
               <span class="mono muted">{item.mac || '—'}</span>
             {:else if key === 'status'}
-              {@const isOnline = typeof item.status === 'string' && (item.status.toLowerCase() === 'online' || item.status.toLowerCase() === 'up')}
-              <span class="badge" class:online={isOnline} class:offline={!isOnline}>
+              <span
+                class="badge"
+                class:online={typeof item.status === 'string' && (item.status.toLowerCase() === 'online' || item.status.toLowerCase() === 'up')}
+                class:offline={!(typeof item.status === 'string' && (item.status.toLowerCase() === 'online' || item.status.toLowerCase() === 'up'))}
+              >
                 {item.status || '—'}
               </span>
             {:else if key === 'rx'}
