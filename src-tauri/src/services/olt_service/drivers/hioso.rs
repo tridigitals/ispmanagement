@@ -129,16 +129,44 @@ impl OltDriver for HiosoHa7302cstDriver {
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        let re = Regex::new(r#""devCode"\s*=\s*"([^"]*)""#).unwrap();
-        let model = re
+        // ── Model (devCode) ──
+        let re_devcode = Regex::new(r#""devCode"\s*=\s*"([^"]*)""#).unwrap();
+        let model = re_devcode
             .captures(&body)
             .map(|c| c.get(1).unwrap().as_str().to_string())
+            .filter(|s| !s.is_empty())
             .unwrap_or_else(|| "HA7302CST".to_string());
+
+        // ── Version — try multiple patterns that HIOSO firmware has shipped over the years ──
+        // Try JavaScript var assignments first (most common in modern HIOSO firmware)
+        let version_patterns: &[&str] = &[
+            r#""swVersion"\s*=\s*"([^"]+)""#,
+            r#""softWareVer"\s*=\s*"([^"]+)""#,
+            r#""softVersion"\s*=\s*"([^"]+)""#,
+            r#""firmwareVer"\s*=\s*"([^"]+)""#,
+            r#""swVer"\s*=\s*"([^"]+)""#,
+            // HTML form fields (older firmware)
+            r#"name\s*=\s*["']swVer(?:sion)?["']\s+value\s*=\s*["']([^"']+)["']"#,
+            // Display text with "Software Version:" label
+            r#"(?i)software\s*version\s*[:：]\s*</?\w*>\s*([\w\.\-]+)"#,
+        ];
+        let mut version = "Unknown".to_string();
+        for pat in version_patterns {
+            if let Ok(re) = Regex::new(pat) {
+                if let Some(c) = re.captures(&body) {
+                    let v = c.get(1).unwrap().as_str().trim().to_string();
+                    if !v.is_empty() && v.len() < 64 {
+                        version = v;
+                        break;
+                    }
+                }
+            }
+        }
 
         Ok(OltSystemInfo {
             name: "HIOSO HA7302CST".into(),
             model,
-            version: "Unknown".into(),
+            version,
             address: self.base_url.clone().unwrap_or_default(),
         })
     }
