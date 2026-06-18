@@ -190,70 +190,29 @@ impl OltDriver for HiosoHa7302cstDriver {
         password: &str,
     ) -> AppResult<()> {
         let base = format!("http://{}:{}", host, port);
-        self.base_url = Some(base.clone());
-        self.credentials = Some((username.to_string(), password.to_string()));
 
-        // HIOSO web uses a session cookie issued by POSTing credentials to the
-        // root URL.  We do an initial GET to warm the cookie jar, then a POST
-        // that mimics the browser login form.  `cookie_store(true)` on the
-        // client means the Set-Cookie we get back is replayed automatically
-        // on every subsequent request.
-        let _ = self
+        // HIOSO web uses Basic Auth, not session cookies.
+        let resp = self
             .client
-            .get(&format!("{}/login.asp", base))
+            .get(&format!("{}/", base))
+            .basic_auth(username, Some(password))
+            .timeout(std::time::Duration::from_secs(5))
             .send()
             .await
             .map_err(|e| AppError::Internal(format!("OLT connection failed: {}", e)))?;
 
-        // POST credentials.  HIOSO's login form fields are typically
-        // `Username` and `Password` (capital U) but the form is often
-        // tolerant of case.  We send the common field names.
-        let mut form: Vec<(&str, &str)> = Vec::new();
-        form.push(("Username", username));
-        form.push(("username", username));
-        form.push(("Password", password));
-        form.push(("password", password));
-        form.push(("Submit", "Login"));
-        form.push(("login", "Login"));
-
-        let resp = self
-            .client
-            .post(&format!("{}/", base))
-            .form(&form)
-            .send()
-            .await
-            .map_err(|e| AppError::Internal(format!("OLT login failed: {}", e)))?;
-
-        let status = resp.status();
-        let _ = resp.text().await; // drain body to release connection
-
-        if status.is_success() || status.is_redirection() {
-            // Verify that the session actually lets us in: hit a protected
-            // endpoint and make sure we don't get the login page back.
-            let probe = self
-                .client
-                .get(&format!("{}/onuLinkBandwidthOltPonList.asp?oltno=0%2F1", base))
-                .send()
-                .await
-                .map_err(|e| AppError::Internal(format!("OLT probe failed: {}", e)))?;
-            let probe_status = probe.status();
-            let probe_body = probe.text().await.unwrap_or_default();
-            if probe_status.is_success() && !probe_body.contains("Please login") {
-                self.connected = true;
-                return Ok(());
-            }
-            Err(AppError::Internal(format!(
-                "OLT login did not establish a session (status={} body={}…)",
-                probe_status,
-                &probe_body[..probe_body.len().min(100)]
-            )))
+        if resp.status().is_success() {
+            self.base_url = Some(base);
+            self.connected = true;
+            self.credentials = Some((username.to_string(), password.to_string()));
+            Ok(())
         } else {
             Err(AppError::Internal(format!(
-                "OLT login returned HTTP {}",
-                status
+                "OLT returned HTTP {}",
+                resp.status()
             )))
         }
-    }
+        }
 
     async fn disconnect(&mut self) -> AppResult<()> {
         self.connected = false;
