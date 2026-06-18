@@ -934,6 +934,480 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dark Mode'**
   String get darkMode;
+
+  /// No description provided for @ticketStatusOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get ticketStatusOpen;
+
+  /// No description provided for @ticketStatusInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In Progress'**
+  String get ticketStatusInProgress;
+
+  /// No description provided for @ticketStatusWaitingCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting Customer'**
+  String get ticketStatusWaitingCustomer;
+
+  /// No description provided for @ticketStatusWaitingStaff.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting Staff'**
+  String get ticketStatusWaitingStaff;
+
+  /// No description provided for @ticketStatusResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolved'**
+  String get ticketStatusResolved;
+
+  /// No description provided for @ticketStatusClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get ticketStatusClosed;
+
+  /// No description provided for @ticketStatusCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get ticketStatusCancelled;
+
+  /// No description provided for @ticketPriorityLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get ticketPriorityLow;
+
+  /// No description provided for @ticketPriorityNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get ticketPriorityNormal;
+
+  /// No description provided for @ticketPriorityHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get ticketPriorityHigh;
+
+  /// No description provided for @ticketPriorityUrgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Urgent'**
+  String get ticketPriorityUrgent;
+
+  /// No description provided for @ticketCategoryGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get ticketCategoryGeneral;
+
+  /// No description provided for @ticketCategoryBilling.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing'**
+  String get ticketCategoryBilling;
+
+  /// No description provided for @ticketCategoryTechnical.
+  ///
+  /// In en, this message translates to:
+  /// **'Technical'**
+  String get ticketCategoryTechnical;
+
+  /// No description provided for @ticketCategoryInstallation.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation'**
+  String get ticketCategoryInstallation;
+
+  /// No description provided for @ticketActionCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Take Photo'**
+  String get ticketActionCamera;
+
+  /// No description provided for @ticketActionFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose File'**
+  String get ticketActionFile;
+
+  /// No description provided for @ticketActionCameraSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera — requires camera access permission'**
+  String get ticketActionCameraSub;
+
+  /// No description provided for @ticketActionFileSub.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF, images, documents — from device storage'**
+  String get ticketActionFileSub;
+
+  /// No description provided for @ticketErrorCameraFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to open camera: {error}'**
+  String ticketErrorCameraFailed(Object error);
+
+  /// No description provided for @ticketErrorFileFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to pick file: {error}'**
+  String ticketErrorFileFailed(Object error);
+
+  /// No description provided for @ticketErrorSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to send: {error}'**
+  String ticketErrorSendFailed(Object error);
+
+  /// No description provided for @ticketErrorReplyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to reply: {error}'**
+  String ticketErrorReplyFailed(Object error);
+
+  /// No description provided for @ticketErrorLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load ticket'**
+  String get ticketErrorLoadFailed;
+
+  /// No description provided for @ticketFieldSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject'**
+  String get ticketFieldSubject;
+
+  /// No description provided for @ticketFieldSubjectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Brief summary'**
+  String get ticketFieldSubjectHint;
+
+  /// No description provided for @ticketFieldDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get ticketFieldDescription;
+
+  /// No description provided for @ticketFieldDescriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe the issue...'**
+  String get ticketFieldDescriptionHint;
+
+  /// No description provided for @ticketFieldReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a message...'**
+  String get ticketFieldReply;
+
+  /// No description provided for @ticketFieldAttachments.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments'**
+  String get ticketFieldAttachments;
+
+  /// No description provided for @ticketFieldSubscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Related Subscription (optional)'**
+  String get ticketFieldSubscription;
+
+  /// No description provided for @ticketFieldNoSubscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Not linked'**
+  String get ticketFieldNoSubscription;
+
+  /// No description provided for @ticketValidationSubjectShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject must be at least 3 characters'**
+  String get ticketValidationSubjectShort;
+
+  /// No description provided for @ticketValidationDescriptionShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Description must be at least 10 characters'**
+  String get ticketValidationDescriptionShort;
+
+  /// No description provided for @ticketButtonAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get ticketButtonAdd;
+
+  /// No description provided for @ticketButtonSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Ticket'**
+  String get ticketButtonSend;
+
+  /// No description provided for @ticketButtonSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending...'**
+  String get ticketButtonSending;
+
+  /// No description provided for @ticketButtonSubmitReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Reply'**
+  String get ticketButtonSubmitReply;
+
+  /// No description provided for @ticketButtonSendingReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending...'**
+  String get ticketButtonSendingReply;
+
+  /// No description provided for @ticketButtonAttach.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach'**
+  String get ticketButtonAttach;
+
+  /// No description provided for @ticketButtonClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close Ticket'**
+  String get ticketButtonClose;
+
+  /// No description provided for @ticketButtonReopen.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen'**
+  String get ticketButtonReopen;
+
+  /// No description provided for @ticketButtonAssign.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign'**
+  String get ticketButtonAssign;
+
+  /// No description provided for @ticketButtonEscalate.
+  ///
+  /// In en, this message translates to:
+  /// **'Escalate'**
+  String get ticketButtonEscalate;
+
+  /// No description provided for @ticketToastCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticket sent — our team will follow up'**
+  String get ticketToastCreated;
+
+  /// No description provided for @ticketToastReplySent.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply sent'**
+  String get ticketToastReplySent;
+
+  /// No description provided for @ticketToastClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticket closed'**
+  String get ticketToastClosed;
+
+  /// No description provided for @ticketToastReopened.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticket reopened'**
+  String get ticketToastReopened;
+
+  /// No description provided for @ticketQuickActionNoInternet.
+  ///
+  /// In en, this message translates to:
+  /// **'No Internet'**
+  String get ticketQuickActionNoInternet;
+
+  /// No description provided for @ticketQuickActionNoInternetSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot access the internet'**
+  String get ticketQuickActionNoInternetSubject;
+
+  /// No description provided for @ticketQuickActionNoInternetDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'My internet connection is unavailable. Please check.'**
+  String get ticketQuickActionNoInternetDesc;
+
+  /// No description provided for @ticketQuickActionSlow.
+  ///
+  /// In en, this message translates to:
+  /// **'Slow WiFi'**
+  String get ticketQuickActionSlow;
+
+  /// No description provided for @ticketQuickActionSlowSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'WiFi slow / frequently disconnects'**
+  String get ticketQuickActionSlowSubject;
+
+  /// No description provided for @ticketQuickActionSlowDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'WiFi feels slow or unstable. Please check.'**
+  String get ticketQuickActionSlowDesc;
+
+  /// No description provided for @ticketQuickActionOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get ticketQuickActionOther;
+
+  /// No description provided for @ticketAuthorYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get ticketAuthorYou;
+
+  /// No description provided for @ticketAuthorSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get ticketAuthorSupport;
+
+  /// No description provided for @ticketAuthorCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer'**
+  String get ticketAuthorCustomer;
+
+  /// No description provided for @ticketAuthorStaff.
+  ///
+  /// In en, this message translates to:
+  /// **'Staff'**
+  String get ticketAuthorStaff;
+
+  /// No description provided for @ticketAuthorAnonymous.
+  ///
+  /// In en, this message translates to:
+  /// **'Anonymous'**
+  String get ticketAuthorAnonymous;
+
+  /// No description provided for @ticketViewSubscription.
+  ///
+  /// In en, this message translates to:
+  /// **'View related subscription'**
+  String get ticketViewSubscription;
+
+  /// No description provided for @ticketConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation'**
+  String get ticketConversation;
+
+  /// No description provided for @ticketNoMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet'**
+  String get ticketNoMessages;
+
+  /// No description provided for @ticketNoMessagesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Send your first message to start the conversation'**
+  String get ticketNoMessagesHint;
+
+  /// No description provided for @ticketClosedNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'This ticket is closed. You cannot reply.'**
+  String get ticketClosedNotice;
+
+  /// No description provided for @ticketAssignee.
+  ///
+  /// In en, this message translates to:
+  /// **'Assignee'**
+  String get ticketAssignee;
+
+  /// No description provided for @ticketUnassigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Unassigned'**
+  String get ticketUnassigned;
+
+  /// No description provided for @ticketSatisfaction.
+  ///
+  /// In en, this message translates to:
+  /// **'Satisfaction'**
+  String get ticketSatisfaction;
+
+  /// No description provided for @ticketRateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'How satisfied are you?'**
+  String get ticketRateHint;
+
+  /// No description provided for @ticketCommentOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment (optional)'**
+  String get ticketCommentOptional;
+
+  /// No description provided for @ticketSubmitRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit Rating'**
+  String get ticketSubmitRating;
+
+  /// No description provided for @ticketAdminListTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Support Tickets'**
+  String get ticketAdminListTitle;
+
+  /// No description provided for @ticketAdminTabAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get ticketAdminTabAll;
+
+  /// No description provided for @ticketAdminTabOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get ticketAdminTabOpen;
+
+  /// No description provided for @ticketAdminTabInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In Progress'**
+  String get ticketAdminTabInProgress;
+
+  /// No description provided for @ticketAdminTabClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get ticketAdminTabClosed;
+
+  /// No description provided for @ticketAdminEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No tickets yet'**
+  String get ticketAdminEmpty;
+
+  /// No description provided for @ticketAdminFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All categories'**
+  String get ticketAdminFilterAll;
+
+  /// No description provided for @ticketAdminFilterOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open only'**
+  String get ticketAdminFilterOpen;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

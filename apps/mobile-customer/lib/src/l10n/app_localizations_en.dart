@@ -429,4 +429,249 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get darkMode => 'Dark Mode';
+
+  @override
+  String get ticketStatusOpen => 'Open';
+
+  @override
+  String get ticketStatusInProgress => 'In Progress';
+
+  @override
+  String get ticketStatusWaitingCustomer => 'Waiting Customer';
+
+  @override
+  String get ticketStatusWaitingStaff => 'Waiting Staff';
+
+  @override
+  String get ticketStatusResolved => 'Resolved';
+
+  @override
+  String get ticketStatusClosed => 'Closed';
+
+  @override
+  String get ticketStatusCancelled => 'Cancelled';
+
+  @override
+  String get ticketPriorityLow => 'Low';
+
+  @override
+  String get ticketPriorityNormal => 'Normal';
+
+  @override
+  String get ticketPriorityHigh => 'High';
+
+  @override
+  String get ticketPriorityUrgent => 'Urgent';
+
+  @override
+  String get ticketCategoryGeneral => 'General';
+
+  @override
+  String get ticketCategoryBilling => 'Billing';
+
+  @override
+  String get ticketCategoryTechnical => 'Technical';
+
+  @override
+  String get ticketCategoryInstallation => 'Installation';
+
+  @override
+  String get ticketActionCamera => 'Take Photo';
+
+  @override
+  String get ticketActionFile => 'Choose File';
+
+  @override
+  String get ticketActionCameraSub => 'Camera — requires camera access permission';
+
+  @override
+  String get ticketActionFileSub => 'PDF, images, documents — from device storage';
+
+  @override
+  String ticketErrorCameraFailed(Object error) {
+    return 'Failed to open camera: $error';
+  }
+
+  @override
+  String ticketErrorFileFailed(Object error) {
+    return 'Failed to pick file: $error';
+  }
+
+  @override
+  String ticketErrorSendFailed(Object error) {
+    return 'Failed to send: $error';
+  }
+
+  @override
+  String ticketErrorReplyFailed(Object error) {
+    return 'Failed to reply: $error';
+  }
+
+  @override
+  String get ticketErrorLoadFailed => 'Failed to load ticket';
+
+  @override
+  String get ticketFieldSubject => 'Subject';
+
+  @override
+  String get ticketFieldSubjectHint => 'Brief summary';
+
+  @override
+  String get ticketFieldDescription => 'Description';
+
+  @override
+  String get ticketFieldDescriptionHint => 'Describe the issue...';
+
+  @override
+  String get ticketFieldReply => 'Type a message...';
+
+  @override
+  String get ticketFieldAttachments => 'Attachments';
+
+  @override
+  String get ticketFieldSubscription => 'Related Subscription (optional)';
+
+  @override
+  String get ticketFieldNoSubscription => 'Not linked';
+
+  @override
+  String get ticketValidationSubjectShort => 'Subject must be at least 3 characters';
+
+  @override
+  String get ticketValidationDescriptionShort => 'Description must be at least 10 characters';
+
+  @override
+  String get ticketButtonAdd => 'Add';
+
+  @override
+  String get ticketButtonSend => 'Send Ticket';
+
+  @override
+  String get ticketButtonSending => 'Sending...';
+
+  @override
+  String get ticketButtonSubmitReply => 'Send Reply';
+
+  @override
+  String get ticketButtonSendingReply => 'Sending...';
+
+  @override
+  String get ticketButtonAttach => 'Attach';
+
+  @override
+  String get ticketButtonClose => 'Close Ticket';
+
+  @override
+  String get ticketButtonReopen => 'Reopen';
+
+  @override
+  String get ticketButtonAssign => 'Assign';
+
+  @override
+  String get ticketButtonEscalate => 'Escalate';
+
+  @override
+  String get ticketToastCreated => 'Ticket sent — our team will follow up';
+
+  @override
+  String get ticketToastReplySent => 'Reply sent';
+
+  @override
+  String get ticketToastClosed => 'Ticket closed';
+
+  @override
+  String get ticketToastReopened => 'Ticket reopened';
+
+  @override
+  String get ticketQuickActionNoInternet => 'No Internet';
+
+  @override
+  String get ticketQuickActionNoInternetSubject => 'Cannot access the internet';
+
+  @override
+  String get ticketQuickActionNoInternetDesc => 'My internet connection is unavailable. Please check.';
+
+  @override
+  String get ticketQuickActionSlow => 'Slow WiFi';
+
+  @override
+  String get ticketQuickActionSlowSubject => 'WiFi slow / frequently disconnects';
+
+  @override
+  String get ticketQuickActionSlowDesc => 'WiFi feels slow or unstable. Please check.';
+
+  @override
+  String get ticketQuickActionOther => 'Other';
+
+  @override
+  String get ticketAuthorYou => 'You';
+
+  @override
+  String get ticketAuthorSupport => 'Support';
+
+  @override
+  String get ticketAuthorCustomer => 'Customer';
+
+  @override
+  String get ticketAuthorStaff => 'Staff';
+
+  @override
+  String get ticketAuthorAnonymous => 'Anonymous';
+
+  @override
+  String get ticketViewSubscription => 'View related subscription';
+
+  @override
+  String get ticketConversation => 'Conversation';
+
+  @override
+  String get ticketNoMessages => 'No messages yet';
+
+  @override
+  String get ticketNoMessagesHint => 'Send your first message to start the conversation';
+
+  @override
+  String get ticketClosedNotice => 'This ticket is closed. You cannot reply.';
+
+  @override
+  String get ticketAssignee => 'Assignee';
+
+  @override
+  String get ticketUnassigned => 'Unassigned';
+
+  @override
+  String get ticketSatisfaction => 'Satisfaction';
+
+  @override
+  String get ticketRateHint => 'How satisfied are you?';
+
+  @override
+  String get ticketCommentOptional => 'Comment (optional)';
+
+  @override
+  String get ticketSubmitRating => 'Submit Rating';
+
+  @override
+  String get ticketAdminListTitle => 'Support Tickets';
+
+  @override
+  String get ticketAdminTabAll => 'All';
+
+  @override
+  String get ticketAdminTabOpen => 'Open';
+
+  @override
+  String get ticketAdminTabInProgress => 'In Progress';
+
+  @override
+  String get ticketAdminTabClosed => 'Closed';
+
+  @override
+  String get ticketAdminEmpty => 'No tickets yet';
+
+  @override
+  String get ticketAdminFilterAll => 'All categories';
+
+  @override
+  String get ticketAdminFilterOpen => 'Open only';
 }

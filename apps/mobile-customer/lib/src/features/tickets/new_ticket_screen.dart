@@ -9,48 +9,84 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../services/service_providers.dart';
+import '../../services/subscription_providers.dart';
 
 /// Attachment picker source — mirrors the profile-upload pattern so the
 /// camera permission flow stays consistent across the app.
 enum _AttachmentSource { camera, files }
 
-/// One-tap shortcut for the most common outage types. Auto-fills subject +
-/// description so the user only edits if they want to add detail.
+/// One-tap shortcut for the most common outage types. Auto-fills subject,
+/// description AND category so admins can triage without re-classifying.
 class _QuickAction {
   const _QuickAction({
     required this.icon,
-    required this.label,
-    required this.subject,
-    required this.description,
+    required this.labelKey,
+    required this.subjectKey,
+    required this.descriptionKey,
+    required this.category,
   });
   final IconData icon;
-  final String label;
-  final String subject;
-  final String description;
+  final String labelKey; // i18n key suffix under ticketQuickAction*
+  final String subjectKey;
+  final String descriptionKey;
+  final String category; // 'general' | 'technical' | etc.
 }
 
-const _quickActions = <_QuickAction>[
-  _QuickAction(
-    icon: Icons.wifi_off_rounded,
-    label: 'Internet Mati',
-    subject: 'Internet tidak bisa diakses',
-    description:
-        'Koneksi internet di lokasi saya tidak dapat diakses. Mohon dicek.',
-  ),
-  _QuickAction(
-    icon: Icons.network_check_rounded,
-    label: 'WiFi Lemot',
-    subject: 'WiFi lambat / sering putus',
-    description:
-        'Koneksi WiFi terasa lambat atau tidak stabil. Mohon dicek.',
-  ),
-  _QuickAction(
-    icon: Icons.edit_note_rounded,
-    label: 'Lainnya',
-    subject: '',
-    description: '',
-  ),
-];
+List<_QuickAction> _buildQuickActions(AppLocalizations l10n) => [
+      _QuickAction(
+        icon: Icons.wifi_off_rounded,
+        labelKey: 'NoInternet',
+        subjectKey: 'NoInternetSubject',
+        descriptionKey: 'NoInternetDesc',
+        category: 'technical',
+      ),
+      _QuickAction(
+        icon: Icons.network_check_rounded,
+        labelKey: 'Slow',
+        subjectKey: 'SlowSubject',
+        descriptionKey: 'SlowDesc',
+        category: 'technical',
+      ),
+      _QuickAction(
+        icon: Icons.edit_note_rounded,
+        labelKey: 'Other',
+        subjectKey: 'Other',
+        descriptionKey: 'Other',
+        category: 'general',
+      ),
+    ];
+
+String _quickLabel(AppLocalizations l, _QuickAction a) {
+  switch (a.labelKey) {
+    case 'NoInternet':
+      return l.ticketQuickActionNoInternet;
+    case 'Slow':
+      return l.ticketQuickActionSlow;
+    case 'Other':
+      return l.ticketQuickActionOther;
+  }
+  return '';
+}
+
+String _quickSubject(AppLocalizations l, _QuickAction a) {
+  switch (a.subjectKey) {
+    case 'NoInternetSubject':
+      return l.ticketQuickActionNoInternetSubject;
+    case 'SlowSubject':
+      return l.ticketQuickActionSlowSubject;
+  }
+  return '';
+}
+
+String _quickDesc(AppLocalizations l, _QuickAction a) {
+  switch (a.descriptionKey) {
+    case 'NoInternetDesc':
+      return l.ticketQuickActionNoInternetDesc;
+    case 'SlowDesc':
+      return l.ticketQuickActionSlowDesc;
+  }
+  return '';
+}
 
 class NewTicketScreen extends ConsumerStatefulWidget {
   const NewTicketScreen({super.key});
@@ -65,6 +101,14 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
   final _descriptionCtrl = TextEditingController();
   bool _submitting = false;
 
+  /// Category set by quick-action chip (or null if user picks "Other"
+  /// then clears it). Backend uses this for routing/admin triage.
+  String? _selectedCategory;
+
+  /// Optional subscription link. null = not linked. Picked from user's
+  /// active subscriptions in a bottom sheet.
+  String? _selectedSubscriptionId;
+
   /// Pending attachments: (filePath, fileName, contentType, size)
   final List<_PendingAttachment> _pendingAttachments = [];
 
@@ -75,15 +119,17 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
     super.dispose();
   }
 
-  void _applyQuickAction(_QuickAction action) {
-    _subjectCtrl.text = action.subject;
-    _descriptionCtrl.text = action.description;
+  void _applyQuickAction(_QuickAction action, AppLocalizations l) {
+    _subjectCtrl.text = _quickSubject(l, action);
+    _descriptionCtrl.text = _quickDesc(l, action);
+    setState(() => _selectedCategory = action.category);
   }
 
   // ── Attachment picker (bottom sheet → camera OR file picker) ──
 
   Future<void> _pickFile() async {
     final isp = context.isp; // local — class has no persistent field
+    final l10n = AppLocalizations.of(context);
     final source = await showModalBottomSheet<_AttachmentSource>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -92,19 +138,19 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
           children: [
             ListTile(
               leading: Icon(Icons.photo_camera_outlined, color: isp.accent),
-              title: const Text('Ambil Foto'),
-              subtitle: const Text(
-                'Kamera — perlu izin akses kamera',
-                style: TextStyle(fontSize: 12),
+              title: Text(l10n.ticketActionCamera),
+              subtitle: Text(
+                l10n.ticketActionCameraSub,
+                style: const TextStyle(fontSize: 12),
               ),
               onTap: () => Navigator.pop(ctx, _AttachmentSource.camera),
             ),
             ListTile(
               leading: Icon(Icons.folder_open_outlined, color: isp.accent),
-              title: const Text('Pilih File'),
-              subtitle: const Text(
-                'PDF, gambar, dokumen — dari penyimpanan perangkat',
-                style: TextStyle(fontSize: 12),
+              title: Text(l10n.ticketActionFile),
+              subtitle: Text(
+                l10n.ticketActionFileSub,
+                style: const TextStyle(fontSize: 12),
               ),
               onTap: () => Navigator.pop(ctx, _AttachmentSource.files),
             ),
@@ -123,6 +169,7 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
 
   Future<void> _captureFromCamera() async {
     final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
     try {
       final picker = ImagePicker();
       final picked = await picker.pickImage(
@@ -152,7 +199,7 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal membuka kamera: $e'),
+          content: Text(l10n.ticketErrorCameraFailed(e.toString())),
           backgroundColor: isp.danger,
         ),
       );
@@ -160,6 +207,7 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
   }
 
   Future<void> _pickFromFiles() async {
+    final l10n = AppLocalizations.of(context);
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.any,
@@ -184,7 +232,7 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memilih file: $e')),
+        SnackBar(content: Text(l10n.ticketErrorFileFailed(e.toString()))),
       );
     }
   }
@@ -224,16 +272,20 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
     setState(() => _submitting = true);
 
     final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
 
     try {
-      // 1. Create ticket (priority + category are admin-triaged; backend
-      //    defaults priority to 'normal' if not provided).
+      // 1. Create ticket — pass category (from quick-action) and
+      //    subscriptionId (if user picked one) so admins get full context
+      //    immediately instead of having to re-classify.
       final svc = ref.read(ticketServiceProvider);
       final ServiceResult<TicketModel> res = await svc.create(
         subject: _subjectCtrl.text.trim(),
         message: _descriptionCtrl.text.trim(),
+        category: _selectedCategory,
+        subscriptionId: _selectedSubscriptionId,
       );
 
       if (!mounted) return;
@@ -256,7 +308,7 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
           if (!mounted) return;
           messenger.showSnackBar(
             SnackBar(
-              content: const Text('Tiket terkirim — tim kami akan menindak lanjuti'),
+              content: Text(l10n.ticketToastCreated),
               backgroundColor: isp.success,
             ),
           );
@@ -280,7 +332,7 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Gagal mengirim: $e'),
+          content: Text(l10n.ticketErrorSendFailed(e.toString())),
           backgroundColor: isp.danger,
         ),
       );
@@ -293,6 +345,7 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
   Widget build(BuildContext context) {
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
+    final quickActions = _buildQuickActions(l10n);
 
     return Scaffold(
       // Keyboard overlays the body instead of squeezing it. The sticky
@@ -314,17 +367,17 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                       spacing: IspSpacing.sm,
                       runSpacing: IspSpacing.sm,
                       children: [
-                        for (final action in _quickActions)
+                        for (final action in quickActions)
                           ActionChip(
                             avatar: Icon(action.icon, size: 18, color: isp.accent),
-                            label: Text(action.label),
-                            onPressed: () => _applyQuickAction(action),
+                            label: Text(_quickLabel(l10n, action)),
+                            onPressed: () => _applyQuickAction(action, l10n),
                           ),
                       ],
                     ),
                     const SizedBox(height: IspSpacing.md),
 
-                    // ── Single card: subject + description + attachments ──
+                    // ── Single card: subject + description + attachments + subscription ──
                     IspCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,13 +387,13 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                             controller: _subjectCtrl,
                             autofocus: true,
                             textCapitalization: TextCapitalization.sentences,
-                            decoration: const InputDecoration(
-                              labelText: 'Subjek',
-                              hintText: 'Ringkasan masalah',
+                            decoration: InputDecoration(
+                              labelText: l10n.ticketFieldSubject,
+                              hintText: l10n.ticketFieldSubjectHint,
                             ),
                             validator: (v) =>
                                 (v == null || v.trim().length < 3)
-                                    ? 'Subjek minimal 3 karakter'
+                                    ? l10n.ticketValidationSubjectShort
                                     : null,
                           ),
                           const SizedBox(height: IspSpacing.md),
@@ -351,15 +404,24 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                             minLines: 4,
                             maxLines: 8,
                             textCapitalization: TextCapitalization.sentences,
-                            decoration: const InputDecoration(
-                              labelText: 'Deskripsi',
-                              hintText: 'Jelaskan masalah Anda...',
+                            decoration: InputDecoration(
+                              labelText: l10n.ticketFieldDescription,
+                              hintText: l10n.ticketFieldDescriptionHint,
                               alignLabelWithHint: true,
                             ),
                             validator: (v) =>
                                 (v == null || v.trim().length < 10)
-                                    ? 'Deskripsi minimal 10 karakter'
+                                    ? l10n.ticketValidationDescriptionShort
                                     : null,
+                          ),
+                          const SizedBox(height: IspSpacing.md),
+
+                          // Subscription picker (optional)
+                          _SubscriptionPicker(
+                            selectedId: _selectedSubscriptionId,
+                            onChanged: (id) => setState(() {
+                              _selectedSubscriptionId = id;
+                            }),
                           ),
                           const SizedBox(height: IspSpacing.lg),
 
@@ -373,7 +435,7 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                               ),
                               const SizedBox(width: IspSpacing.sm),
                               Text(
-                                'Lampiran',
+                                l10n.ticketFieldAttachments,
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
@@ -406,7 +468,7 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                                 onPressed:
                                     _submitting ? null : _pickFile,
                                 icon: const Icon(Icons.add, size: 18),
-                                label: const Text('Tambah'),
+                                label: Text(l10n.ticketButtonAdd),
                               ),
                             ],
                           ),
@@ -472,13 +534,119 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                           )
                         : const Icon(Icons.send),
                     label: Text(
-                      _submitting ? 'Mengirim...' : 'Kirim Tiket',
+                      _submitting ? l10n.ticketButtonSending : l10n.ticketButtonSend,
                     ),
                   ),
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Subscription picker — opens a bottom sheet listing the user's active
+/// subscriptions so the ticket can be linked to one. Optional — user can
+/// leave it unlinked (default).
+class _SubscriptionPicker extends ConsumerWidget {
+  const _SubscriptionPicker({
+    required this.selectedId,
+    required this.onChanged,
+  });
+
+  final String? selectedId;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+    final asyncSubs = ref.watch(subscriptionsProvider);
+
+    String displayLabel = l10n.ticketFieldNoSubscription;
+    if (selectedId != null && asyncSubs.value != null) {
+      final match = asyncSubs.value!.where((s) => s.id == selectedId).firstOrNull;
+      if (match != null) {
+        displayLabel = '${match.packageName ?? l10n.internetPackage} • ${match.id.substring(0, 8)}';
+      }
+    }
+
+    return InkWell(
+      onTap: () async {
+        final subs = asyncSubs.value ?? [];
+        if (subs.isEmpty) return;
+        final picked = await showModalBottomSheet<String?>(
+          context: context,
+          isScrollControlled: true,
+          builder: (ctx) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: Icon(Icons.link_off, color: isp.textMuted),
+                  title: Text(l10n.ticketFieldNoSubscription),
+                  onTap: () => Navigator.pop(ctx, null),
+                ),
+                const Divider(height: 1),
+                for (final s in subs)
+                  ListTile(
+                    leading: Icon(
+                      selectedId == s.id ? Icons.check_circle : Icons.wifi,
+                      color: selectedId == s.id ? isp.accent : isp.textMuted,
+                    ),
+                    title: Text(s.packageName ?? l10n.internetPackage),
+                    subtitle: Text('#${s.id.substring(0, 8)}'),
+                    onTap: () => Navigator.pop(ctx, s.id),
+                  ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+        if (picked != null || (selectedId != null)) {
+          // distinguish "tapped none" (no change) from "explicitly cleared"
+          onChanged(picked);
+        }
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(color: isp.borderSubtle),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.wifi, size: 18, color: isp.accent),
+            const SizedBox(width: IspSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.ticketFieldSubscription,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isp.textMuted,
+                    ),
+                  ),
+                  Text(
+                    displayLabel,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isp.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: isp.textMuted),
+          ],
         ),
       ),
     );

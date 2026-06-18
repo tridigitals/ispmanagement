@@ -8,6 +8,7 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../services/service_providers.dart';
+import '../tickets/ticket_l10n.dart';
 import '../../theme/app_theme.dart';
 
 class SupportTab extends ConsumerStatefulWidget {
@@ -343,7 +344,7 @@ class _TicketTile extends StatelessWidget {
               Row(
                 children: [
                   IspStatusBadge(
-                    label: t.statusLabel(),
+                    label: l10n.ticketStatusLabel(t.status),
                     tone: t.isOpen
                         ? StatusTone.info
                         : t.isClosed
@@ -353,7 +354,7 @@ class _TicketTile extends StatelessWidget {
                   if (t.category != null && t.category!.isNotEmpty) ...[
                     const SizedBox(width: 6),
                     IspStatusBadge(
-                      label: t.categoryLabel(),
+                      label: l10n.ticketCategoryLabel(t.category),
                       tone: StatusTone.neutral,
                     ),
                   ],

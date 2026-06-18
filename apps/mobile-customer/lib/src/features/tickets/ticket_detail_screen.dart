@@ -14,9 +14,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../services/app_config.dart';
 import '../../services/auth_providers.dart';
 import '../../services/service_providers.dart';
+import 'ticket_l10n.dart';
 import 'ticket_satisfaction_survey.dart';
 
 /// Source for ticket attachments — mirrors the profile-upload pattern so
@@ -109,7 +111,9 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
     ref.invalidate(ticketMessagesProvider(widget.id));
   }
 
-  Future<void> _pickFile() async {
+  Future<void> _pickAttachment() async {
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
     // Show bottom sheet asking the user to pick a source — same UX as
     // profile avatar upload. Camera path uses image_picker which shows
     // the system CAMERA permission dialog automatically on first use.
@@ -121,19 +125,19 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
           children: [
             ListTile(
               leading: Icon(Icons.photo_camera_outlined, color: isp.accent),
-              title: const Text('Ambil Foto'),
-              subtitle: const Text(
-                'Kamera — perlu izin akses kamera',
-                style: TextStyle(fontSize: 12),
+              title: Text(l10n.ticketActionCamera),
+              subtitle: Text(
+                l10n.ticketActionCameraSub,
+                style: const TextStyle(fontSize: 12),
               ),
               onTap: () => Navigator.pop(ctx, _AttachmentSource.camera),
             ),
             ListTile(
               leading: Icon(Icons.folder_open_outlined, color: isp.accent),
-              title: const Text('Pilih File'),
-              subtitle: const Text(
-                'PDF, gambar, dokumen — dari penyimpanan perangkat',
-                style: TextStyle(fontSize: 12),
+              title: Text(l10n.ticketActionFile),
+              subtitle: Text(
+                l10n.ticketActionFileSub,
+                style: const TextStyle(fontSize: 12),
               ),
               onTap: () => Navigator.pop(ctx, _AttachmentSource.files),
             ),
@@ -155,6 +159,8 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
   /// image_picker handles the CAMERA permission request internally and shows
   /// the system permission dialog on first use.
   Future<void> _captureFromCamera() async {
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
     try {
       final picker = ImagePicker();
       final picked = await picker.pickImage(
@@ -184,7 +190,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal membuka kamera: $e'),
+          content: Text(l10n.ticketErrorCameraFailed(e.toString())),
           backgroundColor: isp.danger,
         ),
       );
@@ -193,6 +199,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
 
   /// Pick one or more files via system file explorer (SAF — no permission needed).
   Future<void> _pickFromFiles() async {
+    final l10n = AppLocalizations.of(context);
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.any,
@@ -218,7 +225,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memilih file: $e')),
+        SnackBar(content: Text(l10n.ticketErrorFileFailed(e.toString()))),
       );
     }
   }
@@ -298,8 +305,9 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
       }
     } catch (e) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal mengirim: $e')),
+        SnackBar(content: Text(l10n.ticketErrorReplyFailed(e.toString()))),
       );
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -308,21 +316,24 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    final ticketAsync = ref.watch(ticketByIdProvider(widget.id));
+    final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+    final ticketAsync = ref.watch(ticketByIdProvider(widget.id));
     final messagesAsync = ref.watch(ticketMessagesProvider(widget.id));
     final dateFmt = DateFormat('d MMM yyyy HH:mm', 'id_ID');
 
     return Scaffold(
       appBar: AppBar(
-        title: ticketAsync.maybeWhen(
+        title: ticketAsync.when(
+          loading: () => Text(l10n.myTickets),
+          error: (_, __) => Text(l10n.myTickets),
           data: (t) => Text(t.subject, overflow: TextOverflow.ellipsis),
-          orElse: () => const Text('Tiket'),
+          orElse: () => Text(l10n.myTickets),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
+            tooltip: l10n.retry,
             onPressed: _silentRefresh,
           ),
         ],
@@ -346,14 +357,14 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                   child: Row(
                     children: [
                       IspStatusBadge(
-                        label: ticket.statusLabel(),
+                        label: l10n.ticketStatusLabel(ticket.status),
                         tone: ticket.isOpen
                             ? StatusTone.warning
                             : StatusTone.success,
                       ),
                       const SizedBox(width: IspSpacing.sm),
                       IspStatusBadge(
-                        label: ticket.priorityLabel(),
+                        label: l10n.ticketPriorityLabel(ticket.priority),
                         tone: ticket.priority == TicketPriority.urgent
                             ? StatusTone.danger
                             : ticket.priority == TicketPriority.high
@@ -364,7 +375,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                           ticket.category!.isNotEmpty) ...[
                         const SizedBox(width: IspSpacing.sm),
                         IspStatusBadge(
-                          label: ticket.categoryLabel(),
+                          label: l10n.ticketCategoryLabel(ticket.category),
                           tone: StatusTone.neutral,
                         ),
                       ],
@@ -391,7 +402,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                               size: 14, color: isp.accent),
                           const SizedBox(width: 6),
                           Text(
-                            'Lihat langganan terkait',
+                            l10n.ticketViewSubscription,
                             style: TextStyle(
                               fontSize: 12,
                               color: isp.accent,
@@ -418,11 +429,10 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
               ),
               data: (messages) {
                 if (messages.isEmpty) {
-                  return const IspEmptyState(
+                  return IspEmptyState(
                     icon: Icons.chat_bubble_outline,
-                    title: 'Belum ada pesan',
-                    message:
-                        'Kirim pesan pertama Anda untuk memulai percakapan',
+                    title: l10n.ticketNoMessages,
+                    message: l10n.ticketNoMessagesHint,
                   );
                 }
                 return ListView.builder(
@@ -462,9 +472,9 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                 children: [
                   // Attachment button
                   IconButton(
-                    onPressed: _sending || _uploading ? null : _pickFile,
+                    onPressed: _sending || _uploading ? null : _pickAttachment,
                     icon: const Icon(Icons.attach_file),
-                    tooltip: 'Lampirkan file',
+                    tooltip: l10n.ticketButtonAttach,
                   ),
                   const SizedBox(width: IspSpacing.xs),
                   Expanded(
@@ -472,8 +482,9 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                       controller: _messageCtrl,
                       minLines: 1,
                       maxLines: 4,
-                      decoration:
-                          const InputDecoration(hintText: 'Tulis pesan...'),
+                      decoration: InputDecoration(
+                        hintText: l10n.ticketFieldReply,
+                      ),
                       onSubmitted: (_) => _send(),
                     ),
                   ),
@@ -625,9 +636,9 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    final isStaff = message.isFromStaff;
+    final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+    final isStaff = message.isFromStaff;
     return Align(
       alignment: isStaff ? Alignment.centerLeft : Alignment.centerRight,
       child: Container(
@@ -658,7 +669,10 @@ class _MessageBubble extends StatelessWidget {
                         size: 12, color: isp.accent),
                     const SizedBox(width: IspSpacing.xs),
                     Text(
-                      message.authorName,
+                      l10n.ticketAuthorLabel(
+                        message.authorName,
+                        isCurrentUser: false,
+                      ),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -747,7 +761,7 @@ class _AttachmentWidget extends StatelessWidget {
             fit: BoxFit.cover,
             placeholder: (_, __) => _buildImageLoading(context),
             errorWidget: (_, __, ___) =>
-                _buildImageError(context, 'Gagal memuat'),
+                _buildImageError(context, l10n.ticketErrorLoadFailed),
             imageBuilder: (context, provider) => GestureDetector(
               onTap: () => _openFullImageUrl(context, fileUrl, token),
               child: ClipRRect(
