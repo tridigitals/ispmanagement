@@ -66,7 +66,19 @@
     "not_found": "Ticket not found",
     "thread": "Conversation",
     "messages": "messages",
-    "closed_notice": "This ticket is closed. You can’t reply."
+    "closed_notice": "This ticket is closed. You can't reply.",
+    "view_subscription": "Linked subscription",
+    "view_customer": "View Customer"
+  },
+  "categories": {
+    "all": "All",
+    "general": "General",
+    "billing": "Billing",
+    "technical": "Technical",
+    "installation": "Installation"
+  },
+  "satisfaction": {
+    "title": "Satisfaction Rating"
   },
   "create": {
     "title": "Create Ticket"

@@ -126,6 +126,18 @@
     goto(`${$page.url.pathname}/${id}`);
   }
 
+  async function openSubscription(subscriptionId: string | null) {
+    if (!subscriptionId) return;
+    try {
+      const sub = await api.customers.subscriptions.get(subscriptionId);
+      if (sub?.customer_id) {
+        goto(`/admin/customers/${sub.customer_id}`);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to load subscription');
+    }
+  }
+
   function setStatusFilter(v: typeof statusFilter) {
     if (statusFilter === v) return;
     statusFilter = v;
@@ -248,7 +260,14 @@
         <button class="link" type="button" onclick={() => open(item.id)}>
           {item.subject}
           {#if item.subscription_id}
-            <span class="sub-link" title={$t('support.detail.view_subscription') || 'Langganan'}>
+            <span
+              class="sub-link"
+              role="button"
+              tabindex="0"
+              title={$t('support.detail.view_subscription') || 'Langganan terkait'}
+              onclick={(e) => { e.stopPropagation(); openSubscription(item.subscription_id); }}
+              onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); openSubscription(item.subscription_id); } }}
+            >
               <Icon name="link" size={12} />
             </span>
           {/if}
@@ -517,6 +536,12 @@
     gap: 0.2rem;
     color: rgba(99, 102, 241, 0.7);
     margin-left: 0.3rem;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+
+  .sub-link:hover {
+    color: rgba(99, 102, 241, 1);
   }
 
   .mono {

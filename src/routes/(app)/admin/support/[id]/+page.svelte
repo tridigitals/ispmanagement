@@ -184,6 +184,18 @@
     );
     lightboxOpen = true;
   }
+
+  async function openSubscription(subscriptionId: string | null) {
+    if (!subscriptionId) return;
+    try {
+      const sub = await api.customers.subscriptions.get(subscriptionId);
+      if (sub?.customer_id) {
+        goto(`/admin/customers/${sub.customer_id}`);
+      }
+    } catch (e: any) {
+      toast.error(get(t)('common.error') || e?.message || 'Failed to load subscription');
+    }
+  }
 </script>
 
 <div class="page-content fade-in">
@@ -229,11 +241,16 @@
         </span>
         {#if detail.ticket.subscription_id}
           <span class="dot"></span>
-          <span class="subscription-badge">
+          <button
+            class="subscription-badge"
+            type="button"
+            onclick={() => openSubscription(detail!.ticket.subscription_id)}
+            title={$t('support.detail.view_customer') || 'Lihat Pelanggan'}
+          >
             <Icon name="link" size={13} />
-            {$t('support.detail.view_subscription') || 'Langganan'}:
+            {$t('support.detail.view_subscription') || 'Langganan terkait'}:
             <code>{detail.ticket.subscription_id.slice(0, 8)}</code>
-          </span>
+          </button>
         {/if}
       </div>
     </div>
@@ -935,6 +952,14 @@
     border: 1px solid rgba(99, 102, 241, 0.2);
     padding: 0.15rem 0.5rem;
     border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .subscription-badge:hover {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.4);
   }
 
   .subscription-badge code {
