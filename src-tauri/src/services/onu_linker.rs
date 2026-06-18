@@ -107,4 +107,73 @@ impl OnuLinker {
         .await?;
         Ok(())
     }
+
+    /// Batch link a list of (mac, pon_port) pairs discovered on an OLT.
+    /// For each pair, looks up the network_asset by MAC and updates
+    /// olt_id + pon_port. Assets that don't exist are skipped (and
+    /// logged) — auto-create of new assets is a separate flow.
+    ///
+    /// Returns stats: { linked, skipped_no_asset, errors }.
+    pub async fn link_batch(
+        &self,
+        tenant_id: &str,
+        olt_id: &str,
+        onus: &[(String, String)], // (mac, pon_port)
+    ) -> AppResult<LinkBatchResult> {
+        let mut linked = 0u32;
+        let mut skipped = 0u32;
+        let mut errors = 0u32;
+
+        for (mac, pon_port) in onus {
+            if mac.is_empty() {
+                skipped += 1;
+                continue;
+            }
+            match self.lookup_by_mac(tenant_id, mac).await {
+                Ok(Some(link)) => {
+                    if let Err(e) = self
+                        .link_to_olt(tenant_id, &link.asset_id, olt_id, pon_port)
+                        .await
+                    {
+                        tracing::warn!(
+                            "OnuLinker: failed to link asset {} to OLT {}: {}",
+                            link.asset_id,
+                            olt_id,
+                            e
+                        );
+                        errors += 1;
+                    } else {
+                        linked += 1;
+                        tracing::debug!(
+                            "OnuLinker: linked asset {} (customer={:?}) → OLT {} PON {}",
+                            link.asset_id,
+                            link.customer_id,
+                            olt_id,
+                            pon_port
+                        );
+                    }
+                }
+                Ok(None) => {
+                    skipped += 1;
+                }
+                Err(e) => {
+                    tracing::warn!("OnuLinker: lookup_by_mac failed for {}: {}", mac, e);
+                    errors += 1;
+                }
+            }
+        }
+
+        Ok(LinkBatchResult {
+            linked,
+            skipped,
+            errors,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct LinkBatchResult {
+    pub linked: u32,
+    pub skipped: u32,
+    pub errors: u32,
 }
