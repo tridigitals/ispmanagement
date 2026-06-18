@@ -134,7 +134,6 @@ export const olt = {
       name: data.name,
       description: data.description ?? null,
       olt_type: data.olt_type,
-      oltType: data.olt_type,
       host: data.host,
       port: data.port,
       username: data.username,
@@ -155,7 +154,6 @@ export const olt = {
       username: data.username,
       password: data.password,
       olt_type: data.olt_type,
-      oltType: data.olt_type,
     }) as Promise<OltTestResult>,
 
   get: (id: string): Promise<Olt> =>
@@ -186,7 +184,6 @@ export const olt = {
       token: getTokenOrThrow(),
       id,
       force_refresh: forceRefresh ?? false,
-      forceRefresh: forceRefresh ?? false,
     }) as Promise<OltStatsResponse>,
 
   details: (id: string): Promise<OltDetails> =>
@@ -196,12 +193,8 @@ export const olt = {
     safeInvoke('reboot_olt_onu', {
       token: getTokenOrThrow(),
       id,
-      olt_id: id,
-      oltId: id,
       onu_id: onuId,
-      onuId,
       onu_name: onuName,
-      onuName,
     }),
 
   onuHistory: (id: string, limit?: number): Promise<OltOnuHistoryEntry[]> =>
@@ -230,7 +223,6 @@ export const olt = {
       description: data.description ?? null,
       enabled: data.enabled,
       expires_at: data.expires_at ?? null,
-      expiresAt: data.expires_at ?? null,
     }).then((r: any) => unwrap<OltPublicToken>(r)),
 
   deletePublicToken: (id: string, tokenId: string): Promise<void> =>
@@ -238,6 +230,5 @@ export const olt = {
       token: getTokenOrThrow(),
       id,
       token_id: tokenId,
-      tokenId,
     }) as Promise<void>,
 };
