@@ -66,9 +66,10 @@ impl HiosoHa7302cstDriver {
 
     /// Parse JavaScript array tokens between single quotes.
     /// Handles multiline declarations, common across HIOSO firmware revisions.
+    /// Parse JavaScript array tokens between single quotes.
+    /// Handles JS comments (`//` and `/* */`) in the source, which appear
+    /// in the real HIOSO pages.
     fn parse_js_array_tokens(html: &str, var_name: &str) -> Vec<String> {
-        // Find `var <name>` first, then find `new Array(` after it,
-        // regardless of whitespace or other characters in between.
         let decl = format!("var {}", var_name);
         let decl_pos = match html.find(&decl) {
             Some(pos) => pos,
@@ -80,17 +81,20 @@ impl HiosoHa7302cstDriver {
             None => return vec![],
         };
 
-        // Scan forward for the matching closing paren, counting nesting depth
-        // and respecting JavaScript string delimiters so a `)` inside a quoted
-        // value doesn't fool us.
+        // Strip JS line comments (//) and block comments (/* */) before
+        // scanning for the matching close-paren.  HIOSO code embeds
+        // //"ex","ample" — those double-quotes are NOT real strings and
+        // would break the state machine below.
         let rest = &html[start..];
+        let rest_clean = Self::strip_js_comments(rest);
+
         let mut depth: u32 = 1;
         let mut end: usize = 0;
         let mut in_single = false;
         let mut in_double = false;
         let mut prev_was_backslash = false;
 
-        for (i, ch) in rest.char_indices() {
+        for (i, ch) in rest_clean.char_indices() {
             if in_single {
                 if prev_was_backslash {
                     prev_was_backslash = false;
@@ -172,6 +176,41 @@ impl HiosoHa7302cstDriver {
     fn is_low_signal(val: &str) -> bool {
         let v = Self::parse_signal(val);
         v <= LOW_SIGNAL_THRESHOLD && v >= LOW_SIGNAL_FLOOR
+    }
+
+    /// Strip JavaScript comments (`//` until end-of-line, `/* … */` blocks)
+    /// from the source text so quoted strings inside comments don't fool
+    /// the parser state machine.
+    fn strip_js_comments(src: &str) -> String {
+        let mut out = String::with_capacity(src.len());
+        let chars: Vec<char> = src.chars().collect();
+        let len = chars.len();
+        let mut i = 0;
+        while i < len {
+            if i + 1 < len && chars[i] == '/' && chars[i + 1] == '/' {
+                // line comment — skip until end of line
+                while i < len && chars[i] != '\n' {
+                    i += 1;
+                }
+                if i < len {
+                    out.push('\n');
+                    i += 1;
+                }
+            } else if i + 1 < len && chars[i] == '/' && chars[i + 1] == '*' {
+                // block comment — skip until */
+                i += 2;
+                while i + 1 < len && !(chars[i] == '*' && chars[i + 1] == '/') {
+                    i += 1;
+                }
+                if i + 1 < len {
+                    i += 2;
+                }
+            } else {
+                out.push(chars[i]);
+                i += 1;
+            }
+        }
+        out
     }
 }
 
