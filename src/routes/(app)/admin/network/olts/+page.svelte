@@ -16,6 +16,7 @@
 
   const OLT_TYPE_MAP: Record<string, string> = {
     hioso_ha7302cst: 'HIOSO HA-7302CST (EPON)',
+    mikrotik_ros: 'MikroTik RouterOS (API)',
     vsol_epon: 'VSOL (EPON)',
   };
 

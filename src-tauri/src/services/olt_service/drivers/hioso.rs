@@ -40,23 +40,99 @@ impl HiosoHa7302cstDriver {
         Ok(format!("{}{}", base, path))
     }
 
-    /// Parse JavaScript array tokens between single quotes
+    /// Parse JavaScript array tokens between single quotes.
+    /// Handles multiline declarations, common across HIOSO firmware revisions.
     fn parse_js_array_tokens(html: &str, var_name: &str) -> Vec<String> {
-        let pattern = format!(r"var\s+{}\s*=\s*new Array\(([^)]*)\)", var_name);
-        let re = match Regex::new(&pattern) {
-            Ok(r) => r,
-            Err(_) => return vec![],
+        // Strategy: find `var <name> = new Array(` and extract every single-quoted token
+        // that appears before the statement-closing `);`.
+        //
+        // We avoid a single regex because the array literal may span many lines
+        // (thousands of ONUs) and may contain escaped quotes inside values.
+
+        let needle = format!("var {} = new Array(", var_name);
+        let start = match html.find(&needle) {
+            Some(pos) => pos + needle.len(),
+            None => return vec![],
         };
-        if let Some(caps) = re.captures(html) {
-            let inner = caps.get(1).unwrap().as_str();
-            let token_re = Regex::new(r"'([^']*)'").unwrap();
-            token_re
-                .captures_iter(inner)
-                .map(|c| c.get(1).unwrap().as_str().to_string())
-                .collect()
-        } else {
-            vec![]
+
+        // Scan forward for the matching closing paren, counting nesting depth
+        // and respecting JavaScript string delimiters so a `)` inside a quoted
+        // value doesn't fool us.
+        let rest = &html[start..];
+        let mut depth: u32 = 1;
+        let mut end: usize = 0;
+        let mut in_single = false;
+        let mut in_double = false;
+        let mut prev_was_backslash = false;
+
+        for (i, ch) in rest.char_indices() {
+            if in_single {
+                if prev_was_backslash {
+                    prev_was_backslash = false;
+                } else if ch == '\\' {
+                    prev_was_backslash = true;
+                } else if ch == '\'' {
+                    in_single = false;
+                }
+                continue;
+            }
+            if in_double {
+                if prev_was_backslash {
+                    prev_was_backslash = false;
+                } else if ch == '\\' {
+                    prev_was_backslash = true;
+                } else if ch == '"' {
+                    in_double = false;
+                }
+                continue;
+            }
+            match ch {
+                '\'' => in_single = true,
+                '"' => in_double = true,
+                '(' => depth += 1,
+                ')' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = i;
+                        break;
+                    }
+                }
+                _ => {}
+            }
         }
+
+        if depth != 0 || end == 0 {
+            return vec![];
+        }
+
+        let inner = &rest[..end];
+
+        // Extract all single-quoted tokens (faster than regex for many small strings)
+        let mut tokens = Vec::new();
+        let mut pos = 0;
+        while let Some(open) = inner[pos..].find('\'') {
+            let after_open = pos + open + 1;
+            let mut close = after_open;
+            let mut escaped = false;
+            while close < inner.len() {
+                let ch = inner.as_bytes()[close] as char;
+                if escaped {
+                    escaped = false;
+                } else if ch == '\\' {
+                    escaped = true;
+                } else if ch == '\'' {
+                    tokens.push(inner[after_open..close].to_string());
+                    pos = close + 1;
+                    break;
+                }
+                close += 1;
+            }
+            if close >= inner.len() {
+                break; // unterminated string — stop
+            }
+        }
+
+        tokens
     }
 
     /// Parse RX power value like "-19.20dBm" → -19.20

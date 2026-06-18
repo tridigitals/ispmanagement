@@ -1,4 +1,5 @@
 pub mod hioso;
+pub mod mikrotik_ros;
 pub mod mock;
 
 use crate::error::AppResult;
@@ -55,9 +56,10 @@ use crate::error::AppError;
 pub fn create_driver(olt_type: &str) -> AppResult<Box<dyn OltDriver>> {
     match olt_type {
         "hioso_ha7302cst" => Ok(Box::new(hioso::HiosoHa7302cstDriver::new())),
+        "mikrotik_ros" => Ok(Box::new(mikrotik_ros::MikrotikRosDriver::new())),
         "mock" => Ok(Box::new(mock::MockOltDriver::new())),
         _ => Err(AppError::Validation(format!(
-            "Unsupported OLT type: {}. Supported: hioso_ha7302cst, mock",
+            "Unsupported OLT type: {}. Supported: hioso_ha7302cst, mikrotik_ros, mock",
             olt_type
         ))),
     }
