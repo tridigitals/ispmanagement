@@ -2441,6 +2441,7 @@
     "fields": {
       "status": "Status",
       "priority": "Priority",
+      "category": "Category",
       "assignee": "Assignee",
       "internal": "Internal note"
     },

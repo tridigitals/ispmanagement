@@ -2194,6 +2194,7 @@
     "fields": {
       "status": "Status",
       "priority": "Prioritas",
+      "category": "Kategori",
       "assignee": "Penanggung Jawab",
       "internal": "Catatan internal"
     },
