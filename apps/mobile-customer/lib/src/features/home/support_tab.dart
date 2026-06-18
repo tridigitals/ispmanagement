@@ -289,9 +289,9 @@ class _TicketTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    final dateFmt = DateFormat('d MMM', 'id_ID');
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context)!;
+    final dateFmt = DateFormat('d MMM', 'id_ID');
     return Material(
       color: Colors.transparent,
       child: InkWell(

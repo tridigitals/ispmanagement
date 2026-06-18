@@ -551,7 +551,8 @@
             {:else if key === 'port'}
               <span class="mono">{item.pon || '—'}</span>
             {:else if key === 'status'}
-              <span class="badge" class:online={item.status === 'online'} class:offline={item.status !== 'online'}>
+              {@const isOnline = typeof item.status === 'string' && (item.status.toLowerCase() === 'online' || item.status.toLowerCase() === 'up')}
+              <span class="badge" class:online={isOnline} class:offline={!isOnline}>
                 {item.status || '—'}
               </span>
             {:else if key === 'signal'}
@@ -620,7 +621,8 @@
             {:else if key === 'mac'}
               <span class="mono muted">{item.mac || '—'}</span>
             {:else if key === 'status'}
-              <span class="badge" class:online={item.status === 'online'} class:offline={item.status !== 'online'}>
+              {@const isOnline = typeof item.status === 'string' && (item.status.toLowerCase() === 'online' || item.status.toLowerCase() === 'up')}
+              <span class="badge" class:online={isOnline} class:offline={!isOnline}>
                 {item.status || '—'}
               </span>
             {:else if key === 'rx'}

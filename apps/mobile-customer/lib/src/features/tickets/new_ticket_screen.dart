@@ -563,7 +563,7 @@ class _SubscriptionPicker extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final isp = context.isp;
-    final asyncSubs = ref.watch(subscriptionsProvider);
+    final asyncSubs = ref.watch(mySubscriptionsProvider);
 
     String displayLabel = l10n.ticketFieldNoSubscription;
     if (selectedId != null && asyncSubs.value != null) {

@@ -328,7 +328,6 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
           loading: () => Text(l10n.myTickets),
           error: (_, __) => Text(l10n.myTickets),
           data: (t) => Text(t.subject, overflow: TextOverflow.ellipsis),
-          orElse: () => Text(l10n.myTickets),
         ),
         actions: [
           IconButton(
@@ -735,9 +734,9 @@ class _AttachmentWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    final fileUrl =
+    final l10n = AppLocalizations.of(context)!;
+    final isp = context.isp;
+    final fileUrl =
         '$baseUrl/api/storage/files/${attachment.id}/ticket-content';
 
     if (attachment.isImage) {
@@ -749,7 +748,7 @@ class _AttachmentWidget extends StatelessWidget {
           }
           final token = snap.data;
           if (token == null || token.isEmpty) {
-            return _buildImageError(context, 'Sesi berakhir, login ulang');
+            return _buildImageError(context, l10n.ticketErrorSessionExpired);
           }
           // Use CachedNetworkImage for disk + memory caching.
           // Custom cacheKey excludes the token so cache survives token rotation.

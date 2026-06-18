@@ -155,7 +155,7 @@ class TicketService {
         throw ArgumentError('update() requires at least one field to change');
       }
       final res = await dio.put<Map<String, dynamic>>(
-        ApiEndpoints.ticketById(ticketId),
+        ApiEndpoints.myTicketById(ticketId),
         data: body,
       );
       return TicketModel.fromJson(res.data ?? const {});
