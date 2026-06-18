@@ -1,4 +1,5 @@
 use super::AppState;
+use crate::error::{AppError, AppResult};
 use crate::http::auth::extract_ip;
 use crate::http::domain_resolver::{normalize_host, resolve_request_domain, ResolvedDomainContext};
 use crate::models::{CustomerRegistrationInviteValidationView, RegisterDto, Tenant, User};
@@ -454,4 +455,26 @@ pub async fn unsubscribe(
     Ok(Html(
         "You have been unsubscribed from this email category. You can re-enable it in Notification Settings.".to_string(),
     ))
+}
+
+// ── OLT Public Traffic/Signal (NO AUTH) ──────────────────────
+
+/// GET /api/public/olt/traffic/{token}
+/// Public MRTG-style traffic endpoint — NO AUTH, token-validated
+pub async fn olt_public_traffic(
+    State(state): State<super::AppState>,
+    Path(token): Path<String>,
+) -> AppResult<Json<serde_json::Value>> {
+    let result = state.olt_service.get_stats_by_token(&token).await?;
+    Ok(Json(result))
+}
+
+/// GET /api/public/olt/signal/{token}
+/// Public signal distribution endpoint — NO AUTH, token-validated
+pub async fn olt_public_signal(
+    State(state): State<super::AppState>,
+    Path(token): Path<String>,
+) -> AppResult<Json<serde_json::Value>> {
+    let result = state.olt_service.get_signal_by_token(&token).await?;
+    Ok(Json(result))
 }

@@ -707,6 +707,15 @@ pub async fn start_server_impl(
             get(public::get_tenant_by_domain),
         )
         .route("/api/public/unsubscribe/{token}", get(public::unsubscribe))
+        // OLT Public Traffic Graphs (token-based, NO AUTH)
+        .route(
+            "/api/public/olt/traffic/{token}",
+            get(public::olt_public_traffic),
+        )
+        .route(
+            "/api/public/olt/signal/{token}",
+            get(public::olt_public_signal),
+        )
         // Version Route
         .route("/api/version", get(crate::http::get_app_version))
         .layer(DefaultBodyLimit::max(1024 * 1024 * 1024)) // 1GB Upload Limit

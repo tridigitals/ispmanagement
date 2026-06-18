@@ -272,6 +272,57 @@ async fn get_onu_history(
     Ok(Json(serde_json::json!({ "status": "success", "data": history })))
 }
 
+// ── Token Management Handlers ────────────────────────────────
+
+/// GET /api/admin/olts/{id}/public-tokens
+async fn list_public_tokens(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant, "olt", "manage")
+        .await?;
+
+    let tokens = state.olt_service.list_public_tokens(&id, &tenant).await?;
+    Ok(Json(serde_json::json!({ "status": "success", "data": tokens })))
+}
+
+/// POST /api/admin/olts/{id}/public-tokens
+async fn create_public_token(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(payload): Json<crate::models::CreatePublicTokenRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant, "olt", "manage")
+        .await?;
+
+    let token = state.olt_service.create_public_token(&id, &tenant, payload).await?;
+    Ok(Json(serde_json::json!({ "status": "success", "data": token })))
+}
+
+/// DELETE /api/admin/olts/{id}/public-tokens/{token_id}
+async fn delete_public_token(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((id, token_id)): Path<(String, String)>,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant, "olt", "manage")
+        .await?;
+
+    state.olt_service.delete_public_token(&token_id, &tenant).await?;
+    Ok(Json(serde_json::json!({ "status": "success" })))
+}
+
 // ── Router ───────────────────────────────────────────────────
 
 pub fn router() -> Router<AppState> {
@@ -287,4 +338,12 @@ pub fn router() -> Router<AppState> {
         .route("/{id}/details", get(get_olt_all_details))
         .route("/{id}/reboot-onu", post(reboot_onu))
         .route("/{id}/onu-history", get(get_onu_history))
+        .route(
+            "/{id}/public-tokens",
+            get(list_public_tokens).post(create_public_token),
+        )
+        .route(
+            "/{id}/public-tokens/{token_id}",
+            delete(delete_public_token),
+        )
 }

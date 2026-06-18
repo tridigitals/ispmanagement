@@ -199,3 +199,25 @@ pub struct OltOnuHistoryRecord {
     pub temperature: Option<f64>,
     pub recorded_at: DateTime<Utc>,
 }
+
+// ── Public Token ────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct OltPublicToken {
+    pub id: String,
+    pub olt_id: String,
+    pub tenant_id: String,
+    pub token: String,
+    pub description: Option<String>,
+    pub enabled: bool,
+    pub created_at: DateTime<Utc>,
+    pub expires_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreatePublicTokenRequest {
+    pub description: Option<String>,
+    #[serde(default)]
+    pub enabled: bool,
+    pub expires_at: Option<String>,
+}

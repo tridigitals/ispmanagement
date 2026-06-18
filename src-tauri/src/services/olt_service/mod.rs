@@ -10,8 +10,8 @@ use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     AllOnusResponse, CreateOltRequest, Olt, OltAllDetailsResponse, OltOnuDetail,
-    OltOnuHistoryRecord, OltStatsResponse, RebootOnuRequest, TestConnectionResponse,
-    UpdateOltRequest,
+    OltOnuHistoryRecord, OltPublicToken, OltStatsResponse, RebootOnuRequest,
+    TestConnectionResponse, UpdateOltRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
 use crate::services::audit_service::AuditService;
@@ -652,5 +652,247 @@ impl OltService {
         }
 
         Ok(())
+    }
+}
+
+// ── Token + Public Stats (Phase 7) ──────────────────────────
+
+use crate::models::CreatePublicTokenRequest;
+
+impl OltService {
+    /// List all public tokens for an OLT
+    pub async fn list_public_tokens(
+        &self,
+        olt_id: &str,
+        tenant_id: &str,
+    ) -> AppResult<Vec<OltPublicToken>> {
+        // Verify OLT exists and belongs to tenant
+        self.get_olt(olt_id, tenant_id).await?;
+
+        let tokens = sqlx::query_as::<_, OltPublicToken>(
+            "SELECT * FROM public.olt_public_tokens WHERE olt_id = $1 AND tenant_id = $2 ORDER BY created_at DESC",
+        )
+        .bind(olt_id)
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(tokens)
+    }
+
+    /// Create a new public token for an OLT
+    pub async fn create_public_token(
+        &self,
+        olt_id: &str,
+        tenant_id: &str,
+        req: CreatePublicTokenRequest,
+    ) -> AppResult<OltPublicToken> {
+        self.get_olt(olt_id, tenant_id).await?;
+
+        let id = Uuid::new_v4().to_string();
+        let token = format!("{:016x}", rand::random::<u128>());
+        let enabled = req.enabled;
+        let expires_at: Option<chrono::NaiveDateTime> = req
+            .expires_at
+            .as_deref()
+            .and_then(|s| chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S").ok());
+        let now = Utc::now();
+
+        sqlx::query(
+            "INSERT INTO public.olt_public_tokens (id, olt_id, tenant_id, token, description, enabled, created_at, expires_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+        )
+        .bind(&id)
+        .bind(olt_id)
+        .bind(tenant_id)
+        .bind(&token)
+        .bind(&req.description)
+        .bind(enabled)
+        .bind(now)
+        .bind(expires_at.map(|dt| chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc)))
+        .execute(&self.pool)
+        .await?;
+
+        // Return the created token
+        let token_row = sqlx::query_as::<_, OltPublicToken>(
+            "SELECT * FROM public.olt_public_tokens WHERE id = $1",
+        )
+        .bind(&id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(token_row)
+    }
+
+    /// Delete a public token
+    pub async fn delete_public_token(
+        &self,
+        token_id: &str,
+        tenant_id: &str,
+    ) -> AppResult<()> {
+        let result = sqlx::query(
+            "DELETE FROM public.olt_public_tokens WHERE id = $1 AND tenant_id = $2",
+        )
+        .bind(token_id)
+        .bind(tenant_id)
+        .execute(&self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::NotFound("Public token not found".into()));
+        }
+        Ok(())
+    }
+
+    /// Get OLT stats by public token (no auth required)
+    pub async fn get_stats_by_token(
+        &self,
+        token: &str,
+    ) -> AppResult<serde_json::Value> {
+        // Lookup token
+        let token_row = sqlx::query_as::<_, OltPublicToken>(
+            "SELECT * FROM public.olt_public_tokens WHERE token = $1 AND enabled = true",
+        )
+        .bind(token)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Invalid or disabled token".into()))?;
+
+        // Check expiry
+        if let Some(expires) = token_row.expires_at {
+            if Utc::now() > expires {
+                return Err(AppError::Forbidden("Token has expired".into()));
+            }
+        }
+
+        // Get OLT info (without tenant check — public access)
+        let olt = sqlx::query_as::<_, Olt>(
+            "SELECT * FROM public.olts WHERE id = $1",
+        )
+        .bind(&token_row.olt_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("OLT not found".into()))?;
+
+        // Get stats via driver (with fallback to cached)
+        let password = decrypt_secret_opt(&olt.password_enc.unwrap_or_default())
+            .unwrap_or_default()
+            .unwrap_or_default();
+        let mut driver = create_driver(&olt.olt_type)?;
+        let (is_online, stats_json) = match driver
+            .connect(&olt.host, olt.port as u16, &olt.username, &password)
+            .await
+        {
+            Ok(()) => {
+                let stats = driver.get_global_stats().await?;
+                driver.disconnect().await.ok();
+                let json = serde_json::to_value(&stats)
+                    .unwrap_or(serde_json::json!({}));
+                (true, json)
+            }
+            Err(_) => {
+                // Fallback to cached stats
+                let cached: Option<serde_json::Value> = sqlx::query_scalar(
+                    "SELECT last_stats FROM public.olts WHERE id = $1",
+                )
+                .bind(&olt.id)
+                .fetch_optional(&self.pool)
+                .await
+                .ok()
+                .flatten();
+                (olt.is_online, cached.unwrap_or(serde_json::json!({})))
+            }
+        };
+
+        Ok(serde_json::json!({
+            "status": "success",
+            "olt_name": olt.name,
+            "olt_host": olt.host,
+            "is_online": is_online,
+            "data": stats_json,
+        }))
+    }
+
+    /// Get OLT signal graph data by public token (no auth required)
+    pub async fn get_signal_by_token(
+        &self,
+        token: &str,
+    ) -> AppResult<serde_json::Value> {
+        // Lookup token
+        let token_row = sqlx::query_as::<_, OltPublicToken>(
+            "SELECT * FROM public.olt_public_tokens WHERE token = $1 AND enabled = true",
+        )
+        .bind(token)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Invalid or disabled token".into()))?;
+
+        // Check expiry
+        if let Some(expires) = token_row.expires_at {
+            if Utc::now() > expires {
+                return Err(AppError::Forbidden("Token has expired".into()));
+            }
+        }
+
+        // Get OLT
+        let olt = sqlx::query_as::<_, Olt>(
+            "SELECT * FROM public.olts WHERE id = $1",
+        )
+        .bind(&token_row.olt_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("OLT not found".into()))?;
+
+        // Get ONU details via driver
+        let password = decrypt_secret_opt(&olt.password_enc.unwrap_or_default())
+            .unwrap_or_default()
+            .unwrap_or_default();
+        let mut driver = create_driver(&olt.olt_type)?;
+        let details = match driver
+            .connect(&olt.host, olt.port as u16, &olt.username, &password)
+            .await
+        {
+            Ok(()) => {
+                let stats = driver.get_global_stats().await;
+                // Collect ONUs from all PON ports
+                let mut all_onus = Vec::new();
+                if let Ok(stats) = &stats {
+                    for pon in &stats.pon_ports {
+                        if let Ok(onus) = driver.get_pon_onu_details(&pon.name).await {
+                            all_onus.extend(onus);
+                        }
+                    }
+                }
+                driver.disconnect().await.ok();
+                all_onus
+            }
+            Err(_) => Vec::new(),
+        };
+
+        // Calculate signal distribution for charting
+        let mut excellent = 0i32; // > -20 dBm
+        let mut good = 0i32;     // -20 to -24 dBm
+        let mut fair = 0i32;     // -24 to -27 dBm
+        let mut poor = 0i32;     // < -27 dBm
+
+        for onu in &details {
+            if onu.status != "Online" { continue; }
+            let rx: f64 = onu.rx.replace("dBm", "").trim().parse().unwrap_or(-999.0);
+            if rx > -20.0 { excellent += 1; }
+            else if rx > -24.0 { good += 1; }
+            else if rx > -27.0 { fair += 1; }
+            else { poor += 1; }
+        }
+
+        Ok(serde_json::json!({
+            "status": "success",
+            "olt_name": olt.name,
+            "signal_distribution": {
+                "excellent": excellent,
+                "good": good,
+                "fair": fair,
+                "poor": poor,
+            }
+        }))
     }
 }
