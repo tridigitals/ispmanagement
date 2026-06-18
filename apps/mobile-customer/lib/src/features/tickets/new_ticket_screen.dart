@@ -295,6 +295,10 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
+      // Keyboard overlays the body instead of squeezing it. The sticky
+      // submit button uses viewInsets.bottom padding so it floats above
+      // the keyboard regardless.
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(title: Text(l10n.newTicket)),
       body: SafeArea(
         child: Form(
