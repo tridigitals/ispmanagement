@@ -595,6 +595,8 @@ impl NetworkAssetService {
             location_id,
             work_order_id,
             parent_asset_id,
+            None, // olt_id — set separately via OnuLinker
+            None, // pon_port — set separately via OnuLinker
             latitude,
             longitude,
             notes,
@@ -606,11 +608,12 @@ impl NetworkAssetService {
             r#"
             INSERT INTO network_assets (
               id, tenant_id, asset_group, asset_type, name, code, vendor, model, serial_number, status,
-              customer_id, location_id, work_order_id, parent_asset_id, latitude, longitude, notes, metadata, created_at, updated_at
+              customer_id, location_id, work_order_id, parent_asset_id, olt_id, pon_port,
+              latitude, longitude, notes, metadata, created_at, updated_at
             )
             VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-              $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+              $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22
             )
             "#,
         )
@@ -628,6 +631,8 @@ impl NetworkAssetService {
         .bind(&asset.location_id)
         .bind(&asset.work_order_id)
         .bind(&asset.parent_asset_id)
+        .bind(&asset.olt_id)
+        .bind(&asset.pon_port)
         .bind(&asset.latitude)
         .bind(&asset.longitude)
         .bind(&asset.notes)
@@ -643,9 +648,10 @@ impl NetworkAssetService {
             r#"
             INSERT INTO network_assets (
               id, tenant_id, asset_group, asset_type, name, code, vendor, model, serial_number, status,
-              customer_id, location_id, work_order_id, parent_asset_id, latitude, longitude, notes, metadata, created_at, updated_at
+              customer_id, location_id, work_order_id, parent_asset_id, olt_id, pon_port,
+              latitude, longitude, notes, metadata, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(&asset.id)
@@ -662,6 +668,8 @@ impl NetworkAssetService {
         .bind(&asset.location_id)
         .bind(&asset.work_order_id)
         .bind(&asset.parent_asset_id)
+        .bind(&asset.olt_id)
+        .bind(&asset.pon_port)
         .bind(&asset.latitude)
         .bind(&asset.longitude)
         .bind(&asset.notes)
