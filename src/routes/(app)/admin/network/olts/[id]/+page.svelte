@@ -16,6 +16,7 @@
 
   const OLT_TYPE_MAP: Record<string, string> = {
     hioso_ha7302cst: 'HIOSO HA-7302CST (EPON)',
+    mikrotik_ros: 'MikroTik RouterOS (API)',
     vsol_epon: 'VSOL (EPON)',
   };
 
@@ -68,7 +69,6 @@
   let isMobile = $state(false);
 
   let activeTab = $state<'overview' | 'onus' | 'history' | 'tokens'>('overview');
-  let onuSearch = $state('');
   let historyLoading = $state(false);
   let tokensLoading = $state(false);
   let refreshInFlight = $state(false);
@@ -92,15 +92,6 @@
   const oltListPath = $derived($page.url.pathname.replace(/\/[^/]+\/?$/, ''));
   const backTarget = $derived(resolveBackTarget($page.url, oltListPath));
 
-  const filteredOnus = $derived.by(() => {
-    const q = onuSearch.trim().toLowerCase();
-    if (!q) return onus;
-    return onus.filter((o) => {
-      const hay = `${o.onu_id} ${o.onu_name || ''} ${o.serial_number || ''} ${o.pon_port || ''}`.toLowerCase();
-      return hay.includes(q);
-    });
-  });
-
   const onuStats = $derived.by(() => {
     const total = onus.length;
     const online = onus.filter((o) => o.status === 'online').length;
@@ -117,20 +108,23 @@
   ]);
 
   const onuColumns = $derived.by(() => [
-    { key: 'onu', label: 'ONU' },
-    { key: 'port', label: 'PON Port' },
-    { key: 'status', label: 'Status' },
-    { key: 'signal', label: 'Sinyal (dBm)' },
-    { key: 'distance', label: 'Jarak' },
-    { key: 'uptime', label: 'Uptime' },
+    { key: 'onu', label: 'ONU', sortable: true },
+    { key: 'port', label: 'PON Port', sortable: true },
+    { key: 'status', label: 'Status', sortable: true },
+    { key: 'signal', label: 'Sinyal (dBm)', sortable: true },
+    { key: 'distance', label: 'Jarak', sortable: true },
+    { key: 'uptime', label: 'Uptime', sortable: true },
     { key: 'actions', label: '', align: 'right' as const, width: '60px' },
   ]);
 
   const historyColumns = $derived.by(() => [
-    { key: 'time', label: 'Waktu' },
-    { key: 'onu', label: 'ONU' },
-    { key: 'event', label: 'Event' },
-    { key: 'message', label: 'Pesan' },
+    { key: 'time', label: 'Waktu', sortable: true },
+    { key: 'onu', label: 'ONU', sortable: true },
+    { key: 'pon', label: 'PON', sortable: true },
+    { key: 'mac', label: 'MAC Address' },
+    { key: 'status', label: 'Status', sortable: true },
+    { key: 'rx', label: 'RX (dBm)', sortable: true },
+    { key: 'tx', label: 'TX (dBm)', sortable: true },
   ]);
 
   const tokenColumns = $derived.by(() => [
@@ -476,24 +470,20 @@
     <!-- ONU Tab -->
     {#if activeTab === 'onus'}
       <div class="toolbar">
-        <div class="search">
-          <Icon name="search" size={16} />
-          <input class="search-input" bind:value={onuSearch} placeholder="Cari ONU..." />
-          {#if onuSearch}
-            <button class="clear" type="button" onclick={() => (onuSearch = '')}>
-              <Icon name="x" size={14} />
-            </button>
-          {/if}
-        </div>
+        <div></div>
       </div>
 
       <div class="table-wrap">
         <Table
           columns={onuColumns}
-          data={filteredOnus}
+          data={onus}
           loading={false}
           emptyText="Tidak ada ONU"
           mobileView={isMobile ? 'card' : 'scroll'}
+          searchable={true}
+          searchPlaceholder="Cari ONU ID, nama, atau MAC..."
+          pagination={true}
+          pageSize={25}
         >
           {#snippet cell({ item, key }: any)}
             {#if key === 'onu'}
@@ -555,6 +545,10 @@
           loading={historyLoading}
           emptyText="Tidak ada riwayat"
           mobileView={isMobile ? 'card' : 'scroll'}
+          searchable={true}
+          searchPlaceholder="Cari ONU ID atau nama..."
+          pagination={true}
+          pageSize={25}
         >
           {#snippet cell({ item, key }: any)}
             {#if key === 'time'}
@@ -562,11 +556,30 @@
                 {timeAgo(item.recorded_at)}
               </span>
             {:else if key === 'onu'}
-              <span class="name">{item.name || item.onu_id}</span>
-            {:else if key === 'event'}
-              <span class="chip">{item.status}</span>
-            {:else if key === 'message'}
-              <span class="muted">RX: {item.rx_power ?? '—'} dBm | PON: {item.pon}</span>
+              <div class="name-cell">
+                <span class="name">{item.name || item.onu_id}</span>
+                <div class="muted">ID: {item.onu_id}</div>
+              </div>
+            {:else if key === 'pon'}
+              <span class="mono">{item.pon}</span>
+            {:else if key === 'mac'}
+              <span class="mono muted">{item.mac || '—'}</span>
+            {:else if key === 'status'}
+              <span class="badge" class:online={item.status === 'online'} class:offline={item.status !== 'online'}>
+                {item.status || '—'}
+              </span>
+            {:else if key === 'rx'}
+              {#if item.rx_power != null}
+                <span style="color: {signalColor(item.rx_power)}">{item.rx_power.toFixed(2)}</span>
+              {:else}
+                <span class="muted">—</span>
+              {/if}
+            {:else if key === 'tx'}
+              {#if item.tx_power != null}
+                <span>{item.tx_power.toFixed(2)}</span>
+              {:else}
+                <span class="muted">—</span>
+              {/if}
             {/if}
           {/snippet}
         </Table>
