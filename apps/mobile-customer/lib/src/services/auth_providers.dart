@@ -306,7 +306,7 @@ class AuthController extends Notifier<AuthState> {
       final dio = ref.read(dioProvider);
       final response = await dio.post(
         '/api/auth/2fa/disable',
-        data: code != null ? {'code': code} : null,
+        data: code != null ? {'code': code} : {},
       );
 
       // Check if OTP verification is required
