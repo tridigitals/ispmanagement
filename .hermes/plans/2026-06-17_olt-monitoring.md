@@ -2359,7 +2359,7 @@ Admin revoke:
 | 5.2 | Asset Type Enum | ✅ Done | olt_*, ont/onu added to asset_group_for_type |
 | 5.3 | Alert Pipeline | ✅ Done | Low-signal → notification to tenant admins |
 | 6.1 | Background Poller | ✅ Done | `98198d6` — tokio::spawn + WebSocket push (30s) |
-| 7.1 | Public Token System | ⏳ Pending | Migration + token logic |
-| 7.2 | Public Traffic Endpoint | ⏳ Pending | NO-AUTH endpoints |
-| 7.3 | Token Management Endpoints | ⏳ Pending | Admin CRUD for tokens |
+| 7.1 | Public Token System | ✅ Done | `ab67de7` — migration + model + CRUD |
+| 7.2 | Public Traffic Endpoint | ✅ Done | GET /api/public/olt/traffic/{token} (NO AUTH) |
+| 7.3 | Token Management Endpoints | ✅ Done | Admin CRUD under /api/admin/olts/{id}/public-tokens |
 1813|
