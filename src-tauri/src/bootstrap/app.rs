@@ -1,5 +1,6 @@
 #[cfg(feature = "desktop")]
 use crate::db::connection::{init_db, seed_defaults};
+use std::sync::Arc;
 #[cfg(feature = "desktop")]
 use crate::services::backup::BackupScheduler;
 #[cfg(feature = "desktop")]

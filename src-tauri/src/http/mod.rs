@@ -120,7 +120,7 @@ pub async fn start_server(
     pppoe_service: PppoeService,
     dhcp_static_service: DhcpStaticServiceManager,
     isp_package_service: IspPackageService,
-    network_asset_service: NetworkAssetService,
+    network_asset_service: Arc<NetworkAssetService>,
     network_mapping_service: NetworkMappingService,
     backup_service: crate::services::BackupService,
     radius_service: RadiusService,

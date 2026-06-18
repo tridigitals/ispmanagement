@@ -2,7 +2,7 @@ use crate::models::tenant::CUSTOM_DOMAIN_STATUS_ACTIVE;
 use crate::services::{
     AuditService, AuthService, CustomerService, DhcpStaticServiceManager, EmailService,
     IspPackageService, ManagedRadiusService, MessageTemplateService, MikrotikService,
-    MixradiusImportService, NetworkAssetService, NetworkMappingService, NotificationService,
+    MixradiusImportService, NetworkMappingService, NotificationService,
     PaymentService, PlanService, PppoeService, RadiusService, RoleService, SettingsService,
     StorageService, SystemService, TeamService, UserService,
 };
@@ -92,7 +92,7 @@ pub async fn start_server_impl(
     pppoe_service: PppoeService,
     dhcp_static_service: DhcpStaticServiceManager,
     isp_package_service: IspPackageService,
-    network_asset_service: NetworkAssetService,
+    network_asset_service: std::sync::Arc<crate::services::NetworkAssetService>,
     network_mapping_service: NetworkMappingService,
     backup_service: crate::services::BackupService,
     radius_service: RadiusService,
