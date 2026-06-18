@@ -199,10 +199,10 @@ pub struct OltOnuHistoryRecord {
     pub mac: Option<String>,
     pub name: Option<String>,
     pub status: String,
-    pub rx_power: Option<f64>,
-    pub tx_power: Option<f64>,
-    pub distance: Option<f64>,
-    pub temperature: Option<f64>,
+    pub rx_power: Option<f32>,
+    pub tx_power: Option<f32>,
+    pub distance: Option<f32>,
+    pub temperature: Option<f32>,
     pub recorded_at: DateTime<Utc>,
 }
 
