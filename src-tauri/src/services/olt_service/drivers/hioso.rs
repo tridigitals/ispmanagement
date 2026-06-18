@@ -17,19 +17,43 @@ pub struct HiosoHa7302cstDriver {
     client: Client,
     base_url: Option<String>,
     connected: bool,
+    /// Stored from connect() so we can send Basic Auth with every request.
+    credentials: Option<(String, String)>,
 }
 
 impl HiosoHa7302cstDriver {
     pub fn new() -> Self {
+        // cookie_store(true) makes the client persist + replay Set-Cookie
+        // headers across requests, which is how HIOSO's session login works.
+        // reqwest's default cookie feature is enabled in Cargo.toml.
+        let client = Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .danger_accept_invalid_certs(true)
+            .cookie_store(true)
+            .build()
+            .expect("Failed to create HTTP client");
         Self {
-            client: Client::builder()
-                .timeout(std::time::Duration::from_secs(10))
-                .danger_accept_invalid_certs(true)
-                .build()
-                .expect("Failed to create HTTP client"),
+            client,
             base_url: None,
             connected: false,
+            credentials: None,
         }
+    }
+
+    /// Issue an authenticated GET.  Uses stored Basic Auth credentials if available.
+    async fn auth_get(&self, url: &str) -> AppResult<String> {
+        let mut req = self.client.get(url);
+        if let Some((ref user, ref pass)) = self.credentials {
+            req = req.basic_auth(user, Some(pass));
+        }
+        let body = req
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .text()
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        Ok(body)
     }
 
     fn build_url(&self, path: &str) -> AppResult<String> {
@@ -166,23 +190,67 @@ impl OltDriver for HiosoHa7302cstDriver {
         password: &str,
     ) -> AppResult<()> {
         let base = format!("http://{}:{}", host, port);
-        let resp = self
+        self.base_url = Some(base.clone());
+        self.credentials = Some((username.to_string(), password.to_string()));
+
+        // HIOSO web uses a session cookie issued by POSTing credentials to the
+        // root URL.  We do an initial GET to warm the cookie jar, then a POST
+        // that mimics the browser login form.  `cookie_store(true)` on the
+        // client means the Set-Cookie we get back is replayed automatically
+        // on every subsequent request.
+        let _ = self
             .client
-            .get(&format!("{}/", base))
-            .basic_auth(username, Some(password))
-            .timeout(std::time::Duration::from_secs(5))
+            .get(&format!("{}/login.asp", base))
             .send()
             .await
             .map_err(|e| AppError::Internal(format!("OLT connection failed: {}", e)))?;
 
-        if resp.status().is_success() {
-            self.base_url = Some(base);
-            self.connected = true;
-            Ok(())
+        // POST credentials.  HIOSO's login form fields are typically
+        // `Username` and `Password` (capital U) but the form is often
+        // tolerant of case.  We send the common field names.
+        let mut form: Vec<(&str, &str)> = Vec::new();
+        form.push(("Username", username));
+        form.push(("username", username));
+        form.push(("Password", password));
+        form.push(("password", password));
+        form.push(("Submit", "Login"));
+        form.push(("login", "Login"));
+
+        let resp = self
+            .client
+            .post(&format!("{}/", base))
+            .form(&form)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("OLT login failed: {}", e)))?;
+
+        let status = resp.status();
+        let _ = resp.text().await; // drain body to release connection
+
+        if status.is_success() || status.is_redirection() {
+            // Verify that the session actually lets us in: hit a protected
+            // endpoint and make sure we don't get the login page back.
+            let probe = self
+                .client
+                .get(&format!("{}/onuLinkBandwidthOltPonList.asp?oltno=0%2F1", base))
+                .send()
+                .await
+                .map_err(|e| AppError::Internal(format!("OLT probe failed: {}", e)))?;
+            let probe_status = probe.status();
+            let probe_body = probe.text().await.unwrap_or_default();
+            if probe_status.is_success() && !probe_body.contains("Please login") {
+                self.connected = true;
+                return Ok(());
+            }
+            Err(AppError::Internal(format!(
+                "OLT login did not establish a session (status={} body={}…)",
+                probe_status,
+                &probe_body[..probe_body.len().min(100)]
+            )))
         } else {
             Err(AppError::Internal(format!(
-                "OLT returned HTTP {}",
-                resp.status()
+                "OLT login returned HTTP {}",
+                status
             )))
         }
     }
@@ -195,15 +263,7 @@ impl OltDriver for HiosoHa7302cstDriver {
 
     async fn get_system_info(&self) -> AppResult<OltSystemInfo> {
         let url = self.build_url("/system.asp")?;
-        let body = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?
-            .text()
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+        let body = self.auth_get(&url).await?;
 
         // ── Model (devCode) ──
         let re_devcode = Regex::new(r#""devCode"\s*=\s*"([^"]*)""#).unwrap();
@@ -250,15 +310,7 @@ impl OltDriver for HiosoHa7302cstDriver {
     async fn get_global_stats(&self) -> AppResult<OltGlobalStats> {
         let url = self.build_url("/onuLinkBandwidthOltPonList.asp?oltno=0%2F1")?;
         tracing::info!("[HIOSO] Fetching global stats: {}", url);
-        let body = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?
-            .text()
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+        let body = self.auth_get(&url).await?;
 
         tracing::info!(
             "[HIOSO] global_stats body len={} preview={}",
@@ -332,15 +384,7 @@ impl OltDriver for HiosoHa7302cstDriver {
         let encoded_pon = urlencoding::encode(pon);
         let url = self.build_url(&format!("/onuConfigOnuList.asp?oltponno={}", encoded_pon))?;
         tracing::info!("[HIOSO] Fetching PON onu details: {}", url);
-        let body = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?
-            .text()
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+        let body = self.auth_get(&url).await?;
 
         tracing::info!(
             "[HIOSO] PON={} body len={} preview={}",
