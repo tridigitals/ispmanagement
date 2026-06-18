@@ -5,6 +5,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:ui_kit/ui_kit.dart';
+import 'package:api_client/api_client.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../services/auth_providers.dart';
@@ -247,10 +248,107 @@ final l10n = AppLocalizations.of(context);
           ],
         ),
       );
-      if (confirm == true) {
-        await ref.read(authControllerProvider.notifier).disable2fa();
+      if (confirm == true && context.mounted) {
+        await _processDisable2fa(context, ref);
       }
     }
+  }
+
+  Future<void> _processDisable2fa(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+
+    // First attempt - request OTP
+    final result = await ref.read(authControllerProvider.notifier).disable2fa();
+
+    if (result is Failure) {
+      final error = (result as Failure).exception;
+
+      // Check if this is the "requires_verification" signal
+      if (error.message == 'requires_verification' && context.mounted) {
+        // Show OTP dialog
+        final code = await _showOtpDialog(context);
+        if (code != null && code.isNotEmpty && context.mounted) {
+          // Second attempt with OTP code
+          final result2 = await ref
+              .read(authControllerProvider.notifier)
+              .disable2fa(code: code);
+
+          if (result2 is Success) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(l10n.twoFaDisabledSuccess)),
+              );
+            }
+          } else if (result2 is Failure && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text((result2 as Failure).exception.message),
+                backgroundColor: context.isp.danger,
+              ),
+            );
+          }
+        }
+      } else if (context.mounted) {
+        // Show other errors
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.message),
+            backgroundColor: context.isp.danger,
+          ),
+        );
+      }
+    } else if (result is Success && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.twoFaDisabledSuccess)),
+      );
+    }
+  }
+
+  Future<String?> _showOtpDialog(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final controller = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.enterVerificationCode),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              l10n.otpSentToEmail,
+              style: TextStyle(color: ctx.isp.textMuted, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              decoration: InputDecoration(
+                labelText: l10n.verificationCode,
+                hintText: '123456',
+                border: const OutlineInputBorder(),
+              ),
+              onSubmitted: (value) => Navigator.pop(ctx, value),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text),
+            child: Text(l10n.verify),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _openUrl(String url) async {

@@ -677,4 +677,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ticketAdminFilterOpen => 'Open only';
+
+  @override
+  String get twoFaDisabledSuccess => '2FA has been disabled';
+
+  @override
+  String get enterVerificationCode => 'Enter Verification Code';
+
+  @override
+  String get otpSentToEmail => 'OTP code has been sent to your email';
+
+  @override
+  String get verificationCode => 'Verification Code';
 }

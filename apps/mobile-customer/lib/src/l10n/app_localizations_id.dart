@@ -677,4 +677,16 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get ticketAdminFilterOpen => 'Hanya yang terbuka';
+
+  @override
+  String get twoFaDisabledSuccess => '2FA berhasil dinonaktifkan';
+
+  @override
+  String get enterVerificationCode => 'Masukkan Kode Verifikasi';
+
+  @override
+  String get otpSentToEmail => 'Kode OTP telah dikirim ke email Anda';
+
+  @override
+  String get verificationCode => 'Kode Verifikasi';
 }

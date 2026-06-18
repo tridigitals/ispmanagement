@@ -1414,6 +1414,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open only'**
   String get ticketAdminFilterOpen;
+
+  /// Success message after disabling 2FA
+  ///
+  /// In en, this message translates to:
+  /// **'2FA has been disabled'**
+  String get twoFaDisabledSuccess;
+
+  /// Title for OTP verification dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Verification Code'**
+  String get enterVerificationCode;
+
+  /// Subtext in OTP verification dialog
+  ///
+  /// In en, this message translates to:
+  /// **'OTP code has been sent to your email'**
+  String get otpSentToEmail;
+
+  /// Label for OTP input field
+  ///
+  /// In en, this message translates to:
+  /// **'Verification Code'**
+  String get verificationCode;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

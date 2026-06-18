@@ -301,10 +301,23 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  Future<ServiceResult<bool>> disable2fa() async {
+  Future<ServiceResult<bool>> disable2fa({String? code}) async {
     try {
       final dio = ref.read(dioProvider);
-      await dio.post('/api/auth/2fa/disable');
+      final response = await dio.post(
+        '/api/auth/2fa/disable',
+        data: code != null ? {'code': code} : null,
+      );
+
+      // Check if OTP verification is required
+      if (response.data is Map && response.data['requires_verification'] == true) {
+        // Return special result indicating OTP is needed
+        return Failure(ApiException(
+          message: 'requires_verification',
+          statusCode: 200,
+        ));
+      }
+
       // Refresh user state
       final me = await ref.read(authServiceProvider).me();
       if (me is Success<UserModel>) {
