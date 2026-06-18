@@ -10,9 +10,47 @@ import 'package:ui_kit/ui_kit.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/service_providers.dart';
 
-/// Source for ticket attachments — mirrors the profile-upload pattern so
-/// camera permission flow is consistent across the app.
+/// Attachment picker source — mirrors the profile-upload pattern so the
+/// camera permission flow stays consistent across the app.
 enum _AttachmentSource { camera, files }
+
+/// One-tap shortcut for the most common outage types. Auto-fills subject +
+/// description so the user only edits if they want to add detail.
+class _QuickAction {
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.subject,
+    required this.description,
+  });
+  final IconData icon;
+  final String label;
+  final String subject;
+  final String description;
+}
+
+const _quickActions = <_QuickAction>[
+  _QuickAction(
+    icon: Icons.wifi_off_rounded,
+    label: 'Internet Mati',
+    subject: 'Internet tidak bisa diakses',
+    description:
+        'Koneksi internet di lokasi saya tidak dapat diakses. Mohon dicek.',
+  ),
+  _QuickAction(
+    icon: Icons.network_check_rounded,
+    label: 'WiFi Lemot',
+    subject: 'WiFi lambat / sering putus',
+    description:
+        'Koneksi WiFi terasa lambat atau tidak stabil. Mohon dicek.',
+  ),
+  _QuickAction(
+    icon: Icons.edit_note_rounded,
+    label: 'Lainnya',
+    subject: '',
+    description: '',
+  ),
+];
 
 class NewTicketScreen extends ConsumerStatefulWidget {
   const NewTicketScreen({super.key});
@@ -25,37 +63,10 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
   final _formKey = GlobalKey<FormState>();
   final _subjectCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
-  String _priority = 'normal';
-  String? _category;
-  String? _subscriptionId;
   bool _submitting = false;
-  List<SubscriptionModel> _subscriptions = [];
-  bool _loadingSubs = true;
 
-  /// Pending attachments: (filePath, fileName, contentType)
+  /// Pending attachments: (filePath, fileName, contentType, size)
   final List<_PendingAttachment> _pendingAttachments = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSubscriptions();
-  }
-
-  Future<void> _loadSubscriptions() async {
-    try {
-      final svc = ref.read(subscriptionServiceProvider);
-      final result = await svc.list(perPage: 50);
-      final paginated = result.getOrThrow();
-      if (!mounted) return;
-      setState(() {
-        _subscriptions = paginated.data;
-        _loadingSubs = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _loadingSubs = false);
-    }
-  }
 
   @override
   void dispose() {
@@ -64,11 +75,15 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
     super.dispose();
   }
 
+  void _applyQuickAction(_QuickAction action) {
+    _subjectCtrl.text = action.subject;
+    _descriptionCtrl.text = action.description;
+  }
+
+  // ── Attachment picker (bottom sheet → camera OR file picker) ──
+
   Future<void> _pickFile() async {
-    // Show bottom sheet asking the user to pick a source — same UX as
-    // profile avatar upload. Camera path uses image_picker which shows
-    // the system CAMERA permission dialog automatically on first use.
-    final isp = context.isp; // local — class doesn't have a persistent field
+    final isp = context.isp; // local — class has no persistent field
     final source = await showModalBottomSheet<_AttachmentSource>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -99,7 +114,6 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
       ),
     );
     if (source == null) return;
-
     if (source == _AttachmentSource.camera) {
       await _captureFromCamera();
     } else {
@@ -107,11 +121,8 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
     }
   }
 
-  /// Capture a single photo via system camera.
-  /// image_picker handles the CAMERA permission request internally and shows
-  /// the system permission dialog on first use.
   Future<void> _captureFromCamera() async {
-    final isp = context.isp; // local — class doesn't have a persistent field
+    final isp = context.isp;
     try {
       final picker = ImagePicker();
       final picked = await picker.pickImage(
@@ -126,7 +137,6 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
       if (!mounted) return;
 
       setState(() {
-        // Avoid duplicates if user re-picks same file
         if (!_pendingAttachments.any((a) => a.filePath == picked.path)) {
           _pendingAttachments.add(
             _PendingAttachment(
@@ -149,7 +159,6 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
     }
   }
 
-  /// Pick one or more files via system file explorer (SAF — no permission needed).
   Future<void> _pickFromFiles() async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -184,6 +193,8 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
     setState(() => _pendingAttachments.removeAt(index));
   }
 
+  // ── Upload + submit ──
+
   Future<List<String>> _uploadPendingAttachments(String ticketId) async {
     if (_pendingAttachments.isEmpty) return [];
 
@@ -205,7 +216,6 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
           throw exception.message;
       }
     }
-
     return ids;
   }
 
@@ -213,24 +223,29 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitting = true);
 
+    final isp = context.isp;
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+
     try {
-      // Create the ticket first. Attachment upload needs a ticket_id for customer authorization.
+      // 1. Create ticket (priority + category are admin-triaged; backend
+      //    defaults priority to 'normal' if not provided).
       final svc = ref.read(ticketServiceProvider);
       final ServiceResult<TicketModel> res = await svc.create(
         subject: _subjectCtrl.text.trim(),
         message: _descriptionCtrl.text.trim(),
-        priority: _priority,
-        category: _category,
-        subscriptionId: _subscriptionId,
       );
 
       if (!mounted) return;
       switch (res) {
         case Success(:final data):
           final ticket = data;
+          // 2. Upload attachments if any (need ticket_id for auth).
           if (_pendingAttachments.isNotEmpty) {
             final attachmentIds = await _uploadPendingAttachments(ticket.id);
             if (attachmentIds.isNotEmpty) {
+              // Backend requires non-empty message on reply, so we send a
+              // placeholder so the attachment lands in the ticket thread.
               await svc.reply(
                 ticketId: ticket.id,
                 message: '(Lampiran)',
@@ -239,16 +254,35 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
             }
           }
           if (!mounted) return;
-          context.go('/tickets/${ticket.id}');
+          messenger.showSnackBar(
+            SnackBar(
+              content: const Text('Tiket terkirim — tim kami akan menindak lanjuti'),
+              backgroundColor: isp.success,
+            ),
+          );
+          // Pop back to wherever we came from (support tab or subscription
+          // detail) — don't push to detail, user can tap the new ticket if
+          // they want to see it.
+          if (router.canPop()) {
+            router.pop();
+          } else {
+            router.go('/tickets');
+          }
         case Failure(:final exception):
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(exception.message)),
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(exception.message),
+              backgroundColor: isp.danger,
+            ),
           );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal mengirim: $e')),
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Gagal mengirim: $e'),
+          backgroundColor: isp.danger,
+        ),
       );
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -257,306 +291,190 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
 
-
-    final isp = context.isp;    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.newTicket)),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(IspSpacing.lg),
-          children: [
-            // ── Subject ──
-            IspCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.title,
-                          size: 18, color: isp.accent),
-                      const SizedBox(width: IspSpacing.sm),
-                      Text(
-                        'Subjek',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isp.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: IspSpacing.md),
-                  TextFormField(
-                    controller: _subjectCtrl,
-                    decoration: const InputDecoration(
-                      hintText: 'Ringkasan masalah Anda',
-                    ),
-                    validator: (v) => (v == null || v.trim().length < 3)
-                        ? 'Subjek minimal 3 karakter'
-                        : null,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: IspSpacing.md),
-
-            // ── Description ──
-            IspCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.description_outlined,
-                          size: 18, color: isp.accent),
-                      const SizedBox(width: IspSpacing.sm),
-                      Text(
-                        'Deskripsi Masalah',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isp.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: IspSpacing.md),
-                  TextFormField(
-                    controller: _descriptionCtrl,
-                    maxLines: 6,
-                    decoration: const InputDecoration(
-                      hintText: 'Jelaskan masalah Anda secara detail...',
-                      alignLabelWithHint: true,
-                    ),
-                    validator: (v) => (v == null || v.trim().length < 10)
-                        ? 'Deskripsi minimal 10 karakter'
-                        : null,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: IspSpacing.md),
-
-            // ── Priority ──
-            IspCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.flag_outlined,
-                          size: 18, color: isp.accent),
-                      const SizedBox(width: IspSpacing.sm),
-                      Text(
-                        'Prioritas',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isp.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: IspSpacing.md),
-                  DropdownButtonFormField<String>(
-                    value: _priority,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'low', child: Text('Rendah')),
-                      DropdownMenuItem(value: 'normal', child: Text('Normal')),
-                      DropdownMenuItem(value: 'high', child: Text('Tinggi')),
-                      DropdownMenuItem(
-                          value: 'urgent', child: Text('Mendesak')),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) setState(() => _priority = v);
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: IspSpacing.md),
-
-            // ── Category ──
-            IspCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.category_outlined,
-                          size: 18, color: isp.accent),
-                      const SizedBox(width: IspSpacing.sm),
-                      Text(
-                        'Kategori',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isp.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: IspSpacing.md),
-                  DropdownButtonFormField<String>(
-                    value: _category,
-                    isExpanded: true,
-                    hint: const Text('Pilih kategori (opsional)'),
-                    decoration: const InputDecoration(
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                          value: null, child: Text('Tidak terkait')),
-                      DropdownMenuItem(value: 'general', child: Text('Umum')),
-                      DropdownMenuItem(
-                          value: 'billing', child: Text('Tagihan')),
-                      DropdownMenuItem(
-                          value: 'technical', child: Text('Teknis')),
-                      DropdownMenuItem(
-                          value: 'installation', child: Text('Instalasi')),
-                    ],
-                    onChanged: (v) => setState(() => _category = v),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: IspSpacing.md),
-
-            // ── Subscription ──
-            IspCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.wifi_outlined,
-                          size: 18, color: isp.accent),
-                      const SizedBox(width: IspSpacing.sm),
-                      Text(
-                        'Langganan Terkait',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isp.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: IspSpacing.md),
-                  if (_loadingSubs)
-                    const Padding(
-                      padding: EdgeInsets.all(8),
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  else
-                    DropdownButtonFormField<String>(
-                      value: _subscriptionId,
-                      isExpanded: true,
-                      hint: const Text('Tidak terkait langganan'),
-                      decoration: const InputDecoration(
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                      items: [
-                        const DropdownMenuItem(
-                            value: null, child: Text('Tidak terkait')),
-                        ..._subscriptions.map(
-                          (s) => DropdownMenuItem(
-                            value: s.id,
-                            child: Text(
-                              s.packageName ?? 'Langganan',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                      ],
-                      onChanged: (v) => setState(() => _subscriptionId = v),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: IspSpacing.md),
-
-            // ── Attachments ──
-            IspCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.attach_file,
-                          size: 18, color: isp.accent),
-                      const SizedBox(width: IspSpacing.sm),
-                      Text(
-                        'Lampiran',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isp.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: IspSpacing.md),
-                  OutlinedButton.icon(
-                    onPressed: _submitting ? null : _pickFile,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Tambah File'),
-                  ),
-                  if (_pendingAttachments.isNotEmpty) ...[
-                    const SizedBox(height: IspSpacing.sm),
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(IspSpacing.lg),
+                  children: [
+                    // ── Quick action chips (one-tap shortcuts) ──
                     Wrap(
                       spacing: IspSpacing.sm,
-                      runSpacing: IspSpacing.xs,
-                      children: List.generate(_pendingAttachments.length, (i) {
-                        final att = _pendingAttachments[i];
-                        return Chip(
-                          avatar: Icon(
-                            att.isImage ? Icons.image : Icons.attach_file,
-                            size: 18,
+                      runSpacing: IspSpacing.sm,
+                      children: [
+                        for (final action in _quickActions)
+                          ActionChip(
+                            avatar: Icon(action.icon, size: 18, color: isp.accent),
+                            label: Text(action.label),
+                            onPressed: () => _applyQuickAction(action),
                           ),
-                          label: Text(
-                            att.fileName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                      ],
+                    ),
+                    const SizedBox(height: IspSpacing.md),
+
+                    // ── Single card: subject + description + attachments ──
+                    IspCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Subject
+                          TextFormField(
+                            controller: _subjectCtrl,
+                            autofocus: true,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: const InputDecoration(
+                              labelText: 'Subjek',
+                              hintText: 'Ringkasan masalah',
+                            ),
+                            validator: (v) =>
+                                (v == null || v.trim().length < 3)
+                                    ? 'Subjek minimal 3 karakter'
+                                    : null,
                           ),
-                          deleteIcon: const Icon(Icons.close, size: 18),
-                          onDeleted: () => _removeAttachment(i),
-                        );
-                      }),
+                          const SizedBox(height: IspSpacing.md),
+
+                          // Description
+                          TextFormField(
+                            controller: _descriptionCtrl,
+                            minLines: 4,
+                            maxLines: 8,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: const InputDecoration(
+                              labelText: 'Deskripsi',
+                              hintText: 'Jelaskan masalah Anda...',
+                              alignLabelWithHint: true,
+                            ),
+                            validator: (v) =>
+                                (v == null || v.trim().length < 10)
+                                    ? 'Deskripsi minimal 10 karakter'
+                                    : null,
+                          ),
+                          const SizedBox(height: IspSpacing.lg),
+
+                          // Attachments
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.attach_file,
+                                size: 18,
+                                color: isp.accent,
+                              ),
+                              const SizedBox(width: IspSpacing.sm),
+                              Text(
+                                'Lampiran',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: isp.textSecondary,
+                                ),
+                              ),
+                              if (_pendingAttachments.isNotEmpty) ...[
+                                const SizedBox(width: IspSpacing.sm),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isp.accent.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '${_pendingAttachments.length}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isp.accent,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              const Spacer(),
+                              TextButton.icon(
+                                onPressed:
+                                    _submitting ? null : _pickFile,
+                                icon: const Icon(Icons.add, size: 18),
+                                label: const Text('Tambah'),
+                              ),
+                            ],
+                          ),
+                          if (_pendingAttachments.isNotEmpty) ...[
+                            const SizedBox(height: IspSpacing.sm),
+                            Wrap(
+                              spacing: IspSpacing.sm,
+                              runSpacing: IspSpacing.xs,
+                              children: List.generate(
+                                _pendingAttachments.length,
+                                (i) {
+                                  final att = _pendingAttachments[i];
+                                  return Chip(
+                                    avatar: Icon(
+                                      att.isImage
+                                          ? Icons.image
+                                          : Icons.attach_file,
+                                      size: 18,
+                                    ),
+                                    label: Text(
+                                      att.fileName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    deleteIcon:
+                                        const Icon(Icons.close, size: 18),
+                                    onDeleted: () => _removeAttachment(i),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: IspSpacing.xl),
 
-            // ── Submit button ──
-            ElevatedButton.icon(
-              onPressed: _submitting ? null : _submit,
-              icon: _submitting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.send),
-              label: const Text('Kirim'),
-            ),
-          ],
+              // ── Sticky submit button (always visible above keyboard) ──
+              Container(
+                padding: EdgeInsets.fromLTRB(
+                  IspSpacing.lg,
+                  IspSpacing.sm,
+                  IspSpacing.lg,
+                  IspSpacing.sm + MediaQuery.viewInsetsOf(context).bottom,
+                ),
+                decoration: BoxDecoration(
+                  color: isp.surface,
+                  border: Border(
+                    top: BorderSide(color: isp.border),
+                  ),
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _submitting ? null : _submit,
+                    icon: _submitting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.send),
+                    label: Text(
+                      _submitting ? 'Mengirim...' : 'Kirim Tiket',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
