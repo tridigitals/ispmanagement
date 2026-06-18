@@ -102,47 +102,47 @@ class TicketModel extends Equatable {
   String statusLabel() {
     switch (status) {
       case TicketStatus.open:
-        return 'Terbuka';
+        return 'open';
       case TicketStatus.inProgress:
-        return 'Ditangani';
+        return 'inProgress';
       case TicketStatus.waitingCustomer:
-        return 'Menunggu Pelanggan';
+        return 'waitingCustomer';
       case TicketStatus.waitingStaff:
-        return 'Menunggu Tim';
+        return 'waitingStaff';
       case TicketStatus.resolved:
-        return 'Selesai';
+        return 'resolved';
       case TicketStatus.closed:
-        return 'Ditutup';
+        return 'closed';
       case TicketStatus.cancelled:
-        return 'Dibatalkan';
+        return 'cancelled';
     }
   }
 
   String priorityLabel() {
     switch (priority) {
       case TicketPriority.low:
-        return 'Rendah';
+        return 'low';
       case TicketPriority.normal:
-        return 'Normal';
+        return 'normal';
       case TicketPriority.high:
-        return 'Tinggi';
+        return 'high';
       case TicketPriority.urgent:
-        return 'Mendesak';
+        return 'urgent';
     }
   }
 
   String categoryLabel() {
     switch (category) {
       case 'general':
-        return 'Umum';
+        return 'general';
       case 'billing':
-        return 'Tagihan';
+        return 'billing';
       case 'technical':
-        return 'Teknis';
+        return 'technical';
       case 'installation':
-        return 'Instalasi';
+        return 'installation';
       default:
-        return 'Umum';
+        return 'general';
     }
   }
 
@@ -210,7 +210,7 @@ class TicketMessageModel extends Equatable {
     required this.ticketId,
     required this.body,
     required this.createdAt,
-    this.authorName = 'Anonim',
+    this.authorName = 'anonymous',
     this.authorRole = 'customer',
     this.authorId,
     this.isFromStaff = false,
@@ -229,12 +229,13 @@ class TicketMessageModel extends Equatable {
     final isStaff = authorId != null && authorId != currentUserId;
     sanitized['is_from_staff'] = isStaff;
     // Prefer the API-supplied author_name (server resolves it from
-    // users.name at message-create time). Fall back to a generic label
-    // only when the API didn't include one (e.g. messages created before
-    // the author_name column was added).
+    // users.name at message-create time). Fall back to a generic i18n
+    // key only when the API didn't include one (e.g. messages created
+    // before the author_name column was added). The UI looks up the key
+    // via the l10n extension (see ticket_l10n.dart).
     final apiName = sanitized['author_name'] as String?;
     if (apiName == null || apiName.isEmpty || apiName == 'Pelanggan') {
-      sanitized['author_name'] = isStaff ? 'Dukungan' : 'Anda';
+      sanitized['author_name'] = isStaff ? 'staff' : 'customer';
     }
     sanitized['author_role'] = isStaff ? 'staff' : 'customer';
     return _$TicketMessageModelFromJson(sanitized);
@@ -244,7 +245,7 @@ class TicketMessageModel extends Equatable {
 
   static Map<String, dynamic> _sanitizeMessageJson(Map<String, dynamic> json) {
     if (!json.containsKey('author_name') || json['author_name'] == null) {
-      json['author_name'] = 'Pelanggan';
+      json['author_name'] = 'customer';
     }
     if (!json.containsKey('author_role') || json['author_role'] == null) {
       json['author_role'] = 'customer';

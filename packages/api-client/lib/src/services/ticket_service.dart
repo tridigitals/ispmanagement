@@ -135,6 +135,33 @@ class TicketService {
     });
   }
 
+  /// Update a ticket's mutable fields (admin action). Backend accepts
+  /// any subset of: status, priority, category, assigned_to.
+  Future<ServiceResult<TicketModel>> update(
+    String ticketId, {
+    String? status,
+    String? priority,
+    String? category,
+    String? assignedTo,
+  }) async {
+    return _execute(() async {
+      final body = <String, dynamic>{
+        if (status != null) 'status': status,
+        if (priority != null) 'priority': priority,
+        if (category != null) 'category': category,
+        if (assignedTo != null) 'assigned_to': assignedTo,
+      };
+      if (body.isEmpty) {
+        throw ArgumentError('update() requires at least one field to change');
+      }
+      final res = await dio.put<Map<String, dynamic>>(
+        ApiEndpoints.ticketById(ticketId),
+        data: body,
+      );
+      return TicketModel.fromJson(res.data ?? const {});
+    });
+  }
+
   Future<ServiceResult<T>> _execute<T>(Future<T> Function() body) async {
     try {
       final result = await body();
