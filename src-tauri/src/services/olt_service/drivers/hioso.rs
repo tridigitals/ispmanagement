@@ -134,7 +134,7 @@ impl HiosoHa7302cstDriver {
             return vec![];
         }
 
-        let inner = &rest[..end];
+        let inner = &rest_clean[..end];
 
         // Extract all single-quoted tokens (faster than regex for many small strings)
         let mut tokens = Vec::new();
