@@ -90,8 +90,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         DhcpStaticServiceManager::new(pool.clone(), auth_service.clone(), audit_service.clone());
     let isp_package_service =
         IspPackageService::new(pool.clone(), auth_service.clone(), audit_service.clone());
-    let network_asset_service =
-        NetworkAssetService::new(pool.clone(), auth_service.clone(), audit_service.clone());
+    let network_asset_service = Arc::new(NetworkAssetService::new(
+        pool.clone(),
+        auth_service.clone(),
+        audit_service.clone(),
+    ));
     let network_mapping_service = NetworkMappingService::new(pool.clone(), auth_service.clone());
     let team_service = TeamService::new(
         pool.clone(),

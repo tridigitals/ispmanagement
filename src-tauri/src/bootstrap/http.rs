@@ -209,6 +209,7 @@ pub async fn start_server_impl(
         pool.clone(),
         notification_service.clone(),
         audit_service.clone(),
+        network_asset_service.clone(),
     ));
 
     // Start background OLT poller (polls every 30s, pushes via WebSocket)
@@ -240,7 +241,7 @@ pub async fn start_server_impl(
         pppoe_service: Arc::new(pppoe_service),
         dhcp_static_service: Arc::new(dhcp_static_service),
         isp_package_service: Arc::new(isp_package_service),
-        network_asset_service: Arc::new(network_asset_service),
+        network_asset_service: network_asset_service.clone(),
         network_mapping_service: Arc::new(network_mapping_service),
         olt_service,
         backup_service: Arc::new(backup_service),
@@ -789,7 +790,7 @@ pub fn spawn_http_server(
     pppoe_service: crate::services::PppoeService,
     dhcp_static_service: crate::services::DhcpStaticServiceManager,
     isp_package_service: crate::services::IspPackageService,
-    network_asset_service: crate::services::NetworkAssetService,
+    network_asset_service: std::sync::Arc<crate::services::NetworkAssetService>,
     network_mapping_service: crate::services::NetworkMappingService,
     backup_service: crate::services::BackupService,
     radius_service: crate::services::RadiusService,
