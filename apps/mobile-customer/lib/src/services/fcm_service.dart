@@ -289,6 +289,20 @@ class FcmService {
       if (actionUrl == null || actionUrl.isEmpty) {
         route = '/notifications';
       } else if (actionUrl.startsWith('/support/')) {
+        // Extract ticket ID from /support/{id} or /admin/support/{id}
+        final id = actionUrl.substring('/support/'.length);
+        if (id.isNotEmpty) {
+          // Use push so user can go back to home
+          GoRouter.of(context).push('/tickets/$id');
+          return;
+        }
+        route = '/?tab=3';
+      } else if (actionUrl.startsWith('/admin/support/')) {
+        final id = actionUrl.substring('/admin/support/'.length);
+        if (id.isNotEmpty) {
+          GoRouter.of(context).push('/tickets/$id');
+          return;
+        }
         route = '/?tab=3';
       } else if (actionUrl.startsWith('/pay/') ||
           actionUrl.startsWith('/invoices')) {

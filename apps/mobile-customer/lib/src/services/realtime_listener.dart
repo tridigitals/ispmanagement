@@ -7,11 +7,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'notifications_providers.dart';
 import 'service_providers.dart';
 
-/// Listens to the realtime WebSocket stream and shows in-app notifications
+/// Listens to the realtime WebSocket stream and updates providers
 /// when new events arrive (foreground only — no push).
 ///
 /// Place this widget above the Navigator in the widget tree.
 /// It auto-connects when authenticated and disconnects on dispose.
+/// Reconnects automatically when app resumes from background.
 class RealtimeNotificationListener extends ConsumerStatefulWidget {
   const RealtimeNotificationListener({super.key, required this.child});
   final Widget child;
@@ -22,7 +23,8 @@ class RealtimeNotificationListener extends ConsumerStatefulWidget {
 }
 
 class _RealtimeNotificationListenerState
-    extends ConsumerState<RealtimeNotificationListener> {
+    extends ConsumerState<RealtimeNotificationListener>
+    with WidgetsBindingObserver {
   StreamSubscription<Map<String, dynamic>>? _sub;
   RealtimeClient? _channel;
   bool _connected = false;
@@ -30,6 +32,7 @@ class _RealtimeNotificationListenerState
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Defer to after first build so providers are available.
     WidgetsBinding.instance.addPostFrameCallback((_) => _connect());
   }
@@ -45,8 +48,19 @@ class _RealtimeNotificationListenerState
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _sub?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // App came back from background — force reconnect the WebSocket.
+      // Android may have silently killed the TCP connection while backgrounded.
+      debugPrint('[RealtimeListener] App resumed, forcing WS reconnect');
+      _channel?.forceReconnect();
+    }
   }
 
   void _onEvent(Map<String, dynamic> event) {
@@ -83,7 +97,7 @@ class _RealtimeNotificationListenerState
 
   void _handleTicketReply(Map<String, dynamic>? data) {
     if (data == null) return;
-    // Just refresh notification list — bell count updates.
+    // Refresh notification list — bell count updates.
     ref.invalidate(notificationsProvider);
   }
 
