@@ -205,12 +205,13 @@ pub async fn start_server_impl(
         }
     });
 
+    let onu_linker = crate::services::onu_linker::OnuLinker::new(pool.clone());
     let olt_service = Arc::new(crate::services::OltService::new(
         pool.clone(),
         notification_service.clone(),
         audit_service.clone(),
         network_asset_service.clone(),
-        onu_linker.clone(),
+        onu_linker,
     ));
 
     // Start background OLT poller (polls every 30s, pushes via WebSocket)

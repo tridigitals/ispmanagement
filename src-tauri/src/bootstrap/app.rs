@@ -95,7 +95,6 @@ pub async fn initialize_backend<R: tauri::Runtime>(
         auth_service.clone(),
         audit_service.clone(),
     ));
-    let onu_linker = crate::services::onu_linker::OnuLinker::new(pool.clone());
     let network_mapping_service = NetworkMappingService::new(pool.clone(), auth_service.clone());
     let team_service = TeamService::new(
         pool.clone(),
