@@ -141,6 +141,7 @@ export const olt = {
     }).then((r: any) => unwrap<Olt>(r)),
 
   test: (data: {
+    id?: string | null;
     host: string;
     port: number;
     username: string;
@@ -149,6 +150,7 @@ export const olt = {
   }): Promise<OltTestResult> =>
     safeInvoke('test_olt_connection', {
       token: getTokenOrThrow(),
+      id: data.id ?? null,
       host: data.host,
       port: data.port,
       username: data.username,

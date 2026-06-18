@@ -237,6 +237,7 @@ async fn test_connection(
         .olt_service
         .test_connection(
             &tenant,
+            payload.id.as_deref(),
             &payload.host,
             payload.port,
             &payload.username,

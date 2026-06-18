@@ -229,19 +229,34 @@ impl OltService {
 
     // ── Connection & Monitoring ───────────────────────────
 
-    /// Test connection to OLT without saving anything
+    /// Test connection to OLT without saving anything.
+    /// If `olt_id` is provided, the stored (decrypted) password is used —
+    /// the `password` arg is ignored. This lets the UI test an existing OLT
+    /// without making the user re-enter credentials.
     pub async fn test_connection(
         &self,
-        _tenant_id: &str,
+        tenant_id: &str,
+        olt_id: Option<&str>,
         host: &str,
         port: i32,
         username: &str,
         password: &str,
         olt_type: &str,
     ) -> AppResult<TestConnectionResponse> {
+        // If an existing OLT is referenced, use its stored password
+        let password = if let Some(id) = olt_id {
+            let olt = self.get_olt(id, tenant_id).await?;
+            match olt.password_enc.as_deref() {
+                Some(enc) => decrypt_secret_opt(enc)?.unwrap_or_default(),
+                None => String::new(),
+            }
+        } else {
+            password.to_string()
+        };
+
         let mut driver = create_driver(olt_type)?;
         match driver
-            .connect(host, port as u16, username, password)
+            .connect(host, port as u16, username, &password)
             .await
         {
             Ok(()) => {

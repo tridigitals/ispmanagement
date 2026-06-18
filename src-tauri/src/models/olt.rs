@@ -92,9 +92,15 @@ pub struct UpdateOltRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct OltTestConnectionRequest {
+    /// Optional OLT ID — if provided, use the stored password (decrypted) instead
+    /// of the request's `password` field. Useful for "test connection" actions
+    /// on existing OLTs where the user shouldn't have to retype credentials.
+    #[serde(default)]
+    pub id: Option<String>,
     pub host: String,
     pub port: i32,
     pub username: String,
+    #[serde(default)]
     pub password: String,
     pub olt_type: String,
 }

@@ -190,10 +190,11 @@
     testingId = o.id;
     try {
       const result = await api.olt.test({
+        id: o.id, // Backend uses stored credentials when id is provided
         host: o.host,
         port: o.port,
         username: o.username,
-        password: '', // Backend uses stored credentials
+        password: '',
         olt_type: o.olt_type,
       });
       if (result?.success) {
