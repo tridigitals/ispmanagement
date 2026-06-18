@@ -768,9 +768,11 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
                 const deduped = rawEntries.filter(([key]) => {
                   // Backend Rust structs use snake_case field names.
                   // When both snake_case and camelCase variants are present,
-                  // keep snake_case and drop camelCase.
+                  // keep snake_case and drop camelCase. Single-word keys
+                  // (e.g. "email", "password") have no twin, so always keep.
                   if (key.includes('_')) return true;
                   const snakeKey = toSnakeCase(key);
+                  if (snakeKey === key) return true; // single-word, no twin
                   return !keySet.has(snakeKey);
                 });
 
