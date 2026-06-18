@@ -79,6 +79,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
   bool _sending = false;
   bool _uploading = false;
   Timer? _autoRefreshTimer;
+  StreamSubscription<Map<String, dynamic>>? _realtimeSub;
 
   /// Pending attachments: list of (filePath, fileName, contentType).
   final List<_PendingAttachment> _pendingAttachments = [];
@@ -91,10 +92,38 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
       const Duration(seconds: 30),
       (_) => _silentRefresh(),
     );
+    // Listen to realtime WebSocket for instant message updates
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _subscribeRealtime();
+    });
+  }
+
+  void _subscribeRealtime() {
+    final client = ref.read(realtimeClientProvider);
+    _realtimeSub = client.stream.listen((event) {
+      final type = event['type'] as String?;
+      if (type != 'support_ticket_message_created') return;
+      // Fields are at top level (serde tagged enum), not in 'data' wrapper
+      final ticketId = event['ticket_id'] as String?;
+      if (ticketId == widget.id) {
+        _silentRefresh();
+        // Auto-scroll to bottom after new message loads
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollCtrl.hasClients) {
+            _scrollCtrl.animateTo(
+              _scrollCtrl.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _realtimeSub?.cancel();
     _autoRefreshTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _messageCtrl.dispose();

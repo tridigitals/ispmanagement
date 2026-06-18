@@ -49,13 +49,15 @@ class _RealtimeNotificationListenerState
 
     switch (type) {
       case 'notification':
-        _handleNotification(event['data'] as Map<String, dynamic>?);
+      case 'notification_received':
+        _handleNotification(event);
         break;
       case 'ticket_reply':
-        _handleTicketReply(event['data'] as Map<String, dynamic>?);
+      case 'support_ticket_message_created':
+        _handleTicketReply(event);
         break;
       case 'payment_status':
-        _handlePaymentStatus(event['data'] as Map<String, dynamic>?);
+        _handlePaymentStatus(event);
         break;
       default:
         // Unknown event — ignore silently
