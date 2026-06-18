@@ -1079,6 +1079,12 @@ abstract class AppLocalizations {
   /// **'Failed to load ticket'**
   String get ticketErrorLoadFailed;
 
+  /// No description provided for @ticketErrorSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Session expired, please log in again'**
+  String get ticketErrorSessionExpired;
+
   /// No description provided for @ticketFieldSubject.
   ///
   /// In en, this message translates to:

@@ -9,7 +9,7 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../services/service_providers.dart';
-import '../../services/subscription_providers.dart';
+import '../../services/missing_providers.dart';
 
 /// Attachment picker source — mirrors the profile-upload pattern so the
 /// camera permission flow stays consistent across the app.

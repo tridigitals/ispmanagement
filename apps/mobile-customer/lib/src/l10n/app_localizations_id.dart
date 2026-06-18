@@ -511,6 +511,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get ticketErrorLoadFailed => 'Gagal memuat tiket';
 
   @override
+  String get ticketErrorSessionExpired => 'Sesi berakhir, login ulang';
+
+  @override
   String get ticketFieldSubject => 'Subjek';
 
   @override

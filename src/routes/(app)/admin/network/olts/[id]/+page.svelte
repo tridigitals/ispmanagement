@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
   import { can } from '$lib/stores/auth';
   import { api } from '$lib/api/client';
-  import type { Olt, OltStats, OltDetails, OnuDetail, OltOnuHistoryEntry, OltPublicToken } from '$lib/api/olt';
+  import type { Olt, OltStats, OltDetails, OnuDetail, OltOnuHistoryEntry } from '$lib/api/olt';
   import { toast } from '$lib/stores/toast';
   import { resolveBackTarget } from '$lib/utils/backNavigation';
   import Icon from '$lib/components/ui/Icon.svelte';
@@ -65,12 +65,10 @@
   let onus = $state<OnuDetail[]>([]);
   let details = $state<OltDetails | null>(null);
   let history = $state<OltOnuHistoryEntry[]>([]);
-  let publicTokens = $state<OltPublicToken[]>([]);
   let isMobile = $state(false);
 
-  let activeTab = $state<'overview' | 'onus' | 'history' | 'tokens'>('overview');
+  let activeTab = $state<'overview' | 'onus' | 'history'>('overview');
   let historyLoading = $state(false);
-  let tokensLoading = $state(false);
   let refreshInFlight = $state(false);
 
   // Sort state for DataTable
@@ -115,20 +113,9 @@
   });
   let forceRefresh = $state(false);
 
-  // Token form
-  let showTokenModal = $state(false);
-  let tokenDesc = $state('');
-  let tokenEnabled = $state(true);
-  let tokenExpiry = $state('');
-  let savingToken = $state(false);
-
   // Reboot confirm
   let showRebootConfirm = $state(false);
   let rebootTarget = $state<OnuDetail | null>(null);
-
-  // Token delete confirm
-  let showTokenDeleteConfirm = $state(false);
-  let tokenDeleteTarget = $state<OltPublicToken | null>(null);
 
   const oltListPath = $derived($page.url.pathname.replace(/\/[^/]+\/?$/, ''));
   const backTarget = $derived(resolveBackTarget($page.url, oltListPath));
@@ -145,7 +132,6 @@
     { id: 'overview', label: 'Ringkasan' },
     { id: 'onus', label: 'ONU', count: onus.length },
     { id: 'history', label: 'Riwayat ONU' },
-    { id: 'tokens', label: 'Token Publik', count: publicTokens.length },
   ]);
 
   const onuColumns = $derived.by(() => [
@@ -166,14 +152,6 @@
     { key: 'status', label: 'Status', sortable: true },
     { key: 'rx', label: 'RX (dBm)', sortable: true },
     { key: 'tx', label: 'TX (dBm)', sortable: true },
-  ]);
-
-  const tokenColumns = $derived.by(() => [
-    { key: 'token', label: 'Token' },
-    { key: 'description', label: 'Deskripsi' },
-    { key: 'status', label: 'Status' },
-    { key: 'expires', label: 'Kadaluarsa' },
-    { key: 'actions', label: '', align: 'right' as const, width: '60px' },
   ]);
 
   let refreshHandle: any = null;
@@ -250,23 +228,9 @@
     }
   }
 
-  async function loadTokens() {
-    const id = $page.params.id || '';
-    if (!id) return;
-    tokensLoading = true;
-    try {
-      publicTokens = (await api.olt.listPublicTokens(id)) as any;
-    } catch (e: any) {
-      toast.error(e?.message || e);
-    } finally {
-      tokensLoading = false;
-    }
-  }
-
   function switchTab(tabId: string) {
     activeTab = tabId as any;
     if (tabId === 'history' && history.length === 0) void loadHistory();
-    if (tabId === 'tokens' && publicTokens.length === 0) void loadTokens();
   }
 
   async function forceRefreshStats() {
@@ -301,62 +265,6 @@
       toast.success(`ONU ${onu.onu_name || onu.onu_id} sedang di-reboot.`);
     } catch (e: any) {
       toast.error(e?.message || e);
-    }
-  }
-
-  function openTokenModal() {
-    tokenDesc = '';
-    tokenEnabled = true;
-    tokenExpiry = '';
-    showTokenModal = true;
-  }
-
-  async function createToken() {
-    const id = $page.params.id || '';
-    if (!id) return;
-    savingToken = true;
-    try {
-      const expiryIso = tokenExpiry ? new Date(tokenExpiry).toISOString() : null;
-      await api.olt.createPublicToken(id, {
-        description: tokenDesc.trim() || null,
-        enabled: tokenEnabled,
-        expires_at: expiryIso,
-      });
-      toast.success('Token berhasil dibuat.');
-      showTokenModal = false;
-      await loadTokens();
-    } catch (e: any) {
-      toast.error(e?.message || e);
-    } finally {
-      savingToken = false;
-    }
-  }
-
-  function promptDeleteToken(token: OltPublicToken) {
-    tokenDeleteTarget = token;
-    showTokenDeleteConfirm = true;
-  }
-
-  async function confirmDeleteToken() {
-    if (!tokenDeleteTarget) return;
-    const id = $page.params.id || '';
-    const token = tokenDeleteTarget;
-    tokenDeleteTarget = null;
-    try {
-      await api.olt.deletePublicToken(id, token.id);
-      toast.success('Token berhasil dihapus.');
-      await loadTokens();
-    } catch (e: any) {
-      toast.error(e?.message || e);
-    }
-  }
-
-  async function copyToken(value: string) {
-    try {
-      await navigator.clipboard.writeText(value);
-      toast.success('Token disalin.');
-    } catch {
-      toast.error('Gagal menyalin token.');
     }
   }
 </script>
@@ -642,58 +550,6 @@
         </Table>
       </div>
     {/if}
-
-    <!-- Tokens Tab -->
-    {#if activeTab === 'tokens'}
-      <div class="toolbar">
-        <div></div>
-        {#if $can('manage', 'router_inventory')}
-          <button class="btn" type="button" onclick={openTokenModal}>
-            <Icon name="plus" size={16} />
-            Buat Token
-          </button>
-        {/if}
-      </div>
-
-      <div class="table-wrap">
-        <Table
-          columns={tokenColumns}
-          data={publicTokens}
-          loading={tokensLoading}
-          emptyText="Tidak ada token publik"
-          mobileView={isMobile ? 'card' : 'scroll'}
-        >
-          {#snippet cell({ item, key }: any)}
-            {#if key === 'token'}
-              <div class="token-cell">
-                <code class="token-value">{item.token}</code>
-                <button class="icon-btn mini" type="button" onclick={() => copyToken(item.token)} title="Salin">
-                  <Icon name="copy" size={12} />
-                </button>
-              </div>
-            {:else if key === 'description'}
-              <span class="muted">{item.description || '—'}</span>
-            {:else if key === 'status'}
-              <span class="badge" class:online={item.enabled} class:offline={!item.enabled}>
-                {item.enabled ? 'Aktif' : 'Nonaktif'}
-              </span>
-            {:else if key === 'expires'}
-              {#if item.expires_at}
-                <span class="muted">{formatDateTime(item.expires_at, { timeZone: $appSettings.app_timezone })}</span>
-              {:else}
-                <span class="muted">Tidak ada</span>
-              {/if}
-            {:else if key === 'actions'}
-              {#if $can('manage', 'router_inventory')}
-                <button class="icon-btn danger" type="button" onclick={() => promptDeleteToken(item)} title="Hapus Token">
-                  <Icon name="trash-2" size={14} />
-                </button>
-              {/if}
-            {/if}
-          {/snippet}
-        </Table>
-      </div>
-    {/if}
   {:else}
     <div class="empty-state">
       <Icon name="alert-circle" size={32} />
@@ -701,42 +557,6 @@
     </div>
   {/if}
 </div>
-
-<!-- Token Modal -->
-{#if showTokenModal}
-  <div class="modal-backdrop" onclick={() => (showTokenModal = false)} role="presentation">
-    <div class="modal" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-      <div class="modal-header">
-        <h3>Buat Token Publik</h3>
-        <button class="icon-btn" type="button" onclick={() => (showTokenModal = false)}>
-          <Icon name="x" size={18} />
-        </button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label for="tok-desc">Deskripsi</label>
-          <input id="tok-desc" type="text" bind:value={tokenDesc} placeholder="Monitoring eksternal" />
-        </div>
-        <div class="form-group">
-          <label for="tok-exp">Kadaluarsa</label>
-          <input id="tok-exp" type="datetime-local" bind:value={tokenExpiry} />
-        </div>
-        <div class="form-group row">
-          <label class="checkbox-label">
-            <input type="checkbox" bind:checked={tokenEnabled} />
-            Aktif
-          </label>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn ghost" type="button" onclick={() => (showTokenModal = false)}>Batal</button>
-        <button class="btn" type="button" onclick={createToken} disabled={savingToken}>
-          {savingToken ? 'Menyimpan...' : 'Buat Token'}
-        </button>
-      </div>
-    </div>
-  </div>
-{/if}
 
 <ConfirmDialog
   bind:show={showRebootConfirm}
@@ -747,17 +567,6 @@
   type="danger"
   onconfirm={confirmReboot}
   oncancel={() => { rebootTarget = null; }}
-/>
-
-<ConfirmDialog
-  bind:show={showTokenDeleteConfirm}
-  title="Konfirmasi Hapus Token"
-  message="Yakin ingin menghapus token ini? Akses publik akan dicabut."
-  confirmText="Hapus"
-  cancelText="Batal"
-  type="danger"
-  onconfirm={confirmDeleteToken}
-  oncancel={() => { tokenDeleteTarget = null; }}
 />
 
 <style>
@@ -1043,23 +852,6 @@
   .signal-label {
     font-size: 0.72rem;
     font-weight: 700;
-  }
-
-  .token-cell {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .token-value {
-    font-size: 0.82rem;
-    background: var(--bg-hover);
-    padding: 2px 6px;
-    border-radius: 6px;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .icon-btn {

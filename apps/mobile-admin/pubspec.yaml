@@ -1,6 +1,6 @@
 name: mobile_admin
 description: ISP Management — Admin mobile app (Flutter, iOS + Android)
-version: 0.1.0+2
+version: 0.1.0+3
 publish_to: none
 
 environment:
@@ -15,11 +15,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  # Local monorepo packages
-  api_client:
-    path: ../../packages/api-client
-  ui_kit:
-    path: ../../packages/ui-kit
+  # Local monorepo packages (resolved automatically via workspace in root pubspec.yaml)
 
   # State management
   flutter_riverpod: ^2.5.1

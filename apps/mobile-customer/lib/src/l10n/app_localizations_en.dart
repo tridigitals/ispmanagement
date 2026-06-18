@@ -511,6 +511,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ticketErrorLoadFailed => 'Failed to load ticket';
 
   @override
+  String get ticketErrorSessionExpired => 'Session expired, please log in again';
+
+  @override
   String get ticketFieldSubject => 'Subject';
 
   @override
