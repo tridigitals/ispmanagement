@@ -495,8 +495,14 @@
                 {#if key === 'name'}
                   <span class="name">{item.name}</span>
                 {:else if key === 'status'}
-                  <span class="badge" class:online={item.status === 'active' || item.status === 'online'} class:offline={item.status !== 'active' && item.status !== 'online'}>
-                    {item.status || '—'}
+                  {@const ponStatus = item.online > 0 && item.offline === 0 ? 'active' : item.online > 0 ? 'degraded' : item.total > 0 ? 'down' : 'empty'}
+                  <span
+                    class="badge"
+                    class:online={ponStatus === 'active'}
+                    class:warning={ponStatus === 'degraded'}
+                    class:offline={ponStatus === 'down'}
+                  >
+                    {ponStatus === 'active' ? 'Active' : ponStatus === 'degraded' ? 'Degraded' : ponStatus === 'down' ? 'Down' : 'Empty'}
                   </span>
                 {:else}
                   <span class="mono">{item[key] ?? '—'}</span>
@@ -811,6 +817,12 @@
     background: rgba(34, 197, 94, 0.12);
     color: rgba(34, 197, 94, 0.95);
     border-color: rgba(34, 197, 94, 0.28);
+  }
+
+  .badge.warning {
+    background: rgba(251, 191, 36, 0.14);
+    color: rgba(245, 158, 11, 0.95);
+    border-color: rgba(251, 191, 36, 0.35);
   }
 
   .badge.offline {
