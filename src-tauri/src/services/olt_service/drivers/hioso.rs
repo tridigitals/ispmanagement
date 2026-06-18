@@ -249,6 +249,7 @@ impl OltDriver for HiosoHa7302cstDriver {
 
     async fn get_global_stats(&self) -> AppResult<OltGlobalStats> {
         let url = self.build_url("/onuLinkBandwidthOltPonList.asp?oltno=0%2F1")?;
+        tracing::info!("[HIOSO] Fetching global stats: {}", url);
         let body = self
             .client
             .get(&url)
@@ -259,7 +260,16 @@ impl OltDriver for HiosoHa7302cstDriver {
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
+        tracing::info!(
+            "[HIOSO] global_stats body len={} preview={}",
+            body.len(),
+            &body[..body.len().min(300)]
+        );
+        // DEBUG: write raw HTML to file so we can inspect it
+        let _ = std::fs::write("/tmp/hioso_global_stats.html", &body);
+
         let tokens = Self::parse_js_array_tokens(&body, "oltpontable");
+        tracing::info!("[HIOSO] oltpontable tokens found: {}", tokens.len());
 
         let mut pon_ports = Vec::new();
         let mut total_onus = 0;
@@ -321,6 +331,7 @@ impl OltDriver for HiosoHa7302cstDriver {
     async fn get_pon_onu_details(&self, pon: &str) -> AppResult<Vec<OltOnuDetail>> {
         let encoded_pon = urlencoding::encode(pon);
         let url = self.build_url(&format!("/onuConfigOnuList.asp?oltponno={}", encoded_pon))?;
+        tracing::info!("[HIOSO] Fetching PON onu details: {}", url);
         let body = self
             .client
             .get(&url)
@@ -331,7 +342,15 @@ impl OltDriver for HiosoHa7302cstDriver {
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
+        tracing::info!(
+            "[HIOSO] PON={} body len={} preview={}",
+            pon,
+            body.len(),
+            &body[..body.len().min(200)]
+        );
+
         let tokens = Self::parse_js_array_tokens(&body, "ponOnuTable");
+        tracing::info!("[HIOSO] PON={} ponOnuTable tokens found: {}", pon, tokens.len());
         let mut onus = Vec::new();
 
         // Tokens come in chunks of 13 per ONU
