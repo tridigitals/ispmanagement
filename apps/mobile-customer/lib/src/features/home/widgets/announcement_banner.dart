@@ -10,13 +10,13 @@ import 'package:ui_kit/ui_kit.dart';
 import '../../../services/feature_providers.dart';
 import '../../../services/missing_providers.dart';
 
-/// Swipeable announcement carousel.
-/// Users can swipe left/right or let it auto-advance.
+/// Swipeable announcement carousel with severity-based styling.
 class AnnouncementBanner extends ConsumerStatefulWidget {
   const AnnouncementBanner({super.key});
 
   @override
-  ConsumerState<AnnouncementBanner> createState() => _AnnouncementBannerState();
+  ConsumerState<AnnouncementBanner> createState() =>
+      _AnnouncementBannerState();
 }
 
 class _AnnouncementBannerState extends ConsumerState<AnnouncementBanner>
@@ -26,35 +26,17 @@ class _AnnouncementBannerState extends ConsumerState<AnnouncementBanner>
   bool _paused = false;
   int _currentPage = 0;
 
-  // Pulse animation for icon
-  late final AnimationController _pulseCtrl;
-  late final Animation<double> _pulseAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.75, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
-  }
-
   @override
   void dispose() {
     _autoAdvance?.cancel();
     _pageCtrl.dispose();
-    _pulseCtrl.dispose();
     super.dispose();
   }
 
   void _startAutoAdvance(int count) {
     _autoAdvance?.cancel();
     if (count <= 1) return;
-
-    _autoAdvance = Timer.periodic(const Duration(seconds: 5), (_) {
+    _autoAdvance = Timer.periodic(const Duration(seconds: 6), (_) {
       if (_paused || !mounted) return;
       final next = (_currentPage + 1) % count;
       _pageCtrl.animateToPage(
@@ -67,16 +49,14 @@ class _AnnouncementBannerState extends ConsumerState<AnnouncementBanner>
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    final async = ref.watch(activeAnnouncementsProvider);
+    final isp = context.isp;
+    final async = ref.watch(activeAnnouncementsProvider);
 
     return async.when(
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
       data: (announcements) {
         if (announcements.isEmpty) return const SizedBox.shrink();
-
         _startAutoAdvance(announcements.length);
 
         return GestureDetector(
@@ -87,7 +67,7 @@ class _AnnouncementBannerState extends ConsumerState<AnnouncementBanner>
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                height: 80,
+                height: 130,
                 child: PageView.builder(
                   controller: _pageCtrl,
                   itemCount: announcements.length,
@@ -96,8 +76,6 @@ class _AnnouncementBannerState extends ConsumerState<AnnouncementBanner>
                     final a = announcements[i];
                     return _AnnouncementCard(
                       announcement: a,
-                      pulseAnim: _pulseAnim,
-                      bodyText: a.plainBody,
                       onTap: () =>
                           GoRouter.of(context).push('/announcements/${a.id}'),
                       onDismiss: () async {
@@ -109,12 +87,12 @@ class _AnnouncementBannerState extends ConsumerState<AnnouncementBanner>
                   },
                 ),
               ),
-              // Dots indicator
               if (announcements.length > 1) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 _DotsIndicator(
                   current: _currentPage,
                   total: announcements.length,
+                  severity: announcements[_currentPage].severity,
                 ),
               ],
             ],
@@ -125,120 +103,194 @@ class _AnnouncementBannerState extends ConsumerState<AnnouncementBanner>
   }
 }
 
+// ─── Severity colors ───────────────────────────────────────────
+
+_SeverityTheme _themeFor(String severity, IspThemeColors isp) {
+  switch (severity) {
+    case 'error':
+      return _SeverityTheme(
+        primary: isp.danger,
+        icon: Icons.error_outline_rounded,
+        label: 'Penting',
+      );
+    case 'warning':
+      return _SeverityTheme(
+        primary: isp.warning,
+        icon: Icons.warning_amber_rounded,
+        label: 'Peringatan',
+      );
+    case 'success':
+      return _SeverityTheme(
+        primary: isp.success,
+        icon: Icons.check_circle_outline_rounded,
+        label: 'Berhasil',
+      );
+    default: // info
+      return _SeverityTheme(
+        primary: isp.info,
+        icon: Icons.info_outline_rounded,
+        label: 'Info',
+      );
+  }
+}
+
+class _SeverityTheme {
+  const _SeverityTheme({
+    required this.primary,
+    required this.icon,
+    required this.label,
+  });
+  final Color primary;
+  final IconData icon;
+  final String label;
+}
+
+// ─── Announcement Card ─────────────────────────────────────────
+
 class _AnnouncementCard extends StatelessWidget {
   const _AnnouncementCard({
     required this.announcement,
-    required this.pulseAnim,
-    required this.bodyText,
     required this.onTap,
     required this.onDismiss,
   });
 
   final AnnouncementModel announcement;
-  final Animation<double> pulseAnim;
-  final String bodyText;
   final VoidCallback onTap;
   final VoidCallback onDismiss;
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
+    final theme = _themeFor(announcement.severity, isp);
+    final bodyText = announcement.plainBody;
 
-
-    final isp = context.isp;    return GestureDetector(
+    return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
             colors: [
-              isp.warning.withOpacity(0.22),
-              isp.warning.withOpacity(0.08),
+              theme.primary.withOpacity(0.15),
+              theme.primary.withOpacity(0.05),
             ],
           ),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isp.warning.withOpacity(0.45),
-            width: 1.5,
+            color: theme.primary.withOpacity(0.30),
+            width: 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: isp.warning.withOpacity(0.12),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Row(
           children: [
-            // Animated icon
-            ScaleTransition(
-              scale: pulseAnim,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isp.warning.withOpacity(0.20),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.campaign_rounded,
-                  size: 22,
-                  color: isp.warning,
+            // Left accent bar
+            Container(
+              width: 4,
+              decoration: BoxDecoration(
+                color: theme.primary,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            // Title + body
+            // Content
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    announcement.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: isp.warning,
-                      height: 1.3,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top row: severity badge + dismiss
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: theme.primary.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(theme.icon, size: 12, color: theme.primary),
+                              const SizedBox(width: 4),
+                              Text(
+                                theme.label,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: theme.primary,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: onDismiss,
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.close_rounded,
+                              size: 16,
+                              color: isp.textMuted,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  if (bodyText.isNotEmpty) ...[
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 10),
+                    // Title
                     Text(
-                      bodyText,
-                      maxLines: 1,
+                      announcement.title,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: isp.warning.withOpacity(0.75),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: isp.textPrimary,
                         height: 1.3,
                       ),
                     ),
+                    if (bodyText.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        bodyText,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isp.textSecondary,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    // CTA row
+                    Row(
+                      children: [
+                        Text(
+                          'Baca selengkapnya',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: theme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 14,
+                          color: theme.primary,
+                        ),
+                      ],
+                    ),
                   ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            // CTA chevron
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 14,
-              color: isp.warning.withOpacity(0.55),
-            ),
-            const SizedBox(width: 6),
-            // Dismiss
-            GestureDetector(
-              onTap: onDismiss,
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Icon(
-                  Icons.close_rounded,
-                  size: 16,
-                  color: isp.warning.withOpacity(0.35),
                 ),
               ),
             ),
@@ -249,16 +301,23 @@ class _AnnouncementCard extends StatelessWidget {
   }
 }
 
+// ─── Dots Indicator ────────────────────────────────────────────
+
 class _DotsIndicator extends StatelessWidget {
-  const _DotsIndicator({required this.current, required this.total});
+  const _DotsIndicator({
+    required this.current,
+    required this.total,
+    required this.severity,
+  });
   final int current;
   final int total;
+  final String severity;
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return Row(
+    final isp = context.isp;
+    final color = _themeFor(severity, isp).primary;
+    return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: List.generate(total, (i) {
@@ -266,12 +325,10 @@ class _DotsIndicator extends StatelessWidget {
         return AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           margin: const EdgeInsets.symmetric(horizontal: 2.5),
-          width: active ? 12 : 5,
+          width: active ? 16 : 5,
           height: 5,
           decoration: BoxDecoration(
-            color: active
-                ? isp.warning
-                : isp.warning.withOpacity(0.20),
+            color: active ? color : color.withOpacity(0.20),
             borderRadius: BorderRadius.circular(3),
           ),
         );

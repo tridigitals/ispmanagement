@@ -22,8 +22,6 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _State extends ConsumerState<HomeShell> {
   late final IspThemeColors isp;
-  Set<String> _knownIds = {};
-  bool _notificationsInitialised = false;
 
   /// Normalize action_url → in-app route.
   String _normalizeAction(String? actionUrl) {
@@ -39,80 +37,6 @@ class _State extends ConsumerState<HomeShell> {
         actionUrl.startsWith('/services')) return '/?tab=1';
     if (actionUrl.startsWith('/announcements/')) return '/?tab=0';
     return actionUrl;
-  }
-
-  void _showNotificationToast(BuildContext context, NotificationModel n) {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger.clearSnackBars();
-    final route = _normalizeAction(n.actionUrl);
-    messenger.showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.notifications_active_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    n.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (n.body.isNotEmpty)
-                    Text(
-                      n.body,
-                      style: const TextStyle(fontSize: 12),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: isp.accent,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(12, 0, 12, 76),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        duration: const Duration(seconds: 4),
-        action: SnackBarAction(
-          label: 'Buka',
-          textColor: Colors.white,
-          onPressed: () {
-            try {
-              if (route == '/notifications' || route.startsWith('/tickets/')) {
-                context.push(route);
-              } else {
-                context.go(route);
-              }
-            } catch (_) {}
-            // Mark this notif as read.
-            ref.read(notificationsProvider.notifier).markRead(n.id);
-          },
-        ),
-      ),
-    );
   }
 
   @override
@@ -145,32 +69,6 @@ final isp = context.isp;
 final l10n = AppLocalizations.of(context);
     final notifState = ref.watch(notificationsProvider);
     final tab = ref.watch(currentTabProvider);
-
-    // Detect new notifications arriving via polling.
-    final currentIds =
-        notifState.valueOrNull?.map((n) => n.id).toSet() ?? <String>{};
-    if (notifState.hasValue) {
-      if (!_notificationsInitialised) {
-        _knownIds = currentIds;
-        _notificationsInitialised = true;
-      } else {
-        final newIds = currentIds.difference(_knownIds);
-        if (newIds.isNotEmpty) {
-          final notifs = notifState.valueOrNull!;
-          // Show toast for the most recent new one.
-          final newNotif = notifs
-              .where((n) => newIds.contains(n.id) && n.readAt == null)
-              .toList()
-            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          if (newNotif.isNotEmpty) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) _showNotificationToast(context, newNotif.first);
-            });
-          }
-          _knownIds = currentIds;
-        }
-      }
-    }
 
     final pages = const [
       HomeTab(),

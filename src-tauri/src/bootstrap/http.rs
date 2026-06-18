@@ -210,6 +210,7 @@ pub async fn start_server_impl(
         notification_service.clone(),
         audit_service.clone(),
         network_asset_service.clone(),
+        onu_linker.clone(),
     ));
 
     // Start background OLT poller (polls every 30s, pushes via WebSocket)

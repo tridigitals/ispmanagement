@@ -17,6 +17,7 @@ use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
 use crate::services::audit_service::AuditService;
 use crate::services::network_asset_service::NetworkAssetService;
 use crate::services::notification_service::NotificationService;
+use crate::services::onu_linker::OnuLinker;
 use chrono::Utc;
 use drivers::create_driver;
 use std::sync::Arc;
@@ -32,6 +33,7 @@ pub struct OltService {
     notification_service: NotificationService,
     audit_service: AuditService,
     network_asset_service: Arc<NetworkAssetService>,
+    onu_linker: OnuLinker,
 }
 
 impl OltService {
@@ -40,12 +42,14 @@ impl OltService {
         notification_service: NotificationService,
         audit_service: AuditService,
         network_asset_service: Arc<NetworkAssetService>,
+        onu_linker: OnuLinker,
     ) -> Self {
         Self {
             pool,
             notification_service,
             audit_service,
             network_asset_service,
+            onu_linker,
         }
     }
 
@@ -600,6 +604,39 @@ impl OltService {
         tenant_id: &str,
         onus: &[OltOnuDetail],
     ) -> AppResult<()> {
+        // ── Auto-link discovered ONUs to network_assets by MAC ──
+        let mac_pon_pairs: Vec<(String, String)> = onus
+            .iter()
+            .filter(|o| !o.mac.is_empty())
+            .map(|o| (o.mac.clone(), o.pon.clone()))
+            .collect();
+        if !mac_pon_pairs.is_empty() {
+            match self
+                .onu_linker
+                .link_batch(tenant_id, olt_id, &mac_pon_pairs)
+                .await
+            {
+                Ok(stats) => {
+                    if stats.linked > 0 || stats.errors > 0 {
+                        tracing::info!(
+                            "OnuLinker batch for OLT {}: linked={}, skipped={}, errors={}",
+                            olt_id,
+                            stats.linked,
+                            stats.skipped,
+                            stats.errors
+                        );
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "OnuLinker batch failed for OLT {}: {}",
+                        olt_id,
+                        e
+                    );
+                }
+            }
+        }
+
         for onu in onus {
             // Parse signal values as f32 (DB column type is `real` = float4)
             let rx: Option<f32> = onu.rx.replace("dBm", "").trim().parse().ok();
