@@ -3533,7 +3533,7 @@ impl PaymentService {
                     }
 
                     let action_url = if is_admin {
-                        "/admin/invoices".to_string()
+                        format!("/admin/invoices/{}", invoice.id)
                     } else {
                         format!("/pay/{}", invoice.id)
                     };
