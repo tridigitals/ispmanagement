@@ -53,7 +53,7 @@ class _State extends ConsumerState<HomeShell> {
     final tabStr = GoRouterState.of(context).uri.queryParameters['tab'];
     if (tabStr != null) {
       final tabIdx = int.tryParse(tabStr);
-      if (tabIdx != null && tabIdx >= 0 && tabIdx < 5) {
+      if (tabIdx != null && tabIdx >= 0 && tabIdx < 4) {
         ref.read(currentTabProvider.notifier).state = tabIdx;
       }
     }
@@ -80,13 +80,11 @@ class _State extends ConsumerState<HomeShell> {
       l10n.support,
       l10n.profile,
     ];
-
     final pages = const [
       HomeTab(),
       SubscriptionsTab(),
       InvoicesTab(),
       SupportTab(),
-      ProfileScreen(),
     ];
 
     return Scaffold(
@@ -179,11 +177,6 @@ class _State extends ConsumerState<HomeShell> {
             icon: Icons.headset_mic_outlined,
             selectedIcon: Icons.headset_mic,
             label: l10n.support,
-          ),
-          _NavDestination(
-            icon: Icons.person_outline,
-            selectedIcon: Icons.person,
-            label: l10n.profile,
           ),
         ],
       ),
