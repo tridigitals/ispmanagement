@@ -9,7 +9,8 @@ import 'package:ui_kit/ui_kit.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/auth_providers.dart';
 import '../../services/missing_providers.dart';
-import '../../services/notifications_providers.dart';
+import '../../services/notifications_providers.dart' show unreadNotificationsCountProvider;
+
 import '../../theme/app_theme.dart';
 import '../../utils/loading_skeleton.dart';
 import 'widgets/network_status_banner.dart';
@@ -36,11 +37,11 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   Widget build(BuildContext context) {
 
 
-    final isp = context.isp;    final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
     final user = ref.watch(currentUserProvider);
     final subState = ref.watch(mySubscriptionsProvider);
     final invState = ref.watch(myInvoicesProvider);
-    final unread = ref.watch(unreadNotificationsCountProvider).valueOrNull ?? 0;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -55,59 +56,6 @@ class _HomeTabState extends ConsumerState<HomeTab> {
       color: isp.accent,
       child: CustomScrollView(
         slivers: [
-          // ── App bar ──
-          SliverAppBar(
-            pinned: true,
-            title: Text(
-              '${l10n.hiPrefix}, ${user?.name.split(' ').first ?? ''} 👋',
-            ),
-            actions: [
-              IconButton(
-                icon: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Icon(Icons.notifications_outlined),
-                    if (unread > 0)
-                      Positioned(
-                        top: -2,
-                        right: -2,
-                        child: Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            color: isp.danger,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 14,
-                            minHeight: 14,
-                          ),
-                          child: Text(
-                            unread > 9 ? '9+' : '$unread',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                onPressed: () => GoRouter.of(context).push('/notifications'),
-              ),
-              IconButton(
-                icon: const Icon(Icons.account_circle_outlined),
-                onPressed: () => GoRouter.of(context).push('/profile'),
-              ),
-              IconButton(
-                icon: const Icon(Icons.settings_outlined),
-                tooltip: l10n.settings,
-                onPressed: () => GoRouter.of(context).push('/settings'),
-              ),
-            ],
-          ),
-
           // ── Body ──
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
