@@ -123,11 +123,13 @@ impl OltService {
             req.latitude,
             req.longitude,
             req.address_line,
+            req.uplink_router_id,
+            req.uplink_port,
         );
 
         sqlx::query(
-            "INSERT INTO public.olts (id, tenant_id, name, description, olt_type, host, port, username, password_enc, is_online, latitude, longitude, address_line, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)",
+            "INSERT INTO public.olts (id, tenant_id, name, description, olt_type, host, port, username, password_enc, is_online, latitude, longitude, address_line, uplink_router_id, uplink_port, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)",
         )
         .bind(&olt.id)
         .bind(&olt.tenant_id)
@@ -142,6 +144,8 @@ impl OltService {
         .bind(olt.latitude)
         .bind(olt.longitude)
         .bind(&olt.address_line)
+        .bind(olt.uplink_router_id)
+        .bind(&olt.uplink_port)
         .bind(olt.created_at)
         .bind(olt.updated_at)
         .execute(&self.pool)
@@ -246,10 +250,19 @@ impl OltService {
             Some(v) => v,
             None => existing.address_line.clone(),
         };
+        // Sprint D: triple-state for uplink fields
+        let uplink_router_id = match req.uplink_router_id {
+            Some(v) => v,
+            None => existing.uplink_router_id,
+        };
+        let uplink_port = match req.uplink_port {
+            Some(v) => v,
+            None => existing.uplink_port.clone(),
+        };
 
         sqlx::query(
-            "UPDATE public.olts SET name = $1, description = $2, host = $3, port = $4, username = $5, password_enc = $6, latitude = $7, longitude = $8, address_line = $9, updated_at = now()
-             WHERE id = $10 AND tenant_id = $11",
+            "UPDATE public.olts SET name = $1, description = $2, host = $3, port = $4, username = $5, password_enc = $6, latitude = $7, longitude = $8, address_line = $9, uplink_router_id = $10, uplink_port = $11, updated_at = now()
+             WHERE id = $12 AND tenant_id = $13",
         )
         .bind(&name)
         .bind(&description)
@@ -260,6 +273,8 @@ impl OltService {
         .bind(latitude)
         .bind(longitude)
         .bind(&address_line)
+        .bind(uplink_router_id)
+        .bind(&uplink_port)
         .bind(id)
         .bind(tenant_id)
         .execute(&self.pool)
