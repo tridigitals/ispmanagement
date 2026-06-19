@@ -79,7 +79,17 @@ class AuthController extends Notifier<AuthState> {
             }
           });
           if (!data.requires2fa && !data.requires2faSetup) {
-            await apply(data);
+            // apply() enforces customer-only role. If the login response
+            // came back with a staff/admin user, apply() returns Failure
+            // and we must propagate it so the UI shows the rejection
+            // message instead of silently dropping the user into the app.
+            final applied = await apply(data);
+            if (applied is Failure<bool>) {
+              // Surface the role-rejection message in place of the success
+              // response so the login screen snackbar shows the right text
+              // and the router does NOT navigate to the home shell.
+              return Failure(applied.exception);
+            }
           }
         case Failure():
           break;
@@ -366,7 +376,40 @@ class AuthController extends Notifier<AuthState> {
   /// native I/O), so this method does NOT block on the native storage
   /// even if Android Keystore is wedged. The persistSession().timeout(5s)
   /// remains as a safety net but should rarely fire.
-  Future<void> apply(AuthResponse auth) async {
+  ///
+  /// Enforces customer-only role: the customer APK is for end users
+  /// subscribing to ISP services. Staff/admin/super_admin accounts
+  /// must use the admin web app instead. Non-customer logins are
+  /// rejected with [Failure] — session is rolled back (token cleared
+  /// from storage + in-memory cache, user state reset) so a stale
+  /// session cannot leak across a role mismatch.
+  Future<ServiceResult<bool>> apply(AuthResponse auth) async {
+    // Role gate: only `customer` role may use this app. Backend already
+    // gates login by tenant + credentials; this is a client-side guard
+    // against accidentally letting a staff account slip through.
+    if (!auth.user.isCustomer) {
+      debugPrint(
+        '[auth] rejected non-customer login: '
+        'role=${auth.user.role} user=${auth.user.email}',
+      );
+      // Best-effort cleanup: clear any token we just persisted. If storage
+      // is wedged, the in-memory cache below also gets wiped so a stray
+      // request can't slip through.
+      try {
+        await ref.read(authServiceProvider).logout()
+            .timeout(const Duration(seconds: 3));
+      } catch (e) {
+        debugPrint('[auth] clearSession during role-reject failed: $e');
+      }
+      state = const AuthState();
+      return Failure(
+        ApiException(
+          message:
+              'Akun ini bukan akun pelanggan. APK ini hanya untuk pengguna '
+              'layanan internet. Silakan login di aplikasi admin.',
+        ),
+      );
+    }
     try {
       await ref.read(authServiceProvider).persistSession(auth)
           .timeout(const Duration(seconds: 5));
@@ -376,17 +419,36 @@ class AuthController extends Notifier<AuthState> {
       // for this session even if storage write hung.
     }
     state = AuthState(user: auth.user);
+    return const Success(true);
   }
 
   /// Hydrate from secure storage on app start.
   /// On failure, do NOT delete token — might be transient (network/server).
   /// Token stays so user can retry or login manually (which will overwrite it).
+  ///
+  /// Enforces customer-only role on session restore too — if a staff/admin
+  /// token leaked into this APK (e.g. from a prior install of the wrong app,
+  /// or a hand-edited token), we wipe the session and return false so the
+  /// router keeps the user on the login screen.
   Future<bool> bootstrap() async {
     final auth = ref.read(authServiceProvider);
     if (!await auth.hasSession()) return false;
     final me = await auth.me();
     switch (me) {
       case Success(:final data):
+        if (!data.isCustomer) {
+          debugPrint(
+            '[auth] bootstrap rejected non-customer: '
+            'role=${data.role} user=${data.email}',
+          );
+          try {
+            await auth.logout().timeout(const Duration(seconds: 3));
+          } catch (e) {
+            debugPrint('[auth] logout during bootstrap role-reject failed: $e');
+          }
+          state = const AuthState();
+          return false;
+        }
         state = AuthState(user: data);
         return true;
       case Failure():

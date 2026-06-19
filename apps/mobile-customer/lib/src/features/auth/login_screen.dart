@@ -248,17 +248,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
       final res = await dio.post<Map<String, dynamic>>(endpoint, data: payload);
       final authResponse = AuthResponse.fromJson(res.data ?? const {});
+      // apply() enforces customer-only role. If the server returned a
+      // non-customer user (e.g. staff trying to enroll 2FA via this APK),
+      // apply() will return Failure and we must NOT navigate to home —
+      // just show the rejection message in the snackbar.
+      final applied =
+          await ref.read(authControllerProvider.notifier).apply(authResponse);
+      if (applied is Failure<bool>) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(applied.exception.message),
+              backgroundColor: isp.danger,
+            ),
+          );
+        }
+        return;
+      }
       if (mounted) {
-        await ref.read(authControllerProvider.notifier).apply(authResponse);
         context.go('/');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: isp.danger,
-          ),
+          SnackBar(content: Text(e.toString())),
         );
       }
     } finally {
@@ -276,7 +289,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
     switch (res) {
       case Success(:final data):
-        await ref.read(authControllerProvider.notifier).apply(data);
+        // apply() enforces customer-only role. Surface role-rejection
+        // message via snackbar; do NOT navigate to home.
+        final applied =
+            await ref.read(authControllerProvider.notifier).apply(data);
+        if (applied is Failure<bool>) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(applied.exception.message),
+                backgroundColor: isp.danger,
+              ),
+            );
+          }
+          return;
+        }
         if (mounted) context.go('/');
       case Failure(:final exception):
         ScaffoldMessenger.of(context).showSnackBar(
