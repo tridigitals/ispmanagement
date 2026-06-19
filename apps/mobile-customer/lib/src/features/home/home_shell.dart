@@ -146,6 +146,15 @@ class _State extends ConsumerState<HomeShell> {
       body: SafeArea(
         child: IndexedStack(index: tab, children: pages),
       ),
+      floatingActionButton: tab == 3
+          ? FloatingActionButton(
+              mini: true,
+              backgroundColor: isp.accent,
+              foregroundColor: Colors.white,
+              onPressed: () => GoRouter.of(context).push('/tickets/new'),
+              child: const Icon(Icons.add),
+            )
+          : null,
       bottomNavigationBar: _CleanNavBar(
         selectedIndex: tab,
         onDestinationSelected: (i) =>

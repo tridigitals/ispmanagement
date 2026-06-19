@@ -85,86 +85,68 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
 
     if (!_initialLoaded) {
-      return CustomScrollView(
-        slivers: [
-          SliverAppBar(title: Text(l10n.myInvoices), pinned: true),
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: Center(
-                child: CircularProgressIndicator(color: isp.accent)),
-          ),
-        ],
+      return Center(
+        child: CircularProgressIndicator(color: isp.accent),
       );
     }
 
     if (_initialError != null) {
-      return CustomScrollView(
-        slivers: [
-          SliverAppBar(title: Text(l10n.myInvoices), pinned: true),
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.error_outline,
-                      size: 48, color: isp.danger),
-                  const SizedBox(height: 12),
-                  Text(
-                    _initialError.toString(),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: isp.textSecondary),
-                  ),
-                  const SizedBox(height: 16),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _initialLoaded = false;
-                        _initialError = null;
-                      });
-                      _loadInitial();
-                    },
-                    icon: const Icon(Icons.refresh),
-                    label: Text(l10n.retry),
-                  ),
-                ],
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: isp.danger),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  _initialError.toString(),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: isp.textSecondary),
+                ),
               ),
-            ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _initialLoaded = false;
+                    _initialError = null;
+                  });
+                  _loadInitial();
+                },
+                icon: const Icon(Icons.refresh),
+                label: Text(l10n.retry),
+              ),
+            ],
           ),
-        ],
+        ),
       );
     }
 
     if (_items.isEmpty) {
-      return CustomScrollView(
-        slivers: [
-          SliverAppBar(title: Text(l10n.myInvoices), pinned: true),
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.receipt_long_outlined,
-                    size: 64,
-                    color: isp.textMuted,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    l10n.noInvoicesYet,
-                    style: TextStyle(color: isp.textMuted),
-                  ),
-                ],
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.receipt_long_outlined,
+                size: 64,
+                color: isp.textMuted,
               ),
-            ),
+              const SizedBox(height: 12),
+              Text(
+                l10n.noInvoicesYet,
+                style: TextStyle(color: isp.textMuted),
+              ),
+            ],
           ),
-        ],
+        ),
       );
     }
 
@@ -181,38 +163,26 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
           });
           await _loadInitial();
         },
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(title: Text(l10n.myInvoices), pinned: true),
-            SliverPadding(
-              padding: const EdgeInsets.only(bottom: 100),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    if (index == _items.length) {
-                      return _loadingMore
-                          ? Padding(
-                              padding: EdgeInsets.all(24),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: isp.accent,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : const SizedBox.shrink();
-                    }
-                    return _InvoiceTile(inv: _items[index]);
-                  },
-                  childCount: _items.length + 1,
-                ),
-              ),
-            ),
-          ],
+        child: ListView.builder(
+          padding: const EdgeInsets.only(bottom: 100),
+          itemCount: _items.length + 1,
+          itemBuilder: (context, index) {
+            if (index == _items.length) {
+              return _loadingMore
+                  ? const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink();
+            }
+            return _InvoiceTile(inv: _items[index]);
+          },
         ),
       ),
     );

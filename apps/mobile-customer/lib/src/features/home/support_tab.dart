@@ -106,179 +106,147 @@ class _SupportTabState extends ConsumerState<SupportTab> {
     final isp = context.isp;    final l10n = AppLocalizations.of(context);
 
     if (!_initialLoaded) {
-      return CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            title: Text(l10n.myTickets),
-            pinned: true,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.add),
-                onPressed: () => GoRouter.of(context).push('/tickets/new'),
-              ),
-            ],
-          ),
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: Center(
-                child: CircularProgressIndicator(color: isp.accent)),
-          ),
-        ],
+      return Center(
+        child: CircularProgressIndicator(color: isp.accent),
       );
     }
 
     if (_initialError != null) {
-      return CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            title: Text(l10n.myTickets),
-            pinned: true,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.add),
-                onPressed: () => GoRouter.of(context).push('/tickets/new'),
-              ),
-            ],
-          ),
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: Center(
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: isp.danger),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
                 _initialError.toString(),
                 style: TextStyle(color: isp.textSecondary),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _initialLoaded = false;
+                  _initialError = null;
+                });
+                _loadInitial();
+              },
+              icon: const Icon(Icons.refresh),
+              label: Text(l10n.retry),
+            ),
+          ],
+        ),
       );
     }
 
     if (_items.isEmpty) {
-      return CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            title: Text(l10n.myTickets),
-            pinned: true,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.add),
-                onPressed: () => GoRouter.of(context).push('/tickets/new'),
-              ),
-            ],
-          ),
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: _EmptyState(
-              icon: Icons.support_agent_outlined,
-              title: l10n.noTickets,
-              subtitle: l10n.createFirstTicket,
-              actionLabel: l10n.newTicket,
-              onAction: () => GoRouter.of(context).push('/tickets/new'),
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.support_agent_outlined,
+              size: 64,
+              color: isp.textMuted,
             ),
-          ),
-        ],
-      );
-    }
-
-    return NotificationListener<ScrollNotification>(
-      onNotification: _onScroll,
-      child: RefreshIndicator(
-        color: isp.accent,
-        onRefresh: () async {
-          setState(() {
-            _items.clear();
-            _page = 1;
-            _hasMore = true;
-            _initialLoaded = false;
-          });
-          await _loadInitial();
-        },
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              title: Text(l10n.myTickets),
-              pinned: true,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () => GoRouter.of(context).push('/tickets/new'),
-                ),
-              ],
+            const SizedBox(height: 12),
+            Text(
+              l10n.noTickets,
+              style: TextStyle(color: isp.textMuted),
             ),
-            // Category filter chips
-            SliverToBoxAdapter(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _FilterChip(
-                        label: 'Semua',
-                        selected: _categoryFilter == null,
-                        onTap: () => _setCategoryFilter(null),
-                      ),
-                      const SizedBox(width: 8),
-                      _FilterChip(
-                        label: 'Umum',
-                        selected: _categoryFilter == 'general',
-                        onTap: () => _setCategoryFilter('general'),
-                      ),
-                      const SizedBox(width: 8),
-                      _FilterChip(
-                        label: 'Tagihan',
-                        selected: _categoryFilter == 'billing',
-                        onTap: () => _setCategoryFilter('billing'),
-                      ),
-                      const SizedBox(width: 8),
-                      _FilterChip(
-                        label: 'Teknis',
-                        selected: _categoryFilter == 'technical',
-                        onTap: () => _setCategoryFilter('technical'),
-                      ),
-                      const SizedBox(width: 8),
-                      _FilterChip(
-                        label: 'Instalasi',
-                        selected: _categoryFilter == 'installation',
-                        onTap: () => _setCategoryFilter('installation'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.only(bottom: 100),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    if (index == _items.length) {
-                      return _loadingMore
-                          ? Padding(
-                              padding: EdgeInsets.all(24),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: isp.accent,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : const SizedBox.shrink();
-                    }
-                    return _TicketTile(t: _items[index]);
-                  },
-                  childCount: _items.length + 1,
-                ),
-              ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => GoRouter.of(context).push('/tickets/new'),
+              icon: const Icon(Icons.add),
+              label: Text(l10n.newTicket),
             ),
           ],
         ),
-      ),
+      );
+    }
+
+    return Column(
+      children: [
+        // Category filter chips
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              _FilterChip(
+                label: 'Semua',
+                selected: _categoryFilter == null,
+                onTap: () => _setCategoryFilter(null),
+              ),
+              const SizedBox(width: 8),
+              _FilterChip(
+                label: 'Umum',
+                selected: _categoryFilter == 'general',
+                onTap: () => _setCategoryFilter('general'),
+              ),
+              const SizedBox(width: 8),
+              _FilterChip(
+                label: 'Tagihan',
+                selected: _categoryFilter == 'billing',
+                onTap: () => _setCategoryFilter('billing'),
+              ),
+              const SizedBox(width: 8),
+              _FilterChip(
+                label: 'Teknis',
+                selected: _categoryFilter == 'technical',
+                onTap: () => _setCategoryFilter('technical'),
+              ),
+              const SizedBox(width: 8),
+              _FilterChip(
+                label: 'Instalasi',
+                selected: _categoryFilter == 'installation',
+                onTap: () => _setCategoryFilter('installation'),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _onScroll,
+            child: RefreshIndicator(
+              color: isp.accent,
+              onRefresh: () async {
+                setState(() {
+                  _items.clear();
+                  _page = 1;
+                  _hasMore = true;
+                  _initialLoaded = false;
+                });
+                await _loadInitial();
+              },
+              child: ListView.builder(
+                padding: const EdgeInsets.only(bottom: 100),
+                itemCount: _items.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == _items.length) {
+                    return _loadingMore
+                        ? const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink();
+                  }
+                  return _TicketTile(t: _items[index]);
+                },
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

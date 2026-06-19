@@ -93,53 +93,35 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
 
     // Still loading initial
     if (!_initialLoaded) {
-      return CustomScrollView(
-        slivers: [
-          SliverAppBar(title: Text(l10n.mySubscriptions), pinned: true),
-          const SliverFillRemaining(
-            hasScrollBody: false,
-            child: IspSkeletonList(itemCount: 4),
-          ),
-        ],
+      return Scaffold(
+        body: const IspSkeletonList(itemCount: 4),
       );
     }
 
     // Initial error
     if (_initialError != null) {
-      return CustomScrollView(
-        slivers: [
-          SliverAppBar(title: Text(l10n.mySubscriptions), pinned: true),
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: IspErrorState(
-              message: _initialError.toString(),
-              onRetry: () {
-                setState(() {
-                  _initialLoaded = false;
-                  _initialError = null;
-                });
-                _loadInitial();
-              },
-            ),
-          ),
-        ],
+      return Scaffold(
+        body: IspErrorState(
+          message: _initialError.toString(),
+          onRetry: () {
+            setState(() {
+              _initialLoaded = false;
+              _initialError = null;
+            });
+            _loadInitial();
+          },
+        ),
       );
     }
 
     // Empty
     if (_items.isEmpty) {
-      return CustomScrollView(
-        slivers: [
-          SliverAppBar(title: Text(l10n.mySubscriptions), pinned: true),
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: IspEmptyState(
-              icon: Icons.wifi_off_outlined,
-              title: 'Belum ada langganan',
-              message: 'Hubungi admin untuk berlangganan',
-            ),
-          ),
-        ],
+      return Scaffold(
+        body: IspEmptyState(
+          icon: Icons.wifi_off_outlined,
+          title: 'Belum ada langganan',
+          message: 'Hubungi admin untuk berlangganan',
+        ),
       );
     }
 
@@ -156,39 +138,30 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
           });
           await _loadInitial();
         },
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(title: Text(l10n.mySubscriptions), pinned: true),
-            SliverPadding(
-              padding: const EdgeInsets.only(bottom: 100),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    if (index == _items.length) {
-                      // Load-more indicator
-                      return _loadingMore
-                          ? Padding(
-                              padding: EdgeInsets.all(24),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: isp.accent,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : const SizedBox.shrink();
-                    }
-                    return _SubscriptionTile(sub: _items[index]);
-                  },
-                  childCount: _items.length + 1,
-                ),
-              ),
-            ),
-          ],
+        child: ListView.builder(
+          padding: const EdgeInsets.only(bottom: 100),
+          itemCount: _items.length + 1,
+          itemBuilder: (context, index) {
+            if (index == _items.length) {
+              // Load-more indicator
+              return _loadingMore
+                  ? Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: isp.accent,
+                          ),
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink();
+            }
+            return _SubscriptionTile(sub: _items[index]);
+          },
         ),
       ),
     );
