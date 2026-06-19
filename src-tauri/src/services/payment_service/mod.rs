@@ -3594,7 +3594,7 @@ impl PaymentService {
                             ),
                             "success".to_string(),
                             "billing".to_string(),
-                            Some("/admin/invoices".to_string()),
+                            Some(format!("/admin/invoices/{}", invoice.id)),
                         )
                         .await;
                 }
@@ -3888,7 +3888,7 @@ impl PaymentService {
                         ),
                         "info".to_string(),
                         "billing".to_string(),
-                        Some("/admin/invoices".to_string()),
+                        Some(format!("/admin/invoices/{}", invoice.id)),
                     )
                     .await;
             }
@@ -3907,6 +3907,19 @@ impl PaymentService {
                     .await
                     .unwrap_or_default();
 
+            // Resolve tenant slug for correct invoice action URL
+            let tenant_action_url: String = {
+                let slug: Option<String> = sqlx::query_scalar(
+                    "SELECT slug FROM tenants WHERE id = $1 LIMIT 1"
+                )
+                .bind(&invoice.tenant_id)
+                .fetch_optional(&self.pool)
+                .await
+                .unwrap_or(None);
+                slug.map(|s| format!("/{}/admin/invoices/{}", s, invoice.id))
+                    .unwrap_or_else(|| format!("/superadmin/invoices/{}", invoice.id))
+            };
+
             for (admin_id,) in super_admins {
                 let _ = self
                     .notification_service
@@ -3920,7 +3933,7 @@ impl PaymentService {
                         ),
                         "info".to_string(),
                         "billing".to_string(),
-                        Some("/superadmin/invoices".to_string()),
+                        Some(tenant_action_url.clone()),
                     )
                     .await;
             }
