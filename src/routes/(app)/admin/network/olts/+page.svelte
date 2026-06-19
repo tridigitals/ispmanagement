@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { can } from '$lib/stores/auth';
@@ -13,6 +13,8 @@
   import { formatDateTime, timeAgo } from '$lib/utils/date';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import { appSettings } from '$lib/stores/settings';
+  import MapCanvasShell from '$lib/components/network/MapCanvasShell.svelte';
+  import 'maplibre-gl/dist/maplibre-gl.css';
 
   const OLT_TYPE_MAP: Record<string, string> = {
     hioso_ha7302cst: 'HIOSO HA-7302CST (EPON)',
@@ -49,6 +51,178 @@
   let formAddressLine = $state('');
 
   const tenantPrefix = $derived($page.url.pathname.replace(/\/admin\/network\/olts.*$/, '') || '');
+
+  // Map picker state
+  let showMapPicker = $state(false);
+  let pickerMapHost = $state<HTMLDivElement | null>(null);
+  let pickerMap: any = null;
+  let pickerMarker: any = null;
+  let pickerLat = $state<number | null>(null);
+  let pickerLng = $state<number | null>(null);
+  let pickerViewMode = $state<'standard' | 'satellite'>('standard');
+  let pickerMapLoading = $state(false);
+  let pickerMapUnavailable = $state(false);
+  let pickerMapErrorMessage = $state('');
+  let maplibrePromise: Promise<any> | null = null;
+  const pickerMapTilerKey = (import.meta.env.VITE_MAPTILER_KEY as string | undefined)?.trim();
+  const pickerStandardMaxZoom = 19;
+  const pickerSatelliteMaxZoom = pickerMapTilerKey ? 21 : 18;
+
+  function parseCoordOrNull(v: number | null) {
+    if (v == null) return null;
+    return Number.isFinite(v) ? v : null;
+  }
+
+  async function getMaplibre() {
+    if (!maplibrePromise) {
+      maplibrePromise = import('maplibre-gl');
+    }
+    return maplibrePromise;
+  }
+
+  function setPickerPoint(lat: number, lng: number) {
+    pickerLat = lat;
+    pickerLng = lng;
+    if (pickerMarker) {
+      pickerMarker.setLngLat([lng, lat]);
+      return;
+    }
+    if (!pickerMap) return;
+    pickerMarker = new (pickerMap as any).libregl.Marker({ draggable: true })
+      .setLngLat([lng, lat])
+      .addTo(pickerMap);
+    pickerMarker.on('dragend', () => {
+      const pos = pickerMarker.getLngLat();
+      pickerLat = Number(pos.lat.toFixed(7));
+      pickerLng = Number(pos.lng.toFixed(7));
+    });
+  }
+
+  function syncPickerViewMode() {
+    if (!pickerMap) return;
+    const showSatellite = pickerViewMode === 'satellite';
+    const setVisibility = (layerId: string, visible: boolean) => {
+      if (!pickerMap.getLayer(layerId)) return;
+      pickerMap.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+    };
+    setVisibility('olt-picker-standard', !showSatellite);
+    setVisibility('olt-picker-satellite', showSatellite);
+    const targetMaxZoom = showSatellite ? pickerSatelliteMaxZoom : pickerStandardMaxZoom;
+    pickerMap.setMaxZoom(targetMaxZoom);
+    if (pickerMap.getZoom() > targetMaxZoom) {
+      pickerMap.setZoom(targetMaxZoom);
+    }
+  }
+
+  async function openMapPicker() {
+    const initialLat = parseCoordOrNull(formLatitude) ?? -6.2;
+    const initialLng = parseCoordOrNull(formLongitude) ?? 106.816666;
+    pickerLat = initialLat;
+    pickerLng = initialLng;
+    pickerMapUnavailable = false;
+    pickerMapErrorMessage = '';
+    showMapPicker = true;
+    await tick();
+    if (!pickerMapHost) return;
+
+    pickerMapLoading = true;
+    try {
+      const libregl = await getMaplibre();
+      if (!pickerMap) {
+        pickerMap = new libregl.Map({
+          container: pickerMapHost,
+          style: {
+            version: 8,
+            sources: {
+              standard: {
+                type: 'raster',
+                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                tileSize: 256,
+                attribution: 'OpenStreetMap contributors',
+                maxzoom: pickerStandardMaxZoom,
+              },
+              satellite: {
+                type: 'raster',
+                tiles: pickerMapTilerKey
+                  ? [
+                      `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${pickerMapTilerKey}`,
+                    ]
+                  : [
+                      'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                    ],
+                tileSize: 256,
+                attribution: pickerMapTilerKey ? 'MapTiler' : 'Esri',
+                maxzoom: pickerSatelliteMaxZoom,
+              },
+            },
+            layers: [
+              { id: 'olt-picker-standard', type: 'raster', source: 'standard' },
+              {
+                id: 'olt-picker-satellite',
+                type: 'raster',
+                source: 'satellite',
+                layout: { visibility: 'none' },
+              },
+            ],
+          },
+          center: [initialLng, initialLat],
+          zoom: 13,
+          maxZoom: pickerStandardMaxZoom,
+        });
+        (pickerMap as any).libregl = libregl;
+        pickerMap.addControl(
+          new libregl.NavigationControl({ showCompass: true, showZoom: true }),
+          'top-right',
+        );
+        pickerMap.addControl(
+          new libregl.GeolocateControl({ trackUserLocation: false, showAccuracyCircle: true }),
+          'top-right',
+        );
+        pickerMap.on('click', (event: any) => {
+          const { lat, lng } = event.lngLat;
+          setPickerPoint(Number(lat.toFixed(7)), Number(lng.toFixed(7)));
+        });
+      } else {
+        pickerMap.resize();
+        pickerMap.setCenter([initialLng, initialLat]);
+        pickerMap.setZoom(
+          Math.min(
+            13,
+            pickerViewMode === 'satellite' ? pickerSatelliteMaxZoom : pickerStandardMaxZoom,
+          ),
+        );
+      }
+      syncPickerViewMode();
+      setPickerPoint(initialLat, initialLng);
+    } catch (e: any) {
+      pickerMapUnavailable = true;
+      pickerMapErrorMessage = e?.message || 'Failed to initialize map';
+    } finally {
+      pickerMapLoading = false;
+      pickerMap?.resize();
+    }
+  }
+
+  function closeMapPicker() {
+    showMapPicker = false;
+  }
+
+  function onPickerSearchSelect(event: CustomEvent<{ lat: number; lng: number }>) {
+    const { lat, lng } = event.detail;
+    setPickerPoint(Number(lat.toFixed(7)), Number(lng.toFixed(7)));
+    pickerMap?.flyTo({
+      center: [lng, lat],
+      zoom: Math.max(pickerMap.getZoom(), 15),
+      duration: 480,
+    });
+  }
+
+  function applyPickedCoordinates() {
+    if (pickerLat == null || pickerLng == null) return;
+    formLatitude = pickerLat;
+    formLongitude = pickerLng;
+    closeMapPicker();
+  }
 
   const filtered = $derived.by(() => {
     const q = search.trim().toLowerCase();
@@ -101,6 +275,8 @@
 
   onDestroy(() => {
     if (refreshHandle) clearInterval(refreshHandle);
+    pickerMarker?.remove();
+    pickerMap?.remove();
   });
 
   async function load() {
@@ -428,17 +604,21 @@
           </div>
           <hr class="form-divider">
           <div class="section-label">Lokasi OLT</div>
-          <div class="form-row">
-          <div class="form-group flex-1">
-            <label for="olt-lat">Latitude</label>
-            <input id="olt-lat" type="number" step="any" bind:value={formLatitude} placeholder="-7.123" />
+          <div class="coordinate-row">
+            <div class="form-group coord-group">
+              <label for="olt-lat-b">Latitude</label>
+              <input id="olt-lat-b" type="text" readonly value={formLatitude != null ? formLatitude.toFixed(6) : ''} placeholder="Pilih di peta" />
+            </div>
+            <div class="form-group coord-group">
+              <label for="olt-lng-b">Longitude</label>
+              <input id="olt-lng-b" type="text" readonly value={formLongitude != null ? formLongitude.toFixed(6) : ''} placeholder="Pilih di peta" />
+            </div>
+            <button class="btn ghost map-pick-btn" type="button" onclick={openMapPicker} disabled={saving}>
+              <Icon name="map-pin" size={15} />
+              {formLatitude != null && formLongitude != null ? 'Ubah Titik' : 'Pilih di Peta'}
+            </button>
           </div>
-          <div class="form-group flex-1">
-            <label for="olt-lng">Longitude</label>
-            <input id="olt-lng" type="number" step="any" bind:value={formLongitude} placeholder="112.456" />
-          </div>
-          </div>
-          <div class="form-group">
+          <div class="form-group addr-group">
           <label for="olt-addr">Alamat</label>
           <input id="olt-addr" type="text" bind:value={formAddressLine} placeholder="Jl. Raya No. 123, Kecamatan..." />
           </div>
@@ -468,6 +648,46 @@
   onconfirm={handleConfirmDelete}
   oncancel={() => { deleteTarget = null; }}
 />
+
+<!-- Map Picker Modal -->
+{#if showMapPicker}
+  <div class="modal-backdrop" onclick={closeMapPicker} role="presentation">
+    <div class="modal map-picker-modal" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3>Pilih Lokasi OLT</h3>
+        <button class="icon-btn" type="button" onclick={closeMapPicker}>
+          <Icon name="x" size={18} />
+        </button>
+      </div>
+      <div class="modal-body map-picker-body">
+        <div class="map-picker-help">Klik peta untuk pilih titik, lalu drag marker jika perlu presisi.</div>
+        <div class="map-picker-cords">
+          {#if pickerLat != null && pickerLng != null}
+            <span class="mono-input">{pickerLat.toFixed(7)}, {pickerLng.toFixed(7)}</span>
+          {/if}
+        </div>
+        <MapCanvasShell
+          bind:mapEl={pickerMapHost}
+          bind:viewMode={pickerViewMode}
+          on:searchselect={onPickerSearchSelect}
+          loading={pickerMapLoading}
+          mapUnavailable={pickerMapUnavailable}
+          mapErrorMessage={pickerMapErrorMessage}
+          mapUnavailableTitle="Map unavailable"
+          mapUnavailableSubtitle="Unable to initialize WebGL map on this browser/device."
+          height="min(55vh, 480px)"
+        />
+        <div class="picker-actions">
+          <button class="btn ghost" type="button" onclick={closeMapPicker}>Batal</button>
+          <button class="btn" type="button" onclick={applyPickedCoordinates}>
+            <Icon name="check" size={16} />
+            Gunakan Titik Ini
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .page-content {
@@ -767,6 +987,63 @@
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+  }
+
+  .coordinate-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+  }
+  .coord-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .coord-group input[readonly] {
+    background: var(--bg-hover);
+    cursor: default;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-size: 0.85rem;
+  }
+  .map-pick-btn {
+    flex-shrink: 0;
+    height: 40px;
+    margin-bottom: 0;
+    align-self: flex-end;
+  }
+  .addr-group {
+    margin-top: 2px;
+  }
+  .map-picker-modal {
+    max-width: 820px !important;
+    width: 90vw !important;
+  }
+  .map-picker-body {
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .map-picker-help {
+    padding: 12px 16px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+  }
+  .map-picker-cords {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    background: var(--bg-hover);
+    border-bottom: 1px solid var(--border-color);
+  }
+  .picker-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border-color);
   }
 
   .form-row {
