@@ -23,6 +23,15 @@ fn get_token(headers: &HeaderMap) -> Result<String, crate::error::AppError> {
 }
 
 #[derive(serde::Serialize)]
+pub struct BankAccountResponse {
+    pub id: String,
+    pub bank_name: String,
+    pub account_number: String,
+    pub account_holder: String,
+    pub is_active: bool,
+}
+
+#[derive(serde::Serialize)]
 pub struct PublicSettings {
     pub app_name: Option<String>,
     pub app_description: Option<String>,
@@ -40,6 +49,8 @@ pub struct PublicSettings {
     pub payment_duitku_is_production: bool,
     pub payment_duitku_payment_methods: Option<String>,
     pub payment_manual_enabled: bool,
+    /// Active bank accounts for manual transfer. Only shown if payment_manual_enabled.
+    pub bank_accounts: Vec<BankAccountResponse>,
 }
 
 #[derive(serde::Serialize)]
@@ -124,6 +135,24 @@ pub async fn get_public_settings(
     // In frontend: `sMap["payment_manual_enabled"] !== "false"; // Default true`.
     let payment_manual_enabled = manual_enabled_str.as_deref() != Some("false");
 
+    // Fetch active bank accounts for manual payment
+    let bank_accounts: Vec<BankAccountResponse> = if payment_manual_enabled {
+        let accounts = state.payment_service.list_bank_accounts().await.unwrap_or_default();
+        accounts
+            .into_iter()
+            .filter(|a| a.is_active)
+            .map(|a| BankAccountResponse {
+                id: a.id,
+                bank_name: a.bank_name,
+                account_number: a.account_number,
+                account_holder: a.account_holder,
+                is_active: a.is_active,
+            })
+            .collect()
+    } else {
+        vec![]
+    };
+
     Ok(Json(PublicSettings {
         app_name,
         app_description,
@@ -140,6 +169,7 @@ pub async fn get_public_settings(
         payment_duitku_is_production,
         payment_duitku_payment_methods: duitku_payment_methods,
         payment_manual_enabled,
+        bank_accounts,
     }))
 }
 
