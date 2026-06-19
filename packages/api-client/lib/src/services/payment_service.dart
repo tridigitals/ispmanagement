@@ -62,11 +62,13 @@ class PaymentService {
       if (_storageService == null) {
         throw Exception('StorageService not available');
       }
-      // First upload the file
+      // First upload the file (with payment_invoice_id query param so the
+      // backend can verify portal customer ownership of the invoice)
       final uploadResult = await _storageService!.uploadFile(
         filePath: filePath,
         fileName: fileName,
         contentType: contentType,
+        paymentInvoiceId: invoiceId,
       );
       final fileId = uploadResult.getOrThrow();
 
