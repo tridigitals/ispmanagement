@@ -17,6 +17,7 @@
   import { findCustomerPackageInvoiceRelation } from '$lib/utils/customerPackageInvoice';
 
   let invoices = $state<Invoice[]>([]);
+  let total = $state(0);
   let loading = $state(true);
   let creating = $state(false);
   let bulkGenerating = $state(false);
@@ -42,6 +43,8 @@
     Array<{ id: string; customerId: string; label: string; status: string }>
   >([]);
   let customers = $state<Array<{ id: string; name: string }>>([]);
+  let currentPage = $state(0);
+  let perPage = $state(25);
   const billingNav = $derived.by(() =>
     getAdminBillingNavigation({
       hostname: $page.url.hostname,
@@ -93,24 +96,7 @@
     subscriptionOptions.filter((s) => s.customerId === selectedCustomerId),
   );
 
-  const filteredInvoices = $derived.by(() => {
-    return invoices.filter((inv) => {
-      if (statusFilter !== 'all' && inv.status !== statusFilter) return false;
-      const refDateRaw = inv.created_at || inv.due_date;
-      const refDate = new Date(refDateRaw);
-      if (Number.isNaN(refDate.getTime())) return false;
-
-      if (dateFrom) {
-        const from = new Date(`${dateFrom}T00:00:00`);
-        if (refDate < from) return false;
-      }
-      if (dateTo) {
-        const to = new Date(`${dateTo}T23:59:59`);
-        if (refDate > to) return false;
-      }
-      return true;
-    });
-  });
+  const filteredInvoices = $derived(invoices);
 
   const invoiceStats = $derived.by(() => {
     const source = filteredInvoices;
@@ -135,21 +121,41 @@
   });
   const actionableInvoices = $derived(invoiceStats.pending + invoiceStats.verificationPending);
 
+  let totalPages = $derived(Math.max(1, Math.ceil(total / perPage)));
+
+  $effect(() => {
+    const _status = statusFilter;
+    const _from = dateFrom;
+    const _to = dateTo;
+    const _sortBy = invoiceSortBy;
+    const _sortDir = invoiceSortDirection;
+    if (typeof window === 'undefined') return;
+    const timer = setTimeout(() => {
+      currentPage = 0;
+      loadInvoices();
+    }, 280);
+    return () => clearTimeout(timer);
+  });
+
   onMount(() => {
     if (!$can('read', 'billing') && !$can('manage', 'billing')) {
       goto('/unauthorized');
       return;
     }
-    Promise.all([loadInvoices(), loadSubscriptionOptions()]);
+    Promise.all([loadSubscriptionOptions()]);
   });
 
   async function loadInvoices() {
     loading = true;
     try {
-      invoices = await api.payment.listCustomerPackageInvoices({
+      const res = await api.payment.listCustomerPackageInvoices({
         sort_by: invoiceSortBy,
         sort_dir: invoiceSortDirection,
+        page: currentPage + 1,
+        per_page: perPage,
       });
+      invoices = res.data;
+      total = res.total;
     } catch (e: any) {
       error = e.toString();
       toast.error(
@@ -373,11 +379,13 @@
     const typed = key as (typeof allowed)[number];
     if (invoiceSortBy === typed) {
       invoiceSortDirection = invoiceSortDirection === 'asc' ? 'desc' : 'asc';
+      currentPage = 0;
       void loadInvoices();
       return;
     }
     invoiceSortBy = typed;
     invoiceSortDirection = typed === 'amount' || typed === 'due_date' ? 'desc' : 'asc';
+    currentPage = 0;
     void loadInvoices();
   }
 
@@ -635,6 +643,19 @@
         sortKey={invoiceSortBy}
         sortDirection={invoiceSortDirection}
         onsort={handleInvoiceSort}
+        pagination
+        serverSide
+        pageSize={perPage}
+        count={total}
+        onchange={(p: number) => {
+          currentPage = p;
+          loadInvoices();
+        }}
+        onpageSizeChange={(s: number) => {
+          perPage = s;
+          currentPage = 0;
+          loadInvoices();
+        }}
       >
         {#snippet cell({ item, column })}
           {#if column.key === 'select'}

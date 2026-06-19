@@ -336,7 +336,7 @@ async fn create_public_token(
 async fn delete_public_token(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path((id, token_id)): Path<(String, String)>,
+    Path((_id, token_id)): Path<(String, String)>,
 ) -> AppResult<Json<serde_json::Value>> {
     let (tenant, claims) = tenant_and_claims(&state, &headers).await?;
     state

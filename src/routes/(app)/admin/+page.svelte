@@ -190,8 +190,8 @@
       tasks.push(
         api.payment
           .listCustomerPackageInvoices({ sort_by: 'due_date', sort_dir: 'asc' })
-          .then((rows) => {
-            nextSummary.invoice = summarizeInvoices(rows);
+          .then((res) => {
+            nextSummary.invoice = summarizeInvoices(res.data);
           })
           .catch((error) =>
             console.warn('Failed to load billing summary for admin dashboard', error),

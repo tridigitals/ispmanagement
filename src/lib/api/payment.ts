@@ -11,6 +11,7 @@ import type {
   Invoice,
   InvoiceReminderLogView,
   BillingAnalytics,
+  PaginatedResponse,
 } from './types';
 
 export const payment = {
@@ -57,11 +58,15 @@ export const payment = {
   listCustomerPackageInvoices: (params?: {
     sort_by?: 'invoice_number' | 'description' | 'amount' | 'status' | 'due_date' | 'created_at';
     sort_dir?: 'asc' | 'desc';
-  }): Promise<Invoice[]> =>
+    page?: number;
+    per_page?: number;
+  }): Promise<PaginatedResponse<Invoice>> =>
     safeInvoke('list_customer_package_invoices', {
       token: getTokenOrThrow(),
-      sort_by: params?.sort_by,
-      sort_dir: params?.sort_dir,
+      sort_by: params?.sort_by ?? null,
+      sort_dir: params?.sort_dir ?? null,
+      page: params?.page ?? null,
+      per_page: params?.per_page ?? null,
     }),
 
   generateDueCustomerPackageInvoices: (): Promise<BulkGenerateInvoicesResult> =>

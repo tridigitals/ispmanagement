@@ -34,6 +34,14 @@
   let reminderRows = $state<InvoiceReminderLogView[]>([]);
   let lastRunResult = $state<BillingCollectionRunResult | null>(null);
 
+  let collectionPage = $state(0);
+  let collectionTotal = $state(0);
+  let collectionPerPage = $state(25);
+
+  let reminderPage = $state(0);
+  let reminderTotal = $state(0);
+  let reminderPerPage = $state(25);
+
   let collectionAction = $state('all');
   let collectionResult = $state('all');
   let collectionSearch = $state('');
@@ -659,7 +667,7 @@
     </div>
 
     {#if activeTab === 'collection'}
-      <Table columns={collectionColumns} data={collectionRows} loading={currentLoading}>
+      <Table columns={collectionColumns} data={collectionRows} loading={currentLoading} pagination pageSize={collectionPerPage}>
         {#snippet cell({ item, column })}
           {#if column.key === 'created_at'}
             <div class="time-cell">
@@ -697,7 +705,7 @@
         {/snippet}
       </Table>
     {:else}
-      <Table columns={reminderColumns} data={reminderRows} loading={currentLoading}>
+      <Table columns={reminderColumns} data={reminderRows} loading={currentLoading} pagination pageSize={reminderPerPage}>
         {#snippet cell({ item, column })}
           {#if column.key === 'created_at'}
             <div class="time-cell">

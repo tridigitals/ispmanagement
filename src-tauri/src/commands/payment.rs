@@ -5,7 +5,7 @@ mod helpers;
 
 use crate::models::{
     BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice,
-    InvoiceReminderLogView,
+    InvoiceReminderLogView, PaginatedResponse,
 };
 use crate::services::{
     AuthService, BillingCollectionRunResult, BulkGenerateInvoicesResult, DuitkuPaymentMethod,
@@ -140,9 +140,11 @@ pub async fn list_customer_package_invoices(
     token: String,
     sort_by: Option<String>,
     sort_dir: Option<String>,
+    page: Option<u32>,
+    per_page: Option<u32>,
     auth_service: State<'_, AuthService>,
     payment_service: State<'_, PaymentService>,
-) -> Result<Vec<Invoice>, String> {
+) -> Result<PaginatedResponse<Invoice>, String> {
     let claims = auth_service
         .validate_token(&token)
         .await
@@ -151,7 +153,7 @@ pub async fn list_customer_package_invoices(
     let tenant_id = claims.tenant_id.ok_or("No tenant context")?;
 
     payment_service
-        .list_customer_package_invoices(&tenant_id, sort_by, sort_dir)
+        .list_customer_package_invoices(&tenant_id, sort_by, sort_dir, page.unwrap_or(1), per_page.unwrap_or(25))
         .await
         .map_err(|e| e.to_string())
 }

@@ -598,6 +598,24 @@
       "actions": {
         "generate_from_subscription": "Generate invoice"
       },
+      "analytics": {
+        "title": "Dashboard Billing",
+        "subtitle": "Metrik pendapatan dan ringkasan koleksi",
+        "load_error": "Gagal memuat analitik",
+        "monthly_recurring": "Monthly Recurring Revenue",
+        "annual_recurring": "Annual Recurring Revenue",
+        "revenue_this_month": "Pendapatan Bulan Ini",
+        "active_subs": "Langganan Aktif",
+        "customers": "pelanggan",
+        "collection_rate": "Collection Rate",
+        "avg_days_pay": "Rata-rata hari bayar",
+        "churn_rate": "Churn Rate",
+        "this_month": "Bulan ini",
+        "aging_report": "Aging Report (Overdu)",
+        "total_overdue": "Total Overdue",
+        "no_overdue": "Belum ada invoice overdu 🎉",
+        "revenue_trend": "Revenue Trend (6 bulan)"
+      },
       "toasts": {
         "load_failed": "Gagal memuat invoice billing: {message}",
         "generated": "Invoice berhasil dibuat",
@@ -2944,6 +2962,26 @@
       "description": "Tambahkan rekan kerja Anda untuk berkolaborasi di ruang kerja ini.",
       "no_results": "Anggota tidak ditemukan",
       "try_adjusting": "Coba ubah pencarian atau filter."
+    }
+  },
+  "billing": {
+    "analytics": {
+      "title": "Dashboard Billing",
+      "subtitle": "Metrik pendapatan dan ringkasan koleksi",
+      "load_error": "Gagal memuat analitik",
+      "monthly_recurring": "Monthly Recurring Revenue",
+      "annual_recurring": "Annual Recurring Revenue",
+      "revenue_this_month": "Pendapatan Bulan Ini",
+      "active_subs": "Langganan Aktif",
+      "customers": "pelanggan",
+      "collection_rate": "Collection Rate",
+      "avg_days_pay": "Rata-rata hari bayar",
+      "churn_rate": "Churn Rate",
+      "this_month": "Bulan ini",
+      "aging_report": "Aging Report (Overdu)",
+      "total_overdue": "Total Overdue",
+      "no_overdue": "Belum ada invoice overdu 🎉",
+      "revenue_trend": "Revenue Trend (6 bulan)"
     }
   }
 }

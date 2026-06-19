@@ -3,7 +3,7 @@
 use crate::http::{middleware::CorrelationId, AppState};
 use crate::models::{
     BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice,
-    InvoiceReminderLogView,
+    InvoiceReminderLogView, PaginatedResponse,
 };
 use crate::services::{BillingCollectionRunResult, BulkGenerateInvoicesResult, Claims};
 use axum::{
@@ -97,10 +97,11 @@ struct FxRateResponse {
 }
 
 #[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 struct ListCustomerPackageInvoicesQuery {
     sort_by: Option<String>,
     sort_dir: Option<String>,
+    page: Option<u32>,
+    per_page: Option<u32>,
 }
 
 // Helper to extract and validate token from headers
@@ -629,7 +630,7 @@ async fn list_customer_package_invoices(
     State(state): State<AppState>,
     headers: HeaderMap,
     Query(q): Query<ListCustomerPackageInvoicesQuery>,
-) -> Result<Json<Vec<Invoice>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<PaginatedResponse<Invoice>>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
     let scope = resolve_payment_read_scope(&state, &claims).await?;
     if !matches!(scope, PaymentReadScope::Billing) {
@@ -651,7 +652,7 @@ async fn list_customer_package_invoices(
 
     state
         .payment_service
-        .list_customer_package_invoices(tenant_id, q.sort_by, q.sort_dir)
+        .list_customer_package_invoices(tenant_id, q.sort_by, q.sort_dir, q.page.unwrap_or(1), q.per_page.unwrap_or(25))
         .await
         .map(Json)
         .map_err(|e| {

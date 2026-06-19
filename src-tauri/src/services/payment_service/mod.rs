@@ -12,7 +12,7 @@ use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice,
-    InvoiceReminderLogView,
+    InvoiceReminderLogView, PaginatedResponse,
 };
 use base64::{engine::general_purpose, Engine as _};
 use chrono::{Datelike, Duration, Months, Utc};
@@ -776,7 +776,13 @@ impl PaymentService {
         tenant_id: &str,
         sort_by: Option<String>,
         sort_dir: Option<String>,
-    ) -> AppResult<Vec<Invoice>> {
+        page: u32,
+        per_page: u32,
+    ) -> AppResult<PaginatedResponse<Invoice>> {
+        let page = page.max(1);
+        let per_page = per_page.clamp(1, 100);
+        let offset = ((page - 1) * per_page) as i64;
+        let per_page_i64 = per_page as i64;
         let sort_column = match sort_by
             .unwrap_or_else(|| "created_at".to_string())
             .trim()
@@ -800,6 +806,17 @@ impl PaymentService {
             "asc" => "ASC",
             _ => "DESC",
         };
+        let prefix = format!("{}%", core::CUSTOMER_PACKAGE_INVOICE_PREFIX);
+
+        #[cfg(feature = "postgres")]
+        let total: i64 = sqlx::query_scalar(
+            r#"SELECT COUNT(*) FROM invoices WHERE tenant_id = $1 AND external_id LIKE $2"#,
+        )
+        .bind(tenant_id)
+        .bind(&prefix)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
         #[cfg(feature = "postgres")]
         let invoices = sqlx::query_as::<_, Invoice>(&format!(
@@ -813,25 +830,45 @@ impl PaymentService {
             FROM invoices
             WHERE tenant_id = $1 AND external_id LIKE $2
             ORDER BY {sort_column} {sort_direction}
+            LIMIT $3 OFFSET $4
             "#,
         ))
         .bind(tenant_id)
-        .bind(format!("{}%", core::CUSTOMER_PACKAGE_INVOICE_PREFIX))
+        .bind(&prefix)
+        .bind(per_page_i64)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         #[cfg(feature = "sqlite")]
+        let total: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM invoices WHERE tenant_id = ? AND external_id LIKE ?",
+        )
+        .bind(tenant_id)
+        .bind(&prefix)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
         let invoices = sqlx::query_as::<_, Invoice>(&format!(
-            "SELECT * FROM invoices WHERE tenant_id = ? AND external_id LIKE ? ORDER BY {sort_column} {sort_direction}"
+            "SELECT * FROM invoices WHERE tenant_id = ? AND external_id LIKE ? ORDER BY {sort_column} {sort_direction} LIMIT ? OFFSET ?"
         ))
         .bind(tenant_id)
-        .bind(format!("{}%", core::CUSTOMER_PACKAGE_INVOICE_PREFIX))
+        .bind(&prefix)
+        .bind(per_page_i64)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        Ok(invoices)
+        Ok(PaginatedResponse {
+            data: invoices,
+            total,
+            page,
+            per_page,
+        })
     }
 
     pub async fn list_customer_portal_invoices(

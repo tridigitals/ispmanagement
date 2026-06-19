@@ -148,7 +148,7 @@ impl OltDriver for MikrotikRosDriver {
             }
 
             // For SFP interfaces, poll real-time traffic
-            let (rx_bps, tx_bps, sfp_rx_power) = if running {
+            let (_rx_bps, _tx_bps, _sfp_rx_power) = if running {
                 self.poll_interface_metrics(&name).await.unwrap_or_default()
             } else {
                 (0, 0, None)

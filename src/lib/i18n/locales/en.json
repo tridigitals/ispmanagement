@@ -3190,6 +3190,7 @@
     "to": "To",
     "no_permission": "You do not have permission to view this page.",
     "no_results": "No results",
+    "days": "days",
     "empty": {
       "no_results": "No results"
     },
@@ -4028,6 +4029,7 @@
     "invoices": "Invoices",
     "collections": "Collections",
     "billing_collection": "Billing Logs",
+    "billing_dashboard": "Billing Dashboard",
     "storage": "Storage",
     "subscription": "Subscription",
     "audit_logs": "Audit Logs",
@@ -5307,5 +5309,25 @@
   },
   "customers": {
     "subscriptions": {}
+  },
+  "billing": {
+    "analytics": {
+      "title": "Billing Dashboard",
+      "subtitle": "Revenue metrics and collection overview",
+      "load_error": "Failed to load analytics",
+      "monthly_recurring": "Monthly Recurring Revenue",
+      "annual_recurring": "Annual Recurring Revenue",
+      "revenue_this_month": "Revenue This Month",
+      "active_subs": "Active Subscriptions",
+      "customers": "customers",
+      "collection_rate": "Collection Rate",
+      "avg_days_pay": "Avg days to pay",
+      "churn_rate": "Churn Rate",
+      "this_month": "This month",
+      "aging_report": "Aging Report (Overdue)",
+      "total_overdue": "Total Overdue",
+      "no_overdue": "No overdue invoices 🎉",
+      "revenue_trend": "Revenue Trend (6 months)"
+    }
   }
 }

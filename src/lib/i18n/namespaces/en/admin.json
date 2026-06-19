@@ -845,6 +845,24 @@
       "actions": {
         "generate_from_subscription": "Generate invoice"
       },
+      "analytics": {
+        "title": "Billing Dashboard",
+        "subtitle": "Revenue metrics and collection overview",
+        "load_error": "Failed to load analytics",
+        "monthly_recurring": "Monthly Recurring Revenue",
+        "annual_recurring": "Annual Recurring Revenue",
+        "revenue_this_month": "Revenue This Month",
+        "active_subs": "Active Subscriptions",
+        "customers": "customers",
+        "collection_rate": "Collection Rate",
+        "avg_days_pay": "Avg days to pay",
+        "churn_rate": "Churn Rate",
+        "this_month": "This month",
+        "aging_report": "Aging Report (Overdue)",
+        "total_overdue": "Total Overdue",
+        "no_overdue": "No overdue invoices 🎉",
+        "revenue_trend": "Revenue Trend (6 months)"
+      },
       "toasts": {
         "load_failed": "Failed to load billing invoices: {message}",
         "generated": "Invoice generated successfully",
@@ -2943,6 +2961,26 @@
       "description": "Add your colleagues to collaborate on this workspace.",
       "no_results": "No members found",
       "try_adjusting": "Try adjusting your search or filters."
+    }
+  },
+  "billing": {
+    "analytics": {
+      "title": "Billing Dashboard",
+      "subtitle": "Revenue metrics and collection overview",
+      "load_error": "Failed to load analytics",
+      "monthly_recurring": "Monthly Recurring Revenue",
+      "annual_recurring": "Annual Recurring Revenue",
+      "revenue_this_month": "Revenue This Month",
+      "active_subs": "Active Subscriptions",
+      "customers": "customers",
+      "collection_rate": "Collection Rate",
+      "avg_days_pay": "Avg days to pay",
+      "churn_rate": "Churn Rate",
+      "this_month": "This month",
+      "aging_report": "Aging Report (Overdue)",
+      "total_overdue": "Total Overdue",
+      "no_overdue": "No overdue invoices 🎉",
+      "revenue_trend": "Revenue Trend (6 months)"
     }
   }
 }

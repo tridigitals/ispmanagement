@@ -1,5 +1,5 @@
 use super::AppState;
-use crate::error::{AppError, AppResult};
+use crate::error::AppResult;
 use crate::http::auth::extract_ip;
 use crate::http::domain_resolver::{normalize_host, resolve_request_domain, ResolvedDomainContext};
 use crate::models::{CustomerRegistrationInviteValidationView, RegisterDto, Tenant, User};

@@ -16,8 +16,6 @@ pub mod commands;
 
 #[cfg(feature = "desktop")]
 use tracing::info;
-#[cfg(feature = "desktop")]
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[cfg(all(feature = "desktop", target_os = "linux"))]
 fn init_linux_webview_fallbacks() {

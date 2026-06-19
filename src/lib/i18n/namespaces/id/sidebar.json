@@ -11,6 +11,7 @@
   "invoices": "Invoice",
   "collections": "Koleksi",
   "billing_collection": "Log Billing",
+  "billing_dashboard": "Dashboard Billing",
   "storage": "Penyimpanan",
   "subscription": "Langganan",
   "audit_logs": "Log Audit",

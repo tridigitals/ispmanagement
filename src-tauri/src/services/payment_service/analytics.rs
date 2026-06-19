@@ -68,7 +68,7 @@ pub async fn compute_billing_analytics_for_service(
                  WHEN billing_cycle = 'quarterly' THEN price / 3.0
                  ELSE price
                END
-             ), 0.0)
+             ), 0.0)::FLOAT8
            FROM customer_subscriptions
            WHERE tenant_id = $1 AND status = 'active'"#,
     )
@@ -80,7 +80,7 @@ pub async fn compute_billing_analytics_for_service(
 
     // ── Total revenue this month (paid invoices) ──────────────────────
     let total_revenue: f64 = sqlx::query_scalar(
-        r#"SELECT COALESCE(SUM(amount), 0.0)
+        r#"SELECT COALESCE(SUM(amount), 0.0)::FLOAT8
            FROM invoices
            WHERE tenant_id = $1
              AND status = 'paid'
@@ -116,7 +116,7 @@ pub async fn compute_billing_analytics_for_service(
 
     // ── Average days to pay ───────────────────────────────────────────
     let avg_days: f64 = sqlx::query_scalar(
-        r#"SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (paid_at - created_at)) / 86400.0), 0.0)
+        r#"SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (paid_at - created_at)) / 86400.0), 0.0)::FLOAT8
            FROM invoices
            WHERE tenant_id = $1
              AND status = 'paid'
@@ -131,8 +131,8 @@ pub async fn compute_billing_analytics_for_service(
     // ── Aging report (overdue invoices) ───────────────────────────────
     let aging_rows = sqlx::query(
         r#"SELECT
-               EXTRACT(EPOCH FROM (NOW() - due_date)) / 86400.0 AS days_overdue,
-               amount
+               (EXTRACT(EPOCH FROM (NOW() - due_date)) / 86400.0)::FLOAT8 AS days_overdue,
+               amount::FLOAT8 AS amount
            FROM invoices
            WHERE tenant_id = $1
              AND status IN ('pending', 'overdue')
@@ -197,7 +197,7 @@ pub async fn compute_billing_analytics_for_service(
     let trend_rows = sqlx::query(
         r#"SELECT
                TO_CHAR(DATE_TRUNC('month', paid_at), 'YYYY-MM') AS month,
-               COALESCE(SUM(amount), 0.0) AS revenue
+               COALESCE(SUM(amount), 0.0)::FLOAT8 AS revenue
            FROM invoices
            WHERE tenant_id = $1
              AND status = 'paid'

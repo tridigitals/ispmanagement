@@ -11,6 +11,7 @@
   "invoices": "Invoices",
   "collections": "Collections",
   "billing_collection": "Billing Logs",
+  "billing_dashboard": "Billing Dashboard",
   "storage": "Storage",
   "subscription": "Subscription",
   "audit_logs": "Audit Logs",

@@ -406,7 +406,8 @@
 
   async function openSubscriptionInvoice(subscriptionId: string) {
     try {
-      const invoices = await api.payment.listCustomerPackageInvoices();
+      const res = await api.payment.listCustomerPackageInvoices();
+      const invoices = res.data;
       const invoice = installationInvoiceForSubscription(invoices, subscriptionId);
       if (invoice?.id) {
         await goto(`/pay/${invoice.id}`);
@@ -434,11 +435,12 @@
           await loadDashboardServicesTrackerModal();
         TrackerModalComponent = DashboardServicesTrackerModalComponent;
       }
-      const [res, invoices] = await Promise.all([
+      const [res, invoicesRes] = await Promise.all([
         api.customers.portal.installationTracker(sub.id),
-        api.payment.listCustomerPackageInvoices().catch(() => [] as Invoice[]),
+        api.payment.listCustomerPackageInvoices().catch(() => ({ data: [] as Invoice[], total: 0, page: 1, per_page: 25 })),
       ]);
       const trackerRes = res as CustomerPortalInstallationTrackerResponse;
+      const invoices = invoicesRes.data;
       trackerInvoice = installationInvoiceForSubscription(invoices, sub.id);
       trackerSub = trackerRes.subscription;
       trackerWo = trackerRes.work_order;

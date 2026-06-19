@@ -70,6 +70,7 @@
   "to": "To",
   "no_permission": "You do not have permission to view this page.",
   "no_results": "No results",
+  "days": "days",
   "empty": {
     "no_results": "No results"
   },

@@ -1128,7 +1128,7 @@
     try {
       const result = await billingResourceLoader.load(
         key,
-        () => api.payment.listCustomerPackageInvoices(),
+        () => api.payment.listCustomerPackageInvoices().then(r => r.data),
         options,
       );
       if (result.status === 'loaded') {
