@@ -144,7 +144,7 @@ impl OltService {
         .bind(olt.latitude)
         .bind(olt.longitude)
         .bind(&olt.address_line)
-        .bind(olt.uplink_router_id)
+        .bind(olt.uplink_router_id.clone())
         .bind(&olt.uplink_port)
         .bind(olt.created_at)
         .bind(olt.updated_at)
