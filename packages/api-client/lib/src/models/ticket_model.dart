@@ -186,8 +186,20 @@ class TicketAttachmentModel extends Equatable {
   @JsonKey(name: 'content_type')
   final String contentType;
 
-  /// Whether this is an image file.
-  bool get isImage => contentType.startsWith('image/');
+  /// Resolved content type — falls back to extension inference when the
+  /// server-stored value is empty or `application/octet-stream` (common for
+  /// mobile pickers that don't set a precise multipart Content-Type).
+  String get resolvedContentType {
+    final ct = contentType.trim();
+    if (ct.isNotEmpty && ct != 'application/octet-stream') return ct;
+    return _inferContentTypeFromExt(originalName.isNotEmpty ? originalName : name);
+  }
+
+  /// Whether this is an image file (uses [resolvedContentType]).
+  bool get isImage => resolvedContentType.startsWith('image/');
+
+  /// Whether this is a video file (uses [resolvedContentType]).
+  bool get isVideo => resolvedContentType.startsWith('video/');
 
   /// Human-readable file size.
   String get humanSize {
@@ -279,4 +291,54 @@ class TicketMessageModel extends Equatable {
 
   @override
   List<Object?> get props => [id, ticketId, body, authorName, authorRole, createdAt];
+}
+
+/// Map common file extensions to MIME types — mirrors the backend helper.
+/// Used as a fallback when the server stores `application/octet-stream`.
+String _inferContentTypeFromExt(String filename) {
+  final ext = filename.contains('.')
+      ? filename.split('.').last.toLowerCase()
+      : '';
+  switch (ext) {
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'gif':
+      return 'image/gif';
+    case 'webp':
+      return 'image/webp';
+    case 'bmp':
+      return 'image/bmp';
+    case 'svg':
+      return 'image/svg+xml';
+    case 'heic':
+    case 'heif':
+      return 'image/heic';
+    case 'mp4':
+      return 'video/mp4';
+    case 'mov':
+      return 'video/quicktime';
+    case 'webm':
+      return 'video/webm';
+    case 'mkv':
+      return 'video/x-matroska';
+    case 'avi':
+      return 'video/x-msvideo';
+    case '3gp':
+      return 'video/3gpp';
+    case 'mp3':
+      return 'audio/mpeg';
+    case 'm4a':
+      return 'audio/mp4';
+    case 'wav':
+      return 'audio/wav';
+    case 'ogg':
+      return 'audio/ogg';
+    case 'pdf':
+      return 'application/pdf';
+    default:
+      return 'application/octet-stream';
+  }
 }

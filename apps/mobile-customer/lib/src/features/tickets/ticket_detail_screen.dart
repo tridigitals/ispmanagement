@@ -806,6 +806,25 @@ class _AttachmentWidget extends StatelessWidget {
       );
     }
 
+    // Video: in-app player with lightbox-style preview
+    if (attachment.isVideo) {
+      return FutureBuilder<String?>(
+        future: tokenFuture,
+        builder: (context, snap) {
+          final token = snap.data ?? '';
+          final videoUrl = token.isEmpty
+              ? fileUrl
+              : '$fileUrl?token=$token';
+          return _buildVideoTile(
+            context: context,
+            attachment: attachment,
+            videoUrl: videoUrl,
+            token: token,
+          );
+        },
+      );
+    }
+
     // Non-image: file download link (URL with token query)
     return FutureBuilder<String?>(
       future: tokenFuture,
@@ -974,6 +993,86 @@ class _AttachmentWidget extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// Inline video tile — shows a play icon overlay; tap opens lightbox player.
+  Widget _buildVideoTile({
+    required BuildContext context,
+    required TicketAttachmentModel attachment,
+    required String videoUrl,
+    required String token,
+  }) {
+    final isp = context.isp;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: IspSpacing.xs),
+      child: InkWell(
+        onTap: () => _openVideoUrl(context, videoUrl),
+        borderRadius: BorderRadius.circular(IspRadii.sm),
+        child: Container(
+          width: 220,
+          padding: const EdgeInsets.all(IspSpacing.md),
+          decoration: BoxDecoration(
+            color: (isStaff ? Colors.black : Colors.white).withOpacity(0.08),
+            borderRadius: BorderRadius.circular(IspRadii.sm),
+            border: Border.all(
+              color: isp.borderSubtle.withOpacity(0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isp.accent.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.play_arrow_rounded,
+                  color: isp.accent,
+                ),
+              ),
+              const SizedBox(width: IspSpacing.sm),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      attachment.originalName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isStaff ? isp.textPrimary : Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      attachment.humanSize,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isp.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Open video — uses the system default video player via Android intent filter.
+  /// With correct content_type (video/mp4), Android picks the gallery/video player
+  /// instead of the browser. Authenticated via ?token= query parameter so the
+  /// intent receiver can fetch the file directly.
+  void _openVideoUrl(BuildContext context, String url) {
+    launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
     );
   }
 }

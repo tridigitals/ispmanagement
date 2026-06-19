@@ -22,6 +22,72 @@ pub struct FileAccessQuery {
     pub token: Option<String>,
 }
 
+/// Infer MIME type from file extension when the multipart field doesn't provide one.
+///
+/// Many mobile pickers (image_picker, file_picker) don't set a precise `Content-Type`
+/// on the multipart field, so the backend receives `application/octet-stream`. Without
+/// a correct content_type, the mobile client can't distinguish images from videos or
+/// documents for in-app previews.
+fn infer_content_type_from_ext(filename: &str) -> Option<&'static str> {
+    let ext = std::path::Path::new(filename)
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    match ext.as_str() {
+        // images
+        "jpg" | "jpeg" => Some("image/jpeg"),
+        "png" => Some("image/png"),
+        "gif" => Some("image/gif"),
+        "webp" => Some("image/webp"),
+        "bmp" => Some("image/bmp"),
+        "svg" => Some("image/svg+xml"),
+        "heic" | "heif" => Some("image/heic"),
+        // video
+        "mp4" => Some("video/mp4"),
+        "mov" => Some("video/quicktime"),
+        "webm" => Some("video/webm"),
+        "mkv" => Some("video/x-matroska"),
+        "avi" => Some("video/x-msvideo"),
+        "3gp" => Some("video/3gpp"),
+        // audio
+        "mp3" => Some("audio/mpeg"),
+        "m4a" => Some("audio/mp4"),
+        "wav" => Some("audio/wav"),
+        "ogg" => Some("audio/ogg"),
+        // docs
+        "pdf" => Some("application/pdf"),
+        "doc" => Some("application/msword"),
+        "docx" => Some("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+        "xls" => Some("application/vnd.ms-excel"),
+        "xlsx" => Some("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+        "ppt" => Some("application/vnd.ms-powerpoint"),
+        "pptx" => Some("application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+        "txt" => Some("text/plain"),
+        "csv" => Some("text/csv"),
+        "json" => Some("application/json"),
+        "xml" => Some("application/xml"),
+        // archives
+        "zip" => Some("application/zip"),
+        "rar" => Some("application/x-rar-compressed"),
+        "7z" => Some("application/x-7z-compressed"),
+        _ => None,
+    }
+}
+
+/// Resolve content_type preferring multipart field, falling back to extension inference.
+/// Only falls back when the multipart-provided value is empty or the generic
+/// `application/octet-stream` placeholder.
+fn resolve_content_type(multipart_ct: Option<&str>, filename: &str) -> String {
+    let trimmed = multipart_ct.map(str::trim).unwrap_or("");
+    if !trimmed.is_empty() && trimmed != "application/octet-stream" {
+        return trimmed.to_string();
+    }
+    infer_content_type_from_ext(filename)
+        .unwrap_or("application/octet-stream")
+        .to_string()
+}
+
 fn extract_auth_token(headers: &HeaderMap, query_token: Option<&str>) -> Result<String, Response> {
     if let Some(token) = headers
         .get(header::AUTHORIZATION)
@@ -638,10 +704,8 @@ pub async fn upload_file_http(
 
         if name == "file" {
             let file_name = field.file_name().unwrap_or("upload.bin").to_string();
-            let content_type = field
-                .content_type()
-                .unwrap_or("application/octet-stream")
-                .to_string();
+            let content_type =
+                resolve_content_type(field.content_type(), &file_name);
 
             let ext = std::path::Path::new(&file_name)
                 .extension()
