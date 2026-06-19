@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:api_client/api_client.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -7,9 +8,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gal/gal.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:ui_kit/ui_kit.dart';
@@ -746,7 +749,7 @@ class _MessageBubble extends StatelessWidget {
 }
 
 /// Displays a single attachment — image inline, other files as download link.
-class _AttachmentWidget extends StatelessWidget {
+class _AttachmentWidget extends StatefulWidget {
   const _AttachmentWidget({
     required this.attachment,
     required this.baseUrl,
@@ -760,6 +763,19 @@ class _AttachmentWidget extends StatelessWidget {
   final Future<String?> tokenFuture;
   final bool isStaff;
   final Dio dio;
+
+  @override
+  State<_AttachmentWidget> createState() => _AttachmentWidgetState();
+}
+
+class _AttachmentWidgetState extends State<_AttachmentWidget> {
+  bool _downloadingVideo = false;
+
+  TicketAttachmentModel get attachment => widget.attachment;
+  String get baseUrl => widget.baseUrl;
+  Future<String?> get tokenFuture => widget.tokenFuture;
+  bool get isStaff => widget.isStaff;
+  Dio get dio => widget.dio;
 
   @override
   Widget build(BuildContext context) {
@@ -806,7 +822,7 @@ class _AttachmentWidget extends StatelessWidget {
       );
     }
 
-    // Video: in-app player with lightbox-style preview
+    // Video: inline tile that downloads to gallery on tap (no browser).
     if (attachment.isVideo) {
       return FutureBuilder<String?>(
         future: tokenFuture,
@@ -996,7 +1012,9 @@ class _AttachmentWidget extends StatelessWidget {
     );
   }
 
-  /// Inline video tile — shows a play icon overlay; tap opens lightbox player.
+  /// Inline video tile — shows a play icon overlay; tap downloads to device
+  /// gallery via [Gal.putVideo] (handles Android scoped storage + permission).
+  /// No browser, no external video player — file lands in Movies/Album.
   Widget _buildVideoTile({
     required BuildContext context,
     required TicketAttachmentModel attachment,
@@ -1007,7 +1025,14 @@ class _AttachmentWidget extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: IspSpacing.xs),
       child: InkWell(
-        onTap: () => _openVideoUrl(context, videoUrl),
+        onTap: _downloadingVideo
+            ? null
+            : () => _downloadAndSaveVideo(
+                  context: context,
+                  videoUrl: videoUrl,
+                  token: token,
+                  attachment: attachment,
+                ),
         borderRadius: BorderRadius.circular(IspRadii.sm),
         child: Container(
           width: 220,
@@ -1028,10 +1053,18 @@ class _AttachmentWidget extends StatelessWidget {
                   color: isp.accent.withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.play_arrow_rounded,
-                  color: isp.accent,
-                ),
+                child: _downloadingVideo
+                    ? Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: isp.accent,
+                        ),
+                      )
+                    : Icon(
+                        Icons.download_rounded,
+                        color: isp.accent,
+                      ),
               ),
               const SizedBox(width: IspSpacing.sm),
               Flexible(
@@ -1045,6 +1078,16 @@ class _AttachmentWidget extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         color: isStaff ? isp.textPrimary : Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _downloadingVideo
+                          ? 'Mengunduh…'
+                          : 'Tap untuk unduh ke galeri',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isp.textMuted,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -1065,14 +1108,91 @@ class _AttachmentWidget extends StatelessWidget {
     );
   }
 
-  /// Open video — uses the system default video player via Android intent filter.
-  /// With correct content_type (video/mp4), Android picks the gallery/video player
-  /// instead of the browser. Authenticated via ?token= query parameter so the
-  /// intent receiver can fetch the file directly.
-  void _openVideoUrl(BuildContext context, String url) {
-    launchUrl(
-      Uri.parse(url),
-      mode: LaunchMode.externalApplication,
-    );
+  /// Download the video file to the temp directory, then save it to the
+  /// device gallery via [Gal]. Authenticated using the bearer token header
+  /// (matches how the lightbox image preview authenticates).
+  ///
+  /// On Android 13+, scoped storage means we cannot write directly to
+  /// `/storage/emulated/0/...` — we go through MediaStore via [Gal.putVideo]
+  /// which is the supported path.
+  Future<void> _downloadAndSaveVideo({
+    required BuildContext context,
+    required String videoUrl,
+    required String token,
+    required TicketAttachmentModel attachment,
+  }) async {
+    if (_downloadingVideo) return;
+    setState(() => _downloadingVideo = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      // Request gallery access upfront — fail fast with friendly message if
+      // user has previously denied.
+      final hasAccess = await Gal.hasAccess(toAlbum: true);
+      if (!hasAccess) {
+        final granted = await Gal.requestAccess(toAlbum: true);
+        if (!granted) {
+          if (!mounted) return;
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Izin akses galeri ditolak. Aktifkan di pengaturan HP.',
+              ),
+            ),
+          );
+          return;
+        }
+      }
+
+      // Download to temp dir — use original filename so Gal can derive a
+      // sensible filename when writing to MediaStore.
+      final tempDir = await getTemporaryDirectory();
+      final safeName = attachment.originalName.isNotEmpty
+          ? attachment.originalName
+          : 'video_${attachment.id}.mp4';
+      final tempPath = '${tempDir.path}/$safeName';
+      await dio.download(
+        videoUrl,
+        tempPath,
+        options: token.isEmpty
+            ? null
+            : Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      // Save to gallery via MediaStore (Android) / Photos (iOS).
+      await Gal.putVideo(tempPath, album: 'Ticket Attachments');
+
+      // Cleanup temp file — Gal copies into MediaStore.
+      try {
+        await File(tempPath).delete();
+      } catch (_) {/* best effort */}
+
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Tersimpan di galeri: $safeName'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } on GalException catch (e) {
+      debugPrint('[ticket-attachment] gal save failed: ${e.type.message}');
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Gagal simpan: ${e.type.message}')),
+      );
+    } on DioException catch (e) {
+      debugPrint('[ticket-attachment] download failed: ${e.message}');
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Gagal unduh: ${e.message ?? 'network error'}')),
+      );
+    } catch (e) {
+      debugPrint('[ticket-attachment] save failed: $e');
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Gagal simpan: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _downloadingVideo = false);
+    }
   }
 }
