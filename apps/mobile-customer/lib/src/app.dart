@@ -95,6 +95,7 @@ class _State extends ConsumerState<IspCustomerApp> {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ref.watch(themeModeProvider),
+      locale: ref.watch(localeProvider),
       debugShowCheckedModeBanner: false,
       routerConfig: _router,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
