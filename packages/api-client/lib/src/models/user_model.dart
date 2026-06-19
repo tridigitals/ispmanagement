@@ -58,10 +58,28 @@ class UserModel extends Equatable {
   /// Permission keys for granular RBAC checks.
   final List<String> permissions;
 
-  bool get isCustomer => role == 'customer';
-  bool get isStaff => role == 'staff' || role == 'technician';
-  bool get isTenantAdmin => role == 'tenant_admin';
-  bool get isSuperAdminUser => isSuperAdmin || role == 'super_admin';
+  // Role comparisons are case-insensitive because the backend serves roles
+  // from `tenant_members.roles.name` which is seeded as TitleCase ("Customer",
+  // "Technician") while this model historically used lowercase. Backend's
+  // `is_customer_role` helper uses `eq_ignore_ascii_case`; mobile must match.
+  //
+  // We also accept `user` as a customer alias: the `users.role` column default
+  // is `'user'::text`, so users without a `tenant_members` row (or with one
+  // whose role override didn't fire) carry that generic value. Treating it
+  // as customer lets end-user subscribers through even when the role
+  // override chain drops them back to the generic bucket.
+  bool get isCustomer {
+    final r = role.toLowerCase();
+    return r == 'customer' || r == 'user';
+  }
+
+  bool get isStaff {
+    final r = role.toLowerCase();
+    return r == 'staff' || r == 'technician';
+  }
+
+  bool get isTenantAdmin => role.toLowerCase() == 'tenant_admin';
+  bool get isSuperAdminUser => isSuperAdmin || role.toLowerCase() == 'super_admin';
 
   bool can(String action, String resource) {
     return permissions.contains('$action:$resource') ||
