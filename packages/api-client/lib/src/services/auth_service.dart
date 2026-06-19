@@ -6,6 +6,7 @@ import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
 import '../auth/auth_token_storage.dart';
 import '../models/user_model.dart';
+import '../models/public_settings_model.dart';
 
 part 'auth_service.g.dart';
 
@@ -228,6 +229,21 @@ class AuthService {
     final token = await tokenStorage.readToken();
     if (token == null) return false;
     return token.isNotEmpty;
+  }
+
+  /// Fetch public settings from /api/settings/public (no auth required).
+  Future<ServiceResult<PublicSettingsModel>> settingsPublic() async {
+    return _execute(() async {
+      // Use a plain Dio without auth interceptor for public endpoint
+      final plainDio = Dio(BaseOptions(
+        baseUrl: dio.options.baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      ));
+      final response = await plainDio.get(ApiEndpoints.publicSettings);
+      final data = response.data as Map<String, dynamic>;
+      return PublicSettingsModel.fromJson(data);
+    });
   }
 
   Future<ServiceResult<T>> _execute<T>(Future<T> Function() body) async {

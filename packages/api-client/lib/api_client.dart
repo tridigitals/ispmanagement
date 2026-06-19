@@ -14,6 +14,7 @@ export 'src/models/payment_model.dart';
 export 'src/models/subscription_model.dart';
 export 'src/models/ticket_model.dart';
 export 'src/models/user_model.dart';
+export 'src/models/public_settings_model.dart';
 export 'src/models/work_order_model.dart';
 export 'src/realtime/realtime_client.dart';
 export 'src/services/announcement_service.dart';

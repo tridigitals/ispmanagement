@@ -1,5 +1,6 @@
 import 'package:api_client/api_client.dart' hide Success, Failure;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,6 +9,7 @@ import 'package:ui_kit/ui_kit.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/feature_providers.dart';
 import '../../services/payment_providers.dart';
+import '../../services/public_settings_providers.dart';
 
 /// Payment method picker: Midtrans or Duitku, with dynamic channel listing.
 class PaymentScreen extends ConsumerStatefulWidget {
@@ -29,83 +31,233 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   @override
   Widget build(BuildContext context) {
 
-
-    final isp = context.isp;    final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
+    final settingsAsync = ref.watch(publicSettingsProvider);
     final channelsAsync = ref.watch(
       paymentChannelsProvider(widget.invoiceId),
     );
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.choosePaymentMethod)),
-      body: ListView(
-        padding: const EdgeInsets.all(IspSpacing.lg),
-        children: [
-          Text(
-            'Pilih metode pembayaran yang Anda inginkan',
-            style: TextStyle(
-              fontSize: 14,
-              color: isp.textMuted,
-            ),
-          ),
-          const SizedBox(height: IspSpacing.lg),
+      body: settingsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, __) => _buildPaymentList(context, isp, l10n, null, channelsAsync),
+        data: (settings) => _buildPaymentList(context, isp, l10n, settings, channelsAsync),
+      ),
+    );
+  }
 
-          // ── Gateway quick-picks ──
-          _PaymentMethodTile(
-            icon: Icons.payment,
-            name: 'Midtrans',
-            description: 'Virtual Account, QRIS, E-Wallet, Credit Card',
-            onTap: () => _pay(context, ref, 'midtrans'),
-          ),
-          const SizedBox(height: IspSpacing.md),
-          _PaymentMethodTile(
-            icon: Icons.account_balance_wallet,
-            name: 'Duitku',
-            description: 'Virtual Account, Convenience Store, E-Wallet',
-            onTap: () => _pay(context, ref, 'duitku'),
-          ),
+  Widget _buildPaymentList(
+    BuildContext context,
+    IspThemeColors isp,
+    AppLocalizations l10n,
+    PublicSettingsModel? settings,
+    AsyncValue<List<PaymentChannel>> channelsAsync,
+  ) {
+    final midtransEnabled = settings?.paymentMidtransEnabled ?? false;
+    final duitkuEnabled = settings?.paymentDuitkuEnabled ?? false;
+    final manualEnabled = settings?.paymentManualEnabled ?? false;
+    final bankAccounts = settings?.activeBankAccounts ?? [];
 
-          // ── Dynamic payment channels from API ──
-          channelsAsync.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.only(top: IspSpacing.lg),
-              child: Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
+    // Gateways: only show if enabled in tenant settings
+    final showMidtrans = midtransEnabled;
+    final showDuitku = duitkuEnabled;
+    final showManual = manualEnabled && bankAccounts.isNotEmpty;
+
+    if (!showMidtrans && !showDuitku && !showManual && (channelsAsync.valueOrNull?.isEmpty ?? true)) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.payments_outlined, size: 64, color: isp.textMuted),
+              const SizedBox(height: 16),
+              Text(
+                'Tidak ada metode pembayaran tersedia',
+                style: TextStyle(color: isp.textMuted),
+                textAlign: TextAlign.center,
               ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(IspSpacing.lg),
+      children: [
+        Text(
+          'Pilih metode pembayaran yang Anda inginkan',
+          style: TextStyle(fontSize: 14, color: isp.textMuted),
+        ),
+        const SizedBox(height: IspSpacing.lg),
+
+        // Manual Bank Transfer
+        if (showManual) ...[
+          ...bankAccounts.map((bank) => Padding(
+            padding: const EdgeInsets.only(bottom: IspSpacing.sm),
+            child: _BankTransferTile(
+              bank: bank,
+              onTap: () => _showBankTransferDialog(context, isp, l10n, bank),
+              onCopy: (text) => _copyToClipboard(context, text),
             ),
-            error: (e, _) => const SizedBox.shrink(), // Silently ignore errors
-            data: (channels) {
-              if (channels.isEmpty) return const SizedBox.shrink();
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          )),
+          const SizedBox(height: IspSpacing.md),
+        ],
+
+        // Midtrans
+        if (showMidtrans)
+          Padding(
+            padding: const EdgeInsets.only(bottom: IspSpacing.md),
+            child: _PaymentMethodTile(
+              icon: Icons.payment,
+              name: 'Midtrans',
+              description: 'Virtual Account, QRIS, E-Wallet, Credit Card',
+              onTap: () => _pay(context, ref, 'midtrans'),
+            ),
+          ),
+
+        // Duitku
+        if (showDuitku)
+          Padding(
+            padding: const EdgeInsets.only(bottom: IspSpacing.md),
+            child: _PaymentMethodTile(
+              icon: Icons.account_balance_wallet,
+              name: 'Duitku',
+              description: 'Virtual Account, Convenience Store, E-Wallet',
+              onTap: () => _pay(context, ref, 'duitku'),
+            ),
+          ),
+
+        // Dynamic channels from API
+        channelsAsync.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.only(top: IspSpacing.lg),
+            child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+          ),
+          error: (_, __) => const SizedBox.shrink(),
+          data: (channels) {
+            if (channels.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Divider(),
+                const SizedBox(height: IspSpacing.md),
+                Text('Metode Lainnya', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isp.textSecondary)),
+                const SizedBox(height: IspSpacing.md),
+                ...channels.map((ch) => Padding(
+                  padding: const EdgeInsets.only(bottom: IspSpacing.sm),
+                  child: _PaymentChannelTile(channel: ch, onTap: () => _payChannel(context, ref, ch)),
+                )),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  void _copyToClipboard(BuildContext context, String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Nomor rekening berhasil disalin'), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  void _showBankTransferDialog(
+    BuildContext context,
+    IspThemeColors isp,
+    AppLocalizations l10n,
+    BankAccountModel bank,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Transfer ke ${bank.bankName}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _InfoRow(label: 'Bank', value: bank.bankName),
+            const SizedBox(height: 8),
+            _InfoRow(label: 'Atas Nama', value: bank.accountHolder),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(child: _InfoRow(label: 'No. Rekening', value: bank.accountNumber)),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 18),
+                  onPressed: () {
+                    _copyToClipboard(ctx, bank.accountNumber);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isp.accentSurface,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
                 children: [
-                  const SizedBox(height: IspSpacing.lg),
-                  const Divider(),
-                  const SizedBox(height: IspSpacing.md),
-                  Text(
-                    'Metode Lainnya',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isp.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: IspSpacing.md),
-                  ...channels.map(
-                    (ch) => Padding(
-                      padding: const EdgeInsets.only(bottom: IspSpacing.sm),
-                      child: _PaymentChannelTile(
-                        channel: ch,
-                        onTap: () => _payChannel(context, ref, ch),
-                      ),
+                  Icon(Icons.info_outline, size: 16, color: isp.accent),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Lakukan pembayaran laluupload bukti transfer',
+                      style: TextStyle(fontSize: 12, color: isp.accent),
                     ),
                   ),
                 ],
-              );
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _showUploadProofDialog(context, isp, l10n, bank);
             },
+            child: const Text('Upload Bukti Bayar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showUploadProofDialog(
+    BuildContext context,
+    IspThemeColors isp,
+    AppLocalizations l10n,
+    BankAccountModel bank,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Upload Bukti Transfer'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Fitur upload bukti transfer sedang dalam pengembangan. '
+              'Saat ini silakan lakukan pembayaran dan tunggu konfirmasi manual dari admin.',
+              style: TextStyle(fontSize: 13, color: isp.textSecondary),
+            ),
+          ],
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
           ),
         ],
       ),
@@ -334,5 +486,102 @@ class _PaymentChannelTile extends StatelessWidget {
       case PaymentMethod.unknown:
         return Icons.payment;
     }
+  }
+}
+
+/// Bank transfer tile — shows bank name, account number, masked.
+class _BankTransferTile extends StatelessWidget {
+  const _BankTransferTile({
+    required this.bank,
+    required this.onTap,
+    required this.onCopy,
+  });
+
+  final BankAccountModel bank;
+  final VoidCallback onTap;
+  final void Function(String) onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    return IspCard(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: isp.accentSurface,
+              borderRadius: BorderRadius.circular(IspRadii.md),
+            ),
+            child: Center(
+              child: Text(
+                bank.bankName.substring(0, bank.bankName.length.clamp(0, 3)).toUpperCase(),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: isp.accent,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: IspSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Transfer ${bank.bankName}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  bank.maskedNumber,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isp.textMuted,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+                Text(
+                  bank.accountHolder,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isp.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.copy, size: 18, color: isp.textMuted),
+          const SizedBox(width: 4),
+          Icon(Icons.chevron_right, color: isp.textMuted),
+        ],
+      ),
+    );
+  }
+}
+
+/// Simple label-value row for info dialogs.
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 11, color: isp.textMuted)),
+        const SizedBox(height: 2),
+        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+      ],
+    );
   }
 }
