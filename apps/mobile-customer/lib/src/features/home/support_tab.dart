@@ -142,35 +142,9 @@ class _SupportTabState extends ConsumerState<SupportTab> {
       );
     }
 
-    if (_items.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.support_agent_outlined,
-              size: 64,
-              color: isp.textMuted,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              l10n.noTickets,
-              style: TextStyle(color: isp.textMuted),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () => GoRouter.of(context).push('/tickets/new'),
-              icon: const Icon(Icons.add),
-              label: Text(l10n.newTicket),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Column(
       children: [
-        // Category filter chips
+        // Category filter chips — always visible so user can recover from empty filtered results
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -209,42 +183,68 @@ class _SupportTabState extends ConsumerState<SupportTab> {
           ),
         ),
         Expanded(
-          child: NotificationListener<ScrollNotification>(
-            onNotification: _onScroll,
-            child: RefreshIndicator(
-              color: isp.accent,
-              onRefresh: () async {
-                setState(() {
-                  _items.clear();
-                  _page = 1;
-                  _hasMore = true;
-                  _initialLoaded = false;
-                });
-                await _loadInitial();
-              },
-              child: ListView.builder(
-                padding: const EdgeInsets.only(bottom: 100),
-                itemCount: _items.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == _items.length) {
-                    return _loadingMore
-                        ? const Padding(
-                            padding: EdgeInsets.all(24),
-                            child: Center(
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              ),
-                            ),
-                          )
-                        : const SizedBox.shrink();
-                  }
-                  return _TicketTile(t: _items[index]);
-                },
-              ),
-            ),
-          ),
+          child: _items.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.support_agent_outlined,
+                        size: 64,
+                        color: isp.textMuted,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        l10n.noTickets,
+                        style: TextStyle(color: isp.textMuted),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () =>
+                            GoRouter.of(context).push('/tickets/new'),
+                        icon: const Icon(Icons.add),
+                        label: Text(l10n.newTicket),
+                      ),
+                    ],
+                  ),
+                )
+              : NotificationListener<ScrollNotification>(
+                  onNotification: _onScroll,
+                  child: RefreshIndicator(
+                    color: isp.accent,
+                    onRefresh: () async {
+                      setState(() {
+                        _items.clear();
+                        _page = 1;
+                        _hasMore = true;
+                        _initialLoaded = false;
+                      });
+                      await _loadInitial();
+                    },
+                    child: ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 100),
+                      itemCount: _items.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == _items.length) {
+                          return _loadingMore
+                              ? const Padding(
+                                  padding: EdgeInsets.all(24),
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    ),
+                                  ),
+                                )
+                              : const SizedBox.shrink();
+                        }
+                        return _TicketTile(t: _items[index]);
+                      },
+                    ),
+                  ),
+                ),
         ),
       ],
     );
