@@ -44,6 +44,11 @@
   let formPort = $state(161);
   let formUsername = $state('');
   let formPassword = $state('');
+  let formLatitude = $state<number | null>(null);
+  let formLongitude = $state<number | null>(null);
+  let formAddressLine = $state('');
+
+  const tenantPrefix = $derived($page.url.pathname.replace(/\/admin\/network\/olts.*$/, '') || '');
 
   const filtered = $derived.by(() => {
     const q = search.trim().toLowerCase();
@@ -127,6 +132,9 @@
     formPort = 161;
     formUsername = '';
     formPassword = '';
+    formLatitude = null;
+    formLongitude = null;
+    formAddressLine = '';
     showModal = true;
   }
 
@@ -139,6 +147,9 @@
     formPort = o.port || 161;
     formUsername = o.username || '';
     formPassword = '';
+    formLatitude = o.latitude ?? null;
+    formLongitude = o.longitude ?? null;
+    formAddressLine = o.address_line ?? '';
     showModal = true;
   }
 
@@ -164,6 +175,9 @@
           port: formPort,
           username,
           password: formPassword.trim() ? formPassword : undefined,
+          latitude: formLatitude,
+          longitude: formLongitude,
+          address_line: formAddressLine.trim() || null,
         });
         toast.success('OLT berhasil diperbarui.');
       } else {
@@ -175,6 +189,9 @@
           port: formPort,
           username,
           password: formPassword,
+          latitude: formLatitude,
+          longitude: formLongitude,
+          address_line: formAddressLine.trim() || null,
         });
         toast.success('OLT berhasil ditambahkan.');
       }
@@ -185,6 +202,19 @@
     } finally {
       saving = false;
     }
+  }
+
+  function openOnMap(o: Olt) {
+    if (o.latitude == null || o.longitude == null) {
+      toast.error('OLT belum memiliki koordinat lokasi.');
+      return;
+    }
+    const params = new URLSearchParams({
+      asset_id: o.id,
+      asset_lat: String(o.latitude),
+      asset_lng: String(o.longitude),
+    });
+    void goto(`${tenantPrefix}/admin/network/map?${params.toString()}`);
   }
 
   async function testConnection(o: Olt) {
@@ -330,6 +360,9 @@
             <button class="icon-btn" type="button" onclick={() => openDetail(item)} title="Buka">
               <Icon name="arrow-right" size={16} />
             </button>
+            <button class="icon-btn" type="button" onclick={() => openOnMap(item)} disabled={item.latitude == null || item.longitude == null} title="Lihat di Peta">
+              <Icon name="map-pin" size={16} />
+            </button>
             <button class="icon-btn" type="button" onclick={() => testConnection(item)} disabled={testingId === item.id} title="Test Koneksi">
               <Icon name="zap" size={16} />
             </button>
@@ -392,9 +425,25 @@
             <label for="olt-pass">Password {@html editing ? '' : '<span class="req">*</span>'}</label>
             <input id="olt-pass" type="password" bind:value={formPassword} placeholder={editing ? 'Kosongkan jika tidak diubah' : '••••••'} />
           </div>
-        </div>
-      </div>
-      <div class="modal-footer">
+          </div>
+          <hr class="form-divider">
+          <div class="section-label">Lokasi OLT</div>
+          <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="olt-lat">Latitude</label>
+            <input id="olt-lat" type="number" step="any" bind:value={formLatitude} placeholder="-7.123" />
+          </div>
+          <div class="form-group flex-1">
+            <label for="olt-lng">Longitude</label>
+            <input id="olt-lng" type="number" step="any" bind:value={formLongitude} placeholder="112.456" />
+          </div>
+          </div>
+          <div class="form-group">
+          <label for="olt-addr">Alamat</label>
+          <input id="olt-addr" type="text" bind:value={formAddressLine} placeholder="Jl. Raya No. 123, Kecamatan..." />
+          </div>
+          </div>
+          <div class="modal-footer">
         <button class="btn ghost" type="button" onclick={() => (showModal = false)}>Batal</button>
         <button class="btn" type="button" onclick={save} disabled={saving}>
           {#if saving}
@@ -706,6 +755,18 @@
   .form-group input:focus,
   .form-group select:focus {
     border-color: var(--color-primary);
+  }
+  .form-divider {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 4px 0;
+  }
+  .section-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   .form-row {

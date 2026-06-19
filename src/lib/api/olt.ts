@@ -14,6 +14,9 @@ export interface Olt {
   last_updated?: string | null;
   last_error?: string | null;
   last_stats?: any;
+  latitude?: number | null;
+  longitude?: number | null;
+  address_line?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -128,6 +131,9 @@ export const olt = {
     port: number;
     username: string;
     password: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    address_line?: string | null;
   }): Promise<Olt> =>
     safeInvoke('create_olt', {
       token: getTokenOrThrow(),
@@ -138,6 +144,9 @@ export const olt = {
       port: data.port,
       username: data.username,
       password: data.password,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
+      address_line: data.address_line ?? null,
     }).then((r: any) => unwrap<Olt>(r)),
 
   test: (data: {
@@ -170,6 +179,9 @@ export const olt = {
       port?: number;
       username?: string;
       password?: string;
+      latitude?: number | null;
+      longitude?: number | null;
+      address_line?: string | null;
     },
   ): Promise<Olt> =>
     safeInvoke('update_olt', {

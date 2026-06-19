@@ -206,11 +206,13 @@ pub async fn start_server_impl(
     });
 
     let onu_linker = crate::services::onu_linker::OnuLinker::new(pool.clone());
+    let network_mapping_arc = Arc::new(network_mapping_service.clone()); // Sprint C
     let olt_service = Arc::new(crate::services::OltService::new(
         pool.clone(),
         notification_service.clone(),
         audit_service.clone(),
         network_asset_service.clone(),
+        network_mapping_arc, // Sprint C: propagate OLT → topology map
         onu_linker,
     ));
 

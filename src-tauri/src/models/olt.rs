@@ -24,6 +24,11 @@ pub struct Olt {
     pub is_online: bool,
     pub last_polled_at: Option<DateTime<Utc>>,
     pub last_error: Option<String>,
+    /// Geographic coordinates for the OLT physical location.
+    /// Sprint C: surfaced via the network map (network_mapping_service).
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub address_line: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -38,6 +43,9 @@ impl Olt {
         port: i32,
         username: String,
         password_enc: Option<String>,
+        latitude: Option<f64>,
+        longitude: Option<f64>,
+        address_line: Option<String>,
     ) -> Self {
         let now = Utc::now();
         Self {
@@ -55,6 +63,9 @@ impl Olt {
             is_online: false,
             last_polled_at: None,
             last_error: None,
+            latitude,
+            longitude,
+            address_line,
             created_at: now,
             updated_at: now,
         }
@@ -74,6 +85,14 @@ pub struct CreateOltRequest {
     pub port: i32,
     pub username: String,
     pub password: String,
+    /// Sprint C: optional geographic coordinates for map placement.
+    /// Both must be provided together or both omitted.
+    #[serde(default)]
+    pub latitude: Option<f64>,
+    #[serde(default)]
+    pub longitude: Option<f64>,
+    #[serde(default)]
+    pub address_line: Option<String>,
 }
 
 fn default_olt_port() -> i32 {
@@ -83,11 +102,38 @@ fn default_olt_port() -> i32 {
 #[derive(Debug, Deserialize)]
 pub struct UpdateOltRequest {
     pub name: Option<String>,
+    #[serde(default)]
     pub description: Option<String>,
     pub host: Option<String>,
     pub port: Option<i32>,
     pub username: Option<String>,
     pub password: Option<String>,
+    /// Sprint C: `Some(None)` clears the value, `None` leaves it unchanged.
+    /// Use empty `Option<Option<f64>>` triple-state semantics via custom deserializer.
+    #[serde(default, deserialize_with = "deserialize_some_optional_f64")]
+    pub latitude: Option<Option<f64>>,
+    #[serde(default, deserialize_with = "deserialize_some_optional_f64")]
+    pub longitude: Option<Option<f64>>,
+    #[serde(default, deserialize_with = "deserialize_some_optional_string")]
+    pub address_line: Option<Option<String>>,
+}
+
+/// Triple-state deserializer: distinguish between field absent (None),
+/// field present with null (Some(None)), and field present with value (Some(Some(v))).
+fn deserialize_some_optional_f64<'de, D>(deserializer: D) -> Result<Option<Option<f64>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(Some(Option::deserialize(deserializer)?))
+}
+
+fn deserialize_some_optional_string<'de, D>(
+    deserializer: D,
+) -> Result<Option<Option<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(Some(Option::deserialize(deserializer)?))
 }
 
 #[derive(Debug, Deserialize)]

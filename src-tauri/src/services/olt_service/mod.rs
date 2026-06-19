@@ -16,6 +16,7 @@ use crate::models::{
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
 use crate::services::audit_service::AuditService;
 use crate::services::network_asset_service::NetworkAssetService;
+use crate::services::network_mapping_service::NetworkMappingService;
 use crate::services::notification_service::NotificationService;
 use crate::services::onu_linker::OnuLinker;
 use chrono::Utc;
@@ -33,6 +34,7 @@ pub struct OltService {
     notification_service: NotificationService,
     audit_service: AuditService,
     network_asset_service: Arc<NetworkAssetService>,
+    network_mapping_service: Arc<NetworkMappingService>,
     onu_linker: OnuLinker,
 }
 
@@ -42,6 +44,7 @@ impl OltService {
         notification_service: NotificationService,
         audit_service: AuditService,
         network_asset_service: Arc<NetworkAssetService>,
+        network_mapping_service: Arc<NetworkMappingService>,
         onu_linker: OnuLinker,
     ) -> Self {
         Self {
@@ -49,7 +52,32 @@ impl OltService {
             notification_service,
             audit_service,
             network_asset_service,
+            network_mapping_service,
             onu_linker,
+        }
+    }
+
+    /// Sprint C: best-effort sync to network_mapping_service. Failures are
+    /// logged at warn but do not bubble up — the OLT CRUD has already succeeded.
+    async fn sync_to_topology(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        context: &str,
+    ) {
+        match self
+            .network_mapping_service
+            .sync_topology_asset_nodes(actor_id, tenant_id)
+            .await
+        {
+            Ok(resp) => tracing::debug!(
+                "Sprint C: topology sync after {}: touched={} assets_created={} assets_updated={}",
+                context, resp.total_nodes_touched, resp.asset_nodes_created, resp.asset_nodes_updated
+            ),
+            Err(e) => tracing::warn!(
+                "Sprint C: topology sync after {} failed: {}",
+                context, e
+            ),
         }
     }
 
@@ -92,11 +120,14 @@ impl OltService {
             req.port,
             req.username,
             Some(encrypt_secret(&req.password)?),
+            req.latitude,
+            req.longitude,
+            req.address_line,
         );
 
         sqlx::query(
-            "INSERT INTO public.olts (id, tenant_id, name, description, olt_type, host, port, username, password_enc, is_online, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+            "INSERT INTO public.olts (id, tenant_id, name, description, olt_type, host, port, username, password_enc, is_online, latitude, longitude, address_line, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)",
         )
         .bind(&olt.id)
         .bind(&olt.tenant_id)
@@ -108,6 +139,9 @@ impl OltService {
         .bind(&olt.username)
         .bind(&olt.password_enc)
         .bind(olt.is_online)
+        .bind(olt.latitude)
+        .bind(olt.longitude)
+        .bind(&olt.address_line)
         .bind(olt.created_at)
         .bind(olt.updated_at)
         .execute(&self.pool)
@@ -151,8 +185,8 @@ impl OltService {
             parent_asset_id: None,
             olt_id: None,
             pon_port: None,
-            latitude: None,
-            longitude: None,
+            latitude: olt.latitude,
+            longitude: olt.longitude,
             notes: olt.description.clone(),
             metadata: Some(metadata),
         };
@@ -172,6 +206,9 @@ impl OltService {
                 e
             ),
         }
+
+        // Sprint C: propagate OLT → network_nodes so it appears on the map.
+        self.sync_to_topology(actor_id, tenant_id, "olt_created").await;
 
         Ok(olt)
     }
@@ -195,10 +232,24 @@ impl OltService {
         } else {
             existing.password_enc.clone()
         };
+        // Sprint C: triple-state — req.latitude: Option<Option<f64>>
+        //   None → leave unchanged, Some(None) → clear, Some(Some(v)) → set
+        let latitude = match req.latitude {
+            Some(v) => v,
+            None => existing.latitude,
+        };
+        let longitude = match req.longitude {
+            Some(v) => v,
+            None => existing.longitude,
+        };
+        let address_line = match req.address_line {
+            Some(v) => v,
+            None => existing.address_line.clone(),
+        };
 
         sqlx::query(
-            "UPDATE public.olts SET name = $1, description = $2, host = $3, port = $4, username = $5, password_enc = $6, updated_at = now()
-             WHERE id = $7 AND tenant_id = $8",
+            "UPDATE public.olts SET name = $1, description = $2, host = $3, port = $4, username = $5, password_enc = $6, latitude = $7, longitude = $8, address_line = $9, updated_at = now()
+             WHERE id = $10 AND tenant_id = $11",
         )
         .bind(&name)
         .bind(&description)
@@ -206,6 +257,9 @@ impl OltService {
         .bind(port)
         .bind(&username)
         .bind(&password_enc)
+        .bind(latitude)
+        .bind(longitude)
+        .bind(&address_line)
         .bind(id)
         .bind(tenant_id)
         .execute(&self.pool)
@@ -239,8 +293,11 @@ impl OltService {
                 parent_asset_id: None,
                 olt_id: None,
                 pon_port: None,
-                latitude: None,
-                longitude: None,
+                // Sprint C: forward lat/lng to NetworkAsset so map stays in sync.
+                // Pass raw values (network_asset_service.update_asset treats None as "keep existing"
+                // and Some(v) as "set to v"). We always set here using our resolved values.
+                latitude: if latitude.is_some() { latitude } else { None },
+                longitude: if longitude.is_some() { longitude } else { None },
                 notes: description.clone(),
                 metadata: None,
             };
@@ -257,6 +314,9 @@ impl OltService {
                 );
             }
         }
+
+        // Sprint C: propagate updated lat/lng to network_nodes so the map marker moves.
+        self.sync_to_topology(actor_id, tenant_id, "olt_updated").await;
 
         self.get_olt(id, tenant_id).await
     }
@@ -302,6 +362,9 @@ impl OltService {
                 );
             }
         }
+
+        // Sprint C: propagate OLT removal to network_nodes.
+        self.sync_to_topology(actor_id, tenant_id, "olt_deleted").await;
 
         Ok(())
     }

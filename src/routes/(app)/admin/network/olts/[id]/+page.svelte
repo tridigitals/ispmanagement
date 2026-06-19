@@ -119,6 +119,7 @@
 
   const oltListPath = $derived($page.url.pathname.replace(/\/[^/]+\/?$/, ''));
   const backTarget = $derived(resolveBackTarget($page.url, oltListPath));
+  const tenantPrefix = $derived($page.url.pathname.replace(/\/admin\/network\/olts\/.*$/, '') || '');
 
   const onuStats = $derived.by(() => {
     const total = onus.length;
@@ -215,6 +216,19 @@
     }
   }
 
+  function openOnMap() {
+    if (!olt || olt.latitude == null || olt.longitude == null) {
+      toast.error('OLT belum memiliki koordinat lokasi.');
+      return;
+    }
+    const params = new URLSearchParams({
+      asset_id: olt.id,
+      asset_lat: String(olt.latitude),
+      asset_lng: String(olt.longitude),
+    });
+    void goto(`${tenantPrefix}/admin/network/map?${params.toString()}`);
+  }
+
   async function loadHistory() {
     const id = $page.params.id || '';
     if (!id) return;
@@ -279,6 +293,10 @@
         <Icon name="arrow-left" size={16} />
         Kembali
       </a>
+      <button class="btn ghost" type="button" onclick={() => openOnMap()} disabled={!olt || olt.latitude == null || olt.longitude == null} title="Lihat di Peta">
+        <Icon name="map-pin" size={16} />
+        Peta
+      </button>
       <button class="btn ghost" type="button" onclick={() => void refresh({ silent: false })} disabled={refreshing}>
         <Icon name="refresh-cw" size={16} />
         Refresh
@@ -378,6 +396,34 @@
                 </div>
               {/if}
             {/each}
+          </div>
+        </div>
+      {/if}
+
+      {#if olt?.latitude != null || olt?.longitude != null || olt?.address_line}
+        <div class="section-card">
+          <h4 class="section-title">Lokasi OLT</h4>
+          <div class="info-grid">
+            {#if olt.latitude != null && olt.longitude != null}
+              <div class="info-item">
+                <span class="info-label">Koordinat</span>
+                <span class="info-value mono">{olt.latitude}, {olt.longitude}</span>
+              </div>
+            {/if}
+            {#if olt.address_line}
+              <div class="info-item">
+                <span class="info-label">Alamat</span>
+                <span class="info-value">{olt.address_line}</span>
+              </div>
+            {/if}
+            {#if olt.latitude != null && olt.longitude != null}
+              <div class="info-item">
+                <button class="btn ghost" type="button" onclick={openOnMap}>
+                  <Icon name="map-pin" size={14} />
+                  Lihat di Peta
+                </button>
+              </div>
+            {/if}
           </div>
         </div>
       {/if}
