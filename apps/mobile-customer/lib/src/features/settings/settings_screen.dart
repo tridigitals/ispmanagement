@@ -72,42 +72,6 @@ final l10n = AppLocalizations.of(context);
             ),
           ),
           const SizedBox(height: IspSpacing.lg),
-          _SectionHeader(label: l10n.notifications),
-          IspCard(
-            margin: const EdgeInsets.symmetric(
-                horizontal: IspSpacing.md, vertical: IspSpacing.xs),
-            child: Column(
-              children: [
-                _SwitchTile(
-                  icon: Icons.receipt_long,
-                  title: l10n.notifInvoice,
-                  subtitle: l10n.notifInvoiceSub,
-                  value: ref.watch(notifInvoiceEnabledProvider),
-                  onChanged: (v) =>
-                      ref.read(notifInvoiceEnabledProvider.notifier).set(v),
-                ),
-                Divider(height: 1, color: isp.borderSubtle),
-                _SwitchTile(
-                  icon: Icons.warning_amber,
-                  title: l10n.notifOutage,
-                  subtitle: l10n.notifOutageSub,
-                  value: ref.watch(notifOutageEnabledProvider),
-                  onChanged: (v) =>
-                      ref.read(notifOutageEnabledProvider.notifier).set(v),
-                ),
-                Divider(height: 1, color: isp.borderSubtle),
-                _SwitchTile(
-                  icon: Icons.local_offer,
-                  title: l10n.notifPromo,
-                  subtitle: l10n.notifPromoSub,
-                  value: ref.watch(notifPromoEnabledProvider),
-                  onChanged: (v) =>
-                      ref.read(notifPromoEnabledProvider.notifier).set(v),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: IspSpacing.lg),
           _SectionHeader(label: 'Bahasa / Language'),
           IspCard(
             margin: const EdgeInsets.symmetric(

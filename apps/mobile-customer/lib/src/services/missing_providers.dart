@@ -109,18 +109,4 @@ class PersistedBoolNotifier extends Notifier<bool> {
   }
 }
 
-final notifInvoiceEnabledProvider =
-    NotifierProvider<PersistedBoolNotifier, bool>(
-  () => PersistedBoolNotifier('notif_invoice', true),
-);
-
-final notifOutageEnabledProvider =
-    NotifierProvider<PersistedBoolNotifier, bool>(
-  () => PersistedBoolNotifier('notif_outage', true),
-);
-
-final notifPromoEnabledProvider = NotifierProvider<PersistedBoolNotifier, bool>(
-  () => PersistedBoolNotifier('notif_promo', false),
-);
-
 final onboardingCompletedProvider = StateProvider<bool>((ref) => false);
