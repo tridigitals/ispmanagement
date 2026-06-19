@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart' hide Success, Failure;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,7 @@ import '../../l10n/app_localizations.dart';
 import '../../services/feature_providers.dart';
 import '../../services/payment_providers.dart';
 import '../../services/public_settings_providers.dart';
+import '../../services/missing_providers.dart';
 
 /// Payment method picker: Midtrans or Duitku, with dynamic channel listing.
 class PaymentScreen extends ConsumerStatefulWidget {
@@ -242,24 +244,23 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   ) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Upload Bukti Transfer'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Fitur upload bukti transfer sedang dalam pengembangan. '
-              'Saat ini silakan lakukan pembayaran dan tunggu konfirmasi manual dari admin.',
-              style: TextStyle(fontSize: 13, color: isp.textSecondary),
+      barrierDismissible: false,
+      builder: (ctx) => _UploadProofDialog(
+        invoiceId: widget.invoiceId,
+        bank: bank,
+        isp: isp,
+        l10n: l10n,
+        onSuccess: () {
+          Navigator.pop(ctx);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Bukti pembayaran berhasil diunggah. Menunggu konfirmasi admin.'),
+              backgroundColor: isp.success,
             ),
-          ],
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
-          ),
-        ],
+          );
+          // Refresh invoice to show updated status
+          ref.invalidate(invoiceByIdProvider(widget.invoiceId));
+        },
       ),
     );
   }
@@ -583,5 +584,242 @@ class _InfoRow extends StatelessWidget {
         Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
       ],
     );
+  }
+}
+
+/// Stateful upload proof dialog — picks file and uploads via StorageService.
+class _UploadProofDialog extends ConsumerStatefulWidget {
+  const _UploadProofDialog({
+    required this.invoiceId,
+    required this.bank,
+    required this.isp,
+    required this.l10n,
+    required this.onSuccess,
+  });
+  final String invoiceId;
+  final BankAccountModel bank;
+  final IspThemeColors isp;
+  final AppLocalizations l10n;
+  final VoidCallback onSuccess;
+
+  @override
+  ConsumerState<_UploadProofDialog> createState() => _UploadProofDialogState();
+}
+
+class _UploadProofDialogState extends ConsumerState<_UploadProofDialog> {
+  PlatformFile? _selectedFile;
+  String? _errorMessage;
+  bool _uploading = false;
+
+  Future<void> _pickFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      // Max 10MB
+      if ((file.size ?? 0) > 10 * 1024 * 1024) {
+        setState(() => _errorMessage = 'Ukuran file maksimal 10MB');
+        return;
+      }
+      setState(() {
+        _selectedFile = file;
+        _errorMessage = null;
+      });
+    } catch (e) {
+      setState(() => _errorMessage = 'Gagal memilih file: $e');
+    }
+  }
+
+  Future<void> _upload() async {
+    if (_selectedFile == null) return;
+
+    setState(() {
+      _uploading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final file = _selectedFile!;
+      final ext = file.name.split('.').last.toLowerCase();
+      String contentType;
+      switch (ext) {
+        case 'jpg':
+        case 'jpeg':
+          contentType = 'image/jpeg';
+          break;
+        case 'png':
+          contentType = 'image/png';
+          break;
+        case 'pdf':
+          contentType = 'application/pdf';
+          break;
+        default:
+          contentType = 'application/octet-stream';
+      }
+
+      final svc = ref.read(paymentServiceProvider);
+      final res = await svc.submitPaymentProof(
+        invoiceId: widget.invoiceId,
+        filePath: file.path!,
+        fileName: file.name,
+        contentType: contentType,
+      );
+
+      if (!mounted) return;
+      res.fold(
+        (_) => widget.onSuccess(),
+        (error) => setState(() => _errorMessage = error.message),
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage = 'Gagal mengunggah: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Upload Bukti Transfer'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Bank info
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: widget.isp.surface,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Transfer ke ${widget.bank.bankName}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'No. Rekening: ${widget.bank.accountNumber}',
+                    style: TextStyle(fontSize: 13, color: widget.isp.textSecondary),
+                  ),
+                  Text(
+                    'Atas Nama: ${widget.bank.accountHolder}',
+                    style: TextStyle(fontSize: 13, color: widget.isp.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            // File picker
+            OutlinedButton.icon(
+              onPressed: _uploading ? null : _pickFile,
+              icon: const Icon(Icons.attach_file),
+              label: Text(_selectedFile == null ? 'Pilih File' : 'Ganti File'),
+            ),
+            const SizedBox(height: 8),
+            // Selected file preview
+            if (_selectedFile != null) ...[
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: widget.isp.accentSurface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: widget.isp.accent.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _selectedFile!.name.endsWith('.pdf')
+                          ? Icons.picture_as_pdf
+                          : Icons.image,
+                      color: widget.isp.accent,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _selectedFile!.name,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            _formatBytes(_selectedFile!.size ?? 0),
+                            style: TextStyle(fontSize: 11, color: widget.isp.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (!_uploading)
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 16),
+                        onPressed: () => setState(() => _selectedFile = null),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+            // Error message
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: widget.isp.danger.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, size: 16, color: widget.isp.danger),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(fontSize: 12, color: widget.isp.danger),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _uploading ? null : () => Navigator.pop(context),
+          child: Text(widget.l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: (_selectedFile != null && !_uploading) ? _upload : null,
+          child: _uploading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Kirim'),
+        ),
+      ],
+    );
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 }
