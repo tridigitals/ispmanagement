@@ -72,10 +72,11 @@ class PaymentService {
       );
       final fileId = uploadResult.getOrThrow();
 
-      // Then submit the proof with the file ID
+      // Then submit the proof with the file ID as file_path
+      // (backend's SubmitPaymentProofBody expects camelCase `filePath`)
       await _dio.post<dynamic>(
         ApiEndpoints.submitPaymentProof(invoiceId),
-        data: {'file_id': fileId},
+        data: {'filePath': fileId},
       );
       return true;
     });
