@@ -23,6 +23,12 @@ export function resolveAnnouncementActionUrl(
   const normalizedPath =
     appRelativePath === '/dashboard/packages' ? '/dashboard/services' : appRelativePath;
 
+  // Invoice notifications use /pay/{id} — admin should go to invoice detail
+  if (opts.internal && normalizedPath.startsWith('/pay/')) {
+    const invoiceId = normalizedPath.replace('/pay/', '');
+    return canonicalTenantPath(`/admin/invoices/${invoiceId}`);
+  }
+
   const announcementMatch = normalizedPath.match(/^\/announcements\/([^/?#]+)/);
   if (announcementMatch?.[1]) {
     return getAnnouncementDetailPath(announcementMatch[1], opts);
