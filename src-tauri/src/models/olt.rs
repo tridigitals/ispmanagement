@@ -1,5 +1,6 @@
 //! OLT (Optical Line Terminal) models — tenant-scoped inventory, monitoring, and ONU history
 
+use crate::models::NetworkLink;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -136,6 +137,21 @@ pub struct UpdateOltRequest {
     /// Sprint D: upstream port name. None = unchanged, Some(None) = clear.
     #[serde(default, deserialize_with = "deserialize_some_optional_string")]
     pub uplink_port: Option<Option<String>>,
+}
+
+/// Sprint D: set uplink (OLT → MikroTik router connection).
+#[derive(Debug, Deserialize)]
+pub struct SetOltUplinkRequest {
+    /// Router ID (MikroTik router) that this OLT connects to.
+    pub router_id: String,
+    /// Port name on the upstream router (e.g. ether1, sfp1).
+    pub port: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SetOltUplinkResponse {
+    pub olt: Olt,
+    pub network_link: Option<NetworkLink>,
 }
 
 /// Triple-state deserializer: distinguish between field absent (None),

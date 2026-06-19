@@ -17,6 +17,8 @@ export interface Olt {
   latitude?: number | null;
   longitude?: number | null;
   address_line?: string | null;
+  uplink_router_id?: string | null;
+  uplink_port?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -111,6 +113,15 @@ export interface OltPublicToken {
   enabled: boolean;
   expires_at?: string | null;
   created_at: string;
+}
+
+export interface MikrotikRouter {
+  id: string;
+  name: string;
+  host: string;
+  enabled: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 /** Unwrap { status, data } envelope from backend responses */
@@ -245,4 +256,11 @@ export const olt = {
       id,
       token_id: tokenId,
     }) as Promise<void>,
+
+  setUplink: (id: string, data: { router_id: string; port?: string | null }): Promise<any> =>
+    safeInvoke('set_olt_uplink', {
+      token: getTokenOrThrow(),
+      id,
+      ...data,
+    }),
 };

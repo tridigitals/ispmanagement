@@ -9,9 +9,10 @@ pub mod drivers;
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    AllOnusResponse, CreateNetworkAssetRequest, CreateOltRequest, Olt, OltAllDetailsResponse,
-    OltOnuDetail, OltOnuHistoryRecord, OltPublicToken, OltStatsResponse, RebootOnuRequest,
-    TestConnectionResponse, UpdateNetworkAssetRequest, UpdateOltRequest,
+    AllOnusResponse, CreateNetworkAssetRequest, CreateNetworkLinkRequest, CreateOltRequest, Olt,
+    OltAllDetailsResponse, OltOnuDetail, OltOnuHistoryRecord, OltPublicToken, OltStatsResponse,
+    RebootOnuRequest, SetOltUplinkRequest, SetOltUplinkResponse, TestConnectionResponse,
+    UpdateNetworkAssetRequest, UpdateOltRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
 use crate::services::audit_service::AuditService;
@@ -401,6 +402,119 @@ impl OltService {
         .fetch_optional(&self.pool)
         .await?;
         Ok(row.map(|(id,)| id))
+    }
+
+    /// Sprint D: set uplink (OLT → MikroTik router connection).
+    /// Updates the OLT's uplink fields and auto-creates a NetworkLink
+    /// between the OLT node and the router node on the topology map.
+    pub async fn set_uplink(
+        &self,
+        actor_id: &str,
+        id: &str,
+        tenant_id: &str,
+        req: SetOltUplinkRequest,
+    ) -> AppResult<SetOltUplinkResponse> {
+        // Verify OLT exists
+        let _olt = self.get_olt(id, tenant_id).await?;
+
+        // Update OLT's uplink fields
+        sqlx::query(
+            "UPDATE public.olts SET uplink_router_id = $1, uplink_port = $2, updated_at = now() WHERE id = $3 AND tenant_id = $4",
+        )
+        .bind(&req.router_id)
+        .bind(&req.port)
+        .bind(id)
+        .bind(tenant_id)
+        .execute(&self.pool)
+        .await?;
+
+        // Audit
+        self.audit_service
+            .log(
+                Some(actor_id),
+                Some(tenant_id),
+                "olt_uplink_set",
+                "olt",
+                Some(id),
+                Some(&format!("Set uplink router={} port={:?}", req.router_id, req.port)),
+                None,
+            )
+            .await;
+
+        // Sync topology to ensure both OLT and router have network nodes
+        self.sync_to_topology(actor_id, tenant_id, "olt_set_uplink").await;
+
+        // Find network node for the OLT (via network_assets.metadata->>'olt_id')
+        let olt_node: Option<(String,)> = sqlx::query_as(
+            "SELECT n.id::text FROM network_nodes n
+             WHERE n.tenant_id = $1::text
+               AND n.metadata->>'asset_source' = 'network_asset'
+               AND n.metadata->>'asset_type' = 'olt'
+               AND EXISTS (
+                 SELECT 1 FROM network_assets a
+                 WHERE a.tenant_id::text = n.tenant_id::text
+                   AND a.metadata->>'olt_id' = $2
+                   AND a.id::text = n.metadata->>'asset_id'
+               )
+             LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        // Find network node for the MikroTik router (via metadata->>'router_id')
+        let router_node: Option<(String,)> = sqlx::query_as(
+            "SELECT id::text FROM network_nodes
+             WHERE tenant_id = $1::text
+               AND metadata->>'asset_source' = 'mikrotik_router'
+               AND metadata->>'router_id' = $2
+             LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(&req.router_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        // Create NetworkLink if both nodes exist
+        let link = if let (Some((from,)), Some((to,))) = (&olt_node, &router_node) {
+            let link_name = format!("{} → {}", _olt.name, req.router_id);
+            let geometry = serde_json::json!({"type": "LineString", "coordinates": []});
+
+            let link_dto = CreateNetworkLinkRequest {
+                from_node_id: from.clone(),
+                to_node_id: to.clone(),
+                name: link_name,
+                link_type: "uplink".into(),
+                status: Some("active".into()),
+                priority: Some(100),
+                capacity_mbps: None,
+                utilization_pct: None,
+                loss_db: None,
+                latency_ms: None,
+                geometry,
+                metadata: Some(serde_json::json!({
+                    "olt_id": id,
+                    "router_id": req.router_id,
+                    "port": req.port,
+                    "generated_by": "olt_set_uplink",
+                })),
+            };
+
+            Some(
+                self.network_mapping_service
+                    .create_link(actor_id, tenant_id, link_dto)
+                    .await?,
+            )
+        } else {
+            None
+        };
+
+        let updated_olt = self.get_olt(id, tenant_id).await?;
+        Ok(SetOltUplinkResponse {
+            olt: updated_olt,
+            network_link: link,
+        })
     }
 
     // ── Connection & Monitoring ───────────────────────────

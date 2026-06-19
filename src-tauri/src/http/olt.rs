@@ -6,7 +6,8 @@
 use crate::error::{AppError, AppResult};
 use crate::http::AppState;
 use crate::models::olt::{
-    CreateOltRequest, OltTestConnectionRequest, RebootOnuRequest, UpdateOltRequest,
+    CreateOltRequest, OltTestConnectionRequest, RebootOnuRequest, SetOltUplinkRequest,
+    UpdateOltRequest,
 };
 use axum::{
     extract::{Path, Query, State},
@@ -347,6 +348,27 @@ async fn delete_public_token(
     Ok(Json(serde_json::json!({ "status": "success" })))
 }
 
+/// PUT /api/admin/olts/{id}/uplink
+/// Set the uplink router for an OLT. Auto-creates NetworkLink on the topology map.
+async fn set_olt_uplink(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(payload): Json<SetOltUplinkRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant, "olt", "manage")
+        .await?;
+
+    let result = state
+        .olt_service
+        .set_uplink(&claims.sub, &id, &tenant, payload)
+        .await?;
+    Ok(Json(serde_json::json!({ "status": "success", "data": result })))
+}
+
 // ── Router ───────────────────────────────────────────────────
 
 pub fn router() -> Router<AppState> {
@@ -363,6 +385,7 @@ pub fn router() -> Router<AppState> {
         .route("/{id}/reboot-onu", post(reboot_onu))
         .route("/{id}/onu-history", get(get_onu_history))
         .route("/{id}/onu-customer", get(get_olt_onu_customer))
+        .route("/{id}/uplink", put(set_olt_uplink))
         .route(
             "/{id}/public-tokens",
             get(list_public_tokens).post(create_public_token),

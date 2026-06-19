@@ -428,6 +428,24 @@
         </div>
       {/if}
 
+      {#if olt?.uplink_router_id}
+        <div class="section-card">
+          <h4 class="section-title">Uplink Router</h4>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">Router ID</span>
+              <span class="info-value mono">{olt.uplink_router_id}</span>
+            </div>
+            {#if olt.uplink_port}
+              <div class="info-item">
+                <span class="info-label">Port</span>
+                <span class="info-value mono">{olt.uplink_port}</span>
+              </div>
+            {/if}
+          </div>
+        </div>
+      {/if}
+
       {#if stats?.pon_ports && stats.pon_ports.length > 0}
         <div class="section-card">
           <h4 class="section-title">Port PON</h4>

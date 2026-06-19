@@ -605,6 +605,7 @@ const commandMap: Record<string, { method: string; path: string }> = {
   list_olt_public_tokens: { method: 'GET', path: '/admin/olts/:id/public-tokens' },
   create_olt_public_token: { method: 'POST', path: '/admin/olts/:id/public-tokens' },
   delete_olt_public_token: { method: 'DELETE', path: '/admin/olts/:id/public-tokens/:token_id' },
+  set_olt_uplink: { method: 'PUT', path: '/admin/olts/:id/uplink' },
 };
 
 function hasStoredAuthToken(): boolean {

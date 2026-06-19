@@ -49,6 +49,11 @@
   let formLatitude = $state<number | null>(null);
   let formLongitude = $state<number | null>(null);
   let formAddressLine = $state('');
+  let formUplinkRouterId = $state<string>('');
+  let formUplinkPort = $state('');
+
+  // Router list for uplink dropdown
+  let routers = $state<import('$lib/api/olt').MikrotikRouter[]>([]);
 
   const tenantPrefix = $derived($page.url.pathname.replace(/\/admin\/network\/olts.*$/, '') || '');
 
@@ -268,6 +273,10 @@
       }
     }
     void load();
+    // Load router list for uplink dropdown
+    api.mikrotik.list().then((r: any) => {
+      if (Array.isArray(r)) routers = r.filter((rt: any) => rt.enabled);
+    }).catch(() => {});
     refreshHandle = setInterval(() => {
       void loadSilent();
     }, 10000);
@@ -311,6 +320,8 @@
     formLatitude = null;
     formLongitude = null;
     formAddressLine = '';
+    formUplinkRouterId = '';
+    formUplinkPort = '';
     showModal = true;
   }
 
@@ -326,6 +337,8 @@
     formLatitude = o.latitude ?? null;
     formLongitude = o.longitude ?? null;
     formAddressLine = o.address_line ?? '';
+    formUplinkRouterId = o.uplink_router_id ?? '';
+    formUplinkPort = o.uplink_port ?? '';
     showModal = true;
   }
 
@@ -344,6 +357,13 @@
     saving = true;
     try {
       if (editing) {
+        // Only set uplink if router actually changed (avoids duplicate NetworkLinks)
+        if (formUplinkRouterId !== (editing.uplink_router_id ?? '')) {
+          await api.olt.setUplink(editing.id, {
+            router_id: formUplinkRouterId || '',
+            port: formUplinkPort.trim() || null,
+          });
+        }
         await api.olt.update(editing.id, {
           name,
           description: formDescription.trim() || null,
@@ -368,7 +388,9 @@
           latitude: formLatitude,
           longitude: formLongitude,
           address_line: formAddressLine.trim() || null,
-        });
+          uplink_router_id: formUplinkRouterId || null,
+          uplink_port: formUplinkPort.trim() || null,
+        } as any);
         toast.success('OLT berhasil ditambahkan.');
       }
       showModal = false;
@@ -613,6 +635,23 @@
           <div class="form-group addr-group">
           <label for="olt-addr">Alamat</label>
           <input id="olt-addr" type="text" bind:value={formAddressLine} placeholder="Jl. Raya No. 123, Kecamatan..." />
+          </div>
+          <hr class="form-divider">
+          <div class="section-label">Uplink Router</div>
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label for="olt-uplink-router">Router Uplink</label>
+              <select id="olt-uplink-router" bind:value={formUplinkRouterId}>
+                <option value="">— Tidak Ada —</option>
+                {#each routers as r}
+                  <option value={r.id}>{r.name} ({r.host})</option>
+                {/each}
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="olt-uplink-port">Port</label>
+              <input id="olt-uplink-port" type="text" bind:value={formUplinkPort} placeholder="ether1, sfp1..." />
+            </div>
           </div>
           </div>
           <div class="modal-footer">
