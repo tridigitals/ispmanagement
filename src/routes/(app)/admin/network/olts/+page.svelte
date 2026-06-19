@@ -604,18 +604,10 @@
           </div>
           <hr class="form-divider">
           <div class="section-label">Lokasi OLT</div>
-          <div class="coordinate-row">
-            <div class="form-group coord-group">
-              <label for="olt-lat-b">Latitude</label>
-              <input id="olt-lat-b" type="text" readonly value={formLatitude != null ? formLatitude.toFixed(6) : ''} placeholder="Pilih di peta" />
-            </div>
-            <div class="form-group coord-group">
-              <label for="olt-lng-b">Longitude</label>
-              <input id="olt-lng-b" type="text" readonly value={formLongitude != null ? formLongitude.toFixed(6) : ''} placeholder="Pilih di peta" />
-            </div>
-            <button class="btn ghost map-pick-btn" type="button" onclick={openMapPicker} disabled={saving}>
+          <div class="form-group">
+            <button class="btn ghost map-pick-btn btn-block" type="button" onclick={openMapPicker} disabled={saving}>
               <Icon name="map-pin" size={15} />
-              {formLatitude != null && formLongitude != null ? 'Ubah Titik' : 'Pilih di Peta'}
+              {formLatitude != null && formLongitude != null ? `Ubah Titik (${formLatitude.toFixed(6)}, ${formLongitude.toFixed(6)})` : 'Pilih Lokasi di Peta'}
             </button>
           </div>
           <div class="form-group addr-group">
@@ -989,23 +981,6 @@
     letter-spacing: 0.5px;
   }
 
-  .coordinate-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 10px;
-  }
-  .coord-group {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-  .coord-group input[readonly] {
-    background: var(--bg-hover);
-    cursor: default;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-    font-size: 0.85rem;
-  }
   .map-pick-btn {
     flex-shrink: 0;
     height: 40px;
