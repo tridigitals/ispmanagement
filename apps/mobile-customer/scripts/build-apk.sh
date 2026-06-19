@@ -71,6 +71,19 @@ print(f'   Fixed {fixed} relative paths → absolute file://')
   if [[ -f "$PROJECT_ROOT/.flutter-plugins" ]]; then
     cp "$PROJECT_ROOT/.flutter-plugins" "$APP_DIR/.flutter-plugins"
   fi
+
+  # Patch `gal` package's android/build.gradle — it references
+  # `flutter.compileSdkVersion` inside the `android {}` block, but with the
+  # monorepo's plugin-loader pattern that extension isn't injected for
+  # subprojects, so the build fails with "Could not get unknown property
+  # 'flutter'". Hardcode to 35 (matches the SDK we set in this app's
+  # subprojects override). This patch is idempotent — re-running on an
+  # already-patched file is a no-op.
+  GAL_BG="$HOME/.pub-cache/hosted/pub.dev/gal-2.3.2/android/build.gradle"
+  if [[ -f "$GAL_BG" ]] && grep -q "compileSdk flutter\.compileSdkVersion" "$GAL_BG"; then
+    sed -i 's/compileSdk flutter\.compileSdkVersion/compileSdk 35/' "$GAL_BG"
+    echo "   gal/android/build.gradle patched (compileSdk → 35)"
+  fi
 fi
 
 # Step 2: Determine build number + name
