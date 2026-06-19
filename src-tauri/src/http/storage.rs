@@ -153,15 +153,8 @@ async fn can_upload_payment_proof(
         return true;
     }
 
-    if state
-        .auth_service
-        .check_permission(&claims.sub, tenant_id, "customers", "read_own")
-        .await
-        .is_err()
-    {
-        return false;
-    }
-
+    // Allow portal customers to upload proof for their own invoices
+    // (no specific permission needed beyond being a linked customer user)
     let customer_id = match state
         .customer_service
         .get_portal_customer_id(&claims.sub, tenant_id)
