@@ -2,10 +2,10 @@
 -- Links OLT to its upstream MikroTik router for topology chain OLT→Router→Customer→ONU
 
 ALTER TABLE public.olts
-  ADD COLUMN IF NOT EXISTS uplink_router_id uuid,
+  ADD COLUMN IF NOT EXISTS uplink_router_id text,
   ADD COLUMN IF NOT EXISTS uplink_port text;
 
--- Foreign key to mikrotik_routers
+-- Foreign key to mikrotik_routers(id) which is text type
 DO $$
 BEGIN
   IF NOT EXISTS (

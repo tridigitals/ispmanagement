@@ -30,7 +30,7 @@ pub struct Olt {
     pub longitude: Option<f64>,
     pub address_line: Option<String>,
     /// Sprint D: upstream MikroTik router that this OLT connects to.
-    pub uplink_router_id: Option<uuid::Uuid>,
+    pub uplink_router_id: Option<String>,
     /// Sprint D: port name on the upstream router (e.g. ether1).
     pub uplink_port: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -50,7 +50,7 @@ impl Olt {
         latitude: Option<f64>,
         longitude: Option<f64>,
         address_line: Option<String>,
-        uplink_router_id: Option<uuid::Uuid>,
+        uplink_router_id: Option<String>,
         uplink_port: Option<String>,
     ) -> Self {
         let now = Utc::now();
@@ -103,7 +103,7 @@ pub struct CreateOltRequest {
     pub address_line: Option<String>,
     /// Sprint D: link to upstream MikroTik router.
     #[serde(default)]
-    pub uplink_router_id: Option<uuid::Uuid>,
+    pub uplink_router_id: Option<String>,
     /// Sprint D: port name on upstream router.
     #[serde(default)]
     pub uplink_port: Option<String>,
@@ -131,8 +131,8 @@ pub struct UpdateOltRequest {
     #[serde(default, deserialize_with = "deserialize_some_optional_string")]
     pub address_line: Option<Option<String>>,
     /// Sprint D: upstream MikroTik router. None = unchanged, Some(None) = clear.
-    #[serde(default, deserialize_with = "deserialize_some_optional_uuid")]
-    pub uplink_router_id: Option<Option<uuid::Uuid>>,
+    #[serde(default, deserialize_with = "deserialize_some_optional_string")]
+    pub uplink_router_id: Option<Option<String>>,
     /// Sprint D: upstream port name. None = unchanged, Some(None) = clear.
     #[serde(default, deserialize_with = "deserialize_some_optional_string")]
     pub uplink_port: Option<Option<String>>,
@@ -150,15 +150,6 @@ where
 fn deserialize_some_optional_string<'de, D>(
     deserializer: D,
 ) -> Result<Option<Option<String>>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    Ok(Some(Option::deserialize(deserializer)?))
-}
-
-fn deserialize_some_optional_uuid<'de, D>(
-    deserializer: D,
-) -> Result<Option<Option<uuid::Uuid>>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
