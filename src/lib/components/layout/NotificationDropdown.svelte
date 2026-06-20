@@ -595,6 +595,16 @@
     color: var(--text-primary);
   }
 
+  .footer-link.danger {
+    color: var(--color-danger);
+    border-color: color-mix(in srgb, var(--color-danger) 20%, var(--border-color));
+  }
+
+  .footer-link.danger:hover {
+    background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+    color: var(--color-danger);
+  }
+
   @media (max-width: 520px) {
     .backdrop {
       background: color-mix(in srgb, var(--bg-app) 58%, transparent);

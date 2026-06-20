@@ -265,7 +265,7 @@
           {/if}
           {#if totalLoaded > 0}
             <button
-              class="btn btn-glass btn-sm danger"
+              class="btn btn-glass btn-sm"
               onclick={requestClearAll}
               title={$t('topbar.notifications_menu.clear_all') || 'Clear all'}
             >
