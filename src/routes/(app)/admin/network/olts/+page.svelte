@@ -249,6 +249,7 @@
     { key: 'name', label: 'Nama' },
     { key: 'type', label: 'Tipe' },
     { key: 'host', label: 'Host' },
+    { key: 'uplink', label: 'Uplink' },
     { key: 'status', label: 'Status' },
     { key: 'seen', label: 'Terakhir Dilihat' },
     { key: 'actions', label: '', align: 'right' as const, width: '200px' },
@@ -541,6 +542,14 @@
           <span class="chip">{friendlyOltType(item.olt_type)}</span>
         {:else if key === 'host'}
           <span class="mono">{item.host}:{item.port}</span>
+        {:else if key === 'uplink'}
+          {#if item.uplink_router_name}
+            <span>{item.uplink_router_name}</span>
+          {:else if item.uplink_router_id}
+            <span class="mono muted">{item.uplink_router_id}</span>
+          {:else}
+            <span class="muted">—</span>
+          {/if}
         {:else if key === 'status'}
           <span class="badge" class:online={item.is_online} class:offline={!item.is_online}>
             {item.is_online ? 'Online' : 'Offline'}

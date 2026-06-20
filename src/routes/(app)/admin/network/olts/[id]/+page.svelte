@@ -433,8 +433,8 @@
           <h4 class="section-title">Uplink Router</h4>
           <div class="info-grid">
             <div class="info-item">
-              <span class="info-label">Router ID</span>
-              <span class="info-value mono">{olt.uplink_router_id}</span>
+              <span class="info-label">Router</span>
+              <span class="info-value">{olt.uplink_router_name || olt.uplink_router_id}</span>
             </div>
             {#if olt.uplink_port}
               <div class="info-item">
