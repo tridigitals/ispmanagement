@@ -101,6 +101,8 @@ class NotificationsNotifier extends AsyncNotifier<List<NotificationModel>> {
   /// Delete all notifications (clear all).
   Future<void> clearAll() async {
     state = const AsyncData([]);
+    // Invalidate unread count so it recomputes from the empty list.
+    ref.invalidate(unreadNotificationsCountProvider);
     await ref.read(notificationServiceProvider).deleteAll();
   }
 
@@ -108,7 +110,10 @@ class NotificationsNotifier extends AsyncNotifier<List<NotificationModel>> {
   Future<void> delete(String id) async {
     final current = state.valueOrNull;
     if (current == null) return;
+    final deleted = current.firstWhere((n) => n.id == id);
     state = AsyncData(current.where((n) => n.id != id).toList());
+    // Invalidate unread count — the deleted item may have been unread.
+    if (deleted.readAt == null) ref.invalidate(unreadNotificationsCountProvider);
     await ref.read(notificationServiceProvider).delete(id);
   }
 }
