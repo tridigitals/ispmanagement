@@ -1,3 +1,4 @@
+import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -120,7 +121,7 @@ class _AuthLoadingScreenState extends ConsumerState<AuthLoadingScreen> {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: isp.accent.withValues(alpha: 0.1),
+                  color: isp.accent.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(

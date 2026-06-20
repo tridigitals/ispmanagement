@@ -53,7 +53,7 @@ GoRouter buildAppRouter({
       if (!loggedIn && !isPublic && loc != '/onboarding') {
         return '/login';
       }
-      if (loggedIn && (loc == '/login' || loc == '/onboarding' || loc == '/loading')) {
+      if (loggedIn && (loc == '/login' || loc == '/onboarding')) {
         return '/';
       }
       return null;
