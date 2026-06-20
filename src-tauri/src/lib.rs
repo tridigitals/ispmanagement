@@ -434,6 +434,9 @@ pub fn run() {
                                     reply_support_ticket,
                                     update_support_ticket,
                                     submit_ticket_satisfaction,
+                                    // Technician GPS tracking (Sprint 2 mobile-technician)
+                                    record_technician_location,
+                                    get_latest_technician_location,
                                     // Customers (tenant scoped)
                                     list_customers,
                                     get_customer_summary,

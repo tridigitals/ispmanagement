@@ -79,6 +79,12 @@ class ApiEndpoints {
   static String ticketSatisfaction(String id) =>
       '/api/support/tickets/$id/satisfaction';
 
+  // ── Technician GPS Tracking (Sprint 2) ──
+  // Backend: /api/technician/locations (src-tauri/src/commands/technician_location.rs)
+  static const String technicianLocations = '/api/technician/locations';
+  static String latestTechnicianLocation(String technicianId) =>
+      '/api/technician/locations/$technicianId/latest';
+
   // ── Storage / Files ──
   // Backend: /api/storage/files/{id}/content (src-tauri/src/http/storage.rs)
   /// URL to serve file content inline (for images in WebView, etc.)

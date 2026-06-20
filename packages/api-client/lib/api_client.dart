@@ -20,6 +20,7 @@ export 'src/realtime/realtime_client.dart';
 export 'src/services/announcement_service.dart';
 export 'src/services/auth_service.dart';
 export 'src/services/invoice_service.dart';
+export 'src/services/location_service.dart';
 export 'src/services/network_status_service.dart';
 export 'src/services/notification_service.dart';
 export 'src/services/payment_service.dart';
