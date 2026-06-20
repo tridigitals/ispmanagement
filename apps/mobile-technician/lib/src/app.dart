@@ -9,6 +9,7 @@ import 'router/app_router.dart';
 import 'services/app_config.dart';
 import 'services/auth_providers.dart';
 import 'services/fcm_service.dart';
+import 'services/gps_service.dart';
 import 'services/missing_providers.dart';
 import 'theme/app_theme.dart';
 
@@ -49,6 +50,8 @@ class _State extends ConsumerState<IspTechnicianApp> {
         () => ref.read(authControllerProvider.notifier).bootstrap());
     // FCM safety net: schedule init 1.5s after start.
     _scheduleFcmBootstrap();
+    // GPS tracker: start 2s after launch (only effective if user is logged in).
+    _scheduleGpsStart();
   }
 
   void _scheduleFcmBootstrap() {
@@ -59,6 +62,18 @@ class _State extends ConsumerState<IspTechnicianApp> {
         }
       } catch (e) {
         debugPrint('[fcm] bootstrap init failed: $e');
+      }
+    });
+  }
+
+  /// GPS — start 2s after app launch, but ONLY if a user is authenticated.
+  /// Login screen shouldn't trigger GPS (no token yet). The service itself
+  /// will silently no-op if permission is denied.
+  void _scheduleGpsStart() {
+    Future.delayed(const Duration(seconds: 2), () {
+      final auth = ref.read(authControllerProvider);
+      if (auth.isAuthenticated) {
+        ref.read(gpsTrackingServiceProvider).start();
       }
     });
   }

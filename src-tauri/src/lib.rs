@@ -51,6 +51,10 @@ fn init_logging() {
 #[cfg(feature = "desktop")]
 pub fn run() {
     use commands::audit::{list_audit_logs, list_tenant_audit_logs};
+    use commands::support::{
+        get_support_ticket, get_support_ticket_stats, list_support_ticket_messages,
+        list_support_tickets, reply_support_ticket, update_support_ticket,
+    };
     use commands::technician_location::{
         get_latest_technician_location, record_technician_location,
     };
@@ -436,6 +440,7 @@ pub fn run() {
                                     get_support_ticket,
                                     reply_support_ticket,
                                     update_support_ticket,
+                                    list_support_ticket_messages,
                                     submit_ticket_satisfaction,
                                     // Technician GPS tracking (Sprint 2 mobile-technician)
                                     record_technician_location,

@@ -77,27 +77,23 @@ class TicketService {
     });
   }
 
-  /// Fetch messages for a ticket.
+  /// Fetch messages for a ticket from the dedicated messages endpoint.
   /// [currentUserId] is used to determine which messages are from staff vs customer.
   Future<ServiceResult<List<TicketMessageModel>>> listMessages(
     String ticketId, {
     String? currentUserId,
   }) async {
     return _execute(() async {
-      final res = await dio.get<Map<String, dynamic>>(
-        ApiEndpoints.myTicketById(ticketId),
+      final res = await dio.get<List<dynamic>>(
+        ApiEndpoints.ticketMessages(ticketId),
       );
-      final data = res.data ?? const {};
-      final messages = data['messages'];
-      if (messages is List) {
-        return messages
-            .whereType<Map<String, dynamic>>()
-            .map((json) => currentUserId != null
-                ? TicketMessageModel.fromTicketJson(json, currentUserId)
-                : TicketMessageModel.fromJson(json))
-            .toList();
-      }
-      return <TicketMessageModel>[];
+      final list = res.data ?? const [];
+      return list
+          .whereType<Map<String, dynamic>>()
+          .map((json) => currentUserId != null
+              ? TicketMessageModel.fromTicketJson(json, currentUserId)
+              : TicketMessageModel.fromJson(json))
+          .toList();
     });
   }
 
@@ -116,6 +112,17 @@ class TicketService {
         data: body,
       );
       return TicketMessageModel.fromJson(res.data ?? const {});
+    });
+  }
+
+  /// Fetch ticket stats. Backend filters by role:
+  /// - admin/staff (with `support:read_all`): all tickets in tenant
+  /// - technician (with `support:read`): tickets assigned to them
+  /// - customer: tickets created by them
+  Future<ServiceResult<TicketStats>> stats() async {
+    return _execute(() async {
+      final res = await dio.get<Map<String, dynamic>>(ApiEndpoints.ticketStats);
+      return TicketStats.fromJson(res.data ?? const {});
     });
   }
 

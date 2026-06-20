@@ -16,6 +16,13 @@ use super::announcements_support_common::{
     normalize_category, normalize_priority, normalize_status, support_admin_user_ids,
 };
 
+/// Internal field workers (technicians + field staff) see tickets **assigned**
+/// to them. Customers see tickets they **created**. Admins/staff see all.
+/// Returns true when the role is a field-worker (not a customer/admin).
+fn is_field_worker_role(role: &str) -> bool {
+    matches!(role, "technician" | "staff")
+}
+
 #[cfg(feature = "postgres")]
 async fn notify_support_admins_new_ticket(
     pool: &sqlx::Pool<sqlx::Postgres>,
@@ -288,6 +295,67 @@ pub async fn list_support_tickets(
         .map_err(|e| e.to_string())?;
 
         (rows, total)
+    } else if is_field_worker_role(&claims.role) {
+        // Technician / field staff: show tickets ASSIGNED to them.
+        let total: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)
+            FROM support_tickets t
+            LEFT JOIN users u ON u.id = t.created_by
+            WHERE t.tenant_id = $1
+              AND ($2::text IS NULL OR t.status = $2)
+              AND ($4::text IS NULL OR t.category = $4)
+              AND (
+                $3::text IS NULL
+                OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
+                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%'
+              )
+              AND t.assigned_to = $5
+        "#,
+        )
+        .bind(&tenant_id)
+        .bind(st.clone())
+        .bind(search.clone())
+        .bind(category.clone())
+        .bind(&claims.sub)
+        .fetch_one(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        let rows: Vec<SupportTicketListItem> = sqlx::query_as(
+            r#"
+            SELECT
+                t.*,
+                u.name AS created_by_name,
+                (SELECT COUNT(*) FROM support_ticket_messages m WHERE m.ticket_id = t.id) AS message_count,
+                (SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id) AS last_message_at
+            FROM support_tickets t
+            LEFT JOIN users u ON u.id = t.created_by
+            WHERE t.tenant_id = $1
+              AND ($2::text IS NULL OR t.status = $2)
+              AND ($4::text IS NULL OR t.category = $4)
+              AND (
+                $3::text IS NULL
+                OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
+                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%'
+              )
+              AND t.assigned_to = $7
+            ORDER BY COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
+            LIMIT $5 OFFSET $6
+        "#,
+        )
+        .bind(&tenant_id)
+        .bind(st)
+        .bind(search)
+        .bind(category)
+        .bind(per_page as i64)
+        .bind(offset)
+        .bind(&claims.sub)
+        .fetch_all(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        (rows, total)
     } else {
         let total: i64 = sqlx::query_scalar(
             r#"
@@ -405,6 +473,24 @@ pub async fn get_support_ticket_stats(
         "#,
         )
         .bind(&tenant_id)
+        .fetch_one(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?
+    } else if is_field_worker_role(&claims.role) {
+        // Technician / staff: stats over tickets ASSIGNED to them.
+        sqlx::query_as(
+            r#"
+            SELECT
+              COUNT(*) AS all,
+              COALESCE(SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END), 0) AS open,
+              COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) AS pending,
+              COALESCE(SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END), 0) AS closed
+            FROM support_tickets
+            WHERE tenant_id = $1 AND assigned_to = $2
+        "#,
+        )
+        .bind(&tenant_id)
+        .bind(&claims.sub)
         .fetch_one(&auth_service.pool)
         .await
         .map_err(|e| e.to_string())?
@@ -660,7 +746,11 @@ pub async fn get_support_ticket(
             .await
             .map_err(|e| e.to_string())?;
 
-    if !can_all && ticket.created_by.as_deref() != Some(claims.sub.as_str()) {
+    // Non-admins can see tickets they created OR (for field workers) tickets
+    // assigned to them. Technicians don't create tickets — admins assign to them.
+    let is_creator = ticket.created_by.as_deref() == Some(claims.sub.as_str());
+    let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
+    if !can_all && !is_creator && !is_assignee {
         return Err("Forbidden".to_string());
     }
 
@@ -768,7 +858,11 @@ pub async fn reply_support_ticket(
         .await
         .unwrap_or(false);
 
-    if !can_all && ticket.created_by.as_deref() != Some(claims.sub.as_str()) {
+    // Non-admins can reply on tickets they created OR (for field workers) tickets
+    // assigned to them.
+    let is_creator = ticket.created_by.as_deref() == Some(claims.sub.as_str());
+    let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
+    if !can_all && !is_creator && !is_assignee {
         return Err("Forbidden".to_string());
     }
 
@@ -908,6 +1002,87 @@ pub async fn reply_support_ticket(
         created_at: msg.created_at,
         attachments: att_map.get(&msg.id).cloned().unwrap_or_default(),
     })
+}
+
+/// List all messages on a support ticket.
+/// Same authorization as get_support_ticket: admin OR creator OR assignee.
+/// Internal notes are hidden from non-admin field workers / customers.
+#[tauri::command]
+pub async fn list_support_ticket_messages(
+    token: String,
+    id: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<Vec<SupportTicketMessage>, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| "Tenant context required".to_string())?;
+
+    auth_service
+        .check_permission(&claims.sub, &tenant_id, "support", "read")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Verify the user can see this ticket (admin OR creator OR assignee).
+    let ticket: SupportTicket =
+        sqlx::query_as("SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2")
+            .bind(&id)
+            .bind(&tenant_id)
+            .fetch_one(&auth_service.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+    let can_all = auth_service
+        .has_permission(&claims.sub, &tenant_id, "support", "read_all")
+        .await
+        .unwrap_or(false);
+
+    let is_creator = ticket.created_by.as_deref() == Some(claims.sub.as_str());
+    let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
+    if !can_all && !is_creator && !is_assignee {
+        return Err("Forbidden".to_string());
+    }
+
+    // Internal notes only visible to those with `support:internal` permission.
+    let can_internal = auth_service
+        .has_permission(&claims.sub, &tenant_id, "support", "internal")
+        .await
+        .unwrap_or(false);
+
+    let messages: Vec<SupportTicketMessage> = if can_internal {
+        sqlx::query_as(
+            r#"
+            SELECT id, ticket_id, author_id, author_name, body, is_internal, created_at
+            FROM support_ticket_messages
+            WHERE ticket_id = $1
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(&id)
+        .fetch_all(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?
+    } else {
+        sqlx::query_as(
+            r#"
+            SELECT id, ticket_id, author_id, author_name, body, is_internal, created_at
+            FROM support_ticket_messages
+            WHERE ticket_id = $1 AND is_internal = false
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(&id)
+        .fetch_all(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?
+    };
+
+    Ok(messages)
 }
 
 #[tauri::command]

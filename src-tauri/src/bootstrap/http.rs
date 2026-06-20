@@ -558,7 +558,7 @@ pub async fn start_server_impl(
         )
         .route(
             "/api/support/tickets/{id}/messages",
-            post(support::reply_support_ticket),
+            get(support::list_support_ticket_messages).post(support::reply_support_ticket),
         )
         .route(
             "/api/support/tickets/{id}/satisfaction",

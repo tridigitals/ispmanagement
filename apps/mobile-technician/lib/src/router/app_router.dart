@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/auth_loading_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
-import '../features/work_orders/home_placeholder.dart';
+import '../features/home/home_screen.dart';
+import '../features/tickets/tickets_screen.dart';
+import '../features/tickets/ticket_detail_screen.dart';
 import '../services/auth_providers.dart';
 import '../services/missing_providers.dart';
 
@@ -59,7 +61,17 @@ GoRouter buildAppRouter({
       ),
       GoRoute(
         path: '/',
-        builder: (_, __) => const HomePlaceholder(),
+        builder: (_, __) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: '/tickets',
+        builder: (_, __) => const TicketsScreen(),
+      ),
+      GoRoute(
+        path: '/tickets/:id',
+        builder: (_, state) => TicketDetailScreen(
+          ticketId: state.pathParameters['id']!,
+        ),
       ),
     ],
   );

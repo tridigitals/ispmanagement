@@ -79,6 +79,10 @@ class ApiEndpoints {
   static String ticketSatisfaction(String id) =>
       '/api/support/tickets/$id/satisfaction';
 
+  // ── Support Stats ──
+  // Backend: /api/support/tickets/stats (src-tauri/src/commands/support.rs)
+  static const String ticketStats = '/api/support/tickets/stats';
+
   // ── Technician GPS Tracking (Sprint 2) ──
   // Backend: /api/technician/locations (src-tauri/src/commands/technician_location.rs)
   static const String technicianLocations = '/api/technician/locations';

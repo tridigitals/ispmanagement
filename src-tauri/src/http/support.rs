@@ -20,6 +20,12 @@ use super::announcements_support_common::{
     support_admin_user_ids,
 };
 
+/// Internal field workers (technicians + field staff) see tickets **assigned**
+/// to them. Customers see tickets they **created**. Admins/staff see all.
+fn is_field_worker_role(role: &str) -> bool {
+    matches!(role, "technician" | "staff")
+}
+
 #[cfg(feature = "postgres")]
 async fn notify_support_admins_new_ticket(
     state: &AppState,
@@ -313,6 +319,61 @@ pub async fn list_support_tickets(
         .await?;
 
         (rows, total)
+    } else if is_field_worker_role(&claims.role) {
+        // Technician / field staff: show tickets ASSIGNED to them.
+        let total: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)
+            FROM support_tickets t
+            LEFT JOIN users u ON u.id = t.created_by
+            WHERE t.tenant_id = $1
+              AND t.assigned_to = $2
+              AND ($3::text IS NULL OR t.status = $3)
+              AND ($4::text IS NULL
+                OR LOWER(t.subject) LIKE '%' || LOWER($4) || '%'
+                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($4) || '%')
+              AND ($5::text IS NULL OR t.category = $5)
+        "#,
+        )
+        .bind(&tenant_id)
+        .bind(&claims.sub)
+        .bind(st.clone())
+        .bind(search.clone())
+        .bind(category.clone())
+        .fetch_one(&state.auth_service.pool)
+        .await?;
+
+        let rows: Vec<SupportTicketListItem> = sqlx::query_as(
+            r#"
+            SELECT
+                t.*,
+                u.name AS created_by_name,
+                (SELECT COUNT(*) FROM support_ticket_messages m WHERE m.ticket_id = t.id) AS message_count,
+                (SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id) AS last_message_at
+            FROM support_tickets t
+            LEFT JOIN users u ON u.id = t.created_by
+            WHERE t.tenant_id = $1
+              AND t.assigned_to = $2
+              AND ($3::text IS NULL OR t.status = $3)
+              AND ($4::text IS NULL
+                OR LOWER(t.subject) LIKE '%' || LOWER($4) || '%'
+                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($4) || '%')
+              AND ($5::text IS NULL OR t.category = $5)
+            ORDER BY COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
+            LIMIT $6 OFFSET $7
+        "#,
+        )
+        .bind(&tenant_id)
+        .bind(&claims.sub)
+        .bind(st.clone())
+        .bind(search.clone())
+        .bind(category.clone())
+        .bind(per_page as i64)
+        .bind(offset)
+        .fetch_all(&state.auth_service.pool)
+        .await?;
+
+        (rows, total)
     } else {
         let total: i64 = sqlx::query_scalar(
             r#"
@@ -423,6 +484,23 @@ pub async fn get_support_ticket_stats(
         "#,
         )
         .bind(&tenant_id)
+        .fetch_one(&state.auth_service.pool)
+        .await?
+    } else if is_field_worker_role(&claims.role) {
+        // Technician / staff: stats over tickets ASSIGNED to them.
+        sqlx::query_as(
+            r#"
+            SELECT
+              COUNT(*) AS all,
+              COALESCE(SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END), 0) AS open,
+              COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) AS pending,
+              COALESCE(SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END), 0) AS closed
+            FROM support_tickets
+            WHERE tenant_id = $1 AND assigned_to = $2
+        "#,
+        )
+        .bind(&tenant_id)
+        .bind(&claims.sub)
         .fetch_one(&state.auth_service.pool)
         .await?
     } else {
@@ -893,6 +971,83 @@ pub async fn reply_support_ticket(
         created_at: msg.created_at,
         attachments: att_map.get(&msg.id).cloned().unwrap_or_default(),
     }))
+}
+
+/// List all messages on a support ticket.
+/// Same authorization as get_support_ticket: admin OR creator OR assignee.
+/// Internal notes hidden from non-admin field workers / customers.
+pub async fn list_support_ticket_messages(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<Vec<SupportTicketMessage>>, crate::error::AppError> {
+    let claims = auth_claims(&state, &headers).await?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or(crate::error::AppError::Validation(
+            "Tenant context required".to_string(),
+        ))?;
+
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "support", "read")
+        .await?;
+
+    let ticket: SupportTicket =
+        sqlx::query_as("SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2")
+            .bind(&id)
+            .bind(&tenant_id)
+            .fetch_one(&state.auth_service.pool)
+            .await?;
+
+    let can_all = state
+        .auth_service
+        .has_permission(&claims.sub, &tenant_id, "support", "read_all")
+        .await
+        .unwrap_or(false);
+
+    let is_creator = ticket.created_by.as_deref() == Some(claims.sub.as_str());
+    let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
+    if !can_all && !is_creator && !is_assignee {
+        return Err(crate::error::AppError::Forbidden(
+            "Ticket is not assigned to you".to_string(),
+        ));
+    }
+
+    let can_internal = state
+        .auth_service
+        .has_permission(&claims.sub, &tenant_id, "support", "internal")
+        .await
+        .unwrap_or(false);
+
+    let messages: Vec<SupportTicketMessage> = if can_internal {
+        sqlx::query_as(
+            r#"
+            SELECT id, ticket_id, author_id, author_name, body, is_internal, created_at
+            FROM support_ticket_messages
+            WHERE ticket_id = $1
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(&id)
+        .fetch_all(&state.auth_service.pool)
+        .await?
+    } else {
+        sqlx::query_as(
+            r#"
+            SELECT id, ticket_id, author_id, author_name, body, is_internal, created_at
+            FROM support_ticket_messages
+            WHERE ticket_id = $1 AND is_internal = false
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(&id)
+        .fetch_all(&state.auth_service.pool)
+        .await?
+    };
+
+    Ok(Json(messages))
 }
 
 pub async fn update_support_ticket(

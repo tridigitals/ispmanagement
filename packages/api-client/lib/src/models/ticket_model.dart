@@ -342,3 +342,32 @@ String _inferContentTypeFromExt(String filename) {
       return 'application/octet-stream';
   }
 }
+
+/// Stats returned by GET /api/support/tickets/stats
+/// Backend filters by role (admin: all in tenant, technician: assigned, customer: created).
+class TicketStats extends Equatable {
+  const TicketStats({
+    required this.all,
+    required this.open,
+    required this.pending,
+    required this.closed,
+  });
+
+  final int all;
+  final int open;
+  final int pending;
+  final int closed;
+
+  /// Backend returns snake_case 'all', 'open', 'pending', 'closed'.
+  factory TicketStats.fromJson(Map<String, dynamic> json) {
+    return TicketStats(
+      all: (json['all'] as num?)?.toInt() ?? 0,
+      open: (json['open'] as num?)?.toInt() ?? 0,
+      pending: (json['pending'] as num?)?.toInt() ?? 0,
+      closed: (json['closed'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  @override
+  List<Object?> get props => [all, open, pending, closed];
+}
