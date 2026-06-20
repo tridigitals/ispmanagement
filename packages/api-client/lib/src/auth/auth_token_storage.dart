@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../api/api_client.dart';
+
 /// Secure storage for auth tokens. Backed by:
 /// - Android: EncryptedSharedPreferences (AES-256)
 /// - iOS: Keychain (first unlock)
@@ -161,6 +163,9 @@ class AuthTokenStorage {
   Future<String?> readPassword() => _safeRead(_kPasswordKey);
 
   Future<void> clear() async {
+    // Clear global fallback token FIRST — auth interceptor reads this
+    // synchronously before any storage path.
+    clearGlobalAuthToken();
     // Clear in-memory cache FIRST — auth flow is immediately logged out.
     _cachedToken = null;
     // Use individual safe deletes — clear() is best-effort during logout

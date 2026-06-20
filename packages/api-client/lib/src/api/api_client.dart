@@ -43,6 +43,26 @@ class ApiConfig {
 /// 401. Should return the new token string on success, or null on failure.
 /// When provided and biometric is enabled, the interceptor will attempt
 /// auto re-login instead of immediately clearing the session.
+
+/// ⚠️ GLOBAL FALLBACK TOKEN — set synchronously by apply() right after login.
+/// This is the BELT-AND-SUSPENDERS guarantee. AuthInterceptor checks this
+/// STATIC variable FIRST, before any storage read, cache, or Dio options.
+/// On Android 12/13, FlutterSecureStorage.read() can race with the in-memory
+/// cache even though _cachedToken was set synchronously — this static ensures
+/// the token is available for the FIRST API call after login (me() in loading
+/// screen), which is the one that matters. It's cleared on logout/clear().
+String? _globalLatestToken;
+
+/// Set the global fallback token (called from apply() after login success).
+void setGlobalAuthToken(String? token) {
+  _globalLatestToken = token;
+}
+
+/// Clear the global fallback token (called from logout / tokenStorage.clear()).
+void clearGlobalAuthToken() {
+  _globalLatestToken = null;
+}
+
 Dio buildDio({
   required ApiConfig config,
   required AuthTokenStorage tokenStorage,
@@ -97,16 +117,25 @@ class AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    // Check if auth header was already pre-set (e.g. by apply() after login).
-    // This is critical for first-login — on Android 12/13, FlutterSecureStorage
-    // readToken() can race with the in-memory cache, returning null even though
-    // save() wrote the cache synchronously. By preserving an existing header,
-    // we ensure the very first API call after login always has the token.
+    // 1. Check global fallback token FIRST (set synchronously by apply()).
+    //    This is the fastest path and bypasses ALL storage reads — critical
+    //    for the first API call after login (me() in loading screen) on
+    //    Android 12/13 where FlutterSecureStorage can race the in-memory cache.
+    if (_globalLatestToken != null && _globalLatestToken!.isNotEmpty) {
+      options.headers['Authorization'] = 'Bearer $_globalLatestToken';
+      handler.next(options);
+      return;
+    }
+
+    // 2. Check if auth header was already pre-set on Dio options headers.
+    //    This catches cases where apply() set dio.options.headers directly.
     final existing = options.headers['Authorization'] as String?;
     if (existing != null && existing.isNotEmpty) {
       handler.next(options);
       return;
     }
+
+    // 3. Fall back to storage read (with in-memory cache inside readToken()).
     final token = await tokenStorage.readToken();
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
