@@ -422,6 +422,25 @@ class AuthController extends Notifier<AuthState> {
     }
     state = AuthState(user: auth.user);
 
+    // Force-set the auth header on the Dio instance IMMEDIATELY.
+    // This is the belt-and-suspenders guarantee that every subsequent
+    // API call (loading screen pre-fetch, home screen data, etc.)
+    // WILL have the Authorization header even if FlutterSecureStorage
+    // readToken() returns null due to Android Keystore race conditions.
+    //
+    // AuthInterceptor.onRequest() also tries to set it via readToken(),
+    // but this pre-set ensures the header is on the BaseOptions so it
+    // survives even if the interceptor's readToken() races the cache.
+    try {
+      final dio = ref.read(dioProvider);
+      final t = auth.token;
+      if (t != null && t.isNotEmpty) {
+        dio.options.headers['Authorization'] = 'Bearer $t';
+      }
+    } catch (e) {
+      debugPrint('[auth] force-set auth header failed: $e');
+    }
+
     // Force WebSocket reconnect with the new user's token.
     // Without this, the WS stays connected with the OLD user's token,
     // so realtime events (ticket replies, new notifications) never arrive.

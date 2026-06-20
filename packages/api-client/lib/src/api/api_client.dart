@@ -97,6 +97,16 @@ class AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
+    // Check if auth header was already pre-set (e.g. by apply() after login).
+    // This is critical for first-login — on Android 12/13, FlutterSecureStorage
+    // readToken() can race with the in-memory cache, returning null even though
+    // save() wrote the cache synchronously. By preserving an existing header,
+    // we ensure the very first API call after login always has the token.
+    final existing = options.headers['Authorization'] as String?;
+    if (existing != null && existing.isNotEmpty) {
+      handler.next(options);
+      return;
+    }
     final token = await tokenStorage.readToken();
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';

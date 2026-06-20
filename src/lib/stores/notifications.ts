@@ -145,6 +145,20 @@ export async function deleteNotification(id: string) {
   }
 }
 
+export async function deleteAllNotifications() {
+  // Optimistic clear
+  notifications.set([]);
+  unreadCount.set(0);
+  pagination.set({ page: 1, perPage: 20, total: 0, totalPages: 0, hasMore: false });
+
+  try {
+    await api.deleteAll();
+  } catch (e) {
+    console.error('Failed to delete all notifications:', e);
+    loadNotifications(1); // Reload
+  }
+}
+
 /**
  * Load user preferences
  */

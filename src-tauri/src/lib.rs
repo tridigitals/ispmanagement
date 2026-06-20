@@ -392,6 +392,7 @@ pub fn run() {
                                     mark_as_read,
                                     mark_all_as_read,
                                     delete_notification,
+                                    delete_all_notifications,
                                     get_preferences,
                                     update_preference,
                                     subscribe_push,

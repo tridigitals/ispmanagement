@@ -52,6 +52,14 @@ final tokenStorageProvider = Provider<AuthTokenStorage>((ref) {
   return AuthTokenStorage();
 });
 
+/// In-memory token holder — set synchronously from login response BEFORE
+/// any navigation. This bypasses FlutterSecureStorage read race conditions
+/// on Android 12/13. AuthInterceptor will use this first before falling
+/// back to storage read.
+///
+/// Used by AuthLoadingScreen to verify token is ready before pre-fetching.
+final inMemoryTokenProvider = StateProvider<String?>((ref) => null);
+
 /// The configured [Dio] HTTP client with auth + retry interceptors.
 final dioProvider = Provider<Dio>((ref) {
   final config = ref.watch(apiConfigProvider);

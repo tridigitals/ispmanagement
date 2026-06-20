@@ -16,6 +16,9 @@ export const notifications = {
   delete: (id: string): Promise<void> =>
     safeInvoke('delete_notification', { token: getTokenOrThrow(), id }),
 
+  deleteAll: (): Promise<void> =>
+    safeInvoke('delete_all_notifications', { token: getTokenOrThrow() }),
+
   getPreferences: (): Promise<NotificationPreference[]> =>
     safeInvoke('get_preferences', { token: getTokenOrThrow() }),
 

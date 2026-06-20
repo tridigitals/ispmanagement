@@ -13,6 +13,7 @@
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    deleteAllNotifications,
   } from '$lib/stores/notifications';
   import { timeAgo } from '$lib/utils/date';
   import { goto } from '$app/navigation';
@@ -260,6 +261,18 @@
         >
           {$t('topbar.notifications_menu.view_all') || 'View all'}
         </button>
+        {#if $notifications.length > 0}
+          <button
+            class="footer-link danger"
+            onclick={async () => {
+              await deleteAllNotifications();
+              close();
+            }}
+          >
+            <Icon name="trash" size={12} />
+            {$t('topbar.notifications_menu.clear_all') || 'Clear all'}
+          </button>
+        {/if}
       </div>
     </div>
   {/if}

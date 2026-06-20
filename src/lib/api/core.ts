@@ -326,6 +326,7 @@ const commandMap: Record<string, { method: string; path: string }> = {
   mark_as_read: { method: 'POST', path: '/notifications/:id/read' },
   mark_all_as_read: { method: 'POST', path: '/notifications/read-all' },
   delete_notification: { method: 'DELETE', path: '/notifications/:id' },
+  delete_all_notifications: { method: 'DELETE', path: '/notifications' },
   get_preferences: { method: 'GET', path: '/notifications/preferences' },
   update_preference: { method: 'PUT', path: '/notifications/preferences' },
   subscribe_push: { method: 'POST', path: '/notifications/push/subscribe' },

@@ -104,6 +104,24 @@ pub async fn delete_notification(
         .map_err(|e| e.to_string())
 }
 
+/// Delete all notifications for the current user
+#[tauri::command]
+pub async fn delete_all_notifications(
+    token: String,
+    notification_service: State<'_, NotificationService>,
+    auth_service: State<'_, AuthService>,
+) -> Result<(), String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    notification_service
+        .delete_all_user_notifications(&claims.sub)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// Get notification preferences
 #[tauri::command]
 pub async fn get_preferences(

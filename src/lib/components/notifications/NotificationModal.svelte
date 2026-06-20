@@ -23,6 +23,7 @@
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    deleteAllNotifications,
   } from '$lib/stores/notifications';
   import { notificationModal, closeNotificationModal } from '$lib/stores/notificationModal';
 
@@ -191,6 +192,23 @@
     }
   }
 
+  let showClearAllModal = $state(false);
+  let clearingAll = $state(false);
+
+  function requestClearAll() {
+    showClearAllModal = true;
+  }
+
+  async function confirmClearAll() {
+    clearingAll = true;
+    try {
+      await deleteAllNotifications();
+    } finally {
+      clearingAll = false;
+      showClearAllModal = false;
+    }
+  }
+
   function requestClose() {
     closeNotificationModal();
   }
@@ -242,6 +260,18 @@
               <Icon name="check-circle" size={14} />
               <span class="hide-xs"
                 >{$t('topbar.notifications_menu.mark_all_read') || 'Mark all read'}</span
+              >
+            </button>
+          {/if}
+          {#if totalLoaded > 0}
+            <button
+              class="btn btn-glass btn-sm danger"
+              onclick={requestClearAll}
+              title={$t('topbar.notifications_menu.clear_all') || 'Clear all'}
+            >
+              <Icon name="trash" size={14} />
+              <span class="hide-xs"
+                >{$t('topbar.notifications_menu.clear_all') || 'Clear all'}</span
               >
             </button>
           {/if}
@@ -392,6 +422,17 @@
   loading={markingAll}
   on:confirm={confirmMarkAll}
   on:cancel={() => (showMarkAllModal = false)}
+/>
+
+<ConfirmDialog
+  open={showClearAllModal}
+  title={$t('notifications_page.clear_all_confirm.title') || 'Clear all notifications'}
+  message={$t('notifications_page.clear_all_confirm.message') || 'This will permanently delete all your notifications. This action cannot be undone.'}
+  confirmText={$t('common.delete') || 'Delete all'}
+  variant="danger"
+  loading={clearingAll}
+  on:confirm={confirmClearAll}
+  on:cancel={() => (showClearAllModal = false)}
 />
 
 <style>
