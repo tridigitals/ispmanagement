@@ -170,7 +170,7 @@ pub(crate) async fn support_admin_user_ids(
     "#,
     )
     .bind(tenant_id)
-    .bind(["support:read_all", "support:reply"])
+    .bind(["support:read_all"])
     .fetch_all(pool)
     .await
 }

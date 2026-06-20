@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:ui_kit/ui_kit.dart';
@@ -1148,29 +1149,12 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
         throw Exception('File tidak ditemukan setelah unduh');
       }
 
-      // Open with native app via url_launcher.
-      final localUri = Uri.file(tempPath);
-      final launched = await launchUrl(
-        localUri,
-        mode: LaunchMode.externalApplication,
+      // Open with native app via share_plus — it handles FileProvider/content://
+      // so the file is accessible to other apps. Shows app chooser (open with...).
+      await Share.shareXFiles(
+        [XFile(tempPath, mimeType: attachment.resolvedContentType)],
+        text: attachment.originalName,
       );
-
-      if (!mounted) return;
-      if (launched) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('Buka: $safeName'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      } else {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('Tidak bisa buka file. Pastikan ada app untuk tipe ini.'),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
     } on DioException catch (e) {
       debugPrint('[ticket-attachment] download failed: ${e.message}');
       if (!mounted) return;
