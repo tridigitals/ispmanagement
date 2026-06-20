@@ -81,7 +81,7 @@ class NotificationService {
     });
   }
 
-  Future<ServiceResult<T>> _execute<T extends Object>>(Future<T> Function() body) async {
+  Future<ServiceResult<T>> _execute<T extends Object>(Future<T> Function() body) async {
     try {
       final result = await body();
       return Success(result);

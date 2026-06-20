@@ -6,6 +6,8 @@ import 'package:local_auth/local_auth.dart';
 
 import 'app_config.dart';
 import 'missing_providers.dart';
+import 'notifications_providers.dart';
+import 'public_settings_providers.dart';
 import 'service_providers.dart';
 
 /// Converts any exception to a user-friendly ApiException.
