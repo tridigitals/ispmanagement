@@ -11,6 +11,7 @@ import 'package:ui_kit/ui_kit.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/app_config.dart';
 import '../../services/auth_providers.dart';
+import '../../services/fcm_service.dart';
 import '../../services/missing_providers.dart';
 import '../../services/service_providers.dart';
 
@@ -131,6 +132,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (mounted) {
         if (restored) {
+          ref.read(fcmServiceProvider).clearPendingAction();
           context.go('/');
         } else {
           // Token ada tapi /me gagal (expired/network). Minta user login manual.
@@ -175,7 +177,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             _tempToken = data.tempToken;
           });
         } else {
-          if (mounted) context.go('/');
+          if (mounted) {
+            ref.read(fcmServiceProvider).clearPendingAction();
+            context.go('/');
+          }
         }
       case Failure(:final exception):
         ScaffoldMessenger.of(context).showSnackBar(
@@ -266,6 +271,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
       if (mounted) {
+        ref.read(fcmServiceProvider).clearPendingAction();
         context.go('/');
       }
     } catch (e) {
@@ -304,7 +310,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           }
           return;
         }
-        if (mounted) context.go('/');
+        if (mounted) {
+          ref.read(fcmServiceProvider).clearPendingAction();
+          context.go('/');
+        }
       case Failure(:final exception):
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(exception.message)),

@@ -71,6 +71,10 @@ class FcmService {
   bool _initialized = false;
   bool _inFlight = false;
 
+  /// Becomes true after the first authenticated state is detected.
+  /// Used to suppress FCM navigation during the login startup window.
+  bool _authHandledLogin = false;
+
   /// Step-level logging — written to debug log only (no UI banner).
   void _status(String msg) {
     debugPrint('[FCM] $msg');
@@ -279,46 +283,71 @@ class FcmService {
   }
 
   /// Normalize action_url → in-app route and navigate.
+  /// FCM navigation is suppressed during the login window (app startup → first
+  /// authenticated state) to prevent stale push data from pushing /tickets/xxx
+  /// on top of the login screen before the auth redirect takes effect.
+  String? _pendingActionUrl;
+
   void _navigateToAction(String? actionUrl) {
     try {
       final navKey = _ref.read(navigatorKeyProvider);
       final context = navKey.currentContext;
       if (context == null) return;
 
-      String route;
-      if (actionUrl == null || actionUrl.isEmpty) {
-        route = '/notifications';
-      } else if (actionUrl.startsWith('/support/')) {
-        // Extract ticket ID from /support/{id} or /admin/support/{id}
-        final id = actionUrl.substring('/support/'.length);
-        if (id.isNotEmpty) {
-          // Use push so user can go back to home
-          GoRouter.of(context).push('/tickets/$id');
-          return;
-        }
-        route = '/?tab=3';
-      } else if (actionUrl.startsWith('/admin/support/')) {
-        final id = actionUrl.substring('/admin/support/'.length);
-        if (id.isNotEmpty) {
-          GoRouter.of(context).push('/tickets/$id');
-          return;
-        }
-        route = '/?tab=3';
-      } else if (actionUrl.startsWith('/pay/') ||
-          actionUrl.startsWith('/invoices')) {
-        route = '/?tab=2';
-      } else if (actionUrl.startsWith('/services') ||
-          actionUrl.startsWith('/subscriptions/')) {
-        route = '/?tab=1';
-      } else if (actionUrl.startsWith('/announcements/')) {
-        route = '/?tab=0';
-      } else {
-        route = actionUrl;
+      // Store the FIRST action URL as pending (clears on next navigate).
+      // This prevents stale FCM data from cold-start / pre-login from
+      // navigating to /tickets/xxx BEFORE the login redirect takes effect.
+      // Subsequent navigations proceed normally.
+      if (_pendingActionUrl == null) {
+        _pendingActionUrl = actionUrl;
+        debugPrint('[FCM] Pending: $actionUrl');
       }
 
-      GoRouter.of(context).go(route);
+      _doNavigate(context, actionUrl);
     } catch (e) {
       debugPrint('[FCM] Navigation error: $e');
+    }
+  }
+
+  /// Clear pending FCM URL after login redirect completes.
+  /// Called by LoginScreen right before navigating to home.
+  void clearPendingAction() {
+    _pendingActionUrl = null;
+  }
+
+  void _doNavigate(BuildContext context, String? actionUrl) {
+    String? route;
+
+    if (actionUrl == null || actionUrl.isEmpty) {
+      route = '/notifications';
+    } else if (actionUrl.startsWith('/support/')) {
+      final id = actionUrl.substring('/support/'.length);
+      if (id.isNotEmpty) {
+        GoRouter.of(context).push('/tickets/$id');
+        return;
+      }
+      route = '/?tab=3';
+    } else if (actionUrl.startsWith('/admin/support/')) {
+      final id = actionUrl.substring('/admin/support/'.length);
+      if (id.isNotEmpty) {
+        GoRouter.of(context).push('/tickets/$id');
+        return;
+      }
+      route = '/?tab=3';
+    } else if (actionUrl.startsWith('/pay/') ||
+        actionUrl.startsWith('/invoices')) {
+      route = '/?tab=2';
+    } else if (actionUrl.startsWith('/services') ||
+        actionUrl.startsWith('/subscriptions/')) {
+      route = '/?tab=1';
+    } else if (actionUrl.startsWith('/announcements/')) {
+      route = '/?tab=0';
+    } else {
+      route = actionUrl;
+    }
+
+    if (route != null) {
+      GoRouter.of(context).go(route);
     }
   }
 }

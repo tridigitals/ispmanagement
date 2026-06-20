@@ -421,6 +421,17 @@ class AuthController extends Notifier<AuthState> {
       // for this session even if storage write hung.
     }
     state = AuthState(user: auth.user);
+
+    // Force WebSocket reconnect with the new user's token.
+    // Without this, the WS stays connected with the OLD user's token,
+    // so realtime events (ticket replies, new notifications) never arrive.
+    try {
+      final client = ref.read(realtimeClientProvider);
+      client.forceReconnect();
+    } catch (e) {
+      debugPrint('[auth] WS reconnect failed: $e');
+    }
+
     return const Success(true);
   }
 
