@@ -379,12 +379,11 @@ class AuthController extends Notifier<AuthState> {
   /// even if Android Keystore is wedged. The persistSession().timeout(5s)
   /// remains as a safety net but should rarely fire.
   ///
-  /// Enforces customer-only role: the customer APK is for end users
-  /// subscribing to ISP services. Staff/admin/super_admin accounts
-  /// must use the admin web app instead. Non-customer logins are
-  /// rejected with [Failure] — session is rolled back (token cleared
-  /// from storage + in-memory cache, user state reset) so a stale
-  /// session cannot leak across a role mismatch.
+  /// Enforces technician-only role: this APK is for field technicians.
+  /// customer/staff/admin/super_admin accounts must use other apps.
+  /// Non-technician logins are rejected with [Failure] — session is
+  /// rolled back (token cleared from storage + in-memory cache, user
+  /// state reset) so a stale session cannot leak across a role mismatch.
   Future<ServiceResult<bool>> apply(AuthResponse auth) async {
     // Role gate: only `technician` role may use this app. The customer APK
     // rejects technicians too, and web admin handles staff/admin/super_admin.
@@ -410,8 +409,8 @@ class AuthController extends Notifier<AuthState> {
       return Failure(
         ApiException(
           message:
-              'Akun ini bukan akun pelanggan. APK ini hanya untuk pengguna '
-              'layanan internet. Silakan login di aplikasi admin.',
+              'Akun ini bukan akun teknisi. APK ini hanya untuk '
+              'teknisi lapangan. Silakan login di aplikasi admin.',
         ),
       );
     }
@@ -465,7 +464,7 @@ class AuthController extends Notifier<AuthState> {
   /// On failure, do NOT delete token — might be transient (network/server).
   /// Token stays so user can retry or login manually (which will overwrite it).
   ///
-  /// Enforces customer-only role on session restore too — if a staff/admin
+  /// Enforces technician-only role on session restore too — if a non-technician
   /// token leaked into this APK (e.g. from a prior install of the wrong app,
   /// or a hand-edited token), we wipe the session and return false so the
   /// router keeps the user on the login screen.
