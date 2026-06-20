@@ -17,6 +17,7 @@
   import { timeAgo } from '$lib/utils/date';
   import { goto } from '$app/navigation';
   import { openProfileModal } from '$lib/stores/profileModal';
+  import { openNotificationModal } from '$lib/stores/notificationModal';
   import { user } from '$lib/stores/auth';
   import { hasInternalAppAccess } from '$lib/utils/appLanding';
   import { resolveAnnouncementActionUrl } from '$lib/utils/announcementRouting';
@@ -253,7 +254,7 @@
           class="footer-link"
           onclick={() => {
             if (isSuperadminUrl) openProfileModal({ tab: 'notifications' });
-            else goto(`${tenantPrefix}/notifications`);
+            else openNotificationModal();
             close();
           }}
         >

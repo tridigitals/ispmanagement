@@ -2,6 +2,7 @@
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import Topbar from '$lib/components/layout/Topbar.svelte';
   import ProfileModal from '$lib/components/profile/ProfileModal.svelte';
+  import NotificationModal from '$lib/components/notifications/NotificationModal.svelte';
   import { checkAuth, user } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
@@ -55,6 +56,7 @@
       </div>
     </div>
     <ProfileModal />
+    <NotificationModal />
   </div>
 {:else}
   <!-- Loading state while checking auth -->

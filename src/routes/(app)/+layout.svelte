@@ -12,6 +12,7 @@
   import { canAccessServiceCatalog } from '$lib/utils/serviceCatalogAccess';
   import { canAccessCustomerDashboard } from '$lib/utils/appLanding';
   import ProfileModal from '$lib/components/profile/ProfileModal.svelte';
+  import NotificationModal from '$lib/components/notifications/NotificationModal.svelte';
   import { openProfileModal, profileModal, setProfileModalLock } from '$lib/stores/profileModal';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
@@ -418,6 +419,7 @@
       </div>
     </div>
     <ProfileModal />
+    <NotificationModal />
   </div>
 {/if}
 
