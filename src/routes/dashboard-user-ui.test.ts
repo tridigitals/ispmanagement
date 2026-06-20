@@ -20,7 +20,6 @@ describe('dashboard user UI cleanup', () => {
     const files = [
       'src/routes/(app)/dashboard/+page.svelte',
       'src/routes/(app)/dashboard/services/+page.svelte',
-      'src/routes/(app)/notifications/+page.svelte',
     ];
 
     for (const file of files) {

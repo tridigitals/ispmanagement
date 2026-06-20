@@ -39,8 +39,7 @@ export function resolveAnnouncementActionUrl(
     normalizedPath.startsWith('/support') ||
     normalizedPath.startsWith('/dashboard') ||
     normalizedPath.startsWith('/announcements') ||
-    normalizedPath.startsWith('/profile') ||
-    normalizedPath.startsWith('/notifications')
+    normalizedPath.startsWith('/profile')
   ) {
     return canonicalTenantPath(normalizedPath);
   }

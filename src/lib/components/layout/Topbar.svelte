@@ -30,7 +30,6 @@
   // Helper to get page title based on path (ordered by specificity)
   function getPageTitle(path: string) {
     const map: [string, string][] = [
-      ['/notifications', $t('topbar.titles.notifications') || 'Notifications'],
       ['/superadmin/tenants', $t('topbar.titles.tenants') || 'Tenants'],
       ['/superadmin/users', $t('topbar.titles.users') || 'Users'],
       ['/superadmin/radius', $t('topbar.titles.radius') || 'RADIUS'],

@@ -12,7 +12,6 @@ describe('profile modal integration', () => {
       'src/routes/(app)/+layout.svelte',
       'src/lib/components/layout/NotificationDropdown.svelte',
       'src/routes/(app)/dashboard/+page.svelte',
-      'src/routes/(app)/notifications/+page.svelte',
     ];
 
     for (const file of files) {

@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from '$lib/components/ui/Icon.svelte';
   import { t } from 'svelte-i18n';
+  import { openNotificationModal } from '$lib/stores/notificationModal';
 
   let {
     notificationCategories,
@@ -28,7 +29,7 @@
       </p>
     </div>
     <div class="header-actions">
-      <button class="btn btn-outline btn-sm" onclick={() => goto(`${tenantPrefix}/notifications`)}>
+      <button class="btn btn-outline btn-sm" onclick={() => openNotificationModal()}>
         <Icon name="bell" size={14} />
         <span>{$t('profile.notifications.view_all') || 'View all'}</span>
       </button>

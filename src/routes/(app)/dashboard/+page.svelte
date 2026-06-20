@@ -8,6 +8,7 @@
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { hasInternalAppAccess } from '$lib/utils/appLanding';
   import { openProfileModal } from '$lib/stores/profileModal';
+  import { openNotificationModal } from '$lib/stores/notificationModal';
   import {
     getAnnouncementDetailPath,
     resolveAnnouncementActionUrl,
@@ -169,7 +170,7 @@
 
   function openNotification(n: any) {
     if (n?.action_url) goto(resolveActionUrl(n.action_url));
-    else goto(`${tenantPrefix}/notifications`);
+    else openNotificationModal();
   }
 
   function resolveActionUrl(actionUrl: string) {
@@ -263,7 +264,7 @@
     <section class="activity-section">
       <div class="section-header">
         <h2>{$t('dashboard.recent_activity.title')}</h2>
-        <button class="text-btn" onclick={() => goto(`${tenantPrefix}/notifications`)}>
+        <button class="text-btn" onclick={() => openNotificationModal()}>
           {$t('dashboard.recent_activity.view_all')}
         </button>
       </div>
@@ -285,7 +286,7 @@
             <p>{$t('dashboard.recent_activity.empty.description')}</p>
             <button
               class="btn btn-secondary mt-4"
-              onclick={() => goto(`${tenantPrefix}/notifications`)}
+              onclick={() => openNotificationModal()}
             >
               {$t('dashboard.recent_activity.empty.learn_more')}
             </button>
@@ -469,7 +470,7 @@
           <Icon name="profile" size={18} />
           {$t('dashboard.quick_actions.update_profile')}
         </button>
-        <button class="action-item" onclick={() => goto(`${tenantPrefix}/notifications`)}>
+        <button class="action-item" onclick={() => openNotificationModal()}>
           <Icon name="mail" size={18} />
           {$t('dashboard.quick_actions.check_messages')}
         </button>
