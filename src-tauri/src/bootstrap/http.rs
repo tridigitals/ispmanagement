@@ -31,8 +31,9 @@ use crate::http::{
     announcements, audit, auth, backup, customer_communication, customers, dhcp_static,
     email_outbox, install, isp_packages, message_templates, middleware, mikrotik, mixradius_import,
     network_assets, network_mapping, notifications, olt, payment, plans, pppoe, public,
-    registration_approvals, roles, settings, storage, superadmin, support, system, team, tenant,
-    users, websocket, whatsapp, work_orders, AppState, SecurityRuntimeConfig, WsHub,
+    registration_approvals, roles, settings, storage, superadmin, support, system,
+    technician_location, team, tenant, users, websocket, whatsapp, work_orders, AppState,
+    SecurityRuntimeConfig, WsHub,
 };
 
 type IpBlockMap = HashMap<String, chrono::DateTime<chrono::Utc>>;
@@ -563,6 +564,15 @@ pub async fn start_server_impl(
         .route(
             "/api/support/tickets/{id}/satisfaction",
             post(support::submit_ticket_satisfaction),
+        )
+        // Technician GPS tracking (Sprint 2 mobile-technician)
+        .route(
+            "/api/technician/locations",
+            post(technician_location::record_technician_location),
+        )
+        .route(
+            "/api/technician/locations/{technician_id}/latest",
+            get(technician_location::get_latest_technician_location),
         )
         // Plans Routes
         .nest("/api/plans", plans::plan_routes())

@@ -9,6 +9,7 @@ environment:
 workspace:
   - apps/mobile-customer
   - apps/mobile-admin
+  - apps/mobile-technician
   - packages/api-client
   - packages/ui-kit
   - packages/config

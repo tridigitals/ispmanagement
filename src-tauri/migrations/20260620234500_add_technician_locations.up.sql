@@ -26,23 +26,6 @@ CREATE INDEX IF NOT EXISTS idx_technician_locations_tech_captured
 CREATE INDEX IF NOT EXISTS idx_technician_locations_tenant_captured
     ON public.technician_locations (tenant_id, captured_at DESC);
 
--- RLS: technicians can INSERT their own rows, admin can SELECT all in tenant
-ALTER TABLE public.technician_locations ENABLE ROW LEVEL SECURITY;
-
--- Drop existing policies if they exist (for idempotent re-runs)
-DROP POLICY IF EXISTS technician_locations_insert_self ON public.technician_locations;
-DROP POLICY IF EXISTS technician_locations_select_tenant ON public.technician_locations;
-
--- INSERT: only own user_id
-CREATE POLICY technician_locations_insert_self ON public.technician_locations
-    FOR INSERT
-    WITH CHECK (technician_id = auth.uid());
-
--- SELECT: only same tenant
-CREATE POLICY technician_locations_select_tenant ON public.technician_locations
-    FOR SELECT
-    USING (
-        tenant_id = (
-            SELECT tenant_id FROM public.users WHERE id = auth.uid()
-        )
-    );
+-- RLS disabled for now — tenant scoping enforced in Rust handlers.
+-- To enable RLS later (e.g. Supabase), add policies using auth.uid() helper.
+-- ALTER TABLE public.technician_locations ENABLE ROW LEVEL SECURITY;

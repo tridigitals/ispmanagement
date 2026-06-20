@@ -2,16 +2,37 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://storage.googleapis.com/download.flutter.io' }
     }
 }
 
-rootProject.buildDir = '../build'
+rootProject.buildDir = "../build"
+// Provide flutter.compileSdkVersion + flutter.minSdkVersion to plugin subprojects
+// (e.g. geolocator_android) that read them via `flutter.compileSdkVersion`.
+rootProject.ext.flutter = [
+    compileSdkVersion: 35,
+    minSdkVersion: 23,
+    targetSdkVersion: 35,
+]
+
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
+
 subprojects {
-    project.evaluationDependsOn(':app')
+    // Ensure all subprojects (including flutter plugin packages) have compileSdk set.
+    // Fixes build failure on geolocator_android / package_info_plus 9.0+ which
+    // expect subproject SDK to be defined.
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                compileSdkVersion 35
+            }
+        }
+    }
+}
+
+subprojects {
+    project.evaluationDependsOn(":app")
 }
 
 tasks.register("clean", Delete) {

@@ -219,10 +219,10 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
-      color: color.withValues(alpha: 0.08),
+      color: color.withOpacity(0.08),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: color.withValues(alpha: 0.3)),
+        side: BorderSide(color: color.withOpacity(0.3)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -243,7 +243,7 @@ class _StatCard extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: color.withValues(alpha: 0.8),
+                color: color.withOpacity(0.8),
                 fontWeight: FontWeight.w500,
               ),
             ),

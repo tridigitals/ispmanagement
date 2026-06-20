@@ -39,6 +39,10 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
   return NotificationService(dio: ref.watch(dioProvider));
 });
 
+final locationServiceProvider = Provider<LocationService>((ref) {
+  return LocationService(dio: ref.watch(dioProvider));
+});
+
 final realtimeClientProvider = Provider<RealtimeClient>((ref) {
   final cfg = ref.watch(appConfigProvider);
   return RealtimeClient(

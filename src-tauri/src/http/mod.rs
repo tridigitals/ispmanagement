@@ -41,6 +41,7 @@ pub mod storage;
 pub mod superadmin;
 pub mod support;
 pub mod system;
+pub mod technician_location;
 pub mod team;
 pub mod tenant;
 pub mod users;

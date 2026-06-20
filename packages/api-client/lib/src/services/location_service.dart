@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
+import 'auth_service.dart'; // for ServiceResult / Success / Failure
 
 /// Records a single GPS ping from the technician's phone.
 /// Backend: src-tauri/src/commands/technician_location.rs::record_technician_location
