@@ -420,13 +420,18 @@ class AuthController extends Notifier<AuthState> {
       // Still set user state — in-memory cache ensures auth flow works
       // for this session even if storage write hung.
     }
-    state = AuthState(user: auth.user);
 
-    // ⚠️ Set THE global fallback token. This must happen BEFORE any API
-    // call (loading screen me(), pre-fetch, etc.). The token is a sync
-    // STATIC variable checked first by AuthInterceptor — no Provider, no
-    // storage read, no Dio options — just pure memory. Android 12/13's
-    // FlutterSecureStorage can race with EVERYTHING else.
+    // ⚠️ Set global fallback token BEFORE updating auth state.
+    // This ordering is CRITICAL: apply() is called from login(), and after
+    // apply() returns, login_screen's _submit() calls context.go('/loading').
+    // But GoRouter already scheduled a redirect when state was last changed.
+    // If the token isn't set BEFORE state, the interceptor won't have it
+    // when the very first API call (me() in loading or home provider) fires.
+    //
+    // The _globalLatestToken is a static variable checked FIRST in
+    // AuthInterceptor.onRequest() — no Provider, no storage read, no Dio
+    // options — just pure memory. It's the fastest path and bypasses ALL
+    // Android 12/13 FlutterSecureStorage race conditions.
     final t = auth.token;
     if (t != null && t.isNotEmpty) {
       setGlobalAuthToken(t);
@@ -437,6 +442,8 @@ class AuthController extends Notifier<AuthState> {
         debugPrint('[auth] force-set auth header failed: $e');
       }
     }
+
+    state = AuthState(user: auth.user);
 
     // Force WebSocket reconnect with the new user's token.
     // Without this, the WS stays connected with the OLD user's token,
