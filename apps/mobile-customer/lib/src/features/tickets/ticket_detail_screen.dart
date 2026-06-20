@@ -8,7 +8,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -828,31 +827,38 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
         future: tokenFuture,
         builder: (context, snap) {
           final token = snap.data ?? '';
-          final videoUrl = token.isEmpty
+          // Token embedded in URL (same pattern as non-image handler below).
+          final downloadUrl = token.isEmpty
               ? fileUrl
               : '$fileUrl?token=$token';
           return _buildVideoTile(
             context: context,
             attachment: attachment,
-            videoUrl: videoUrl,
+            videoUrl: downloadUrl,
             token: token,
           );
         },
       );
     }
 
-    // Non-image: file download link (URL with token query)
+    // Non-image / non-video: download to temp then open with native app.
     return FutureBuilder<String?>(
       future: tokenFuture,
       builder: (_, snap) {
         final token = snap.data ?? '';
         final downloadUrl =
-            '$baseUrl/api/storage/files/${attachment.id}/ticket-content?token=$token';
+            '$baseUrl/api/storage/files/${attachment.id}/ticket-content';
         return Padding(
           padding: const EdgeInsets.only(bottom: IspSpacing.xs),
           child: InkWell(
-            onTap: () => launchUrl(Uri.parse(downloadUrl),
-                mode: LaunchMode.externalApplication),
+            onTap: _downloadingVideo
+                ? null
+                : () => _openAttachmentFile(
+                      context: context,
+                      fileUrl: downloadUrl,
+                      token: token,
+                      attachment: attachment,
+                    ),
             borderRadius: BorderRadius.circular(IspRadii.sm),
             child: Container(
               padding: const EdgeInsets.all(IspSpacing.sm),
@@ -897,7 +903,9 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                   ),
                   const SizedBox(width: IspSpacing.xs),
                   Icon(
-                    Icons.download,
+                    _downloadingVideo
+                        ? Icons.hourglass_empty
+                        : Icons.open_in_new,
                     size: 16,
                     color: isStaff ? isp.textMuted : Colors.white60,
                   ),
@@ -1012,9 +1020,9 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
     );
   }
 
-  /// Inline video tile — shows a play icon overlay; tap downloads to device
-  /// gallery via [ImageGallerySaverPlus] (handles Android scoped storage + MediaStore).
-  /// No browser, no external video player — file lands in Movies/Album.
+  /// Inline video tile — tap downloads to temp dir then opens with the
+  /// native app on the device (video player, PDF viewer, etc.) via url_launcher.
+  /// No browser, no gallery — file stays in temp and is opened directly.
   Widget _buildVideoTile({
     required BuildContext context,
     required TicketAttachmentModel attachment,
@@ -1027,9 +1035,9 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
       child: InkWell(
         onTap: _downloadingVideo
             ? null
-            : () => _downloadAndSaveVideo(
+            : () => _openAttachmentFile(
                   context: context,
-                  videoUrl: videoUrl,
+                  fileUrl: videoUrl,
                   token: token,
                   attachment: attachment,
                 ),
@@ -1062,7 +1070,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                         ),
                       )
                     : Icon(
-                        Icons.download_rounded,
+                        Icons.play_circle_outline,
                         color: isp.accent,
                       ),
               ),
@@ -1084,7 +1092,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                     Text(
                       _downloadingVideo
                           ? 'Mengunduh…'
-                          : 'Tap untuk unduh ke galeri',
+                          : 'Tap untuk buka',
                       style: TextStyle(
                         fontSize: 10,
                         color: isp.textMuted,
@@ -1108,16 +1116,12 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
     );
   }
 
-  /// Download the video file to the temp directory, then save it to the
-  /// device gallery via [ImageGallerySaverPlus]. Authenticated using the bearer token header
-  /// (matches how the lightbox image preview authenticates).
-  ///
-  /// On Android 13+, scoped storage means we cannot write directly to
-  /// `/storage/emulated/0/...` — we go through MediaStore via [ImageGallerySaverPlus]
-  /// which is the supported path.
-  Future<void> _downloadAndSaveVideo({
+  /// Download a file to the temp directory, then open it with the native
+  /// app on the device using url_launcher (video player, PDF viewer, etc.).
+  /// Works for all non-image file types without needing any gallery-saver plugin.
+  Future<void> _openAttachmentFile({
     required BuildContext context,
-    required String videoUrl,
+    required String fileUrl,
     required String token,
     required TicketAttachmentModel attachment,
   }) async {
@@ -1125,46 +1129,46 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
     setState(() => _downloadingVideo = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      // Download to temp dir — use original filename so the saver can derive a
-      // sensible filename when writing to MediaStore.
       final tempDir = await getTemporaryDirectory();
       final safeName = attachment.originalName.isNotEmpty
           ? attachment.originalName
-          : 'video_${attachment.id}.mp4';
+          : 'file_${attachment.id}';
       final tempPath = '${tempDir.path}/$safeName';
+
       await dio.download(
-        videoUrl,
+        fileUrl,
         tempPath,
         options: token.isEmpty
             ? null
             : Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
-      // Save to gallery via MediaStore (Android) / Photos (iOS).
-      final result = await ImageGallerySaverPlus.saveFile(
-        tempPath,
-        name: safeName,
+      final file = File(tempPath);
+      if (!await file.exists()) {
+        throw Exception('File tidak ditemukan setelah unduh');
+      }
+
+      // Open with native app via url_launcher.
+      final localUri = Uri.file(tempPath);
+      final launched = await launchUrl(
+        localUri,
+        mode: LaunchMode.externalApplication,
       );
 
-      // Cleanup temp file — ImageGallerySaverPlus copies into MediaStore.
-      try {
-        await File(tempPath).delete();
-      } catch (_) {/* best effort */}
-
-      final isSuccess = result['isSuccess'] == true;
       if (!mounted) return;
-      if (isSuccess) {
+      if (launched) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Tersimpan di galeri: $safeName'),
-            duration: const Duration(seconds: 3),
+            content: Text('Buka: $safeName'),
+            duration: const Duration(seconds: 2),
           ),
         );
       } else {
-        final error = result['errorMessage'] ?? 'Unknown error';
-        debugPrint('[ticket-attachment] gallery save failed: $error');
         messenger.showSnackBar(
-          SnackBar(content: Text('Gagal simpan: $error')),
+          SnackBar(
+            content: Text('Tidak bisa buka file. Pastikan ada app untuk tipe ini.'),
+            duration: const Duration(seconds: 3),
+          ),
         );
       }
     } on DioException catch (e) {
@@ -1174,10 +1178,10 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
         SnackBar(content: Text('Gagal unduh: ${e.message ?? 'network error'}')),
       );
     } catch (e) {
-      debugPrint('[ticket-attachment] save failed: $e');
+      debugPrint('[ticket-attachment] open failed: $e');
       if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text('Gagal simpan: $e')),
+        SnackBar(content: Text('Gagal buka file: $e')),
       );
     } finally {
       if (mounted) setState(() => _downloadingVideo = false);
