@@ -458,14 +458,26 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<void> logout({bool force = false}) async {
-    // If biometric is enabled and not forcing, just lock (clear in-memory user)
+    // If biometric is enabled and not forcing, just lock (clear in-memory user).
     // Token stays in storage so fingerprint can restore session.
     final bioEnabled = ref.read(biometricEnabledProvider).valueOrNull ?? false;
     if (bioEnabled && !force) {
       state = const AuthState(user: null);
       return;
     }
+
     await ref.read(authServiceProvider).logout();
+
+    // Invalidate ALL user-specific cached providers so a different user logging
+    // in gets fresh data — not stale cache from the previous user.
+    ref.invalidate(notificationsProvider);
+    ref.invalidate(mySubscriptionsProvider);
+    ref.invalidate(myInvoicesProvider);
+    ref.invalidate(myTicketsProvider);
+    ref.invalidate(unreadNotificationsCountProvider);
+    ref.invalidate(activeAnnouncementsProvider);
+    ref.invalidate(publicSettingsProvider);
+
     state = const AuthState(user: null);
   }
 }

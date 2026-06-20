@@ -65,7 +65,23 @@ class NotificationService {
     });
   }
 
-  Future<ServiceResult<T>> _execute<T extends Object>(Future<T> Function() body) async {
+  /// Delete all notifications for the current user.
+  Future<ServiceResult<bool>> deleteAll() async {
+    return _execute(() async {
+      await _dio.delete<dynamic>(ApiEndpoints.notifications);
+      return true;
+    });
+  }
+
+  /// Delete a single notification by ID.
+  Future<ServiceResult<bool>> delete(String id) async {
+    return _execute(() async {
+      await _dio.delete<dynamic>('${ApiEndpoints.notifications}/$id');
+      return true;
+    });
+  }
+
+  Future<ServiceResult<T>> _execute<T extends Object>>(Future<T> Function() body) async {
     try {
       final result = await body();
       return Success(result);

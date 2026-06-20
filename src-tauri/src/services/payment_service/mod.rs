@@ -48,7 +48,6 @@ use self::dto::{AssignmentCandidateNodeRow, AssignmentSubscriptionRef};
 use self::mapper::{filter_installation_request_user_ids, filter_owner_admin_user_ids};
 #[cfg(test)]
 use self::validation::is_owner_admin_or_technician_role;
-use self::validation::is_owner_or_admin_role;
 
 fn md5_hex(input: &str) -> String {
     format!("{:x}", md5::compute(input.as_bytes()))
@@ -3535,45 +3534,13 @@ impl PaymentService {
                     return Ok(());
                 }
 
-                #[cfg(feature = "postgres")]
-                let recipients: Vec<(String, Option<String>)> = sqlx::query_as(
-                    r#"
-                    SELECT DISTINCT user_id, role
-                    FROM tenant_members
-                    WHERE tenant_id = $1
-                    "#,
-                )
-                .bind(&invoice.tenant_id)
-                .fetch_all(&self.pool)
-                .await
-                .unwrap_or_default();
+                // Notify admins about the payment outcome.
+                let admin_user_ids = self
+                    .list_tenant_owner_admin_user_ids(&invoice.tenant_id)
+                    .await
+                    .unwrap_or_default();
 
-                #[cfg(feature = "sqlite")]
-                let recipients: Vec<(String, Option<String>)> = sqlx::query_as(
-                    r#"
-                    SELECT DISTINCT user_id, role
-                    FROM tenant_members
-                    WHERE tenant_id = ?
-                    "#,
-                )
-                .bind(&invoice.tenant_id)
-                .fetch_all(&self.pool)
-                .await
-                .unwrap_or_default();
-
-                for (user_id, role) in recipients {
-                    let is_admin = is_owner_or_admin_role(role.as_deref());
-                    // For manual mark-failed flow, only notify customer-side users.
-                    // Admin/owner can still receive failed notifications for online payment failures.
-                    if manual_failure && is_admin {
-                        continue;
-                    }
-
-                    let action_url = if is_admin {
-                        format!("/admin/invoices/{}", invoice.id)
-                    } else {
-                        format!("/pay/{}", invoice.id)
-                    };
+                for user_id in admin_user_ids {
                     let _ = self
                         .notification_service
                         .create_notification(
@@ -3583,9 +3550,37 @@ impl PaymentService {
                             message.clone(),
                             "info".to_string(),
                             "billing".to_string(),
-                            Some(action_url),
+                            Some(format!("/admin/invoices/{}", invoice.id)),
                         )
                         .await;
+                }
+
+                // Notify only the customer users linked to this invoice's subscription.
+                let subscription_id =
+                    core::parse_customer_subscription_id(invoice.external_id.as_deref());
+                if let Some(subscription_id) = subscription_id {
+                    let customer_user_ids = self
+                        .list_customer_user_ids_for_subscription(
+                            &invoice.tenant_id,
+                            &subscription_id,
+                        )
+                        .await
+                        .unwrap_or_default();
+
+                    for user_id in customer_user_ids {
+                        let _ = self
+                            .notification_service
+                            .create_notification(
+                                user_id,
+                                Some(invoice.tenant_id.clone()),
+                                title.clone(),
+                                message.clone(),
+                                "info".to_string(),
+                                "billing".to_string(),
+                                Some(format!("/pay/{}", invoice.id)),
+                            )
+                            .await;
+                    }
                 }
             } else {
                 let users = self

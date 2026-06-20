@@ -365,6 +365,16 @@ impl NotificationService {
         Ok(())
     }
 
+    /// Delete ALL notifications for a user (used by mobile app "clear all")
+    pub async fn delete_all_user_notifications(&self, user_id: &str) -> AppResult<()> {
+        sqlx::query("DELETE FROM notifications WHERE user_id = $1")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+        Ok(())
+    }
+
     // ================= Preference Methods =================
 
     pub async fn get_user_preferences(

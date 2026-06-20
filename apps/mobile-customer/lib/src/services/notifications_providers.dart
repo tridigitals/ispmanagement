@@ -89,12 +89,27 @@ class NotificationsNotifier extends AsyncNotifier<List<NotificationModel>> {
     state = AsyncData([notification, ...current]);
   }
 
+  /// Mark all as read.
   Future<void> markAllRead() async {
     final current = state.valueOrNull;
     if (current == null) return;
     final now = DateTime.now();
     state = AsyncData([for (final n in current) n.copyWith(readAt: now)]);
     await ref.read(notificationServiceProvider).markAllRead();
+  }
+
+  /// Delete all notifications (clear all).
+  Future<void> clearAll() async {
+    state = const AsyncData([]);
+    await ref.read(notificationServiceProvider).deleteAll();
+  }
+
+  /// Delete a single notification.
+  Future<void> delete(String id) async {
+    final current = state.valueOrNull;
+    if (current == null) return;
+    state = AsyncData(current.where((n) => n.id != id).toList());
+    await ref.read(notificationServiceProvider).delete(id);
   }
 }
 

@@ -53,6 +53,36 @@ class _NotificationInboxScreenState
         actions: [
           TextButton(
             onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Hapus Semua?'),
+                  content: const Text(
+                    'Semua notifikasi akan dihapus. Tindakan ini tidak dapat dibatalkan.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('Batal'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.red,
+                      ),
+                      child: const Text('Hapus Semua'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed == true && context.mounted) {
+                await ref.read(notificationsProvider.notifier).clearAll();
+              }
+            },
+            child: const Text('Hapus Semua'),
+          ),
+          TextButton(
+            onPressed: () async {
               await ref.read(notificationsProvider.notifier).markAllRead();
             },
             child: Text(l10n.markAllRead),
@@ -101,7 +131,20 @@ class _NotificationInboxScreenState
                           )
                         : const SizedBox.shrink();
                   }
-                  return _NotificationTile(item: list[index]);
+                  return Dismissible(
+                    key: Key(list[index].id),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      color: Colors.red,
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      child: const Icon(Icons.delete, color: Colors.white),
+                    ),
+                    onDismissed: (_) {
+                      ref.read(notificationsProvider.notifier).delete(list[index].id);
+                    },
+                    child: _NotificationTile(item: list[index]),
+                  );
                 },
               ),
             ),

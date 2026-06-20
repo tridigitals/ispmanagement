@@ -27,6 +27,7 @@ pub fn router() -> Router<AppState> {
         .route("/unread-count", get(get_unread_count))
         .route("/{id}/read", post(mark_as_read))
         .route("/read-all", post(mark_all_as_read))
+        .route("/", delete(delete_all_notifications))
         .route("/{id}", delete(delete_notification))
         .route("/preferences", get(get_preferences).put(update_preference))
         .route("/push/subscribe", post(subscribe_push))
@@ -292,6 +293,19 @@ async fn delete_notification(
     state
         .notification_service
         .delete_notification(&id, &user.id)
+        .await?;
+    Ok(Json(serde_json::json!({ "success": true })))
+}
+
+// DELETE /api/notifications — clear all notifications for the current user
+async fn delete_all_notifications(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> AppResult<Json<serde_json::Value>> {
+    let user = get_current_user(&state, &headers).await?;
+    state
+        .notification_service
+        .delete_all_user_notifications(&user.id)
         .await?;
     Ok(Json(serde_json::json!({ "success": true })))
 }
