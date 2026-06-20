@@ -7,6 +7,7 @@ import '../../l10n/app_localizations.dart';
 import '../../services/app_config.dart';
 import '../../services/auth_providers.dart';
 import '../../services/fcm_service.dart';
+import '../../services/missing_providers.dart';
 import '../../services/notifications_providers.dart';
 import '../../services/service_providers.dart';
 
