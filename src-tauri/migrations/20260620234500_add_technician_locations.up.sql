@@ -5,8 +5,8 @@
 
 CREATE TABLE IF NOT EXISTS public.technician_locations (
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id       uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-    technician_id   uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    tenant_id       text NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+    technician_id   text NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     latitude        double precision NOT NULL,
     longitude       double precision NOT NULL,
     accuracy        double precision,                 -- meters (from GPS)
