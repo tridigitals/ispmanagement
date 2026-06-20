@@ -91,7 +91,7 @@ const ROUTE_TITLES: Array<[RegExp, string]> = [
   [/^\/dashboard\/services\/order\/?$/, 'Order Service'],
   [/^\/dashboard\/services\/?$/, 'Services'],
   [/^\/dashboard\/?$/, 'Dashboard'],
-  [/^\\/profile\\/?$/, 'Profile'],
+  [/^\/profile\/?$/, 'Profile'],
   [/^\/support\/[^/]+\/?$/, 'Support Ticket'],
   [/^\/support\/?$/, 'Support'],
   [/^\/announcements\/[^/]+\/?$/, 'Announcement Detail'],

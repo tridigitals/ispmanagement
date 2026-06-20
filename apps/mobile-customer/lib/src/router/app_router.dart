@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../features/announcements/announcement_detail_screen.dart';
 import '../features/announcements/announcements_screen.dart';
 import '../features/auth/forgot_password_screen.dart';
+import '../features/auth/auth_loading_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/two_factor_enroll_screen.dart';
 import '../features/auth/two_factor_verify_screen.dart';
@@ -41,7 +42,7 @@ GoRouter buildAppRouter({
       final onboardingDone = container.read(onboardingCompletedProvider);
       final loc = state.matchedLocation;
       final isPublic =
-          loc == '/login' || loc == '/forgot-password' || loc == '/onboarding';
+          loc == '/login' || loc == '/forgot-password' || loc == '/onboarding' || loc == '/loading';
 
       // First-run gate
       if (!onboardingDone && loc != '/onboarding') {
@@ -52,7 +53,7 @@ GoRouter buildAppRouter({
       if (!loggedIn && !isPublic && loc != '/onboarding') {
         return '/login';
       }
-      if (loggedIn && (loc == '/login' || loc == '/onboarding')) {
+      if (loggedIn && (loc == '/login' || loc == '/onboarding' || loc == '/loading')) {
         return '/';
       }
       return null;
@@ -65,6 +66,10 @@ GoRouter buildAppRouter({
       GoRoute(
         path: '/login',
         builder: (_, __) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/loading',
+        builder: (_, __) => const AuthLoadingScreen(),
       ),
       GoRoute(
         path: '/forgot-password',

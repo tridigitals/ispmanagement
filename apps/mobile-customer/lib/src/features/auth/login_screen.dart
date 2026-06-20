@@ -133,7 +133,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         if (restored) {
           ref.read(fcmServiceProvider).clearPendingAction();
-          context.go('/');
+          context.go('/loading');
         } else {
           // Token ada tapi /me gagal (expired/network). Minta user login manual.
           setState(() {
@@ -179,7 +179,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         } else {
           if (mounted) {
             ref.read(fcmServiceProvider).clearPendingAction();
-            context.go('/');
+            context.go('/loading');
           }
         }
       case Failure(:final exception):
@@ -272,7 +272,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
       if (mounted) {
         ref.read(fcmServiceProvider).clearPendingAction();
-        context.go('/');
+        context.go('/loading');
       }
     } catch (e) {
       if (mounted) {
@@ -312,7 +312,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
         if (mounted) {
           ref.read(fcmServiceProvider).clearPendingAction();
-          context.go('/');
+          context.go('/loading');
         }
       case Failure(:final exception):
         ScaffoldMessenger.of(context).showSnackBar(
