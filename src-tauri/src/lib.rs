@@ -51,6 +51,9 @@ fn init_logging() {
 #[cfg(feature = "desktop")]
 pub fn run() {
     use commands::audit::{list_audit_logs, list_tenant_audit_logs};
+    use commands::technician_location::{
+        get_latest_technician_location, record_technician_location,
+    };
     use commands::*;
     use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
     use tauri::tray::{TrayIconBuilder, TrayIconEvent};
