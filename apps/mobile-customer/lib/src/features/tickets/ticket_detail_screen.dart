@@ -8,7 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:gal/gal.dart';
+import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -1013,7 +1013,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
   }
 
   /// Inline video tile — shows a play icon overlay; tap downloads to device
-  /// gallery via [Gal.putVideo] (handles Android scoped storage + permission).
+  /// gallery via [ImageGallerySaverPlus] (handles Android scoped storage + MediaStore).
   /// No browser, no external video player — file lands in Movies/Album.
   Widget _buildVideoTile({
     required BuildContext context,
@@ -1109,11 +1109,11 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
   }
 
   /// Download the video file to the temp directory, then save it to the
-  /// device gallery via [Gal]. Authenticated using the bearer token header
+  /// device gallery via [ImageGallerySaverPlus]. Authenticated using the bearer token header
   /// (matches how the lightbox image preview authenticates).
   ///
   /// On Android 13+, scoped storage means we cannot write directly to
-  /// `/storage/emulated/0/...` — we go through MediaStore via [Gal.putVideo]
+  /// `/storage/emulated/0/...` — we go through MediaStore via [ImageGallerySaverPlus]
   /// which is the supported path.
   Future<void> _downloadAndSaveVideo({
     required BuildContext context,
@@ -1125,25 +1125,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
     setState(() => _downloadingVideo = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      // Request gallery access upfront — fail fast with friendly message if
-      // user has previously denied.
-      final hasAccess = await Gal.hasAccess(toAlbum: true);
-      if (!hasAccess) {
-        final granted = await Gal.requestAccess(toAlbum: true);
-        if (!granted) {
-          if (!mounted) return;
-          messenger.showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Izin akses galeri ditolak. Aktifkan di pengaturan HP.',
-              ),
-            ),
-          );
-          return;
-        }
-      }
-
-      // Download to temp dir — use original filename so Gal can derive a
+      // Download to temp dir — use original filename so the saver can derive a
       // sensible filename when writing to MediaStore.
       final tempDir = await getTemporaryDirectory();
       final safeName = attachment.originalName.isNotEmpty
@@ -1159,26 +1141,32 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
       );
 
       // Save to gallery via MediaStore (Android) / Photos (iOS).
-      await Gal.putVideo(tempPath, album: 'Ticket Attachments');
+      final result = await ImageGallerySaverPlus.saveFile(
+        tempPath,
+        name: safeName,
+      );
 
-      // Cleanup temp file — Gal copies into MediaStore.
+      // Cleanup temp file — ImageGallerySaverPlus copies into MediaStore.
       try {
         await File(tempPath).delete();
       } catch (_) {/* best effort */}
 
+      final isSuccess = result['isSuccess'] == true;
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Tersimpan di galeri: $safeName'),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    } on GalException catch (e) {
-      debugPrint('[ticket-attachment] gal save failed: ${e.type.message}');
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Gagal simpan: ${e.type.message}')),
-      );
+      if (isSuccess) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Tersimpan di galeri: $safeName'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else {
+        final error = result['errorMessage'] ?? 'Unknown error';
+        debugPrint('[ticket-attachment] gallery save failed: $error');
+        messenger.showSnackBar(
+          SnackBar(content: Text('Gagal simpan: $error')),
+        );
+      }
     } on DioException catch (e) {
       debugPrint('[ticket-attachment] download failed: ${e.message}');
       if (!mounted) return;

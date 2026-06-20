@@ -89,7 +89,9 @@ async fn get_olt(
         .await?;
 
     let olt = state.olt_service.get_olt(&id, &tenant).await?;
-    Ok(Json(serde_json::json!({ "status": "success", "data": olt })))
+    // uplink_router_name already resolved via OltWithRouter JOIN
+    let value = serde_json::to_value(&olt).unwrap_or_default();
+    Ok(Json(serde_json::json!({ "status": "success", "data": value })))
 }
 
 /// POST /api/admin/olts

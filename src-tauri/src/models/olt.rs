@@ -81,6 +81,35 @@ impl Olt {
     }
 }
 
+// ── Response with router name ────────────────────────────────
+/// Sprint E: OLT + upstream router name for display
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+pub struct OltWithRouter {
+    pub id: String,
+    pub tenant_id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub olt_type: String,
+    pub host: String,
+    pub port: i32,
+    pub username: String,
+    #[serde(skip_serializing)]
+    pub password_enc: Option<String>,
+    pub last_stats: Option<JsonValue>,
+    pub last_updated: Option<DateTime<Utc>>,
+    pub is_online: bool,
+    pub last_polled_at: Option<DateTime<Utc>>,
+    pub last_error: Option<String>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub address_line: Option<String>,
+    pub uplink_router_id: Option<String>,
+    pub uplink_port: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub uplink_router_name: Option<String>,
+}
+
 // ── Request DTOs ─────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
@@ -150,7 +179,7 @@ pub struct SetOltUplinkRequest {
 
 #[derive(Debug, Serialize)]
 pub struct SetOltUplinkResponse {
-    pub olt: Olt,
+    pub olt: OltWithRouter,
     pub network_link: Option<NetworkLink>,
 }
 

@@ -11,8 +11,8 @@ use crate::error::{AppError, AppResult};
 use crate::models::{
     AllOnusResponse, CreateNetworkAssetRequest, CreateNetworkLinkRequest, CreateOltRequest, Olt,
     OltAllDetailsResponse, OltOnuDetail, OltOnuHistoryRecord, OltPublicToken, OltStatsResponse,
-    RebootOnuRequest, SetOltUplinkRequest, SetOltUplinkResponse, TestConnectionResponse,
-    UpdateNetworkAssetRequest, UpdateOltRequest,
+    OltWithRouter, RebootOnuRequest, SetOltUplinkRequest, SetOltUplinkResponse,
+    TestConnectionResponse, UpdateNetworkAssetRequest, UpdateOltRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
 use crate::services::audit_service::AuditService;
@@ -84,9 +84,13 @@ impl OltService {
 
     // ── CRUD ──────────────────────────────────────────────
 
-    pub async fn list_olts(&self, tenant_id: &str) -> AppResult<Vec<Olt>> {
-        let olts = sqlx::query_as::<_, Olt>(
-            "SELECT * FROM public.olts WHERE tenant_id = $1 ORDER BY name",
+    pub async fn list_olts(&self, tenant_id: &str) -> AppResult<Vec<OltWithRouter>> {
+        let olts = sqlx::query_as::<_, OltWithRouter>(
+            r#"SELECT o.*, mr.name AS uplink_router_name
+               FROM public.olts o
+               LEFT JOIN public.mikrotik_routers mr ON mr.id = o.uplink_router_id AND mr.tenant_id = o.tenant_id
+               WHERE o.tenant_id = $1
+               ORDER BY o.name"#,
         )
         .bind(tenant_id)
         .fetch_all(&self.pool)
@@ -94,9 +98,12 @@ impl OltService {
         Ok(olts)
     }
 
-    pub async fn get_olt(&self, id: &str, tenant_id: &str) -> AppResult<Olt> {
-        let olt = sqlx::query_as::<_, Olt>(
-            "SELECT * FROM public.olts WHERE id = $1 AND tenant_id = $2",
+    pub async fn get_olt(&self, id: &str, tenant_id: &str) -> AppResult<OltWithRouter> {
+        let olt = sqlx::query_as::<_, OltWithRouter>(
+            r#"SELECT o.*, mr.name AS uplink_router_name
+               FROM public.olts o
+               LEFT JOIN public.mikrotik_routers mr ON mr.id = o.uplink_router_id AND mr.tenant_id = o.tenant_id
+               WHERE o.id = $1 AND o.tenant_id = $2"#,
         )
         .bind(id)
         .bind(tenant_id)
@@ -224,7 +231,7 @@ impl OltService {
         id: &str,
         tenant_id: &str,
         req: UpdateOltRequest,
-    ) -> AppResult<Olt> {
+    ) -> AppResult<OltWithRouter> {
         let existing = self.get_olt(id, tenant_id).await?;
 
         let name = req.name.unwrap_or(existing.name.clone());

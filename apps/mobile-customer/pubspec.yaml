@@ -1,6 +1,6 @@
 name: mobile_customer
 description: ISP Management — Customer mobile app (Flutter, iOS + Android)
-version: 0.1.0+50
+version: 0.1.0+52
 publish_to: none
 resolution: workspace
 
@@ -52,7 +52,7 @@ dependencies:
   file_picker: ^8.0.0
   image_picker: ^1.1.2
   # Save videos/images to device gallery (Android scoped storage + permission handling)
-  gal: ^2.3.0
+  image_gallery_saver_plus: ^3.0.5
   # File picker (gallery — SAF, no permission needed)
   webview_flutter: ^4.10.0
   pdf: ^3.10.8

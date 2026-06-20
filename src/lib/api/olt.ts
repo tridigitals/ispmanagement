@@ -19,6 +19,7 @@ export interface Olt {
   address_line?: string | null;
   uplink_router_id?: string | null;
   uplink_port?: string | null;
+  uplink_router_name?: string | null;
   created_at?: string;
   updated_at?: string;
 }
