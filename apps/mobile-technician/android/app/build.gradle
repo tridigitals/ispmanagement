@@ -44,17 +44,25 @@ android {
 
     signingConfigs {
         release {
-            // Loaded from build environment or local.properties
-            def keystorePath = localProperties.getProperty('release.keystore.path')
-            def keystorePassword = localProperties.getProperty('release.keystore.password')
-            def keyAlias = localProperties.getProperty('release.keystore.alias')
-            def keyPassword = localProperties.getProperty('release.keystore.keyPassword')
-            if (keystorePath != null && keystorePath != '') {
-                storeFile file(keystorePath)
-                storePassword keystorePassword
-                keyAlias keyAlias
-                keyPassword keyPassword
+            // Try key.properties first (CI writes this), fallback to release-key.jks (local)
+            def keystoreFile = file("release-key.jks")
+            def keystorePassword = "ispcustomer123"
+            def keystoreKeyAlias = "ispcustomer"
+            def keystoreKeyPassword = "ispcustomer123"
+
+            def keyPropertiesFile = file("key.properties")
+            if (keyPropertiesFile.exists()) {
+                def keyProps = new Properties()
+                keyPropertiesFile.withReader('UTF-8') { reader -> keyProps.load(reader) }
+                keystoreFile = file(keyProps.getProperty("storeFile", "release-key.jks"))
+                keystorePassword = keyProps.getProperty("storePassword", keystorePassword)
+                keystoreKeyAlias = keyProps.getProperty("keyAlias", keystoreKeyAlias)
+                keystoreKeyPassword = keyProps.getProperty("keyPassword", keystoreKeyPassword)
             }
+            storeFile keystoreFile
+            storePassword keystorePassword
+            keyAlias keystoreKeyAlias
+            keyPassword keystoreKeyPassword
         }
     }
 

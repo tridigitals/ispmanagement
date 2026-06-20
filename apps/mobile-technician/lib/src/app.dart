@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
-import 'package:ui_kit/ui_kit.dart';
-
 import 'l10n/app_localizations.dart';
 import 'router/app_router.dart';
 import 'services/app_config.dart';
@@ -57,7 +55,7 @@ class _State extends ConsumerState<IspTechnicianApp> {
     Future.delayed(const Duration(milliseconds: 1500), () async {
       try {
         if (Firebase.apps.isNotEmpty) {
-          await ref.read(fcmServiceProvider).init(ref, force: false);
+          await ref.read(fcmServiceProvider).init(force: false);
         }
       } catch (e) {
         debugPrint('[fcm] bootstrap init failed: $e');
@@ -75,13 +73,6 @@ class _State extends ConsumerState<IspTechnicianApp> {
       routerConfig: _router,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      builder: (context, child) {
-        // Wrap with IspTheme for legacy IspColors-style access.
-        return IspTheme(
-          colors: AppColors.accent,
-          child: child ?? const SizedBox.shrink(),
-        );
-      },
     );
   }
 }
