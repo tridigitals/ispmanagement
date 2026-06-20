@@ -87,36 +87,31 @@ class AuthTokenStorage {
     //    → readToken() is called on every API call, so this is the hot path.
     _cachedToken = token;
 
-    // 2. Fire-and-forget the native storage writes. We do NOT await — if
-    //    Android Keystore is wedged, awaiting would block the entire login
-    //    flow for 5s+ (timeout) or forever. The auth flow continues via the
-    //    cache. On app restart, if the cache is empty, the user re-logs in.
-    //
-    //    Note: This is a void async function launched in a microtask via
-    //    Future(). Errors are caught and logged — they cannot escape.
-    // ignore: unawaited_futures, discarded_futures
-    Future(() async {
-      try {
-        await _safeWrite(_kTokenKey, token);
-        if (refreshToken != null) {
-          await _safeWrite(_kRefreshKey, refreshToken);
-        }
-        if (userId != null) {
-          await _safeWrite(_kUserIdKey, userId);
-        }
-        if (tenantId != null) {
-          await _safeWrite(_kTenantIdKey, tenantId);
-        }
-        if (expiresAt != null) {
-          await _safeWrite(
-            _kTokenExpiryKey,
-            expiresAt.toIso8601String(),
-          );
-        }
-      } catch (e) {
-        debugPrint('[auth] background persist failed: $e');
+    // 2. AWAIT storage writes. This is critical — if we fire-and-forget,
+    //    the auth flow continues before the write completes. The next API call
+    //    (home screen fetch on first login) calls readToken() → storage empty
+    //    → no token → 401. We use _safeWrite which has 5s timeout + try-catch
+    //    so a wedged Android Keystore doesn't block login.
+    try {
+      await _safeWrite(_kTokenKey, token);
+      if (refreshToken != null) {
+        await _safeWrite(_kRefreshKey, refreshToken);
       }
-    });
+      if (userId != null) {
+        await _safeWrite(_kUserIdKey, userId);
+      }
+      if (tenantId != null) {
+        await _safeWrite(_kTenantIdKey, tenantId);
+      }
+      if (expiresAt != null) {
+        await _safeWrite(
+          _kTokenExpiryKey,
+          expiresAt.toIso8601String(),
+        );
+      }
+    } catch (e) {
+      debugPrint('[auth] persistSession failed (cache still valid): $e');
+    }
   }
 
   /// Read token — cache first, storage as fallback.
