@@ -8,7 +8,8 @@
     "empty": "Belum ada notifikasi",
     "mark_read": "Tandai sudah dibaca",
     "delete": "Hapus",
-    "view_all": "Lihat semua"
+    "view_all": "Lihat semua",
+    "clear_all": "Hapus semua"
   },
   "toggle_dark": "Ganti ke mode gelap",
   "toggle_light": "Ganti ke mode terang",

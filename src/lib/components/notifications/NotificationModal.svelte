@@ -426,9 +426,9 @@
 
 <ConfirmDialog
   open={showClearAllModal}
-  title={$t('notifications_page.clear_all_confirm.title') || 'Clear all notifications'}
-  message={$t('notifications_page.clear_all_confirm.message') || 'This will permanently delete all your notifications. This action cannot be undone.'}
-  confirmText={$t('common.delete') || 'Delete all'}
+  title={$t('notifications_page.confirm_clear_all.title') || 'Clear all notifications'}
+  message={$t('notifications_page.confirm_clear_all.message') || 'This will permanently delete all your notifications. This action cannot be undone.'}
+  confirmText={$t('topbar.notifications_menu.clear_all') || 'Clear all'}
   variant="danger"
   loading={clearingAll}
   on:confirm={confirmClearAll}

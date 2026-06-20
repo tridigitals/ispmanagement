@@ -1117,9 +1117,14 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
     );
   }
 
-  /// Download a file to the temp directory, then open it with the native
-  /// app on the device using url_launcher (video player, PDF viewer, etc.).
-  /// Works for all non-image file types without needing any gallery-saver plugin.
+  /// Download an attachment to a persistent app-private cache directory
+  /// (NOT the OS temp dir — that can be wiped at any time) and open it
+  /// with the native app on the device via share_plus.
+  ///
+  /// First download: full HTTP fetch → saved to cache → opened.
+  /// Subsequent taps: file already exists in cache → opened directly,
+  /// no re-download. Cache survives app restarts; only cleared by user
+  /// clearing app data or `path_provider`'s cache eviction (very rare).
   Future<void> _openAttachmentFile({
     required BuildContext context,
     required String fileUrl,
@@ -1130,21 +1135,41 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
     setState(() => _downloadingVideo = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final tempDir = await getTemporaryDirectory();
+      // Use application support directory (persistent, app-private).
+      // Sub-folder per attachment id so files with same originalName
+      // don't collide across different tickets.
+      final baseDir = await getApplicationSupportDirectory();
+      final cacheDir = Directory('${baseDir.path}/ticket_attachments');
+      if (!await cacheDir.exists()) {
+        await cacheDir.create(recursive: true);
+      }
       final safeName = attachment.originalName.isNotEmpty
           ? attachment.originalName
           : 'file_${attachment.id}';
-      final tempPath = '${tempDir.path}/$safeName';
+      final cachedPath = '${cacheDir.path}/${attachment.id}_$safeName';
 
+      // ── Cache hit: skip download ──
+      final cached = File(cachedPath);
+      if (await cached.exists()) {
+        debugPrint('[ticket-attachment] cache hit: $cachedPath');
+        await Share.shareXFiles(
+          [XFile(cachedPath, mimeType: attachment.resolvedContentType)],
+          text: attachment.originalName,
+        );
+        return;
+      }
+
+      // ── Cache miss: download once ──
+      debugPrint('[ticket-attachment] downloading: $fileUrl → $cachedPath');
       await dio.download(
         fileUrl,
-        tempPath,
+        cachedPath,
         options: token.isEmpty
             ? null
             : Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
-      final file = File(tempPath);
+      final file = File(cachedPath);
       if (!await file.exists()) {
         throw Exception('File tidak ditemukan setelah unduh');
       }
@@ -1152,7 +1177,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
       // Open with native app via share_plus — it handles FileProvider/content://
       // so the file is accessible to other apps. Shows app chooser (open with...).
       await Share.shareXFiles(
-        [XFile(tempPath, mimeType: attachment.resolvedContentType)],
+        [XFile(cachedPath, mimeType: attachment.resolvedContentType)],
         text: attachment.originalName,
       );
     } on DioException catch (e) {

@@ -20,5 +20,10 @@
   "empty": {
     "title": "Semua sudah beres",
     "subtitle": "Tidak ada notifikasi untuk ditampilkan."
+  },
+  "confirm_clear_all": {
+    "title": "Hapus semua notifikasi",
+    "message": "Ini akan menghapus semua notifikasi Anda secara permanen. Tindakan ini tidak dapat dibatalkan.",
+    "confirm": "Hapus semua"
   }
 }
