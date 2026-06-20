@@ -6,12 +6,13 @@
 set -e
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 APP="${1:-mobile-customer}"
+FLUTTER="$HOME/sdk/flutter"
 
 echo "Syncing workspace build artifacts for $APP..."
 
 # 1. Ensure workspace deps are resolved
 cd "$ROOT"
-dart pub get
+"$FLUTTER/bin/dart" pub get
 
 # 2. Copy package_config.json with absolute paths
 python3 -c "
