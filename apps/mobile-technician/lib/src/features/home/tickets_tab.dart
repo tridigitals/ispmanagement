@@ -5,7 +5,7 @@ import 'package:api_client/api_client.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../../services/ticket_providers.dart';
-import 'widgets/ticket_card.dart';
+import '../tickets/widgets/ticket_card.dart';
 
 /// Tickets tab — full list of tickets assigned to the technician.
 /// Filter chips: Semua | Open | Diproses | Selesai

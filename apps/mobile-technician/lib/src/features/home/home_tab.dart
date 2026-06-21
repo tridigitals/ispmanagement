@@ -5,6 +5,7 @@ import 'package:api_client/api_client.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../../services/auth_providers.dart';
+import '../../services/settings_providers.dart';
 import '../../services/ticket_providers.dart';
 import '../tickets/widgets/ticket_card.dart';
 
