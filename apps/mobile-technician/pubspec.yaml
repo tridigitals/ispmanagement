@@ -1,6 +1,6 @@
 name: mobile_technician
 description: ISP Management — Technician mobile app (Flutter, Android + iOS)
-version: 0.1.0+5
+version: 0.1.0+6
 publish_to: none
 
 resolution: workspace
@@ -49,6 +49,9 @@ dependencies:
   url_launcher: ^6.3.0
   image_picker: ^1.1.2
   file_picker: ^8.1.2
+
+  # Sprint 3: Signature pad for ticket resolve
+  signature: ^5.5.0
 
   # Maps & location
   geolocator: ^13.0.1

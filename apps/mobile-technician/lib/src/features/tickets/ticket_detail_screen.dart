@@ -7,6 +7,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/service_providers.dart';
 import '../../services/ticket_providers.dart';
+import '../../widgets/resolve_ticket_dialog.dart';
+import '../../services/ticket_actions.dart';
 
 /// Full ticket view with action bar.
 /// Open → "Mulai Kerjakan"
@@ -197,31 +199,34 @@ class _ActionBar extends ConsumerStatefulWidget {
 class _ActionBarState extends ConsumerState<_ActionBar> {
   bool _busy = false;
 
-  Future<void> _updateStatus(TicketStatus newStatus) async {
+  Future<void> _startWork() async {
     setState(() => _busy = true);
     try {
-      final svc = ref.read(ticketServiceProvider);
-      final res = await svc.update(widget.ticket.id, status: newStatus.name);
-      res.fold(
-        (_) {
-          widget.onChanged();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Status diubah ke ${newStatus.name}')),
-            );
-          }
-        },
-        (err) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Gagal: ${err.message}')),
-            );
-          }
-        },
-      );
+      final updated = await ref
+          .read(ticketActionControllerProvider)
+          .start(widget.ticket.id);
+      if (!mounted) return;
+      if (updated != null) {
+        widget.onChanged();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tiket dimulai — mulai bekerja')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal memulai tiket. Coba lagi.')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _openResolveDialog() async {
+    await showDialog<bool>(
+      context: context,
+      builder: (_) => ResolveTicketDialog(ticketId: widget.ticket.id),
+    );
+    widget.onChanged();
   }
 
   Future<void> _addNote() async {
@@ -304,7 +309,7 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
               child: FilledButton.icon(
                 icon: const Icon(Icons.play_arrow),
                 label: const Text('Mulai Kerjakan'),
-                onPressed: _busy ? null : () => _updateStatus(TicketStatus.inProgress),
+                onPressed: _busy ? null : _startWork,
               ),
             )
           else
@@ -312,7 +317,7 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
               child: FilledButton.icon(
                 icon: const Icon(Icons.check),
                 label: const Text('Selesaikan'),
-                onPressed: _busy ? null : () => _updateStatus(TicketStatus.resolved),
+                onPressed: _busy ? null : _openResolveDialog,
               ),
             ),
           const SizedBox(width: 8),
