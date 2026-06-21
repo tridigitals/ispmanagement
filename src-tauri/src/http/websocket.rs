@@ -66,6 +66,14 @@ pub enum WsEvent {
         message_id: String,
     },
 
+    /// Support ticket status changed (start/resolve/close). The frontend
+    /// refetches the ticket list when it sees this event.
+    SupportTicketUpdated {
+        ticket_id: String,
+        status: String,
+        actor_id: String,
+    },
+
     /// OLT stats updated by background poller
     OltStatsUpdate {
         tenant_id: String,

@@ -565,6 +565,19 @@ pub async fn start_server_impl(
             "/api/support/tickets/{id}/satisfaction",
             post(support::submit_ticket_satisfaction),
         )
+        // Sprint 3: ticket actions (mobile-technician app)
+        .route(
+            "/api/support/tickets/{id}/start",
+            post(support::start_support_ticket),
+        )
+        .route(
+            "/api/support/tickets/{id}/resolve",
+            post(support::resolve_support_ticket),
+        )
+        .route(
+            "/api/support/tickets/{id}/photos",
+            post(support::upload_ticket_photo),
+        )
         // Technician GPS tracking (Sprint 2 mobile-technician)
         .route(
             "/api/technician/locations",

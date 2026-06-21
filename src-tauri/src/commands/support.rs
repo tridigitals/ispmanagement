@@ -1470,6 +1470,228 @@ pub async fn submit_ticket_satisfaction(
     Ok(())
 }
 
+// =============================================================================
+// Sprint 3: Ticket action commands (start / resolve / upload proof)
+// =============================================================================
+
+/// Mark a ticket as in_progress. Only the assigned technician/staff/admin can
+/// start work. Sets `started_at` to now() and status to `in_progress`.
+#[tauri::command]
+pub async fn start_support_ticket(
+    token: String,
+    id: String,
+    auth_service: State<'_, AuthService>,
+    notification_service: State<'_, NotificationService>,
+    ws_hub: State<'_, std::sync::Arc<WsHub>>,
+) -> Result<SupportTicket, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| "Tenant context required".to_string())?;
+
+    let ticket: SupportTicket =
+        sqlx::query_as("SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2")
+            .bind(&id)
+            .bind(&tenant_id)
+            .fetch_one(&auth_service.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+    // Only assignee or admin can start work.
+    let can_all = auth_service
+        .has_permission(&claims.sub, &tenant_id, "support", "read_all")
+        .await
+        .unwrap_or(false);
+    let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
+    if !can_all && !is_assignee {
+        return Err("Forbidden: only the assignee can start this ticket".to_string());
+    }
+
+    if ticket.status == "closed" || ticket.status == "resolved" {
+        return Err(format!("Cannot start a {} ticket", ticket.status));
+    }
+
+    let now = Utc::now();
+    let updated: SupportTicket = sqlx::query_as(
+        r#"
+        UPDATE support_tickets
+        SET status = 'in_progress',
+            started_at = $1,
+            updated_at = $1
+        WHERE id = $2 AND tenant_id = $3
+        RETURNING *
+        "#,
+    )
+    .bind(now)
+    .bind(&id)
+    .bind(&tenant_id)
+    .fetch_one(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    // Notify ticket owner that work has started.
+    if let Some(ref owner) = updated.created_by {
+        if owner != &claims.sub {
+            let subject = format!("Teknisi mulai mengerjakan tiket: {}", updated.subject);
+            let body = format!(
+                "Teknisi telah mulai mengerjakan tiket Anda ({}). Pantau progresnya di aplikasi.",
+                updated.id
+            );
+            let _ = notification_service
+                .create_notification(
+                    owner.clone(),
+                    Some(tenant_id.clone()),
+                    subject,
+                    body,
+                    "info".to_string(),
+                    "support".to_string(),
+                    Some(format!("/support/tickets/{}", updated.id)),
+                )
+                .await;
+        }
+    }
+
+    ws_hub.broadcast(WsEvent::SupportTicketUpdated {
+        ticket_id: updated.id.clone(),
+        status: updated.status.clone(),
+        actor_id: claims.sub.clone(),
+    });
+
+    Ok(updated)
+}
+
+/// Resolve a ticket with completion notes + optional photo IDs + optional signature.
+/// Sets status='resolved', resolved_at=now, completion_notes, signature_url,
+/// and stores the list of attached photo file_record IDs in completion_photos.
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn resolve_support_ticket(
+    token: String,
+    id: String,
+    completion_notes: Option<String>,
+    signature_file_id: Option<String>,
+    photo_file_ids: Option<Vec<String>>,
+    auth_service: State<'_, AuthService>,
+    notification_service: State<'_, NotificationService>,
+    audit_service: State<'_, AuditService>,
+    ws_hub: State<'_, std::sync::Arc<WsHub>>,
+) -> Result<SupportTicket, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| "Tenant context required".to_string())?;
+
+    let ticket: SupportTicket =
+        sqlx::query_as("SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2")
+            .bind(&id)
+            .bind(&tenant_id)
+            .fetch_one(&auth_service.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+    if ticket.status == "closed" {
+        return Err("Ticket is closed".to_string());
+    }
+    if ticket.status == "resolved" {
+        return Err("Ticket already resolved".to_string());
+    }
+
+    let can_all = auth_service
+        .has_permission(&claims.sub, &tenant_id, "support", "read_all")
+        .await
+        .unwrap_or(false);
+    let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
+    if !can_all && !is_assignee {
+        return Err("Forbidden: only the assignee can resolve this ticket".to_string());
+    }
+
+    let photos_json = serde_json::to_value(photo_file_ids.unwrap_or_default())
+        .map_err(|e| format!("photo list serialization failed: {e}"))?;
+
+    let now = Utc::now();
+    let updated: SupportTicket = sqlx::query_as(
+        r#"
+        UPDATE support_tickets
+        SET status           = 'resolved',
+            resolved_at      = $1,
+            updated_at       = $1,
+            completion_notes = $2,
+            signature_url    = $3,
+            completion_photos = $4,
+            started_at       = COALESCE(started_at, $1)
+        WHERE id = $5 AND tenant_id = $6
+        RETURNING *
+        "#,
+    )
+    .bind(now)
+    .bind(completion_notes.as_deref())
+    .bind(signature_file_id.as_deref())
+    .bind(photos_json)
+    .bind(&id)
+    .bind(&tenant_id)
+    .fetch_one(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    // Audit log.
+    let audit_details = serde_json::json!({
+        "action": "resolve",
+        "completion_notes": completion_notes,
+        "photo_count": updated.completion_photos.len(),
+        "has_signature": signature_file_id.is_some(),
+    })
+    .to_string();
+    audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "resolve",
+            "support_ticket",
+            Some(&updated.id),
+            Some(&audit_details),
+            None,
+        )
+        .await;
+
+    // Notify ticket owner that the ticket was resolved.
+    if let Some(ref owner) = updated.created_by {
+        if owner != &claims.sub {
+            let subject = format!("Tiket Anda telah selesai: {}", updated.subject);
+            let body = format!(
+                "Teknisi telah menyelesaikan tiket ({}). Silakan cek aplikasi untuk konfirmasi.",
+                updated.id
+            );
+            let _ = notification_service
+                .create_notification(
+                    owner.clone(),
+                    Some(tenant_id.clone()),
+                    subject,
+                    body,
+                    "info".to_string(),
+                    "support".to_string(),
+                    Some(format!("/support/tickets/{}", updated.id)),
+                )
+                .await;
+        }
+    }
+
+    ws_hub.broadcast(WsEvent::SupportTicketUpdated {
+        ticket_id: updated.id.clone(),
+        status: updated.status.clone(),
+        actor_id: claims.sub.clone(),
+    });
+
+    Ok(updated)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{normalize_priority, normalize_status};

@@ -18,6 +18,18 @@ pub struct SupportTicket {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub closed_at: Option<DateTime<Utc>>,
+    /// When the assigned technician marked the ticket as in_progress.
+    pub started_at: Option<DateTime<Utc>>,
+    /// When the assigned technician marked the ticket as resolved.
+    pub resolved_at: Option<DateTime<Utc>>,
+    /// Free-text notes from the technician at resolve time.
+    pub completion_notes: Option<String>,
+    /// FileRecord ID for the technician's signature image (PNG).
+    pub signature_url: Option<String>,
+    /// FileRecord IDs attached as proof-of-work photos at resolve time.
+    /// Stored as a JSON array of strings (file_record.id values).
+    #[sqlx(json)]
+    pub completion_photos: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]

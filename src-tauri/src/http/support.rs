@@ -1400,6 +1400,337 @@ pub async fn submit_ticket_satisfaction(
     Ok(())
 }
 
+// =============================================================================
+// Sprint 3: Ticket action HTTP endpoints (mobile-technician app)
+// =============================================================================
+
+use axum::extract::Multipart;
+
+/// POST /api/support/tickets/:id/start
+/// Marks the ticket as in_progress. Only the assignee or an admin can call.
+pub async fn start_support_ticket(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<SupportTicket>, crate::error::AppError> {
+    let claims = auth_claims(&state, &headers).await?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or(crate::error::AppError::Validation(
+            "Tenant context required".to_string(),
+        ))?;
+
+    let ticket: SupportTicket =
+        sqlx::query_as("SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2")
+            .bind(&id)
+            .bind(&tenant_id)
+            .fetch_one(&state.auth_service.pool)
+            .await?;
+
+    let can_all = state
+        .auth_service
+        .has_permission(&claims.sub, &tenant_id, "support", "read_all")
+        .await
+        .unwrap_or(false);
+    let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
+    if !can_all && !is_assignee {
+        return Err(crate::error::AppError::Forbidden(
+            "Only the assignee can start this ticket".to_string(),
+        ));
+    }
+
+    if ticket.status == "closed" || ticket.status == "resolved" {
+        return Err(crate::error::AppError::Validation(format!(
+            "Cannot start a {} ticket",
+            ticket.status
+        )));
+    }
+
+    let now = Utc::now();
+    let updated: SupportTicket = sqlx::query_as(
+        r#"
+        UPDATE support_tickets
+        SET status = 'in_progress', started_at = $1, updated_at = $1
+        WHERE id = $2 AND tenant_id = $3
+        RETURNING *
+        "#,
+    )
+    .bind(now)
+    .bind(&id)
+    .bind(&tenant_id)
+    .fetch_one(&state.auth_service.pool)
+    .await?;
+
+    // Notify ticket owner that work has started.
+    if let Some(ref owner) = updated.created_by {
+        if owner != &claims.sub {
+            let subject = format!("Teknisi mulai mengerjakan tiket: {}", updated.subject);
+            let body = format!(
+                "Teknisi telah mulai mengerjakan tiket Anda ({}). Pantau progresnya di aplikasi.",
+                updated.id
+            );
+            let _ = state
+                .notification_service
+                .create_notification(
+                    owner.clone(),
+                    Some(tenant_id.clone()),
+                    subject,
+                    body,
+                    "info".to_string(),
+                    "support".to_string(),
+                    Some(format!("/support/tickets/{}", updated.id)),
+                )
+                .await;
+        }
+    }
+
+    state.ws_hub.broadcast(crate::http::WsEvent::SupportTicketUpdated {
+        ticket_id: updated.id.clone(),
+        status: updated.status.clone(),
+        actor_id: claims.sub.clone(),
+    });
+
+    Ok(Json(updated))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResolveTicketDto {
+    pub completion_notes: Option<String>,
+    pub signature_file_id: Option<String>,
+    pub photo_file_ids: Option<Vec<String>>,
+}
+
+/// POST /api/support/tickets/:id/resolve
+/// Marks the ticket as resolved with completion proof.
+pub async fn resolve_support_ticket(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<ResolveTicketDto>,
+) -> Result<Json<SupportTicket>, crate::error::AppError> {
+    let claims = auth_claims(&state, &headers).await?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or(crate::error::AppError::Validation(
+            "Tenant context required".to_string(),
+        ))?;
+
+    let ticket: SupportTicket =
+        sqlx::query_as("SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2")
+            .bind(&id)
+            .bind(&tenant_id)
+            .fetch_one(&state.auth_service.pool)
+            .await?;
+
+    if ticket.status == "closed" {
+        return Err(crate::error::AppError::Validation(
+            "Ticket is closed".to_string(),
+        ));
+    }
+    if ticket.status == "resolved" {
+        return Err(crate::error::AppError::Validation(
+            "Ticket already resolved".to_string(),
+        ));
+    }
+
+    let can_all = state
+        .auth_service
+        .has_permission(&claims.sub, &tenant_id, "support", "read_all")
+        .await
+        .unwrap_or(false);
+    let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
+    if !can_all && !is_assignee {
+        return Err(crate::error::AppError::Forbidden(
+            "Only the assignee can resolve this ticket".to_string(),
+        ));
+    }
+
+    let photos_json = serde_json::to_value(body.photo_file_ids.unwrap_or_default())
+        .map_err(|e| crate::error::AppError::Internal(format!("photo list: {e}")))?;
+
+    let now = Utc::now();
+    let updated: SupportTicket = sqlx::query_as(
+        r#"
+        UPDATE support_tickets
+        SET status           = 'resolved',
+            resolved_at      = $1,
+            updated_at       = $1,
+            completion_notes = $2,
+            signature_url    = $3,
+            completion_photos = $4,
+            started_at       = COALESCE(started_at, $1)
+        WHERE id = $5 AND tenant_id = $6
+        RETURNING *
+        "#,
+    )
+    .bind(now)
+    .bind(body.completion_notes.as_deref())
+    .bind(body.signature_file_id.as_deref())
+    .bind(photos_json)
+    .bind(&id)
+    .bind(&tenant_id)
+    .fetch_one(&state.auth_service.pool)
+    .await?;
+
+    let audit_details = serde_json::json!({
+        "action": "resolve",
+        "completion_notes": body.completion_notes,
+        "photo_count": updated.completion_photos.len(),
+        "has_signature": body.signature_file_id.is_some(),
+    })
+    .to_string();
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "resolve",
+            "support_ticket",
+            Some(&updated.id),
+            Some(&audit_details),
+            None,
+        )
+        .await;
+
+    if let Some(ref owner) = updated.created_by {
+        if owner != &claims.sub {
+            let subject = format!("Tiket Anda telah selesai: {}", updated.subject);
+            let body2 = format!(
+                "Teknisi telah menyelesaikan tiket ({}). Silakan cek aplikasi untuk konfirmasi.",
+                updated.id
+            );
+            let _ = state
+                .notification_service
+                .create_notification(
+                    owner.clone(),
+                    Some(tenant_id.clone()),
+                    subject,
+                    body2,
+                    "info".to_string(),
+                    "support".to_string(),
+                    Some(format!("/support/tickets/{}", updated.id)),
+                )
+                .await;
+        }
+    }
+
+    state.ws_hub.broadcast(crate::http::WsEvent::SupportTicketUpdated {
+        ticket_id: updated.id.clone(),
+        status: updated.status.clone(),
+        actor_id: claims.sub.clone(),
+    });
+
+    Ok(Json(updated))
+}
+
+/// POST /api/support/tickets/:id/photos
+/// Multipart upload of a proof-of-work photo for the given ticket.
+/// Returns the file_record ID; the technician app includes this ID in
+/// the resolve call's `photo_file_ids` array.
+pub async fn upload_ticket_photo(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    mut multipart: Multipart,
+) -> Result<Json<FileRecord>, crate::error::AppError> {
+    let claims = auth_claims(&state, &headers).await?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or(crate::error::AppError::Validation(
+            "Tenant context required".to_string(),
+        ))?;
+
+    // Verify ticket exists and belongs to tenant.
+    let ticket: SupportTicket =
+        sqlx::query_as("SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2")
+            .bind(&id)
+            .bind(&tenant_id)
+            .fetch_one(&state.auth_service.pool)
+            .await?;
+
+    let can_all = state
+        .auth_service
+        .has_permission(&claims.sub, &tenant_id, "support", "read_all")
+        .await
+        .unwrap_or(false);
+    let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
+    if !can_all && !is_assignee {
+        return Err(crate::error::AppError::Forbidden(
+            "Only the assignee can upload photos".to_string(),
+        ));
+    }
+
+    // Read the first multipart field as the photo bytes.
+    let mut file_name = format!("ticket-{}-photo.jpg", id);
+    let mut content_type = "image/jpeg".to_string();
+    let mut data: Option<Vec<u8>> = None;
+
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        crate::error::AppError::Internal(format!("multipart read: {e}"))
+    })? {
+        let name = field.name().unwrap_or("").to_string();
+        if name == "photo" || name == "file" {
+            if let Some(fname) = field.file_name() {
+                file_name = fname.to_string();
+            }
+            if let Some(ct) = field.content_type() {
+                content_type = ct.to_string();
+            }
+            let bytes = field
+                .bytes()
+                .await
+                .map_err(|e| crate::error::AppError::Internal(format!("photo bytes: {e}")))?;
+            data = Some(bytes.to_vec());
+        }
+    }
+
+    let data = data.ok_or_else(|| {
+        crate::error::AppError::Validation("Missing 'photo' field".to_string())
+    })?;
+    if data.is_empty() {
+        return Err(crate::error::AppError::Validation(
+            "Empty photo upload".to_string(),
+        ));
+    }
+    // Hard cap 10 MB to prevent OOM from mobile uploads.
+    if data.len() > 10 * 1024 * 1024 {
+        return Err(crate::error::AppError::Validation(
+            "Photo too large (max 10 MB)".to_string(),
+        ));
+    }
+
+    let (file_path, safe_name, file_id) = state
+        .storage_service
+        .prepare_upload_path(&tenant_id, &file_name)
+        .await?;
+
+    tokio::fs::write(&file_path, &data)
+        .await
+        .map_err(|e| crate::error::AppError::Internal(format!("disk write: {e}")))?;
+
+    let file_record = state
+        .storage_service
+        .register_upload(
+            &tenant_id,
+            &file_id,
+            &file_name,
+            &safe_name,
+            file_path.to_string_lossy().as_ref(),
+            &content_type,
+            data.len() as i64,
+            "local",
+            Some(&claims.sub),
+            false,
+        )
+        .await?;
+
+    Ok(Json(file_record))
+}
+
 #[cfg(test)]
 mod tests {
     use super::ListParams;
