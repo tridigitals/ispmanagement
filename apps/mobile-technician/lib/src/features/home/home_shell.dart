@@ -4,11 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../services/notifications_providers.dart';
 import '../../services/settings_providers.dart';
 import '../../services/auth_providers.dart';
-import 'home_tab.dart';
+import './home_tab.dart';
 import 'tickets_tab.dart';
-import 'settings_tab.dart';
 
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
@@ -17,35 +17,60 @@ class HomeShell extends ConsumerStatefulWidget {
 }
 
 class _State extends ConsumerState<HomeShell> {
+  late final IspThemeColors isp;
+
+  String _normalizeAction(String? actionUrl) {
+    if (actionUrl == null || actionUrl.isEmpty) return '/notifications';
+    if (actionUrl.startsWith('/support/')) {
+      final id = actionUrl.substring('/support/'.length);
+      if (id.isNotEmpty) return '/tickets/$id';
+    }
+    if (actionUrl.startsWith('/pay/') || actionUrl.startsWith('/invoices'))
+      return '/?tab=1';
+    if (actionUrl.startsWith('/subscriptions/') ||
+        actionUrl.startsWith('/services')) return '/?tab=0';
+    if (actionUrl.startsWith('/announcements/')) return '/?tab=0';
+    return actionUrl;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkOnboarding());
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Sync tab from URL query param so go('/?tab=N') works.
     final tabStr = GoRouterState.of(context).uri.queryParameters['tab'];
     if (tabStr != null) {
       final tabIdx = int.tryParse(tabStr);
-      if (tabIdx != null && tabIdx >= 0 && tabIdx < 3) {
+      if (tabIdx != null && tabIdx >= 0 && tabIdx < 2) {
         ref.read(currentTabProvider.notifier).state = tabIdx;
       }
     }
+  }
+
+  Future<void> _checkOnboarding() async {
+    // Biometric auth is handled in LoginScreen — no duplicate prompt here.
   }
 
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
+    final notifState = ref.watch(notificationsProvider);
     final tab = ref.watch(currentTabProvider);
     final user = ref.watch(currentUserProvider);
+    final unread = ref.watch(unreadNotificationsCountProvider).valueOrNull ?? 0;
 
     final tabTitles = [
       '${l10n.hiPrefix}, ${user?.name.split(' ').first ?? ''} 👋',
       l10n.myTickets,
-      l10n.settings,
     ];
     final pages = const [
       HomeTab(),
       TicketsTab(),
-      SettingsTab(),
     ];
 
     return Scaffold(
@@ -53,9 +78,51 @@ class _State extends ConsumerState<HomeShell> {
         title: Text(tabTitles[tab]),
         automaticallyImplyLeading: false,
         actions: [
+          // Bell / notifications
           IconButton(
-            icon: const Icon(Icons.notifications_outlined),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_outlined),
+                if (unread > 0)
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: isp.danger,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 14,
+                        minHeight: 14,
+                      ),
+                      child: Text(
+                        unread > 9 ? '9+' : '$unread',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             onPressed: () => GoRouter.of(context).push('/notifications'),
+          ),
+          // Account
+          IconButton(
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: () => GoRouter.of(context).push('/profile'),
+          ),
+          // Settings
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: l10n.settings,
+            onPressed: () => GoRouter.of(context).push('/settings'),
           ),
         ],
       ),
@@ -76,11 +143,6 @@ class _State extends ConsumerState<HomeShell> {
             icon: Icons.assignment_outlined,
             selectedIcon: Icons.assignment,
             label: l10n.myTickets,
-          ),
-          _NavDestination(
-            icon: Icons.settings_outlined,
-            selectedIcon: Icons.settings,
-            label: l10n.settings,
           ),
         ],
       ),

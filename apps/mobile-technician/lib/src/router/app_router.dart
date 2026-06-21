@@ -7,6 +7,7 @@ import '../features/auth/forgot_password_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/home/home_shell.dart';
 import '../features/onboarding/onboarding_screen.dart';
+import '../features/profile/profile_screen.dart';
 import '../features/profile/edit_profile_screen.dart';
 import '../features/profile/change_password_screen.dart';
 import '../features/tickets/ticket_detail_screen.dart';
@@ -71,8 +72,8 @@ GoRouter buildAppRouter({
         builder: (_, __) => const HomeShell(),
         routes: [
           GoRoute(
-            path: 'profile',
-            builder: (_, __) => const Scaffold(body: Center(child: Text('Profile'))),
+            path: 'profile', 
+            builder: (_, __) => const ProfileScreen(),
           ),
           GoRoute(
             path: 'settings',
