@@ -6,6 +6,21 @@ import '../api/api_endpoints.dart';
 import '../models/ticket_model.dart';
 import 'auth_service.dart';
 
+/// Response from POST /api/support/tickets/{id}/photos (multipart upload).
+/// Only `id` is consumed by the technician app for inclusion in resolve call.
+class TicketPhotoUploadResult {
+  TicketPhotoUploadResult({required this.id, required this.url});
+  final String id;
+  final String url;
+
+  factory TicketPhotoUploadResult.fromJson(Map<String, dynamic> json) {
+    return TicketPhotoUploadResult(
+      id: (json['id'] ?? '') as String,
+      url: (json['url'] ?? json['path'] ?? '') as String,
+    );
+  }
+}
+
 class TicketService {
   TicketService({required this.dio});
   final Dio dio;
@@ -163,6 +178,68 @@ class TicketService {
       }
       final res = await dio.put<Map<String, dynamic>>(
         ApiEndpoints.myTicketById(ticketId),
+        data: body,
+      );
+      return TicketModel.fromJson(res.data ?? const {});
+    });
+  }
+
+  /// Upload a proof-of-work photo (multipart). Returns the file_record id.
+  /// The technician app captures the photo with image_picker, then submits
+  /// the local file path here. The id is included in resolve()'s
+  /// `photoFileIds` parameter to attach the photo to the resolve event.
+  Future<ServiceResult<TicketPhotoUploadResult>> uploadPhoto({
+    required String ticketId,
+    required String filePath,
+    String? filename,
+  }) async {
+    return _execute(() async {
+      final form = FormData.fromMap({
+        'photo': await MultipartFile.fromFile(
+          filePath,
+          filename: filename ?? filePath.split('/').last,
+        ),
+      });
+      final res = await dio.post<Map<String, dynamic>>(
+        ApiEndpoints.ticketPhotoUpload(ticketId),
+        data: form,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      return TicketPhotoUploadResult.fromJson(res.data ?? const {});
+    });
+  }
+
+  /// Mark a ticket as in_progress. Only the assigned technician/admin can call.
+  Future<ServiceResult<TicketModel>> startTicket(String ticketId) async {
+    return _execute(() async {
+      final res = await dio.post<Map<String, dynamic>>(
+        ApiEndpoints.ticketStart(ticketId),
+      );
+      return TicketModel.fromJson(res.data ?? const {});
+    });
+  }
+
+  /// Resolve a ticket with completion proof.
+  ///
+  /// [completionNotes] free-text notes from the technician.
+  /// [photoFileIds] file_record ids returned by uploadPhoto().
+  /// [signatureFileId] file_record id of a PNG signature image (optional).
+  Future<ServiceResult<TicketModel>> resolveTicket({
+    required String ticketId,
+    String? completionNotes,
+    List<String>? photoFileIds,
+    String? signatureFileId,
+  }) async {
+    return _execute(() async {
+      final body = <String, dynamic>{
+        if (completionNotes != null && completionNotes.isNotEmpty)
+          'completion_notes': completionNotes,
+        if (photoFileIds != null && photoFileIds.isNotEmpty)
+          'photo_file_ids': photoFileIds,
+        if (signatureFileId != null) 'signature_file_id': signatureFileId,
+      };
+      final res = await dio.post<Map<String, dynamic>>(
+        ApiEndpoints.ticketResolve(ticketId),
         data: body,
       );
       return TicketModel.fromJson(res.data ?? const {});

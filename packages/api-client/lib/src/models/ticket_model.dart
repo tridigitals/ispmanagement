@@ -59,6 +59,12 @@ class TicketModel extends Equatable {
     this.category,
     this.satisfactionRating,
     this.satisfactionComment,
+    // Sprint 3: completion fields
+    this.startedAt,
+    this.resolvedAt,
+    this.completionNotes,
+    this.signatureUrl,
+    this.completionPhotos = const [],
   });
 
   factory TicketModel.fromJson(Map<String, dynamic> json) =>
@@ -92,6 +98,18 @@ class TicketModel extends Equatable {
   final int? satisfactionRating;
   @JsonKey(name: 'satisfaction_comment')
   final String? satisfactionComment;
+
+  // Sprint 3: technician completion proof fields
+  @JsonKey(name: 'started_at')
+  final DateTime? startedAt;
+  @JsonKey(name: 'resolved_at')
+  final DateTime? resolvedAt;
+  @JsonKey(name: 'completion_notes')
+  final String? completionNotes;
+  @JsonKey(name: 'signature_url')
+  final String? signatureUrl;
+  @JsonKey(name: 'completion_photos')
+  final List<String> completionPhotos;
 
   bool get isOpen => status == TicketStatus.open || status == TicketStatus.inProgress;
   bool get isClosed =>
