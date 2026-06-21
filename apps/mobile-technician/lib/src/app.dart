@@ -14,15 +14,15 @@ import 'services/realtime_listener.dart';
 import 'services/settings_providers.dart';
 import 'theme/app_theme.dart';
 
-class IspCustomerApp extends ConsumerStatefulWidget {
-  const IspCustomerApp({super.key, this.initError});
+class IspTechnicianApp extends ConsumerStatefulWidget {
+  const IspTechnicianApp({super.key, this.initError});
   /// Optional error message from main() init phase (Firebase, SharedPreferences, etc.)
   final String? initError;
   @override
-  ConsumerState<IspCustomerApp> createState() => _State();
+  ConsumerState<IspTechnicianApp> createState() => _State();
 }
 
-class _State extends ConsumerState<IspCustomerApp> {
+class _State extends ConsumerState<IspTechnicianApp> {
   late final AppConfig _config;
   late final GoRouter _router;
   late final ProviderContainer _container;

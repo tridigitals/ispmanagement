@@ -200,7 +200,7 @@ void _startApp(
   runApp(
     ProviderScope(
       overrides: overrides,
-      child: IspCustomerApp(initError: initError),
+      child: IspTechnicianApp(initError: initError),
     ),
   );
 }
