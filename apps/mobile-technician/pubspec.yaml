@@ -1,6 +1,6 @@
 name: mobile_technician
 description: ISP Management — Technician mobile app (Flutter, Android + iOS)
-version: 0.1.0+6
+version: 0.2.0+10
 publish_to: none
 
 resolution: workspace
