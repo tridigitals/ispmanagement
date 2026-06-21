@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:api_client/api_client.dart';
+
 import 'app_config.dart';
 
 /// Auto GPS tracking for technician — sends location every 30 seconds.
@@ -44,8 +44,10 @@ class GpsTrackingService {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
       );
 
       final dio = _ref.read(dioProvider);
