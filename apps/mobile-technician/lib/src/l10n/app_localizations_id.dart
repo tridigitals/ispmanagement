@@ -7,7 +7,7 @@ class AppLocalizationsId extends AppLocalizations {
   AppLocalizationsId([String locale = 'id']) : super(locale);
 
   @override
-  String get appTitle => 'ISP Pelanggan';
+  String get appTitle => 'ISP Teknisi';
 
   @override
   String get home => 'Beranda';
