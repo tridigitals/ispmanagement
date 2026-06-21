@@ -3,17 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/auth_loading_screen.dart';
+import '../features/auth/forgot_password_screen.dart';
 import '../features/auth/login_screen.dart';
+import '../features/home/home_shell.dart';
 import '../features/onboarding/onboarding_screen.dart';
-import '../features/home/home_screen.dart';
-import '../features/tickets/tickets_screen.dart';
+import '../features/profile/edit_profile_screen.dart';
+import '../features/profile/change_password_screen.dart';
 import '../features/tickets/ticket_detail_screen.dart';
+import '../features/settings/settings_screen.dart';
+import '../features/faq/faq_screen.dart';
+import '../features/contact/contact_screen.dart';
+import '../features/notifications/notification_inbox_screen.dart';
 import '../services/auth_providers.dart';
 import '../services/missing_providers.dart';
 
-/// Build the technician app router. Only /login + /home for Sprint 1;
-/// more routes (work order detail, customer view, etc.) added in
-/// later sprints as features come online.
 GoRouter buildAppRouter({
   required WidgetRef ref,
   required ProviderContainer container,
@@ -60,18 +63,48 @@ GoRouter buildAppRouter({
         builder: (_, __) => const AuthLoadingScreen(),
       ),
       GoRoute(
+        path: '/forgot-password',
+        builder: (_, __) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
         path: '/',
-        builder: (_, __) => const HomeScreen(),
-      ),
-      GoRoute(
-        path: '/tickets',
-        builder: (_, __) => const TicketsScreen(),
-      ),
-      GoRoute(
-        path: '/tickets/:id',
-        builder: (_, state) => TicketDetailScreen(
-          ticketId: state.pathParameters['id']!,
-        ),
+        builder: (_, __) => const HomeShell(),
+        routes: [
+          GoRoute(
+            path: 'profile',
+            builder: (_, __) => const Scaffold(body: Center(child: Text('Profile'))),
+          ),
+          GoRoute(
+            path: 'settings',
+            builder: (_, __) => const SettingsScreen(),
+          ),
+          GoRoute(
+            path: 'change-password',
+            builder: (_, __) => const ChangePasswordScreen(),
+          ),
+          GoRoute(
+            path: 'edit-profile',
+            builder: (_, __) => const EditProfileScreen(),
+          ),
+          GoRoute(
+            path: 'notifications',
+            builder: (_, __) => const NotificationInboxScreen(),
+          ),
+          GoRoute(
+            path: 'faq',
+            builder: (_, __) => const FaqScreen(),
+          ),
+          GoRoute(
+            path: 'contact',
+            builder: (_, __) => const ContactScreen(),
+          ),
+          GoRoute(
+            path: 'tickets/:id',
+            builder: (_, state) => TicketDetailScreen(
+              ticketId: state.pathParameters['id']!,
+            ),
+          ),
+        ],
       ),
     ],
   );

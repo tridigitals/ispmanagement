@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+
+import 'package:ui_kit/ui_kit.dart';
 
 import 'l10n/app_localizations.dart';
 import 'router/app_router.dart';
@@ -10,13 +10,15 @@ import 'services/app_config.dart';
 import 'services/auth_providers.dart';
 import 'services/fcm_service.dart';
 import 'services/gps_service.dart';
-import 'services/missing_providers.dart';
+import 'services/settings_providers.dart';
 import 'theme/app_theme.dart';
 
 class IspTechnicianApp extends ConsumerStatefulWidget {
   const IspTechnicianApp({super.key, this.initError});
-  /// Optional error message from main() init phase (Firebase, SharedPreferences, etc.)
+
+  /// Optional error message from main() init phase (Firebase, etc.)
   final String? initError;
+
   @override
   ConsumerState<IspTechnicianApp> createState() => _State();
 }
@@ -55,20 +57,18 @@ class _State extends ConsumerState<IspTechnicianApp> {
   }
 
   void _scheduleFcmBootstrap() {
-    Future.delayed(const Duration(milliseconds: 1500), () async {
-      try {
-        if (Firebase.apps.isNotEmpty) {
-          await ref.read(fcmServiceProvider).init(force: false);
-        }
-      } catch (e) {
-        debugPrint('[fcm] bootstrap init failed: $e');
-      }
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      // ignore: discarded_futures
+      ref.read(fcmServiceProvider).init();
+    });
+    // Second safety net: try again 8s after start.
+    Future.delayed(const Duration(seconds: 8), () {
+      // ignore: discarded_futures
+      ref.read(fcmServiceProvider).init();
     });
   }
 
   /// GPS — start 2s after app launch, but ONLY if a user is authenticated.
-  /// Login screen shouldn't trigger GPS (no token yet). The service itself
-  /// will silently no-op if permission is denied.
   void _scheduleGpsStart() {
     Future.delayed(const Duration(seconds: 2), () {
       final auth = ref.read(authControllerProvider);
@@ -80,14 +80,46 @@ class _State extends ConsumerState<IspTechnicianApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Keep router in sync with auth state.
+    ref.listen<AuthState>(authControllerProvider, (prev, next) {
+      if (prev?.isAuthenticated != next.isAuthenticated) {
+        _router.refresh();
+        // Init FCM + GPS after login.
+        if (next.isAuthenticated) {
+          ref.read(fcmServiceProvider).init(force: true);
+          ref.read(gpsTrackingServiceProvider).start();
+        }
+      }
+    });
+
     return MaterialApp.router(
-      title: 'ISP Technician',
-      debugShowCheckedModeBanner: false,
+      title: _config.appTitle,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
+      themeMode: ref.watch(themeModeProvider),
+      locale: ref.watch(localeProvider),
+      debugShowCheckedModeBanner: false,
       routerConfig: _router,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      builder: (context, child) {
+        final mq = MediaQuery.of(context);
+        Widget w = MediaQuery(
+          data: mq.copyWith(
+            textScaler:
+                mq.textScaler.clamp(minScaleFactor: 0.9, maxScaleFactor: 1.3),
+          ),
+          child: IspToastOverlay(
+            child: child ?? const SizedBox.shrink(),
+          ),
+        );
+
+        if (widget.initError != null) {
+          debugPrint('[app] Init warning: ${widget.initError}');
+        }
+
+        return w;
+      },
     );
   }
 }

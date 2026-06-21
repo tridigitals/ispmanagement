@@ -5,8 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/app.dart';
+import 'src/services/fcm_service.dart';
+import 'src/services/settings_providers.dart';
+import 'src/services/missing_providers.dart';
 
 /// Track whether real app has started (prevents double-start).
 bool _appStarted = false;
@@ -43,37 +47,115 @@ Widget _visibleErrorWidget(FlutterErrorDetails details) {
   );
 }
 
-/// Background message handler — must be a top-level function.
-@pragma('vm:entry-point')
-Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+/// Entry point — shows loading screen immediately, then initializes
+/// services in background. Timer safety net ensures app always starts.
+void main() {
+  // Surface widget-tree errors instead of blank gray.
+  ErrorWidget.builder = _visibleErrorWidget;
+
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Phase 1: Show loading screen IMMEDIATELY (synchronous).
+  _showLoadingScreen();
+
+  // Phase 2: Safety net — force app start after 8 seconds no matter what.
+  Timer(const Duration(seconds: 8), () {
+    if (!_appStarted) {
+      debugPrint('[safety] 8s elapsed — forcing app start without services');
+      _startApp(null, false, initError: 'Initialization timeout (8s)');
+    }
+  });
+
+  // Phase 3: Init services in background (fire-and-forget).
+  _initServices();
 }
 
-Future<void> main() async {
+/// Shows a minimal loading screen while services initialize.
+void _showLoadingScreen() {
+  runApp(
+    const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: Color(0xFF08090D),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Color(0xFF1565C0)),
+              SizedBox(height: 16),
+              Text(
+                'Memuat...',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Initialize Firebase, SharedPreferences.
+/// On ANY failure, starts the app with error info.
+Future<void> _initServices() async {
+  String? initError;
+
+  // ── Firebase (5s timeout) ──
+  try {
+    await Firebase.initializeApp().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        throw TimeoutException('Firebase timeout (5s)');
+      },
+    );
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    debugPrint('[init] Firebase OK');
+  } catch (e, st) {
+    initError = 'Firebase init failed: $e';
+    debugPrint('[init] $initError');
+    debugPrint('$st');
+  }
+
+  // ── SharedPreferences ──
+  SharedPreferences? prefs;
+  try {
+    prefs = await SharedPreferences.getInstance();
+    debugPrint('[init] SharedPreferences OK');
+  } catch (e) {
+    initError = (initError != null)
+        ? '$initError\nPrefs failed: $e'
+        : 'Prefs failed: $e';
+    debugPrint('[init] SharedPreferences failed: $e');
+  }
+
+  final onboardingDone = prefs?.getBool('onboarding_completed') ?? false;
+
+  _startApp(prefs, onboardingDone, initError: initError);
+}
+
+/// Start the real app. Safe to call multiple times (idempotent).
+void _startApp(
+  SharedPreferences? prefs,
+  bool onboardingDone, {
+  String? initError,
+}) {
   if (_appStarted) return;
   _appStarted = true;
+  debugPrint(
+      '[start] App starting — onboardingDone=$onboardingDone, error=$initError');
 
-  // Catch all uncaught Flutter framework errors so the UI shows something
-  // useful instead of an eternal red screen in release mode.
-  ErrorWidget.builder = (FlutterErrorDetails details) {
-    return _visibleErrorWidget(details);
-  };
+  final List<Override> overrides = [
+    onboardingCompletedProvider.overrideWith((ref) => onboardingDone),
+  ];
 
-  String? initError;
-  await runZonedGuarded<Future<void>>(() async {
-    WidgetsFlutterBinding.ensureInitialized();
+  if (prefs != null) {
+    overrides.add(sharedPreferencesProvider.overrideWith((ref) => prefs));
+  }
 
-    // Firebase — best-effort. App still runs without it (FCM disabled).
-    try {
-      await Firebase.initializeApp();
-      FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
-    } catch (e) {
-      initError = 'Firebase init gagal: $e';
-      debugPrint('[main] $initError');
-    }
-
-    runApp(ProviderScope(child: IspTechnicianApp(initError: initError)));
-  }, (error, stack) {
-    debugPrint('[main] uncaught zone error: $error\n$stack');
-  });
+  runApp(
+    ProviderScope(
+      overrides: overrides,
+      child: IspTechnicianApp(initError: initError),
+    ),
+  );
 }
