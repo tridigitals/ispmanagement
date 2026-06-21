@@ -17,7 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:signature/signature.dart';
 
-import '../../services/ticket_actions.dart';
+import '../services/ticket_actions.dart';
 
 class ResolveTicketDialog extends ConsumerStatefulWidget {
   const ResolveTicketDialog({super.key, required this.ticketId});

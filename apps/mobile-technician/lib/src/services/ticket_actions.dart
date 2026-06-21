@@ -14,6 +14,7 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'service_providers.dart';
 import 'ticket_providers.dart';
 
 /// Holds a single in-progress photo capture before it's uploaded to the server.
@@ -124,8 +125,8 @@ class ResolveDraftController extends StateNotifier<ResolveDraft> {
           filePath: photo.localPath,
         );
         final uploaded = res.fold(
-          onSuccess: (r) => r,
-          onFailure: (_) => null,
+          (r) => r,
+          (_) => null,
         );
         if (uploaded == null) {
           state = state.copyWith(
@@ -184,14 +185,14 @@ class TicketActionController {
   Future<TicketModel?> start(String ticketId) async {
     final res = await ref.read(ticketServiceProvider).startTicket(ticketId);
     return res.fold(
-      onSuccess: (t) {
+      (t) {
         // Refresh ticket cache so detail screen reflects new status.
-        ref.invalidate(ticketProvider(ticketId));
-        ref.invalidate(ticketListProvider);
+        ref.invalidate(ticketByIdProvider(ticketId));
+        ref.invalidate(myTicketsProvider);
         ref.invalidate(ticketStatsProvider);
         return t;
       },
-      onFailure: (e) {
+      (e) {
         debugPrint('[TicketAction.start] failed: ${e.message}');
         return null;
       },
@@ -220,7 +221,7 @@ class TicketActionController {
         filePath: tmp.path,
         filename: 'signature.png',
       );
-      final r = res.fold(onSuccess: (v) => v, onFailure: (_) => null);
+      final r = res.fold((v) => v, (_) => null);
       if (r == null) {
         try {
           await tmp.delete();
@@ -241,13 +242,13 @@ class TicketActionController {
     );
 
     return res.fold(
-      onSuccess: (t) {
-        ref.invalidate(ticketProvider(ticketId));
-        ref.invalidate(ticketListProvider);
+      (t) {
+        ref.invalidate(ticketByIdProvider(ticketId));
+        ref.invalidate(myTicketsProvider);
         ref.invalidate(ticketStatsProvider);
         return t;
       },
-      onFailure: (e) {
+      (e) {
         debugPrint('[TicketAction.resolve] failed: ${e.message}');
         return null;
       },

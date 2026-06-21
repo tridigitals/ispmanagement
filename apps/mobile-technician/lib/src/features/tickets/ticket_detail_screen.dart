@@ -208,6 +208,8 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
       if (!mounted) return;
       if (updated != null) {
         widget.onChanged();
+        ref.invalidate(ticketByIdProvider(widget.ticket.id));
+        ref.invalidate(myTicketsProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Tiket dimulai — mulai bekerja')),
         );
@@ -226,6 +228,8 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
       context: context,
       builder: (_) => ResolveTicketDialog(ticketId: widget.ticket.id),
     );
+    ref.invalidate(ticketByIdProvider(widget.ticket.id));
+    ref.invalidate(myTicketsProvider);
     widget.onChanged();
   }
 
