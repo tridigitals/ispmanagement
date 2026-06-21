@@ -2,6 +2,7 @@ plugins {
     id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
+    id "com.google.gms.google-services"
 }
 
 def localProperties = new Properties()
@@ -16,65 +17,90 @@ def flutterVersionCode = localProperties.getProperty('flutter.versionCode') ?: '
 def flutterVersionName = localProperties.getProperty('flutter.versionName') ?: '0.1.0'
 
 android {
-    namespace "com.tridigitals.ispmgt.technician"
-    compileSdk 35
-    ndkVersion flutter.ndkVersion
+    namespace = "com.tridigitals.ispmgt.technician"
+    compileSdk = 35
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     sourceSets {
-        main.java.srcDirs += "src/main/kotlin"
+        main.java.srcDirs += 'src/main/kotlin'
     }
 
     defaultConfig {
-        applicationId "com.tridigitals.ispmgt.technician"
-        minSdk 23
-        targetSdk 34
-        versionCode flutterVersionCode.toInteger()
-        versionName flutterVersionName
-        multiDexEnabled true
+        applicationId = "com.tridigitals.ispmgt.technician"
+        minSdk = 23  // Required for biometric + encrypted shared prefs
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutterVersionCode.toInteger()
+        versionName = flutterVersionName
+        multiDexEnabled = true
+    }
+
+    // Try key.properties first (CI writes this), fallback to release-key.jks (local)
+    def keystoreFile = file("release-key.jks")
+    def keystorePassword = "ispcustomer123"
+    def keystoreKeyAlias = "ispcustomer"
+    def keystoreKeyPassword = "ispcustomer123"
+
+    def keyPropertiesFile = file("key.properties")
+    if (keyPropertiesFile.exists()) {
+        def keyProps = new Properties()
+        keyPropertiesFile.withReader('UTF-8') { reader -> keyProps.load(reader) }
+        keystoreFile = file(keyProps.getProperty("storeFile", "release-key.jks"))
+        keystorePassword = keyProps.getProperty("storePassword", keystorePassword)
+        keystoreKeyAlias = keyProps.getProperty("keyAlias", keystoreKeyAlias)
+        keystoreKeyPassword = keyProps.getProperty("keyPassword", keystoreKeyPassword)
     }
 
     signingConfigs {
         release {
-            // Try key.properties first (CI writes this), fallback to release-key.jks (local)
-            def keystoreFile = file("release-key.jks")
-            def keystorePassword = "ispcustomer123"
-            def keystoreKeyAlias = "ispcustomer"
-            def keystoreKeyPassword = "ispcustomer123"
-
-            def keyPropertiesFile = file("key.properties")
-            if (keyPropertiesFile.exists()) {
-                def keyProps = new Properties()
-                keyPropertiesFile.withReader('UTF-8') { reader -> keyProps.load(reader) }
-                keystoreFile = file(keyProps.getProperty("storeFile", "release-key.jks"))
-                keystorePassword = keyProps.getProperty("storePassword", keystorePassword)
-                keystoreKeyAlias = keyProps.getProperty("keyAlias", keystoreKeyAlias)
-                keystoreKeyPassword = keyProps.getProperty("keyPassword", keystoreKeyPassword)
-            }
             storeFile keystoreFile
             storePassword keystorePassword
             keyAlias keystoreKeyAlias
             keyPassword keystoreKeyPassword
+        }
+        debug {
+            storeFile file(System.getenv("HOME") + "/.android/debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
         }
     }
 
     buildTypes {
         release {
             signingConfig signingConfigs.release
+            // Temporarily disabled R8 to debug blank screen — re-enable + add proguard rules
+            // for the new packages (flutter_local_notifications, file_picker, etc.) once
+            // we confirm the blank screen is from minification.
             minifyEnabled false
             shrinkResources false
+            // proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            // applicationIdSuffix removed — google-services.json only has base package
+        }
+    }
+
+    // ABI splits — separate APK per CPU architecture. ~40% size reduction
+    // vs universal APK. arm64-v8a covers >95% of modern devices.
+    splits {
+        abi {
+            enable true
+            reset()
+            include "arm64-v8a", "armeabi-v7a", "x86_64"
+            universalApk true   // Also build universal APK as fallback
         }
     }
 }
 
 flutter {
-    source '../..'
+    source = "../.."
 }
