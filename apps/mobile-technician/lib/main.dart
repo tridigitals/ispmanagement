@@ -5,12 +5,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/app.dart';
 import 'src/services/fcm_service.dart';
 import 'src/services/settings_providers.dart';
 import 'src/services/missing_providers.dart';
+
+/// Sentry DSN — pass via --dart-define=SENTRY_DSN=...
+/// Empty string = Sentry disabled (dev / local builds).
+const _sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
 
 /// Track whether real app has started (prevents double-start).
 bool _appStarted = false;
@@ -52,6 +57,12 @@ Widget _visibleErrorWidget(FlutterErrorDetails details) {
 void main() {
   // Surface widget-tree errors instead of blank gray.
   ErrorWidget.builder = _visibleErrorWidget;
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    if (_sentryDsn.isNotEmpty) {
+      Sentry.captureException(details.exception, stackTrace: details.stack);
+    }
+  };
 
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -59,6 +70,8 @@ void main() {
   _showLoadingScreen();
 
   // Phase 2: Safety net — force app start after 8 seconds no matter what.
+  // This Timer is scheduled BEFORE any async work, so it fires even if
+  // Firebase or SharedPreferences hang the event loop.
   Timer(const Duration(seconds: 8), () {
     if (!_appStarted) {
       debugPrint('[safety] 8s elapsed — forcing app start without services');
@@ -67,6 +80,7 @@ void main() {
   });
 
   // Phase 3: Init services in background (fire-and-forget).
+  // Errors are caught locally; if anything fails, app still starts.
   _initServices();
 }
 
@@ -81,7 +95,7 @@ void _showLoadingScreen() {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: Color(0xFF1565C0)),
+              CircularProgressIndicator(color: Color(0xFF8B9CFF)),
               SizedBox(height: 16),
               Text(
                 'Memuat...',
@@ -95,7 +109,7 @@ void _showLoadingScreen() {
   );
 }
 
-/// Initialize Firebase, SharedPreferences.
+/// Initialize Firebase, SharedPreferences, Sentry.
 /// On ANY failure, starts the app with error info.
 Future<void> _initServices() async {
   String? initError;
@@ -108,12 +122,14 @@ Future<void> _initServices() async {
         throw TimeoutException('Firebase timeout (5s)');
       },
     );
+    // Register FCM background handler
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     debugPrint('[init] Firebase OK');
   } catch (e, st) {
     initError = 'Firebase init failed: $e';
     debugPrint('[init] $initError');
     debugPrint('$st');
+    // Continue without Firebase — app should still work
   }
 
   // ── SharedPreferences ──
@@ -122,15 +138,44 @@ Future<void> _initServices() async {
     prefs = await SharedPreferences.getInstance();
     debugPrint('[init] SharedPreferences OK');
   } catch (e) {
-    initError = (initError != null)
-        ? '$initError\nPrefs failed: $e'
-        : 'Prefs failed: $e';
+    initError = (initError != null) ? '$initError\nPrefs failed: $e' : 'Prefs failed: $e';
     debugPrint('[init] SharedPreferences failed: $e');
+    // Continue without prefs — defaults will be used
   }
 
   final onboardingDone = prefs?.getBool('onboarding_completed') ?? false;
 
-  _startApp(prefs, onboardingDone, initError: initError);
+  // ── Sentry (optional) ──
+  if (_sentryDsn.isNotEmpty) {
+    try {
+      await SentryFlutter.init(
+        (options) {
+          options.dsn = _sentryDsn;
+          options.tracesSampleRate = 0.2;
+          options.profilesSampleRate = 0.1;
+          options.environment = const String.fromEnvironment(
+            'SENTRY_ENV',
+            defaultValue: 'production',
+          );
+          options.release = const String.fromEnvironment(
+            'SENTRY_RELEASE',
+            defaultValue: 'mobile-customer@0.1.0',
+          );
+          options.sendDefaultPii = false;
+          options.beforeSend = (event, hint) {
+            if (event.throwable is NetworkException) return null;
+            return event;
+          };
+        },
+        appRunner: () => _startApp(prefs, onboardingDone, initError: initError),
+      );
+    } catch (e) {
+      debugPrint('[init] Sentry init failed: $e');
+      _startApp(prefs, onboardingDone, initError: initError);
+    }
+  } else {
+    _startApp(prefs, onboardingDone, initError: initError);
+  }
 }
 
 /// Start the real app. Safe to call multiple times (idempotent).
@@ -139,15 +184,15 @@ void _startApp(
   bool onboardingDone, {
   String? initError,
 }) {
-  if (_appStarted) return;
+  if (_appStarted) return; // Already started (by timer or by _initServices)
   _appStarted = true;
-  debugPrint(
-      '[start] App starting — onboardingDone=$onboardingDone, error=$initError');
+  debugPrint('[start] App starting — onboardingDone=$onboardingDone, error=$initError');
 
   final List<Override> overrides = [
     onboardingCompletedProvider.overrideWith((ref) => onboardingDone),
   ];
 
+  // Only override SharedPreferences if we actually got an instance.
   if (prefs != null) {
     overrides.add(sharedPreferencesProvider.overrideWith((ref) => prefs));
   }
@@ -155,7 +200,11 @@ void _startApp(
   runApp(
     ProviderScope(
       overrides: overrides,
-      child: IspTechnicianApp(initError: initError),
+      child: IspCustomerApp(initError: initError),
     ),
   );
+}
+
+class NetworkException implements Exception {
+  const NetworkException();
 }

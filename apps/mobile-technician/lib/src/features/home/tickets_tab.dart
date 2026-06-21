@@ -8,7 +8,6 @@ import '../../services/ticket_providers.dart';
 import '../tickets/widgets/ticket_card.dart';
 
 /// Tickets tab — full list of tickets assigned to the technician.
-/// Filter chips: Semua | Open | Diproses | Selesai
 class TicketsTab extends ConsumerStatefulWidget {
   const TicketsTab({super.key});
 
@@ -17,7 +16,7 @@ class TicketsTab extends ConsumerStatefulWidget {
 }
 
 class _TicketsTabState extends ConsumerState<TicketsTab> {
-  String? _filter; // null = all
+  String? _filter;
 
   static const _filters = [
     (null, 'Semua'),
@@ -33,7 +32,6 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
 
     return Column(
       children: [
-        // Filter chips
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -71,10 +69,7 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
                               ? 'Belum ada tiket.'
                               : 'Tidak ada tiket dengan status "${_filters.firstWhere((f) => f.$1 == _filter).$2}".',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: isp.textMuted,
-                            fontSize: 14,
-                          ),
+                          style: TextStyle(color: isp.textMuted, fontSize: 14),
                         ),
                       ],
                     ),

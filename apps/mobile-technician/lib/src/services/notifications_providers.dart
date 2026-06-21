@@ -4,7 +4,6 @@ import 'package:api_client/api_client.dart' hide Success, Failure;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'feature_providers.dart';
-import 'service_providers.dart';
 
 /// Holds the customer's notifications and provides mark-read actions.
 /// Auto-refreshes every 60 seconds to pick up new notifications.

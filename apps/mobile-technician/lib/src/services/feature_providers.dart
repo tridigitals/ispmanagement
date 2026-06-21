@@ -8,9 +8,20 @@ final announcementServiceProvider = Provider<AnnouncementService>((ref) {
   return AnnouncementService(ref.watch(dioProvider));
 });
 
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService(dio: ref.watch(dioProvider));
+});
+
 final networkStatusServiceProvider = Provider<NetworkStatusService>((ref) {
   return NetworkStatusService(
     dio: ref.watch(dioProvider),
     tokenStorage: ref.watch(tokenStorageProvider),
+  );
+});
+
+final paymentServiceProvider = Provider<PaymentService>((ref) {
+  return PaymentService(
+    dio: ref.watch(dioProvider),
+    storageService: ref.watch(storageServiceProvider),
   );
 });

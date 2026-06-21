@@ -385,12 +385,10 @@ class AuthController extends Notifier<AuthState> {
   /// rolled back (token cleared from storage + in-memory cache, user
   /// state reset) so a stale session cannot leak across a role mismatch.
   Future<ServiceResult<bool>> apply(AuthResponse auth) async {
-    // Role gate: only `technician` role may use this app. The customer APK
-    // rejects technicians too, and web admin handles staff/admin/super_admin.
+    // Role gate: only `technician` + `staff` roles may use this app.
     // Backend already gates login by tenant + credentials; this is a
     // client-side guard against accidentally letting a wrong-role account
     // slip through (e.g. customer logging into technician app by mistake).
-    // Allows `technician` + `staff` roles (both are field workers per backend).
     if (!auth.user.isStaff) {
       debugPrint(
         '[auth] rejected non-technician login: '

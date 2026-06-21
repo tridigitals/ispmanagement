@@ -1,48 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
 
-// ─── Engineer/Field-Worker Design Tokens ─────────────────────
-// High-contrast blue palette for outdoor visibility. Field technicians
-// work in bright sunlight and need clear visual hierarchy.
+// ─── Revolut + Linear Design Tokens ─────────────────────────────
+// Dark, clean, premium palette. No glassmorphism, no excessive effects.
 
 class AppColors {
   AppColors._();
 
-  // Background — clean light theme, no dark glass effects
-  static const Color bg = Color(0xFFFAFAFA);
-  static const Color surface = Colors.white;
-  static const Color surfaceElevated = Color(0xFFF5F5F5);
+  // Background
+  static const Color bg = Color(0xFF0A0A0F);
+  static const Color surface = Color(0xFF141419);
+  static const Color surfaceElevated = Color(0xFF1C1C24);
 
   // Border
-  static const Color border = Color(0xFFE0E0E0);
-  static const Color borderSubtle = Color(0xFFEEEEEE);
+  static const Color border = Color(0xFF2A2A35);
+  static const Color borderSubtle = Color(0xFF222230);
 
   // Text
-  static const Color textPrimary = Color(0xFF212121);
-  static const Color textSecondary = Color(0xFF616161);
-  static const Color textMuted = Color(0xFF9E9E9E);
+  static const Color textPrimary = Color(0xFFF0F0F5);
+  static const Color textSecondary = Color(0xFF8888A0);
+  static const Color textMuted = Color(0xFF55556A);
 
-  // Accent — engineering blue (high contrast on white)
-  static const Color accent = Color(0xFF1565C0);
-  static const Color accentLight = Color(0xFF42A5F5);
-
-  // Action orange — for primary CTAs (claim work order, complete, etc.)
-  static const Color actionOrange = Color(0xFFFF6F00);
+  // Accent
+  static const Color accent = Color(0xFF6C5CE7);
+  static const Color accentLight = Color(0xFFA29BFE);
 
   // Semantic
-  static const Color success = Color(0xFF2E7D32);
-  static const Color warning = Color(0xFFF57C00);
-  static const Color danger = Color(0xFFD32F2F);
-  static const Color info = accent;
+  static const Color success = Color(0xFF00D2A0);
+  static const Color warning = Color(0xFFFFB347);
+  static const Color danger = Color(0xFFFF6B6B);
+  static const Color info = Color(0xFF4FC3F7);
 
   // Light-mode equivalents (for light theme fallback)
-  static const Color lightBg = Color(0xFFFAFAFA);
+  static const Color lightBg = Color(0xFFF5F5FA);
   static const Color lightSurface = Colors.white;
-  static const Color lightSurfaceElevated = Color(0xFFF5F5F5);
-  static const Color lightBorder = Color(0xFFE0E0E0);
-  static const Color lightTextPrimary = Color(0xFF212121);
-  static const Color lightTextSecondary = Color(0xFF616161);
-  static const Color lightTextMuted = Color(0xFF9E9E9E);
+  static const Color lightSurfaceElevated = Color(0xFFF0F0F5);
+  static const Color lightBorder = Color(0xFFE0E0EA);
+  static const Color lightTextPrimary = Color(0xFF1A1A2E);
+  static const Color lightTextSecondary = Color(0xFF6B6B80);
+  static const Color lightTextMuted = Color(0xFF9999AA);
 }
 
 /// Project theme. Builds Material 3 themes aligned with

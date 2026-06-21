@@ -1,33 +1,51 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:api_client/api_client.dart';
+import 'package:ui_kit/ui_kit.dart';
 
-/// Compact card used in ticket list and home screen.
-/// Shows subject, customer name, address (if any), priority + status badges,
-/// and time-ago of last update.
+/// Ticket card widget — displays a single ticket in a list.
 class TicketCard extends StatelessWidget {
-  const TicketCard({
-    super.key,
-    required this.ticket,
-    required this.onTap,
-  });
+  const TicketCard({super.key, required this.ticket, this.onTap});
 
   final TicketModel ticket;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'open':
+        return const Color(0xFFF59E0B);
+      case 'inProgress':
+        return const Color(0xFF3B82F6);
+      case 'resolved':
+      case 'closed':
+        return const Color(0xFF22C55E);
+      default:
+        return const Color(0xFF6B7280);
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'open':
+        return 'Open';
+      case 'inProgress':
+        return 'Diproses';
+      case 'resolved':
+        return 'Selesai';
+      case 'closed':
+        return 'Ditutup';
+      default:
+        return status;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final priorityColor = _priorityColor(theme, ticket.priority);
-    final statusColor = _statusColor(theme, ticket.status);
+    final isp = context.isp;
+    final statusColor = _statusColor(ticket.status.name);
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.dividerColor.withOpacity(0.5)),
-      ),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -36,73 +54,69 @@ class TicketCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top row: priority badge + status badge + time-ago
               Row(
                 children: [
-                  _PriorityBadge(priority: ticket.priority, color: priorityColor),
-                  const SizedBox(width: 6),
-                  _StatusBadge(status: ticket.status, color: statusColor),
-                  const Spacer(),
-                  Text(
-                    _timeAgo(ticket.updatedAt),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.hintColor,
+                  Expanded(
+                    child: Text(
+                      ticket.subject,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isp.textPrimary,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(IspRadii.pill),
+                    ),
+                    child: Text(
+                      _statusLabel(ticket.status.name),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: statusColor,
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              // Subject
-              Text(
-                ticket.subject,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              // Description preview (optional)
               if (ticket.description != null && ticket.description!.isNotEmpty) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
-                  ticket.description!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.hintColor,
-                  ),
+                  ticket.description ?? '',
+                  style: TextStyle(fontSize: 12, color: isp.textMuted),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
-              // Bottom row: assignee + unread count
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.person_outline,
-                      size: 14, color: theme.hintColor),
+                  Icon(Icons.access_time, size: 14, color: isp.textMuted),
                   const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      ticket.assignedToName ?? 'Belum ditugaskan',
-                      style: theme.textTheme.bodySmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  Text(
+                    ticket.createdAt != null
+                        ? _formatDate(ticket.createdAt!)
+                        : '',
+                    style: TextStyle(fontSize: 11, color: isp.textMuted),
                   ),
-                  if (ticket.unreadCount > 0) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '${ticket.unreadCount}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
+                  if (ticket.priority.name != 'normal') ...[
+                    const SizedBox(width: 12),
+                    Icon(Icons.flag, size: 14, color: _priorityColor(ticket.priority.name)),
+                    const SizedBox(width: 4),
+                    Text(
+                      ticket.priority.name.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: _priorityColor(ticket.priority.name),
                       ),
                     ),
                   ],
@@ -115,114 +129,26 @@ class TicketCard extends StatelessWidget {
     );
   }
 
-  Color _priorityColor(ThemeData theme, TicketPriority p) {
-    switch (p) {
-      case TicketPriority.urgent:
-        return Colors.red.shade700;
-      case TicketPriority.high:
-        return Colors.orange.shade700;
-      case TicketPriority.normal:
-        return theme.colorScheme.primary;
-      case TicketPriority.low:
-        return Colors.grey.shade600;
+  Color _priorityColor(String priority) {
+    switch (priority) {
+      case 'urgent':
+        return const Color(0xFFEF4444);
+      case 'high':
+        return const Color(0xFFF97316);
+      case 'low':
+        return const Color(0xFF6B7280);
+      default:
+        return const Color(0xFF6B7280);
     }
   }
 
-  Color _statusColor(ThemeData theme, TicketStatus s) {
-    switch (s) {
-      case TicketStatus.open:
-        return Colors.blue.shade700;
-      case TicketStatus.inProgress:
-        return Colors.orange.shade700;
-      case TicketStatus.waitingCustomer:
-      case TicketStatus.waitingStaff:
-        return Colors.purple.shade700;
-      case TicketStatus.resolved:
-        return Colors.green.shade700;
-      case TicketStatus.closed:
-        return Colors.grey.shade600;
-      case TicketStatus.cancelled:
-        return Colors.red.shade400;
-    }
-  }
-
-  String _timeAgo(DateTime t) {
-    final diff = DateTime.now().difference(t);
-    if (diff.inMinutes < 1) return 'baru saja';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}j';
-    if (diff.inDays < 7) return '${diff.inDays}h';
-    return DateFormat('d MMM').format(t);
-  }
-}
-
-class _PriorityBadge extends StatelessWidget {
-  const _PriorityBadge({required this.priority, required this.color});
-  final TicketPriority priority;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.4), width: 0.5),
-      ),
-      child: Text(
-        priority.name.toUpperCase(),
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status, required this.color});
-  final TicketStatus status;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        _statusLabel(status),
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-
-  String _statusLabel(TicketStatus s) {
-    switch (s) {
-      case TicketStatus.open:
-        return 'OPEN';
-      case TicketStatus.inProgress:
-        return 'DIPROSES';
-      case TicketStatus.waitingCustomer:
-        return 'TUNGGU PELANGGAN';
-      case TicketStatus.waitingStaff:
-        return 'TUNGGU STAFF';
-      case TicketStatus.resolved:
-        return 'SELESAI';
-      case TicketStatus.closed:
-        return 'DITUTUP';
-      case TicketStatus.cancelled:
-        return 'DIBATALKAN';
-    }
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inMinutes < 1) return 'Baru saja';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m lalu';
+    if (diff.inHours < 24) return '${diff.inHours}j lalu';
+    if (diff.inDays < 7) return '${diff.inDays}h lalu';
+    return '${date.day}/${date.month}/${date.year}';
   }
 }

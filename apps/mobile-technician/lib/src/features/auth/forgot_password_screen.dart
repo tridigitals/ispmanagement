@@ -1,108 +1,152 @@
-import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
 import 'package:ui_kit/ui_kit.dart';
+
+import '../../l10n/app_localizations.dart';
 import '../../services/auth_providers.dart';
+import '../../utils/form_validators.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
   @override
-  ConsumerState<ForgotPasswordScreen> createState() =>
-      _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() => _State();
 }
 
-class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
-  final _emailCtrl = TextEditingController();
-  bool _sent = false;
-  bool _loading = false;
+class _State extends ConsumerState<ForgotPasswordScreen> {
+  final _form = GlobalKey<FormState>();
+  final _email = TextEditingController();
+  final _reason = TextEditingController();
+  bool _sending = false;
+  String? _done;
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
+    _email.dispose();
+    _reason.dispose();
     super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_form.currentState!.validate()) return;
+    setState(() {
+      _sending = true;
+      _done = null;
+    });
+    final res = await ref.read(authControllerProvider.notifier).forgotPassword(
+          email: _email.text.trim(),
+          reason: _reason.text.trim().isEmpty ? null : _reason.text.trim(),
+        );
+    if (!mounted) return;
+    setState(() {
+      _sending = false;
+      _done = res.fold(
+        (_) => 'Kami mengirim tautan reset ke email Anda. Cek inbox/spam.',
+        (err) => err.message,
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+
+
+    final isp = context.isp;    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Lupa Password')),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: _sent
-            ? Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.mark_email_read,
-                      size: 64, color: Color(0xFF22C55E)),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Email reset password telah dikirim.',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                    textAlign: TextAlign.center,
+      appBar: AppBar(title: Text(l10n.forgotPassword)),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(IspSpacing.lg),
+          child: Form(
+            key: _form,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: IspSpacing.xl),
+                Icon(
+                  Icons.lock_reset_outlined,
+                  size: 64,
+                  color: isp.accent,
+                ),
+                const SizedBox(height: IspSpacing.lg),
+                Text(
+                  l10n.forgotPasswordHeadline,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Cek inbox ${_emailCtrl.text}',
-                    style: TextStyle(color: Colors.grey[600]),
-                    textAlign: TextAlign.center,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.forgotPasswordSub,
+                  style: TextStyle(color: isp.textMuted),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: IspSpacing.xxl),
+                TextFormField(
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.email],
+                  decoration: InputDecoration(
+                    labelText: l10n.email,
+                    prefixIcon: const Icon(Icons.email_outlined),
                   ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Kembali ke Login'),
+                  validator: Validators.email,
+                ),
+                const SizedBox(height: IspSpacing.md),
+                TextFormField(
+                  controller: _reason,
+                  maxLines: 3,
+                  maxLength: 200,
+                  decoration: InputDecoration(
+                    labelText: l10n.reasonOptional,
+                    hintText: l10n.reasonHint,
+                    alignLabelWithHint: true,
                   ),
-                ],
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.lock_reset,
-                      size: 64, color: Color(0xFF1565C0)),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Masukkan email untuk reset password',
-                    style: TextStyle(fontSize: 16),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    controller: _emailCtrl,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.alternate_email),
+                ),
+                if (_done != null) ...[
+                  const SizedBox(height: IspSpacing.md),
+                  Container(
+                    padding: const EdgeInsets.all(IspSpacing.md),
+                    decoration: BoxDecoration(
+                      color: isp.success.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(IspRadii.md),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          color: isp.success,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _done!,
+                            style: TextStyle(color: isp.success),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: _loading
-                        ? null
-                        : () async {
-                            setState(() => _loading = true);
-                            final res = await ref
-                                .read(authControllerProvider.notifier)
-                                .forgotPassword(email: _emailCtrl.text.trim());
-                            setState(() => _loading = false);
-                            if (res is Success) {
-                              setState(() => _sent = true);
-                            } else if (res is Failure && mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content: Text(
-                                        (res as Failure).exception.message)),
-                              );
-                            }
-                          },
-                    child: _loading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2))
-                        : const Text('Kirim Reset Password'),
-                  ),
                 ],
-              ),
+                const SizedBox(height: IspSpacing.xl),
+                IspPrimaryButton(
+                  label: l10n.sendResetLink,
+                  loading: _sending,
+                  onPressed: _submit,
+                ),
+                const SizedBox(height: IspSpacing.md),
+                TextButton(
+                  onPressed: () => context.pop(),
+                  child: Text(l10n.backToLogin),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

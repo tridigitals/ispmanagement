@@ -23,21 +23,21 @@ class _State extends ConsumerState<OnboardingScreen> {
       title: 'Aplikasi Teknisi',
       body:
           'Kelola tiket, pantau jadwal, dan selesaikan pekerjaan langsung dari lapangan.',
-      color: const Color(0xFF1565C0), // engineer blue
+      color: const Color(0xFF1565C0),
     ),
     _OnboardPage(
       icon: Icons.assignment_turned_in,
       title: 'Kelola Tiket',
       body:
           'Terima tiket, update status, upload foto bukti, dan ambil tanda tangan pelanggan.',
-      color: const Color(0xFF22C55E), // success
+      color: const Color(0xFF22C55E),
     ),
     _OnboardPage(
       icon: Icons.location_on,
       title: 'Tracking Lokasi',
       body:
           'Otomatis kirim lokasi ke server sehingga admin dapat memantau posisi teknisi secara real-time.',
-      color: const Color(0xFFF59E0B), // warning
+      color: const Color(0xFFF59E0B),
     ),
   ];
 
@@ -139,7 +139,6 @@ class _OnboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isp = context.isp;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: IspSpacing.xl),
       child: Column(
@@ -157,19 +156,13 @@ class _OnboardPage extends StatelessWidget {
           const SizedBox(height: 32),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-            ),
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
           Text(
             body,
-            style: TextStyle(
-              color: isp.textMuted,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: context.isp.textMuted, fontSize: 14),
             textAlign: TextAlign.center,
           ),
         ],

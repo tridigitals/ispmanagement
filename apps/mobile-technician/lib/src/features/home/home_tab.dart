@@ -32,17 +32,9 @@ class HomeTab extends ConsumerWidget {
           // Greeting
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Berikut daftar tiket yang ditugaskan kepadamu.',
-                  style: TextStyle(
-                    color: isp.textMuted,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
+            child: Text(
+              'Berikut daftar tiket yang ditugaskan kepadamu.',
+              style: TextStyle(color: isp.textMuted, fontSize: 14),
             ),
           ),
           const SizedBox(height: 16),
@@ -100,10 +92,7 @@ class HomeTab extends ConsumerWidget {
                     const SizedBox(height: 12),
                     Text(
                       'Tidak ada tiket aktif saat ini.',
-                      style: TextStyle(
-                        color: isp.textMuted,
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: isp.textMuted, fontSize: 14),
                     ),
                   ],
                 ),

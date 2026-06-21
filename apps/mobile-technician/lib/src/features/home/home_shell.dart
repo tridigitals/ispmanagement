@@ -25,11 +25,6 @@ class _State extends ConsumerState<HomeShell> {
       final id = actionUrl.substring('/support/'.length);
       if (id.isNotEmpty) return '/tickets/$id';
     }
-    if (actionUrl.startsWith('/pay/') || actionUrl.startsWith('/invoices'))
-      return '/?tab=1';
-    if (actionUrl.startsWith('/subscriptions/') ||
-        actionUrl.startsWith('/services')) return '/?tab=0';
-    if (actionUrl.startsWith('/announcements/')) return '/?tab=0';
     return actionUrl;
   }
 
@@ -51,15 +46,12 @@ class _State extends ConsumerState<HomeShell> {
     }
   }
 
-  Future<void> _checkOnboarding() async {
-    // Biometric auth is handled in LoginScreen — no duplicate prompt here.
-  }
+  Future<void> _checkOnboarding() async {}
 
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
-    final notifState = ref.watch(notificationsProvider);
     final tab = ref.watch(currentTabProvider);
     final user = ref.watch(currentUserProvider);
     final unread = ref.watch(unreadNotificationsCountProvider).valueOrNull ?? 0;
@@ -78,7 +70,6 @@ class _State extends ConsumerState<HomeShell> {
         title: Text(tabTitles[tab]),
         automaticallyImplyLeading: false,
         actions: [
-          // Bell / notifications
           IconButton(
             icon: Stack(
               clipBehavior: Clip.none,
@@ -113,12 +104,10 @@ class _State extends ConsumerState<HomeShell> {
             ),
             onPressed: () => GoRouter.of(context).push('/notifications'),
           ),
-          // Account
           IconButton(
             icon: const Icon(Icons.account_circle_outlined),
             onPressed: () => GoRouter.of(context).push('/profile'),
           ),
-          // Settings
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: l10n.settings,

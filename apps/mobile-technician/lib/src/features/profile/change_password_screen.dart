@@ -1,97 +1,170 @@
-import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
 import 'package:ui_kit/ui_kit.dart';
+
+import '../../l10n/app_localizations.dart';
 import '../../services/auth_providers.dart';
+import '../../utils/form_validators.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
   @override
-  ConsumerState<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
+  ConsumerState<ChangePasswordScreen> createState() => _State();
 }
 
-class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _currentCtrl = TextEditingController();
-  final _newCtrl = TextEditingController();
-  final _confirmCtrl = TextEditingController();
+class _State extends ConsumerState<ChangePasswordScreen> {
+
+  late final IspThemeColors isp;
+
+
+
+  @override
+
+
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    isp = context.isp;
+  }
+  final _form = GlobalKey<FormState>();
+  final _current = TextEditingController();
+  final _new = TextEditingController();
+  final _confirm = TextEditingController();
   bool _saving = false;
-  bool _obscure = true;
+  bool _hideCurrent = true;
+  bool _hideNew = true;
+  bool _hideConfirm = true;
 
   @override
   void dispose() {
-    _currentCtrl.dispose();
-    _newCtrl.dispose();
-    _confirmCtrl.dispose();
+    _current.dispose();
+    _new.dispose();
+    _confirm.dispose();
     super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_form.currentState!.validate()) return;
+    setState(() => _saving = true);
+    final res = await ref.read(authControllerProvider.notifier).changePassword(
+          current: _current.text,
+          next: _new.text,
+        );
+    if (!mounted) return;
+    setState(() => _saving = false);
+    res.fold(
+      (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).passwordChanged),
+          ),
+        );
+        context.pop();
+      },
+      (err) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(err.message),
+          backgroundColor: isp.danger,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+
+
+final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Ubah Password')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                controller: _currentCtrl,
-                obscureText: _obscure,
-                decoration: InputDecoration(
-                  labelText: 'Password Saat Ini',
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => _obscure = !_obscure),
+      appBar: AppBar(title: Text(l10n.changePassword)),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(IspSpacing.lg),
+          child: Form(
+            key: _form,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: IspSpacing.lg),
+                Text(
+                  l10n.changePasswordHeadline,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: IspSpacing.xxl),
+                TextFormField(
+                  controller: _current,
+                  obscureText: _hideCurrent,
+                  decoration: InputDecoration(
+                    labelText: l10n.currentPassword,
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _hideCurrent
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () =>
+                          setState(() => _hideCurrent = !_hideCurrent),
+                    ),
+                  ),
+                  validator: (v) =>
+                      Validators.required(v, label: l10n.currentPassword),
+                ),
+                const SizedBox(height: IspSpacing.md),
+                TextFormField(
+                  controller: _new,
+                  obscureText: _hideNew,
+                  decoration: InputDecoration(
+                    labelText: l10n.newPassword,
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    helperText: l10n.passwordRule,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _hideNew
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () => setState(() => _hideNew = !_hideNew),
+                    ),
+                  ),
+                  validator: Validators.password,
+                ),
+                const SizedBox(height: IspSpacing.md),
+                TextFormField(
+                  controller: _confirm,
+                  obscureText: _hideConfirm,
+                  decoration: InputDecoration(
+                    labelText: l10n.confirmNewPassword,
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _hideConfirm
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () =>
+                          setState(() => _hideConfirm = !_hideConfirm),
+                    ),
+                  ),
+                  validator: (v) => Validators.matches(
+                    v,
+                    _new.text,
+                    message: l10n.passwordMismatch,
                   ),
                 ),
-                validator: (v) => (v == null || v.length < 6) ? 'Minimal 6 karakter' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _newCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password Baru'),
-                validator: (v) => (v == null || v.length < 6) ? 'Minimal 6 karakter' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _confirmCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Konfirmasi Password Baru'),
-                validator: (v) => v != _newCtrl.text ? 'Password tidak cocok' : null,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _saving
-                    ? null
-                    : () async {
-                        if (!_formKey.currentState!.validate()) return;
-                        setState(() => _saving = true);
-                        final res = await ref
-                            .read(authControllerProvider.notifier)
-                            .changePassword(
-                              current: _currentCtrl.text,
-                              next: _newCtrl.text,
-                            );
-                        setState(() => _saving = false);
-                        if (mounted && res is Success) {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Password berhasil diubah')),
-                          );
-                        } else if (mounted && res is Failure) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text((res as Failure).exception.message)),
-                          );
-                        }
-                      },
-                child: _saving
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Ubah Password'),
-              ),
-            ],
+                const SizedBox(height: IspSpacing.xxl),
+                IspPrimaryButton(
+                  label: l10n.save,
+                  loading: _saving,
+                  onPressed: _save,
+                ),
+              ],
+            ),
           ),
         ),
       ),

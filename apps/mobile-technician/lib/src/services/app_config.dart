@@ -22,7 +22,7 @@ class AppConfig {
         'WS_BASE_URL',
         defaultValue: 'ws://103.190.112.214:3000',
       ),
-      appName: 'ISP Customer',
+      appName: 'ISP Teknisi',
       appVersion: '0.1.0+1',
     );
   }
