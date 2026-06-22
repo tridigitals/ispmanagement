@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build release APK for ISP Customer mobile app.
+# Build release APK for ISP Technician mobile app.
 # Usage:
 #   ./scripts/build-release.sh                 # Sentry disabled (dev)
 #   ./scripts/build-release.sh --with-sentry   # Sentry enabled (production)
@@ -8,6 +8,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$PROJECT_DIR/../.." && pwd)"
 
 cd "$PROJECT_DIR"
 
@@ -15,7 +16,7 @@ cd "$PROJECT_DIR"
 # Public key, safe to commit (Sentry DSNs are designed for client-side use)
 SENTRY_DSN="https://75e881638b52b75b31b35fa92e82d834@o4511507498401792.ingest.us.sentry.io/4511507503513600"
 SENTRY_ENV="production"
-SENTRY_RELEASE="mobile-technician@0.2.0+1"
+SENTRY_RELEASE="mobile-technician@0.2.0+14"
 
 DART_DEFINES=()
 if [[ "${1:-}" == "--with-sentry" ]]; then
@@ -29,14 +30,54 @@ else
   echo "→ Building without Sentry (dev build)"
 fi
 
+# ── Workspace workaround ──────────────────────────────────────────
+# Flutter workspace mode (Dart 3.5+) skips writing package_config.json
+# into each member dir. flutter_tools then exits with "LocalDirectory:
+# pub did not create .dart_tools/package_config.json file" on
+# `flutter build apk`. Fix: temporarily remove this member from the
+# workspace, generate a per-member package_config.json, then restore
+# the workspace and build with --no-pub so flutter doesn't re-run pub
+# get (which would delete the per-member config).
+echo "→ Generating per-member package_config.json (workspace workaround)"
+cp "$REPO_ROOT/pubspec.yaml" /tmp/pubspec.yaml.bak
+sed -i 's|^  - apps/mobile-technician$|  #- apps/mobile-technician|' "$REPO_ROOT/pubspec.yaml"
+
+cleanup() {
+  cp /tmp/pubspec.yaml.bak "$REPO_ROOT/pubspec.yaml"
+}
+trap cleanup EXIT
+
+(
+  cd "$REPO_ROOT"
+  flutter pub get > /dev/null 2>&1
+)
+
+# Inside technician dir: drop workspace resolution, run dart pub get,
+# then restore so the file is committed-friendly.
+sed -i 's|^resolution: workspace|#resolution: workspace|' pubspec.yaml
+(
+  dart pub get > /dev/null 2>&1
+)
+sed -i 's|^#resolution: workspace|resolution: workspace|' pubspec.yaml
+
+# Restore workspace BEFORE flutter build apk (--no-pub skips its pub step).
+cleanup
+trap - EXIT
+
+# Copy .flutter-plugins from root — needed for Gradle to find plugin JARs
+# (dart pub get doesn't generate these, only flutter pub get does)
+cp "$REPO_ROOT/.flutter-plugins" .flutter-plugins
+cp "$REPO_ROOT/.flutter-plugins-dependencies" .flutter-plugins-dependencies
+
 flutter build apk --release \
   --target-platform android-arm64 \
+  --no-pub \
   "${DART_DEFINES[@]}"
 
 APK="build/app/outputs/flutter-apk/app-arm64-v8a-release.apk"
 if [[ -f "$APK" ]]; then
-  cp "$APK" /home/xtrabit/isp-management-customer-arm64.apk
+  cp "$APK" /home/xtrabit/apk-server/mobile-technician-arm64.apk
   echo
-  echo "✓ Built and copied to /home/xtrabit/isp-management-customer-arm64.apk"
-  ls -la /home/xtrabit/isp-management-customer-arm64.apk
+  echo "✓ Built and copied to /home/xtrabit/apk-server/mobile-technician-arm64.apk"
+  ls -la /home/xtrabit/apk-server/mobile-technician-arm64.apk
 fi
