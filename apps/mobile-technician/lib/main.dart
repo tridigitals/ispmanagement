@@ -69,42 +69,52 @@ void main() {
   // Phase 1: Show loading screen IMMEDIATELY (synchronous).
   _showLoadingScreen();
 
-  // Phase 2: SharedPreferences FIRST — required for auth session.
-  // This MUST complete before the safety timer fires, otherwise the
-  // timer starts the app with prefs=null and onboardingDone=false,
-  // permanently overriding the providers and breaking session persistence.
-  SharedPreferences.getInstance().then((prefs) {
-    _onPrefsReady(prefs);
-  }).catchError((e) {
-    debugPrint('[init] SharedPreferences failed: $e — starting without prefs');
-    _onPrefsReady(null);
-  });
-
-  // Phase 3: Safety net — force app start after 8 seconds no matter what.
-  // Only fires if _onPrefsReady() hasn't run yet (e.g., both Firebase AND
-  // SharedPreferences hung). Prefs may still be null here — app starts
-  // with defaults, user logs in fresh.
+  // Phase 2: Safety net — force app start after 8 seconds no matter what.
+  // This Timer is scheduled BEFORE any async work, so it fires even if
+  // Firebase or SharedPreferences hang the event loop.
   Timer(const Duration(seconds: 8), () {
     if (!_appStarted) {
-      debugPrint('[safety] 8s elapsed — forcing app start (prefs may be null)');
+      debugPrint('[safety] 8s elapsed — forcing app start without services');
       _startApp(null, false, initError: 'Initialization timeout (8s)');
     }
   });
 
-  // Phase 4: Firebase in background (fire-and-forget — non-critical).
-  // Errors are caught; app still starts without FCM.
-  _initFirebase();
+  // Phase 3: Init services in background (fire-and-forget).
+  // Errors are caught locally; if anything fails, app still starts.
+  _initServices();
 }
 
-/// Called once SharedPreferences is ready (or null on failure).
-Future<void> _onPrefsReady(SharedPreferences? prefs) async {
-  if (_appStarted) return; // Safety timer already started app
-  debugPrint('[init] SharedPreferences ${prefs != null ? "OK" : "NULL"} — starting services');
+/// Shows a minimal loading screen while services initialize.
+void _showLoadingScreen() {
+  runApp(
+    const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: Color(0xFF08090D),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Color(0xFF8B9CFF)),
+              SizedBox(height: 16),
+              Text(
+                'Memuat...',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
 
-  final onboardingDone = prefs?.getBool('onboarding_completed') ?? false;
-
-  // Init Firebase + Sentry, then start the real app.
+/// Initialize Firebase, SharedPreferences, Sentry.
+/// On ANY failure, starts the app with error info.
+Future<void> _initServices() async {
   String? initError;
+
+  // ── Firebase (5s timeout) ──
   try {
     await Firebase.initializeApp().timeout(
       const Duration(seconds: 5),
@@ -112,14 +122,30 @@ Future<void> _onPrefsReady(SharedPreferences? prefs) async {
         throw TimeoutException('Firebase timeout (5s)');
       },
     );
+    // Register FCM background handler
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     debugPrint('[init] Firebase OK');
   } catch (e, st) {
     initError = 'Firebase init failed: $e';
     debugPrint('[init] $initError');
     debugPrint('$st');
+    // Continue without Firebase — app should still work
   }
 
+  // ── SharedPreferences ──
+  SharedPreferences? prefs;
+  try {
+    prefs = await SharedPreferences.getInstance();
+    debugPrint('[init] SharedPreferences OK');
+  } catch (e) {
+    initError = (initError != null) ? '$initError\nPrefs failed: $e' : 'Prefs failed: $e';
+    debugPrint('[init] SharedPreferences failed: $e');
+    // Continue without prefs — defaults will be used
+  }
+
+  final onboardingDone = prefs?.getBool('onboarding_completed') ?? false;
+
+  // ── Sentry (optional) ──
   if (_sentryDsn.isNotEmpty) {
     try {
       await SentryFlutter.init(
@@ -152,47 +178,6 @@ Future<void> _onPrefsReady(SharedPreferences? prefs) async {
   }
 }
 
-/// Init Firebase only (no SharedPreferences — called in background).
-Future<void> _initFirebase() async {
-  try {
-    await Firebase.initializeApp().timeout(
-      const Duration(seconds: 5),
-      onTimeout: () {
-        throw TimeoutException('Firebase timeout (5s)');
-      },
-    );
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    debugPrint('[init] Firebase OK (background)');
-  } catch (e) {
-    debugPrint('[init] Firebase background init failed: $e — non-critical');
-  }
-}
-
-/// Shows a minimal loading screen while services initialize.
-void _showLoadingScreen() {
-  runApp(
-    const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: Color(0xFF08090D),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: Color(0xFF8B9CFF)),
-              SizedBox(height: 16),
-              Text(
-                'Memuat...',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
 /// Start the real app. Safe to call multiple times (idempotent).
 void _startApp(
   SharedPreferences? prefs,
@@ -201,7 +186,7 @@ void _startApp(
 }) {
   if (_appStarted) return; // Already started (by timer or by _initServices)
   _appStarted = true;
-  debugPrint('[start] App starting — onboardingDone=$onboardingDone, prefs=${prefs != null}, error=$initError');
+  debugPrint('[start] App starting — onboardingDone=$onboardingDone, error=$initError');
 
   final List<Override> overrides = [
     onboardingCompletedProvider.overrideWith((ref) => onboardingDone),

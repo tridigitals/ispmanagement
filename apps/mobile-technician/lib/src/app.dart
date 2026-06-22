@@ -9,7 +9,6 @@ import 'router/app_router.dart';
 import 'services/app_config.dart';
 import 'services/auth_providers.dart';
 import 'services/fcm_service.dart';
-import 'services/gps_service.dart';
 import 'services/realtime_listener.dart';
 import 'services/settings_providers.dart';
 import 'theme/app_theme.dart';
@@ -49,8 +48,6 @@ class _State extends ConsumerState<IspTechnicianApp> {
     // Restore auth session from secure storage on app start.
     Future.microtask(
         () => ref.read(authControllerProvider.notifier).bootstrap());
-    // GPS tracker: start 2s after launch (only effective if user is logged in).
-    _scheduleGpsStart();
     // FCM safety net: also call init after bootstrap completes, regardless
     // of whether the auth state changed. The `ref.listen` below covers the
     // state-change case, but a cold start with a still-valid session may
@@ -78,27 +75,17 @@ class _State extends ConsumerState<IspTechnicianApp> {
     });
   }
 
-  /// GPS — start 2s after app launch, but ONLY if a user is authenticated.
-  void _scheduleGpsStart() {
-    Future.delayed(const Duration(seconds: 2), () {
-      final auth = ref.read(authControllerProvider);
-      if (auth.isAuthenticated) {
-        ref.read(gpsTrackingServiceProvider).start();
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     // Keep router in sync with auth state.
     ref.listen<AuthState>(authControllerProvider, (prev, next) {
       if (prev?.isAuthenticated != next.isAuthenticated) {
         _router.refresh();
-        // Init FCM + GPS after login. Use force=true so a logout→login cycle
-        // re-registers the device token.
+        // Init FCM after login. Use force=true so a logout→login cycle
+        // re-registers the device token (the Riverpod provider keeps the
+        // same FcmService instance alive across auth state changes).
         if (next.isAuthenticated) {
           ref.read(fcmServiceProvider).init(force: true);
-          ref.read(gpsTrackingServiceProvider).start();
         }
       }
     });
