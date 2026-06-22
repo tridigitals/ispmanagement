@@ -1,8 +1,8 @@
 name: mobile_technician
 description: ISP Management — Technician mobile app (Flutter, iOS + Android)
-version: 0.2.0+13
+version: 0.2.0+14
 publish_to: none
-resolution: workspace  # TEMP disabled for standalone build
+resolution: workspace
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
@@ -56,9 +56,6 @@ dependencies:
   pdf: ^3.10.8
   printing: ^5.12.0
   path_provider: ^2.1.5
-
-  # Location (technician GPS tracking)
-  # geolocator: ^13.0.0  # TEMP removed for session debug
 
   # Auth
   local_auth: ^2.3.0

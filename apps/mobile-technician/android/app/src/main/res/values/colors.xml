@@ -1,11 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Theme for technician app — engineering blue, distinct from customer -->
-    <color name="brandPrimary">#1565C0</color>
-    <color name="brandPrimaryDark">#0D47A1</color>
-    <color name="brandAccent">#FF6F00</color>
-
-    <!-- Launch screen background -->
-    <color name="launchBackground">#FFFFFF</color>
-    <color name="splashBackground">#1565C0</color>
+    <color name="launch_background">#08090D</color>
+    <color name="primary">#8B9CFF</color>
 </resources>

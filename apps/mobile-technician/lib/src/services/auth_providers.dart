@@ -379,16 +379,16 @@ class AuthController extends Notifier<AuthState> {
   /// even if Android Keystore is wedged. The persistSession().timeout(5s)
   /// remains as a safety net but should rarely fire.
   ///
-  /// Enforces technician-only role: this APK is for field technicians.
-  /// customer/staff/admin/super_admin accounts must use other apps.
-  /// Non-technician logins are rejected with [Failure] — session is
-  /// rolled back (token cleared from storage + in-memory cache, user
-  /// state reset) so a stale session cannot leak across a role mismatch.
+  /// Enforces customer-only role: the customer APK is for end users
+  /// subscribing to ISP services. Staff/admin/super_admin accounts
+  /// must use the admin web app instead. Non-customer logins are
+  /// rejected with [Failure] — session is rolled back (token cleared
+  /// from storage + in-memory cache, user state reset) so a stale
+  /// session cannot leak across a role mismatch.
   Future<ServiceResult<bool>> apply(AuthResponse auth) async {
-    // Role gate: only `technician` + `staff` roles may use this app.
-    // Backend already gates login by tenant + credentials; this is a
-    // client-side guard against accidentally letting a wrong-role account
-    // slip through (e.g. customer logging into technician app by mistake).
+    // Role gate: only `customer` role may use this app. Backend already
+    // gates login by tenant + credentials; this is a client-side guard
+    // against accidentally letting a staff account slip through.
     if (!auth.user.isStaff) {
       debugPrint(
         '[auth] rejected non-technician login: '
@@ -407,8 +407,7 @@ class AuthController extends Notifier<AuthState> {
       return Failure(
         ApiException(
           message:
-              'Akun ini bukan akun teknisi. APK ini hanya untuk '
-              'teknisi lapangan. Silakan login di aplikasi admin.',
+              'Akun ini bukan akun teknisi. APK ini hanya untuk teknisi lapangan.',
         ),
       );
     }
@@ -462,49 +461,33 @@ class AuthController extends Notifier<AuthState> {
   /// On failure, do NOT delete token — might be transient (network/server).
   /// Token stays so user can retry or login manually (which will overwrite it).
   ///
-  /// Enforces technician-only role on session restore too — if a non-technician
+  /// Enforces customer-only role on session restore too — if a staff/admin
   /// token leaked into this APK (e.g. from a prior install of the wrong app,
   /// or a hand-edited token), we wipe the session and return false so the
   /// router keeps the user on the login screen.
   Future<bool> bootstrap() async {
     final auth = ref.read(authServiceProvider);
-    debugPrint('[auth:bootstrap] START — attempting session restore');
-    final hasSession = await auth.hasSession();
-    debugPrint('[auth:bootstrap] hasSession=$hasSession');
-    if (!hasSession) {
-      debugPrint('[auth:bootstrap] NO session stored — returning false');
-      return false;
-    }
-    debugPrint('[auth:bootstrap] session found — calling /auth/me');
+    if (!await auth.hasSession()) return false;
     final me = await auth.me();
     switch (me) {
       case Success(:final data):
-        debugPrint('[auth:bootstrap] /auth/me SUCCESS — role=${data.role} isStaff=${data.isStaff}');
         if (!data.isStaff) {
           debugPrint(
-            '[auth:bootstrap] REJECTED — non-technician role=${data.role} email=${data.email}',
+            '[auth] bootstrap rejected non-technician: '
+            'role=${data.role} user=${data.email}',
           );
           try {
             await auth.logout().timeout(const Duration(seconds: 3));
           } catch (e) {
-            debugPrint('[auth:bootstrap] logout during reject failed: $e');
+            debugPrint('[auth] logout during bootstrap role-reject failed: $e');
           }
           state = const AuthState();
-          debugPrint('[auth:bootstrap] state cleared — returning false');
           return false;
         }
-        debugPrint('[auth:bootstrap] restoring session for user=${data.email}');
-        // Also restore _globalLatestToken so the first API call in the loading
-        // screen has the token immediately (bypasses storage read race).
-        final token = await auth.tokenStorage.readToken();
-        if (token != null) setGlobalAuthToken(token);
-        debugPrint('[auth:bootstrap] token restored, setting AuthState');
         state = AuthState(user: data);
-        debugPrint('[auth:bootstrap] DONE — returning true (user authenticated)');
         return true;
-      case Failure(:final exception):
-        debugPrint('[auth:bootstrap] /auth/me FAILED — ${exception.message ?? exception} — keeping token');
-        // Do NOT clear token — network/server error, not auth failure.
+      case Failure():
+        // Keep token. User can retry or login with email/password.
         return false;
     }
   }

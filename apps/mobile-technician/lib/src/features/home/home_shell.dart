@@ -3,12 +3,17 @@ import 'package:ui_kit/ui_kit.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:api_client/api_client.dart' show NotificationModel;
+
 import '../../l10n/app_localizations.dart';
 import '../../services/notifications_providers.dart';
 import '../../services/settings_providers.dart';
 import '../../services/auth_providers.dart';
 import './home_tab.dart';
-import 'tickets_tab.dart';
+import 'invoices_tab.dart';
+import 'subscriptions_tab.dart';
+import 'support_tab.dart';
+import '../profile/profile_screen.dart';
 
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
@@ -19,12 +24,19 @@ class HomeShell extends ConsumerStatefulWidget {
 class _State extends ConsumerState<HomeShell> {
   late final IspThemeColors isp;
 
+  /// Normalize action_url → in-app route.
   String _normalizeAction(String? actionUrl) {
     if (actionUrl == null || actionUrl.isEmpty) return '/notifications';
+    // /support/{id} → /tickets/{id} (direct to ticket detail)
     if (actionUrl.startsWith('/support/')) {
       final id = actionUrl.substring('/support/'.length);
       if (id.isNotEmpty) return '/tickets/$id';
     }
+    if (actionUrl.startsWith('/pay/') || actionUrl.startsWith('/invoices'))
+      return '/?tab=2';
+    if (actionUrl.startsWith('/subscriptions/') ||
+        actionUrl.startsWith('/services')) return '/?tab=1';
+    if (actionUrl.startsWith('/announcements/')) return '/?tab=0';
     return actionUrl;
   }
 
@@ -37,39 +49,51 @@ class _State extends ConsumerState<HomeShell> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // Always sync tab from URL query param so go('/?tab=N') works at any time.
     final tabStr = GoRouterState.of(context).uri.queryParameters['tab'];
     if (tabStr != null) {
       final tabIdx = int.tryParse(tabStr);
-      if (tabIdx != null && tabIdx >= 0 && tabIdx < 2) {
+      if (tabIdx != null && tabIdx >= 0 && tabIdx < 4) {
         ref.read(currentTabProvider.notifier).state = tabIdx;
       }
     }
   }
 
-  Future<void> _checkOnboarding() async {}
+  Future<void> _checkOnboarding() async {
+    // Biometric auth is handled in LoginScreen — no duplicate prompt here.
+  }
 
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
+    final notifState = ref.watch(notificationsProvider);
     final tab = ref.watch(currentTabProvider);
     final user = ref.watch(currentUserProvider);
     final unread = ref.watch(unreadNotificationsCountProvider).valueOrNull ?? 0;
 
+    // Tab titles matching bottom nav labels
     final tabTitles = [
       '${l10n.hiPrefix}, ${user?.name.split(' ').first ?? ''} 👋',
-      l10n.myTickets,
+      l10n.mySubscriptions,
+      l10n.myInvoices,
+      l10n.support,
+      l10n.profile,
     ];
     final pages = const [
       HomeTab(),
-      TicketsTab(),
+      SubscriptionsTab(),
+      InvoicesTab(),
+      SupportTab(),
     ];
 
     return Scaffold(
       appBar: AppBar(
+        // Title: greeting on home tab, tab label on others
         title: Text(tabTitles[tab]),
         automaticallyImplyLeading: false,
         actions: [
+          // Bell / notifications
           IconButton(
             icon: Stack(
               clipBehavior: Clip.none,
@@ -104,10 +128,12 @@ class _State extends ConsumerState<HomeShell> {
             ),
             onPressed: () => GoRouter.of(context).push('/notifications'),
           ),
+          // Account
           IconButton(
             icon: const Icon(Icons.account_circle_outlined),
             onPressed: () => GoRouter.of(context).push('/profile'),
           ),
+          // Settings
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: l10n.settings,
@@ -118,6 +144,15 @@ class _State extends ConsumerState<HomeShell> {
       body: SafeArea(
         child: IndexedStack(index: tab, children: pages),
       ),
+      floatingActionButton: tab == 3
+          ? FloatingActionButton(
+              mini: true,
+              backgroundColor: isp.accent,
+              foregroundColor: Colors.white,
+              onPressed: () => GoRouter.of(context).push('/tickets/new'),
+              child: const Icon(Icons.add),
+            )
+          : null,
       bottomNavigationBar: _CleanNavBar(
         selectedIndex: tab,
         onDestinationSelected: (i) =>
@@ -129,9 +164,19 @@ class _State extends ConsumerState<HomeShell> {
             label: l10n.home,
           ),
           _NavDestination(
-            icon: Icons.assignment_outlined,
-            selectedIcon: Icons.assignment,
-            label: l10n.myTickets,
+            icon: Icons.wifi_outlined,
+            selectedIcon: Icons.wifi,
+            label: l10n.mySubscriptions,
+          ),
+          _NavDestination(
+            icon: Icons.receipt_long_outlined,
+            selectedIcon: Icons.receipt_long,
+            label: l10n.myInvoices,
+          ),
+          _NavDestination(
+            icon: Icons.headset_mic_outlined,
+            selectedIcon: Icons.headset_mic,
+            label: l10n.support,
           ),
         ],
       ),

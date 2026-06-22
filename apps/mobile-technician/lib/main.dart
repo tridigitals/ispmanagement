@@ -159,7 +159,7 @@ Future<void> _initServices() async {
           );
           options.release = const String.fromEnvironment(
             'SENTRY_RELEASE',
-            defaultValue: 'mobile-technician@0.2.0',
+            defaultValue: 'mobile-customer@0.1.0',
           );
           options.sendDefaultPii = false;
           options.beforeSend = (event, hint) {

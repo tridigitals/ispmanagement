@@ -19,25 +19,24 @@ class _State extends ConsumerState<OnboardingScreen> {
 
   static final _pages = <_OnboardPage>[
     _OnboardPage(
-      icon: Icons.engineering,
-      title: 'Aplikasi Teknisi',
+      icon: Icons.wifi_tethering,
+      title: 'Kelola Internet Anda',
       body:
-          'Kelola tiket, pantau jadwal, dan selesaikan pekerjaan langsung dari lapangan.',
-      color: const Color(0xFF1565C0),
+          'Pantau paket, tagihan, dan tiket dukungan langsung dari genggaman Anda.',
+      color: const Color(0xFF6C5CE7), // accent
     ),
     _OnboardPage(
-      icon: Icons.assignment_turned_in,
-      title: 'Kelola Tiket',
+      icon: Icons.receipt_long,
+      title: 'Bayar Tagihan Mudah',
       body:
-          'Terima tiket, update status, upload foto bukti, dan ambil tanda tangan pelanggan.',
-      color: const Color(0xFF22C55E),
+          'Virtual Account, e-wallet, QRIS, dan kartu kredit. Bayar di mana saja.',
+      color: const Color(0xFF22C55E), // success
     ),
     _OnboardPage(
-      icon: Icons.location_on,
-      title: 'Tracking Lokasi',
-      body:
-          'Otomatis kirim lokasi ke server sehingga admin dapat memantau posisi teknisi secara real-time.',
-      color: const Color(0xFFF59E0B),
+      icon: Icons.headset_mic,
+      title: 'Lapor Gangguan Cepat',
+      body: 'Buat tiket dukungan dan lacak status perbaikan secara real-time.',
+      color: const Color(0xFFF59E0B), // warning
     ),
   ];
 
@@ -47,7 +46,9 @@ class _State extends ConsumerState<OnboardingScreen> {
       await prefs.setBool('onboarding_completed', true);
     } catch (e) {
       debugPrint('[onboarding] SharedPreferences error: $e');
+      // Continue anyway — user should still proceed to login
     }
+    // Update Riverpod provider so router redirect knows onboarding is done
     if (!mounted) return;
     ref.read(onboardingCompletedProvider.notifier).state = true;
     context.go('/login');
@@ -139,6 +140,7 @@ class _OnboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: IspSpacing.xl),
       child: Column(
@@ -156,13 +158,19 @@ class _OnboardPage extends StatelessWidget {
           const SizedBox(height: 32),
           Text(
             title,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
           Text(
             body,
-            style: TextStyle(color: context.isp.textMuted, fontSize: 14),
+            style: TextStyle(
+              color: context.isp.textMuted,
+              fontSize: 14,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
