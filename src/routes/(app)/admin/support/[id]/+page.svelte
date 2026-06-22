@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/api/client';
   import type { SupportTicketDetail, SupportTicketMessage, TeamMember } from '$lib/api/client';
-  import { can, user as authUser } from '$lib/stores/auth';
+  import { can } from '$lib/stores/auth';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Select from '$lib/components/ui/Select.svelte';
   import { toast } from '$lib/stores/toast';
@@ -39,13 +39,8 @@
     ...teamMembers.map((m) => ({ label: `${m.name} (${m.role_name ?? m.role})`, value: m.user_id })),
   ]);
 
-  // Technician (role_level <= 20) cannot change assignee
-  const canChangeAssignee = $derived.by(() => {
-    const user = get(authUser);
-    if (!user) return false;
-    const level = (user as any).role_level ?? 99;
-    return level > 20;
-  });
+  // Technician cannot change assignee — only those with support:read_all permission
+  const canChangeAssignee = $derived($can('read_all', 'support'));
 
   let reply = $state('');
   let internalNote = $state(false);
