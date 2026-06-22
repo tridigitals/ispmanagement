@@ -468,27 +468,43 @@ class AuthController extends Notifier<AuthState> {
   /// router keeps the user on the login screen.
   Future<bool> bootstrap() async {
     final auth = ref.read(authServiceProvider);
-    if (!await auth.hasSession()) return false;
+    debugPrint('[auth:bootstrap] START — attempting session restore');
+    final hasSession = await auth.hasSession();
+    debugPrint('[auth:bootstrap] hasSession=$hasSession');
+    if (!hasSession) {
+      debugPrint('[auth:bootstrap] NO session stored — returning false');
+      return false;
+    }
+    debugPrint('[auth:bootstrap] session found — calling /auth/me');
     final me = await auth.me();
     switch (me) {
       case Success(:final data):
+        debugPrint('[auth:bootstrap] /auth/me SUCCESS — role=${data.role} isStaff=${data.isStaff}');
         if (!data.isStaff) {
           debugPrint(
-            '[auth] bootstrap rejected non-technician: '
-            'role=${data.role} user=${data.email}',
+            '[auth:bootstrap] REJECTED — non-technician role=${data.role} email=${data.email}',
           );
           try {
             await auth.logout().timeout(const Duration(seconds: 3));
           } catch (e) {
-            debugPrint('[auth] logout during bootstrap role-reject failed: $e');
+            debugPrint('[auth:bootstrap] logout during reject failed: $e');
           }
           state = const AuthState();
+          debugPrint('[auth:bootstrap] state cleared — returning false');
           return false;
         }
+        debugPrint('[auth:bootstrap] restoring session for user=${data.email}');
+        // Also restore _globalLatestToken so the first API call in the loading
+        // screen has the token immediately (bypasses storage read race).
+        final token = await auth.tokenStorage.readToken();
+        if (token != null) setGlobalAuthToken(token);
+        debugPrint('[auth:bootstrap] token restored, setting AuthState');
         state = AuthState(user: data);
+        debugPrint('[auth:bootstrap] DONE — returning true (user authenticated)');
         return true;
-      case Failure():
-        // Keep token. User can retry or login with email/password.
+      case Failure(:final exception):
+        debugPrint('[auth:bootstrap] /auth/me FAILED — ${exception.message ?? exception} — keeping token');
+        // Do NOT clear token — network/server error, not auth failure.
         return false;
     }
   }
