@@ -72,10 +72,10 @@ void main() {
   // Phase 2: Safety net — force app start after 8 seconds no matter what.
   // This Timer is scheduled BEFORE any async work, so it fires even if
   // Firebase or SharedPreferences hang the event loop.
-  Timer(const Duration(seconds: 8), () {
+  Timer(const Duration(seconds: 20), () {
     if (!_appStarted) {
-      debugPrint('[safety] 8s elapsed — forcing app start without services');
-      _startApp(null, false, initError: 'Initialization timeout (8s)');
+      debugPrint('[safety] 20s elapsed — forcing app start without services');
+      _startApp(null, false, initError: 'Initialization timeout (20s)');
     }
   });
 
