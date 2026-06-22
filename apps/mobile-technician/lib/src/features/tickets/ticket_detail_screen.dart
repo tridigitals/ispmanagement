@@ -541,7 +541,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
 
   Widget _buildPendingAttachmentsPreview() {
     return Container(
-      constraints: const BoxConstraints(maxHeight: 100),
+      constraints: const BoxConstraints(maxHeight: 120),
       padding: const EdgeInsets.symmetric(
           horizontal: IspSpacing.md, vertical: IspSpacing.sm),
       decoration: BoxDecoration(
@@ -554,18 +554,91 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
         separatorBuilder: (_, __) => const SizedBox(width: IspSpacing.sm),
         itemBuilder: (_, i) {
           final att = _pendingAttachments[i];
-          return Chip(
-            avatar: Icon(
-              att.isImage ? Icons.image : Icons.attach_file,
-              size: 18,
-            ),
-            label: Text(
-              att.fileName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            deleteIcon: const Icon(Icons.close, size: 18),
-            onDeleted: () => _removeAttachment(i),
+          return Stack(
+            children: [
+              // Image thumbnail or file icon
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: isp.surface,
+                  borderRadius: BorderRadius.circular(IspRadii.sm),
+                  border: Border.all(color: isp.borderSubtle),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: att.isImage
+                    ? Image.file(
+                        File(att.filePath),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.image,
+                          size: 32,
+                          color: isp.textMuted,
+                        ),
+                      )
+                    : Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.insert_drive_file_outlined,
+                                size: 28, color: isp.accent),
+                            const SizedBox(height: 2),
+                            Text(
+                              att.fileName.split('.').last.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: isp.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
+              // Delete button
+              Positioned(
+                top: -4,
+                right: -4,
+                child: GestureDetector(
+                  onTap: () => _removeAttachment(i),
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: isp.danger,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close,
+                        size: 14, color: Colors.white),
+                  ),
+                ),
+              ),
+              // Filename below
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 4, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(IspRadii.sm - 1),
+                    ),
+                  ),
+                  child: Text(
+                    att.fileName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           );
         },
       ),
