@@ -689,4 +689,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get verificationCode => 'Verification Code';
+
+  @override
+  String get tickets => 'Tickets';
+
+  @override
+  String get ticketStatsAll => 'All';
+
+  @override
+  String get ticketStatsOpen => 'Open';
+
+  @override
+  String get ticketStatsPending => 'Pending';
+
+  @override
+  String get ticketStatsClosed => 'Closed';
+
+  @override
+  String get recentTickets => 'Recent Tickets';
+
+  @override
+  String get noAssignedTickets => 'No assigned tickets';
+
+  @override
+  String get assignedToYou => 'Assigned to you';
 }

@@ -1438,6 +1438,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Verification Code'**
   String get verificationCode;
+
+  /// No description provided for @tickets.
+  ///
+  /// In en, this message translates to:
+  /// **'Tickets'**
+  String get tickets;
+
+  /// No description provided for @ticketStatsAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get ticketStatsAll;
+
+  /// No description provided for @ticketStatsOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get ticketStatsOpen;
+
+  /// No description provided for @ticketStatsPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get ticketStatsPending;
+
+  /// No description provided for @ticketStatsClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get ticketStatsClosed;
+
+  /// No description provided for @recentTickets.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent Tickets'**
+  String get recentTickets;
+
+  /// No description provided for @noAssignedTickets.
+  ///
+  /// In en, this message translates to:
+  /// **'No assigned tickets'**
+  String get noAssignedTickets;
+
+  /// No description provided for @assignedToYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned to you'**
+  String get assignedToYou;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

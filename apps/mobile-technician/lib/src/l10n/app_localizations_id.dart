@@ -7,7 +7,7 @@ class AppLocalizationsId extends AppLocalizations {
   AppLocalizationsId([String locale = 'id']) : super(locale);
 
   @override
-  String get appTitle => 'ISP Pelanggan';
+  String get appTitle => 'ISP Teknisi';
 
   @override
   String get home => 'Beranda';
@@ -689,4 +689,28 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get verificationCode => 'Kode Verifikasi';
+
+  @override
+  String get tickets => 'Tiket';
+
+  @override
+  String get ticketStatsAll => 'Semua';
+
+  @override
+  String get ticketStatsOpen => 'Buka';
+
+  @override
+  String get ticketStatsPending => 'Tertunda';
+
+  @override
+  String get ticketStatsClosed => 'Selesai';
+
+  @override
+  String get recentTickets => 'Tiket Terbaru';
+
+  @override
+  String get noAssignedTickets => 'Tidak ada tiket';
+
+  @override
+  String get assignedToYou => 'Ditugaskan ke Anda';
 }
