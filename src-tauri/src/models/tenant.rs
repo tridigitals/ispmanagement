@@ -135,6 +135,8 @@ pub struct TeamMemberWithUser {
     pub role_name: Option<String>,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
+    /// Role level for filtering (e.g. only show users with role_level > 20 for ticket assignment)
+    pub role_level: Option<i32>,
 }
 
 #[cfg(test)]

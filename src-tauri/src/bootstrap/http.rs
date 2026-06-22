@@ -554,6 +554,10 @@ pub async fn start_server_impl(
             get(support::get_support_ticket_stats),
         )
         .route(
+            "/api/support/assignees",
+            get(support::list_support_assignees),
+        )
+        .route(
             "/api/support/tickets/{id}",
             get(support::get_support_ticket).put(support::update_support_ticket),
         )

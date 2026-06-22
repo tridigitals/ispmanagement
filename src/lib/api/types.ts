@@ -263,6 +263,7 @@ export interface TeamMember {
   role_name: string | null;
   is_active: boolean;
   created_at: string;
+  role_level?: number | null;
 }
 
 export interface AuditLog {

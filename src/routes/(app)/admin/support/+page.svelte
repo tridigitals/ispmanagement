@@ -22,6 +22,7 @@
   let tickets = $state<SupportTicketListItem[]>([]);
   let searchQuery = $state('');
   let statusFilter = $state<'all' | 'open' | 'pending' | 'closed'>('all');
+  let assignedFilter = $state<'all' | 'assigned' | 'unassigned'>('all');
   let categoryFilter = $state<'all' | 'general' | 'billing' | 'technical' | 'installation'>('all');
   let stats = $state<SupportTicketStats>({ all: 0, open: 0, pending: 0, closed: 0 });
   let total = $state(0);
@@ -91,6 +92,7 @@
         search: searchQuery.trim() || undefined,
         page: pageNum,
         perPage,
+        assigned: assignedFilter === 'all' ? undefined : assignedFilter,
       });
       total = res.total || 0;
       tickets = reset ? res.data : [...tickets, ...res.data];
@@ -112,6 +114,7 @@
         search: searchQuery.trim() || undefined,
         page: pageNum,
         perPage,
+        assigned: assignedFilter === 'all' ? undefined : assignedFilter,
       });
       total = res.total || total;
       tickets = [...tickets, ...res.data];
@@ -147,6 +150,12 @@
   function setCategoryFilter(v: typeof categoryFilter) {
     if (categoryFilter === v) return;
     categoryFilter = v;
+    void load(true);
+  }
+
+  function setAssignedFilter(v: typeof assignedFilter) {
+    if (assignedFilter === v) return;
+    assignedFilter = v;
     void load(true);
   }
 </script>
@@ -217,6 +226,19 @@
         <Icon name="check-circle" size={14} />
       </div>
       <div class="stat-value">{stats.closed}</div>
+    </button>
+    <button
+      class="stat-card tone-assigned"
+      class:active={assignedFilter === 'unassigned'}
+      type="button"
+      onclick={() => setAssignedFilter(assignedFilter === 'unassigned' ? 'all' : 'unassigned')
+      title="Belum Assign"
+    >
+      <div class="stat-top">
+        <span class="stat-label">Belum Assign</span>
+        <Icon name="user" size={14} />
+      </div>
+      <div class="stat-value">—</div>
     </button>
   </div>
 
@@ -446,6 +468,10 @@
 
   .tone-closed {
     border-color: rgba(34, 197, 94, 0.22);
+  }
+
+  .tone-assigned {
+    border-color: rgba(251, 191, 36, 0.3);
   }
 
   .search {

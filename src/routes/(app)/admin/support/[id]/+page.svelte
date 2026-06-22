@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/api/client';
   import type { SupportTicketDetail, SupportTicketMessage, TeamMember } from '$lib/api/client';
-  import { can } from '$lib/stores/auth';
+  import { can, user as authUser } from '$lib/stores/auth';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Select from '$lib/components/ui/Select.svelte';
   import { toast } from '$lib/stores/toast';
@@ -36,8 +36,16 @@
   let teamMembers = $state<TeamMember[]>([]);
   const memberOptions = $derived([
     { label: $t('common.na') || '—', value: '' },
-    ...teamMembers.map((m) => ({ label: `${m.name} (${m.email})`, value: m.user_id })),
+    ...teamMembers.map((m) => ({ label: `${m.name} (${m.role_name ?? m.role})`, value: m.user_id })),
   ]);
+
+  // Technician (role_level <= 20) cannot change assignee
+  const canChangeAssignee = $derived.by(() => {
+    const user = get(authUser);
+    if (!user) return false;
+    const level = (user as any).role_level ?? 99;
+    return level > 20;
+  });
 
   let reply = $state('');
   let internalNote = $state(false);
@@ -97,7 +105,7 @@
 
   async function loadTeam() {
     try {
-      teamMembers = await api.team.list();
+      teamMembers = await api.support.listAssignees();
     } catch {
       // non-blocking
     }
@@ -291,7 +299,11 @@
               label={$t('admin.support.fields.assignee') || 'Assignee'}
               bind:value={assignedTo}
               options={memberOptions}
+              disabled={!canChangeAssignee}
             />
+            {#if !canChangeAssignee}
+              <p class="hint">{$t('admin.support.hints.cannot_assign') || 'Hanya admin/NOC/Planner yang bisa mengubah assignee.'}</p>
+            {/if}
           </div>
           <p class="hint">
             {$t('admin.support.hints.assign') ||

@@ -6,6 +6,7 @@ import type {
   SupportTicketListItem,
   SupportTicketMessage,
   SupportTicketStats,
+  TeamMember,
 } from './types';
 
 export const support = {
@@ -15,6 +16,7 @@ export const support = {
     category?: string;
     page?: number;
     perPage?: number;
+    assigned?: 'all' | 'assigned' | 'unassigned';
   }): Promise<PaginatedResponse<SupportTicketListItem>> =>
     safeInvoke('list_support_tickets', {
       token: getTokenOrThrow(),
@@ -23,6 +25,7 @@ export const support = {
       category: params?.category,
       page: params?.page,
       per_page: params?.perPage,
+      assigned: params?.assigned,
     }),
 
   stats: (): Promise<SupportTicketStats> =>
@@ -93,4 +96,8 @@ export const support = {
       rating,
       comment,
     }),
+
+  /** List team members eligible for ticket assignment (role_level >= 25). */
+  listAssignees: (): Promise<TeamMember[]> =>
+    safeInvoke('list_support_assignees', { token: getTokenOrThrow() }),
 };

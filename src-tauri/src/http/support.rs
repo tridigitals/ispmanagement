@@ -1,8 +1,9 @@
 use super::AppState;
 use crate::models::{
-    CreateSupportTicketDto, FileRecord, PaginatedResponse, ReplySupportTicketDto, SupportTicket,
-    SupportTicketDetail, SupportTicketListItem, SupportTicketMessage,
-    SupportTicketMessageWithAttachments, SatisfactionDto, UpdateSupportTicketDto,
+    CreateSupportTicketDto, FileRecord, PaginatedResponse, ReplySupportTicketDto,
+    SupportTicket, SupportTicketDetail, SupportTicketListItem, SupportTicketMessage,
+    SupportTicketMessageWithAttachments, SatisfactionDto, TeamMemberWithUser,
+    UpdateSupportTicketDto,
 };
 use axum::{
     extract::{Path, Query, State},
@@ -210,6 +211,7 @@ pub struct ListParams {
     pub search: Option<String>,
     pub page: Option<u32>,
     pub per_page: Option<u32>,
+    pub assigned: Option<String>, // "all" | "assigned" | "unassigned"
 }
 
 async fn auth_claims(
@@ -281,12 +283,18 @@ pub async fn list_support_tickets(
                 OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
                 OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%')
               AND ($4::text IS NULL OR t.category = $4)
+              AND (
+                $5::text IS NULL
+                OR ($5::text = 'assigned' AND t.assigned_to IS NOT NULL)
+                OR ($5::text = 'unassigned' AND t.assigned_to IS NULL)
+              )
         "#,
         )
         .bind(&tenant_id)
         .bind(st.clone())
         .bind(search.clone())
         .bind(category.clone())
+        .bind(params.assigned.clone())
         .fetch_one(&state.auth_service.pool)
         .await?;
 
@@ -305,14 +313,22 @@ pub async fn list_support_tickets(
                 OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
                 OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%')
               AND ($4::text IS NULL OR t.category = $4)
-            ORDER BY COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
-            LIMIT $5 OFFSET $6
+              AND (
+                $5::text IS NULL
+                OR ($5::text = 'assigned' AND t.assigned_to IS NOT NULL)
+                OR ($5::text = 'unassigned' AND t.assigned_to IS NULL)
+              )
+            ORDER BY
+              CASE WHEN $5::text = 'unassigned' THEN 0 ELSE 1 END ASC,
+              COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
+            LIMIT $6 OFFSET $7
         "#,
         )
         .bind(&tenant_id)
         .bind(st)
         .bind(search)
         .bind(category)
+        .bind(params.assigned.clone())
         .bind(per_page as i64)
         .bind(offset)
         .fetch_all(&state.auth_service.pool)
@@ -320,14 +336,14 @@ pub async fn list_support_tickets(
 
         (rows, total)
     } else if is_field_worker_role(&claims.role) {
-        // Technician / field staff: show tickets ASSIGNED to them.
+        // Technician / field staff: show tickets ASSIGNED to them OR unassigned tickets.
         let total: i64 = sqlx::query_scalar(
             r#"
             SELECT COUNT(*)
             FROM support_tickets t
             LEFT JOIN users u ON u.id = t.created_by
             WHERE t.tenant_id = $1
-              AND t.assigned_to = $2
+              AND (t.assigned_to = $2 OR t.assigned_to IS NULL)
               AND ($3::text IS NULL OR t.status = $3)
               AND ($4::text IS NULL
                 OR LOWER(t.subject) LIKE '%' || LOWER($4) || '%'
@@ -353,13 +369,18 @@ pub async fn list_support_tickets(
             FROM support_tickets t
             LEFT JOIN users u ON u.id = t.created_by
             WHERE t.tenant_id = $1
-              AND t.assigned_to = $2
+              AND (t.assigned_to = $2 OR t.assigned_to IS NULL)
               AND ($3::text IS NULL OR t.status = $3)
               AND ($4::text IS NULL
                 OR LOWER(t.subject) LIKE '%' || LOWER($4) || '%'
                 OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($4) || '%')
               AND ($5::text IS NULL OR t.category = $5)
-            ORDER BY COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
+            ORDER BY
+              CASE
+                WHEN t.assigned_to IS NULL THEN 0
+                ELSE 1
+              END ASC,
+              COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
             LIMIT $6 OFFSET $7
         "#,
         )
@@ -487,7 +508,7 @@ pub async fn get_support_ticket_stats(
         .fetch_one(&state.auth_service.pool)
         .await?
     } else if is_field_worker_role(&claims.role) {
-        // Technician / staff: stats over tickets ASSIGNED to them.
+        // Technician / staff: stats over tickets ASSIGNED to them OR unassigned tickets.
         sqlx::query_as(
             r#"
             SELECT
@@ -496,7 +517,7 @@ pub async fn get_support_ticket_stats(
               COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) AS pending,
               COALESCE(SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END), 0) AS closed
             FROM support_tickets
-            WHERE tenant_id = $1 AND assigned_to = $2
+            WHERE tenant_id = $1 AND (assigned_to = $2 OR assigned_to IS NULL)
         "#,
         )
         .bind(&tenant_id)
@@ -1729,6 +1750,39 @@ pub async fn upload_ticket_photo(
         .await?;
 
     Ok(Json(file_record))
+}
+
+const SUPPORT_ASSIGNEE_MIN_ROLE_LEVEL: i32 = 25;
+
+/// List team members eligible for ticket assignment (role_level >= 25).
+/// Only staff with support:read_all permission can access this.
+pub async fn list_support_assignees(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<TeamMemberWithUser>>, crate::error::AppError> {
+    let claims = auth_claims(&state, &headers).await?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or(crate::error::AppError::Validation(
+            "Tenant context required".to_string(),
+        ))?;
+
+    // Require support:read_all (admin/staff level)
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "support", "read_all")
+        .await?;
+
+    let all_members = state.team_service.list_members(&tenant_id).await?;
+
+    // Filter to only those with role_level >= 25 and active
+    let eligible: Vec<TeamMemberWithUser> = all_members
+        .into_iter()
+        .filter(|m| m.is_active && m.role_level.unwrap_or(0) >= SUPPORT_ASSIGNEE_MIN_ROLE_LEVEL)
+        .collect();
+
+    Ok(Json(eligible))
 }
 
 #[cfg(test)]

@@ -5,7 +5,7 @@ use crate::models::{
     FileRecord, PaginatedResponse, SupportTicket, SupportTicketDetail, SupportTicketListItem,
     SupportTicketMessage, SupportTicketMessageWithAttachments,
 };
-use crate::services::{AuditService, AuthService, NotificationService};
+use crate::services::{AuditService, AuthService, NotificationService, TeamService};
 use chrono::Utc;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -195,6 +195,7 @@ pub async fn list_support_tickets(
     category: Option<String>,
     page: Option<u32>,
     per_page: Option<u32>,
+    assigned: Option<String>, // "all" | "assigned" | "unassigned"
     auth_service: State<'_, AuthService>,
 ) -> Result<PaginatedResponse<SupportTicketListItem>, String> {
     let claims = auth_service
@@ -253,12 +254,18 @@ pub async fn list_support_tickets(
                 OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
                 OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%'
               )
+              AND (
+                $7::text IS NULL
+                OR ($7::text = 'assigned' AND t.assigned_to IS NOT NULL)
+                OR ($7::text = 'unassigned' AND t.assigned_to IS NULL)
+              )
         "#,
         )
         .bind(&tenant_id)
         .bind(st.clone())
         .bind(search.clone())
         .bind(category.clone())
+        .bind(assigned.clone())
         .fetch_one(&auth_service.pool)
         .await
         .map_err(|e| e.to_string())?;
@@ -280,7 +287,14 @@ pub async fn list_support_tickets(
                 OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
                 OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%'
               )
-            ORDER BY COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
+              AND (
+                $7::text IS NULL
+                OR ($7::text = 'assigned' AND t.assigned_to IS NOT NULL)
+                OR ($7::text = 'unassigned' AND t.assigned_to IS NULL)
+              )
+            ORDER BY
+              CASE WHEN $7::text = 'unassigned' THEN 0 ELSE 1 END ASC,
+              COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
             LIMIT $5 OFFSET $6
         "#,
         )
@@ -290,13 +304,14 @@ pub async fn list_support_tickets(
         .bind(category)
         .bind(per_page as i64)
         .bind(offset)
+        .bind(assigned)
         .fetch_all(&auth_service.pool)
         .await
         .map_err(|e| e.to_string())?;
 
         (rows, total)
     } else if is_field_worker_role(&claims.role) {
-        // Technician / field staff: show tickets ASSIGNED to them.
+        // Technician / field staff: show tickets ASSIGNED to them OR unassigned tickets.
         let total: i64 = sqlx::query_scalar(
             r#"
             SELECT COUNT(*)
@@ -310,7 +325,7 @@ pub async fn list_support_tickets(
                 OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
                 OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%'
               )
-              AND t.assigned_to = $5
+              AND (t.assigned_to = $5 OR t.assigned_to IS NULL)
         "#,
         )
         .bind(&tenant_id)
@@ -339,8 +354,13 @@ pub async fn list_support_tickets(
                 OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
                 OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%'
               )
-              AND t.assigned_to = $7
-            ORDER BY COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
+              AND (t.assigned_to = $7 OR t.assigned_to IS NULL)
+            ORDER BY
+              CASE
+                WHEN t.assigned_to IS NULL THEN 0
+                ELSE 1
+              END ASC,
+              COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
             LIMIT $5 OFFSET $6
         "#,
         )
@@ -477,7 +497,7 @@ pub async fn get_support_ticket_stats(
         .await
         .map_err(|e| e.to_string())?
     } else if is_field_worker_role(&claims.role) {
-        // Technician / staff: stats over tickets ASSIGNED to them.
+        // Technician / staff: stats over tickets ASSIGNED to them OR unassigned tickets.
         sqlx::query_as(
             r#"
             SELECT
@@ -486,7 +506,7 @@ pub async fn get_support_ticket_stats(
               COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) AS pending,
               COALESCE(SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END), 0) AS closed
             FROM support_tickets
-            WHERE tenant_id = $1 AND assigned_to = $2
+            WHERE tenant_id = $1 AND (assigned_to = $2 OR assigned_to IS NULL)
         "#,
         )
         .bind(&tenant_id)
@@ -1690,6 +1710,46 @@ pub async fn resolve_support_ticket(
     });
 
     Ok(updated)
+}
+
+const SUPPORT_ASSIGNEE_MIN_ROLE_LEVEL_TAURI: i32 = 25;
+
+/// List team members eligible for ticket assignment (role_level >= 25).
+/// Only staff with support:read_all permission can access this.
+#[tauri::command]
+pub async fn list_support_assignees(
+    token: String,
+    auth_service: State<'_, AuthService>,
+    team_service: State<'_, TeamService>,
+) -> Result<Vec<crate::models::TeamMemberWithUser>, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| "Tenant context required".to_string())?;
+
+    // Require support:read_all (admin/staff level)
+    auth_service
+        .check_permission(&claims.sub, &tenant_id, "support", "read_all")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let all_members = team_service
+        .list_members(&tenant_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Filter to only those with role_level >= 25 and active
+    let eligible: Vec<crate::models::TeamMemberWithUser> = all_members
+        .into_iter()
+        .filter(|m| m.is_active && m.role_level.unwrap_or(0) >= SUPPORT_ASSIGNEE_MIN_ROLE_LEVEL_TAURI)
+        .collect();
+
+    Ok(eligible)
 }
 
 #[cfg(test)]

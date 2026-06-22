@@ -46,7 +46,8 @@ impl TeamService {
                 tm.role_id,
                 r.name as role_name,
                 u.is_active, 
-                tm.created_at
+                tm.created_at,
+                r.level as role_level
             FROM tenant_members tm
             JOIN users u ON tm.user_id = u.id
             LEFT JOIN roles r ON tm.role_id = r.id
@@ -65,7 +66,8 @@ impl TeamService {
                 tm.role_id,
                 r.name as role_name,
                 u.is_active, 
-                tm.created_at
+                tm.created_at,
+                r.level as role_level
             FROM tenant_members tm
             JOIN users u ON tm.user_id = u.id
             LEFT JOIN roles r ON tm.role_id = r.id
@@ -309,6 +311,7 @@ impl TeamService {
             role_name: Some(role_name),
             is_active: true,
             created_at: now,
+            role_level: None,
         })
     }
 
