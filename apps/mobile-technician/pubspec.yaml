@@ -58,7 +58,7 @@ dependencies:
   path_provider: ^2.1.5
 
   # Location (technician GPS tracking)
-  geolocator: ^13.0.0
+  # geolocator: ^13.0.0  # TEMP removed for session debug
 
   # Auth
   local_auth: ^2.3.0
