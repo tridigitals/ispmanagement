@@ -20,7 +20,12 @@ class AuthTokenStorage {
   AuthTokenStorage({FlutterSecureStorage? storage})
       : _storage = storage ??
             const FlutterSecureStorage(
-              aOptions: AndroidOptions(encryptedSharedPreferences: true),
+              // encryptedSharedPreferences: false uses the regular Android Keystore
+              // with AES encryption per-value (not the AndroidX EncryptedSharedPreferences
+              // wrapper). This avoids the "Keystore operation failed" error on some
+              // Android devices where EncryptedSharedPreferences initialization hangs
+              // or throws GeneralSecurityException.
+              aOptions: AndroidOptions(encryptedSharedPreferences: false),
               iOptions: IOSOptions(
                 accessibility: KeychainAccessibility.first_unlock,
               ),
