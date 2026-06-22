@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "241155697149",
+    "project_id": "isp-management-888e8",
+    "storage_bucket": "isp-management-888e8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:241155697149:android:1996d411fa074e79b11194",
+        "android_client_info": {
+          "package_name": "com.tridigitals.ispcustomer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClWKYo4nddTamtId3UO4OFceiAtzDa6Vw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:241155697149:android:40e246b4c9e9228ab11194",
+        "android_client_info": {
+          "package_name": "com.tridigitals.ispmanagement.technician"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClWKYo4nddTamtId3UO4OFceiAtzDa6Vw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
