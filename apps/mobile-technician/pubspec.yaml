@@ -1,8 +1,8 @@
 name: mobile_technician
 description: ISP Management — Technician mobile app (Flutter, iOS + Android)
-version: 0.2.0+12
+version: 0.2.0+13
 publish_to: none
-resolution: workspace
+resolution: workspace  # TEMP disabled for standalone build
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
