@@ -17,7 +17,7 @@ def flutterVersionCode = localProperties.getProperty('flutter.versionCode') ?: '
 def flutterVersionName = localProperties.getProperty('flutter.versionName') ?: '0.1.0'
 
 android {
-    namespace = "com.tridigitals.ispmgt.technician"
+    namespace = "com.tridigitals.ispmanagement.technician"
     compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
@@ -35,7 +35,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.tridigitals.ispmgt.technician"
+        applicationId = "com.tridigitals.ispmanagement.technician"
         minSdk = 23  // Required for biometric + encrypted shared prefs
         targetSdk = flutter.targetSdkVersion
         versionCode = flutterVersionCode.toInteger()

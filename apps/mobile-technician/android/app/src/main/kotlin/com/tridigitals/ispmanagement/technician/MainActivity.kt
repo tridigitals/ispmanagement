@@ -1,4 +1,4 @@
-package com.tridigitals.ispmgt.technician
+package com.tridigitals.ispmanagement.technician
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 
