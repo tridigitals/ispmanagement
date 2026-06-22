@@ -2,7 +2,6 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
@@ -10,20 +9,20 @@ import '../../l10n/app_localizations.dart';
 import '../../services/auth_providers.dart';
 import '../../services/missing_providers.dart';
 import '../../services/notifications_providers.dart' show unreadNotificationsCountProvider;
-
+import '../../services/service_providers.dart' show ticketServiceProvider;
 import '../../theme/app_theme.dart';
 import '../../utils/loading_skeleton.dart';
 import 'widgets/network_status_banner.dart';
 import 'widgets/announcement_banner.dart';
+import '../tickets/ticket_l10n.dart';
 
 // ─── Design tokens (local) ──────────────────────────────────────
 
 const _kCardRadius = 20.0;
-const _kCardPadding = EdgeInsets.all(16);
 const _kSectionSpacing = 20.0;
 const _kElementSpacing = 12.0;
 
-// ─── Home Tab ────────────────────────────────────────────────────
+// ─── Home Tab (technician) ──────────────────────────────────────
 
 class HomeTab extends ConsumerStatefulWidget {
   const HomeTab({super.key});
@@ -35,28 +34,24 @@ class HomeTab extends ConsumerStatefulWidget {
 class _HomeTabState extends ConsumerState<HomeTab> {
   @override
   Widget build(BuildContext context) {
-
-
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
-    final user = ref.watch(currentUserProvider);
-    final subState = ref.watch(mySubscriptionsProvider);
-    final invState = ref.watch(myInvoicesProvider);
+    final statsAsync = ref.watch(_ticketStatsProvider);
+    final recentAsync = ref.watch(_recentTicketsProvider);
 
     return RefreshIndicator(
       onRefresh: () async {
-        ref.invalidate(mySubscriptionsProvider);
-        ref.invalidate(myInvoicesProvider);
+        ref.invalidate(_ticketStatsProvider);
+        ref.invalidate(_recentTicketsProvider);
         ref.invalidate(unreadNotificationsCountProvider);
         await Future.wait([
-          ref.read(mySubscriptionsProvider.future),
-          ref.read(myInvoicesProvider.future),
+          ref.read(_ticketStatsProvider.future),
+          ref.read(_recentTicketsProvider.future),
         ]);
       },
       color: isp.accent,
       child: CustomScrollView(
         slivers: [
-          // ── Body ──
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
             sliver: SliverList(
@@ -64,8 +59,8 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Hero subscription card ──
-                    _PrimarySubscription(subState: subState),
+                    // ── Ticket stats row ──
+                    _TicketStatsRow(statsAsync: statsAsync),
 
                     const SizedBox(height: _kSectionSpacing),
 
@@ -77,8 +72,10 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                     // ── Announcement banner ──
                     const AnnouncementBanner(),
 
-                    // ── Recent invoices ──
-                    _RecentInvoices(invState: invState),
+                    const SizedBox(height: _kSectionSpacing),
+
+                    // ── Recent tickets ──
+                    _RecentTickets(recentAsync: recentAsync),
                   ],
                 ),
               ]),
@@ -90,238 +87,136 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   }
 }
 
-// ─── Primary subscription hero ──────────────────────────────────
+// ─── Providers ──────────────────────────────────────────────────
 
-class _PrimarySubscription extends ConsumerStatefulWidget {
-  const _PrimarySubscription({required this.subState});
-  final AsyncValue<List<SubscriptionModel>> subState;
+final _ticketStatsProvider = FutureProvider<TicketStats>((ref) async {
+  final svc = ref.read(ticketServiceProvider);
+  final result = await svc.stats();
+  return result.getOrThrow();
+});
 
-  @override
-  ConsumerState<_PrimarySubscription> createState() =>
-      _PrimarySubscriptionState();
-}
+final _recentTicketsProvider = FutureProvider<List<TicketModel>>((ref) async {
+  final svc = ref.read(ticketServiceProvider);
+  final result = await svc.list(page: 1, perPage: 5);
+  return result.getOrThrow().data;
+});
 
-class _PrimarySubscriptionState extends ConsumerState<_PrimarySubscription> {
-  final PageController _pageCtrl = PageController(viewportFraction: 0.92);
-  int _currentPage = 0;
+// ─── Ticket stats row ───────────────────────────────────────────
 
-  @override
-  void dispose() {
-    _pageCtrl.dispose();
-    super.dispose();
-  }
+class _TicketStatsRow extends StatelessWidget {
+  const _TicketStatsRow({required this.statsAsync});
+  final AsyncValue<TicketStats> statsAsync;
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
 
-
-    final isp = context.isp;    final l10n = AppLocalizations.of(context);
-    return widget.subState.when(
-      loading: () => const IspSkeletonCard(height: 220),
-      error: (e, _) => _ErrorCard(message: e.toString()),
-      data: (page) {
-        if (page.isEmpty) {
-          return _EmptyState(label: l10n.noSubscription);
-        }
-        // Sort: active first
-        final sorted = [
-          ...page
-        ]..sort((a, b) => a.isActive == b.isActive ? 0 : (a.isActive ? -1 : 1));
-
-        return Column(
-          children: [
-            SizedBox(
-              height: 240,
-              child: PageView.builder(
-                controller: _pageCtrl,
-                itemCount: sorted.length,
-                onPageChanged: (i) => setState(() => _currentPage = i),
-                itemBuilder: (_, i) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: _SubscriptionHeroCard(sub: sorted[i]),
-                ),
-              ),
+    return statsAsync.when(
+      loading: () => Row(
+        children: List.generate(4, (_) {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: const IspSkeletonCard(height: 80),
             ),
-            if (sorted.length > 1) ...[
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  sorted.length,
-                  (i) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: i == _currentPage ? 20 : 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: i == _currentPage
-                          ? isp.accent
-                          : isp.border,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
+          );
+        }),
+      ),
+      error: (e, _) => _ErrorCard(message: e.toString()),
+      data: (stats) {
+        final items = [
+          (l10n.ticketStatsAll, stats.all, Icons.inbox_outlined, isp.textPrimary),
+          (l10n.ticketStatsOpen, stats.open, Icons.error_outline, isp.warning),
+          (l10n.ticketStatsPending, stats.pending, Icons.hourglass_empty, isp.info),
+          (l10n.ticketStatsClosed, stats.closed, Icons.check_circle_outline, isp.success),
+        ];
+
+        return Row(
+          children: items.map((item) {
+            final (label, count, icon, color) = item;
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: _StatCard(
+                  icon: icon,
+                  label: label,
+                  count: count,
+                  color: color,
                 ),
               ),
-            ],
-          ],
+            );
+          }).toList(),
         );
       },
     );
   }
 }
 
-class _SubscriptionHeroCard extends StatelessWidget {
-  const _SubscriptionHeroCard({required this.sub});
-  final SubscriptionModel sub;
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.icon,
+    required this.label,
+    required this.count,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final int count;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    final l10n = AppLocalizations.of(context);
-    final fmt = NumberFormat.simpleCurrency(name: sub.currencyCode);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => GoRouter.of(context).push('/subscriptions/${sub.id}'),
+    final isp = context.isp;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+      decoration: BoxDecoration(
+        color: isp.surface,
         borderRadius: BorderRadius.circular(_kCardRadius),
-        child: Ink(
-          decoration: BoxDecoration(
-            color: isp.surface,
-            borderRadius: BorderRadius.circular(_kCardRadius),
-            border: Border.all(color: isp.border, width: 1),
+        border: Border.all(color: isp.border, width: 1),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 22, color: color),
+          const SizedBox(height: 6),
+          Text(
+            count.toString(),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: isp.textPrimary,
+              height: 1.0,
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Accent line at top
-              Container(
-                height: 3,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(_kCardRadius),
-                  ),
-                  gradient: LinearGradient(
-                    colors: [isp.accent, isp.accentLight],
-                  ),
-                ),
-              ),
-
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Top row: package name + status
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            (sub.packageName ?? l10n.internetPackage)
-                                .toUpperCase(),
-                            style: TextStyle(
-                              color: isp.textSecondary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 1,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IspStatusBadge(
-                          label: sub.statusLabel(),
-                          tone: sub.isActive
-                              ? StatusTone.success
-                              : sub.needsAttention
-                                  ? StatusTone.danger
-                                  : StatusTone.warning,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Price — dominant element
-                    Text(
-                      fmt.format(sub.price),
-                      style: TextStyle(
-                        color: isp.textPrimary,
-                        fontSize: 44,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -1.5,
-                        height: 1.0,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '/ ${sub.billingCycle}',
-                      style: TextStyle(
-                        color: isp.textMuted,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Router / location info + chevron
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: isp.accent.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            Icons.router,
-                            color: isp.accent,
-                            size: 16,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            sub.routerName ?? sub.locationLabel ?? '-',
-                            style: TextStyle(
-                              color: isp.textSecondary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          color: isp.textMuted,
-                          size: 22,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: isp.textMuted,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
-// ─── Recent invoices ────────────────────────────────────────────
+// ─── Recent tickets ─────────────────────────────────────────────
 
-class _RecentInvoices extends StatelessWidget {
-  const _RecentInvoices({required this.invState});
-  final AsyncValue<List<InvoiceModel>> invState;
+class _RecentTickets extends StatelessWidget {
+  const _RecentTickets({required this.recentAsync});
+  final AsyncValue<List<TicketModel>> recentAsync;
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
 
-
-    final isp = context.isp;    final l10n = AppLocalizations.of(context);
-    final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -331,7 +226,7 @@ class _RecentInvoices extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                l10n.recentInvoices,
+                l10n.recentTickets,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -339,7 +234,7 @@ class _RecentInvoices extends StatelessWidget {
                 ),
               ),
               TextButton(
-                onPressed: () => GoRouter.of(context).go('/?tab=2'),
+                onPressed: () => GoRouter.of(context).go('/?tab=1'),
                 child: Text(l10n.seeAll),
               ),
             ],
@@ -352,33 +247,28 @@ class _RecentInvoices extends StatelessWidget {
             borderRadius: BorderRadius.circular(_kCardRadius),
             border: Border.all(color: isp.border, width: 1),
           ),
-          child: invState.when(
+          child: recentAsync.when(
             loading: () => const IspSkeletonList(itemCount: 3),
             error: (e, _) => _ErrorCard(message: e.toString()),
-            data: (page) {
-              if (page.isEmpty) {
+            data: (tickets) {
+              if (tickets.isEmpty) {
                 return Padding(
-                  padding: EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(24),
                   child: Center(
                     child: Text(
-                      'No invoices',
+                      l10n.noAssignedTickets,
                       style: TextStyle(color: isp.textMuted),
                     ),
                   ),
                 );
               }
               return Column(
-                children: page.take(5).map((inv) {
-                  final statusColor = inv.isPaid
-                      ? isp.success
-                      : inv.isOverdue
-                          ? isp.danger
-                          : isp.warning;
+                children: tickets.map((ticket) {
                   return Material(
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () =>
-                          GoRouter.of(context).push('/invoices/${inv.id}'),
+                          GoRouter.of(context).push('/tickets/${ticket.id}'),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -394,82 +284,44 @@ class _RecentInvoices extends StatelessWidget {
                         ),
                         child: Row(
                           children: [
-                            // Receipt icon
+                            // Status dot
                             Container(
-                              padding: const EdgeInsets.all(8),
+                              width: 10,
+                              height: 10,
                               decoration: BoxDecoration(
-                                color: isp.surfaceElevated,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                Icons.receipt_outlined,
-                                size: 18,
-                                color: isp.textSecondary,
+                                color: ticket.statusColor(),
+                                shape: BoxShape.circle,
                               ),
                             ),
                             const SizedBox(width: 12),
-                            // Invoice info
+                            // Ticket info
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    inv.invoiceNumber,
+                                    ticket.subject,
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                       color: isp.textPrimary,
                                     ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  if (inv.subscriptionLabel != null ||
-                                      inv.notes != null) ...[
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      inv.subscriptionLabel ?? inv.notes ?? '',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: isp.textMuted,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '#${ticket.id.substring(0, 8)} · ${ticket.statusLabel()}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isp.textMuted,
                                     ),
-                                  ],
+                                  ),
                                 ],
                               ),
                             ),
-                            // Amount + status
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  fmt.format(inv.amount),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                    color: isp.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: statusColor.withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(9999),
-                                  ),
-                                  child: Text(
-                                    inv.statusLabel(),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: statusColor,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                            // Priority indicator
+                            _PriorityBadge(priority: ticket.priorityLabel()),
                           ],
                         ),
                       ),
@@ -485,6 +337,91 @@ class _RecentInvoices extends StatelessWidget {
   }
 }
 
+// ─── Priority badge ─────────────────────────────────────────────
+
+class _PriorityBadge extends StatelessWidget {
+  const _PriorityBadge({required this.priority});
+  final String priority;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    final (label, color) = _priorityInfo(priority);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(9999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  (String, Color) _priorityInfo(String p) {
+    switch (p.toLowerCase()) {
+      case 'critical':
+      case 'urgent':
+        return ('!', Colors.red);
+      case 'high':
+        return ('!!', Colors.orange);
+      case 'normal':
+      case 'medium':
+        return ('!', Colors.blue);
+      default:
+        return ('-', Colors.grey);
+    }
+  }
+}
+
+// ─── Status color helper ────────────────────────────────────────
+
+extension _TicketStatusDisplay on TicketModel {
+  String statusLabel() {
+    switch (status) {
+      case TicketStatus.open:
+        return 'Open';
+      case TicketStatus.inProgress:
+        return 'In Progress';
+      case TicketStatus.waitingCustomer:
+        return 'Waiting Customer';
+      case TicketStatus.waitingStaff:
+        return 'Waiting Staff';
+      case TicketStatus.resolved:
+        return 'Resolved';
+      case TicketStatus.closed:
+        return 'Closed';
+      case TicketStatus.cancelled:
+        return 'Cancelled';
+    }
+  }
+
+  Color statusColor() {
+    switch (status) {
+      case TicketStatus.open:
+        return Colors.orange;
+      case TicketStatus.inProgress:
+        return Colors.blue;
+      case TicketStatus.waitingCustomer:
+        return Colors.purple;
+      case TicketStatus.waitingStaff:
+        return Colors.teal;
+      case TicketStatus.resolved:
+        return Colors.green;
+      case TicketStatus.closed:
+      case TicketStatus.cancelled:
+        return Colors.grey;
+    }
+  }
+}
+
 // ─── Error card ─────────────────────────────────────────────────
 
 class _ErrorCard extends StatelessWidget {
@@ -493,71 +430,29 @@ class _ErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return Container(
+    final isp = context.isp;
+    return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isp.danger.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(_kCardRadius),
-        border: Border.all(
-          color: isp.danger.withOpacity(0.25),
-          width: 1,
-        ),
+        color: isp.danger.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          Icon(Icons.error_outline, color: isp.danger),
-          const SizedBox(width: 12),
+          Icon(Icons.error_outline, size: 20, color: isp.danger),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
               style: TextStyle(
                 fontSize: 13,
-                color: isp.textPrimary,
+                color: isp.danger,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ─── Empty state ────────────────────────────────────────────────
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.label});
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: isp.surface,
-        borderRadius: BorderRadius.circular(_kCardRadius),
-        border: Border.all(color: isp.border, width: 1),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.inbox_outlined,
-              size: 48,
-              color: isp.textMuted,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              style: TextStyle(color: isp.textMuted),
-            ),
-          ],
-        ),
       ),
     );
   }

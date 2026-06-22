@@ -10,9 +10,7 @@ import '../../services/notifications_providers.dart';
 import '../../services/settings_providers.dart';
 import '../../services/auth_providers.dart';
 import './home_tab.dart';
-import 'invoices_tab.dart';
-import 'subscriptions_tab.dart';
-import 'support_tab.dart';
+import './tickets_tab.dart';
 import '../profile/profile_screen.dart';
 
 class HomeShell extends ConsumerStatefulWidget {
@@ -32,11 +30,6 @@ class _State extends ConsumerState<HomeShell> {
       final id = actionUrl.substring('/support/'.length);
       if (id.isNotEmpty) return '/tickets/$id';
     }
-    if (actionUrl.startsWith('/pay/') || actionUrl.startsWith('/invoices'))
-      return '/?tab=2';
-    if (actionUrl.startsWith('/subscriptions/') ||
-        actionUrl.startsWith('/services')) return '/?tab=1';
-    if (actionUrl.startsWith('/announcements/')) return '/?tab=0';
     return actionUrl;
   }
 
@@ -53,7 +46,7 @@ class _State extends ConsumerState<HomeShell> {
     final tabStr = GoRouterState.of(context).uri.queryParameters['tab'];
     if (tabStr != null) {
       final tabIdx = int.tryParse(tabStr);
-      if (tabIdx != null && tabIdx >= 0 && tabIdx < 4) {
+      if (tabIdx != null && tabIdx >= 0 && tabIdx < 2) {
         ref.read(currentTabProvider.notifier).state = tabIdx;
       }
     }
@@ -75,16 +68,11 @@ class _State extends ConsumerState<HomeShell> {
     // Tab titles matching bottom nav labels
     final tabTitles = [
       '${l10n.hiPrefix}, ${user?.name.split(' ').first ?? ''} 👋',
-      l10n.mySubscriptions,
-      l10n.myInvoices,
-      l10n.support,
-      l10n.profile,
+      l10n.tickets,
     ];
     final pages = const [
       HomeTab(),
-      SubscriptionsTab(),
-      InvoicesTab(),
-      SupportTab(),
+      TicketsTab(),
     ];
 
     return Scaffold(
@@ -144,7 +132,7 @@ class _State extends ConsumerState<HomeShell> {
       body: SafeArea(
         child: IndexedStack(index: tab, children: pages),
       ),
-      floatingActionButton: tab == 3
+      floatingActionButton: tab == 1
           ? FloatingActionButton(
               mini: true,
               backgroundColor: isp.accent,
@@ -164,19 +152,9 @@ class _State extends ConsumerState<HomeShell> {
             label: l10n.home,
           ),
           _NavDestination(
-            icon: Icons.wifi_outlined,
-            selectedIcon: Icons.wifi,
-            label: l10n.mySubscriptions,
-          ),
-          _NavDestination(
-            icon: Icons.receipt_long_outlined,
-            selectedIcon: Icons.receipt_long,
-            label: l10n.myInvoices,
-          ),
-          _NavDestination(
-            icon: Icons.headset_mic_outlined,
-            selectedIcon: Icons.headset_mic,
-            label: l10n.support,
+            icon: Icons.confirmation_number_outlined,
+            selectedIcon: Icons.confirmation_number,
+            label: l10n.tickets,
           ),
         ],
       ),
