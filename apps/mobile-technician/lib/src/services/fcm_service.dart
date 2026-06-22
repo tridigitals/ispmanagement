@@ -22,7 +22,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Only show local notification for data-only messages (no notification payload).
   // Messages with a `notification` field are displayed automatically by Android.
   final data = message.data;
-  final title = data['title'] as String? ?? 'ISP Customer';
+  final title = data['title'] as String? ?? 'ISP Teknisi';
   final body = data['body'] as String? ?? '';
 
   if (message.notification == null && body.isNotEmpty) {

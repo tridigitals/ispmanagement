@@ -690,7 +690,7 @@ class _BrandHeader extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          'ISP Customer',
+          'ISP Teknisi',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
