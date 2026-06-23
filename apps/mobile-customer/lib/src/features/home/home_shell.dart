@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ui_kit/ui_kit.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,6 +24,7 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _State extends ConsumerState<HomeShell> {
   late final IspThemeColors isp;
+  DateTime? _lastBackPress;
 
   /// Normalize action_url → in-app route.
   String _normalizeAction(String? actionUrl) {
@@ -87,7 +89,35 @@ class _State extends ConsumerState<HomeShell> {
       SupportTab(),
     ];
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (tab != 0) {
+          // Switch to Home tab instead of exiting
+          ref.read(currentTabProvider.notifier).state = 0;
+          return;
+        }
+        // Already on Home tab — double back to exit
+        final now = DateTime.now();
+        if (_lastBackPress == null ||
+            now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+          _lastBackPress = now;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: const Text('Press back again to exit'),
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          return;
+        }
+        // Second back press — exit app
+        SystemNavigator.pop();
+      },
+      child: Scaffold(
       appBar: AppBar(
         // Title: greeting on home tab, tab label on others
         title: Text(tabTitles[tab]),
@@ -180,6 +210,7 @@ class _State extends ConsumerState<HomeShell> {
           ),
         ],
       ),
+      ), // PopScope
     );
   }
 }

@@ -1,4 +1,4 @@
-use crate::models::tenant::CUSTOM_DOMAIN_STATUS_ACTIVE;
+
 use crate::services::{
     AuditService, AuthService, CustomerService, DhcpStaticServiceManager, EmailService,
     IspPackageService, ManagedRadiusService, MessageTemplateService, MikrotikService,

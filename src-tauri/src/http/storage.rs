@@ -1103,6 +1103,7 @@ pub async fn serve_ticket_attachment(
     };
 
     // Access: ticket creator OR staff with support:read_all
+    let _ = link.ticket_id; // used by SQL join, not needed after fetch
     let is_creator = link.created_by.as_deref() == Some(claims.sub.as_str());
     let is_staff = state
         .auth_service
