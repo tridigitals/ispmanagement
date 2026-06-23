@@ -86,7 +86,9 @@
       label: $t('admin.team.filters.all_roles') || 'All Roles',
       value: 'all',
     },
-    ...roles.map((r) => ({ label: r.name, value: r.id })),
+    ...roles
+      .filter((r) => r.name.toLowerCase() !== 'customer')
+      .map((r) => ({ label: r.name, value: r.id })),
   ]);
 
   onMount(async () => {
@@ -105,8 +107,8 @@
       roles = rolesRes;
 
       if (roles.length > 0 && !inviteRoleId) {
-        const memberRole = roles.find((r) => r.name === 'Member');
-        inviteRoleId = memberRole ? memberRole.id : roles[0].id;
+        const memberRole = roles.find((r) => r.name === 'Member' && r.name.toLowerCase() !== 'customer');
+        inviteRoleId = memberRole ? memberRole.id : roles.find((r) => r.name.toLowerCase() !== 'customer')?.id || roles[0].id;
       }
     } catch (e: any) {
       error = e.toString();
@@ -479,7 +481,7 @@
         <label>
           {$t('admin.team.role_label') || 'Role'}
           <select bind:value={inviteRoleId} required>
-            {#each roles as role}
+            {#each roles.filter((r) => r.name.toLowerCase() !== 'customer') as role}
               <option value={role.id}>{role.name}</option>
             {/each}
           </select>
