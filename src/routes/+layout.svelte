@@ -62,15 +62,19 @@
   }
 
   function resolveDocumentAppName(pathname: string) {
-    const settingsAppName = String(($appSettings as any)?.app_name || '').trim();
-    const tenantName = String($tenant?.name || '').trim();
-    const tenantPath = isTenantScopedPath(pathname);
+    try {
+      const settingsAppName = String(($appSettings as any)?.app_name || '').trim();
+      const tenantName = String($tenant?.name || '').trim();
+      const tenantPath = isTenantScopedPath(pathname);
 
-    if (tenantPath && !($can?.('read', 'settings') ?? false) && tenantName) {
-      return tenantName;
+      if (tenantPath && !($can?.('read', 'settings') ?? false) && tenantName) {
+        return tenantName;
+      }
+
+      return settingsAppName || tenantName || 'ISP Management';
+    } catch {
+      return 'ISP Management';
     }
-
-    return settingsAppName || tenantName || 'ISP Management';
   }
 
   function markUserActivity() {
