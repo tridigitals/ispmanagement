@@ -10,6 +10,7 @@ import '../../l10n/app_localizations.dart';
 import '../../services/auth_providers.dart';
 import '../../services/notifications_providers.dart'
     show unreadNotificationsCountProvider;
+import '../../services/settings_providers.dart' show currentTabProvider;
 import '../../services/service_providers.dart'
     show ticketServiceProvider, workOrderServiceProvider;
 import '../../theme/app_theme.dart';
@@ -83,13 +84,27 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                         }),
                       ),
                       error: (e, _) => _ErrorCard(message: e.toString()),
-                      data: (dash) => _QuickStatsRow(dash: dash),
+                      data: (dash) => _QuickStatsRow(
+                        dash: dash,
+                        onTapTickets: () =>
+                            ref.read(currentTabProvider.notifier).state = 1,
+                        onTapTasks: () =>
+                            ref.read(currentTabProvider.notifier).state = 2,
+                        onTapToday: () =>
+                            ref.read(currentTabProvider.notifier).state = 2,
+                      ),
                     ),
 
                     const SizedBox(height: _kSectionSpacing),
 
                     // ── Tasks Today hero ──
-                    _TodayTasksSection(tasksAsync: todayTasksAsync),
+                    _TodayTasksSection(
+                      tasksAsync: todayTasksAsync,
+                      onSeeAll: () =>
+                          ref.read(currentTabProvider.notifier).state = 2,
+                      onCardTap: (wo) =>
+                          GoRouter.of(context).push('/work-orders/${wo.id}'),
+                    ),
 
                     const SizedBox(height: _kSectionSpacing),
 
@@ -263,8 +278,16 @@ class _GreetingHeader extends StatelessWidget {
 // ─── Quick Stats Row (3 cards) ──────────────────────────────────
 
 class _QuickStatsRow extends StatelessWidget {
-  const _QuickStatsRow({required this.dash});
+  const _QuickStatsRow({
+    required this.dash,
+    required this.onTapTickets,
+    required this.onTapTasks,
+    required this.onTapToday,
+  });
   final _DashboardData dash;
+  final VoidCallback onTapTickets;
+  final VoidCallback onTapTasks;
+  final VoidCallback onTapToday;
 
   @override
   Widget build(BuildContext context) {
@@ -275,7 +298,7 @@ class _QuickStatsRow extends StatelessWidget {
       children: [
         Expanded(
           child: GestureDetector(
-            onTap: () => GoRouter.of(context).go('/?tab=1'),
+            onTap: onTapTickets,
             child: _QuickStatCard(
               icon: Icons.confirmation_number_outlined,
               count: dash.activeTickets,
@@ -287,7 +310,7 @@ class _QuickStatsRow extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: GestureDetector(
-            onTap: () => GoRouter.of(context).go('/?tab=2'),
+            onTap: onTapTasks,
             child: _QuickStatCard(
               icon: Icons.build_outlined,
               count: dash.activeWorkOrders,
@@ -299,7 +322,7 @@ class _QuickStatsRow extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: GestureDetector(
-            onTap: () => GoRouter.of(context).go('/?tab=2'),
+            onTap: onTapToday,
             child: _QuickStatCard(
               icon: Icons.today_outlined,
               count: dash.todayWorkOrders,
@@ -374,8 +397,14 @@ class _QuickStatCard extends StatelessWidget {
 // ─── Tasks Today Section ────────────────────────────────────────
 
 class _TodayTasksSection extends StatelessWidget {
-  const _TodayTasksSection({required this.tasksAsync});
+  const _TodayTasksSection({
+    required this.tasksAsync,
+    required this.onSeeAll,
+    required this.onCardTap,
+  });
   final AsyncValue<List<WorkOrderModel>> tasksAsync;
+  final VoidCallback onSeeAll;
+  final void Function(WorkOrderModel) onCardTap;
 
   @override
   Widget build(BuildContext context) {
@@ -399,7 +428,7 @@ class _TodayTasksSection extends StatelessWidget {
             ),
             const Spacer(),
             TextButton(
-              onPressed: () => GoRouter.of(context).go('/?tab=2'),
+              onPressed: onSeeAll,
               child: Text(l10n.seeAll),
             ),
           ],
@@ -437,7 +466,10 @@ class _TodayTasksSection extends StatelessWidget {
               children: display.map((wo) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: _TaskHeroCard(wo: wo),
+                  child: _TaskHeroCard(
+                    wo: wo,
+                    onTap: () => onCardTap(wo),
+                  ),
                 );
               }).toList(),
             );
@@ -449,8 +481,9 @@ class _TodayTasksSection extends StatelessWidget {
 }
 
 class _TaskHeroCard extends StatelessWidget {
-  const _TaskHeroCard({required this.wo});
+  const _TaskHeroCard({required this.wo, required this.onTap});
   final WorkOrderModel wo;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -460,7 +493,7 @@ class _TaskHeroCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => GoRouter.of(context).push('/work-orders/${wo.id}'),
+        onTap: onTap,
         borderRadius: BorderRadius.circular(_kCardRadius),
         child: Container(
           padding: const EdgeInsets.all(16),

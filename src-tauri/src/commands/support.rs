@@ -1713,7 +1713,8 @@ pub async fn resolve_support_ticket(
 }
 
 /// List team members eligible for ticket assignment.
-/// Returns users with any support permission OR owner/admin/technician/noc/planner/staff roles.
+/// Returns users with support permission OR owner/admin/technician/noc/planner/staff roles.
+/// Excludes customers.
 #[tauri::command]
 pub async fn list_support_assignees(
     token: String,
@@ -1746,6 +1747,7 @@ pub async fn list_support_assignees(
         LEFT JOIN roles r ON tm.role_id = r.id
         WHERE tm.tenant_id = $1
           AND u.is_active = TRUE
+          AND LOWER(COALESCE(r.name, tm.role, '')) NOT IN ('customer', 'pelanggan')
           AND (
             EXISTS(
               SELECT 1 FROM role_permissions rp
@@ -1774,6 +1776,7 @@ pub async fn list_support_assignees(
         LEFT JOIN roles r ON tm.role_id = r.id
         WHERE tm.tenant_id = ?
           AND u.is_active = 1
+          AND LOWER(COALESCE(r.name, tm.role, '')) NOT IN ('customer', 'pelanggan')
           AND (
             EXISTS(
               SELECT 1 FROM role_permissions rp
