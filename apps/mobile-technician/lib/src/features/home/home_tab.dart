@@ -2,27 +2,27 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../services/auth_providers.dart';
-import '../../services/missing_providers.dart';
-import '../../services/notifications_providers.dart' show unreadNotificationsCountProvider;
-import '../../services/service_providers.dart' show ticketServiceProvider, workOrderServiceProvider;
+import '../../services/notifications_providers.dart'
+    show unreadNotificationsCountProvider;
+import '../../services/service_providers.dart'
+    show ticketServiceProvider, workOrderServiceProvider;
 import '../../theme/app_theme.dart';
 import '../../utils/loading_skeleton.dart';
 import 'widgets/network_status_banner.dart';
 import 'widgets/announcement_banner.dart';
-import '../tickets/ticket_l10n.dart';
 
-// ─── Design tokens (local) ──────────────────────────────────────
+// ─── Design tokens ──────────────────────────────────────────────
 
-const _kCardRadius = 20.0;
-const _kSectionSpacing = 20.0;
-const _kElementSpacing = 12.0;
+const _kCardRadius = 16.0;
+const _kSectionSpacing = 16.0;
 
-// ─── Home Tab (technician) ──────────────────────────────────────
+// ─── Home Tab (technician — Dashboard Ringkas) ──────────────────
 
 class HomeTab extends ConsumerStatefulWidget {
   const HomeTab({super.key});
@@ -36,23 +36,21 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   Widget build(BuildContext context) {
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
-    final statsAsync = ref.watch(_ticketStatsProvider);
-    final recentAsync = ref.watch(_recentTicketsProvider);
-    final woStatsAsync = ref.watch(_workOrderStatsProvider);
-    final recentWoAsync = ref.watch(_recentWorkOrdersProvider);
+    final user = ref.watch(currentUserProvider);
+    final dashAsync = ref.watch(_dashboardProvider);
+    final todayTasksAsync = ref.watch(_todayTasksProvider);
+
+    final now = DateTime.now();
+    final dateStr = DateFormat('EEEE, d MMMM yyyy', 'id').format(now);
 
     return RefreshIndicator(
       onRefresh: () async {
-        ref.invalidate(_ticketStatsProvider);
-        ref.invalidate(_recentTicketsProvider);
-        ref.invalidate(_workOrderStatsProvider);
-        ref.invalidate(_recentWorkOrdersProvider);
+        ref.invalidate(_dashboardProvider);
+        ref.invalidate(_todayTasksProvider);
         ref.invalidate(unreadNotificationsCountProvider);
         await Future.wait([
-          ref.read(_ticketStatsProvider.future),
-          ref.read(_recentTicketsProvider.future),
-          ref.read(_workOrderStatsProvider.future),
-          ref.read(_recentWorkOrdersProvider.future),
+          ref.read(_dashboardProvider.future),
+          ref.read(_todayTasksProvider.future),
         ]);
       },
       color: isp.accent,
@@ -65,33 +63,43 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Ticket stats row ──
-                    _TicketStatsRow(statsAsync: statsAsync),
+                    // ── Greeting header ──
+                    _GreetingHeader(
+                      userName: user?.name.split(' ').first ?? '',
+                      dateStr: dateStr,
+                    ),
+                    const SizedBox(height: _kSectionSpacing),
+
+                    // ── Combined quick stats (3 cards) ──
+                    dashAsync.when(
+                      loading: () => Row(
+                        children: List.generate(3, (_) {
+                          return Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: const IspSkeletonCard(height: 72),
+                            ),
+                          );
+                        }),
+                      ),
+                      error: (e, _) => _ErrorCard(message: e.toString()),
+                      data: (dash) => _QuickStatsRow(dash: dash),
+                    ),
 
                     const SizedBox(height: _kSectionSpacing),
 
-                    // ── Work Order stats row ──
-                    _WorkOrderStatsRow(statsAsync: woStatsAsync),
+                    // ── Tasks Today hero ──
+                    _TodayTasksSection(tasksAsync: todayTasksAsync),
 
                     const SizedBox(height: _kSectionSpacing),
 
-                    // ── Network status banner ──
+                    // ── Network status (compact) ──
                     const NetworkStatusBanner(),
 
                     const SizedBox(height: _kSectionSpacing),
 
-                    // ── Announcement banner ──
+                    // ── Announcement (compact) ──
                     const AnnouncementBanner(),
-
-                    const SizedBox(height: _kSectionSpacing),
-
-                    // ── Recent tickets ──
-                    _RecentTickets(recentAsync: recentAsync),
-
-                    const SizedBox(height: _kSectionSpacing),
-
-                    // ── Recent work orders ──
-                    _RecentWorkOrders(recentAsync: recentWoAsync),
                   ],
                 ),
               ]),
@@ -103,90 +111,216 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   }
 }
 
+// ─── Dashboard data model ───────────────────────────────────────
+
+class _DashboardData {
+  final int activeTickets;
+  final int activeWorkOrders;
+  final int todayWorkOrders;
+
+  const _DashboardData({
+    required this.activeTickets,
+    required this.activeWorkOrders,
+    required this.todayWorkOrders,
+  });
+}
+
 // ─── Providers ──────────────────────────────────────────────────
 
-final _ticketStatsProvider = FutureProvider<TicketStats>((ref) async {
-  final svc = ref.read(ticketServiceProvider);
-  final result = await svc.stats();
-  return result.getOrThrow();
+final _dashboardProvider = FutureProvider<_DashboardData>((ref) async {
+  final ticketSvc = ref.read(ticketServiceProvider);
+  final woSvc = ref.read(workOrderServiceProvider);
+
+  // Parallel fetch
+  final results = await Future.wait([
+    ticketSvc.stats(),
+    woSvc.list(includeClosed: true, limit: 500),
+  ]);
+
+  final ticketStats = (results[0] as ServiceResult<TicketStats>).getOrThrow();
+  final allWo = (results[1] as ServiceResult<List<WorkOrderModel>>).getOrThrow();
+
+  final activeTickets = ticketStats.open + ticketStats.pending;
+  int activeWo = 0;
+  int todayWo = 0;
+  final now = DateTime.now();
+  final todayStart = DateTime(now.year, now.month, now.day);
+
+  for (final wo in allWo) {
+    if (wo.isActive) activeWo++;
+    if (wo.scheduledAt != null &&
+        wo.scheduledAt!.isAfter(todayStart) &&
+        wo.scheduledAt!.isBefore(todayStart.add(const Duration(days: 1)))) {
+      todayWo++;
+    }
+  }
+
+  return _DashboardData(
+    activeTickets: activeTickets,
+    activeWorkOrders: activeWo,
+    todayWorkOrders: todayWo,
+  );
 });
 
-final _recentTicketsProvider = FutureProvider<List<TicketModel>>((ref) async {
-  final svc = ref.read(ticketServiceProvider);
-  final result = await svc.list(page: 1, perPage: 5);
-  return result.getOrThrow().data;
+final _todayTasksProvider = FutureProvider<List<WorkOrderModel>>((ref) async {
+  final svc = ref.read(workOrderServiceProvider);
+  final result = await svc.list(limit: 200);
+  final all = result.getOrThrow();
+  final now = DateTime.now();
+  final todayStart = DateTime(now.year, now.month, now.day);
+  final todayEnd = todayStart.add(const Duration(days: 1));
+
+  // Prioritize: scheduled today first, then assigned, then pending
+  final today = <WorkOrderModel>[];
+  final rest = <WorkOrderModel>[];
+
+  for (final wo in all) {
+    if (!wo.isActive) continue;
+    if (wo.scheduledAt != null &&
+        wo.scheduledAt!.isAfter(todayStart) &&
+        wo.scheduledAt!.isBefore(todayEnd)) {
+      today.add(wo);
+    } else {
+      rest.add(wo);
+    }
+  }
+  // Sort by scheduled time
+  today.sort((a, b) => (a.scheduledAt ?? a.createdAt)
+      .compareTo(b.scheduledAt ?? b.createdAt));
+  rest.sort((a, b) => (a.createdAt).compareTo(b.createdAt));
+
+  return [...today, ...rest];
 });
 
-// ─── Ticket stats row ───────────────────────────────────────────
+// ─── Greeting Header ────────────────────────────────────────────
 
-class _TicketStatsRow extends StatelessWidget {
-  const _TicketStatsRow({required this.statsAsync});
-  final AsyncValue<TicketStats> statsAsync;
+class _GreetingHeader extends StatelessWidget {
+  const _GreetingHeader({required this.userName, required this.dateStr});
+  final String userName;
+  final String dateStr;
 
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
 
-    return statsAsync.when(
-      loading: () => Row(
-        children: List.generate(4, (_) {
-          return Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: const IspSkeletonCard(height: 80),
+    return Row(
+      children: [
+        // Avatar circle
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [isp.accent, isp.accent.withOpacity(0.7)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          );
-        }),
-      ),
-      error: (e, _) => _ErrorCard(message: e.toString()),
-      data: (stats) {
-        final items = [
-          (l10n.ticketStatsAll, stats.all, Icons.inbox_outlined, isp.textPrimary),
-          (l10n.ticketStatsOpen, stats.open, Icons.error_outline, isp.warning),
-          (l10n.ticketStatsPending, stats.pending, Icons.hourglass_empty, isp.info),
-          (l10n.ticketStatsClosed, stats.closed, Icons.check_circle_outline, isp.success),
-        ];
-
-        return Row(
-          children: items.map((item) {
-            final (label, count, icon, color) = item;
-            return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: _StatCard(
-                  icon: icon,
-                  label: label,
-                  count: count,
-                  color: color,
+          ),
+          child: Center(
+            child: Text(
+              userName.isNotEmpty ? userName[0].toUpperCase() : 'T',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${l10n.hiPrefix}, $userName 👋',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: isp.textPrimary,
+                  height: 1.2,
                 ),
               ),
-            );
-          }).toList(),
-        );
-      },
+              const SizedBox(height: 2),
+              Text(
+                dateStr,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isp.textMuted,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
+// ─── Quick Stats Row (3 cards) ──────────────────────────────────
+
+class _QuickStatsRow extends StatelessWidget {
+  const _QuickStatsRow({required this.dash});
+  final _DashboardData dash;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
+
+    return Row(
+      children: [
+        Expanded(
+          child: _QuickStatCard(
+            icon: Icons.confirmation_number_outlined,
+            count: dash.activeTickets,
+            label: l10n.homeActiveTickets,
+            color: isp.warning,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _QuickStatCard(
+            icon: Icons.build_outlined,
+            count: dash.activeWorkOrders,
+            label: l10n.homeActiveTasks,
+            color: isp.accent,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _QuickStatCard(
+            icon: Icons.today_outlined,
+            count: dash.todayWorkOrders,
+            label: l10n.homeToday,
+            color: isp.success,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickStatCard extends StatelessWidget {
+  const _QuickStatCard({
     required this.icon,
-    required this.label,
     required this.count,
+    required this.label,
     required this.color,
   });
-
   final IconData icon;
-  final String label;
   final int count;
+  final String label;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
       decoration: BoxDecoration(
         color: isp.surface,
         borderRadius: BorderRadius.circular(_kCardRadius),
@@ -194,12 +328,20 @@ class _StatCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(icon, size: 22, color: color),
-          const SizedBox(height: 6),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          const SizedBox(height: 8),
           Text(
             count.toString(),
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: FontWeight.w800,
               color: isp.textPrimary,
               height: 1.0,
@@ -209,12 +351,10 @@ class _StatCard extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w500,
               color: isp.textMuted,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -222,11 +362,11 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// ─── Recent tickets ─────────────────────────────────────────────
+// ─── Tasks Today Section ────────────────────────────────────────
 
-class _RecentTickets extends StatelessWidget {
-  const _RecentTickets({required this.recentAsync});
-  final AsyncValue<List<TicketModel>> recentAsync;
+class _TodayTasksSection extends StatelessWidget {
+  const _TodayTasksSection({required this.tasksAsync});
+  final AsyncValue<List<WorkOrderModel>> tasksAsync;
 
   @override
   Widget build(BuildContext context) {
@@ -236,423 +376,183 @@ class _RecentTickets extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                l10n.recentTickets,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: isp.textPrimary,
-                ),
+        Row(
+          children: [
+            Icon(Icons.flash_on_rounded, size: 20, color: isp.accent),
+            const SizedBox(width: 6),
+            Text(
+              l10n.homeTasksToday,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: isp.textPrimary,
               ),
-              TextButton(
-                onPressed: () => GoRouter.of(context).go('/?tab=1'),
-                child: Text(l10n.seeAll),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: _kElementSpacing),
-        Container(
-          decoration: BoxDecoration(
-            color: isp.surface,
-            borderRadius: BorderRadius.circular(_kCardRadius),
-            border: Border.all(color: isp.border, width: 1),
-          ),
-          child: recentAsync.when(
-            loading: () => const IspSkeletonList(itemCount: 3),
-            error: (e, _) => _ErrorCard(message: e.toString()),
-            data: (tickets) {
-              if (tickets.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Center(
-                    child: Text(
-                      l10n.noAssignedTickets,
-                      style: TextStyle(color: isp.textMuted),
-                    ),
-                  ),
-                );
-              }
-              return Column(
-                children: tickets.map((ticket) {
-                  return Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () =>
-                          GoRouter.of(context).push('/tickets/${ticket.id}'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: isp.border,
-                              width: 0.5,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            // Status dot
-                            Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: ticket.statusColor(),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            // Ticket info
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    ticket.subject,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: isp.textPrimary,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '#${ticket.id.substring(0, 8)} · ${ticket.statusLabel()}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: isp.textMuted,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Priority indicator
-                            _PriorityBadge(priority: ticket.priorityLabel()),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ─── Priority badge ─────────────────────────────────────────────
-
-class _PriorityBadge extends StatelessWidget {
-  const _PriorityBadge({required this.priority});
-  final String priority;
-
-  @override
-  Widget build(BuildContext context) {
-    final isp = context.isp;
-    final (label, color) = _priorityInfo(priority);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(9999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-
-  (String, Color) _priorityInfo(String p) {
-    switch (p.toLowerCase()) {
-      case 'critical':
-      case 'urgent':
-        return ('!', Colors.red);
-      case 'high':
-        return ('!!', Colors.orange);
-      case 'normal':
-      case 'medium':
-        return ('!', Colors.blue);
-      default:
-        return ('-', Colors.grey);
-    }
-  }
-}
-
-// ─── Status color helper ────────────────────────────────────────
-
-extension _TicketStatusDisplay on TicketModel {
-  String statusLabel() {
-    switch (status) {
-      case TicketStatus.open:
-        return 'Open';
-      case TicketStatus.inProgress:
-        return 'In Progress';
-      case TicketStatus.waitingCustomer:
-        return 'Waiting Customer';
-      case TicketStatus.waitingStaff:
-        return 'Waiting Staff';
-      case TicketStatus.resolved:
-        return 'Resolved';
-      case TicketStatus.closed:
-        return 'Closed';
-      case TicketStatus.cancelled:
-        return 'Cancelled';
-    }
-  }
-
-  Color statusColor() {
-    switch (status) {
-      case TicketStatus.open:
-        return Colors.orange;
-      case TicketStatus.inProgress:
-        return Colors.blue;
-      case TicketStatus.waitingCustomer:
-        return Colors.purple;
-      case TicketStatus.waitingStaff:
-        return Colors.teal;
-      case TicketStatus.resolved:
-        return Colors.green;
-      case TicketStatus.closed:
-      case TicketStatus.cancelled:
-        return Colors.grey;
-    }
-  }
-}
-
-// ─── Work Order stats ───────────────────────────────────────────
-
-final _workOrderStatsProvider = FutureProvider<(int total, int pending, int inProgress, int completed)>((ref) async {
-  final svc = ref.read(workOrderServiceProvider);
-  final result = await svc.list(includeClosed: true, limit: 500);
-  final orders = result.getOrThrow();
-  int pending = 0, inProgress = 0, completed = 0, cancelled = 0;
-  for (final wo in orders) {
-    switch (wo.status) {
-      case 'pending':
-      case 'assigned':
-        pending++;
-        break;
-      case 'in_progress':
-        inProgress++;
-        break;
-      case 'completed':
-        completed++;
-        break;
-      case 'cancelled':
-        cancelled++;
-        break;
-    }
-  }
-  return (orders.length, pending, inProgress, completed);
-});
-
-final _recentWorkOrdersProvider = FutureProvider<List<WorkOrderModel>>((ref) async {
-  final svc = ref.read(workOrderServiceProvider);
-  final result = await svc.list(limit: 5);
-  return result.getOrThrow();
-});
-
-class _WorkOrderStatsRow extends StatelessWidget {
-  const _WorkOrderStatsRow({required this.statsAsync});
-  final AsyncValue<(int, int, int, int)> statsAsync;
-
-  @override
-  Widget build(BuildContext context) {
-    final isp = context.isp;
-    final l10n = AppLocalizations.of(context);
-
-    return statsAsync.when(
-      loading: () => Row(
-        children: List.generate(4, (_) {
-          return Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: const IspSkeletonCard(height: 80),
             ),
-          );
-        }),
-      ),
-      error: (e, _) => _ErrorCard(message: e.toString()),
-      data: (stats) {
-        final (total, pending, inProgress, completed) = stats;
-        final items = [
-          (l10n.workOrderStatsTotal, total, Icons.inbox_outlined, isp.textPrimary),
-          (l10n.ticketStatsPending, pending, Icons.hourglass_empty, isp.warning),
-          (l10n.workOrderTabInProgress, inProgress, Icons.play_circle_outline, isp.info),
-          (l10n.workOrderStatsCompleted, completed, Icons.check_circle_outline, isp.success),
-        ];
-
-        return Row(
-          children: items.map((item) {
-            final (label, count, icon, color) = item;
-            return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: _StatCard(
-                  icon: icon,
-                  label: label,
-                  count: count,
-                  color: color,
+            const Spacer(),
+            TextButton(
+              onPressed: () => GoRouter.of(context).go('/?tab=2'),
+              child: Text(l10n.seeAll),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        tasksAsync.when(
+          loading: () => const IspSkeletonList(itemCount: 2),
+          error: (e, _) => _ErrorCard(message: e.toString()),
+          data: (tasks) {
+            if (tasks.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: isp.surface,
+                  borderRadius: BorderRadius.circular(_kCardRadius),
+                  border: Border.all(color: isp.border),
                 ),
-              ),
+                child: Column(
+                  children: [
+                    Icon(Icons.beach_access_outlined,
+                        size: 40, color: isp.textMuted),
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.homeNoTasksToday,
+                      style: TextStyle(color: isp.textMuted, fontSize: 14),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final display = tasks.take(3).toList();
+            return Column(
+              children: display.map((wo) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _TaskHeroCard(wo: wo),
+                );
+              }).toList(),
             );
-          }).toList(),
-        );
-      },
+          },
+        ),
+      ],
     );
   }
 }
 
-class _RecentWorkOrders extends StatelessWidget {
-  const _RecentWorkOrders({required this.recentAsync});
-  final AsyncValue<List<WorkOrderModel>> recentAsync;
+class _TaskHeroCard extends StatelessWidget {
+  const _TaskHeroCard({required this.wo});
+  final WorkOrderModel wo;
 
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => GoRouter.of(context).push('/work-orders/${wo.id}'),
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isp.surface,
+            borderRadius: BorderRadius.circular(_kCardRadius),
+            border: Border.all(color: isp.border),
+          ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                l10n.recentWorkOrders,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: isp.textPrimary,
+              // Status indicator
+              Container(
+                width: 4,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: _statusColor(wo.status),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              TextButton(
-                onPressed: () => GoRouter.of(context).go('/?tab=2'),
-                child: Text(l10n.seeAll),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      wo.customerName ??
+                          'Pelanggan #${wo.customerId.substring(0, 8)}',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: isp.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (wo.packageName != null) ...[
+                          Icon(Icons.inventory_2_outlined,
+                              size: 13, color: isp.textMuted),
+                          const SizedBox(width: 3),
+                          Text(
+                            wo.packageName!,
+                            style: TextStyle(
+                                fontSize: 12, color: isp.textSecondary),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        Icon(Icons.location_on_outlined,
+                            size: 13, color: isp.textMuted),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(
+                            wo.locationLabel ?? '-',
+                            style: TextStyle(
+                                fontSize: 12, color: isp.textSecondary),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _StatusChip(status: wo.status),
+                        const SizedBox(width: 8),
+                        if (wo.scheduledAt != null) ...[
+                          Icon(Icons.schedule,
+                              size: 12, color: isp.accent),
+                          const SizedBox(width: 3),
+                          Text(
+                            DateFormat('HH:mm').format(wo.scheduledAt!),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isp.accent,
+                            ),
+                          ),
+                        ],
+                        const Spacer(),
+                        Text(
+                          l10n.homeTapToView,
+                          style: TextStyle(
+                              fontSize: 11, color: isp.accent),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_ios,
+                            size: 12, color: isp.accent),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: _kElementSpacing),
-        Container(
-          decoration: BoxDecoration(
-            color: isp.surface,
-            borderRadius: BorderRadius.circular(_kCardRadius),
-            border: Border.all(color: isp.border, width: 1),
-          ),
-          child: recentAsync.when(
-            loading: () => const IspSkeletonList(itemCount: 3),
-            error: (e, _) => _ErrorCard(message: e.toString()),
-            data: (orders) {
-              if (orders.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Center(
-                    child: Text(
-                      l10n.workOrderNoAssigned,
-                      style: TextStyle(color: isp.textMuted),
-                    ),
-                  ),
-                );
-              }
-              return Column(
-                children: orders.map((wo) {
-                  return Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () =>
-                          GoRouter.of(context).push('/work-orders/${wo.id}'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: isp.border,
-                              width: 0.5,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            // Status dot
-                            Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: _woColor(wo.status),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            // WO info
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    wo.customerName ?? 'Pelanggan #${wo.customerId.substring(0, 8)}',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: isp.textPrimary,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '#${wo.id.substring(0, 8)} · ${wo.packageName ?? ''}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: isp.textMuted,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Status badge
-                            _WoStatusBadge(status: wo.status),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              );
-            },
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Color _woColor(String status) {
+  Color _statusColor(String status) {
     switch (status) {
       case 'pending':
         return Colors.grey;
@@ -668,41 +568,37 @@ class _RecentWorkOrders extends StatelessWidget {
   }
 }
 
-class _WoStatusBadge extends StatelessWidget {
-  const _WoStatusBadge({required this.status});
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.status});
   final String status;
 
   @override
   Widget build(BuildContext context) {
-    final (label, color) = _woStatusInfo(status);
+    final (label, color) = _chipInfo(status);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(9999),
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
+            fontSize: 10, fontWeight: FontWeight.w700, color: color),
       ),
     );
   }
 
-  (String, Color) _woStatusInfo(String s) {
+  (String, Color) _chipInfo(String s) {
     switch (s) {
       case 'pending':
+        return ('Pending', Colors.grey);
       case 'assigned':
-        return ('Pending', Colors.orange);
+        return ('Assigned', Colors.orange);
       case 'in_progress':
-        return ('In Progress', Colors.blue);
+        return ('Proses', Colors.blue);
       case 'completed':
-        return ('Completed', Colors.green);
-      case 'cancelled':
-        return ('Cancelled', Colors.red);
+        return ('Selesai', Colors.green);
       default:
         return (s, Colors.grey);
     }

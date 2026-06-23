@@ -823,14 +823,26 @@ class AppLocalizationsId extends AppLocalizations {
   String get workOrderMaps => 'Maps';
 
   @override
+  String get homeNoTasksToday => 'Tidak ada tugas hari ini';
+
+  @override
+  String get homeTasksToday => 'Tugas Hari Ini';
+
+  @override
+  String get homeActiveTickets => 'Tiket';
+
+  @override
+  String get homeActiveTasks => 'Tugas';
+
+  @override
+  String get homeToday => 'Hari Ini';
+
+  @override
+  String get homeTapToStart => 'Tap untuk mulai';
+
+  @override
+  String get homeTapToView => 'Tap untuk lihat';
+
+  @override
   String get noPhoneNumber => 'Tidak ada nomor HP';
-
-  @override
-  String get recentWorkOrders => 'Tugas Terbaru';
-
-  @override
-  String get workOrderStatsTotal => 'Total';
-
-  @override
-  String get workOrderStatsCompleted => 'Selesai';
 }

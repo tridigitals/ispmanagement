@@ -1703,29 +1703,53 @@ abstract class AppLocalizations {
   /// **'Maps'**
   String get workOrderMaps;
 
+  /// No description provided for @homeNoTasksToday.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks today'**
+  String get homeNoTasksToday;
+
+  /// No description provided for @homeTasksToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks Today'**
+  String get homeTasksToday;
+
+  /// No description provided for @homeActiveTickets.
+  ///
+  /// In en, this message translates to:
+  /// **'Tickets'**
+  String get homeActiveTickets;
+
+  /// No description provided for @homeActiveTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks'**
+  String get homeActiveTasks;
+
+  /// No description provided for @homeToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get homeToday;
+
+  /// No description provided for @homeTapToStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to start'**
+  String get homeTapToStart;
+
+  /// No description provided for @homeTapToView.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to view'**
+  String get homeTapToView;
+
   /// No description provided for @noPhoneNumber.
   ///
   /// In en, this message translates to:
   /// **'No phone number'**
   String get noPhoneNumber;
-
-  /// No description provided for @recentWorkOrders.
-  ///
-  /// In en, this message translates to:
-  /// **'Recent Work Orders'**
-  String get recentWorkOrders;
-
-  /// No description provided for @workOrderStatsTotal.
-  ///
-  /// In en, this message translates to:
-  /// **'Total'**
-  String get workOrderStatsTotal;
-
-  /// No description provided for @workOrderStatsCompleted.
-  ///
-  /// In en, this message translates to:
-  /// **'Completed'**
-  String get workOrderStatsCompleted;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

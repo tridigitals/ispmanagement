@@ -823,14 +823,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workOrderMaps => 'Maps';
 
   @override
+  String get homeNoTasksToday => 'No tasks today';
+
+  @override
+  String get homeTasksToday => 'Tasks Today';
+
+  @override
+  String get homeActiveTickets => 'Tickets';
+
+  @override
+  String get homeActiveTasks => 'Tasks';
+
+  @override
+  String get homeToday => 'Today';
+
+  @override
+  String get homeTapToStart => 'Tap to start';
+
+  @override
+  String get homeTapToView => 'Tap to view';
+
+  @override
   String get noPhoneNumber => 'No phone number';
-
-  @override
-  String get recentWorkOrders => 'Recent Work Orders';
-
-  @override
-  String get workOrderStatsTotal => 'Total';
-
-  @override
-  String get workOrderStatsCompleted => 'Completed';
 }
