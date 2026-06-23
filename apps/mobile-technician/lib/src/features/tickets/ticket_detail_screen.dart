@@ -357,6 +357,75 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
     );
   }
 
+  Future<void> _resolveTicket() async {
+    final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+    final notesCtrl = TextEditingController();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.ticketResolve),
+        content: TextField(
+          controller: notesCtrl,
+          maxLines: 3,
+          decoration: InputDecoration(
+            hintText: l10n.ticketResolveHint,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.ticketResolveConfirm),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    final svc = ref.read(ticketServiceProvider);
+    final result = await svc.resolveTicket(
+      ticketId: widget.id,
+      completionNotes:
+          notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
+    );
+
+    if (!mounted) return;
+
+    result.fold(
+      (_) {
+        ref.invalidate(ticketByIdProvider(widget.id));
+        ref.invalidate(ticketMessagesProvider(widget.id));
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(l10n.ticketResolved),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+      },
+      (e) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(e.message),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -455,6 +524,27 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                           Icon(Icons.arrow_forward_ios,
                               size: 10, color: isp.accent),
                         ],
+                      ),
+                    ),
+                  ),
+                // Resolve button (only for open tickets)
+                if (ticket.isOpen)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: IspSpacing.lg, vertical: IspSpacing.sm),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _resolveTicket,
+                        icon: const Icon(Icons.check_circle_outline, size: 20),
+                        label: Text(l10n.ticketResolve),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
                     ),
                   ),

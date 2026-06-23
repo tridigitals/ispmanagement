@@ -625,6 +625,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ticketViewSubscription => 'View related subscription';
 
   @override
+  String get ticketResolve => 'Resolve Ticket';
+
+  @override
+  String get ticketResolveHint => 'Completion notes (optional)';
+
+  @override
+  String get ticketResolveConfirm => 'Resolve';
+
+  @override
+  String get ticketResolved => 'Ticket resolved';
+
+  @override
   String get ticketConversation => 'Conversation';
 
   @override

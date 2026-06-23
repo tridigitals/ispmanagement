@@ -625,6 +625,18 @@ class AppLocalizationsId extends AppLocalizations {
   String get ticketViewSubscription => 'Lihat langganan terkait';
 
   @override
+  String get ticketResolve => 'Selesaikan Tiket';
+
+  @override
+  String get ticketResolveHint => 'Catatan penyelesaian (opsional)';
+
+  @override
+  String get ticketResolveConfirm => 'Selesaikan';
+
+  @override
+  String get ticketResolved => 'Tiket diselesaikan';
+
+  @override
   String get ticketConversation => 'Percakapan';
 
   @override

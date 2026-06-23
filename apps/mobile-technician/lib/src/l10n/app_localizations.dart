@@ -1307,6 +1307,30 @@ abstract class AppLocalizations {
   /// **'View related subscription'**
   String get ticketViewSubscription;
 
+  /// No description provided for @ticketResolve.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolve Ticket'**
+  String get ticketResolve;
+
+  /// No description provided for @ticketResolveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Completion notes (optional)'**
+  String get ticketResolveHint;
+
+  /// No description provided for @ticketResolveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolve'**
+  String get ticketResolveConfirm;
+
+  /// No description provided for @ticketResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticket resolved'**
+  String get ticketResolved;
+
   /// No description provided for @ticketConversation.
   ///
   /// In en, this message translates to:
