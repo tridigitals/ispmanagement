@@ -1205,6 +1205,48 @@ impl AuthService {
             return Ok(vec!["*".to_string()]);
         }
 
+        // Fallback: check if user has NULL role_id but is the tenant owner
+        // (old tenants created before create_tenant role_id fix).
+        // A global Owner role (tenant_id IS NULL) exists — if the user is
+        // a tenant_member with NULL role_id, they're the original owner.
+        #[cfg(feature = "postgres")]
+        let fallback_owner: bool = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*) > 0
+            FROM tenant_members tm
+            CROSS JOIN roles r
+            WHERE tm.user_id = $1 AND tm.tenant_id = $2
+              AND r.name = 'Owner' AND r.tenant_id IS NULL
+              AND tm.role_id IS NULL
+        "#,
+        )
+        .bind(user_id)
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or(false);
+
+        #[cfg(feature = "sqlite")]
+        let fallback_owner: bool = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*) > 0
+            FROM tenant_members tm
+            CROSS JOIN roles r
+            WHERE tm.user_id = ? AND tm.tenant_id = ?
+              AND r.name = 'Owner' AND r.tenant_id IS NULL
+              AND tm.role_id IS NULL
+        "#,
+        )
+        .bind(user_id)
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or(false);
+
+        if fallback_owner {
+            return Ok(vec!["*".to_string()]);
+        }
+
         #[cfg(feature = "postgres")]
         let query = r#"
             SELECT DISTINCT rp.permission_id
@@ -1249,11 +1291,14 @@ impl AuthService {
         if let Some(tid) = tenant_id {
             // Get permissions
             let permissions = self.get_user_permissions(user_id, &tid).await?;
-            user_response.permissions = permissions;
+            user_response.permissions = permissions.clone();
 
             // Get tenant role
             if let Ok(Some(tenant_role)) = self.get_tenant_role_name(user_id, &tid).await {
                 user_response.role = tenant_role;
+            } else if permissions.contains(&"*".to_string()) {
+                // Fallback: user has wildcard permission → treat as Owner
+                user_response.role = "Owner".to_string();
             }
 
             // Get tenant slug, custom_domain, and enforce_2fa
@@ -1340,8 +1385,6 @@ impl AuthService {
         let perm_id = format!("{}:{}", resource, action);
 
         // Check 1: Is user Owner? Owners generally bypass or have all permissions.
-        // We can check if they have the 'Owner' role name directly for speed/fallback,
-        // or rely on the seeded permissions. Let's rely on seeded permissions + explicit role check for safety.
         #[cfg(feature = "postgres")]
         let query = r#"
             SELECT COUNT(*) FROM tenant_members tm
@@ -1349,7 +1392,7 @@ impl AuthService {
             LEFT JOIN role_permissions rp ON r.id = rp.role_id
             WHERE tm.user_id = $1 AND tm.tenant_id = $2
             AND (
-                r.name = 'Owner' 
+                r.name = 'Owner'
                 OR rp.permission_id = $3
             )
         "#;
@@ -1361,7 +1404,7 @@ impl AuthService {
             LEFT JOIN role_permissions rp ON r.id = rp.role_id
             WHERE tm.user_id = ? AND tm.tenant_id = ?
             AND (
-                r.name = 'Owner' 
+                r.name = 'Owner'
                 OR rp.permission_id = ?
             )
         "#;
@@ -1373,7 +1416,46 @@ impl AuthService {
             .fetch_one(&self.pool)
             .await?;
 
-        Ok(count > 0)
+        if count > 0 {
+            return Ok(true);
+        }
+
+        // Fallback: check if user has NULL role_id but is the tenant owner
+        // (old tenants created before create_tenant role_id fix).
+        // Cross-join with global Owner role to detect this case.
+        #[cfg(feature = "postgres")]
+        let fallback_count: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)
+            FROM tenant_members tm
+            CROSS JOIN roles r
+            WHERE tm.user_id = $1 AND tm.tenant_id = $2
+              AND r.name = 'Owner' AND r.tenant_id IS NULL
+              AND tm.role_id IS NULL
+        "#,
+        )
+        .bind(user_id)
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let fallback_count: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)
+            FROM tenant_members tm
+            CROSS JOIN roles r
+            WHERE tm.user_id = ? AND tm.tenant_id = ?
+              AND r.name = 'Owner' AND r.tenant_id IS NULL
+              AND tm.role_id IS NULL
+        "#,
+        )
+        .bind(user_id)
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(fallback_count > 0)
     }
 
     /// Enforce permission check (returns Error if denied)

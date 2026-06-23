@@ -92,7 +92,14 @@ export const can = derived(user, ($user) => {
     if ($user.is_super_admin) return true;
 
     // Explicitly allow Owner role to bypass permission checks
-    if ($user.role === 'Owner' || $user.role === 'owner') return true;
+    // Also checks wildcard permission as fallback for NULL role_id edge case
+    if (
+      $user.role === 'Owner' ||
+      $user.role === 'owner' ||
+      $user.permissions?.includes('*')
+    ) {
+      return true;
+    }
 
     // Check for specific permission "resource:action" or wildcard "resource:*"
     const perm = `${resource}:${action}`;
