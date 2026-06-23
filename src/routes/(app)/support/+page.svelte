@@ -37,7 +37,15 @@
   let category = $state<'general' | 'billing' | 'technical' | 'installation'>('general');
   let subscriptionId = $state<string | undefined>(undefined);
   let subscriptions = $state<Array<{ id: string; label: string }>>([]);
-  let attachments = $state<File[]>([]);
+  let attachments = $state<{ file: File; name: string }[]>([]);
+
+  // Quick action presets (mirrors mobile customer app)
+  type QuickAction = { icon: string; label: string; subject: string; message: string; category: typeof category };
+  const quickActions: QuickAction[] = [
+    { icon: 'wifi-off',    label: 'Internet Mati',     subject: 'Internet mati / tidak connect', message: 'Halo, internet saya mati total. Tidak ada koneksi sama sekali. Mohon bantuan.', category: 'technical' },
+    { icon: 'wifi',        label: 'Internet Lambat',   subject: 'Internet lambat',               message: 'Halo, koneksi internet saya sangat lambat. Kecepatan jauh di bawah normal.',     category: 'technical' },
+    { icon: 'plus',        label: 'Lainnya',           subject: '',                              message: '',                                                                             category: 'general' },
+  ];
 
   let statusFilter = $state<'all' | 'open' | 'pending' | 'closed'>('all');
   let categoryFilter = $state<'all' | 'general' | 'billing' | 'technical' | 'installation'>('all');
@@ -69,7 +77,23 @@
 
   function onPickFiles(e: Event) {
     const input = e.target as HTMLInputElement;
-    attachments = Array.from(input.files || []);
+    const files = Array.from(input.files || []);
+    // Deduplicate by name+size
+    for (const file of files) {
+      if (!attachments.some(a => a.file.name === file.name && a.file.size === file.size)) {
+        attachments = [...attachments, { file, name: file.name }];
+      }
+    }
+  }
+
+  function removeAttachment(idx: number) {
+    attachments = attachments.filter((_, i) => i !== idx);
+  }
+
+  function applyQuickAction(action: QuickAction) {
+    subject = action.subject;
+    message = action.message;
+    category = action.category;
   }
 
   onMount(async () => {
@@ -164,11 +188,15 @@
 
   async function submitCreate() {
     if (!subject.trim() || !message.trim()) return;
+    if (subject.trim().length < 3 || message.trim().length < 10) {
+      toast.error(get(t)('support.validation.short') || 'Subject min 3 characters, message min 10 characters');
+      return;
+    }
     creating = true;
     try {
       const ids: string[] = [];
-      for (const f of attachments) {
-        const record = await api.storage.uploadFile(f);
+      for (const att of attachments) {
+        const record = await api.storage.uploadFile(att.file);
         ids.push(record.id);
       }
 
@@ -399,6 +427,22 @@
   onclose={() => (showCreate = false)}
 >
   <div class="modal-body">
+    <!-- Quick action chips — one-tap to pre-fill form -->
+    <div class="quick-actions">
+      <span class="quick-label">{$t('support.quick.label') || 'Cepat:'}</span>
+      {#each quickActions as action}
+        <button
+          class="quick-chip"
+          class:active={subject === action.subject && category === action.category}
+          type="button"
+          onclick={() => applyQuickAction(action)}
+        >
+          <Icon name={action.icon} size={14} />
+          {action.label}
+        </button>
+      {/each}
+    </div>
+
     <Input
       label={$t('support.fields.subject') || 'Subject'}
       placeholder={$t('support.fields.subject_placeholder') || 'e.g. Cannot login to my account'}
@@ -442,15 +486,28 @@
 
     <div class="file-group">
       <label class="label" for="support-attachments">
+        <Icon name="paperclip" size={14} />
         {$t('support.fields.attachments') || 'Attachments'}
       </label>
-      <input id="support-attachments" class="file" type="file" multiple onchange={onPickFiles} />
+      <div class="file-input-row">
+        <label class="btn-file" for="support-attachments">
+          <Icon name="plus" size={14} />
+          {$t('support.actions.add_file') || 'Add File'}
+        </label>
+        <input id="support-attachments" class="file-hidden" type="file" multiple onchange={onPickFiles} />
+        {#if attachments.length}
+          <span class="file-count">{$t('support.fields.file_count')?.replace('{count}', String(attachments.length)) || `${attachments.length} file(s)`}</span>
+        {/if}
+      </div>
       {#if attachments.length}
         <div class="file-list">
-          {#each attachments as f (f.name)}
-            <div class="file-item">
-              <Icon name="paperclip" size={14} />
-              <span class="file-name">{f.name}</span>
+          {#each attachments as att, i}
+            <div class="file-chip">
+              <Icon name="file" size={14} />
+              <span class="file-name">{att.name}</span>
+              <button class="file-remove" type="button" onclick={() => removeAttachment(i)} title="Remove">
+                <Icon name="x" size={12} />
+              </button>
             </div>
           {/each}
         </div>
@@ -1009,37 +1066,138 @@
     gap: 0.4rem;
   }
 
-  .file {
-    width: 100%;
+  .file-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .btn-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
     background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    border-radius: var(--radius-md);
-    padding: 0.6rem 0.8rem;
-    font-size: 0.9rem;
+    border: 1px dashed var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .btn-file:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .file-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .file-count {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 600;
   }
 
   .file-list {
-    display: grid;
+    display: flex;
+    flex-wrap: wrap;
     gap: 0.4rem;
     margin-top: 0.2rem;
   }
 
-  .file-item {
-    display: flex;
+  .file-chip {
+    display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.65rem;
+    gap: 0.35rem;
+    padding: 0.3rem 0.5rem 0.3rem 0.6rem;
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 20px;
     background: rgba(255, 255, 255, 0.03);
     color: var(--text-secondary);
+    font-size: 0.8rem;
   }
 
-  .file-name {
+  .file-chip .file-name {
+    max-width: 160px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .file-remove {
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .file-remove:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+  }
+
+  /* Quick action chips */
+  .quick-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding-bottom: 0.4rem;
+    margin-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .quick-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .quick-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition:
+      border-color 0.15s ease,
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .quick-chip:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .quick-chip.active {
+    border-color: var(--color-primary);
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--color-primary);
   }
 
   .modal-actions {
