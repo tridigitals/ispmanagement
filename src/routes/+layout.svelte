@@ -352,20 +352,16 @@
   });
 
   // Keep WS connection in sync with auth state (important after login without full reload).
-  $effect(() => {
-    if (browser && $isAuthenticated) {
-      void syncRealtimeConnections();
-    } else if (browser && !$isAuthenticated) {
-      void disconnectRealtimeConnections();
-    }
-  });
+  $: if (browser && $isAuthenticated) {
+    void syncRealtimeConnections();
+  } else if (browser && !$isAuthenticated) {
+    void disconnectRealtimeConnections();
+  }
 
-  $effect(() => {
-    documentTitle = formatDocumentTitle(
-      resolvePageTitle($page.url.pathname),
-      resolveDocumentAppName($page.url.pathname),
-    );
-  });
+  $: documentTitle = formatDocumentTitle(
+    resolvePageTitle($page.url.pathname),
+    resolveDocumentAppName($page.url.pathname),
+  );
 </script>
 
 <svelte:head>
