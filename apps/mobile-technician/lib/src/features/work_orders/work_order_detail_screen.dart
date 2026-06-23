@@ -264,36 +264,29 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
   // ─── Contact Buttons ──────────────────────────────────────────
 
   Widget _buildContactButtons(WorkOrderModel wo) {
-    final l10n = AppLocalizations.of(context);
     final phone = wo.customerPhone;
     final hasPhone = phone != null && phone.isNotEmpty;
+    final isp = context.isp;
 
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed:
-                hasPhone ? () => _openPhone(phone!) : null,
-            icon: const Icon(Icons.phone_outlined, size: 18),
-            label: Text(l10n.workOrderPhone),
-          ),
+        _ContactIcon(
+          icon: Icons.phone,
+          color: Colors.green,
+          onTap: hasPhone ? () => _openPhone(phone!) : null,
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed:
-                hasPhone ? () => _openWhatsApp(phone!) : null,
-            icon: const Icon(Icons.chat_outlined, size: 18),
-            label: Text(l10n.workOrderWhatsApp),
-          ),
+        const SizedBox(width: 24),
+        _ContactIcon(
+          icon: Icons.chat,
+          color: const Color(0xFF25D366),
+          onTap: hasPhone ? () => _openWhatsApp(phone!) : null,
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: _openMaps,
-            icon: const Icon(Icons.map_outlined, size: 18),
-            label: Text(l10n.workOrderMaps),
-          ),
+        const SizedBox(width: 24),
+        _ContactIcon(
+          icon: Icons.map,
+          color: isp.accent,
+          onTap: _openMaps,
         ),
       ],
     );
@@ -601,6 +594,45 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
 
   String _formatDateTime(DateTime dt) {
     return '${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+// ─── Contact Icon ───────────────────────────────────────────────
+
+class _ContactIcon extends StatelessWidget {
+  const _ContactIcon({
+    required this.icon,
+    required this.color,
+    this.onTap,
+  });
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onTap == null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: disabled
+              ? context.isp.border
+              : color.withOpacity(0.12),
+          border: Border.all(
+            color: disabled ? context.isp.borderSubtle : color.withOpacity(0.3),
+          ),
+        ),
+        child: Icon(
+          icon,
+          size: 22,
+          color: disabled ? context.isp.textMuted : color,
+        ),
+      ),
+    );
   }
 }
 
