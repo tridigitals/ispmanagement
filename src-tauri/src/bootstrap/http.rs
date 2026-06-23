@@ -46,10 +46,7 @@ fn build_runtime_cors_origins(
 ) -> std::collections::HashSet<String> {
     let mut origins = static_origins.clone();
 
-    for (domain, status) in custom_domains {
-        if status.as_deref() != Some(CUSTOM_DOMAIN_STATUS_ACTIVE) {
-            continue;
-        }
+    for (domain, _status) in custom_domains {
 
         let clean = domain.trim().trim_end_matches('/');
         if clean.is_empty() {

@@ -508,6 +508,7 @@ impl RoleService {
                     "announcements:read",
                     "olt:read",
                     "olt_onu_history:read",
+                    "billing:read",
                 ],
             ),
             (

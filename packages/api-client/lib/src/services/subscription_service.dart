@@ -42,6 +42,16 @@ class SubscriptionService {
     });
   }
 
+  /// Get a single subscription by id (admin endpoint — requires billing:read).
+  Future<ServiceResult<SubscriptionModel>> getByIdAdmin(String id) async {
+    return _execute(() async {
+      final res = await dio.get<Map<String, dynamic>>(
+        ApiEndpoints.adminSubscriptionById(id),
+      );
+      return SubscriptionModel.fromJson(res.data ?? const {});
+    });
+  }
+
   Future<ServiceResult<T>> _execute<T>(Future<T> Function() body) async {
     try {
       final result = await body();

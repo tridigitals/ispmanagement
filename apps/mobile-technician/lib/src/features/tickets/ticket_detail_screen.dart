@@ -1389,11 +1389,15 @@ class _SubscriptionInfoSheet extends ConsumerWidget {
 final _subscriptionByIdProvider =
     FutureProvider.family<SubscriptionModel, String>((ref, id) async {
   final svc = ref.watch(subscriptionServiceProvider);
-  final res = await svc.list(page: 1, perPage: 100);
-  return res.getOrThrow().data.firstWhere(
-        (s) => s.id == id,
-        orElse: () => throw Exception('Paket tidak ditemukan'),
-      );
+  final user = ref.watch(currentUserProvider);
+  // Staff/technician: use admin endpoint (requires billing:read)
+  // Customer: use portal endpoint
+  if (user != null && user.isStaff) {
+    final res = await svc.getByIdAdmin(id);
+    return res.getOrThrow();
+  }
+  final res = await svc.getById(id);
+  return res.getOrThrow();
 });
 
 class _SheetInfoRow extends StatelessWidget {

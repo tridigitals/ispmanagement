@@ -361,28 +361,33 @@
 
   .map-view-switch {
     position: absolute;
-    right: 12px;
-    top: 108px;
+    left: 12px;
+    bottom: 12px;
     z-index: 12;
-    display: inline-block;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 
   .map-view-toggle {
-    width: 18px;
-    height: 18px;
+    padding: 5px 10px;
     border: 1px solid rgba(0, 0, 0, 0.2);
-    border-radius: 3px;
+    border-radius: 4px;
     background: var(--bg-surface);
     color: #1f2937;
-    display: grid;
-    place-items: center;
     cursor: pointer;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
   }
 
   .map-view-toggle-label {
-    font-size: 0.3rem;
-    font-weight: 800;
+    font-size: inherit;
+    font-weight: inherit;
     letter-spacing: 0.01em;
     text-transform: uppercase;
   }

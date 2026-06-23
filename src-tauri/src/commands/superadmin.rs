@@ -1057,11 +1057,55 @@ pub async fn delete_tenant(
         return Err("Unauthorized".to_string());
     }
 
+    // Find users who ONLY belong to this tenant (will be orphaned after delete)
+    #[cfg(feature = "postgres")]
+    let orphan_user_ids: Vec<String> = sqlx::query_scalar(
+        r#"SELECT tm.user_id FROM tenant_members tm
+           WHERE tm.tenant_id = $1
+           AND NOT EXISTS (
+             SELECT 1 FROM tenant_members tm2
+             WHERE tm2.user_id = tm.user_id AND tm2.tenant_id != $1
+           )"#,
+    )
+    .bind(&id)
+    .fetch_all(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    #[cfg(not(feature = "postgres"))]
+    let orphan_user_ids: Vec<String> = sqlx::query_scalar(
+        r#"SELECT tm.user_id FROM tenant_members tm
+           WHERE tm.tenant_id = ?
+           AND NOT EXISTS (
+             SELECT 1 FROM tenant_members tm2
+             WHERE tm2.user_id = tm.user_id AND tm2.tenant_id != ?
+           )"#,
+    )
+    .bind(&id)
+    .bind(&id)
+    .fetch_all(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let mut tx = auth_service.pool.begin().await.map_err(|e| e.to_string())?;
+
+    // Delete tenant (cascades to tenant_members, roles, etc.)
     sqlx::query("DELETE FROM tenants WHERE id = $1")
         .bind(&id)
-        .execute(&auth_service.pool)
+        .execute(&mut *tx)
         .await
         .map_err(|e| e.to_string())?;
+
+    // Delete orphaned users (no other tenant membership)
+    for uid in &orphan_user_ids {
+        sqlx::query("DELETE FROM users WHERE id = $1")
+            .bind(uid)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+
+    tx.commit().await.map_err(|e| e.to_string())?;
 
     audit_service
         .log(
@@ -1070,7 +1114,10 @@ pub async fn delete_tenant(
             "TENANT_DELETED",
             "tenant",
             Some(&id),
-            Some("Tenant deleted by Superadmin"),
+            Some(&format!(
+                "Tenant deleted with {} orphaned user(s)",
+                orphan_user_ids.len()
+            )),
             None,
         )
         .await;
@@ -1185,29 +1232,24 @@ pub async fn create_tenant(
 
     q_u.execute(&mut *tx).await.map_err(|e| e.to_string())?;
 
-    // 3. Create 'Owner' Role for this Tenant
-    let role_id = uuid::Uuid::new_v4().to_string();
+    // 3. Look up global 'Owner' role (seeded, tenant_id IS NULL)
     let now = chrono::Utc::now();
 
     #[cfg(feature = "postgres")]
-    let sql_r = "INSERT INTO roles (id, tenant_id, name, description, is_system, level, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)";
+    let role_id: String = sqlx::query_scalar(
+        "SELECT id FROM roles WHERE name = 'Owner' AND tenant_id IS NULL LIMIT 1"
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| e.to_string())?;
+
     #[cfg(feature = "sqlite")]
-    let sql_r = "INSERT INTO roles (id, tenant_id, name, description, is_system, level, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-
-    let q_r = sqlx::query(sql_r)
-        .bind(&role_id)
-        .bind(&tenant.id)
-        .bind("Owner") // Role Name MUST be "Owner" for default logic in auth_service
-        .bind("Tenant Owner with full access")
-        .bind(true)
-        .bind(100); // High level
-
-    #[cfg(feature = "postgres")]
-    let q_r = q_r.bind(now).bind(now);
-    #[cfg(feature = "sqlite")]
-    let q_r = q_r.bind(now.to_rfc3339()).bind(now.to_rfc3339());
-
-    q_r.execute(&mut *tx).await.map_err(|e| e.to_string())?;
+    let role_id: String = sqlx::query_scalar(
+        "SELECT id FROM roles WHERE name = 'Owner' AND tenant_id IS NULL LIMIT 1"
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| e.to_string())?;
 
     // 4. Assign 'Owner' Role to User (Tenant Membership)
     let membership_id = uuid::Uuid::new_v4().to_string();
@@ -1220,7 +1262,7 @@ pub async fn create_tenant(
         .bind(membership_id)
         .bind(&tenant.id)
         .bind(&user.id)
-        .bind(&role_id); // Use the Role ID we just created
+        .bind(&role_id);
 
     #[cfg(feature = "postgres")]
     let q_m = q_m.bind(now);

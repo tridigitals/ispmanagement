@@ -39,7 +39,7 @@
     const tenantName = String($tenant?.name || '').trim();
     const tenantPath = isTenantScopedPath(pathname);
 
-    if (tenantPath && !$can('read', 'settings') && tenantName) {
+    if (tenantPath && !($can?.('read', 'settings') ?? false) && tenantName) {
       return tenantName;
     }
 

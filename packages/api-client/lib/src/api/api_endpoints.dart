@@ -44,6 +44,12 @@ class ApiEndpoints {
   static String mySubscriptionInstallationTracker(String id) =>
       '/api/customers/portal/my-subscriptions/$id/installation-tracker';
 
+  // ── Admin Subscriptions ──
+  // Backend: GET /api/customers/subscriptions/{id} (src-tauri/src/http/customers.rs)
+  // Requires billing:read permission (added to Technician role)
+  static String adminSubscriptionById(String id) =>
+      '/api/customers/subscriptions/$id';
+
   // ── Customer Portal Packages ──
   static const String myPackages = '/api/customers/portal/my-packages';
 

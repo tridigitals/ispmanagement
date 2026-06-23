@@ -1151,19 +1151,73 @@ pub async fn delete_tenant(
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, crate::error::AppError> {
     let claims = check_super_admin(&state, &headers).await?;
-    let mut tx = state.auth_service.pool.begin().await?;
-    state
-        .auth_service
-        .apply_rls_context_tx(&mut tx, &claims)
-        .await?;
 
+    // Find users who ONLY belong to this tenant (will be orphaned after delete)
+    #[cfg(feature = "postgres")]
+    let orphan_user_ids: Vec<String> = sqlx::query_scalar(
+        r#"SELECT tm.user_id FROM tenant_members tm
+           WHERE tm.tenant_id = $1
+           AND NOT EXISTS (
+             SELECT 1 FROM tenant_members tm2
+             WHERE tm2.user_id = tm.user_id AND tm2.tenant_id != $1
+           )"#,
+    )
+    .bind(&id)
+    .fetch_all(&state.auth_service.pool)
+    .await?;
+
+    #[cfg(not(feature = "postgres"))]
+    let orphan_user_ids: Vec<String> = sqlx::query_scalar(
+        r#"SELECT tm.user_id FROM tenant_members tm
+           WHERE tm.tenant_id = ?
+           AND NOT EXISTS (
+             SELECT 1 FROM tenant_members tm2
+             WHERE tm2.user_id = tm.user_id AND tm2.tenant_id != ?
+           )"#,
+    )
+    .bind(&id)
+    .bind(&id)
+    .fetch_all(&state.auth_service.pool)
+    .await?;
+
+    let mut tx = state.auth_service.pool.begin().await?;
+
+    // Delete tenant (cascades to tenant_members, roles, etc.)
     sqlx::query("DELETE FROM tenants WHERE id = $1")
-        .bind(id)
+        .bind(&id)
         .execute(&mut *tx)
         .await?;
+
+    // Delete orphaned users (no other tenant membership)
+    for uid in &orphan_user_ids {
+        sqlx::query("DELETE FROM users WHERE id = $1")
+            .bind(uid)
+            .execute(&mut *tx)
+            .await?;
+    }
+
     tx.commit().await?;
 
-    Ok(Json(json!({"message": "Tenant deleted successfully"})))
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            None,
+            "TENANT_DELETED",
+            "tenant",
+            Some(&id),
+            Some(&format!(
+                "Tenant deleted with {} orphaned user(s)",
+                orphan_user_ids.len()
+            )),
+            None,
+        )
+        .await;
+
+    Ok(Json(json!({
+        "message": "Tenant deleted successfully",
+        "orphaned_users_deleted": orphan_user_ids.len()
+    })))
 }
 
 pub async fn create_tenant(
@@ -1252,16 +1306,24 @@ pub async fn create_tenant(
     .execute(&mut *tx)
     .await?;
 
-    // Create Membership
+    // Look up global 'Owner' role (seeded, tenant_id IS NULL)
+    let now = chrono::Utc::now();
+    let owner_role_id: String = sqlx::query_scalar(
+        "SELECT id FROM roles WHERE name = 'Owner' AND tenant_id IS NULL LIMIT 1"
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+
+    // Create Membership with role_id
     let membership_id = uuid::Uuid::new_v4().to_string();
     sqlx::query(
-        "INSERT INTO tenant_members (id, tenant_id, user_id, role, created_at) VALUES ($1, $2, $3, $4, $5)"
+        "INSERT INTO tenant_members (id, tenant_id, user_id, role_id, created_at) VALUES ($1, $2, $3, $4, $5)"
     )
     .bind(membership_id)
     .bind(&tenant.id)
     .bind(&user.id)
-    .bind("owner")
-    .bind(chrono::Utc::now())
+    .bind(&owner_role_id)
+    .bind(now)
     .execute(&mut *tx)
     .await?;
 
