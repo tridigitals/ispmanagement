@@ -1,4 +1,5 @@
   <script lang="ts">
+  // cache-bust: 20260623-2300
   import '$lib/styles/global.css';
   import '$lib/i18n'; // Init i18n
   import {
@@ -32,7 +33,33 @@
   let ToasterComponent: Component | null = null;
   let GlobalUploadsComponent: Component | null = null;
   let documentTitle = 'ISP Management';
+  let initError = $state<string | null>(null);
   const realtimeController = createRootRealtimeController(loadRealtimeRuntime);
+
+  // Global safety net: if app fails to boot, clear auth and redirect to login
+  // instead of showing a white screen / unhelpful Svelte internal error.
+  function forceLogoutOnInitFailure(reason: string) {
+    try {
+      logout();
+    } catch {
+      // ignore
+    }
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      initError = reason;
+      window.location.replace('/login?reason=init_error');
+    }
+  }
+
+  function registerGlobalErrorHandlers() {
+    if (typeof window === 'undefined') return;
+    window.addEventListener('unhandledrejection', (event) => {
+      const msg = String(event?.reason?.message || event?.reason || '');
+      if (msg.includes('reading') && msg.includes('call')) {
+        // Svelte 5 runtime DOM init failure — force re-login
+        forceLogoutOnInitFailure(msg);
+      }
+    });
+  }
 
   function resolveDocumentAppName(pathname: string) {
     const settingsAppName = String(($appSettings as any)?.app_name || '').trim();
@@ -234,6 +261,8 @@
 
   onMount(async () => {
     if (typeof window !== 'undefined') {
+      registerGlobalErrorHandlers();
+
       const legacyPath = normalizeLegacyBasePath($page.url.pathname, $page.url.search);
       if (legacyPath) {
         goto(legacyPath, { replaceState: true });
@@ -293,6 +322,12 @@
       }
     } catch (e) {
       console.error('Critical Error during app initialization in +layout.svelte:', e);
+      const msg = (e instanceof Error ? e.message : String(e));
+      // If the error is a Svelte runtime DOM failure, force logout instead of white screen
+      if (msg.includes('reading') && msg.includes('call')) {
+        forceLogoutOnInitFailure(msg);
+        return;
+      }
     } finally {
       loading = false;
     }
@@ -317,16 +352,20 @@
   });
 
   // Keep WS connection in sync with auth state (important after login without full reload).
-  $: if (browser && $isAuthenticated) {
-    void syncRealtimeConnections();
-  } else if (browser && !$isAuthenticated) {
-    void disconnectRealtimeConnections();
-  }
+  $effect(() => {
+    if (browser && $isAuthenticated) {
+      void syncRealtimeConnections();
+    } else if (browser && !$isAuthenticated) {
+      void disconnectRealtimeConnections();
+    }
+  });
 
-  $: documentTitle = formatDocumentTitle(
-    resolvePageTitle($page.url.pathname),
-    resolveDocumentAppName($page.url.pathname),
-  );
+  $effect(() => {
+    documentTitle = formatDocumentTitle(
+      resolvePageTitle($page.url.pathname),
+      resolveDocumentAppName($page.url.pathname),
+    );
+  });
 </script>
 
 <svelte:head>
