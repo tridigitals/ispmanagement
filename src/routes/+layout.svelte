@@ -25,14 +25,14 @@
   import { initTauriStore } from '$lib/utils/tauri-store';
   import type { Component } from 'svelte';
 
-  let loading = true;
-  let i18nReady = false;
+  let loading = $state(true);
+  let i18nReady = $state(false);
   let authExpiredHandled = false;
   let keepAliveHandle: ReturnType<typeof setInterval> | null = null;
   let lastUserActivityAt = Date.now();
   let ToasterComponent: Component | null = null;
   let GlobalUploadsComponent: Component | null = null;
-  let documentTitle = 'ISP Management';
+  let documentTitle = $state('ISP Management');
   let initError = $state<string | null>(null);
   const realtimeController = createRootRealtimeController(loadRealtimeRuntime);
 
@@ -356,16 +356,20 @@
   });
 
   // Keep WS connection in sync with auth state (important after login without full reload).
-  $: if (browser && $isAuthenticated) {
-    void syncRealtimeConnections();
-  } else if (browser && !$isAuthenticated) {
-    void disconnectRealtimeConnections();
-  }
+  $effect(() => {
+    if (browser && $isAuthenticated) {
+      void syncRealtimeConnections();
+    } else if (browser && !$isAuthenticated) {
+      void disconnectRealtimeConnections();
+    }
+  });
 
-  $: documentTitle = formatDocumentTitle(
-    resolvePageTitle($page.url.pathname),
-    resolveDocumentAppName($page.url.pathname),
-  );
+  $effect(() => {
+    documentTitle = formatDocumentTitle(
+      resolvePageTitle($page.url.pathname),
+      resolveDocumentAppName($page.url.pathname),
+    );
+  });
 </script>
 
 <svelte:head>
