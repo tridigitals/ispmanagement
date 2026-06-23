@@ -163,11 +163,12 @@ final _dashboardProvider = FutureProvider<_DashboardData>((ref) async {
 
   for (final wo in allWo) {
     if (wo.isActive) activeWo++;
-    if (wo.scheduledAt != null &&
+    // "Today" = scheduled today OR already in progress/assigned
+    final isScheduledToday = wo.scheduledAt != null &&
         wo.scheduledAt!.isAfter(todayStart) &&
-        wo.scheduledAt!.isBefore(todayStart.add(const Duration(days: 1)))) {
-      todayWo++;
-    }
+        wo.scheduledAt!.isBefore(todayStart.add(const Duration(days: 1)));
+    final isActiveNow = wo.status == 'in_progress' || wo.status == 'assigned';
+    if (isScheduledToday || isActiveNow) todayWo++;
   }
 
   return _DashboardData(
