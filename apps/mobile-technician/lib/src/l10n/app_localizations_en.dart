@@ -713,4 +713,91 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get assignedToYou => 'Assigned to you';
+
+  @override
+  String get workOrders => 'Work Orders';
+
+  @override
+  String get workOrderDetail => 'Work Order Detail';
+
+  @override
+  String get workOrderClaim => 'Claim';
+
+  @override
+  String get workOrderStart => 'Start Work';
+
+  @override
+  String get workOrderComplete => 'Complete';
+
+  @override
+  String get workOrderCancel => 'Cancel';
+
+  @override
+  String get workOrderReopen => 'Reopen';
+
+  @override
+  String get workOrderNotes => 'Notes';
+
+  @override
+  String get workOrderNotesHint => 'Installation notes, issues found, etc.';
+
+  @override
+  String get workOrderStatusPending => 'Pending';
+
+  @override
+  String get workOrderStatusAssigned => 'Assigned';
+
+  @override
+  String get workOrderStatusInProgress => 'In Progress';
+
+  @override
+  String get workOrderStatusCompleted => 'Completed';
+
+  @override
+  String get workOrderStatusCancelled => 'Cancelled';
+
+  @override
+  String get workOrderNoAssigned => 'No work orders assigned';
+
+  @override
+  String get workOrderTabAll => 'All';
+
+  @override
+  String get workOrderTabPending => 'Pending';
+
+  @override
+  String get workOrderTabInProgress => 'In Progress';
+
+  @override
+  String get workOrderTabCompleted => 'Completed';
+
+  @override
+  String get workOrderConfirmed => 'Work order completed';
+
+  @override
+  String get workOrderClaimed => 'Work order claimed';
+
+  @override
+  String get workOrderStarted => 'Work order started';
+
+  @override
+  String get workOrderCancelled => 'Work order cancelled';
+
+  @override
+  String get workOrderErrorLoad => 'Failed to load work order';
+
+  @override
+  String get workOrderPackage => 'Package';
+
+  @override
+  String get workOrderCustomer => 'Customer';
+
+  @override
+  String get workOrderSchedule => 'Schedule';
+
+  @override
+  String get workOrderRouter => 'Router';
+
+  @override
+  String get workOrderLocation => 'Location';
 }

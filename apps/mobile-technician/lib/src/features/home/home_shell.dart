@@ -11,6 +11,7 @@ import '../../services/settings_providers.dart';
 import '../../services/auth_providers.dart';
 import './home_tab.dart';
 import './tickets_tab.dart';
+import './work_orders_tab.dart';
 import '../profile/profile_screen.dart';
 
 class HomeShell extends ConsumerStatefulWidget {
@@ -46,7 +47,7 @@ class _State extends ConsumerState<HomeShell> {
     final tabStr = GoRouterState.of(context).uri.queryParameters['tab'];
     if (tabStr != null) {
       final tabIdx = int.tryParse(tabStr);
-      if (tabIdx != null && tabIdx >= 0 && tabIdx < 2) {
+      if (tabIdx != null && tabIdx >= 0 && tabIdx < 3) {
         ref.read(currentTabProvider.notifier).state = tabIdx;
       }
     }
@@ -69,10 +70,12 @@ class _State extends ConsumerState<HomeShell> {
     final tabTitles = [
       '${l10n.hiPrefix}, ${user?.name.split(' ').first ?? ''} 👋',
       l10n.tickets,
+      l10n.workOrders,
     ];
     final pages = const [
       HomeTab(),
       TicketsTab(),
+      WorkOrdersTab(),
     ];
 
     return Scaffold(
@@ -155,6 +158,11 @@ class _State extends ConsumerState<HomeShell> {
             icon: Icons.confirmation_number_outlined,
             selectedIcon: Icons.confirmation_number,
             label: l10n.tickets,
+          ),
+          _NavDestination(
+            icon: Icons.build_outlined,
+            selectedIcon: Icons.build,
+            label: l10n.workOrders,
           ),
         ],
       ),

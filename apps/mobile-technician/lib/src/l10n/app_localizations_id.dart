@@ -713,4 +713,91 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get assignedToYou => 'Ditugaskan ke Anda';
+
+  @override
+  String get workOrders => 'Tugas Kerja';
+
+  @override
+  String get workOrderDetail => 'Detail Tugas';
+
+  @override
+  String get workOrderClaim => 'Ambil Tugas';
+
+  @override
+  String get workOrderStart => 'Mulai Pengerjaan';
+
+  @override
+  String get workOrderComplete => 'Selesaikan';
+
+  @override
+  String get workOrderCancel => 'Batalkan';
+
+  @override
+  String get workOrderReopen => 'Buka Ulang';
+
+  @override
+  String get workOrderNotes => 'Catatan';
+
+  @override
+  String get workOrderNotesHint => 'Catatan instalasi, kendala, dll.';
+
+  @override
+  String get workOrderStatusPending => 'Menunggu';
+
+  @override
+  String get workOrderStatusAssigned => 'Ditugaskan';
+
+  @override
+  String get workOrderStatusInProgress => 'Dikerjakan';
+
+  @override
+  String get workOrderStatusCompleted => 'Selesai';
+
+  @override
+  String get workOrderStatusCancelled => 'Dibatalkan';
+
+  @override
+  String get workOrderNoAssigned => 'Belum ada tugas';
+
+  @override
+  String get workOrderTabAll => 'Semua';
+
+  @override
+  String get workOrderTabPending => 'Menunggu';
+
+  @override
+  String get workOrderTabInProgress => 'Dikerjakan';
+
+  @override
+  String get workOrderTabCompleted => 'Selesai';
+
+  @override
+  String get workOrderConfirmed => 'Tugas selesai';
+
+  @override
+  String get workOrderClaimed => 'Tugas diambil';
+
+  @override
+  String get workOrderStarted => 'Pengerjaan dimulai';
+
+  @override
+  String get workOrderCancelled => 'Tugas dibatalkan';
+
+  @override
+  String get workOrderErrorLoad => 'Gagal memuat tugas';
+
+  @override
+  String get workOrderPackage => 'Paket';
+
+  @override
+  String get workOrderCustomer => 'Pelanggan';
+
+  @override
+  String get workOrderSchedule => 'Jadwal';
+
+  @override
+  String get workOrderRouter => 'Router';
+
+  @override
+  String get workOrderLocation => 'Lokasi';
 }

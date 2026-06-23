@@ -19,6 +19,7 @@ import '../features/profile/profile_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/tickets/new_ticket_screen.dart';
 import '../features/tickets/ticket_detail_screen.dart';
+import '../features/work_orders/work_order_detail_screen.dart';
 import '../services/auth_providers.dart';
 import '../services/missing_providers.dart';
 
@@ -134,6 +135,11 @@ GoRouter buildAppRouter({
             path: 'tickets/:id',
             builder: (_, state) =>
                 TicketDetailScreen(id: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: 'work-orders/:id',
+            builder: (_, state) =>
+                WorkOrderDetailScreen(id: state.pathParameters['id']!),
           ),
         ],
       ),

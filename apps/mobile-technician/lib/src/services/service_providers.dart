@@ -35,6 +35,10 @@ final storageServiceProvider = Provider<StorageService>((ref) {
   return StorageService(dio: ref.watch(dioProvider));
 });
 
+final workOrderServiceProvider = Provider<WorkOrderService>((ref) {
+  return WorkOrderService(dio: ref.watch(dioProvider));
+});
+
 final realtimeClientProvider = Provider<RealtimeClient>((ref) {
   final cfg = ref.watch(appConfigProvider);
   return RealtimeClient(

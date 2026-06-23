@@ -1486,6 +1486,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Assigned to you'**
   String get assignedToYou;
+
+  /// No description provided for @workOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Work Orders'**
+  String get workOrders;
+
+  /// No description provided for @workOrderDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Work Order Detail'**
+  String get workOrderDetail;
+
+  /// No description provided for @workOrderClaim.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim'**
+  String get workOrderClaim;
+
+  /// No description provided for @workOrderStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Work'**
+  String get workOrderStart;
+
+  /// No description provided for @workOrderComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete'**
+  String get workOrderComplete;
+
+  /// No description provided for @workOrderCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get workOrderCancel;
+
+  /// No description provided for @workOrderReopen.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen'**
+  String get workOrderReopen;
+
+  /// No description provided for @workOrderNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get workOrderNotes;
+
+  /// No description provided for @workOrderNotesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation notes, issues found, etc.'**
+  String get workOrderNotesHint;
+
+  /// No description provided for @workOrderStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get workOrderStatusPending;
+
+  /// No description provided for @workOrderStatusAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned'**
+  String get workOrderStatusAssigned;
+
+  /// No description provided for @workOrderStatusInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In Progress'**
+  String get workOrderStatusInProgress;
+
+  /// No description provided for @workOrderStatusCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get workOrderStatusCompleted;
+
+  /// No description provided for @workOrderStatusCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get workOrderStatusCancelled;
+
+  /// No description provided for @workOrderNoAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'No work orders assigned'**
+  String get workOrderNoAssigned;
+
+  /// No description provided for @workOrderTabAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get workOrderTabAll;
+
+  /// No description provided for @workOrderTabPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get workOrderTabPending;
+
+  /// No description provided for @workOrderTabInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In Progress'**
+  String get workOrderTabInProgress;
+
+  /// No description provided for @workOrderTabCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get workOrderTabCompleted;
+
+  /// No description provided for @workOrderConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Work order completed'**
+  String get workOrderConfirmed;
+
+  /// No description provided for @workOrderClaimed.
+  ///
+  /// In en, this message translates to:
+  /// **'Work order claimed'**
+  String get workOrderClaimed;
+
+  /// No description provided for @workOrderStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Work order started'**
+  String get workOrderStarted;
+
+  /// No description provided for @workOrderCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Work order cancelled'**
+  String get workOrderCancelled;
+
+  /// No description provided for @workOrderErrorLoad.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load work order'**
+  String get workOrderErrorLoad;
+
+  /// No description provided for @workOrderPackage.
+  ///
+  /// In en, this message translates to:
+  /// **'Package'**
+  String get workOrderPackage;
+
+  /// No description provided for @workOrderCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer'**
+  String get workOrderCustomer;
+
+  /// No description provided for @workOrderSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get workOrderSchedule;
+
+  /// No description provided for @workOrderRouter.
+  ///
+  /// In en, this message translates to:
+  /// **'Router'**
+  String get workOrderRouter;
+
+  /// No description provided for @workOrderLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get workOrderLocation;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
