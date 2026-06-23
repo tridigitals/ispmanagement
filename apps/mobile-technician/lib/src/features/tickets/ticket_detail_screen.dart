@@ -346,6 +346,17 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
     }
   }
 
+  void _showSubscriptionSheet(BuildContext context, String subscriptionId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _SubscriptionInfoSheet(subscriptionId: subscriptionId),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -425,8 +436,8 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                     padding: const EdgeInsets.symmetric(
                         horizontal: IspSpacing.lg, vertical: IspSpacing.xs),
                     child: GestureDetector(
-                      onTap: () => GoRouter.of(context)
-                          .push('/subscriptions/${ticket.subscriptionId}'),
+                      onTap: () => _showSubscriptionSheet(
+                          context, ticket.subscriptionId!),
                       child: Row(
                         children: [
                           Icon(Icons.wifi_outlined,
@@ -1268,5 +1279,152 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
     } finally {
       if (mounted) setState(() => _downloadingVideo = false);
     }
+  }
+}
+
+// ─── Subscription Info Bottom Sheet (technician view) ──────────
+
+class _SubscriptionInfoSheet extends ConsumerWidget {
+  const _SubscriptionInfoSheet({required this.subscriptionId});
+  final String subscriptionId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
+    final subAsync = ref.watch(_subscriptionByIdProvider(subscriptionId));
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.45,
+      minChildSize: 0.3,
+      maxChildSize: 0.7,
+      expand: false,
+      builder: (ctx, scrollCtrl) => SingleChildScrollView(
+        controller: scrollCtrl,
+        padding: const EdgeInsets.all(20),
+        child: subAsync.when(
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          error: (e, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                children: [
+                  Icon(Icons.error_outline,
+                      size: 36, color: isp.textMuted),
+                  const SizedBox(height: 8),
+                  Text('Gagal memuat data',
+                      style: TextStyle(color: isp.textMuted)),
+                ],
+              ),
+            ),
+          ),
+          data: (sub) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isp.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                l10n.subscriptionDetail,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: isp.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _SheetInfoRow(isp, l10n.internetPackage, sub.packageName),
+              _SheetInfoRow(isp, l10n.location, sub.locationLabel),
+              _SheetInfoRow(isp, l10n.router, sub.routerName),
+              _SheetInfoRow(isp, l10n.price,
+                  'Rp ${NumberFormat('#,###').format(sub.price)}'),
+              _SheetInfoRow(isp, l10n.cycle, sub.billingCycle),
+              _SheetInfoRow(isp, 'Status', sub.status.name),
+              if (sub.startsAt != null)
+                _SheetInfoRow(
+                    isp, l10n.startsAt, _fmtDate(sub.startsAt!)),
+              if (sub.endsAt != null)
+                _SheetInfoRow(isp, l10n.endsAt, _fmtDate(sub.endsAt!)),
+              if (sub.notes != null && sub.notes!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  l10n.notes,
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isp.textMuted),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  sub.notes!,
+                  style:
+                      TextStyle(fontSize: 13, color: isp.textSecondary),
+                ),
+              ],
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _fmtDate(DateTime dt) =>
+      DateFormat('dd/MM/yyyy').format(dt);
+}
+
+final _subscriptionByIdProvider =
+    FutureProvider.family<SubscriptionModel, String>((ref, id) async {
+  final svc = ref.watch(subscriptionServiceProvider);
+  final res = await svc.list(page: 1, perPage: 100);
+  return res.getOrThrow().data.firstWhere(
+        (s) => s.id == id,
+        orElse: () => throw Exception('Paket tidak ditemukan'),
+      );
+});
+
+class _SheetInfoRow extends StatelessWidget {
+  const _SheetInfoRow(this.isp, this.label, this.value);
+  final IspThemeColors isp;
+  final String label;
+  final String? value;
+
+  @override
+  Widget build(BuildContext context) {
+    if (value == null || value!.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 13, color: isp.textMuted),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value!,
+              style: TextStyle(fontSize: 13, color: isp.textPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

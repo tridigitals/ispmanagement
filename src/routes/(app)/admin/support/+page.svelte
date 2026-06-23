@@ -231,7 +231,7 @@
       class="stat-card tone-assigned"
       class:active={assignedFilter === 'unassigned'}
       type="button"
-      onclick={() => setAssignedFilter(assignedFilter === 'unassigned' ? 'all' : 'unassigned')
+      onclick={() => setAssignedFilter(assignedFilter === 'unassigned' ? 'all' : 'unassigned')}
       title="Belum Assign"
     >
       <div class="stat-top">

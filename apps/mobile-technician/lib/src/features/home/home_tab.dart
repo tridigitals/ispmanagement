@@ -274,29 +274,38 @@ class _QuickStatsRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: _QuickStatCard(
-            icon: Icons.confirmation_number_outlined,
-            count: dash.activeTickets,
-            label: l10n.homeActiveTickets,
-            color: isp.warning,
+          child: GestureDetector(
+            onTap: () => GoRouter.of(context).go('/?tab=1'),
+            child: _QuickStatCard(
+              icon: Icons.confirmation_number_outlined,
+              count: dash.activeTickets,
+              label: l10n.homeActiveTickets,
+              color: isp.warning,
+            ),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: _QuickStatCard(
-            icon: Icons.build_outlined,
-            count: dash.activeWorkOrders,
-            label: l10n.homeActiveTasks,
-            color: isp.accent,
+          child: GestureDetector(
+            onTap: () => GoRouter.of(context).go('/?tab=2'),
+            child: _QuickStatCard(
+              icon: Icons.build_outlined,
+              count: dash.activeWorkOrders,
+              label: l10n.homeActiveTasks,
+              color: isp.accent,
+            ),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: _QuickStatCard(
-            icon: Icons.today_outlined,
-            count: dash.todayWorkOrders,
-            label: l10n.homeToday,
-            color: isp.success,
+          child: GestureDetector(
+            onTap: () => GoRouter.of(context).go('/?tab=2'),
+            child: _QuickStatCard(
+              icon: Icons.today_outlined,
+              count: dash.todayWorkOrders,
+              label: l10n.homeToday,
+              color: isp.success,
+            ),
           ),
         ),
       ],
