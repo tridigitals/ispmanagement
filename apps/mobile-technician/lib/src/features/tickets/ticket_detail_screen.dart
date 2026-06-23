@@ -857,18 +857,8 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
     final fileUrl =
         '$baseUrl/api/storage/files/${attachment.id}/ticket-content';
 
-    // ── DEBUG: always show attachment diagnostic info ──
-    final debugLabel = '🖼️ isImage=${attachment.isImage} '
-        'ct=${attachment.contentType.isNotEmpty ? attachment.contentType : "(empty)"} '
-        'name=${attachment.originalName.isNotEmpty ? attachment.originalName : attachment.name}';
-
     if (attachment.isImage) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _debugChip(debugLabel, isp),
-          FutureBuilder<String?>(
+      return FutureBuilder<String?>(
         future: tokenFuture,
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
@@ -902,8 +892,6 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
             ),
           );
         },
-      ),
-        ],
       );
     }
 
@@ -928,12 +916,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
     }
 
     // Non-image / non-video: download to temp then open with native app.
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _debugChip(debugLabel, isp),
-        FutureBuilder<String?>(
+    return FutureBuilder<String?>(
       future: tokenFuture,
       builder: (_, snap) {
         final token = snap.data ?? '';
@@ -1006,8 +989,6 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
           ),
         );
       },
-    ),
-      ],
     );
   }
 
@@ -1019,25 +1000,6 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
     if (contentType.contains('zip') || contentType.contains('rar'))
       return Icons.archive;
     return Icons.attach_file;
-  }
-
-  /// Debug chip to diagnose attachment rendering issues.
-  Widget _debugChip(String text, IspThemeColors isp) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: isp.accent.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: isp.accent.withOpacity(0.3)),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(fontSize: 9, color: isp.textSecondary),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-    );
   }
 
   Widget _buildImageLoading(BuildContext context) {
