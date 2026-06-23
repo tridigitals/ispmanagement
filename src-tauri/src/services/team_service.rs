@@ -140,6 +140,25 @@ impl TeamService {
         Ok(level.unwrap_or(0))
     }
 
+    /// Get role name by ID — used for validation (e.g. block Customer role in team management)
+    pub async fn get_role_name_by_id(&self, role_id: &str) -> Result<Option<String>, String> {
+        #[cfg(feature = "postgres")]
+        let name: Option<String> = sqlx::query_scalar("SELECT name FROM roles WHERE id = $1")
+            .bind(role_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        #[cfg(feature = "sqlite")]
+        let name: Option<String> = sqlx::query_scalar("SELECT name FROM roles WHERE id = ?")
+            .bind(role_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        Ok(name)
+    }
+
     /// Add a new member (create user if needed, or link existing)
     #[allow(clippy::too_many_arguments)]
     pub async fn add_member(

@@ -118,6 +118,29 @@ pub async fn add_team_member(
         ));
     }
 
+    // Block assigning Customer role via team management.
+    // Customer accounts must be created from the Customers module.
+    #[cfg(feature = "postgres")]
+    let role_name: Option<String> =
+        sqlx::query_scalar("SELECT name FROM roles WHERE id = $1")
+            .bind(&payload.role_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(crate::error::AppError::Database)?;
+    #[cfg(feature = "sqlite")]
+    let role_name: Option<String> =
+        sqlx::query_scalar("SELECT name FROM roles WHERE id = ?")
+            .bind(&payload.role_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(crate::error::AppError::Database)?;
+
+    if role_name.as_deref() == Some("Customer") {
+        return Err(crate::error::AppError::Validation(
+            "Cannot assign Customer role via team management. Create customer accounts from the Customers module instead.".to_string(),
+        ));
+    }
+
     let member = state
         .team_service
         .add_member(
@@ -186,6 +209,28 @@ pub async fn update_team_member(
 
     enforce_member_role_change_permissions(requester_level, target_level, new_role_level)
         .map_err(crate::error::AppError::Forbidden)?;
+
+    // Block assigning Customer role via team management.
+    #[cfg(feature = "postgres")]
+    let role_name: Option<String> =
+        sqlx::query_scalar("SELECT name FROM roles WHERE id = $1")
+            .bind(&payload.role_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(crate::error::AppError::Database)?;
+    #[cfg(feature = "sqlite")]
+    let role_name: Option<String> =
+        sqlx::query_scalar("SELECT name FROM roles WHERE id = ?")
+            .bind(&payload.role_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(crate::error::AppError::Database)?;
+
+    if role_name.as_deref() == Some("Customer") {
+        return Err(crate::error::AppError::Validation(
+            "Cannot assign Customer role via team management. Create customer accounts from the Customers module instead.".to_string(),
+        ));
+    }
 
     state
         .team_service

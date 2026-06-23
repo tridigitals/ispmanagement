@@ -86,6 +86,18 @@ pub async fn add_team_member(
         );
     }
 
+    // Block assigning Customer role via team management
+    let role_name = team_service
+        .get_role_name_by_id(&role_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if role_name.as_deref() == Some("Customer") {
+        return Err(
+            "Cannot assign Customer role via team management. Create customer accounts from the Customers module instead.".to_string(),
+        );
+    }
+
     team_service
         .add_member(
             &tenant_id,
@@ -127,6 +139,18 @@ pub async fn update_team_member_role(
     let target_level = team_service.get_member_role_level(&member_id).await?;
     let new_role_level = team_service.get_role_level_by_id(&role_id).await?;
     enforce_member_role_change_permissions(requester_level, target_level, new_role_level)?;
+
+    // Block assigning Customer role via team management
+    let role_name = team_service
+        .get_role_name_by_id(&role_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if role_name.as_deref() == Some("Customer") {
+        return Err(
+            "Cannot assign Customer role via team management. Create customer accounts from the Customers module instead.".to_string(),
+        );
+    }
 
     team_service
         .update_member(&tenant_id, &member_id, &role_id, Some(&claims.sub), None)
