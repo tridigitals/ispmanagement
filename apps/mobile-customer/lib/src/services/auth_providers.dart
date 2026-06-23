@@ -445,6 +445,16 @@ class AuthController extends Notifier<AuthState> {
 
     state = AuthState(user: auth.user);
 
+    // Invalidate all user-scoped cached providers so a different user
+    // logging in gets fresh data — not stale cache from the previous user.
+    ref.invalidate(notificationsProvider);
+    ref.invalidate(mySubscriptionsProvider);
+    ref.invalidate(myInvoicesProvider);
+    ref.invalidate(myTicketsProvider);
+    ref.invalidate(unreadNotificationsCountProvider);
+    ref.invalidate(activeAnnouncementsProvider);
+    ref.invalidate(publicSettingsProvider);
+
     // Force WebSocket reconnect with the new user's token.
     // Without this, the WS stays connected with the OLD user's token,
     // so realtime events (ticket replies, new notifications) never arrive.
@@ -486,6 +496,18 @@ class AuthController extends Notifier<AuthState> {
           return false;
         }
         state = AuthState(user: data);
+
+        // Invalidate cached providers so cold-start always fetches
+        // fresh data from server — prevents stale data when a different
+        // user previously used the same app instance.
+        ref.invalidate(notificationsProvider);
+        ref.invalidate(mySubscriptionsProvider);
+        ref.invalidate(myInvoicesProvider);
+        ref.invalidate(myTicketsProvider);
+        ref.invalidate(unreadNotificationsCountProvider);
+        ref.invalidate(activeAnnouncementsProvider);
+        ref.invalidate(publicSettingsProvider);
+
         return true;
       case Failure():
         // Keep token. User can retry or login with email/password.
