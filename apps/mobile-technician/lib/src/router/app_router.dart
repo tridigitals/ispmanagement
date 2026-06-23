@@ -30,7 +30,7 @@ GoRouter buildAppRouter({
 }) {
   return GoRouter(
     navigatorKey: navigatorKey,
-    initialLocation: '/',
+    initialLocation: '/loading',
     refreshListenable: container.read(authStateProvider),
     redirect: (context, state) async {
       final auth = container.read(authControllerProvider);
