@@ -257,6 +257,24 @@ class _WorkOrdersTabState extends ConsumerState<WorkOrdersTab> {
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
 
+    return Column(
+      children: [
+        const SizedBox(height: 8),
+        // Sticky filter chips
+        _buildFilterChips(context),
+        const SizedBox(height: 8),
+        // Body — loading / error / empty / list
+        Expanded(
+          child: _buildBody(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
+
     if (!_initialLoaded) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -290,45 +308,35 @@ class _WorkOrdersTabState extends ConsumerState<WorkOrdersTab> {
         _onFilterChanged(_statusFilter);
       },
       color: isp.accent,
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
-          _buildFilterChips(context),
-          const SizedBox(height: 8),
-          Expanded(
-            child: _items.isEmpty
-                ? ListView(
+      child: _items.isEmpty
+          ? ListView(
+              children: [
+                SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.3),
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(
-                          height:
-                              MediaQuery.of(context).size.height * 0.3),
-                      Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.assignment_outlined,
-                                size: 48, color: isp.textMuted),
-                            const SizedBox(height: 8),
-                            Text(
-                              l10n.workOrderNoAssigned,
-                              style: TextStyle(
-                                color: isp.textMuted,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
+                      Icon(Icons.assignment_outlined,
+                          size: 48, color: isp.textMuted),
+                      const SizedBox(height: 8),
+                      Text(
+                        l10n.workOrderNoAssigned,
+                        style: TextStyle(
+                          color: isp.textMuted,
+                          fontSize: 16,
                         ),
                       ),
                     ],
-                  )
-                : ListView.builder(
-                    itemCount: _items.length,
-                    itemBuilder: (_, i) =>
-                        _buildTile(context, _items[i]),
                   ),
-          ),
-        ],
-      ),
+                ),
+              ],
+            )
+          : ListView.builder(
+              itemCount: _items.length,
+              itemBuilder: (_, i) =>
+                  _buildTile(context, _items[i]),
+            ),
     );
   }
 }

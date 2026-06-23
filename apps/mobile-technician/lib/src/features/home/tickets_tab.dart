@@ -264,6 +264,24 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
 
+    return Column(
+      children: [
+        const SizedBox(height: 8),
+        // Sticky filter chips
+        _buildFilterChips(context),
+        const SizedBox(height: 8),
+        // Body — loading / error / empty / list
+        Expanded(
+          child: _buildBody(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
+
     if (!_initialLoaded) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -300,57 +318,48 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
         _onFilterChanged(_statusFilter);
       },
       color: isp.accent,
-      child: Column(
-        children: [
-          // Filter chips
-          const SizedBox(height: 8),
-          _buildFilterChips(context),
-          const SizedBox(height: 8),
-          // Ticket list
-          Expanded(
-            child: _items.isEmpty
-                ? ListView(
+      child: _items.isEmpty
+          ? ListView(
+              children: [
+                SizedBox(
+                    height:
+                        MediaQuery.of(context).size.height * 0.25),
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(height: MediaQuery.of(context).size.height * 0.25),
-                      Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.check_circle_outline,
-                                size: 48, color: isp.textMuted),
-                            const SizedBox(height: 8),
-                            Text(
-                              l10n.noAssignedTickets,
-                              style: TextStyle(
-                                color: isp.textMuted,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
+                      Icon(Icons.check_circle_outline,
+                          size: 48, color: isp.textMuted),
+                      const SizedBox(height: 8),
+                      Text(
+                        l10n.noAssignedTickets,
+                        style: TextStyle(
+                          color: isp.textMuted,
+                          fontSize: 16,
                         ),
                       ),
                     ],
-                  )
-                : ListView.builder(
-                    itemCount: _items.length + (_hasMore ? 1 : 0),
-                    itemBuilder: (_, i) {
-                      if (i == _items.length) {
-                        // Load more indicator
-                        if (_loadingMore) {
-                          return const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        }
-                        _loadMore();
-                        return const SizedBox.shrink();
-                      }
-                      return _buildTicketTile(context, _items[i]);
-                    },
                   ),
-          ),
-        ],
-      ),
+                ),
+              ],
+            )
+          : ListView.builder(
+              itemCount: _items.length + (_hasMore ? 1 : 0),
+              itemBuilder: (_, i) {
+                if (i == _items.length) {
+                  if (_loadingMore) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child:
+                          Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  _loadMore();
+                  return const SizedBox.shrink();
+                }
+                return _buildTicketTile(context, _items[i]);
+              },
+            ),
     );
   }
 }
