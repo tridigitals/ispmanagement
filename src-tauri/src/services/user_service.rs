@@ -288,13 +288,21 @@ impl UserService {
         Ok(user.into())
     }
 
-    /// Delete user
+    /// Delete user — also invalidates all their sessions so the deleted user
+    /// is immediately kicked out instead of staying on the page until token expiry.
     pub async fn delete(
         &self,
         id: &str,
         actor_id: Option<&str>,
         ip_address: Option<&str>,
     ) -> AppResult<()> {
+        // Invalidate all sessions for this user BEFORE deleting the user row.
+        // This ensures the deleted user's next API call returns 401 immediately.
+        let _ = sqlx::query("DELETE FROM sessions WHERE user_id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await;
+
         let result = sqlx::query("DELETE FROM users WHERE id = $1")
             .bind(id)
             .execute(&self.pool)

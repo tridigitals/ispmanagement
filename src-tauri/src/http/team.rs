@@ -120,20 +120,11 @@ pub async fn add_team_member(
 
     // Block assigning Customer role via team management.
     // Customer accounts must be created from the Customers module.
-    #[cfg(feature = "postgres")]
-    let role_name: Option<String> =
-        sqlx::query_scalar("SELECT name FROM roles WHERE id = $1")
-            .bind(&payload.role_id)
-            .fetch_optional(&state.pool)
-            .await
-            .map_err(crate::error::AppError::Database)?;
-    #[cfg(feature = "sqlite")]
-    let role_name: Option<String> =
-        sqlx::query_scalar("SELECT name FROM roles WHERE id = ?")
-            .bind(&payload.role_id)
-            .fetch_optional(&state.pool)
-            .await
-            .map_err(crate::error::AppError::Database)?;
+    let role_name = state
+        .team_service
+        .get_role_name_by_id(&payload.role_id)
+        .await
+        .map_err(crate::error::AppError::Internal)?;
 
     if role_name.as_deref() == Some("Customer") {
         return Err(crate::error::AppError::Validation(
@@ -211,20 +202,11 @@ pub async fn update_team_member(
         .map_err(crate::error::AppError::Forbidden)?;
 
     // Block assigning Customer role via team management.
-    #[cfg(feature = "postgres")]
-    let role_name: Option<String> =
-        sqlx::query_scalar("SELECT name FROM roles WHERE id = $1")
-            .bind(&payload.role_id)
-            .fetch_optional(&state.pool)
-            .await
-            .map_err(crate::error::AppError::Database)?;
-    #[cfg(feature = "sqlite")]
-    let role_name: Option<String> =
-        sqlx::query_scalar("SELECT name FROM roles WHERE id = ?")
-            .bind(&payload.role_id)
-            .fetch_optional(&state.pool)
-            .await
-            .map_err(crate::error::AppError::Database)?;
+    let role_name = state
+        .team_service
+        .get_role_name_by_id(&payload.role_id)
+        .await
+        .map_err(crate::error::AppError::Internal)?;
 
     if role_name.as_deref() == Some("Customer") {
         return Err(crate::error::AppError::Validation(
