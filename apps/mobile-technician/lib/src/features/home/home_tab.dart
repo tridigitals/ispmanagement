@@ -9,7 +9,7 @@ import '../../l10n/app_localizations.dart';
 import '../../services/auth_providers.dart';
 import '../../services/missing_providers.dart';
 import '../../services/notifications_providers.dart' show unreadNotificationsCountProvider;
-import '../../services/service_providers.dart' show ticketServiceProvider;
+import '../../services/service_providers.dart' show ticketServiceProvider, workOrderServiceProvider;
 import '../../theme/app_theme.dart';
 import '../../utils/loading_skeleton.dart';
 import 'widgets/network_status_banner.dart';
@@ -38,15 +38,21 @@ class _HomeTabState extends ConsumerState<HomeTab> {
     final l10n = AppLocalizations.of(context);
     final statsAsync = ref.watch(_ticketStatsProvider);
     final recentAsync = ref.watch(_recentTicketsProvider);
+    final woStatsAsync = ref.watch(_workOrderStatsProvider);
+    final recentWoAsync = ref.watch(_recentWorkOrdersProvider);
 
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(_ticketStatsProvider);
         ref.invalidate(_recentTicketsProvider);
+        ref.invalidate(_workOrderStatsProvider);
+        ref.invalidate(_recentWorkOrdersProvider);
         ref.invalidate(unreadNotificationsCountProvider);
         await Future.wait([
           ref.read(_ticketStatsProvider.future),
           ref.read(_recentTicketsProvider.future),
+          ref.read(_workOrderStatsProvider.future),
+          ref.read(_recentWorkOrdersProvider.future),
         ]);
       },
       color: isp.accent,
@@ -64,6 +70,11 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
                     const SizedBox(height: _kSectionSpacing),
 
+                    // ── Work Order stats row ──
+                    _WorkOrderStatsRow(statsAsync: woStatsAsync),
+
+                    const SizedBox(height: _kSectionSpacing),
+
                     // ── Network status banner ──
                     const NetworkStatusBanner(),
 
@@ -76,6 +87,11 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
                     // ── Recent tickets ──
                     _RecentTickets(recentAsync: recentAsync),
+
+                    const SizedBox(height: _kSectionSpacing),
+
+                    // ── Recent work orders ──
+                    _RecentWorkOrders(recentAsync: recentWoAsync),
                   ],
                 ),
               ]),
@@ -418,6 +434,277 @@ extension _TicketStatusDisplay on TicketModel {
       case TicketStatus.closed:
       case TicketStatus.cancelled:
         return Colors.grey;
+    }
+  }
+}
+
+// ─── Work Order stats ───────────────────────────────────────────
+
+final _workOrderStatsProvider = FutureProvider<(int total, int pending, int inProgress, int completed)>((ref) async {
+  final svc = ref.read(workOrderServiceProvider);
+  final result = await svc.list(includeClosed: true, limit: 500);
+  final orders = result.getOrThrow();
+  int pending = 0, inProgress = 0, completed = 0, cancelled = 0;
+  for (final wo in orders) {
+    switch (wo.status) {
+      case 'pending':
+      case 'assigned':
+        pending++;
+        break;
+      case 'in_progress':
+        inProgress++;
+        break;
+      case 'completed':
+        completed++;
+        break;
+      case 'cancelled':
+        cancelled++;
+        break;
+    }
+  }
+  return (orders.length, pending, inProgress, completed);
+});
+
+final _recentWorkOrdersProvider = FutureProvider<List<WorkOrderModel>>((ref) async {
+  final svc = ref.read(workOrderServiceProvider);
+  final result = await svc.list(limit: 5);
+  return result.getOrThrow();
+});
+
+class _WorkOrderStatsRow extends StatelessWidget {
+  const _WorkOrderStatsRow({required this.statsAsync});
+  final AsyncValue<(int, int, int, int)> statsAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
+
+    return statsAsync.when(
+      loading: () => Row(
+        children: List.generate(4, (_) {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: const IspSkeletonCard(height: 80),
+            ),
+          );
+        }),
+      ),
+      error: (e, _) => _ErrorCard(message: e.toString()),
+      data: (stats) {
+        final (total, pending, inProgress, completed) = stats;
+        final items = [
+          (l10n.workOrderStatsTotal, total, Icons.inbox_outlined, isp.textPrimary),
+          (l10n.ticketStatsPending, pending, Icons.hourglass_empty, isp.warning),
+          (l10n.workOrderTabInProgress, inProgress, Icons.play_circle_outline, isp.info),
+          (l10n.workOrderStatsCompleted, completed, Icons.check_circle_outline, isp.success),
+        ];
+
+        return Row(
+          children: items.map((item) {
+            final (label, count, icon, color) = item;
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: _StatCard(
+                  icon: icon,
+                  label: label,
+                  count: count,
+                  color: color,
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+}
+
+class _RecentWorkOrders extends StatelessWidget {
+  const _RecentWorkOrders({required this.recentAsync});
+  final AsyncValue<List<WorkOrderModel>> recentAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                l10n.recentWorkOrders,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: isp.textPrimary,
+                ),
+              ),
+              TextButton(
+                onPressed: () => GoRouter.of(context).go('/?tab=2'),
+                child: Text(l10n.seeAll),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: _kElementSpacing),
+        Container(
+          decoration: BoxDecoration(
+            color: isp.surface,
+            borderRadius: BorderRadius.circular(_kCardRadius),
+            border: Border.all(color: isp.border, width: 1),
+          ),
+          child: recentAsync.when(
+            loading: () => const IspSkeletonList(itemCount: 3),
+            error: (e, _) => _ErrorCard(message: e.toString()),
+            data: (orders) {
+              if (orders.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Center(
+                    child: Text(
+                      l10n.workOrderNoAssigned,
+                      style: TextStyle(color: isp.textMuted),
+                    ),
+                  ),
+                );
+              }
+              return Column(
+                children: orders.map((wo) {
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () =>
+                          GoRouter.of(context).push('/work-orders/${wo.id}'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: isp.border,
+                              width: 0.5,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            // Status dot
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: _woColor(wo.status),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // WO info
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    wo.customerName ?? 'Pelanggan #${wo.customerId.substring(0, 8)}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: isp.textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '#${wo.id.substring(0, 8)} · ${wo.packageName ?? ''}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isp.textMuted,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Status badge
+                            _WoStatusBadge(status: wo.status),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Color _woColor(String status) {
+    switch (status) {
+      case 'pending':
+        return Colors.grey;
+      case 'assigned':
+        return Colors.orange;
+      case 'in_progress':
+        return Colors.blue;
+      case 'completed':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+}
+
+class _WoStatusBadge extends StatelessWidget {
+  const _WoStatusBadge({required this.status});
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color) = _woStatusInfo(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(9999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  (String, Color) _woStatusInfo(String s) {
+    switch (s) {
+      case 'pending':
+      case 'assigned':
+        return ('Pending', Colors.orange);
+      case 'in_progress':
+        return ('In Progress', Colors.blue);
+      case 'completed':
+        return ('Completed', Colors.green);
+      case 'cancelled':
+        return ('Cancelled', Colors.red);
+      default:
+        return (s, Colors.grey);
     }
   }
 }

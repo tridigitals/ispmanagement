@@ -824,4 +824,13 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get noPhoneNumber => 'Tidak ada nomor HP';
+
+  @override
+  String get recentWorkOrders => 'Tugas Terbaru';
+
+  @override
+  String get workOrderStatsTotal => 'Total';
+
+  @override
+  String get workOrderStatsCompleted => 'Selesai';
 }

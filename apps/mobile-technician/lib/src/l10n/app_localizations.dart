@@ -1708,6 +1708,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No phone number'**
   String get noPhoneNumber;
+
+  /// No description provided for @recentWorkOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent Work Orders'**
+  String get recentWorkOrders;
+
+  /// No description provided for @workOrderStatsTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get workOrderStatsTotal;
+
+  /// No description provided for @workOrderStatsCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get workOrderStatsCompleted;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

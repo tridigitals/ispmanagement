@@ -824,4 +824,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noPhoneNumber => 'No phone number';
+
+  @override
+  String get recentWorkOrders => 'Recent Work Orders';
+
+  @override
+  String get workOrderStatsTotal => 'Total';
+
+  @override
+  String get workOrderStatsCompleted => 'Completed';
 }
