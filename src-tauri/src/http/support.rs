@@ -1001,7 +1001,7 @@ pub async fn list_support_ticket_messages(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(id): Path<String>,
-) -> Result<Json<Vec<SupportTicketMessage>>, crate::error::AppError> {
+) -> Result<Json<Vec<SupportTicketMessageWithAttachments>>, crate::error::AppError> {
     let claims = auth_claims(&state, &headers).await?;
     let tenant_id = claims
         .tenant_id
@@ -1068,7 +1068,36 @@ pub async fn list_support_ticket_messages(
         .await?
     };
 
-    Ok(Json(messages))
+    // Fetch attachments for these messages (same pattern as get_support_ticket).
+    let message_ids: Vec<String> = messages.iter().map(|m| m.id.clone()).collect();
+    let att_map: HashMap<String, Vec<FileRecord>> = {
+        #[cfg(feature = "postgres")]
+        {
+            fetch_attachments_map_pg(&state.auth_service.pool, &tenant_id, &id, &message_ids)
+                .await
+                .unwrap_or_default()
+        }
+        #[cfg(not(feature = "postgres"))]
+        {
+            HashMap::new()
+        }
+    };
+
+    let messages_with_attachments: Vec<SupportTicketMessageWithAttachments> = messages
+        .into_iter()
+        .map(|m| SupportTicketMessageWithAttachments {
+            id: m.id.clone(),
+            ticket_id: m.ticket_id,
+            author_id: m.author_id,
+            author_name: m.author_name,
+            body: m.body,
+            is_internal: m.is_internal,
+            created_at: m.created_at,
+            attachments: att_map.get(&m.id).cloned().unwrap_or_default(),
+        })
+        .collect();
+
+    Ok(Json(messages_with_attachments))
 }
 
 pub async fn update_support_ticket(
