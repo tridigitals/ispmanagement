@@ -2,6 +2,7 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
@@ -121,6 +122,261 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
     }
   }
 
+  // ─── Contact Actions ──────────────────────────────────────────
+
+  void _openPhone(String phone) {
+    launchUrl(Uri(scheme: 'tel', path: phone.replaceAll(RegExp(r'[^\d+]'), '')));
+  }
+
+  void _openWhatsApp(String phone) {
+    final cleaned = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    final msg = Uri.encodeComponent(
+        'Halo, saya teknisi ISP. Terkait pemasangan di ${_wo?.locationLabel ?? 'lokasi Anda'}...');
+    launchUrl(
+        Uri.parse('https://wa.me/$cleaned?text=$msg'));
+  }
+
+  void _openMaps() {
+    final wo = _wo;
+    if (wo == null) return;
+    if (wo.locationLatitude != null && wo.locationLongitude != null) {
+      launchUrl(Uri.parse(
+          'https://www.google.com/maps/dir/?api=1&destination=${wo.locationLatitude},${wo.locationLongitude}'));
+    } else if (wo.locationLabel != null) {
+      launchUrl(Uri.parse(
+          'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(wo.locationLabel!)}'));
+    }
+  }
+
+  // ─── Step Indicator ───────────────────────────────────────────
+
+  Widget _buildStepIndicator(WorkOrderModel wo, AppLocalizations l10n) {
+    final steps = _stepsForStatus(wo.status);
+
+    // Determine active step index
+    int activeIdx;
+    switch (wo.status) {
+      case 'pending':
+        activeIdx = 0;
+        break;
+      case 'assigned':
+        activeIdx = 1;
+        break;
+      case 'in_progress':
+        activeIdx = 2;
+        break;
+      case 'completed':
+        activeIdx = 3;
+        break;
+      case 'cancelled':
+        return const SizedBox.shrink();
+      default:
+        activeIdx = 0;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+      child: Row(
+        children: List.generate(steps.length * 2 - 1, (i) {
+          if (i.isOdd) {
+            // Connector line
+            final lineActive = (i ~/ 2) < activeIdx;
+            return Expanded(
+              child: Container(
+                height: 3,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  color: lineActive ? context.isp.accent : context.isp.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            );
+          }
+          // Step circle
+          final stepIdx = i ~/ 2;
+          final isCompleted = stepIdx < activeIdx;
+          final isActive = stepIdx == activeIdx &&
+              wo.status != 'completed' &&
+              wo.status != 'cancelled';
+          final stepLabel = steps[stepIdx];
+
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isCompleted || isActive
+                      ? isCompleted
+                          ? context.isp.success
+                          : context.isp.accent
+                      : context.isp.surface,
+                  border: Border.all(
+                    color: isCompleted || isActive
+                        ? context.isp.accent
+                        : context.isp.border,
+                    width: 2,
+                  ),
+                ),
+                child: Center(
+                  child: isCompleted
+                      ? const Icon(Icons.check, size: 16, color: Colors.white)
+                      : Text(
+                          '${stepIdx + 1}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: isActive
+                                ? Colors.white
+                                : context.isp.textMuted,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                stepLabel,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                  color:
+                      isActive || isCompleted ? context.isp.accent : context.isp.textMuted,
+                ),
+              ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+
+  List<String> _stepsForStatus(String status) {
+    if (status == 'cancelled') return [];
+    return [
+      AppLocalizations.of(context).workOrderStepClaim,
+      AppLocalizations.of(context).workOrderStepStart,
+      AppLocalizations.of(context).workOrderStepComplete,
+    ];
+  }
+
+  // ─── Contact Buttons ──────────────────────────────────────────
+
+  Widget _buildContactButtons(WorkOrderModel wo) {
+    final l10n = AppLocalizations.of(context);
+    final phone = wo.customerPhone;
+    final hasPhone = phone != null && phone.isNotEmpty;
+
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed:
+                hasPhone ? () => _openPhone(phone!) : null,
+            icon: const Icon(Icons.phone_outlined, size: 18),
+            label: Text(l10n.workOrderPhone),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed:
+                hasPhone ? () => _openWhatsApp(phone!) : null,
+            icon: const Icon(Icons.chat_outlined, size: 18),
+            label: Text(l10n.workOrderWhatsApp),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: _openMaps,
+            icon: const Icon(Icons.map_outlined, size: 18),
+            label: Text(l10n.workOrderMaps),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton(WorkOrderModel wo, AppLocalizations l10n) {
+    final isActive = wo.isActive;
+    if (!isActive) return const SizedBox.shrink();
+
+    if (_actionLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    switch (wo.status) {
+      case 'pending':
+        return SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () => _performAction(
+              (svc) => svc.claim(widget.id),
+              l10n.workOrderClaimed,
+            ),
+            icon: const Icon(Icons.touch_app_outlined, size: 20),
+            label: Text(l10n.workOrderClaim),
+          ),
+        );
+      case 'assigned':
+        return SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () => _performAction(
+              (svc) => svc.start(widget.id),
+              l10n.workOrderStarted,
+            ),
+            icon: const Icon(Icons.play_arrow, size: 20),
+            label: Text(l10n.workOrderStart),
+            style: FilledButton.styleFrom(
+              backgroundColor: context.isp.accent,
+            ),
+          ),
+        );
+      case 'in_progress':
+        return SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _completeWithNotes,
+            icon: const Icon(Icons.check_circle_outline, size: 20),
+            label: Text(l10n.workOrderComplete),
+            style: FilledButton.styleFrom(
+              backgroundColor: context.isp.success,
+            ),
+          ),
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildCancelButton(WorkOrderModel wo, AppLocalizations l10n) {
+    if (!wo.isActive || wo.status == 'completed') return const SizedBox.shrink();
+    return SizedBox(
+      width: double.infinity,
+      child: TextButton.icon(
+        onPressed: _actionLoading
+            ? null
+            : () => _performAction(
+                  (svc) => svc.cancel(widget.id),
+                  l10n.workOrderCancelled,
+                ),
+        icon: const Icon(Icons.cancel_outlined, size: 18),
+        label: Text(l10n.workOrderCancel),
+        style: TextButton.styleFrom(foregroundColor: context.isp.danger),
+      ),
+    );
+  }
+
+  // ─── Build ────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
@@ -158,229 +414,189 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
     final wo = _wo!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.workOrderDetail),
-      ),
+      appBar: AppBar(title: Text(l10n.workOrderDetail)),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+        child: Column(
           children: [
-            // Header: Status badge + ID
-            Row(
-              children: [
-                _StatusBadge(status: wo.status),
-                const SizedBox(width: 12),
-                Text(
-                  '#${wo.id}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isp.textMuted,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-                const Spacer(),
-                if (wo.packageProvisioningType != null)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: isp.accent.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      wo.packageProvisioningType!,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isp.accent,
-                        fontWeight: FontWeight.w600,
+            // Scrollable content
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // Header: Status badge + ID + type
+                  Row(
+                    children: [
+                      _StatusBadge(status: wo.status),
+                      const SizedBox(width: 12),
+                      Text(
+                        '#${wo.id}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isp.textMuted,
+                          fontFamily: 'monospace',
+                        ),
                       ),
-                    ),
+                      const Spacer(),
+                      if (wo.packageProvisioningType != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isp.accent.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            wo.packageProvisioningType!,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isp.accent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-              ],
-            ),
-            const SizedBox(height: 20),
+                  const SizedBox(height: 4),
 
-            // Customer card
-            _SectionCard(
-              icon: Icons.person_outline,
-              title: l10n.workOrderCustomer,
-              children: [
-                _InfoRow(label: l10n.fullName, value: wo.customerName),
-                if (wo.customerPhone != null)
-                  _InfoRow(label: l10n.phone, value: wo.customerPhone),
-              ],
-            ),
-            const SizedBox(height: 12),
+                  // ── Step Indicator ──
+                  _buildStepIndicator(wo, l10n),
+                  const SizedBox(height: 16),
 
-            // Location card
-            if (wo.locationLabel != null)
-              _SectionCard(
-                icon: Icons.location_on_outlined,
-                title: l10n.workOrderLocation,
-                children: [
-                  _InfoRow(label: l10n.location, value: wo.locationLabel),
-                  if (wo.locationLatitude != null && wo.locationLongitude != null)
-                    _InfoRow(
-                      label: 'Coordinates',
-                      value:
-                          '${wo.locationLatitude!.toStringAsFixed(6)}, ${wo.locationLongitude!.toStringAsFixed(6)}',
+                  // ── Customer card ──
+                  _SectionCard(
+                    icon: Icons.person_outline,
+                    title: l10n.workOrderCustomer,
+                    children: [
+                      _InfoRow(label: l10n.fullName, value: wo.customerName),
+                      if (wo.customerPhone != null)
+                        _InfoRow(label: l10n.phone, value: wo.customerPhone),
+                      if (wo.customerPhone == null)
+                        _InfoRow(
+                            label: l10n.phone, value: l10n.noPhoneNumber),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ── Location card ──
+                  if (wo.locationLabel != null)
+                    _SectionCard(
+                      icon: Icons.location_on_outlined,
+                      title: l10n.workOrderLocation,
+                      children: [
+                        _InfoRow(label: l10n.location, value: wo.locationLabel),
+                        if (wo.locationLatitude != null &&
+                            wo.locationLongitude != null)
+                          _InfoRow(
+                            label: 'Coordinates',
+                            value:
+                                '${wo.locationLatitude!.toStringAsFixed(6)}, ${wo.locationLongitude!.toStringAsFixed(6)}',
+                          ),
+                      ],
                     ),
+                  const SizedBox(height: 12),
+
+                  // ── Package card ──
+                  _SectionCard(
+                    icon: Icons.inventory_2_outlined,
+                    title: l10n.workOrderPackage,
+                    children: [
+                      if (wo.packageName != null)
+                        _InfoRow(
+                            label: l10n.internetPackage,
+                            value: wo.packageName),
+                      if (wo.routerName != null)
+                        _InfoRow(
+                            label: l10n.workOrderRouter, value: wo.routerName),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ── Schedule card ──
+                  _SectionCard(
+                    icon: Icons.schedule,
+                    title: l10n.workOrderSchedule,
+                    children: [
+                      _InfoRow(
+                        label: 'Created',
+                        value: _formatDateTime(wo.createdAt),
+                      ),
+                      if (wo.scheduledAt != null)
+                        _InfoRow(
+                          label: 'Scheduled',
+                          value: _formatDateTime(wo.scheduledAt!),
+                        ),
+                      if (wo.completedAt != null)
+                        _InfoRow(
+                          label: 'Completed',
+                          value: _formatDateTime(wo.completedAt!),
+                        ),
+                      if (wo.assignedToName != null)
+                        _InfoRow(
+                          label: l10n.ticketAssignee,
+                          value: wo.assignedToName,
+                        ),
+                    ],
+                  ),
+
+                  // ── Notes ──
+                  if (wo.notes != null && wo.notes!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _SectionCard(
+                      icon: Icons.notes,
+                      title: l10n.workOrderNotes,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                          child: Text(
+                            wo.notes!,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isp.textSecondary,
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+
+                  const SizedBox(height: 20),
                 ],
               ),
-
-            // Package card
-            _SectionCard(
-              icon: Icons.inventory_2_outlined,
-              title: l10n.workOrderPackage,
-              children: [
-                if (wo.packageName != null)
-                  _InfoRow(label: l10n.internetPackage, value: wo.packageName),
-                if (wo.routerName != null)
-                  _InfoRow(label: l10n.workOrderRouter, value: wo.routerName),
-              ],
             ),
-            const SizedBox(height: 12),
 
-            // Schedule card
-            _SectionCard(
-              icon: Icons.schedule,
-              title: l10n.workOrderSchedule,
-              children: [
-                _InfoRow(
-                  label: 'Created',
-                  value: _formatDateTime(wo.createdAt),
+            // ── Sticky bottom: Contact buttons + Action ──
+            Container(
+              decoration: BoxDecoration(
+                color: isp.surface,
+                border: Border(top: BorderSide(color: isp.border)),
+              ),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Contact quick-actions
+                    if (wo.isActive) ...[
+                      _buildContactButtons(wo),
+                      const SizedBox(height: 12),
+                    ],
+                    // Primary action button
+                    _buildActionButton(wo, l10n),
+                    // Cancel (subtle)
+                    if (wo.isActive && wo.status != 'completed') ...[
+                      const SizedBox(height: 6),
+                      _buildCancelButton(wo, l10n),
+                    ],
+                  ],
                 ),
-                if (wo.scheduledAt != null)
-                  _InfoRow(
-                    label: 'Scheduled',
-                    value: _formatDateTime(wo.scheduledAt!),
-                  ),
-                if (wo.completedAt != null)
-                  _InfoRow(
-                    label: 'Completed',
-                    value: _formatDateTime(wo.completedAt!),
-                  ),
-                if (wo.assignedToName != null)
-                  _InfoRow(
-                    label: l10n.ticketAssignee,
-                    value: wo.assignedToName,
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Notes
-            if (wo.notes != null && wo.notes!.isNotEmpty) ...[
-              _SectionCard(
-                icon: Icons.notes,
-                title: l10n.workOrderNotes,
-                children: [
-                  Text(
-                    wo.notes!,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isp.textSecondary,
-                      height: 1.5,
-                    ),
-                  ),
-                ],
               ),
-              const SizedBox(height: 12),
-            ],
-
-            // Action buttons
-            const SizedBox(height: 12),
-            _buildActionButtons(wo),
+            ),
           ],
         ),
       ),
     );
-  }
-
-  Widget _buildActionButtons(WorkOrderModel wo) {
-    final isActive = wo.isActive;
-    if (!isActive) return const SizedBox.shrink();
-
-    final l10n = AppLocalizations.of(context);
-
-    return _actionLoading
-        ? const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(),
-            ),
-          )
-        : Column(
-            children: [
-              // Row 1: primary action (contextual)
-              SizedBox(
-                width: double.infinity,
-                child: _primaryActionButton(wo, l10n),
-              ),
-              // Row 2: secondary actions
-              if (wo.status != 'completed') ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    if (wo.status != 'cancelled')
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _actionLoading
-                              ? null
-                              : () => _performAction(
-                                    (svc) => svc.cancel(widget.id),
-                                    l10n.workOrderCancelled,
-                                  ),
-                          icon: const Icon(Icons.cancel_outlined, size: 18),
-                          label: Text(l10n.workOrderCancel),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ],
-          );
-  }
-
-  Widget _primaryActionButton(WorkOrderModel wo, AppLocalizations l10n) {
-    switch (wo.status) {
-      case 'pending':
-        return FilledButton.icon(
-          onPressed: _actionLoading
-              ? null
-              : () => _performAction(
-                    (svc) => svc.claim(widget.id),
-                    l10n.workOrderClaimed,
-                  ),
-          icon: const Icon(Icons.touch_app_outlined, size: 20),
-          label: Text(l10n.workOrderClaim),
-        );
-      case 'assigned':
-        return FilledButton.icon(
-          onPressed: _actionLoading
-              ? null
-              : () => _performAction(
-                    (svc) => svc.start(widget.id),
-                    l10n.workOrderStarted,
-                  ),
-          icon: const Icon(Icons.play_arrow, size: 20),
-          label: Text(l10n.workOrderStart),
-          style: FilledButton.styleFrom(
-            backgroundColor: context.isp.accent,
-          ),
-        );
-      case 'in_progress':
-        return FilledButton.icon(
-          onPressed: _actionLoading ? null : _completeWithNotes,
-          icon: const Icon(Icons.check_circle_outline, size: 20),
-          label: Text(l10n.workOrderComplete),
-          style: FilledButton.styleFrom(
-            backgroundColor: context.isp.success,
-          ),
-        );
-      default:
-        return const SizedBox.shrink();
-    }
   }
 
   String _formatDateTime(DateTime dt) {
@@ -388,7 +604,7 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
   }
 }
 
-// ─── Widgets ────────────────────────────────────────────────────
+// ─── Status Badge ───────────────────────────────────────────────
 
 class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.status});
@@ -405,11 +621,7 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          color: color,
-        ),
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
       ),
     );
   }
@@ -431,6 +643,8 @@ class _StatusBadge extends StatelessWidget {
       return (status, Colors.grey);
   }
 }
+
+// ─── Section Card ───────────────────────────────────────────────
 
 class _SectionCard extends StatelessWidget {
   const _SectionCard({

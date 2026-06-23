@@ -800,4 +800,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workOrderLocation => 'Location';
+
+  @override
+  String get workOrderStepClaim => 'Claim';
+
+  @override
+  String get workOrderStepStart => 'Start';
+
+  @override
+  String get workOrderStepComplete => 'Complete';
+
+  @override
+  String get workOrderStepDone => 'Done';
+
+  @override
+  String get workOrderPhone => 'Call';
+
+  @override
+  String get workOrderWhatsApp => 'WA';
+
+  @override
+  String get workOrderMaps => 'Maps';
+
+  @override
+  String get noPhoneNumber => 'No phone number';
 }

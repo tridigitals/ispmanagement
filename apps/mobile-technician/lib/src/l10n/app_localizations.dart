@@ -1660,6 +1660,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Location'**
   String get workOrderLocation;
+
+  /// No description provided for @workOrderStepClaim.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim'**
+  String get workOrderStepClaim;
+
+  /// No description provided for @workOrderStepStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get workOrderStepStart;
+
+  /// No description provided for @workOrderStepComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete'**
+  String get workOrderStepComplete;
+
+  /// No description provided for @workOrderStepDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get workOrderStepDone;
+
+  /// No description provided for @workOrderPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Call'**
+  String get workOrderPhone;
+
+  /// No description provided for @workOrderWhatsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'WA'**
+  String get workOrderWhatsApp;
+
+  /// No description provided for @workOrderMaps.
+  ///
+  /// In en, this message translates to:
+  /// **'Maps'**
+  String get workOrderMaps;
+
+  /// No description provided for @noPhoneNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'No phone number'**
+  String get noPhoneNumber;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

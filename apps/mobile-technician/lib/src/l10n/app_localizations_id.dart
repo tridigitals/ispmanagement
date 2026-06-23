@@ -800,4 +800,28 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get workOrderLocation => 'Lokasi';
+
+  @override
+  String get workOrderStepClaim => 'Ambil';
+
+  @override
+  String get workOrderStepStart => 'Mulai';
+
+  @override
+  String get workOrderStepComplete => 'Selesai';
+
+  @override
+  String get workOrderStepDone => '✓';
+
+  @override
+  String get workOrderPhone => 'Telpon';
+
+  @override
+  String get workOrderWhatsApp => 'WA';
+
+  @override
+  String get workOrderMaps => 'Maps';
+
+  @override
+  String get noPhoneNumber => 'Tidak ada nomor HP';
 }
