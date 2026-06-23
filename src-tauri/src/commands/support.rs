@@ -5,7 +5,7 @@ use crate::models::{
     FileRecord, PaginatedResponse, SupportTicket, SupportTicketDetail, SupportTicketListItem,
     SupportTicketMessage, SupportTicketMessageWithAttachments,
 };
-use crate::services::{AuditService, AuthService, NotificationService, TeamService};
+use crate::services::{AuditService, AuthService, NotificationService};
 use chrono::Utc;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -1712,15 +1712,12 @@ pub async fn resolve_support_ticket(
     Ok(updated)
 }
 
-const SUPPORT_ASSIGNEE_MIN_ROLE_LEVEL_TAURI: i32 = 25;
-
-/// List team members eligible for ticket assignment (role_level >= 25).
-/// Only staff with support:read_all permission can access this.
+/// List team members eligible for ticket assignment.
+/// Returns users with any support permission OR owner/admin/technician/noc/planner/staff roles.
 #[tauri::command]
 pub async fn list_support_assignees(
     token: String,
     auth_service: State<'_, AuthService>,
-    team_service: State<'_, TeamService>,
 ) -> Result<Vec<crate::models::TeamMemberWithUser>, String> {
     let claims = auth_service
         .validate_token(&token)
@@ -1732,22 +1729,66 @@ pub async fn list_support_assignees(
         .clone()
         .ok_or_else(|| "Tenant context required".to_string())?;
 
-    // Require support:read_all (admin/staff level)
     auth_service
         .check_permission(&claims.sub, &tenant_id, "support", "read_all")
         .await
         .map_err(|e| e.to_string())?;
 
-    let all_members = team_service
-        .list_members(&tenant_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    #[cfg(feature = "postgres")]
+    let eligible: Vec<crate::models::TeamMemberWithUser> = sqlx::query_as(
+        r#"
+        SELECT
+          tm.id, tm.user_id, u.name, u.email,
+          tm.role, tm.role_id, r.name AS role_name,
+          u.is_active, tm.created_at, r.level AS role_level
+        FROM tenant_members tm
+        JOIN users u ON tm.user_id = u.id
+        LEFT JOIN roles r ON tm.role_id = r.id
+        WHERE tm.tenant_id = $1
+          AND u.is_active = TRUE
+          AND (
+            EXISTS(
+              SELECT 1 FROM role_permissions rp
+              JOIN permissions p ON p.id = rp.permission_id
+              WHERE rp.role_id = tm.role_id AND p.resource = 'support'
+            )
+            OR LOWER(COALESCE(r.name, tm.role, '')) IN ('owner','admin','noc','planner','staff','technician','teknisi')
+          )
+        ORDER BY LOWER(u.name), LOWER(u.email)
+        "#,
+    )
+    .bind(&tenant_id)
+    .fetch_all(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
 
-    // Filter to only those with role_level >= 25 and active
-    let eligible: Vec<crate::models::TeamMemberWithUser> = all_members
-        .into_iter()
-        .filter(|m| m.is_active && m.role_level.unwrap_or(0) >= SUPPORT_ASSIGNEE_MIN_ROLE_LEVEL_TAURI)
-        .collect();
+    #[cfg(not(feature = "postgres"))]
+    let eligible: Vec<crate::models::TeamMemberWithUser> = sqlx::query_as(
+        r#"
+        SELECT
+          tm.id, tm.user_id, u.name, u.email,
+          tm.role, tm.role_id, r.name AS role_name,
+          u.is_active, tm.created_at, r.level AS role_level
+        FROM tenant_members tm
+        JOIN users u ON tm.user_id = u.id
+        LEFT JOIN roles r ON tm.role_id = r.id
+        WHERE tm.tenant_id = ?
+          AND u.is_active = 1
+          AND (
+            EXISTS(
+              SELECT 1 FROM role_permissions rp
+              JOIN permissions p ON p.id = rp.permission_id
+              WHERE rp.role_id = tm.role_id AND p.resource = 'support'
+            )
+            OR LOWER(COALESCE(r.name, tm.role, '')) IN ('owner','admin','noc','planner','staff','technician','teknisi')
+          )
+        ORDER BY LOWER(u.name), LOWER(u.email)
+        "#,
+    )
+    .bind(&tenant_id)
+    .fetch_all(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
 
     Ok(eligible)
 }

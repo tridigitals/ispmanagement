@@ -95,6 +95,7 @@ const commandMap: Record<string, { method: string; path: string }> = {
   get_support_ticket: { method: 'GET', path: '/support/tickets/:id' },
   reply_support_ticket: { method: 'POST', path: '/support/tickets/:id/messages' },
   update_support_ticket: { method: 'PUT', path: '/support/tickets/:id' },
+  list_support_assignees: { method: 'GET', path: '/support/assignees' },
   list_customers: { method: 'GET', path: '/customers' },
   get_customer_summary: { method: 'GET', path: '/customers/summary' },
   get_customer_service_lifecycle_report: {

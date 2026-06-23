@@ -1781,10 +1781,8 @@ pub async fn upload_ticket_photo(
     Ok(Json(file_record))
 }
 
-const SUPPORT_ASSIGNEE_MIN_ROLE_LEVEL: i32 = 25;
-
-/// List team members eligible for ticket assignment (role_level >= 25).
-/// Only staff with support:read_all permission can access this.
+/// List team members eligible for ticket assignment.
+/// Returns users with any support permission OR owner/admin/technician/noc/planner/staff roles.
 pub async fn list_support_assignees(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -1797,19 +1795,64 @@ pub async fn list_support_assignees(
             "Tenant context required".to_string(),
         ))?;
 
-    // Require support:read_all (admin/staff level)
     state
         .auth_service
         .check_permission(&claims.sub, &tenant_id, "support", "read_all")
         .await?;
 
-    let all_members = state.team_service.list_members(&tenant_id).await?;
+    #[cfg(feature = "postgres")]
+    let eligible: Vec<TeamMemberWithUser> = sqlx::query_as(
+        r#"
+        SELECT
+          tm.id, tm.user_id, u.name, u.email,
+          tm.role, tm.role_id, r.name AS role_name,
+          u.is_active, tm.created_at, r.level AS role_level
+        FROM tenant_members tm
+        JOIN users u ON tm.user_id = u.id
+        LEFT JOIN roles r ON tm.role_id = r.id
+        WHERE tm.tenant_id = $1
+          AND u.is_active = TRUE
+          AND (
+            EXISTS(
+              SELECT 1 FROM role_permissions rp
+              JOIN permissions p ON p.id = rp.permission_id
+              WHERE rp.role_id = tm.role_id AND p.resource = 'support'
+            )
+            OR LOWER(COALESCE(r.name, tm.role, '')) IN ('owner','admin','noc','planner','staff','technician','teknisi')
+          )
+        ORDER BY LOWER(u.name), LOWER(u.email)
+        "#,
+    )
+    .bind(&tenant_id)
+    .fetch_all(&state.auth_service.pool)
+    .await?;
 
-    // Filter to only those with role_level >= 25 and active
-    let eligible: Vec<TeamMemberWithUser> = all_members
-        .into_iter()
-        .filter(|m| m.is_active && m.role_level.unwrap_or(0) >= SUPPORT_ASSIGNEE_MIN_ROLE_LEVEL)
-        .collect();
+    #[cfg(not(feature = "postgres"))]
+    let eligible: Vec<TeamMemberWithUser> = sqlx::query_as(
+        r#"
+        SELECT
+          tm.id, tm.user_id, u.name, u.email,
+          tm.role, tm.role_id, r.name AS role_name,
+          u.is_active, tm.created_at, r.level AS role_level
+        FROM tenant_members tm
+        JOIN users u ON tm.user_id = u.id
+        LEFT JOIN roles r ON tm.role_id = r.id
+        WHERE tm.tenant_id = ?
+          AND u.is_active = 1
+          AND (
+            EXISTS(
+              SELECT 1 FROM role_permissions rp
+              JOIN permissions p ON p.id = rp.permission_id
+              WHERE rp.role_id = tm.role_id AND p.resource = 'support'
+            )
+            OR LOWER(COALESCE(r.name, tm.role, '')) IN ('owner','admin','noc','planner','staff','technician','teknisi')
+          )
+        ORDER BY LOWER(u.name), LOWER(u.email)
+        "#,
+    )
+    .bind(&tenant_id)
+    .fetch_all(&state.auth_service.pool)
+    .await?;
 
     Ok(Json(eligible))
 }
