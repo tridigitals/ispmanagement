@@ -132,9 +132,9 @@
         if (paymentMethod === 'midtrans' || paymentMethod === 'duitku') paymentMethod = 'manual';
       }
 
-      // Load Manual Bank Accounts & Instructions
+      // Load Manual Bank Accounts & Instructions (filtered by invoice's tenant)
       if (manualEnabled) {
-        bankAccounts = await api.payment.listBanks();
+        bankAccounts = await api.payment.listBanks(invoice?.merchant_id || undefined);
       }
 
       // Load Midtrans Snap JS if enabled
@@ -536,7 +536,13 @@
           </div>
         </div>
 
-        {#if invoice.status === 'pending'}
+        {#if invoice.status === 'pending' || invoice.status === 'failed'}
+          {#if invoice.status === 'failed' && invoice.rejection_reason}
+            <div class="failed-reason">
+              <span>{$t('payment.checkout.failed.reason_label') || 'Alasan Ditolak'}</span>
+              <strong>{invoice.rejection_reason}</strong>
+            </div>
+          {/if}
           <div class="method-tabs">
             {#if midtransEnabled}
               <button
@@ -722,48 +728,6 @@
             <button class="btn btn-primary" onclick={() => goto(returnPath)}>
               {$t('payment.checkout.success.cta') || 'Go to Subscription'}
             </button>
-          </div>
-        {:else if invoice.status === 'failed'}
-          <div class="state-card">
-            <div class="icon-circle failed">
-              <Icon name="circle-alert" size={26} />
-            </div>
-            <h3>{$t('payment.checkout.failed.title') || 'Payment Verification Failed'}</h3>
-            <p>
-              {$t('payment.checkout.failed.message') ||
-                'Your payment proof was rejected. Please check the reason below and upload a new proof.'}
-            </p>
-            {#if invoice.rejection_reason}
-              <div class="failed-reason">
-                <span>{$t('payment.checkout.failed.reason_label') || 'Reason'}</span>
-                <strong>{invoice.rejection_reason}</strong>
-              </div>
-            {/if}
-            <div class="upload-card">
-              <p>
-                {$t('payment.checkout.failed.reupload_hint') ||
-                  'After re-transfering, upload your new payment proof.'}
-              </p>
-              <input
-                type="file"
-                accept="image/*,application/pdf"
-                onchange={handleFileUpload}
-                style="display: none;"
-                bind:this={fileInput}
-              />
-              <button
-                class="btn btn-secondary w-full"
-                onclick={() => fileInput?.click()}
-                disabled={uploading}
-              >
-                {#if uploading}
-                  {$t('payment.checkout.manual.uploading') || 'Uploading...'}
-                {:else}
-                  <Icon name="upload" size={16} />
-                  {$t('payment.checkout.failed.upload_again') || 'Upload Proof Again'}
-                {/if}
-              </button>
-            </div>
           </div>
         {/if}
       </div>

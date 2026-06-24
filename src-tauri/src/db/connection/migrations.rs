@@ -461,10 +461,17 @@ pub(super) async fn run_migrations_sqlite(pool: &DbPool) -> Result<(), sqlx::Err
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
-    "#,
+    "#
     )
     .execute(pool)
     .await?;
+
+    // Migration: Add tenant_id to bank_accounts if not exists (SQLite)
+    let _ = sqlx::query(
+        "ALTER TABLE bank_accounts ADD COLUMN tenant_id TEXT REFERENCES tenants(id) ON DELETE CASCADE",
+    )
+    .execute(pool)
+    .await;
 
     // Migration: Add storage_provider to file_records if not exists (SQLite)
     let _ = sqlx::query(

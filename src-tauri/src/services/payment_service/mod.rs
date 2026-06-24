@@ -3041,16 +3041,30 @@ impl PaymentService {
     }
 
     /// List all bank accounts
-    pub async fn list_bank_accounts(&self) -> Result<Vec<BankAccount>, sqlx::Error> {
+    pub async fn list_bank_accounts(&self, tenant_id: Option<&str>) -> Result<Vec<BankAccount>, sqlx::Error> {
         #[cfg(feature = "postgres")]
-        let accounts = sqlx::query_as("SELECT * FROM bank_accounts ORDER BY created_at DESC")
-            .fetch_all(&self.pool)
-            .await?;
+        let accounts = if let Some(tid) = tenant_id {
+            sqlx::query_as("SELECT * FROM bank_accounts WHERE tenant_id = $1 OR tenant_id IS NULL ORDER BY created_at DESC")
+                .bind(tid)
+                .fetch_all(&self.pool)
+                .await?
+        } else {
+            sqlx::query_as("SELECT * FROM bank_accounts WHERE tenant_id IS NULL ORDER BY created_at DESC")
+                .fetch_all(&self.pool)
+                .await?
+        };
 
         #[cfg(feature = "sqlite")]
-        let accounts = sqlx::query_as("SELECT * FROM bank_accounts ORDER BY created_at DESC")
-            .fetch_all(&self.pool)
-            .await?;
+        let accounts = if let Some(tid) = tenant_id {
+            sqlx::query_as("SELECT * FROM bank_accounts WHERE tenant_id = ? OR tenant_id IS NULL ORDER BY created_at DESC")
+                .bind(tid)
+                .fetch_all(&self.pool)
+                .await?
+        } else {
+            sqlx::query_as("SELECT * FROM bank_accounts WHERE tenant_id IS NULL ORDER BY created_at DESC")
+                .fetch_all(&self.pool)
+                .await?
+        };
 
         Ok(accounts)
     }
@@ -3059,10 +3073,11 @@ impl PaymentService {
     pub async fn create_bank_account(
         &self,
         req: CreateBankAccountRequest,
+        tenant_id: Option<String>,
     ) -> Result<BankAccount, sqlx::Error> {
         println!(
-            "Creating bank account: {} - {}",
-            req.bank_name, req.account_number
+            "Creating bank account: {} - {} (tenant: {:?})",
+            req.bank_name, req.account_number, tenant_id
         );
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
@@ -3070,11 +3085,12 @@ impl PaymentService {
         #[cfg(feature = "postgres")]
         sqlx::query(
             r#"
-            INSERT INTO bank_accounts (id, bank_name, account_number, account_holder, is_active, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO bank_accounts (id, tenant_id, bank_name, account_number, account_holder, is_active, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             "#
         )
         .bind(&id)
+        .bind(&tenant_id)
         .bind(&req.bank_name)
         .bind(&req.account_number)
         .bind(&req.account_holder)
@@ -3087,11 +3103,12 @@ impl PaymentService {
         #[cfg(feature = "sqlite")]
         sqlx::query(
             r#"
-            INSERT INTO bank_accounts (id, bank_name, account_number, account_holder, is_active, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO bank_accounts (id, tenant_id, bank_name, account_number, account_holder, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             "#
         )
         .bind(&id)
+        .bind(&tenant_id)
         .bind(&req.bank_name)
         .bind(&req.account_number)
         .bind(&req.account_holder)
@@ -3104,6 +3121,7 @@ impl PaymentService {
         // Return the created account
         Ok(BankAccount {
             id,
+            tenant_id,
             bank_name: req.bank_name,
             account_number: req.account_number,
             account_holder: req.account_holder,

@@ -31,6 +31,7 @@ pub struct Invoice {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct BankAccount {
     pub id: String,
+    pub tenant_id: Option<String>,
     pub bank_name: String,
     pub account_number: String,
     pub account_holder: String,

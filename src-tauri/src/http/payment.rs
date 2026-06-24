@@ -1262,13 +1262,21 @@ async fn check_payment_status(
 async fn list_bank_accounts(
     State(state): State<AppState>,
     headers: HeaderMap,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Vec<BankAccount>>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
     let _ = resolve_payment_read_scope(&state, &claims).await?;
 
+    // For customer portal: accept tenant_id from query param (e.g., from invoice's merchant_id)
+    // For admin: use their own tenant_id from claims
+    let tenant_id = params
+        .get("tenant_id")
+        .map(|s| s.as_str())
+        .or(claims.tenant_id.as_deref());
+
     state
         .payment_service
-        .list_bank_accounts()
+        .list_bank_accounts(tenant_id)
         .await
         .map(Json)
         .map_err(|e| {
@@ -1289,9 +1297,12 @@ async fn create_bank_account(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
+    // Superadmin creates bank account — if they have a tenant_id, attach it; otherwise global
+    let tenant_id = claims.tenant_id.clone();
+
     state
         .payment_service
-        .create_bank_account(req)
+        .create_bank_account(req, tenant_id)
         .await
         .map(Json)
         .map_err(|e| {

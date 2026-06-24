@@ -15,8 +15,8 @@ import type {
 } from './types';
 
 export const payment = {
-  listBanks: (): Promise<BankAccount[]> =>
-    safeInvoke('list_bank_accounts', { token: getTokenOrThrow() }),
+  listBanks: (tenantId?: string): Promise<BankAccount[]> =>
+    safeInvoke('list_bank_accounts', { token: getTokenOrThrow(), tenant_id: tenantId }),
 
   createBank: (
     bank_name: string,
@@ -158,10 +158,8 @@ export const payment = {
       token: getTokenOrThrow(),
       id: invoiceId,
       invoiceId,
-      invoice_id: invoiceId,
       status,
       rejectionReason,
-      rejection_reason: rejectionReason,
     }),
 
   changePackage: (body: {

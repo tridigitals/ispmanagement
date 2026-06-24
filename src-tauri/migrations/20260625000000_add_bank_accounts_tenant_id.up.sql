@@ -1,0 +1,1 @@
+ALTER TABLE bank_accounts ADD COLUMN tenant_id TEXT REFERENCES tenants(id) ON DELETE CASCADE;
