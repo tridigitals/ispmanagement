@@ -793,12 +793,17 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         });
       } catch (e: any) {
         const name = String(e?.name || '');
+        const msg = String(e?.message || e || '');
         if (name === 'AbortError') {
           if (abortedByExternalSignal) throw new Error('Request canceled');
           if (abortedByTimeout) {
             throw new Error('Remote API request timed out. Is the server running?');
           }
           throw new Error('Request aborted');
+        }
+        // ECONNREFUSED = backend not yet running — suppress noisy stack trace
+        if (msg.includes('ECONNREFUSED') || msg.includes('fetch failed')) {
+          throw new Error('Backend not reachable (is the server running?)');
         }
         throw e;
       } finally {

@@ -339,6 +339,9 @@ pub fn run() {
                                     add_team_member,
                                     update_team_member_role,
                                     remove_team_member,
+                                    list_deleted_team_members,
+                                    restore_team_member,
+                                    hard_delete_team_member,
                                     // Audit commands
                                     list_audit_logs,
                                     list_tenant_audit_logs,

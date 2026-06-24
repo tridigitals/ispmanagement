@@ -2938,6 +2938,29 @@
         "description": "Add your colleagues to collaborate on this workspace.",
         "no_results": "No members found",
         "try_adjusting": "Try adjusting your search or filters."
+      },
+      "deleted_tab": "Deleted",
+      "deleted_at": "Deleted At",
+      "deleted_empty": "No deleted members",
+      "restore": "Restore",
+      "permanent_delete": "Delete Permanently",
+      "hard_delete": {
+        "title": "Delete Permanently",
+        "message": "Are you sure you want to permanently delete {name}? This action CANNOT be undone. The user account will also be deleted if they have no other team memberships."
+      },
+      "toasts": {
+        "load_failed": "Failed to load team data",
+        "load_deleted_failed": "Failed to load deleted members",
+        "added": "Team member added successfully",
+        "add_failed": "Failed to add member: {message}",
+        "removed": "Member removed successfully",
+        "remove_failed": "Failed to remove member: {message}",
+        "role_updated": "Member role updated successfully",
+        "role_update_failed": "Failed to update role: {message}",
+        "restored": "Member restored successfully",
+        "restore_failed": "Failed to restore member: {message}",
+        "hard_deleted": "Member permanently deleted",
+        "hard_delete_failed": "Failed to delete permanently: {message}"
       }
     }
   },
@@ -5201,6 +5224,9 @@
       "reply_placeholder": "Write your reply...",
       "subscription": "Related Subscription (optional)",
       "no_subscription": "Not linked"
+    },
+    "quick": {
+      "label": "Quick:"
     },
     "filters": {
       "aria": "Filter tickets",

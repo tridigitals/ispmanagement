@@ -264,6 +264,7 @@ export interface TeamMember {
   is_active: boolean;
   created_at: string;
   role_level?: number | null;
+  deleted_at?: string | null;
 }
 
 export interface AuditLog {

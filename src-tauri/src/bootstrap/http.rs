@@ -669,6 +669,12 @@ pub async fn start_server_impl(
             "/api/team/{id}",
             put(team::update_team_member).delete(team::remove_team_member),
         )
+        .route("/api/team/deleted", get(team::list_deleted_members))
+        .route("/api/team/deleted/{id}/restore", post(team::restore_member))
+        .route(
+            "/api/team/deleted/{id}",
+            delete(team::hard_delete_member),
+        )
         // Tenant Routes
         .route(
             "/api/tenant/me",

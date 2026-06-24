@@ -108,6 +108,7 @@ pub struct TenantMember {
     pub role: String,            // String representation for backward compatibility
     pub role_id: Option<String>, // New RBAC role ID
     pub created_at: DateTime<Utc>,
+    pub deleted_at: Option<DateTime<Utc>>,
 }
 
 impl TenantMember {
@@ -119,6 +120,7 @@ impl TenantMember {
             role,
             role_id,
             created_at: Utc::now(),
+            deleted_at: None,
         }
     }
 }
@@ -137,6 +139,7 @@ pub struct TeamMemberWithUser {
     pub created_at: DateTime<Utc>,
     /// Role level for filtering (e.g. only show users with role_level > 20 for ticket assignment)
     pub role_level: Option<i32>,
+    pub deleted_at: Option<DateTime<Utc>>,
 }
 
 #[cfg(test)]

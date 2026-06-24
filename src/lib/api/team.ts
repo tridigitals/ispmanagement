@@ -17,4 +17,13 @@ export const team = {
 
   remove: (memberId: string): Promise<void> =>
     safeInvoke('remove_team_member', { token: getTokenOrThrow(), id: memberId, memberId }),
+
+  listDeleted: (): Promise<TeamMember[]> =>
+    safeInvoke('list_deleted_team_members', { token: getTokenOrThrow() }),
+
+  restore: (memberId: string): Promise<void> =>
+    safeInvoke('restore_team_member', { token: getTokenOrThrow(), memberId }),
+
+  hardDelete: (memberId: string): Promise<void> =>
+    safeInvoke('hard_delete_team_member', { token: getTokenOrThrow(), memberId }),
 };

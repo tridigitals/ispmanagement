@@ -54,6 +54,13 @@
 
   let statusFilter = $state<'all' | 'active' | 'inactive'>('all');
 
+  let showDeleted = $state(false);
+  let deletedMembers = $state<TeamMember[]>([]);
+  let isRestoring = $state(false);
+  let isHardDeleting = $state(false);
+  let confirmHardDeleteMember = $state<TeamMember | null>(null);
+  let confirmHardDelete = $state(false);
+
   let ModalComponent = $state<any>(null);
   let ConfirmDialogComponent = $state<any>(null);
   let dialogModulesLoading = $state(false);
@@ -115,6 +122,52 @@
       toast.error(get(t)('admin.team.toasts.load_failed') || 'Failed to load team data');
     } finally {
       loading = false;
+    }
+  }
+
+  async function loadDeletedMembers() {
+    try {
+      deletedMembers = await api.team.listDeleted();
+    } catch (e: any) {
+      toast.error(get(t)('admin.team.toasts.load_deleted_failed') || 'Failed to load deleted members');
+    }
+  }
+
+  async function toggleDeletedTab() {
+    showDeleted = !showDeleted;
+    if (showDeleted) {
+      await loadDeletedMembers();
+    }
+  }
+
+  async function restoreMember(member: TeamMember) {
+    isRestoring = true;
+    try {
+      await api.team.restore(member.id);
+      deletedMembers = deletedMembers.filter((m) => m.id !== member.id);
+      teamMembers = [...teamMembers, { ...member, deleted_at: undefined }];
+      toast.success(get(t)('admin.team.toasts.restored') || `Restored ${member.name}`);
+    } catch (e: any) {
+      toast.error(get(t)('admin.team.toasts.restore_failed', { values: { message: e?.message || e } }) || 'Failed to restore member');
+    } finally {
+      isRestoring = false;
+    }
+  }
+
+  async function hardDeleteMember() {
+    const member = confirmHardDeleteMember;
+    if (!member) return;
+    isHardDeleting = true;
+    try {
+      await api.team.hardDelete(member.id);
+      deletedMembers = deletedMembers.filter((m) => m.id !== member.id);
+      toast.success(get(t)('admin.team.toasts.hard_deleted') || `Permanently deleted ${member.name}`);
+      confirmHardDelete = false;
+      confirmHardDeleteMember = null;
+    } catch (e: any) {
+      toast.error(get(t)('admin.team.toasts.hard_delete_failed', { values: { message: e?.message || e } }) || 'Failed to delete member');
+    } finally {
+      isHardDeleting = false;
     }
   }
 
@@ -281,6 +334,16 @@
       <span class="count-badge">
         {$t('admin.team.count', { values: { count: stats.total } }) || `${stats.total} members`}
       </span>
+      {#if deletedMembers.length > 0 || showDeleted}
+        <button
+          class="btn btn-ghost danger-outline"
+          onclick={toggleDeletedTab}
+          style="display:flex;align-items:center;gap:0.375rem;padding:0.375rem 0.75rem;font-size:0.8125rem;"
+        >
+          <Icon name="trash" size={15} />
+          {$t('admin.team.deleted_tab') || 'Deleted'} {deletedMembers.length > 0 ? `(${deletedMembers.length})` : ''}
+        </button>
+      {/if}
     </div>
 
     <div class="toolbar-wrapper">
@@ -415,8 +478,108 @@
         </Table>
       </div>
     {/if}
+
+    {#if showDeleted}
+      <div class="glass-card">
+        <div class="card-header">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <Icon name="trash" size={18} color="#ef4444" />
+            <span style="font-weight:600;font-size:0.9375rem;">
+              {$t('admin.team.deleted_tab') || 'Deleted Members'}
+            </span>
+            <span class="count-badge">{deletedMembers.length}</span>
+          </div>
+          <button class="btn btn-ghost" onclick={toggleDeletedTab} style="font-size:0.8125rem;padding:0.25rem 0.5rem;">
+            {$t('common.close') || 'Close'}
+          </button>
+        </div>
+
+        {#if deletedMembers.length === 0}
+          <div class="deleted-empty">
+            <Icon name="trash" size={48} />
+            <p>{$t('admin.team.deleted_empty') || 'No deleted members'}</p>
+          </div>
+        {:else}
+          <div class="deleted-table-wrapper">
+            <table class="deleted-table">
+              <thead>
+                <tr>
+                  <th>{$t('admin.team.columns.member') || 'Member'}</th>
+                  <th>{$t('admin.team.columns.role') || 'Role'}</th>
+                  <th>{$t('admin.team.deleted_at') || 'Deleted At'}</th>
+                  <th style="text-align:right;">{$t('common.actions') || 'Actions'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each deletedMembers as member (member.id)}
+                  <tr>
+                    <td>
+                      <div class="member-info">
+                        <div class="avatar deleted-avatar">{getInitials(member.name)}</div>
+                        <div>
+                          <div style="font-weight:500;">{member.name}</div>
+                          <div style="font-size:0.8125rem;color:var(--text-muted);">{member.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="status-pill inactive">{member.role_name || member.role}</span>
+                    </td>
+                    <td style="font-size:0.875rem;color:var(--text-muted);">
+                      {member.deleted_at ? formatDate(member.deleted_at) : '-'}
+                    </td>
+                    <td>
+                      <div class="deleted-actions">
+                        {#if $can('update', 'team')}
+                          <button
+                            class="btn btn-primary"
+                            style="background:var(--accent-emerald);padding:0.375rem 0.75rem;font-size:0.8125rem;border-radius:var(--radius-md);"
+                            onclick={() => restoreMember(member)}
+                            disabled={isRestoring}
+                          >
+                            <Icon name="rotate-ccw" size={14} />
+                            {$t('admin.team.restore') || 'Restore'}
+                          </button>
+                        {/if}
+                        {#if $can('delete', 'team')}
+                          <button
+                            class="btn btn-danger"
+                            style="padding:0.375rem 0.75rem;font-size:0.8125rem;border-radius:var(--radius-md);"
+                            onclick={() => { confirmHardDeleteMember = member; confirmHardDelete = true; }}
+                            disabled={isHardDeleting}
+                          >
+                            <Icon name="trash" size={14} />
+                            {$t('admin.team.permanent_delete') || 'Delete Permanently'}
+                          </button>
+                        {/if}
+                      </div>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+      </div>
+    {/if}
   </div>
 </div>
+
+{#if confirmHardDelete}
+  {#if ConfirmDialogComponent}
+    <ConfirmDialogComponent
+      bind:show={confirmHardDelete}
+      title={$t('admin.team.hard_delete.title') || 'Delete Permanently'}
+      message={$t('admin.team.hard_delete.message', {
+        values: { name: confirmHardDeleteMember?.name || '' },
+      }) || `Are you sure you want to permanently delete ${confirmHardDeleteMember?.name}? This action CANNOT be undone. The user account will be deleted too if they have no other team memberships.`}
+      confirmText={$t('admin.team.permanent_delete') || 'Delete Permanently'}
+      type="danger"
+      loading={isHardDeleting}
+      onconfirm={hardDeleteMember}
+    />
+  {/if}
+{/if}
 
 {#if ConfirmDialogComponent}
   <ConfirmDialogComponent

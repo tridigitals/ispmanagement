@@ -2939,6 +2939,29 @@
         "description": "Tambahkan rekan kerja Anda untuk berkolaborasi di ruang kerja ini.",
         "no_results": "Anggota tidak ditemukan",
         "try_adjusting": "Coba ubah pencarian atau filter."
+      },
+      "deleted_tab": "Dihapus",
+      "deleted_at": "Dihapus Pada",
+      "deleted_empty": "Tidak ada anggota yang dihapus",
+      "restore": "Pulihkan",
+      "permanent_delete": "Hapus Permanen",
+      "hard_delete": {
+        "title": "Hapus Permanen",
+        "message": "Yakin ingin menghapus {name} secara permanen? Tindakan ini TIDAK DAPAT dibatalkan. Akun pengguna juga akan dihapus jika tidak memiliki keanggotaan tim lain."
+      },
+      "toasts": {
+        "load_failed": "Gagal memuat data tim",
+        "load_deleted_failed": "Gagal memuat anggota yang dihapus",
+        "added": "Anggota tim berhasil ditambahkan",
+        "add_failed": "Gagal menambahkan anggota: {message}",
+        "removed": "Anggota berhasil dihapus",
+        "remove_failed": "Gagal menghapus anggota: {message}",
+        "role_updated": "Peran anggota berhasil diperbarui",
+        "role_update_failed": "Gagal memperbarui peran: {message}",
+        "restored": "Anggota berhasil dipulihkan",
+        "restore_failed": "Gagal memulihkan anggota: {message}",
+        "hard_deleted": "Anggota berhasil dihapus permanen",
+        "hard_delete_failed": "Gagal menghapus permanen: {message}"
       }
     }
   },
@@ -5193,6 +5216,7 @@
     "fields": {
       "subject": "Subjek",
       "subject_placeholder": "mis. Tidak bisa login ke akun saya",
+      "category": "Kategori",
       "priority": "Prioritas",
       "message": "Pesan",
       "message_placeholder": "Jelaskan masalah atau permintaan Anda...",
@@ -5201,6 +5225,9 @@
       "reply_placeholder": "Tulis balasan Anda...",
       "subscription": "Langganan Terkait (opsional)",
       "no_subscription": "Tidak terkait"
+    },
+    "quick": {
+      "label": "Cepat:"
     },
     "filters": {
       "aria": "Filter tiket",

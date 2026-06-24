@@ -47,11 +47,12 @@ impl TeamService {
                 r.name as role_name,
                 u.is_active, 
                 tm.created_at,
-                r.level as role_level
+                r.level as role_level,
+                tm.deleted_at
             FROM tenant_members tm
             JOIN users u ON tm.user_id = u.id
             LEFT JOIN roles r ON tm.role_id = r.id
-            WHERE tm.tenant_id = $1
+            WHERE tm.tenant_id = $1 AND tm.deleted_at IS NULL
             ORDER BY u.name
         "#;
 
@@ -67,11 +68,12 @@ impl TeamService {
                 r.name as role_name,
                 u.is_active, 
                 tm.created_at,
-                r.level as role_level
+                r.level as role_level,
+                tm.deleted_at
             FROM tenant_members tm
             JOIN users u ON tm.user_id = u.id
             LEFT JOIN roles r ON tm.role_id = r.id
-            WHERE tm.tenant_id = ?
+            WHERE tm.tenant_id = ? AND tm.deleted_at IS NULL
             ORDER BY u.name
         "#;
 
@@ -420,7 +422,7 @@ impl TeamService {
         Ok(())
     }
 
-    /// Remove member
+    /// Remove member (soft delete)
     pub async fn remove_member(
         &self,
         tenant_id: &str,
@@ -434,7 +436,7 @@ impl TeamService {
             SELECT tm.user_id::text, u.email, tm.role, tm.role_id::text
             FROM tenant_members tm
             JOIN users u ON u.id = tm.user_id
-            WHERE tm.id = $1 AND tm.tenant_id = $2
+            WHERE tm.id = $1 AND tm.tenant_id = $2 AND tm.deleted_at IS NULL
         "#,
         )
         .bind(member_id)
@@ -449,7 +451,7 @@ impl TeamService {
             SELECT tm.user_id, u.email, tm.role, tm.role_id
             FROM tenant_members tm
             JOIN users u ON u.id = tm.user_id
-            WHERE tm.id = ? AND tm.tenant_id = ?
+            WHERE tm.id = ? AND tm.tenant_id = ? AND tm.deleted_at IS NULL
         "#,
         )
         .bind(member_id)
@@ -459,17 +461,185 @@ impl TeamService {
         .map_err(|e| e.to_string())?;
 
         let (user_id, email, role_name_before, role_id_before) =
-            before.ok_or_else(|| "Member not found".to_string())?;
+            before.ok_or_else(|| "Member not found or already deleted".to_string())?;
 
-        let query = "DELETE FROM tenant_members WHERE id = $1";
-
-        sqlx::query(query)
+        #[cfg(feature = "postgres")]
+        sqlx::query("UPDATE tenant_members SET deleted_at = NOW() WHERE id = $1")
             .bind(member_id)
             .execute(&self.pool)
             .await
             .map_err(|e| e.to_string())?;
 
-        // Cleanup orphan user: if user has no other tenant_members or customer_users, delete from users
+        #[cfg(feature = "sqlite")]
+        sqlx::query("UPDATE tenant_members SET deleted_at = datetime('now') WHERE id = ?")
+            .bind(member_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        // Audit Log
+        let details = serde_json::json!({
+            "message": "Removed team member",
+            "tenant_id": tenant_id,
+            "member_id": member_id,
+            "user_id": user_id,
+            "email": email,
+            "role_name_before": role_name_before,
+            "role_id_before": role_id_before
+        })
+        .to_string();
+        self.audit_service
+            .log(
+                actor_id,
+                Some(tenant_id),
+                "TEAM_MEMBER_REMOVE",
+                "team",
+                Some(&user_id),
+                Some(details.as_str()),
+                ip_address,
+            )
+            .await;
+
+        Ok(())
+    }
+
+    /// List deleted members of a team
+    pub async fn list_deleted_members(
+        &self,
+        tenant_id: &str,
+    ) -> Result<Vec<TeamMemberWithUser>, sqlx::Error> {
+        #[cfg(feature = "postgres")]
+        let query = r#"
+            SELECT 
+                tm.id, 
+                tm.user_id, 
+                u.name, 
+                u.email, 
+                tm.role,
+                tm.role_id,
+                r.name as role_name,
+                u.is_active, 
+                tm.created_at,
+                r.level as role_level,
+                tm.deleted_at
+            FROM tenant_members tm
+            JOIN users u ON tm.user_id = u.id
+            LEFT JOIN roles r ON tm.role_id = r.id
+            WHERE tm.tenant_id = $1 AND tm.deleted_at IS NOT NULL
+            ORDER BY tm.deleted_at DESC
+        "#;
+
+        #[cfg(feature = "sqlite")]
+        let query = r#"
+            SELECT 
+                tm.id, 
+                tm.user_id, 
+                u.name, 
+                u.email, 
+                tm.role,
+                tm.role_id,
+                r.name as role_name,
+                u.is_active, 
+                tm.created_at,
+                r.level as role_level,
+                tm.deleted_at
+            FROM tenant_members tm
+            JOIN users u ON tm.user_id = u.id
+            LEFT JOIN roles r ON tm.role_id = r.id
+            WHERE tm.tenant_id = ? AND tm.deleted_at IS NOT NULL
+            ORDER BY tm.deleted_at DESC
+        "#;
+
+        sqlx::query_as::<_, TeamMemberWithUser>(query)
+            .bind(tenant_id)
+            .fetch_all(&self.pool)
+            .await
+    }
+
+    /// Restore a soft-deleted member
+    pub async fn restore_member(
+        &self,
+        tenant_id: &str,
+        member_id: &str,
+        actor_id: Option<&str>,
+        ip_address: Option<&str>,
+    ) -> Result<(), String> {
+        #[cfg(feature = "postgres")]
+        let before: Option<(String, String)> = sqlx::query_as(
+            r#"SELECT tm.user_id::text, u.email FROM tenant_members tm JOIN users u ON u.id = tm.user_id WHERE tm.id = $1 AND tm.tenant_id = $2 AND tm.deleted_at IS NOT NULL"#,
+        )
+        .bind(member_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        #[cfg(feature = "sqlite")]
+        let before: Option<(String, String)> = sqlx::query_as(
+            r#"SELECT tm.user_id, u.email FROM tenant_members tm JOIN users u ON u.id = tm.user_id WHERE tm.id = ? AND tm.tenant_id = ? AND tm.deleted_at IS NOT NULL"#,
+        )
+        .bind(member_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        let (user_id, email) = before.ok_or_else(|| "Deleted member not found".to_string())?;
+
+        sqlx::query("UPDATE tenant_members SET deleted_at = NULL WHERE id = $1")
+            .bind(member_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let details = serde_json::json!({
+            "message": "Restored team member",
+            "tenant_id": tenant_id,
+            "member_id": member_id,
+            "user_id": user_id,
+            "email": email
+        })
+        .to_string();
+        self.audit_service
+            .log(
+                actor_id,
+                Some(tenant_id),
+                "TEAM_MEMBER_RESTORE",
+                "team",
+                Some(&user_id),
+                Some(details.as_str()),
+                ip_address,
+            )
+            .await;
+
+        Ok(())
+    }
+
+    /// Permanently delete a soft-deleted member (and orphan user if applicable)
+    pub async fn hard_delete_member(
+        &self,
+        tenant_id: &str,
+        member_id: &str,
+        actor_id: Option<&str>,
+        ip_address: Option<&str>,
+    ) -> Result<(), String> {
+        let user_id: String = sqlx::query_scalar(
+            "SELECT user_id FROM tenant_members WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NOT NULL",
+        )
+        .bind(member_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Deleted member not found")?;
+
+        sqlx::query("DELETE FROM tenant_members WHERE id = $1")
+            .bind(member_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        // Cleanup orphan user
         let has_other_memberships: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM tenant_members WHERE user_id = $1)",
         )
@@ -494,24 +664,20 @@ impl TeamService {
                 .map_err(|e| e.to_string())?;
         }
 
-        // Audit Log
         let details = serde_json::json!({
-            "message": "Removed team member",
+            "message": "Permanently deleted team member",
             "tenant_id": tenant_id,
             "member_id": member_id,
-            "user_id": user_id,
-            "email": email,
-            "role_name_before": role_name_before,
-            "role_id_before": role_id_before
+            "user_id": user_id
         })
         .to_string();
         self.audit_service
             .log(
                 actor_id,
                 Some(tenant_id),
-                "TEAM_MEMBER_REMOVE",
+                "TEAM_MEMBER_HARD_DELETE",
                 "team",
-                Some(&user_id),
+                None,
                 Some(details.as_str()),
                 ip_address,
             )

@@ -196,6 +196,86 @@ pub async fn remove_team_member(
         .map_err(|e| e.to_string())
 }
 
+/// List soft-deleted members of the current team
+#[tauri::command]
+pub async fn list_deleted_team_members(
+    token: String,
+    auth: State<'_, AuthService>,
+    team_service: State<'_, TeamService>,
+) -> Result<Vec<TeamMemberWithUser>, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "team", "read")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    team_service
+        .list_deleted_members(&tenant_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Restore a soft-deleted team member
+#[tauri::command]
+pub async fn restore_team_member(
+    token: String,
+    member_id: String,
+    auth: State<'_, AuthService>,
+    team_service: State<'_, TeamService>,
+) -> Result<(), String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "team", "update")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    team_service
+        .restore_member(&tenant_id, &member_id, Some(&claims.sub), None)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Permanently delete a soft-deleted team member
+#[tauri::command]
+pub async fn hard_delete_team_member(
+    token: String,
+    member_id: String,
+    auth: State<'_, AuthService>,
+    team_service: State<'_, TeamService>,
+) -> Result<(), String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "team", "delete")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    team_service
+        .hard_delete_member(&tenant_id, &member_id, Some(&claims.sub), None)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::enforce_member_role_change_permissions;
