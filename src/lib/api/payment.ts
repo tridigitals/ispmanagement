@@ -40,14 +40,12 @@ export const payment = {
     safeInvoke('create_invoice_for_customer_subscription', {
       token: getTokenOrThrow(),
       subscriptionId,
-      subscription_id: subscriptionId,
     }),
 
   createInvoiceForInstallationWorkOrder: (workOrderId: string): Promise<Invoice> =>
     safeInvoke('create_invoice_for_installation_work_order', {
       token: getTokenOrThrow(),
       workOrderId,
-      work_order_id: workOrderId,
     }),
 
   getInvoice: (id: string): Promise<Invoice> =>
