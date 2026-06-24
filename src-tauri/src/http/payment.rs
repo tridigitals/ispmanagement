@@ -1274,11 +1274,10 @@ async fn list_bank_accounts(
         .map(|s| s.as_str())
         .or(claims.tenant_id.as_deref());
 
-    state
+    let mut accounts = state
         .payment_service
         .list_bank_accounts(tenant_id)
         .await
-        .map(Json)
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1286,7 +1285,51 @@ async fn list_bank_accounts(
                     error: e.to_string(),
                 }),
             )
-        })
+        })?;
+
+    // Also merge bank accounts from payment_manual_accounts setting (legacy JSON storage
+    // used by tenant admin settings page). Deduplicate by account_number.
+    if let Ok(Some(manual_json)) = state
+        .settings_service
+        .get_value(tenant_id, "payment_manual_accounts")
+        .await
+    {
+        if let Ok(parsed) = serde_json::from_str::<Vec<serde_json::Value>>(&manual_json) {
+            for entry in parsed {
+                let account_number = entry
+                    .get("account_number")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if accounts.iter().any(|a| a.account_number == account_number) {
+                    continue;
+                }
+                accounts.push(BankAccount {
+                    id: entry
+                        .get("id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    bank_name: entry
+                        .get("bank_name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    account_number: account_number.to_string(),
+                    account_holder: entry
+                        .get("account_holder")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    is_active: true,
+                    created_at: chrono::Utc::now(),
+                    updated_at: chrono::Utc::now(),
+                    tenant_id: tenant_id.map(|s| s.to_string()),
+                });
+            }
+        }
+    }
+
+    Ok(Json(accounts))
 }
 
 async fn create_bank_account(

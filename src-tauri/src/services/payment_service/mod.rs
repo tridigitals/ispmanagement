@@ -3044,24 +3044,24 @@ impl PaymentService {
     pub async fn list_bank_accounts(&self, tenant_id: Option<&str>) -> Result<Vec<BankAccount>, sqlx::Error> {
         #[cfg(feature = "postgres")]
         let accounts = if let Some(tid) = tenant_id {
-            sqlx::query_as("SELECT * FROM bank_accounts WHERE tenant_id = $1 OR tenant_id IS NULL ORDER BY created_at DESC")
+            sqlx::query_as("SELECT * FROM bank_accounts WHERE tenant_id = $1 ORDER BY created_at DESC")
                 .bind(tid)
                 .fetch_all(&self.pool)
                 .await?
         } else {
-            sqlx::query_as("SELECT * FROM bank_accounts WHERE tenant_id IS NULL ORDER BY created_at DESC")
+            sqlx::query_as("SELECT * FROM bank_accounts WHERE 1=0 ORDER BY created_at DESC")
                 .fetch_all(&self.pool)
                 .await?
         };
 
         #[cfg(feature = "sqlite")]
         let accounts = if let Some(tid) = tenant_id {
-            sqlx::query_as("SELECT * FROM bank_accounts WHERE tenant_id = ? OR tenant_id IS NULL ORDER BY created_at DESC")
+            sqlx::query_as("SELECT * FROM bank_accounts WHERE tenant_id = ? ORDER BY created_at DESC")
                 .bind(tid)
                 .fetch_all(&self.pool)
                 .await?
         } else {
-            sqlx::query_as("SELECT * FROM bank_accounts WHERE tenant_id IS NULL ORDER BY created_at DESC")
+            sqlx::query_as("SELECT * FROM bank_accounts WHERE 1=0 ORDER BY created_at DESC")
                 .fetch_all(&self.pool)
                 .await?
         };

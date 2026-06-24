@@ -9,7 +9,7 @@ use crate::models::{
 };
 use crate::services::{
     AuthService, BillingCollectionRunResult, BulkGenerateInvoicesResult, DuitkuPaymentMethod,
-    PaymentService, PlanService,
+    PaymentService, PlanService, SettingsService,
 };
 use access::{
     authorize_invoice_access, require_payment_manage_access, require_payment_read_access,
@@ -434,6 +434,7 @@ pub async fn list_bank_accounts(
     tenant_id: Option<String>,
     auth_service: State<'_, AuthService>,
     payment_service: State<'_, PaymentService>,
+    settings_service: State<'_, SettingsService>,
 ) -> Result<Vec<BankAccount>, String> {
     let claims = auth_service
         .validate_token(&token)
@@ -444,10 +445,52 @@ pub async fn list_bank_accounts(
     // Prefer explicit tenant_id param, fallback to claims
     let effective_tenant = tenant_id.as_deref().or(claims.tenant_id.as_deref());
 
-    payment_service
+    let mut accounts = payment_service
         .list_bank_accounts(effective_tenant)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    // Merge bank accounts from payment_manual_accounts setting (legacy JSON storage)
+    if let Ok(Some(manual_json)) = settings_service
+        .get_value(effective_tenant, "payment_manual_accounts")
+        .await
+    {
+        if let Ok(parsed) = serde_json::from_str::<Vec<serde_json::Value>>(&manual_json) {
+            for entry in parsed {
+                let account_number = entry
+                    .get("account_number")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if accounts.iter().any(|a| a.account_number == account_number) {
+                    continue;
+                }
+                accounts.push(BankAccount {
+                    id: entry
+                        .get("id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    bank_name: entry
+                        .get("bank_name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    account_number: account_number.to_string(),
+                    account_holder: entry
+                        .get("account_holder")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    is_active: true,
+                    created_at: chrono::Utc::now(),
+                    updated_at: chrono::Utc::now(),
+                    tenant_id: effective_tenant.map(|s| s.to_string()),
+                });
+            }
+        }
+    }
+
+    Ok(accounts)
 }
 
 #[tauri::command]

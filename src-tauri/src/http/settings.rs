@@ -166,7 +166,51 @@ pub async fn get_public_settings(
 
     // Fetch active bank accounts for manual payment
     let bank_accounts: Vec<BankAccountResponse> = if payment_manual_enabled {
-        let accounts = state.payment_service.list_bank_accounts(tid).await.unwrap_or_default();
+        let mut accounts = state.payment_service.list_bank_accounts(tid).await.unwrap_or_default();
+
+        // Also read payment_manual_accounts setting (legacy JSON storage used by tenant admin settings page)
+        // Merge with table results, deduplicating by account_number
+        if let Ok(Some(manual_json)) = state
+            .settings_service
+            .get_value(tid, "payment_manual_accounts")
+            .await
+        {
+            if let Ok(parsed) = serde_json::from_str::<Vec<serde_json::Value>>(&manual_json) {
+                for entry in parsed {
+                    let account_number = entry
+                        .get("account_number")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    // Skip if already present from table
+                    if accounts.iter().any(|a| a.account_number == account_number) {
+                        continue;
+                    }
+                    accounts.push(crate::models::BankAccount {
+                        id: entry
+                            .get("id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string(),
+                        bank_name: entry
+                            .get("bank_name")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string(),
+                        account_number: account_number.to_string(),
+                        account_holder: entry
+                            .get("account_holder")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string(),
+                        is_active: true,
+                        created_at: chrono::Utc::now(),
+                        updated_at: chrono::Utc::now(),
+                        tenant_id: tid.map(|s| s.to_string()),
+                    });
+                }
+            }
+        }
+
         accounts
             .into_iter()
             .filter(|a| a.is_active)
