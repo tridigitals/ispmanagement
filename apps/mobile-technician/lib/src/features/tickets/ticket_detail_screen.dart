@@ -426,12 +426,43 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
     );
   }
 
+  Future<void> _claimTicket(String ticketId) async {
+    final l10n = AppLocalizations.of(context);
+    final svc = ref.read(ticketServiceProvider);
+    final result = await svc.claimTicket(ticketId);
+    if (!mounted) return;
+    switch (result) {
+      case Success(data: _):
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(l10n.ticketClaimSuccess),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        // Refresh ticket data
+        ref.invalidate(ticketByIdProvider(widget.id));
+        ref.invalidate(ticketMessagesProvider(widget.id));
+      case Failure(exception: final e):
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(e.message),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final isp = context.isp;
     final ticketAsync = ref.watch(ticketByIdProvider(widget.id));
     final messagesAsync = ref.watch(ticketMessagesProvider(widget.id));
+    final currentUser = ref.watch(currentUserProvider);
     final dateFmt = DateFormat('d MMM yyyy HH:mm', 'id_ID');
 
     return Scaffold(
@@ -524,6 +555,30 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                           Icon(Icons.arrow_forward_ios,
                               size: 10, color: isp.accent),
                         ],
+                      ),
+                    ),
+                  ),
+                // Claim button (unassigned ticket, staff only)
+                if (ticket.isOpen &&
+                    ticket.assignedToName == null &&
+                    (currentUser?.isStaff ?? false))
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: IspSpacing.lg, vertical: IspSpacing.xs),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => _claimTicket(ticket.id),
+                        icon: const Icon(Icons.person_add_alt_1, size: 20),
+                        label: Text(l10n.ticketClaim),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.blue.shade600,
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
                     ),
                   ),

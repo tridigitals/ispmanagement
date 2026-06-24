@@ -579,6 +579,10 @@ pub async fn start_server_impl(
             "/api/support/tickets/{id}/photos",
             post(support::upload_ticket_photo),
         )
+        .route(
+            "/api/support/tickets/{id}/claim",
+            post(support::claim_support_ticket),
+        )
         // Technician GPS tracking (Sprint 2 mobile-technician)
         .route(
             "/api/technician/locations",

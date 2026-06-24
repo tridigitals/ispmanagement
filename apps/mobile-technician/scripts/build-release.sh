@@ -10,6 +10,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$PROJECT_DIR/../.." && pwd)"
 
+# Ensure flutter/dart are on PATH
+export PATH="$HOME/sdk/flutter/bin:$PATH"
+
 cd "$PROJECT_DIR"
 
 # Sentry DSN — embedded in the binary

@@ -760,7 +760,8 @@ pub async fn get_support_ticket(
             .fetch_one(&state.auth_service.pool)
             .await?;
 
-    if !can_all && ticket.created_by.as_deref() != Some(claims.sub.as_str()) {
+    let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
+    if !can_all && ticket.created_by.as_deref() != Some(claims.sub.as_str()) && !is_assignee {
         return Err(crate::error::AppError::Forbidden("Forbidden".to_string()));
     }
 
@@ -861,7 +862,8 @@ pub async fn reply_support_ticket(
         .await
         .unwrap_or(false);
 
-    if !can_all && ticket.created_by.as_deref() != Some(claims.sub.as_str()) {
+    let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
+    if !can_all && ticket.created_by.as_deref() != Some(claims.sub.as_str()) && !is_assignee {
         return Err(crate::error::AppError::Forbidden("Forbidden".to_string()));
     }
 
@@ -921,6 +923,18 @@ pub async fn reply_support_ticket(
         .bind(&id)
         .execute(&mut *tx)
         .await?;
+
+    // Auto-assign: first staff reply on unassigned ticket → claim it
+    if ticket.assigned_to.is_none() && is_field_worker_role(&claims.role) {
+        sqlx::query(
+            "UPDATE support_tickets SET assigned_to = $1, updated_at = $2 WHERE id = $3",
+        )
+        .bind(&claims.sub)
+        .bind(now)
+        .bind(&id)
+        .execute(&mut *tx)
+        .await?;
+    }
 
     let msg: SupportTicketMessage =
         sqlx::query_as("SELECT * FROM support_ticket_messages WHERE id = $1")
@@ -1540,6 +1554,102 @@ pub async fn start_support_ticket(
         status: updated.status.clone(),
         actor_id: claims.sub.clone(),
     });
+
+    Ok(Json(updated))
+}
+
+/// POST /api/support/tickets/:id/claim
+/// Field worker claims an unassigned ticket. Race-condition safe:
+/// UPDATE … WHERE assigned_to IS NULL ensures only one worker can claim.
+pub async fn claim_support_ticket(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<SupportTicket>, crate::error::AppError> {
+    let claims = auth_claims(&state, &headers).await?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or(crate::error::AppError::Validation(
+            "Tenant context required".to_string(),
+        ))?;
+
+    if !is_field_worker_role(&claims.role) {
+        return Err(crate::error::AppError::Forbidden(
+            "Only field workers can claim tickets".to_string(),
+        ));
+    }
+
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "support", "reply")
+        .await?;
+
+    let now = Utc::now();
+
+    let updated: SupportTicket = sqlx::query_as(
+        r#"
+        UPDATE support_tickets
+        SET assigned_to = $1, updated_at = $2
+        WHERE id = $3 AND tenant_id = $4 AND assigned_to IS NULL AND status NOT IN ('closed', 'resolved')
+        RETURNING *
+        "#,
+    )
+    .bind(&claims.sub)
+    .bind(now)
+    .bind(&id)
+    .bind(&tenant_id)
+    .fetch_optional(&state.auth_service.pool)
+    .await?
+    .ok_or_else(|| {
+        crate::error::AppError::Validation(
+            "Ticket is already assigned to someone else or has been closed".to_string(),
+        )
+    })?;
+
+    // Audit
+    let audit_details = serde_json::json!({
+        "action": "claim",
+        "assigned_to": claims.sub,
+    })
+    .to_string();
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "claim",
+            "support_ticket",
+            Some(&updated.id),
+            Some(&audit_details),
+            None,
+        )
+        .await;
+
+    // Broadcast assignment change
+    state.ws_hub.broadcast(crate::http::WsEvent::SupportTicketUpdated {
+        ticket_id: updated.id.clone(),
+        status: updated.status.clone(),
+        actor_id: claims.sub.clone(),
+    });
+
+    // Notify ticket owner
+    if let Some(ref owner) = updated.created_by {
+        if owner != &claims.sub {
+            let _ = state
+                .notification_service
+                .create_notification(
+                    owner.clone(),
+                    Some(tenant_id.clone()),
+                    "Ticket assigned".to_string(),
+                    updated.subject.clone(),
+                    "info".to_string(),
+                    "support".to_string(),
+                    Some(format!("/support/{}", updated.id)),
+                )
+                .await;
+        }
+    }
 
     Ok(Json(updated))
 }

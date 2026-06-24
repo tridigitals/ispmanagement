@@ -246,6 +246,18 @@ class TicketService {
     });
   }
 
+  /// Claim an unassigned ticket — race-safe (UPDATE WHERE assigned_to IS NULL).
+  /// Returns the updated ticket if successful, or an error if already assigned.
+  Future<ServiceResult<TicketModel>> claimTicket(String ticketId) async {
+    return _execute(() async {
+      final res = await dio.post<Map<String, dynamic>>(
+        ApiEndpoints.ticketClaim(ticketId),
+        data: const <String, dynamic>{},
+      );
+      return TicketModel.fromJson(res.data ?? const {});
+    });
+  }
+
   Future<ServiceResult<T>> _execute<T>(Future<T> Function() body) async {
     try {
       final result = await body();

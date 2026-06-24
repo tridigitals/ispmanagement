@@ -637,6 +637,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ticketResolved => 'Ticket resolved';
 
   @override
+  String get ticketClaim => 'Ambil Tiket';
+
+  @override
+  String get ticketClaimSuccess => 'Tiket berhasil diambil, sekarang di-assign ke Anda';
+
+  @override
   String get ticketConversation => 'Conversation';
 
   @override

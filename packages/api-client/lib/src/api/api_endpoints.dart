@@ -90,10 +90,11 @@ class ApiEndpoints {
   static const String ticketStats = '/api/support/tickets/stats';
 
   // ── Sprint 3: Ticket Actions (mobile-technician app) ──
-  // Backend: /api/support/tickets/{id}/{start,resolve,photos}
+  // Backend: /api/support/tickets/{id}/{start,resolve,photos,claim}
   static String ticketStart(String id) => '/api/support/tickets/$id/start';
   static String ticketResolve(String id) => '/api/support/tickets/$id/resolve';
   static String ticketPhotoUpload(String id) => '/api/support/tickets/$id/photos';
+  static String ticketClaim(String id) => '/api/support/tickets/$id/claim';
 
   // ── Technician GPS Tracking (Sprint 2) ──
   // Backend: /api/technician/locations (src-tauri/src/commands/technician_location.rs)

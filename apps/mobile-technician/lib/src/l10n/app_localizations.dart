@@ -1331,6 +1331,18 @@ abstract class AppLocalizations {
   /// **'Ticket resolved'**
   String get ticketResolved;
 
+  /// No description provided for @ticketClaim.
+  ///
+  /// In en, this message translates to:
+  /// **'Ambil Tiket'**
+  String get ticketClaim;
+
+  /// No description provided for @ticketClaimSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Tiket berhasil diambil, sekarang di-assign ke Anda'**
+  String get ticketClaimSuccess;
+
   /// No description provided for @ticketConversation.
   ///
   /// In en, this message translates to:
