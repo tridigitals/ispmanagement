@@ -4,7 +4,7 @@ import type { AuthSettings, EmailVerificationReadiness, Setting, SmtpConnectionT
 export const settings = {
   getAll: (): Promise<Setting[]> => safeInvoke('get_all_settings', { token: getTokenOrThrow() }),
 
-  getPublicSettings: (): Promise<{
+  getPublicSettings: (tenantId?: string): Promise<{
     app_name?: string;
     app_description?: string;
     default_locale?: string;
@@ -20,7 +20,7 @@ export const settings = {
     payment_duitku_is_production?: boolean;
     payment_duitku_payment_methods?: string;
     payment_manual_enabled?: boolean;
-  }> => safeInvoke('get_public_settings'),
+  }> => safeInvoke('get_public_settings', { tenant_id: tenantId }),
 
   getAuthSettings: (): Promise<AuthSettings> => safeInvoke('get_auth_settings'),
 

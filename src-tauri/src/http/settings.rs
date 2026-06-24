@@ -62,6 +62,7 @@ pub struct EmailVerificationReadiness {
 pub async fn get_public_settings(
     State(state): State<AppState>,
     headers: HeaderMap,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<PublicSettings>, crate::error::AppError> {
     // Try to extract tenant_id from auth token (optional — public endpoint)
     let tenant_id_from_token = headers
@@ -80,6 +81,13 @@ pub async fn get_public_settings(
     } else {
         None
     };
+
+    // Priority: query param tenant_id > token tenant_id
+    let effective_tenant_id = params
+        .get("tenant_id")
+        .filter(|s| !s.is_empty())
+        .cloned()
+        .or(tenant_id_from_token);
 
     // Platform-level settings (global) — app identity, locale, maintenance
     let app_name = state.settings_service.get_value(None, "app_name").await?;
@@ -116,7 +124,7 @@ pub async fn get_public_settings(
 
     // Payment — tenant-level ONLY (no fallback to global platform)
     // Payments must go to tenant's own gateway account, not platform's
-    let tid = tenant_id_from_token.as_deref();
+    let tid = effective_tenant_id.as_deref();
     let midtrans_enabled_str = state
         .settings_service
         .get_value(tid, "payment_midtrans_enabled")

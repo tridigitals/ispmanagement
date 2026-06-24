@@ -106,8 +106,11 @@
 
   onMount(async () => {
     try {
-      // Load Public Settings (contains payment config)
-      publicSettings = await api.settings.getPublicSettings();
+      // Load Invoice FIRST to get merchant_id for tenant context
+      invoice = await api.payment.getInvoice(invoiceId);
+
+      // Load Public Settings (filtered by invoice's tenant)
+      publicSettings = await api.settings.getPublicSettings(invoice?.merchant_id || undefined);
 
       midtransEnabled = !!publicSettings.payment_midtrans_enabled;
       duitkuEnabled = !!publicSettings.payment_duitku_enabled;
@@ -121,9 +124,6 @@
       if (midtransEnabled) paymentMethod = 'midtrans';
       else if (duitkuEnabled) paymentMethod = 'duitku';
       else if (manualEnabled) paymentMethod = 'manual';
-
-      // Load Invoice
-      invoice = await api.payment.getInvoice(invoiceId);
 
       // If invoice currency is not IDR, disable online gateways (backend also enforces this)
       if (invoice?.currency_code && String(invoice.currency_code).toUpperCase() !== 'IDR') {

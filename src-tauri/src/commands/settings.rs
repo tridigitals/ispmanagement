@@ -86,11 +86,12 @@ pub struct EmailVerificationReadiness {
 #[tauri::command]
 pub async fn get_public_settings(
     token: Option<String>,
+    tenant_id: Option<String>,
     settings_service: State<'_, SettingsService>,
     auth_service: State<'_, AuthService>,
 ) -> Result<PublicSettings, String> {
     // Try to extract tenant_id from token (optional — public endpoint)
-    let tenant_id: Option<String> = if let Some(t) = token {
+    let token_tenant_id: Option<String> = if let Some(t) = token {
         auth_service
             .validate_token(&t)
             .await
@@ -99,7 +100,9 @@ pub async fn get_public_settings(
     } else {
         None
     };
-    let tid = tenant_id.as_deref();
+    // Priority: explicit tenant_id param > token tenant_id
+    let effective_tenant_id = tenant_id.filter(|s| !s.is_empty()).or(token_tenant_id);
+    let tid = effective_tenant_id.as_deref();
 
     // Platform-level settings (global)
     let app_name = settings_service
