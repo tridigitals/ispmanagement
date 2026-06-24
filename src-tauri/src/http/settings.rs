@@ -61,8 +61,27 @@ pub struct EmailVerificationReadiness {
 
 pub async fn get_public_settings(
     State(state): State<AppState>,
+    headers: HeaderMap,
 ) -> Result<Json<PublicSettings>, crate::error::AppError> {
-    // Public settings are always global (None tenant_id)
+    // Try to extract tenant_id from auth token (optional — public endpoint)
+    let tenant_id_from_token = headers
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .map(|token| token.to_string());
+
+    let tenant_id_from_token = if let Some(token) = tenant_id_from_token {
+        state
+            .auth_service
+            .validate_token(&token)
+            .await
+            .ok()
+            .and_then(|c| c.tenant_id)
+    } else {
+        None
+    };
+
+    // Platform-level settings (global) — app identity, locale, maintenance
     let app_name = state.settings_service.get_value(None, "app_name").await?;
     let app_description = state
         .settings_service
@@ -95,34 +114,36 @@ pub async fn get_public_settings(
         .get_value(None, "maintenance_message")
         .await?;
 
-    // Payment
+    // Payment — tenant-level ONLY (no fallback to global platform)
+    // Payments must go to tenant's own gateway account, not platform's
+    let tid = tenant_id_from_token.as_deref();
     let midtrans_enabled_str = state
         .settings_service
-        .get_value(None, "payment_midtrans_enabled")
+        .get_value(tid, "payment_midtrans_enabled")
         .await?;
     let midtrans_client_key = state
         .settings_service
-        .get_value(None, "payment_midtrans_client_key")
+        .get_value(tid, "payment_midtrans_client_key")
         .await?;
     let midtrans_is_prod_str = state
         .settings_service
-        .get_value(None, "payment_midtrans_is_production")
+        .get_value(tid, "payment_midtrans_is_production")
         .await?;
     let duitku_enabled_str = state
         .settings_service
-        .get_value(None, "payment_duitku_enabled")
+        .get_value(tid, "payment_duitku_enabled")
         .await?;
     let duitku_is_prod_str = state
         .settings_service
-        .get_value(None, "payment_duitku_is_production")
+        .get_value(tid, "payment_duitku_is_production")
         .await?;
     let duitku_payment_methods = state
         .settings_service
-        .get_value(None, "payment_duitku_payment_methods")
+        .get_value(tid, "payment_duitku_payment_methods")
         .await?;
     let manual_enabled_str = state
         .settings_service
-        .get_value(None, "payment_manual_enabled")
+        .get_value(tid, "payment_manual_enabled")
         .await?;
 
     let maintenance_mode = maintenance_mode_str.as_deref() == Some("true");

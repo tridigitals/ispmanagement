@@ -231,16 +231,11 @@ class AuthService {
     return token.isNotEmpty;
   }
 
-  /// Fetch public settings from /api/settings/public (no auth required).
+  /// Fetch public settings from /api/settings/public.
+  /// Sends auth token so backend can resolve tenant-level payment settings.
   Future<ServiceResult<PublicSettingsModel>> settingsPublic() async {
     return _execute(() async {
-      // Use a plain Dio without auth interceptor for public endpoint
-      final plainDio = Dio(BaseOptions(
-        baseUrl: dio.options.baseUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
-      ));
-      final response = await plainDio.get(ApiEndpoints.publicSettings);
+      final response = await dio.get(ApiEndpoints.publicSettings);
       final data = response.data as Map<String, dynamic>;
       return PublicSettingsModel.fromJson(data);
     });

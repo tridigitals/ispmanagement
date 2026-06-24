@@ -85,8 +85,23 @@ pub struct EmailVerificationReadiness {
 
 #[tauri::command]
 pub async fn get_public_settings(
+    token: Option<String>,
     settings_service: State<'_, SettingsService>,
+    auth_service: State<'_, AuthService>,
 ) -> Result<PublicSettings, String> {
+    // Try to extract tenant_id from token (optional — public endpoint)
+    let tenant_id: Option<String> = if let Some(t) = token {
+        auth_service
+            .validate_token(&t)
+            .await
+            .ok()
+            .and_then(|c| c.tenant_id)
+    } else {
+        None
+    };
+    let tid = tenant_id.as_deref();
+
+    // Platform-level settings (global)
     let app_name = settings_service
         .get_value(None, "app_name")
         .await
@@ -122,33 +137,33 @@ pub async fn get_public_settings(
         .await
         .map_err(|e| e.to_string())?;
 
-    // Payment Fetch
+    // Payment — tenant-level ONLY (no fallback to global platform)
     let midtrans_enabled_str = settings_service
-        .get_value(None, "payment_midtrans_enabled")
+        .get_value(tid, "payment_midtrans_enabled")
         .await
         .unwrap_or_default();
     let payment_midtrans_client_key = settings_service
-        .get_value(None, "payment_midtrans_client_key")
+        .get_value(tid, "payment_midtrans_client_key")
         .await
         .unwrap_or_default();
     let midtrans_prod_str = settings_service
-        .get_value(None, "payment_midtrans_is_production")
+        .get_value(tid, "payment_midtrans_is_production")
         .await
         .unwrap_or_default();
     let duitku_enabled_str = settings_service
-        .get_value(None, "payment_duitku_enabled")
+        .get_value(tid, "payment_duitku_enabled")
         .await
         .unwrap_or_default();
     let duitku_prod_str = settings_service
-        .get_value(None, "payment_duitku_is_production")
+        .get_value(tid, "payment_duitku_is_production")
         .await
         .unwrap_or_default();
     let payment_duitku_payment_methods = settings_service
-        .get_value(None, "payment_duitku_payment_methods")
+        .get_value(tid, "payment_duitku_payment_methods")
         .await
         .unwrap_or_default();
     let manual_enabled_str = settings_service
-        .get_value(None, "payment_manual_enabled")
+        .get_value(tid, "payment_manual_enabled")
         .await
         .unwrap_or_default();
 
