@@ -14,6 +14,7 @@
   import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
   import { toast } from '$lib/stores/toast';
   import { t } from 'svelte-i18n';
+  import { get } from 'svelte/store';
   import { formatDateTime } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
 
@@ -157,6 +158,16 @@
     if (assignedFilter === v) return;
     assignedFilter = v;
     void load(true);
+  }
+
+  async function quickClaim(item: any) {
+    try {
+      await api.support.claim(item.id);
+      toast.success($t('support.toasts.claimed'));
+      await load();
+    } catch (e: any) {
+      toast.error($t('support.toasts.claim_failed', { message: e.message || '' }));
+    }
   }
 </script>
 
@@ -324,14 +335,26 @@
           {item.message_count}
         </span>
       {:else if key === 'actions'}
-        <button
-          class="icon-btn"
-          type="button"
-          onclick={() => open(item.id)}
-          title={$t('common.open') || 'Open'}
-        >
-          <Icon name="arrow-right" size={16} />
-        </button>
+        <div class="action-buttons">
+          {#if !item.assigned_to && item.status !== 'closed' && item.status !== 'resolved'}
+            <button
+              class="icon-btn claim-quick"
+              type="button"
+              onclick={(e) => { e.stopPropagation(); quickClaim(item); }}
+              title={$t('support.actions.claim')}
+            >
+              <Icon name="user-plus" size={14} />
+            </button>
+          {/if}
+          <button
+            class="icon-btn"
+            type="button"
+            onclick={() => open(item.id)}
+            title={$t('common.open') || 'Open'}
+          >
+            <Icon name="arrow-right" size={16} />
+          </button>
+        </div>
       {:else}
         {item[key] ?? ''}
       {/if}
@@ -681,6 +704,23 @@
   .icon-btn:hover {
     border-color: rgba(99, 102, 241, 0.35);
     color: var(--color-primary);
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .claim-quick {
+    color: #3b82f6;
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+
+  .claim-quick:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.5);
+    color: #60a5fa;
   }
 
   .spinner-sm {

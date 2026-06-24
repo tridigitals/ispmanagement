@@ -25,6 +25,7 @@
   let loading = $state(true);
   let saving = $state(false);
   let sending = $state(false);
+  let claiming = $state(false);
   let detail = $state<SupportTicketDetail | null>(null);
   const isClosed = $derived(detail?.ticket?.status === 'closed');
 
@@ -142,6 +143,21 @@
     }
   }
 
+  async function claimTicket() {
+    if (!detail?.ticket) return;
+    claiming = true;
+    try {
+      const updated = await api.support.claim(detail.ticket.id);
+      detail = { ...detail, ticket: updated as any };
+      assignedTo = updated.assigned_to || null;
+      toast.success($t('support.toasts.claimed'));
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    } finally {
+      claiming = false;
+    }
+  }
+
   async function sendReply() {
     if (isClosed) {
       toast.error(get(t)('support.toasts.ticket_closed') || 'Ticket is closed');
@@ -196,9 +212,9 @@
         goto(`/admin/customers/${sub.customer_id}`);
       }
     } catch (e: any) {
-      toast.error(get(t)('common.error') || e?.message || 'Failed to load subscription');
+      toast.error($t('support.toasts.claim_failed', { message: e.message || '' }));
+      claiming = false;
     }
-  }
 </script>
 
 <div class="page-content fade-in">
@@ -296,6 +312,15 @@
               options={memberOptions}
               disabled={!canChangeAssignee}
             />
+            {#if !detail.ticket.assigned_to && !isClosed}
+              <button
+                class="btn primary claim-btn"
+                onclick={claimTicket}
+                disabled={claiming}
+              >
+                {claiming ? $t('support.actions.claiming') : $t('support.actions.claim')}
+              </button>
+            {/if}
             {#if !canChangeAssignee}
               <p class="hint">{$t('admin.support.hints.cannot_assign') || 'Hanya admin/NOC/Planner yang bisa mengubah assignee.'}</p>
             {/if}
@@ -662,6 +687,31 @@
     margin: 0;
     color: var(--text-secondary);
     font-size: 0.85rem;
+  }
+
+  .claim-btn {
+    width: 100%;
+    margin-top: 0.5rem;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border: none;
+    color: white;
+    padding: 0.6rem 1rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .claim-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  .claim-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   .textarea {

@@ -1574,12 +1574,6 @@ pub async fn claim_support_ticket(
             "Tenant context required".to_string(),
         ))?;
 
-    if !is_field_worker_role(&claims.role) {
-        return Err(crate::error::AppError::Forbidden(
-            "Only field workers can claim tickets".to_string(),
-        ));
-    }
-
     state
         .auth_service
         .check_permission(&claims.sub, &tenant_id, "support", "reply")

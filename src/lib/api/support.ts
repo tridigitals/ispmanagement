@@ -97,6 +97,10 @@ export const support = {
       comment,
     }),
 
+  /** Claim an unassigned ticket (assign to current user). */
+  claim: (id: string): Promise<SupportTicket> =>
+    safeInvoke('claim_support_ticket', { token: getTokenOrThrow(), id }),
+
   /** List team members eligible for ticket assignment (role_level >= 25). */
   listAssignees: (): Promise<TeamMember[]> =>
     safeInvoke('list_support_assignees', { token: getTokenOrThrow() }),

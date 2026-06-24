@@ -43,7 +43,9 @@
     "create_failed": "Create failed: {message}",
     "replied": "Reply sent",
     "reply_failed": "Reply failed: {message}",
-    "ticket_closed": "Ticket is closed"
+    "ticket_closed": "Ticket is closed",
+    "claimed": "Ticket claimed successfully",
+    "claim_failed": "Failed to claim ticket: {message}"
   },
   "status": {
     "open": "Open",
@@ -82,6 +84,10 @@
   },
   "satisfaction": {
     "title": "Satisfaction Rating"
+  },
+  "actions": {
+    "claim": "Claim Ticket",
+    "claiming": "Claiming..."
   },
   "create": {
     "title": "Create Ticket"
