@@ -38,6 +38,16 @@ class _State extends ConsumerState<OnboardingScreen> {
       body: 'Buat tiket dukungan dan lacak status perbaikan secara real-time.',
       color: const Color(0xFFF59E0B), // warning
     ),
+    // Permission page — explains why notifications matter before the
+    // actual system permission dialog fires in PermissionsScreen.
+    _OnboardPage(
+      icon: Icons.notifications_active_rounded,
+      title: 'Tetap Terinformasi',
+      body:
+          'Aktifkan notifikasi untuk menerima tiket baru, update work order, dan info penting saat di lapangan.',
+      color: const Color(0xFFEF4444), // danger/red — draws attention
+      isLast: true, // signals that _completeOnboarding navigates to /permissions
+    ),
   ];
 
   Future<void> _completeOnboarding() async {
@@ -51,7 +61,8 @@ class _State extends ConsumerState<OnboardingScreen> {
     // Update Riverpod provider so router redirect knows onboarding is done
     if (!mounted) return;
     ref.read(onboardingCompletedProvider.notifier).state = true;
-    context.go('/login');
+    // Navigate to permissions screen — this is the NEW final step of onboarding
+    context.go('/permissions');
   }
 
   Future<void> _next() async {
@@ -113,8 +124,8 @@ class _State extends ConsumerState<OnboardingScreen> {
             Padding(
               padding: const EdgeInsets.all(IspSpacing.lg),
               child: IspPrimaryButton(
-                label: isLast ? 'Mulai' : 'Lanjut',
-                icon: isLast ? Icons.check : Icons.arrow_forward,
+                label: isLast ? 'Aktifkan' : 'Lanjut',
+                icon: isLast ? Icons.notifications_active : Icons.arrow_forward,
                 onPressed: _next,
               ),
             ),
@@ -132,11 +143,13 @@ class _OnboardPage extends StatelessWidget {
     required this.title,
     required this.body,
     required this.color,
+    this.isLast = false, // if true, onboarding navigates to /permissions
   });
   final IconData icon;
   final String title;
   final String body;
   final Color color;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {

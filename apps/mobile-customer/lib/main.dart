@@ -75,7 +75,7 @@ void main() {
   Timer(const Duration(seconds: 8), () {
     if (!_appStarted) {
       debugPrint('[safety] 8s elapsed — forcing app start without services');
-      _startApp(null, false, initError: 'Initialization timeout (8s)');
+      _startApp(null, false, false, initError: 'Initialization timeout (8s)');
     }
   });
 
@@ -144,6 +144,7 @@ Future<void> _initServices() async {
   }
 
   final onboardingDone = prefs?.getBool('onboarding_completed') ?? false;
+  final permissionsDone = prefs?.getBool('permissions_completed') ?? false;
 
   // ── Sentry (optional) ──
   if (_sentryDsn.isNotEmpty) {
@@ -167,29 +168,31 @@ Future<void> _initServices() async {
             return event;
           };
         },
-        appRunner: () => _startApp(prefs, onboardingDone, initError: initError),
+        appRunner: () => _startApp(prefs, onboardingDone, permissionsDone, initError: initError),
       );
     } catch (e) {
       debugPrint('[init] Sentry init failed: $e');
-      _startApp(prefs, onboardingDone, initError: initError);
+      _startApp(prefs, onboardingDone, permissionsDone, initError: initError);
     }
   } else {
-    _startApp(prefs, onboardingDone, initError: initError);
+    _startApp(prefs, onboardingDone, permissionsDone, initError: initError);
   }
 }
 
 /// Start the real app. Safe to call multiple times (idempotent).
 void _startApp(
   SharedPreferences? prefs,
-  bool onboardingDone, {
+  bool onboardingDone,
+  bool permissionsDone, {
   String? initError,
 }) {
   if (_appStarted) return; // Already started (by timer or by _initServices)
   _appStarted = true;
-  debugPrint('[start] App starting — onboardingDone=$onboardingDone, error=$initError');
+  debugPrint('[start] App starting — onboardingDone=$onboardingDone, permissionsDone=$permissionsDone, error=$initError');
 
   final List<Override> overrides = [
     onboardingCompletedProvider.overrideWith((ref) => onboardingDone),
+    permissionsCompletedProvider.overrideWith((ref) => permissionsDone),
   ];
 
   // Only override SharedPreferences if we actually got an instance.

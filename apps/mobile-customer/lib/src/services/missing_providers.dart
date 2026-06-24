@@ -110,3 +110,6 @@ class PersistedBoolNotifier extends Notifier<bool> {
 }
 
 final onboardingCompletedProvider = StateProvider<bool>((ref) => false);
+
+/// Tracks whether the permission request screen has been shown.
+final permissionsCompletedProvider = StateProvider<bool>((ref) => false);

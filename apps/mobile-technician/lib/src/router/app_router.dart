@@ -13,6 +13,7 @@ import '../features/faq/faq_screen.dart';
 import '../features/home/home_shell.dart';
 import '../features/notifications/notification_inbox_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
+import '../features/permissions/permissions_screen.dart';
 import '../features/profile/change_password_screen.dart';
 import '../features/profile/edit_profile_screen.dart';
 import '../features/profile/profile_screen.dart';
@@ -36,20 +37,26 @@ GoRouter buildAppRouter({
       final auth = container.read(authControllerProvider);
       final loggedIn = auth.isAuthenticated;
       final onboardingDone = container.read(onboardingCompletedProvider);
+      final permissionsDone = container.read(permissionsCompletedProvider);
       final loc = state.matchedLocation;
-      final isPublic =
-          loc == '/login' || loc == '/forgot-password' || loc == '/onboarding' || loc == '/loading';
+      final isPublic = loc == '/login' || loc == '/forgot-password'
+          || loc == '/onboarding' || loc == '/loading' || loc == '/permissions';
 
-      // First-run gate
+      // First-run gate: onboarding
       if (!onboardingDone && loc != '/onboarding') {
         return '/onboarding';
       }
 
+      // Permissions gate: after onboarding, force /permissions
+      if (onboardingDone && !permissionsDone && loc != '/permissions') {
+        return '/permissions';
+      }
+
       // Auth gate
-      if (!loggedIn && !isPublic && loc != '/onboarding') {
+      if (!loggedIn && !isPublic && loc != '/onboarding' && loc != '/permissions') {
         return '/login';
       }
-      if (loggedIn && (loc == '/login' || loc == '/onboarding')) {
+      if (loggedIn && (loc == '/login' || loc == '/onboarding' || loc == '/permissions')) {
         return '/';
       }
       return null;
@@ -58,6 +65,10 @@ GoRouter buildAppRouter({
       GoRoute(
         path: '/onboarding',
         builder: (_, __) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: '/permissions',
+        builder: (_, __) => const PermissionsScreen(),
       ),
       GoRoute(
         path: '/login',
