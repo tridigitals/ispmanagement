@@ -845,11 +845,13 @@
     pickerIndex = next.pickerIndex;
     pickerRouterId = next.pickerRouterId;
     persistConfig();
+    schedulePersistRemote();
   }
 
   function clearSlot(idx: number) {
     slotsAll = clearSlotState(slotsAll, idx).slotsAll;
     persistConfig();
+    schedulePersistRemote();
   }
 
   async function loadInterfaces(routerId: string) {

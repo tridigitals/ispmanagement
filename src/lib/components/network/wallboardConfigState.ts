@@ -31,7 +31,11 @@ export function applyRemoteWallboardConfigState(
   },
 ) {
   if (conf.layout) setters.setLayout(conf.layout);
-  if (conf.slotsAll) setters.setSlotsAll(conf.slotsAll);
+  // Only overwrite local slots if remote has at least one real (non-null) slot.
+  // Remote returns all-nulls when no slots were ever persisted — don't clobber local state.
+  if (conf.slotsAll && conf.slotsAll.some((s) => s != null)) {
+    setters.setSlotsAll(conf.slotsAll);
+  }
   setters.setRemoteLoaded(conf.remoteLoaded);
 }
 
