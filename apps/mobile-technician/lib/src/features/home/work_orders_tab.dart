@@ -7,6 +7,7 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../services/service_providers.dart' show workOrderServiceProvider;
+import '../../services/settings_providers.dart' show currentTabProvider;
 
 class WorkOrdersTab extends ConsumerStatefulWidget {
   const WorkOrdersTab({super.key});
@@ -66,6 +67,16 @@ class _WorkOrdersTabState extends ConsumerState<WorkOrdersTab> {
       _statusFilter = status;
       _initialLoaded = false;
       _items.clear();
+    });
+    _load();
+  }
+
+  void _refreshForTabActivation() {
+    setState(() {
+      _items.clear();
+      _initialLoaded = false;
+      _error = null;
+      _statusFilter = null;
     });
     _load();
   }
@@ -254,6 +265,13 @@ class _WorkOrdersTabState extends ConsumerState<WorkOrdersTab> {
 
   @override
   Widget build(BuildContext context) {
+    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
+    ref.listen(currentTabProvider, (prev, next) {
+      if (next == 2 && prev != next) {
+        _refreshForTabActivation();
+      }
+    });
+
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
 

@@ -10,6 +10,7 @@ import '../../l10n/app_localizations.dart';
 import '../../services/auth_providers.dart';
 import '../../services/missing_providers.dart';
 import '../../services/notifications_providers.dart' show unreadNotificationsCountProvider;
+import '../../services/settings_providers.dart' show currentTabProvider;
 
 import '../../theme/app_theme.dart';
 import '../../utils/loading_skeleton.dart';
@@ -35,7 +36,14 @@ class HomeTab extends ConsumerStatefulWidget {
 class _HomeTabState extends ConsumerState<HomeTab> {
   @override
   Widget build(BuildContext context) {
-
+    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
+    ref.listen(currentTabProvider, (prev, next) {
+      if (next == 0 && prev != next) {
+        ref.invalidate(mySubscriptionsProvider);
+        ref.invalidate(myInvoicesProvider);
+        ref.invalidate(unreadNotificationsCountProvider);
+      }
+    });
 
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);

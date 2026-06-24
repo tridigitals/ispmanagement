@@ -3,7 +3,7 @@
   import { fade, slide } from 'svelte/transition';
 
   let {
-    value = $bindable(''),
+    value = $bindable(),
     options = [],
     placeholder = 'Select option',
     label = '',
@@ -79,7 +79,7 @@
     {disabled}
     {id}
   >
-    <span class="selected-text {value === '' ? 'placeholder' : ''}">
+    <span class="selected-text {!value && value !== 0 ? 'placeholder' : ''}">
       {selectedLabel}
     </span>
     <div class="icon-wrapper {isOpen ? 'rotate' : ''}">

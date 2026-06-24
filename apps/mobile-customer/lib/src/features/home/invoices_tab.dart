@@ -8,6 +8,7 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../services/service_providers.dart';
+import '../../services/settings_providers.dart' show currentTabProvider;
 import '../../theme/app_theme.dart';
 
 class InvoicesTab extends ConsumerStatefulWidget {
@@ -74,6 +75,17 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
     }
   }
 
+  void _refreshForTabActivation() {
+    setState(() {
+      _items.clear();
+      _page = 1;
+      _hasMore = true;
+      _initialLoaded = false;
+      _initialError = null;
+    });
+    _loadInitial();
+  }
+
   bool _onScroll(Notification notification) {
     if (notification is ScrollNotification &&
         notification.metrics.extentAfter <
@@ -85,6 +97,13 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
 
   @override
   Widget build(BuildContext context) {
+    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
+    ref.listen(currentTabProvider, (prev, next) {
+      if (next == 2 && prev != next) {
+        _refreshForTabActivation();
+      }
+    });
+
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
 

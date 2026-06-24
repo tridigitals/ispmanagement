@@ -7,6 +7,7 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../services/service_providers.dart' show ticketServiceProvider;
+import '../../services/settings_providers.dart' show currentTabProvider;
 import '../../theme/app_theme.dart';
 import '../tickets/ticket_l10n.dart';
 
@@ -94,6 +95,17 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
       _items.clear();
       _page = 1;
       _hasMore = true;
+    });
+    _loadInitial();
+  }
+
+  void _refreshForTabActivation() {
+    setState(() {
+      _items.clear();
+      _page = 1;
+      _hasMore = true;
+      _initialLoaded = false;
+      _initialError = null;
     });
     _loadInitial();
   }
@@ -261,6 +273,13 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
 
   @override
   Widget build(BuildContext context) {
+    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
+    ref.listen(currentTabProvider, (prev, next) {
+      if (next == 1 && prev != next) {
+        _refreshForTabActivation();
+      }
+    });
+
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
 

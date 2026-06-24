@@ -35,6 +35,15 @@ class HomeTab extends ConsumerStatefulWidget {
 class _HomeTabState extends ConsumerState<HomeTab> {
   @override
   Widget build(BuildContext context) {
+    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
+    ref.listen(currentTabProvider, (prev, next) {
+      if (next == 0 && prev != next) {
+        ref.invalidate(_dashboardProvider);
+        ref.invalidate(_todayTasksProvider);
+        ref.invalidate(unreadNotificationsCountProvider);
+      }
+    });
+
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
     final user = ref.watch(currentUserProvider);
