@@ -71,11 +71,23 @@
     }
   }
 
-  async function loadRemoteLayout() {
+  async function loadRemoteAll() {
     if (!canUseTenantSettings) return;
     try {
-      const rl = await api.settings.getValue(SETTINGS_LAYOUT_KEY);
+      const [rl, rm, rs, sf, pm] = await Promise.all([
+        api.settings.getValue(SETTINGS_LAYOUT_KEY),
+        api.settings.getValue(ROTATE_MODE_KEY),
+        api.settings.getValue(ROTATE_MS_KEY),
+        api.settings.getValue(STATUS_FILTER_KEY),
+        api.settings.getValue(POLL_MS_KEY),
+      ]);
       if (isLayoutPreset(rl)) layout = rl;
+      if (isRotateMode(rm)) rotateMode = rm;
+      const rms = Number(rs || 10000);
+      if ((WALLBOARD_ROTATE_MS_OPTIONS as readonly number[]).includes(rms)) rotateMs = rms;
+      if (isStatusFilter(sf)) statusFilter = sf;
+      const pms = Number(pm || 1000);
+      if ((WALLBOARD_POLL_MS_OPTIONS as readonly number[]).includes(pms)) pollMs = pms;
     } catch {
       // ignore
     }
@@ -110,7 +122,15 @@
       saveLocal();
       if (canUseTenantSettings) {
         try {
-          await api.settings.upsert(SETTINGS_LAYOUT_KEY, layout, 'Wallboard layout preset (tenant scoped)');
+          await Promise.all([
+            api.settings.upsert(SETTINGS_LAYOUT_KEY, layout, 'Wallboard layout preset (tenant scoped)'),
+            api.settings.upsert(ROTATE_MODE_KEY, rotateMode, 'Wallboard rotate mode'),
+            api.settings.upsert(ROTATE_MS_KEY, String(rotateMs), 'Wallboard rotate interval (ms)'),
+            api.settings.upsert(STATUS_FILTER_KEY, statusFilter, 'Wallboard status filter'),
+            api.settings.upsert(POLL_MS_KEY, String(pollMs), 'Wallboard poll interval (ms)'),
+            api.settings.upsert(KEEP_AWAKE_KEY, keepAwake ? 'true' : 'false', 'Wallboard keep awake'),
+            api.settings.upsert(FOCUS_MODE_KEY, focusMode ? 'true' : 'false', 'Wallboard focus mode'),
+          ]);
         } catch {
           // remote save best effort
         }
@@ -135,7 +155,7 @@
     }
     document.body.classList.add('wallboard-settings');
     loadLocal();
-    void loadRemoteLayout();
+    void loadRemoteAll();
   });
 
   onDestroy(() => {
