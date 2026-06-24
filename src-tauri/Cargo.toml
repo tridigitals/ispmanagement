@@ -135,7 +135,7 @@ regex = "1.12.4"
 urlencoding = "2.1.3"
 
 [profile.dev]
-incremental = false
-split-debuginfo = "off"
-debug = false
-strip = "symbols"
+incremental = true
+split-debuginfo = "unpacked"
+debug = 1
+strip = "none"

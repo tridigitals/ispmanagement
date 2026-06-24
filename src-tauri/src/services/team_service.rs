@@ -333,6 +333,7 @@ impl TeamService {
             is_active: true,
             created_at: now,
             role_level: None,
+            deleted_at: None,
         })
     }
 

@@ -26,8 +26,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   @override
   void initState() {
     super.initState();
-    // Trigger loading of payment channels.
-    // The provider auto-fetches; we just need to watch it.
+    // Always fetch fresh bank accounts when entering payment screen
+    // (FutureProvider caches — user might have just added a bank via Tauri web)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(publicSettingsProvider);
+    });
   }
 
   @override

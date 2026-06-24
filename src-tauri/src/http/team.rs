@@ -1,6 +1,7 @@
 //! Team management HTTP handlers
 
 use super::{websocket::WsEvent, AppState};
+use crate::error::AppError;
 use crate::http::auth::extract_ip;
 use crate::models::TeamMemberWithUser;
 use axum::{
@@ -10,8 +11,6 @@ use axum::{
 };
 use serde::Deserialize;
 use std::net::SocketAddr;
-
-use axum::extract::ConnectInfo;
 
 fn enforce_member_role_change_permissions(
     requester_level: i32,
@@ -288,22 +287,22 @@ pub async fn list_deleted_members(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<Vec<TeamMemberWithUser>>, AppError> {
-    let claims = validate_auth_token(&state.auth_service, &headers)?;
-    let tenant_id = claims.tenant_id.ok_or(AppError::BadRequest(
+    let token = extract_token(&headers)?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    let tenant_id = claims.tenant_id.ok_or(AppError::Validation(
         "No tenant ID in token".to_string(),
     ))?;
 
     state
         .auth_service
         .check_permission(&claims.sub, &tenant_id, "team", "read")
-        .await
-        .map_err(AppError::Forbidden)?;
+        .await?;
 
     let members = state
         .team_service
         .list_deleted_members(&tenant_id)
         .await
-        .map_err(map_team_service_error)?;
+        .map_err(|e| map_team_service_error(e.to_string()))?;
 
     Ok(Json(members))
 }
@@ -315,16 +314,16 @@ pub async fn restore_member(
     Path(id): Path<String>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let claims = validate_auth_token(&state.auth_service, &headers)?;
-    let tenant_id = claims.tenant_id.ok_or(AppError::BadRequest(
+    let token = extract_token(&headers)?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    let tenant_id = claims.tenant_id.ok_or(AppError::Validation(
         "No tenant ID in token".to_string(),
     ))?;
 
     state
         .auth_service
         .check_permission(&claims.sub, &tenant_id, "team", "update")
-        .await
-        .map_err(AppError::Forbidden)?;
+        .await?;
 
     let ip = extract_ip(&headers, addr);
     state
@@ -345,16 +344,16 @@ pub async fn hard_delete_member(
     Path(id): Path<String>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let claims = validate_auth_token(&state.auth_service, &headers)?;
-    let tenant_id = claims.tenant_id.ok_or(AppError::BadRequest(
+    let token = extract_token(&headers)?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    let tenant_id = claims.tenant_id.ok_or(AppError::Validation(
         "No tenant ID in token".to_string(),
     ))?;
 
     state
         .auth_service
         .check_permission(&claims.sub, &tenant_id, "team", "delete")
-        .await
-        .map_err(AppError::Forbidden)?;
+        .await?;
 
     let ip = extract_ip(&headers, addr);
     state
