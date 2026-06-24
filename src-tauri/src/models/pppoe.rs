@@ -146,6 +146,8 @@ pub struct CreatePppoeAccountRequest {
 #[serde(deny_unknown_fields)]
 pub struct UpdatePppoeAccountRequest {
     pub work_order_id: Option<String>,
+    pub customer_id: Option<String>,
+    pub location_id: Option<String>,
     pub username: Option<String>,
     pub password: Option<String>,
     pub package_id: Option<String>,

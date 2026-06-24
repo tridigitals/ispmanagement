@@ -116,20 +116,16 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.customer') || 'Customer'}</span>
-        {#if isCreate}
-          <Select2
-            bind:value={formCustomerId}
-            options={customerOptions}
-            placeholder={($t('common.select') || 'Select') + '...'}
-            width="100%"
-            maxItems={5000}
-            searchPlaceholder={$t('common.search') || 'Search'}
-            noResultsText={$t('common.no_results') || 'No results'}
-            onchange={onCustomerChange}
-          />
-        {:else}
-          <input class="input" value={customerDisplayName} disabled />
-        {/if}
+        <Select2
+          bind:value={formCustomerId}
+          options={customerOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          maxItems={5000}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+          onchange={onCustomerChange}
+        />
       </label>
       {#if isCreate}
         <div></div>
@@ -151,19 +147,15 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.location') || 'Location'}</span>
-        {#if isCreate}
-          <Select2
-            bind:value={formLocationId}
-            options={locationOptions}
-            placeholder={($t('common.select') || 'Select') + '...'}
-            width="100%"
-            disabled={!formCustomerId}
-            searchPlaceholder={$t('common.search') || 'Search'}
-            noResultsText={$t('common.no_results') || 'No results'}
-          />
-        {:else}
-          <input class="input" value={locationDisplayName} disabled />
-        {/if}
+        <Select2
+          bind:value={formLocationId}
+          options={locationOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          disabled={!formCustomerId}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+        />
       </label>
       {#if isCreate}
         <label>

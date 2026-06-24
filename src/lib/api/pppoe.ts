@@ -53,6 +53,8 @@ export const pppoe = {
     update: (
       id: string,
       dto: {
+        customer_id?: string | null;
+        location_id?: string | null;
         username?: string;
         password?: string;
         package_id?: string | null;
@@ -69,6 +71,8 @@ export const pppoe = {
       safeInvoke('update_pppoe_account', {
         token: getTokenOrThrow(),
         id,
+        customer_id: dto.customer_id ?? undefined,
+        location_id: dto.location_id ?? undefined,
         username: dto.username,
         password: dto.password,
         package_id: dto.package_id ?? undefined,

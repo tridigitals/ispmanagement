@@ -488,6 +488,8 @@
         },
       });
       const updated = await api.pppoe.accounts.update(editRow.id, {
+        customer_id: formCustomerId || null,
+        location_id: formLocationId || null,
         username: formUsername.trim(),
         password: formPassword || undefined,
         package_id: formPackageId || null,
@@ -1072,10 +1074,14 @@
     mode="edit"
     bind:show={showEdit}
     {saving}
+    {customerOptions}
+    {locationOptions}
     {packageOptions}
     {packageSelectionHasMissingMapping}
     bind:formUsername
     bind:formPassword
+    bind:formCustomerId
+    bind:formLocationId
     bind:formPackageId
     bind:formComment
     bind:formDisabled
@@ -1085,7 +1091,10 @@
     locationDisplayName={locations.find((l) => l.id === formLocationId)?.label ||
       (formLocationId ? formLocationId.slice(0, 8) + '…' : '—')}
     onRouterChange={() => {}}
-    onCustomerChange={() => {}}
+    onCustomerChange={() => {
+      formLocationId = '';
+      void loadLocations(formCustomerId);
+    }}
     onPackageChange={() => applyPackageToForm(formPackageId)}
     onSubmit={submitEdit}
     {sourceLabel}

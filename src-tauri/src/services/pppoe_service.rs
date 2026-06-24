@@ -1434,6 +1434,18 @@ impl PppoeService {
         )
         .await?;
 
+        if let Some(v) = dto.customer_id {
+            let vv = v.trim().to_string();
+            if !vv.is_empty() {
+                account.customer_id = vv;
+            }
+        }
+        if let Some(v) = dto.location_id {
+            let vv = v.trim().to_string();
+            if !vv.is_empty() {
+                account.location_id = vv;
+            }
+        }
         if let Some(u) = dto.username {
             let v = u.trim().to_string();
             if !v.is_empty() {
@@ -1482,22 +1494,26 @@ impl PppoeService {
         sqlx::query(
             r#"
             UPDATE pppoe_accounts SET
-              username = $1,
-              password_enc = $2,
-              package_id = $3,
-              profile_id = $4,
-              router_profile_name = $5,
-              remote_address = $6,
-              address_pool = $7,
-              disabled = $8,
-              comment = $9,
-              account_source = $10,
-              updated_at = $11,
+              customer_id = $1,
+              location_id = $2,
+              username = $3,
+              password_enc = $4,
+              package_id = $5,
+              profile_id = $6,
+              router_profile_name = $7,
+              remote_address = $8,
+              address_pool = $9,
+              disabled = $10,
+              comment = $11,
+              account_source = $12,
+              updated_at = $13,
               last_error = NULL,
               provisioning_error = NULL
-            WHERE tenant_id = $12 AND id = $13
+            WHERE tenant_id = $14 AND id = $15
             "#,
         )
+        .bind(&account.customer_id)
+        .bind(&account.location_id)
         .bind(&account.username)
         .bind(&account.password_enc)
         .bind(&account.package_id)

@@ -133,6 +133,8 @@ pub async fn create_pppoe_account(
 pub async fn update_pppoe_account(
     token: String,
     id: String,
+    customer_id: Option<String>,
+    location_id: Option<String>,
     username: Option<String>,
     password: Option<String>,
     package_id: Option<String>,
@@ -158,6 +160,8 @@ pub async fn update_pppoe_account(
 
     let dto = UpdatePppoeAccountRequest {
         work_order_id,
+        customer_id,
+        location_id,
         username,
         password,
         package_id,
