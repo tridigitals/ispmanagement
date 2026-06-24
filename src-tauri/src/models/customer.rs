@@ -498,7 +498,7 @@ pub struct WorkOrderRescheduleDecisionRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CreateCustomerSubscriptionRequest {
-    pub customer_id: String,
+    pub customer_id: Option<String>,
     pub location_id: String,
     pub package_id: String,
     pub router_id: Option<String>,

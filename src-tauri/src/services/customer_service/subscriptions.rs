@@ -232,6 +232,9 @@ impl CustomerService {
         }
 
         let billing_cycle = Self::normalize_billing_cycle(&dto.billing_cycle)?;
+        let customer_id = dto.customer_id.ok_or_else(|| {
+            AppError::Validation("customer_id is required".to_string())
+        })?;
         let status =
             Self::normalize_subscription_status(dto.status.as_deref().unwrap_or("active"))?;
         let starts_at = Self::parse_optional_datetime(dto.starts_at)?;
@@ -241,7 +244,7 @@ impl CustomerService {
         let exists_customer: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM customers WHERE id = $1 AND tenant_id = $2)",
         )
-        .bind(&dto.customer_id)
+        .bind(&customer_id)
         .bind(tenant_id)
         .fetch_one(&self.pool)
         .await?;
@@ -250,7 +253,7 @@ impl CustomerService {
         let exists_customer: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM customers WHERE id = ? AND tenant_id = ?)",
         )
-        .bind(&dto.customer_id)
+        .bind(&customer_id)
         .bind(tenant_id)
         .fetch_one(&self.pool)
         .await?;
@@ -265,7 +268,7 @@ impl CustomerService {
         )
         .bind(&dto.location_id)
         .bind(tenant_id)
-        .bind(&dto.customer_id)
+        .bind(&customer_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -275,7 +278,7 @@ impl CustomerService {
         )
         .bind(&dto.location_id)
         .bind(tenant_id)
-        .bind(&dto.customer_id)
+        .bind(&customer_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -350,7 +353,7 @@ impl CustomerService {
         )
         .bind(&id)
         .bind(tenant_id)
-        .bind(&dto.customer_id)
+        .bind(&customer_id)
         .bind(&dto.location_id)
         .bind(&dto.package_id)
         .bind(&dto.router_id)
@@ -377,7 +380,7 @@ impl CustomerService {
         )
         .bind(&id)
         .bind(tenant_id)
-        .bind(&dto.customer_id)
+        .bind(&customer_id)
         .bind(&dto.location_id)
         .bind(&dto.package_id)
         .bind(&dto.router_id)

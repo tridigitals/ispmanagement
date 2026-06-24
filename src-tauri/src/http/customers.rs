@@ -969,7 +969,7 @@ async fn create_subscription(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     require_permission(&state, &claims, &tenant_id, "billing", "manage").await?;
     let ip = extract_ip(&headers, addr);
-    dto.customer_id = id;
+    dto.customer_id = Some(id);
     let row = state
         .customer_service
         .create_customer_subscription(&claims.sub, &tenant_id, dto, Some(&ip))

@@ -324,8 +324,16 @@ export const customers = {
       safeInvoke('create_customer_subscription', {
         token: getTokenOrThrow(),
         customerId,
-        customer_id: customerId,
-        ...dto,
+        location_id: dto.location_id,
+        package_id: dto.package_id,
+        router_id: dto.router_id ?? undefined,
+        billing_cycle: dto.billing_cycle,
+        price: dto.price,
+        currency_code: dto.currency_code ?? undefined,
+        status: dto.status ?? undefined,
+        starts_at: dto.starts_at ?? undefined,
+        ends_at: dto.ends_at ?? undefined,
+        notes: dto.notes ?? undefined,
       }),
     update: (
       subscriptionId: string,
