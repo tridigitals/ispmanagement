@@ -12,6 +12,9 @@ REPO_ROOT="$(cd "$PROJECT_DIR/../.." && pwd)"
 
 # Ensure flutter/dart are on PATH
 export PATH="$HOME/sdk/flutter/bin:$PATH"
+export ANDROID_HOME="$HOME/sdk/android-sdk"
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+export JAVA_HOME="$HOME/sdk/java17"
 
 cd "$PROJECT_DIR"
 
