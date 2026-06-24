@@ -158,7 +158,7 @@ pub async fn get_public_settings(
 
     // Fetch active bank accounts for manual payment
     let bank_accounts: Vec<BankAccountResponse> = if payment_manual_enabled {
-        let accounts = state.payment_service.list_bank_accounts().await.unwrap_or_default();
+        let accounts = state.payment_service.list_bank_accounts(tid).await.unwrap_or_default();
         accounts
             .into_iter()
             .filter(|a| a.is_active)

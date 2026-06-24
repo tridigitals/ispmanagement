@@ -431,6 +431,7 @@ pub async fn check_payment_status(
 #[tauri::command]
 pub async fn list_bank_accounts(
     token: String,
+    tenant_id: Option<String>,
     auth_service: State<'_, AuthService>,
     payment_service: State<'_, PaymentService>,
 ) -> Result<Vec<BankAccount>, String> {
@@ -440,8 +441,11 @@ pub async fn list_bank_accounts(
         .map_err(|e| e.to_string())?;
     require_payment_read_access(&auth_service, &claims).await?;
 
+    // Prefer explicit tenant_id param, fallback to claims
+    let effective_tenant = tenant_id.as_deref().or(claims.tenant_id.as_deref());
+
     payment_service
-        .list_bank_accounts()
+        .list_bank_accounts(effective_tenant)
         .await
         .map_err(|e| e.to_string())
 }
@@ -469,8 +473,10 @@ pub async fn create_bank_account(
         account_holder,
     };
 
+    let tenant_id = claims.tenant_id.clone();
+
     payment_service
-        .create_bank_account(req)
+        .create_bank_account(req, tenant_id)
         .await
         .map_err(|e| e.to_string())
 }
