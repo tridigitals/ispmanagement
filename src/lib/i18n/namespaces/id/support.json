@@ -14,6 +14,9 @@
   "fields": {
     "subject": "Subjek",
     "subject_placeholder": "mis. Tidak bisa login ke akun saya",
+    "category": "Kategori",
+    "subscription": "Langganan Terkait (opsional)",
+    "no_subscription": "Tidak terkait",
     "priority": "Prioritas",
     "message": "Pesan",
     "message_placeholder": "Jelaskan masalah atau permintaan Anda...",

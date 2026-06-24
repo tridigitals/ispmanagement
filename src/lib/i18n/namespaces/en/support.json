@@ -14,6 +14,9 @@
   "fields": {
     "subject": "Subject",
     "subject_placeholder": "e.g. Cannot login to my account",
+    "category": "Category",
+    "subscription": "Related Subscription (optional)",
+    "no_subscription": "Not related",
     "priority": "Priority",
     "message": "Message",
     "message_placeholder": "Describe your issue or request...",
