@@ -30,6 +30,12 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadInitial());
+    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
+    ref.listen(currentTabProvider, (prev, next) {
+      if (next == 2 && prev != next) {
+        _loadInitial();
+      }
+    });
   }
 
   Future<void> _loadInitial() async {

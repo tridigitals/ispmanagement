@@ -62,6 +62,7 @@
       $can('read', 'roles') ||
       $can('read', 'settings') ||
       $can('read', 'audit_logs') ||
+      $can('read', 'support') ||
       $can('read_all', 'support') ||
       $can('read', 'email_outbox')
     );
@@ -197,7 +198,7 @@
       return $can('read', 'audit_logs');
     }
     if (path.startsWith('/admin/support')) {
-      return $can('read_all', 'support');
+      return $can('read', 'support') || $can('read_all', 'support');
     }
     if (path.startsWith('/admin/storage')) {
       return $can('read', 'storage_console');

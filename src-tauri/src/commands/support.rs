@@ -310,73 +310,8 @@ pub async fn list_support_tickets(
         .map_err(|e| e.to_string())?;
 
         (rows, total)
-    } else if is_field_worker_role(&claims.role) {
-        // Technician / field staff: show tickets ASSIGNED to them OR unassigned tickets.
-        let total: i64 = sqlx::query_scalar(
-            r#"
-            SELECT COUNT(*)
-            FROM support_tickets t
-            LEFT JOIN users u ON u.id = t.created_by
-            WHERE t.tenant_id = $1
-              AND ($2::text IS NULL OR t.status = $2)
-              AND ($4::text IS NULL OR t.category = $4)
-              AND (
-                $3::text IS NULL
-                OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
-                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%'
-              )
-              AND (t.assigned_to = $5 OR t.assigned_to IS NULL)
-        "#,
-        )
-        .bind(&tenant_id)
-        .bind(st.clone())
-        .bind(search.clone())
-        .bind(category.clone())
-        .bind(&claims.sub)
-        .fetch_one(&auth_service.pool)
-        .await
-        .map_err(|e| e.to_string())?;
-
-        let rows: Vec<SupportTicketListItem> = sqlx::query_as(
-            r#"
-            SELECT
-                t.*,
-                u.name AS created_by_name,
-                (SELECT COUNT(*) FROM support_ticket_messages m WHERE m.ticket_id = t.id) AS message_count,
-                (SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id) AS last_message_at
-            FROM support_tickets t
-            LEFT JOIN users u ON u.id = t.created_by
-            WHERE t.tenant_id = $1
-              AND ($2::text IS NULL OR t.status = $2)
-              AND ($4::text IS NULL OR t.category = $4)
-              AND (
-                $3::text IS NULL
-                OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
-                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%'
-              )
-              AND (t.assigned_to = $7 OR t.assigned_to IS NULL)
-            ORDER BY
-              CASE
-                WHEN t.assigned_to IS NULL THEN 0
-                ELSE 1
-              END ASC,
-              COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
-            LIMIT $5 OFFSET $6
-        "#,
-        )
-        .bind(&tenant_id)
-        .bind(st)
-        .bind(search)
-        .bind(category)
-        .bind(per_page as i64)
-        .bind(offset)
-        .bind(&claims.sub)
-        .fetch_all(&auth_service.pool)
-        .await
-        .map_err(|e| e.to_string())?;
-
-        (rows, total)
     } else {
+        // Non-admin: see unassigned + assigned to self + created by self
         let total: i64 = sqlx::query_scalar(
             r#"
             SELECT COUNT(*)
@@ -390,7 +325,7 @@ pub async fn list_support_tickets(
                 OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
                 OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%'
               )
-              AND t.created_by = $5
+              AND (t.assigned_to IS NULL OR t.assigned_to = $5 OR t.created_by = $5)
         "#,
         )
         .bind(&tenant_id)
@@ -419,8 +354,10 @@ pub async fn list_support_tickets(
                 OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
                 OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%'
               )
-              AND t.created_by = $7
-            ORDER BY COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
+              AND (t.assigned_to IS NULL OR t.assigned_to = $7 OR t.created_by = $7)
+            ORDER BY
+              CASE WHEN t.assigned_to IS NULL THEN 0 ELSE 1 END ASC,
+              COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
             LIMIT $5 OFFSET $6
         "#,
         )
@@ -770,7 +707,8 @@ pub async fn get_support_ticket(
     // assigned to them. Technicians don't create tickets — admins assign to them.
     let is_creator = ticket.created_by.as_deref() == Some(claims.sub.as_str());
     let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
-    if !can_all && !is_creator && !is_assignee {
+    let is_unassigned = ticket.assigned_to.is_none();
+    if !can_all && !is_creator && !is_assignee && !is_unassigned {
         return Err("Forbidden".to_string());
     }
 
@@ -882,7 +820,8 @@ pub async fn reply_support_ticket(
     // assigned to them.
     let is_creator = ticket.created_by.as_deref() == Some(claims.sub.as_str());
     let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
-    if !can_all && !is_creator && !is_assignee {
+    let is_unassigned = ticket.assigned_to.is_none();
+    if !can_all && !is_creator && !is_assignee && !is_unassigned {
         return Err("Forbidden".to_string());
     }
 
@@ -1064,7 +1003,8 @@ pub async fn list_support_ticket_messages(
 
     let is_creator = ticket.created_by.as_deref() == Some(claims.sub.as_str());
     let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
-    if !can_all && !is_creator && !is_assignee {
+    let is_unassigned = ticket.assigned_to.is_none();
+    if !can_all && !is_creator && !is_assignee && !is_unassigned {
         return Err("Forbidden".to_string());
     }
 
@@ -1640,8 +1580,9 @@ pub async fn resolve_support_ticket(
     let updated: SupportTicket = sqlx::query_as(
         r#"
         UPDATE support_tickets
-        SET status           = 'resolved',
+        SET status           = 'closed',
             resolved_at      = $1,
+            closed_at        = $1,
             updated_at       = $1,
             completion_notes = $2,
             signature_url    = $3,
@@ -1741,12 +1682,14 @@ pub async fn list_support_assignees(
         SELECT
           tm.id, tm.user_id, u.name, u.email,
           tm.role, tm.role_id, r.name AS role_name,
-          u.is_active, tm.created_at, r.level AS role_level
+          u.is_active, tm.created_at, r.level AS role_level,
+          tm.deleted_at
         FROM tenant_members tm
         JOIN users u ON tm.user_id = u.id
         LEFT JOIN roles r ON tm.role_id = r.id
         WHERE tm.tenant_id = $1
           AND u.is_active = TRUE
+          AND tm.deleted_at IS NULL
           AND LOWER(COALESCE(r.name, tm.role, '')) NOT IN ('customer', 'pelanggan')
           AND (
             EXISTS(
@@ -1770,12 +1713,14 @@ pub async fn list_support_assignees(
         SELECT
           tm.id, tm.user_id, u.name, u.email,
           tm.role, tm.role_id, r.name AS role_name,
-          u.is_active, tm.created_at, r.level AS role_level
+          u.is_active, tm.created_at, r.level AS role_level,
+          tm.deleted_at
         FROM tenant_members tm
         JOIN users u ON tm.user_id = u.id
         LEFT JOIN roles r ON tm.role_id = r.id
         WHERE tm.tenant_id = ?
           AND u.is_active = 1
+          AND tm.deleted_at IS NULL
           AND LOWER(COALESCE(r.name, tm.role, '')) NOT IN ('customer', 'pelanggan')
           AND (
             EXISTS(

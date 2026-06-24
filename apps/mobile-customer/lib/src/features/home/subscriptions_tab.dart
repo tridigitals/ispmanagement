@@ -32,6 +32,12 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
     super.initState();
     // Defer first load to after build
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadInitial());
+    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
+    ref.listen(currentTabProvider, (prev, next) {
+      if (next == 1 && prev != next) {
+        _loadInitial();
+      }
+    });
   }
 
   Future<void> _loadInitial() async {

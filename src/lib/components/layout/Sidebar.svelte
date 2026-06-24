@@ -269,6 +269,7 @@
               $can('read', 'roles') ||
               $can('read', 'settings') ||
               $can('read', 'audit_logs') ||
+              $can('read', 'support') ||
               $can('read_all', 'support') ||
               $can('read', 'communication_templates') ||
               $can('manage', 'communication_templates') ||
@@ -446,7 +447,7 @@
             label: $t('sidebar.support') || 'Support',
             icon: 'life-buoy',
             href: `${tenantPrefix}/admin/support`,
-            show: $can('read_all', 'support'),
+            show: $can('read', 'support') || $can('read_all', 'support'),
           },
         ]),
       },

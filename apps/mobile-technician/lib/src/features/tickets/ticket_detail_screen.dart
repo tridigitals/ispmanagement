@@ -22,7 +22,7 @@ import '../../services/app_config.dart';
 import '../../services/auth_providers.dart';
 import '../../services/service_providers.dart';
 import 'ticket_l10n.dart';
-import 'ticket_satisfaction_survey.dart';
+// import 'ticket_satisfaction_survey.dart';  // disabled - not shown in technician app
 
 /// Source for ticket attachments — mirrors the profile-upload pattern so
 /// camera permission flow is consistent across the app.
@@ -91,6 +91,11 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Force fresh fetch when entering this screen (providers cache by ID)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(ticketByIdProvider(widget.id));
+      ref.invalidate(ticketMessagesProvider(widget.id));
+    });
     _autoRefreshTimer = Timer.periodic(
       const Duration(seconds: 30),
       (_) => _silentRefresh(),
@@ -639,13 +644,13 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
           ),
           // Pending attachments preview
           if (_pendingAttachments.isNotEmpty) _buildPendingAttachmentsPreview(),
-          // Satisfaction survey (shown when ticket is closed/resolved)
-          ticketAsync.maybeWhen(
-            data: (ticket) => ticket.isClosed
-                ? TicketSatisfactionSurvey(ticketId: ticket.id)
-                : const SizedBox.shrink(),
-            orElse: () => const SizedBox.shrink(),
-          ),
+          // Satisfaction survey disabled - not shown in technician app
+          // ticketAsync.maybeWhen(
+          //   data: (ticket) => ticket.isClosed
+          //       ? TicketSatisfactionSurvey(ticketId: ticket.id)
+          //       : const SizedBox.shrink(),
+          //   orElse: () => const SizedBox.shrink(),
+          // ),
           // Message input
           SafeArea(
             top: false,

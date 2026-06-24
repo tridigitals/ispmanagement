@@ -41,7 +41,7 @@
   ]);
 
   // Technician cannot change assignee — only those with support:read_all permission
-  const canChangeAssignee = $derived($can('read_all', 'support'));
+  const canChangeAssignee = $derived($can('assign', 'support'));
 
   let reply = $state('');
   let internalNote = $state(false);
@@ -88,7 +88,7 @@
     };
     window.addEventListener('support_ticket_message', onRealtime as any);
 
-    if (!$can('read_all', 'support')) {
+    if (!$can('read', 'support') && !$can('read_all', 'support')) {
       goto('/unauthorized');
       return () => window.removeEventListener('support_ticket_message', onRealtime as any);
     }
@@ -102,8 +102,8 @@
   async function loadTeam() {
     try {
       teamMembers = await api.support.listAssignees();
-    } catch {
-      // non-blocking
+    } catch (e) {
+      console.error('[support] Failed to load assignees:', e);
     }
   }
 
@@ -212,9 +212,9 @@
         goto(`/admin/customers/${sub.customer_id}`);
       }
     } catch (e: any) {
-      toast.error($t('support.toasts.claim_failed', { message: e.message || '' }));
-      claiming = false;
+      toast.error(e?.message || e);
     }
+  }
 </script>
 
 <div class="page-content fade-in">
@@ -306,12 +306,13 @@
               bind:value={category}
               options={categoryOptions}
             />
-            <Select
-              label={$t('admin.support.fields.assignee') || 'Assignee'}
-              bind:value={assignedTo}
-              options={memberOptions}
-              disabled={!canChangeAssignee}
-            />
+            {#if canChangeAssignee}
+              <Select
+                label={$t('admin.support.fields.assignee') || 'Assignee'}
+                bind:value={assignedTo}
+                options={memberOptions}
+              />
+            {/if}
             {#if !detail.ticket.assigned_to && !isClosed}
               <button
                 class="btn primary claim-btn"
@@ -321,14 +322,13 @@
                 {claiming ? $t('support.actions.claiming') : $t('support.actions.claim')}
               </button>
             {/if}
-            {#if !canChangeAssignee}
-              <p class="hint">{$t('admin.support.hints.cannot_assign') || 'Hanya admin/NOC/Planner yang bisa mengubah assignee.'}</p>
-            {/if}
           </div>
-          <p class="hint">
-            {$t('admin.support.hints.assign') ||
-              'Assignee expects a team member user_id. Leave empty to keep unassigned.'}
-          </p>
+          {#if canChangeAssignee}
+            <p class="hint">
+              {$t('admin.support.hints.assign') ||
+                'Assignee expects a team member user_id. Leave empty to keep unassigned.'}
+            </p>
+          {/if}
         </div>
 
         {#if detail.ticket.satisfaction_rating}

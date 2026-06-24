@@ -27,6 +27,12 @@ class _WorkOrdersTabState extends ConsumerState<WorkOrdersTab> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
+    ref.listen(currentTabProvider, (prev, next) {
+      if (next == 2 && prev != next) {
+        _load();
+      }
+    });
   }
 
   Future<void> _load() async {

@@ -91,6 +91,11 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Force fresh fetch when entering this screen (providers cache by ID)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(ticketByIdProvider(widget.id));
+      ref.invalidate(ticketMessagesProvider(widget.id));
+    });
     _autoRefreshTimer = Timer.periodic(
       const Duration(seconds: 30),
       (_) => _silentRefresh(),
@@ -490,51 +495,75 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                 : const SizedBox.shrink(),
             orElse: () => const SizedBox.shrink(),
           ),
-          // Message input
-          SafeArea(
-            top: false,
-            child: Container(
-              padding: const EdgeInsets.all(IspSpacing.md),
-              decoration: BoxDecoration(
-                color: isp.surface,
-                border: Border(top: BorderSide(color: isp.borderSubtle)),
-              ),
-              child: Row(
-                children: [
-                  // Attachment button
-                  IconButton(
-                    onPressed: _sending || _uploading ? null : _pickAttachment,
-                    icon: const Icon(Icons.attach_file),
-                    tooltip: l10n.ticketButtonAttach,
-                  ),
-                  const SizedBox(width: IspSpacing.xs),
-                  Expanded(
-                    child: TextField(
-                      controller: _messageCtrl,
-                      minLines: 1,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        hintText: l10n.ticketFieldReply,
+          // Message input — hidden when ticket is closed/resolved
+          ticketAsync.maybeWhen(
+            data: (ticket) => (ticket.status == TicketStatus.closed ||
+                    ticket.status == TicketStatus.resolved)
+                ? Padding(
+                    padding: const EdgeInsets.all(IspSpacing.md),
+                    child: Center(
+                      child: Text(
+                        ticket.status == TicketStatus.closed
+                            ? 'Tiket sudah ditutup'
+                            : 'Tiket sudah selesai — balas untuk membuka kembali',
+                        style: TextStyle(
+                          color: isp.textMuted,
+                          fontSize: 13,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
-                      onSubmitted: (_) => _send(),
                     ),
-                  ),
-                  const SizedBox(width: IspSpacing.sm),
-                  IconButton.filled(
-                    onPressed: _sending || _uploading ? null : _send,
-                    icon: (_sending || _uploading)
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send),
-                  ),
-                ],
-              ),
-            ),
+                  )
+                : _buildMessageInput(context, isp, l10n),
+            orElse: () => _buildMessageInput(context, isp, l10n),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMessageInput(
+      BuildContext context, IspThemeColors isp, AppLocalizations l10n) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.all(IspSpacing.md),
+        decoration: BoxDecoration(
+          color: isp.surface,
+          border: Border(top: BorderSide(color: isp.borderSubtle)),
+        ),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: _sending || _uploading ? null : _pickAttachment,
+              icon: const Icon(Icons.attach_file),
+              tooltip: l10n.ticketButtonAttach,
+            ),
+            const SizedBox(width: IspSpacing.xs),
+            Expanded(
+              child: TextField(
+                controller: _messageCtrl,
+                minLines: 1,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  hintText: l10n.ticketFieldReply,
+                ),
+                onSubmitted: (_) => _send(),
+              ),
+            ),
+            const SizedBox(width: IspSpacing.sm),
+            IconButton.filled(
+              onPressed: _sending || _uploading ? null : _send,
+              icon: (_sending || _uploading)
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.send),
+            ),
+          ],
+        ),
       ),
     );
   }

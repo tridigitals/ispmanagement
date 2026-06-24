@@ -41,6 +41,13 @@ class _AuthLoadingScreenState extends ConsumerState<AuthLoadingScreen> {
 
       // Navigate to home — data loads naturally in HomeTab
       ref.read(fcmServiceProvider).clearPendingAction();
+
+      // Kick off FCM token registration (fire-and-forget, idempotent).
+      // This covers the case where the auth state transition happened
+      // before the ref.listen in app.dart was registered (cold start
+      // with valid session), and the delayed bootstrap hasn't fired yet.
+      ref.read(fcmServiceProvider).init(force: true);
+
       context.go('/');
     } catch (e) {
       if (!mounted) return;

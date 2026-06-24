@@ -17,7 +17,7 @@ import '../features/profile/change_password_screen.dart';
 import '../features/profile/edit_profile_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/settings/settings_screen.dart';
-import '../features/tickets/new_ticket_screen.dart';
+
 import '../features/tickets/ticket_detail_screen.dart';
 import '../features/work_orders/work_order_detail_screen.dart';
 import '../services/auth_providers.dart';
@@ -127,10 +127,7 @@ GoRouter buildAppRouter({
               id: state.pathParameters['id']!,
             ),
           ),
-          GoRoute(
-            path: 'tickets/new',
-            builder: (_, __) => const NewTicketScreen(),
-          ),
+
           GoRoute(
             path: 'tickets/:id',
             builder: (_, state) =>

@@ -33,6 +33,12 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadInitial());
+    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
+    ref.listen(currentTabProvider, (prev, next) {
+      if (next == 1 && prev != next) {
+        _loadInitial();
+      }
+    });
   }
 
   Future<void> _loadInitial() async {
@@ -157,6 +163,7 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
 
   Widget _buildTicketTile(BuildContext context, TicketModel ticket) {
     final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
 
     return Material(
       color: Colors.transparent,
@@ -248,9 +255,31 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
                   ],
                 ),
               ),
-              // Priority label
+              // Priority label + claim button for unassigned
               const SizedBox(width: 8),
-              _MiniPriorityLabel(priority: ticket.priority),
+              if (ticket.assignedToName == null && ticket.isOpen)
+                IconButton(
+                  icon: Icon(Icons.person_add_alt_1, size: 20, color: Colors.blue.shade600),
+                  tooltip: l10n.ticketClaim,
+                  onPressed: () async {
+                    try {
+                      final svc = ref.read(ticketServiceProvider);
+                      await svc.claimTicket(ticket.id);
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(l10n.ticketClaimSuccess)),
+                      );
+                      _refreshForTabActivation();
+                    } catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
+                    }
+                  },
+                )
+              else
+                _MiniPriorityLabel(priority: ticket.priority),
             ],
           ),
         ),

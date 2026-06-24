@@ -81,7 +81,6 @@ export const support = {
       priority: data.priority,
       category: data.category,
       assignedTo: data.assignedTo ?? undefined,
-      assigned_to: data.assignedTo ?? undefined,
     }),
 
   submitSatisfaction: (

@@ -180,12 +180,15 @@ impl CustomerService {
               tm.role_id,
               r.name AS role_name,
               u.is_active,
-              tm.created_at
+              tm.created_at,
+              r.level AS role_level,
+              tm.deleted_at
             FROM tenant_members tm
             JOIN users u ON tm.user_id = u.id
             LEFT JOIN roles r ON tm.role_id = r.id
             WHERE tm.tenant_id = $1
               AND u.is_active = TRUE
+              AND tm.deleted_at IS NULL
               AND (
                 EXISTS(
                   SELECT 1
@@ -216,12 +219,15 @@ impl CustomerService {
               tm.role_id,
               r.name AS role_name,
               u.is_active,
-              tm.created_at
+              tm.created_at,
+              r.level AS role_level,
+              tm.deleted_at
             FROM tenant_members tm
             JOIN users u ON tm.user_id = u.id
             LEFT JOIN roles r ON tm.role_id = r.id
             WHERE tm.tenant_id = ?
               AND u.is_active = 1
+              AND tm.deleted_at IS NULL
               AND (
                 EXISTS(
                   SELECT 1

@@ -53,7 +53,7 @@
   ]);
 
   onMount(async () => {
-    if (!$can('read_all', 'support')) {
+    if (!$can('read', 'support') && !$can('read_all', 'support')) {
       goto('/unauthorized');
       return;
     }
@@ -164,7 +164,7 @@
     try {
       await api.support.claim(item.id);
       toast.success($t('support.toasts.claimed'));
-      await load();
+      await load(true);
     } catch (e: any) {
       toast.error($t('support.toasts.claim_failed', { message: e.message || '' }));
     }

@@ -153,13 +153,14 @@ pub(crate) async fn support_admin_user_ids(
         SELECT DISTINCT tm.user_id
         FROM tenant_members tm
         JOIN role_permissions rp ON rp.role_id = tm.role_id
+        JOIN permissions p ON p.id = rp.permission_id
         WHERE tm.tenant_id = $1
           AND tm.role_id IS NOT NULL
-          AND rp.permission_id = ANY($2)
+          AND p.resource = 'support'
+          AND p.action IN ('read', 'read_all')
     "#,
     )
     .bind(tenant_id)
-    .bind(["support:read_all"])
     .fetch_all(pool)
     .await
 }

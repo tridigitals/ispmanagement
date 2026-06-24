@@ -32,6 +32,12 @@ class _SupportTabState extends ConsumerState<SupportTab> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadInitial());
+    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
+    ref.listen(currentTabProvider, (prev, next) {
+      if (next == 3 && prev != next) {
+        _loadInitial();
+      }
+    });
   }
 
   Future<void> _loadInitial() async {
