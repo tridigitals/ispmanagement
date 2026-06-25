@@ -853,19 +853,17 @@
     persistConfig();
     schedulePersistRemote();
 
-    // Auto next page: if all slots on current page are filled, grow array and advance.
+    // Auto next page: if all slots on current page are filled, grow array + advance.
     const size = slotCountForLayout(layout);
     const start = page * size;
     const currentPageSlots = slotsAll.slice(start, start + size);
     const allFilled = currentPageSlots.length >= size && currentPageSlots.every((s) => s != null);
     if (allFilled) {
-      // Add empty slots to create next page
-      while (slotsAll.length <= (page + 1) * size) {
-        slotsAll = [...slotsAll, null];
+      // Grow array by one page so pageCount increases and pagination appears.
+      if (slotsAll.length <= start + size) {
+        slotsAll = [...slotsAll, ...Array.from({ length: size }, () => null)];
       }
       page = page + 1;
-      persistConfig();
-      schedulePersistRemote();
     }
   }
 
