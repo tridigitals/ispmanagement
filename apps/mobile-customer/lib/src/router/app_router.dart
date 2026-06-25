@@ -27,6 +27,7 @@ import '../features/tickets/new_ticket_screen.dart';
 import '../features/tickets/ticket_detail_screen.dart';
 import '../services/auth_providers.dart';
 import '../services/missing_providers.dart';
+import '../services/settings_providers.dart';
 
 GoRouter buildAppRouter({
   required WidgetRef ref,
@@ -41,8 +42,14 @@ GoRouter buildAppRouter({
       final auth = container.read(authControllerProvider);
       final loggedIn = auth.isAuthenticated;
       final onboardingDone = container.read(onboardingCompletedProvider);
-      final permissionsDone = container.read(permissionsCompletedProvider);
       final loc = state.matchedLocation;
+
+      // Read permissions_completed directly from SharedPreferences to avoid
+      // stale overridden provider values (provider is fixed at app start,
+      // runtime changes via .state = true don't update the override).
+      final prefsAsync = container.read(sharedPreferencesProvider);
+      final permissionsDone = prefsAsync.valueOrNull?.getBool('permissions_completed') ?? false;
+
       final isPublic = loc == '/login' || loc == '/forgot-password'
           || loc == '/onboarding' || loc == '/loading' || loc == '/permissions';
 

@@ -192,20 +192,48 @@ void _startApp(
 
   final List<Override> overrides = [
     onboardingCompletedProvider.overrideWith((ref) => onboardingDone),
-    permissionsCompletedProvider.overrideWith((ref) => permissionsDone),
+    // Do NOT override permissionsCompletedProvider — redirect reads it from SharedPreferences.
   ];
 
   // Only override SharedPreferences if we actually got an instance.
   if (prefs != null) {
-    overrides.add(sharedPreferencesProvider.overrideWith((ref) => prefs));
+    overrides.add(sharedPreferencesProvider.overrideWith((ref) => Future.value(prefs)));
   }
 
   runApp(
     ProviderScope(
       overrides: overrides,
-      child: IspTechnicianApp(initError: initError),
+      child: _PermissionsInit(
+        permissionsDone: permissionsDone,
+        child: IspTechnicianApp(initError: initError),
+      ),
     ),
   );
+}
+
+/// Sets permissions_completed in SharedPreferences on first mount for
+/// returning users. The redirect reads this value directly.
+class _PermissionsInit extends StatefulWidget {
+  const _PermissionsInit({required this.permissionsDone, required this.child});
+  final bool permissionsDone;
+  final Widget child;
+  @override
+  State<_PermissionsInit> createState() => _PermissionsInitState();
+}
+
+class _PermissionsInitState extends State<_PermissionsInit> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.permissionsDone) {
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setBool('permissions_completed', true);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class NetworkException implements Exception {

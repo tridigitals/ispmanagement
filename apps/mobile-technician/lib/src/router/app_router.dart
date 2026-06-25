@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../features/announcements/announcement_detail_screen.dart';
 import '../features/announcements/announcements_screen.dart';
 import '../features/auth/forgot_password_screen.dart';
@@ -23,6 +24,7 @@ import '../features/tickets/ticket_detail_screen.dart';
 import '../features/work_orders/work_order_detail_screen.dart';
 import '../services/auth_providers.dart';
 import '../services/missing_providers.dart';
+import '../services/settings_providers.dart';
 
 GoRouter buildAppRouter({
   required WidgetRef ref,
@@ -37,8 +39,13 @@ GoRouter buildAppRouter({
       final auth = container.read(authControllerProvider);
       final loggedIn = auth.isAuthenticated;
       final onboardingDone = container.read(onboardingCompletedProvider);
-      final permissionsDone = container.read(permissionsCompletedProvider);
       final loc = state.matchedLocation;
+
+      // Read permissions_completed directly from SharedPreferences to avoid
+      // stale overridden provider values.
+      final prefsAsync = container.read(sharedPreferencesProvider);
+      final permissionsDone = prefsAsync.valueOrNull?.getBool('permissions_completed') ?? false;
+
       final isPublic = loc == '/login' || loc == '/forgot-password'
           || loc == '/onboarding' || loc == '/loading' || loc == '/permissions';
 
