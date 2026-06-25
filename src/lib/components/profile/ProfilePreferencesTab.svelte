@@ -20,7 +20,7 @@
           'The workspace uses a focused dark interface across all pages.'}
       </p>
     </div>
-    <span class="mode-badge">Dark</span>
+    <span class="mode-badge">{$t('profile.preferences.dark') || 'Dark'}</span>
   </div>
 </div>
 

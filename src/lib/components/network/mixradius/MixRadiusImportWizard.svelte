@@ -402,8 +402,8 @@
 
 <div class="page-content fade-in">
   <NetworkPageHeader
-    title="Import MixRadius"
-    subtitle="Wizard migrasi backup MixRadius ke ISP Management dengan preview, mapping, dan execute mode."
+    title={$t('mixradius.import_wizard.title')}
+    subtitle={$t('mixradius.import_wizard.description')}
   >
     {#snippet actions()}
       <button class="btn ghost" type="button" onclick={() => goto(`${tenantPrefix}/admin/network/import`)}>
@@ -417,15 +417,15 @@
     <div class="wizard-rail">
       <div class="history-block">
         <div class="history-head">
-          <strong>Batch terbaru</strong>
+          <strong>{$t('mixradius.import_wizard.latest_batch')}</strong>
           <button class="btn ghost small" type="button" onclick={() => void loadBatchHistory()}>
             Refresh
           </button>
         </div>
         {#if historyLoading}
-          <div class="history-empty">Memuat history import...</div>
+          <div class="history-empty">{$t('mixradius.import_wizard.loading_history')}</div>
         {:else if batchHistory.length === 0}
-          <div class="history-empty">Belum ada batch MixRadius tersimpan.</div>
+          <div class="history-empty">{$t('mixradius.import_wizard.no_batch')}</div>
         {:else}
           <div class="history-list">
             {#each batchHistory as item}
@@ -497,7 +497,7 @@
           <div>
             <strong>{item.label}</strong>
             {#if item.key === step}
-              <small>Current step</small>
+              <small>{$t('mixradius.import_wizard.current_step')}</small>
             {/if}
           </div>
         </div>

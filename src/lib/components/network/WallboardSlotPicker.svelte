@@ -67,11 +67,11 @@
     </div>
     <div class="picker-summary">
       <span class="picker-chip">
-        <span class="k">Router</span>
+        <span class="k">{$t('network.wallboard.router') || 'Router'}</span>
         <span class="v mono">{selectedRouterLabel || '—'}</span>
       </span>
       <span class="picker-chip">
-        <span class="k">Interface</span>
+        <span class="k">{$t('network.wallboard.interface') || 'Interface'}</span>
         <span class="v mono">{currentIface || '—'}</span>
       </span>
     </div>

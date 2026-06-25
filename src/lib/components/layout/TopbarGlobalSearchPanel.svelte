@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import type { GlobalSearchResultGroup, GlobalSearchResult } from '$lib/search/globalSearchModel';
 
   let {
@@ -29,9 +30,9 @@
   {#if loading}
     <div class="search-panel-state">Searching…</div>
   {:else if !query.trim()}
-    <div class="search-panel-state">Type to search across available modules.</div>
+    <div class="search-panel-state">{$t('components.topbar_global_search.hint')}</div>
   {:else if !groups.length}
-    <div class="search-panel-state">No results match your query.</div>
+    <div class="search-panel-state">{$t('components.topbar_global_search.no_results')}</div>
   {:else}
     {#each groups as group (group.key)}
       <section class="search-group">

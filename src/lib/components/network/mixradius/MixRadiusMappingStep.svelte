@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import type {
     MixradiusImportConflictResolution,
@@ -84,9 +85,9 @@
 
   <div class="mapping-grid">
     <article class="panel">
-      <h3>NAS ke router</h3>
+      <h3>{$t('mixradius.import_wizard.mapping.nas_to_router')}</h3>
       {#if nasRows.length === 0}
-        <p class="muted">Tidak ada NAS row di preview awal.</p>
+        <p class="muted">{$t('mixradius.import_wizard.mapping.no_nas_rows')}</p>
       {:else}
         {#each nasRows as row}
           <label class="field">
@@ -97,7 +98,7 @@
               onchange={(event) =>
                 setOverride('nas', row.sourceRef, 'router', event.currentTarget.value)}
             >
-              <option value="">Pilih router...</option>
+              <option value="">{$t('mixradius.import_wizard.mapping.select_router')}</option>
               {#each routerOptions as option}
                 <option value={option.value}>{option.label}</option>
               {/each}
@@ -108,9 +109,9 @@
     </article>
 
     <article class="panel">
-      <h3>Plan ke package</h3>
+      <h3>{$t('mixradius.import_wizard.mapping.plan_to_package')}</h3>
       {#if planRows.length === 0}
-        <p class="muted">Tidak ada plan row di preview awal.</p>
+        <p class="muted">{$t('mixradius.import_wizard.mapping.no_plan_rows')}</p>
       {:else}
         {#each planRows as row}
           <label class="field">
@@ -121,7 +122,7 @@
               onchange={(event) =>
                 setOverride('plan', row.sourceRef, 'package', event.currentTarget.value)}
             >
-              <option value="">Auto/new package</option>
+              <option value="">{$t('mixradius.import_wizard.mapping.auto_new_package') || 'Auto/new package'}</option>
               {#each packageOptions as option}
                 <option value={option.value}>{option.label}</option>
               {/each}
@@ -134,7 +135,7 @@
 
   <div class="mapping-grid">
     <article class="panel">
-      <h3>Target provisioning PPPoE</h3>
+      <h3>{$t('mixradius.import_wizard.mapping.target_provisioning')}</h3>
       <p class="muted">
         Tentukan apakah akun hasil import dibuat sebagai secret lokal router atau sebagai akun
         Managed RADIUS.
@@ -154,17 +155,17 @@
     </article>
 
     <label class="field panel">
-      <span>Customer conflict decision</span>
+      <span>{$t('mixradius.import_wizard.mapping.customer_conflict')}</span>
       <select class="input" bind:value={customerConflictResolution}>
-        <option value={null}>Default safe review</option>
-        <option value="merge">Merge</option>
-        <option value="create_new">Create new</option>
-        <option value="skip">Skip</option>
+        <option value={null}>{$t('mixradius.import_wizard.mapping.default_safe_review')}</option>
+        <option value="merge">{$t('mixradius.import_wizard.mapping.merge')}</option>
+        <option value="create_new">{$t('mixradius.import_wizard.mapping.create_new')}</option>
+        <option value="skip">{$t('mixradius.import_wizard.mapping.skip')}</option>
       </select>
     </label>
 
     <label class="field panel">
-      <span>Location strategy</span>
+      <span>{$t('mixradius.import_wizard.mapping.location_strategy') || 'Location strategy'}</span>
       <select class="input" bind:value={locationStrategy}>
         <option value={null}>Default</option>
         <option value="preserve">Preserve</option>
@@ -175,7 +176,7 @@
   </div>
 
   <div class="step-actions">
-    <button class="btn ghost" type="button" onclick={onBack}>Back</button>
+    <button class="btn ghost" type="button" onclick={onBack}>{$t('common.back')}</button>
     <button class="btn primary" type="button" onclick={onPreview} disabled={loading}>
       {loading ? 'Building preview...' : 'Build preview'}
       <Icon name="arrow-right" size={16} />

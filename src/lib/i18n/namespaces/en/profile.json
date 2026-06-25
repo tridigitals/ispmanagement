@@ -37,7 +37,10 @@
       "postal_code": "Postal code",
       "country_code": "Country code",
       "default_shipping": "Default shipping",
-      "default_billing": "Default billing"
+      "default_billing": "Default billing",
+      "label_placeholder": "Home, Office, etc",
+      "country_id": "ID (Indonesia)",
+      "country_us": "US (United States)"
     },
     "validation": {
       "line1_required": "Address line is required."
@@ -47,12 +50,15 @@
     "title": "Profile Information",
     "subtitle": "Update your account details and public profile.",
     "change_avatar": "Change Avatar",
+    "avatar_alt": "Avatar",
     "your_name": "Your Name",
     "role_label": "Role",
     "display_name": "Display Name",
     "display_name_placeholder": "Enter your full name",
     "email_address": "Email Address",
     "email_placeholder": "name@example.com",
+    "phone": "Phone",
+    "phone_placeholder": "Enter phone number",
     "save_button": "Save Changes",
     "saving": "Saving..."
   },
@@ -70,22 +76,59 @@
     "req_special": "One special character",
     "update_button": "Update Password",
     "updating": "Updating...",
+    "settings_desc_current": "Enter your existing password to make changes.",
+    "settings_desc_new": "Choose a strong password with at least",
+    "settings_desc_confirm": "Re-enter your new password to confirm.",
     "twofa": {
       "title": "Two-Factor Authentication",
       "subtitle": "Protect your account with an extra layer of security.",
       "enabled_title": "2FA is Enabled",
       "enabled_desc": "Your account is secured with 2FA.",
       "recovery_title": "Save your Recovery Codes!",
+      "recovery_desc": "These codes are the ONLY way to access your account if you lose your phone.",
       "recovery": {
         "saved_button": "I have saved them"
       },
       "disable_title": "Disable 2FA",
+      "disable_desc": "Enter a code from your device to disable 2FA.",
       "methods": {
         "authenticator_app": "Authenticator App",
         "email_verification": "Email Verification"
       },
       "disable": {
         "placeholder": "Enter authentication code"
+      },
+      "enabled_methods": "Enabled Methods",
+      "enabled_badge": "Enabled",
+      "enable_button": "Enable",
+      "disable_button": "Disable",
+      "sending": "Sending...",
+      "resend": "Resend",
+      "send_code": "Send Code",
+      "disable_code_placeholder": "Enter code",
+      "enhance_security": "Enhance Your Security",
+      "enhance_desc": "Add an extra layer of security by requiring a verification code when logging in.",
+      "authenticator_app": "Authenticator App",
+      "email_verification": "Email Verification",
+      "step_scan": "1. Scan this QR code",
+      "secret_key": "Key",
+      "step_enter_code": "2. Enter the code",
+      "cancel": "Cancel",
+      "verifying": "Verifying...",
+      "activate": "Activate",
+      "verify_email": "Verify your Email",
+      "sent_code_to": "We sent a verification code to",
+      "verify_enable": "Verify & Enable",
+      "trusted_devices": {
+        "title": "Trusted Devices",
+        "loading": "Loading devices...",
+        "empty": "No trusted devices found.",
+        "desc": "Devices that have been authorized to skip 2FA for 30 days.",
+        "unknown_device": "Unknown Device",
+        "last_used": "Last used",
+        "revoke": "Revoke",
+        "revoke_title": "Revoke Device",
+        "revoke_message": "Are you sure you want to revoke access for this device? 2FA will be required on the next login."
       }
     }
   },
@@ -93,7 +136,8 @@
     "title": "Appearance",
     "subtitle": "Customize the look and feel of the application.",
     "dark_mode": "Dark Mode",
-    "dark_mode_desc": "Toggle between dark and light themes."
+    "dark_mode_desc": "Toggle between dark and light themes.",
+    "dark": "Dark"
   },
   "notifications": {
     "title": "Notification Preferences",

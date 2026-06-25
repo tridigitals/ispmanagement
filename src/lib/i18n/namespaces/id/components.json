@@ -95,6 +95,37 @@
     "preview": "Preview Invoice",
     "download_pdf": "Download PDF",
     "generating": "Membuat PDF...",
-    "print": "Cetak"
+    "print": "Cetak",
+    "invoice": "INVOICE",
+    "bill_to": "Tagihan Kepada",
+    "issue_date": "Tanggal Terbit",
+    "due_date": "Jatuh Tempo",
+    "paid_at": "Dibayar Pada",
+    "billing_cycle": "Siklus Tagihan",
+    "unit_price": "Harga Satuan",
+    "subtotal": "Subtotal",
+    "items": "Item"
+  },
+  "topbar_global_search": {
+    "hint": "Ketik untuk mencari di seluruh modul yang tersedia.",
+    "no_results": "Tidak ada hasil yang cocok dengan kata kunci Anda."
+  },
+  "service_coming_soon": {
+    "planned_scope": "Ruang Lingkup",
+    "next_rollout": "Target rilis berikutnya"
+  },
+  "date_time_picker": {
+    "open": "Buka pemilih tanggal dan waktu"
+  },
+  "rich_text_editor": {
+    "toolbar": "Toolbar teks kaya",
+    "bold": "Tebal",
+    "italic": "Miring",
+    "underline": "Garis Bawah",
+    "bullet_list": "Daftar bullet",
+    "numbered_list": "Daftar bernomor",
+    "quote": "Kutipan",
+    "link": "Tautan",
+    "clear_formatting": "Hapus format"
   }
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import {
     buildMixradiusBatchReport,
@@ -21,11 +22,11 @@
 </script>
 
 {#if open}
-  <button class="drawer-backdrop" type="button" onclick={onClose} aria-label="Close report"></button>
-  <aside class="drawer" aria-label="MixRadius batch report">
+  <button class="drawer-backdrop" type="button" onclick={onClose} aria-label={$t('mixradius.import_wizard.batch_report.close')}></button>
+  <aside class="drawer" aria-label={$t('mixradius.import_wizard.batch_report.title')}>
     <div class="drawer-head">
       <div>
-        <div class="drawer-title">Batch report</div>
+        <div class="drawer-title">{$t('mixradius.import_wizard.batch_report.title')}</div>
         <div class="drawer-sub">{batch?.sourceFilename || 'MixRadius import'}</div>
       </div>
       <button class="icon-btn" type="button" onclick={onClose} disabled={loading}>
@@ -35,17 +36,17 @@
 
     <div class="drawer-body">
       {#if loading}
-        <div class="empty">Memuat report batch...</div>
+        <div class="empty">{$t('mixradius.import_wizard.batch_report.loading')}</div>
       {:else if !batch}
-        <div class="empty">Batch report belum tersedia.</div>
+        <div class="empty">{$t('mixradius.import_wizard.batch_report.unavailable')}</div>
       {:else}
         <div class="status-line">
-          <span>Status</span>
+          <span>{$t('mixradius.import_wizard.batch_report.status')}</span>
           <strong class={`tone-${report.status.tone}`}>{report.status.label}</strong>
         </div>
 
         <section class="section">
-          <h3>Source summary</h3>
+          <h3>{$t('mixradius.import_wizard.batch_report.source_summary')}</h3>
           <div class="source-grid">
             {#each report.source as card}
               <article class="metric-card">
@@ -57,7 +58,7 @@
         </section>
 
         <section class="section">
-          <h3>Phase report</h3>
+          <h3>{$t('mixradius.import_wizard.batch_report.phase_report')}</h3>
           <div class="phase-list">
             {#each report.phases as phase}
               <article class="phase-card">
@@ -73,14 +74,14 @@
         </section>
 
         <section class="section">
-          <h3>Billing lifecycle</h3>
+          <h3>{$t('mixradius.import_wizard.batch_report.billing') || 'Billing lifecycle'}</h3>
           <div class="source-grid">
             <article class="metric-card">
-              <span>Legacy transactions</span>
+              <span>{$t('mixradius.import_wizard.execution.legacy_transactions')}</span>
               <strong>{report.billing.legacyTransactionCount.toLocaleString()}</strong>
             </article>
             <article class="metric-card">
-              <span>Production invoices</span>
+              <span>{$t('mixradius.import_wizard.execution.production_invoices')}</span>
               <strong>{report.billing.productionInvoiceCount.toLocaleString()}</strong>
             </article>
           </div>
@@ -88,7 +89,7 @@
 
         {#if report.errors.length}
           <section class="section">
-            <h3>Errors</h3>
+            <h3>{$t('mixradius.import_wizard.batch_report.errors') || 'Errors'}</h3>
             <div class="error-list">
               {#each report.errors as item}
                 <article class="error-card">

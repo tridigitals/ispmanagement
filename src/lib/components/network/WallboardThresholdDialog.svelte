@@ -90,9 +90,9 @@
               placeholder="0"
             />
             <select class="unit-select" value={thWarnRxUnit} onchange={(e) => (thWarnRxUnit = (e.currentTarget as HTMLSelectElement).value as Unit)}>
-              <option value="Kbps">Kbps</option>
-              <option value="Mbps">Mbps</option>
-              <option value="Gbps">Gbps</option>
+              <option value="Kbps">{$t('network.wallboard.kbps') || 'Kbps'}</option>
+              <option value="Mbps">{$t('network.wallboard.mbps') || 'Mbps'}</option>
+              <option value="Gbps">{$t('network.wallboard.gbps') || 'Gbps'}</option>
             </select>
           </div>
           <span class="hint">{$t('admin.network.wallboard.thresholds.hint') || 'Leave empty to disable warning.'}</span>
@@ -107,9 +107,9 @@
               placeholder="0"
             />
             <select class="unit-select" value={thWarnTxUnit} onchange={(e) => (thWarnTxUnit = (e.currentTarget as HTMLSelectElement).value as Unit)}>
-              <option value="Kbps">Kbps</option>
-              <option value="Mbps">Mbps</option>
-              <option value="Gbps">Gbps</option>
+              <option value="Kbps">{$t('network.wallboard.kbps') || 'Kbps'}</option>
+              <option value="Mbps">{$t('network.wallboard.mbps') || 'Mbps'}</option>
+              <option value="Gbps">{$t('network.wallboard.gbps') || 'Gbps'}</option>
             </select>
           </div>
           <span class="hint">{$t('admin.network.wallboard.thresholds.hint') || 'Leave empty to disable warning.'}</span>

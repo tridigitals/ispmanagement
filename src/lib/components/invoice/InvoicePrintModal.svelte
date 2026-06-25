@@ -95,7 +95,7 @@
     onkeydown={(e) => e.key === 'Escape' && close()}
     role="presentation"
   >
-    <div class="invoice-modal" role="dialog" aria-modal="true" aria-label="Invoice preview">
+    <div class="invoice-modal" role="dialog" aria-modal="true" aria-label={$t('components.invoice_print.preview') || 'Invoice preview'}>
       <header class="invoice-modal-toolbar">
         <div class="toolbar-title">
           <Icon name="file-text" size={18} />
@@ -110,7 +110,7 @@
             <Icon name="printer" size={16} />
             <span>{$t('components.invoice_print.print') || 'Cetak'}</span>
           </button>
-          <button class="btn-tool" type="button" onclick={close} aria-label="Close">
+          <button class="btn-tool" type="button" onclick={close} aria-label={$t('common.close') || 'Close'}>
             <Icon name="x" size={16} />
           </button>
         </div>

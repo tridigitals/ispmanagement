@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
 
   let {
@@ -33,7 +34,7 @@
   <div class="drop-zone">
     <div class="drop-icon"><Icon name="download" size={28} /></div>
     <div>
-      <h2>Upload backup MixRadius</h2>
+      <h2>{$t('mixradius.import_wizard.upload_step.title')}</h2>
       <p>Pilih file backup `.sql` atau `.sql.gz` dari server/app lokal untuk distaging dulu.</p>
     </div>
     {#if isDesktopApp}
@@ -59,7 +60,7 @@
         {#if filePath}
           <code>{filePath}</code>
         {:else}
-          <code>Browser upload</code>
+          <code>{$t('mixradius.import_wizard.upload_step.browser_upload')}</code>
         {/if}
       </div>
     </div>

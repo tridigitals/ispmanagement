@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import { goto } from '$app/navigation';
   import Icon from '$lib/components/ui/Icon.svelte';
 
@@ -41,7 +42,7 @@
   <section class="card content">
     <div class="service-head">
       <span class="service-icon"><Icon name={icon} size={18} /></span>
-      <h3>Planned Scope</h3>
+      <h3>{$t('components.service_coming_soon.planned_scope')}</h3>
     </div>
 
     <ul>
@@ -51,7 +52,7 @@
     </ul>
 
     <div class="next-box">
-      <strong>Next rollout target</strong>
+      <strong>{$t('components.service_coming_soon.next_rollout')}</strong>
       <p>{nextTarget}</p>
     </div>
   </section>

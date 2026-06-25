@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import {
     buildMixradiusSourceSummaryCards,
@@ -24,13 +25,13 @@
 <section class="mix-step">
   <div class="section-head">
     <div class="section-copy">
-      <span class="section-eyebrow">Source review</span>
-      <h2>Ringkasan sumber</h2>
-      <p>Pastikan backup yang dipilih memang batch MixRadius yang ingin dimigrasikan.</p>
+      <span class="section-eyebrow">{$t('mixradius.import_wizard.source_summary.title')}</span>
+      <h2>{$t('mixradius.import_wizard.source_summary.subtitle')}</h2>
+      <p>{$t('mixradius.import_wizard.source_summary.description')}</p>
     </div>
     {#if batch}
       <div class="summary-chip">
-        <span>Status parse</span>
+        <span>{$t('mixradius.import_wizard.source_summary.parse_status')}</span>
         <strong>{batch.parseStatus}</strong>
       </div>
     {/if}
@@ -62,30 +63,30 @@
   <div class="meta-box">
     <div class="meta-head">
       <div>
-        <span class="section-eyebrow">Source file</span>
-        <strong>Detail backup yang akan diproses</strong>
+        <span class="section-eyebrow">{$t('mixradius.import_wizard.source_summary.source_file')}</span>
+        <strong>{$t('mixradius.import_wizard.source_summary.detail')}</strong>
       </div>
     </div>
     <div class="meta-grid">
       <div class="meta-item meta-item-wide">
-        <span>Filename</span>
+        <span>{$t('mixradius.import_wizard.source_summary.filename')}</span>
         <strong>{batch?.sourceFilename || '-'}</strong>
       </div>
       <div class="meta-item">
-        <span>Size</span>
+        <span>{$t('mixradius.import_wizard.source_summary.size')}</span>
         <strong>{batch?.sourceSizeBytes?.toLocaleString() || 0} bytes</strong>
       </div>
       <div class="meta-item meta-item-wide">
-        <span>Checksum</span>
+        <span>{$t('mixradius.import_wizard.source_summary.checksum')}</span>
         <code>{batch?.sourceSha256 || '-'}</code>
       </div>
     </div>
   </div>
 
   <div class="step-actions">
-    <button class="btn ghost" type="button" onclick={onBack}>Back</button>
+    <button class="btn ghost" type="button" onclick={onBack}>{$t('common.back')}</button>
     <button class="btn primary" type="button" onclick={onNext}>
-      Lanjut ke mapping
+      {$t('mixradius.import_wizard.source_summary.continue')}
       <Icon name="arrow-right" size={16} />
     </button>
   </div>

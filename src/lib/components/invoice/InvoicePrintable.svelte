@@ -118,7 +118,7 @@
   // amount in words is intentionally omitted to avoid locale ambiguity for IDR.
 </script>
 
-<article class="invoice-doc" class:embed aria-label="Invoice document">
+<article class="invoice-doc" class:embed aria-label={$t('components.invoice_print.preview') || 'Invoice document'}>
   <!-- Header --------------------------------------------------------------- -->
   <header class="doc-head">
     <div class="brand">
@@ -142,7 +142,7 @@
     </div>
 
     <div class="doc-title">
-      <h1>INVOICE</h1>
+      <h1>{$t('components.invoice_print.invoice') || 'INVOICE'}</h1>
       <p class="doc-number">#{invoice?.invoice_number || invoice?.id}</p>
       <span class="status-badge" data-status={invoice?.status}>
         {statusLabel(String(invoice?.status || ''))}
@@ -153,7 +153,7 @@
   <!-- Parties + dates ------------------------------------------------------ -->
   <section class="doc-parties">
     <div class="party">
-      <span class="party-label">Bill To</span>
+      <span class="party-label">{$t('components.invoice_print.bill_to') || 'Bill To'}</span>
       <p class="party-name">{customer?.name || subscription?.location_label || 'Customer'}</p>
       {#if customer?.email}<p class="party-line">{customer.email}</p>{/if}
       {#if customer?.phone}<p class="party-line">{customer.phone}</p>{/if}
@@ -164,22 +164,22 @@
 
     <div class="party party-meta">
       <div class="meta-row">
-        <span>Issue Date</span>
+        <span>{$t('components.invoice_print.issue_date') || 'Issue Date'}</span>
         <strong>{fmtDate(invoice?.created_at)}</strong>
       </div>
       <div class="meta-row">
-        <span>Due Date</span>
+        <span>{$t('components.invoice_print.due_date') || 'Due Date'}</span>
         <strong>{fmtDate(invoice?.due_date)}</strong>
       </div>
       {#if invoice?.paid_at}
         <div class="meta-row">
-          <span>Paid At</span>
+          <span>{$t('components.invoice_print.paid_at') || 'Paid At'}</span>
           <strong>{fmtDate(invoice.paid_at)}</strong>
         </div>
       {/if}
       {#if subscription?.billing_cycle}
         <div class="meta-row">
-          <span>Billing Cycle</span>
+          <span>{$t('components.invoice_print.billing_cycle') || 'Billing Cycle'}</span>
           <strong>{subscription.billing_cycle}</strong>
         </div>
       {/if}
@@ -191,10 +191,10 @@
     <table class="item-table">
       <thead>
         <tr>
-          <th class="col-desc">Description</th>
+          <th class="col-desc">{$t('common.description') || 'Description'}</th>
           <th class="col-qty">Qty</th>
-          <th class="col-price">Unit Price</th>
-          <th class="col-total">Amount</th>
+          <th class="col-price">{$t('components.invoice_print.unit_price') || 'Unit Price'}</th>
+          <th class="col-total">{$t('common.amount') || 'Amount'}</th>
         </tr>
       </thead>
       <tbody>
@@ -215,7 +215,7 @@
     <div class="totals-spacer"></div>
     <div class="totals-block">
       <div class="totals-row">
-        <span>Subtotal</span>
+        <span>{$t('components.invoice_print.subtotal') || 'Subtotal'}</span>
         <strong>{fmtMoney(subtotal)}</strong>
       </div>
       {#if adjustment !== 0}
@@ -225,7 +225,7 @@
         </div>
       {/if}
       <div class="totals-row totals-grand">
-        <span>Total Due</span>
+        <span>{$t('common.total') || 'Total Due'}</span>
         <strong>{fmtMoney(total)}</strong>
       </div>
       {#if invoice?.fx_rate && invoice?.base_currency_code && invoice.base_currency_code !== currency}

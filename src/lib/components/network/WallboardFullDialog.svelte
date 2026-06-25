@@ -388,29 +388,68 @@
 </div>
 
 <style>
+  /* ── NOC-style full-screen dialog ─────────────────────────── */
+  @keyframes overlay-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes panel-in {
+    from { opacity: 0; transform: scale(0.92) translateY(12px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
   .full-overlay {
     position: fixed;
     inset: 0;
     z-index: 70;
     display: grid;
     place-items: center;
+    animation: overlay-in 240ms ease both;
   }
   .full-backdrop {
     position: absolute;
     inset: 0;
     border: none;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(6, 8, 16, 0.72);
+    backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
   }
   .full {
     position: relative;
     width: min(1100px, calc(100vw - 24px));
     max-height: min(860px, calc(100vh - 24px));
     overflow: auto;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    box-shadow: var(--shadow-lg);
-    padding: 14px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    background-clip: padding-box;
+    background-color: color-mix(in srgb, var(--bg-surface) 82%, rgba(12, 18, 32, 0.6));
+    backdrop-filter: blur(28px) saturate(1.5);
+    -webkit-backdrop-filter: blur(28px) saturate(1.5);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent),
+      0 8px 40px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 color-mix(in srgb, #ffffff 6%, transparent);
+    padding: 18px;
+    animation: panel-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .full::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 21px;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent) 30%, transparent),
+      transparent 50%,
+      color-mix(in srgb, var(--accent) 12%, transparent)
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
   }
   .full-head {
     display: flex;
@@ -420,7 +459,7 @@
     margin-bottom: 12px;
   }
   .full-kicker {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--accent) 70%, var(--text-muted));
     letter-spacing: 0.14em;
     font-weight: 900;
     font-size: 11px;
@@ -441,27 +480,30 @@
   }
   .full-body {
     display: grid;
-    gap: 12px;
+    gap: 14px;
   }
   .full-summary-sticky {
     position: sticky;
     top: -2px;
     z-index: 6;
-    padding: 2px 0 8px;
-    background: var(--bg-surface);
-      }
+    padding: 4px 0 10px;
+    background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
   .full-summary-grid {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 8px;
+    gap: 6px;
   }
   .full-summary-item {
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 9px 10px;
-    background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+    border-radius: 14px;
+    padding: 8px 12px;
+    background: color-mix(in srgb, var(--accent) 5%, var(--bg-surface) 60%);
     display: grid;
     gap: 4px;
+    transition: border-color 250ms ease, box-shadow 250ms ease;
   }
   .full-summary-item .k {
     font-size: 10px;
@@ -477,52 +519,51 @@
   }
   .full-summary-item .v.warn {
     color: var(--color-danger);
+    text-shadow: 0 0 8px color-mix(in srgb, var(--color-danger) 40%, transparent);
   }
   .full-tabs {
     display: inline-flex;
-    gap: 6px;
-    padding: 4px;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
+    gap: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
     width: fit-content;
-    background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
+    background: transparent;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+    padding-bottom: 0;
   }
   .full-tab {
     position: relative;
     border: none;
     background: transparent;
-    color: color-mix(in srgb, var(--text-primary) 78%, var(--text-muted));
-    padding: 8px 12px;
-    border-radius: 8px;
+    color: var(--text-muted);
+    padding: 10px 18px 12px;
+    border-radius: 0;
     font-weight: 800;
     cursor: pointer;
+    font-size: 13px;
+    letter-spacing: 0.04em;
     transition:
-      background 120ms ease,
-      color 120ms ease,
-      box-shadow 120ms ease,
-      transform 120ms ease;
+      color 250ms ease,
+      background 250ms ease;
   }
   .full-tab:hover {
-    background: color-mix(in srgb, var(--bg-surface) 45%, var(--accent) 10%);
     color: var(--text-primary);
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
   }
   .full-tab.active {
-    background: color-mix(in srgb, var(--accent) 65%, var(--bg-surface));
     color: var(--text-primary);
-    box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--accent) 85%, transparent),
-      0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent);
-    transform: translateY(-1px);
   }
   .full-tab.active::after {
     content: '';
     position: absolute;
-    left: 10px;
-    right: 10px;
-    bottom: 3px;
-    height: 3px;
-    border-radius: 999px;
-    background: color-mix(in srgb, #ffffff 75%, var(--accent));
+    left: 12px;
+    right: 12px;
+    bottom: -1px;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+    background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #ffffff));
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent);
   }
   .metrics-filters {
     display: grid;
@@ -541,11 +582,11 @@
     max-width: 280px;
   }
   .metrics-bucket-chip {
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+    border-radius: 14px;
     padding: 8px 10px;
     min-width: 250px;
-    background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
+    background: color-mix(in srgb, var(--accent) 4%, var(--bg-surface) 55%);
     display: grid;
     gap: 2px;
   }
@@ -562,14 +603,19 @@
     color: var(--text-primary);
   }
   .metrics-range-select select {
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+    background: color-mix(in srgb, var(--bg-surface) 60%, transparent);
     color: var(--text-primary);
     padding: 9px 10px;
     border-radius: 10px;
     font-size: 13px;
     font-weight: 800;
     outline: none;
+    transition: border-color 250ms ease, box-shadow 250ms ease;
+  }
+  .metrics-range-select select:focus {
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
   }
   .metrics-dates {
     display: grid;
@@ -586,10 +632,15 @@
     width: 100%;
     padding: 9px 10px;
     border-radius: 10px;
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+    background: color-mix(in srgb, var(--bg-surface) 60%, transparent);
     color: var(--text-primary);
     outline: none;
+    transition: border-color 250ms ease, box-shadow 250ms ease;
+  }
+  .metrics-dates input:focus {
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
   }
   .metrics-tooltip {
     margin-top: 8px;
@@ -598,8 +649,10 @@
     gap: 8px;
     padding: 7px 10px;
     border-radius: 10px;
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface) 82%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border-color));
+    background: color-mix(in srgb, var(--bg-surface) 88%, rgba(8, 12, 24, 0.5));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     font-size: 12px;
     color: var(--text-primary);
   }
@@ -609,18 +662,21 @@
     z-index: 120;
     pointer-events: none;
     transform: translate(0, 0);
-    box-shadow: var(--shadow-md);
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.35),
+      0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent);
   }
   .full-historical {
-    border-top: 1px solid var(--border-color);
-    padding-top: 12px;
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 35%, transparent);
+    padding-top: 14px;
+    margin-top: 4px;
   }
   .full-historical-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
   }
   .full-stats {
     display: grid;
@@ -628,10 +684,11 @@
     gap: 10px;
   }
   .stat-big {
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 12px;
-    background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border-color) 45%, transparent);
+    border-radius: 16px;
+    padding: 14px;
+    background: color-mix(in srgb, var(--accent) 4%, var(--bg-surface) 55%);
+    transition: border-color 250ms ease, box-shadow 250ms ease;
   }
   .stat-big .k {
     font-size: 11px;
@@ -648,6 +705,7 @@
   }
   .stat-big .v.warn {
     color: var(--color-danger);
+    text-shadow: 0 0 8px color-mix(in srgb, var(--color-danger) 40%, transparent);
   }
   .spark {
     margin-top: 10px;
@@ -671,28 +729,39 @@
     align-items: end;
     gap: 2px;
     height: 100%;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+    border-radius: 14px;
     padding: 26px 6px 6px;
-    background: var(--bg-surface);
+    background:
+      color-mix(in srgb, var(--bg-surface) 92%, transparent);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
     overflow: hidden;
+    transition: border-color 250ms ease, box-shadow 250ms ease;
   }
   .bars.warn {
-    border-color: color-mix(in srgb, var(--color-danger) 55%, var(--border-color));
-    background: var(--bg-surface);
+    border-color: color-mix(in srgb, var(--color-danger) 40%, var(--border-color));
+    box-shadow:
+      inset 0 1px 3px rgba(0, 0, 0, 0.15),
+      0 0 12px color-mix(in srgb, var(--color-danger) 15%, transparent);
   }
   .bar {
-    border-radius: 2px 2px 0 0;
+    border-radius: 3px 3px 0 0;
     min-height: 2px;
+    transition: opacity 200ms ease;
   }
   .bar.rx {
     background: color-mix(in srgb, #22d3ee 65%, #2563eb 35%);
+    box-shadow: 0 0 4px color-mix(in srgb, #22d3ee 25%, transparent);
   }
   .bar.tx {
     background: color-mix(in srgb, #fb7185 65%, #f97316 35%);
+    box-shadow: 0 0 4px color-mix(in srgb, #fb7185 25%, transparent);
   }
   .bar.active {
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent),
+      0 0 6px color-mix(in srgb, var(--accent) 30%, transparent);
+    opacity: 1;
   }
   .bar.peak {
     outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
@@ -704,17 +773,18 @@
     bottom: 0;
     left: var(--x);
     width: 1px;
-    background: color-mix(in srgb, var(--text-primary) 45%, transparent);
+    background: color-mix(in srgb, var(--text-primary) 35%, transparent);
     pointer-events: none;
   }
   .metrics-selection {
     position: absolute;
     top: 0;
     bottom: 0;
-    border: 1px solid color-mix(in srgb, var(--accent) 75%, transparent);
-    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
     z-index: 3;
     pointer-events: none;
+    border-radius: 4px;
   }
   .chart-meta {
     margin-top: 9px;
@@ -724,10 +794,11 @@
     font-size: 12px;
   }
   .chart-meta span {
-    border: 1px solid var(--border-color);
-    border-radius: 9px;
-    padding: 5px 8px;
-    background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+    border-radius: 12px;
+    padding: 6px 10px;
+    background: color-mix(in srgb, var(--accent) 3%, var(--bg-surface) 50%);
+    transition: border-color 250ms ease;
   }
   .chart-meta-big {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -738,17 +809,24 @@
     gap: 8px;
     padding: 10px 12px;
     border-radius: 14px;
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface) 55%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+    background: color-mix(in srgb, var(--accent) 5%, var(--bg-surface) 50%);
     color: var(--text-primary);
     cursor: pointer;
     font-weight: 850;
     font-size: 13px;
     white-space: nowrap;
     transition:
-      border-color 120ms ease,
-      background 120ms ease,
-      transform 120ms ease;
+      border-color 250ms ease,
+      background 250ms ease,
+      transform 250ms ease,
+      box-shadow 250ms ease;
+  }
+  .btn-mini:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: color-mix(in srgb, var(--accent) 12%, var(--bg-surface) 55%);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent);
+    transform: translateY(-1px);
   }
   .icon-x {
     display: inline-flex;
@@ -757,10 +835,19 @@
     width: 36px;
     height: 36px;
     border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface) 55%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+    background: color-mix(in srgb, var(--bg-surface) 50%, transparent);
     color: var(--text-primary);
     cursor: pointer;
+    transition:
+      border-color 250ms ease,
+      background 250ms ease,
+      transform 250ms ease;
+  }
+  .icon-x:hover {
+    border-color: color-mix(in srgb, var(--color-danger) 50%, transparent);
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    transform: scale(1.06);
   }
   .mono {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
@@ -772,7 +859,6 @@
   .spark-sep {
     color: var(--text-muted);
   }
-
   @media (max-width: 920px) {
     .full-summary-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import { onMount } from 'svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
   import ResponsiveTabs from '$lib/components/ui/ResponsiveTabs.svelte';
@@ -75,17 +76,17 @@
 <section class="mix-step">
   <div class="section-head">
     <div>
-      <h2>Preview hasil import</h2>
+      <h2>{$t('mixradius.import_wizard.preview.title')}</h2>
       <p>Cek blocked/conflict lebih dulu sebelum eksekusi ke data produksi.</p>
     </div>
   </div>
 
   <div class="cards">
-    <article class="card"><span>Total</span><strong>{counts.total}</strong></article>
-    <article class="card"><span>Auto matched</span><strong>{counts.autoMatched}</strong></article>
-    <article class="card tone-warn"><span>Needs review</span><strong>{counts.needsReview}</strong></article>
-    <article class="card tone-danger"><span>Conflicts</span><strong>{counts.conflicts}</strong></article>
-    <article class="card tone-danger"><span>Blocked</span><strong>{counts.blocked}</strong></article>
+    <article class="card"><span>{$t('mixradius.import_wizard.preview.total')}</span><strong>{counts.total}</strong></article>
+    <article class="card"><span>{$t('mixradius.import_wizard.preview.auto_matched')}</span><strong>{counts.autoMatched}</strong></article>
+    <article class="card tone-warn"><span>{$t('mixradius.import_wizard.preview.needs_review')}</span><strong>{counts.needsReview}</strong></article>
+    <article class="card tone-danger"><span>{$t('mixradius.import_wizard.preview.conflicts')}</span><strong>{counts.conflicts}</strong></article>
+    <article class="card tone-danger"><span>{$t('mixradius.import_wizard.preview.blocked')}</span><strong>{counts.blocked}</strong></article>
   </div>
 
   {#if sourceKindCards.length}
@@ -109,7 +110,7 @@
 
   <div class="rows">
     {#if filteredRows.length === 0}
-      <div class="empty">Tidak ada row untuk tab ini.</div>
+      <div class="empty">{$t('mixradius.import_wizard.preview.no_rows')}</div>
     {:else}
       {#each filteredRows as row}
         {@const badge = getMixradiusConflictBadge(row.conflictState)}
@@ -133,9 +134,9 @@
   </div>
 
   <div class="step-actions">
-    <button class="btn ghost" type="button" onclick={onBack}>Back</button>
+    <button class="btn ghost" type="button" onclick={onBack}>{$t('mixradius.import_wizard.preview.back')}</button>
     <button class="btn primary" type="button" onclick={onNext}>
-      Lanjut ke execute
+      {$t('mixradius.import_wizard.preview.execute')}
       <Icon name="arrow-right" size={16} />
     </button>
   </div>

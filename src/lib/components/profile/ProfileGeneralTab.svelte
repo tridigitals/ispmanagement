@@ -52,7 +52,7 @@
     <div class="avatar-large-wrapper">
       <div class="avatar-large">
         {#if profileData.avatar_url}
-          <img src={profileData.avatar_url} alt="Avatar" class="avatar-img" />
+          <img src={profileData.avatar_url} alt={$t('profile.general.avatar_alt') || 'Avatar'} class="avatar-img" />
         {:else}
           {initials}
         {/if}

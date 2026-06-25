@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import { onMount, onDestroy } from 'svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { sanitizeHtml, stripHtmlToText } from '$lib/utils/sanitizeHtml';
@@ -145,13 +146,13 @@
     <div class="label">{label}</div>
   {/if}
 
-  <div class="toolbar" role="toolbar" aria-label="Rich text toolbar">
+  <div class="toolbar" role="toolbar" aria-label={$t('components.rich_text_editor.toolbar')}>
     <button
       class="tool"
       class:active={!!editor?.isActive('bold')}
       type="button"
       onclick={() => editor?.chain().focus().toggleBold().run()}
-      title="Bold"
+      title={$t('components.rich_text_editor.bold')}
     >
       <Icon name="bold" size={16} />
     </button>
@@ -160,7 +161,7 @@
       class:active={!!editor?.isActive('italic')}
       type="button"
       onclick={() => editor?.chain().focus().toggleItalic().run()}
-      title="Italic"
+      title={$t('components.rich_text_editor.italic')}
     >
       <Icon name="italic" size={16} />
     </button>
@@ -169,7 +170,7 @@
       class:active={!!editor?.isActive('underline')}
       type="button"
       onclick={() => editor?.chain().focus().toggleUnderline().run()}
-      title="Underline"
+      title={$t('components.rich_text_editor.underline')}
     >
       <Icon name="underline" size={16} />
     </button>
@@ -179,7 +180,7 @@
       class:active={!!editor?.isActive('bulletList')}
       type="button"
       onclick={() => editor?.chain().focus().toggleBulletList().run()}
-      title="Bullet list"
+      title={$t('components.rich_text_editor.bullet_list')}
     >
       <Icon name="list" size={16} />
     </button>
@@ -188,7 +189,7 @@
       class:active={!!editor?.isActive('orderedList')}
       type="button"
       onclick={() => editor?.chain().focus().toggleOrderedList().run()}
-      title="Numbered list"
+      title={$t('components.rich_text_editor.numbered_list')}
     >
       <Icon name="list-ordered" size={16} />
     </button>
@@ -197,19 +198,19 @@
       class:active={!!editor?.isActive('blockquote')}
       type="button"
       onclick={() => editor?.chain().focus().toggleBlockquote().run()}
-      title="Quote"
+      title={$t('components.rich_text_editor.quote')}
     >
       <Icon name="quote" size={16} />
     </button>
     <span class="sep"></span>
-    <button class="tool" type="button" onclick={promptLink} title="Link">
+    <button class="tool" type="button" onclick={promptLink} title={$t('components.rich_text_editor.link')}>
       <Icon name="link" size={16} />
     </button>
     <button
       class="tool"
       type="button"
       onclick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()}
-      title="Clear formatting"
+      title={$t('components.rich_text_editor.clear_formatting')}
     >
       <Icon name="eraser" size={16} />
     </button>

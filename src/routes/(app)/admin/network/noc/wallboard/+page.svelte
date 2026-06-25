@@ -1658,6 +1658,7 @@
   .wallboard-viewport {
     min-height: 100dvh;
     overflow: hidden;
+    background: linear-gradient(145deg, #060810 0%, #0a0f1e 50%, #080c18 100%);
   }
 
   :global(body.kiosk-wallboard header.topbar) {
@@ -1702,6 +1703,11 @@
     justify-content: space-between;
     gap: 18px;
     margin-bottom: 8px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+    background: color-mix(in srgb, var(--bg-surface) 45%, transparent);
+    backdrop-filter: blur(18px) saturate(1.3);
     transition:
       opacity 180ms ease,
       transform 180ms ease;
@@ -1773,16 +1779,23 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
+    padding: 8px 14px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+    border-radius: 100px;
+    background: color-mix(in srgb, var(--bg-surface) 50%, transparent);
+    backdrop-filter: blur(12px);
     color: var(--text-primary);
     cursor: pointer;
     font-weight: 700;
-    font-size: 13px;
+    font-size: 12px;
     position: relative;
     padding-right: 30px;
+    transition: all 250ms ease;
+  }
+  .settings-btn:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border-color));
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 15%, transparent);
+    transform: translateY(-1px);
   }
   .settings-btn.has-warning {
     color: color-mix(in srgb, #f59e0b 85%, var(--text-primary));
@@ -1930,6 +1943,15 @@
     align-items: center;
     justify-content: center;
     text-align: center;
+    border: 1px dashed color-mix(in srgb, var(--accent) 30%, var(--border-color));
+    background: color-mix(in srgb, var(--bg-surface) 30%, transparent);
+    backdrop-filter: blur(12px);
+    transition: all 250ms ease;
+  }
+  .tile.add:hover {
+    border-color: color-mix(in srgb, var(--accent) 50%, var(--border-color));
+    box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 10%, transparent);
+    background: color-mix(in srgb, var(--bg-surface) 45%, transparent);
   }
   .add-inner {
     padding: 18px;
@@ -1964,15 +1986,19 @@
     justify-content: center;
     width: 36px;
     height: 36px;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface) 55%, transparent);
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+    background: color-mix(in srgb, var(--bg-surface) 40%, transparent);
+    backdrop-filter: blur(8px);
     color: var(--text-primary);
     cursor: pointer;
+    transition: all 200ms ease;
   }
   .icon-x:hover:not(:disabled) {
-    border-color: color-mix(in srgb, var(--accent) 35%, var(--border-color));
-    background: color-mix(in srgb, var(--accent) 10%, var(--bg-surface));
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border-color));
+    background: color-mix(in srgb, var(--accent) 12%, var(--bg-surface));
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 12%, transparent);
+    transform: translateY(-1px);
   }
 
   .grid.compact {

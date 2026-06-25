@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import {
     buildMixradiusExecutionHighlights,
@@ -35,8 +36,8 @@
 <section class="mix-step">
   <div class="section-head">
     <div>
-      <h2>Execute import</h2>
-      <p>Pilih mode eksekusi sesuai tingkat kehati-hatian yang diinginkan.</p>
+      <h2>{$t('mixradius.import_wizard.execution.title')}</h2>
+      <p>{$t('mixradius.import_wizard.execution.description')}</p>
     </div>
   </div>
 
@@ -80,11 +81,11 @@
 
       <div class="billing-box">
         <div>
-          <span>Legacy transactions</span>
+          <span>{$t('mixradius.import_wizard.execution.legacy_transactions')}</span>
           <strong>{highlights.billing.legacyTransactionCount}</strong>
         </div>
         <div>
-          <span>Production invoices</span>
+          <span>{$t('mixradius.import_wizard.execution.production_invoices')}</span>
           <strong>{highlights.billing.productionInvoiceCount}</strong>
         </div>
       </div>
@@ -100,9 +101,9 @@
   {/if}
 
   <div class="step-actions">
-    <button class="btn ghost" type="button" onclick={onBack}>Back</button>
+    <button class="btn ghost" type="button" onclick={onBack}>{$t('mixradius.import_wizard.execution.back')}</button>
     <div class="right-actions">
-      <button class="btn ghost" type="button" onclick={onCancel}>Cancel batch</button>
+      <button class="btn ghost" type="button" onclick={onCancel}>{$t('mixradius.import_wizard.execution.cancel_batch')}</button>
       <button
         class="btn primary"
         type="button"

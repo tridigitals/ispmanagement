@@ -263,7 +263,7 @@
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label" for="label">{$t('profile.addresses.fields.label') || 'Label'}</label>
-        <input id="label" class="form-input" type="text" bind:value={form.label} placeholder="Home, Office, etc" />
+        <input id="label" class="form-input" type="text" bind:value={form.label} placeholder={$t('profile.addresses.fields.label_placeholder') || 'Home, Office, etc'} />
       </div>
 
       <div class="form-group">
@@ -304,8 +304,8 @@
       <div class="form-group">
         <label class="form-label" for="countryCode">{$t('profile.addresses.fields.country_code') || 'Country code'}</label>
         <select id="countryCode" class="form-input" bind:value={form.countryCode}>
-          <option value="ID">ID (Indonesia)</option>
-          <option value="US">US (United States)</option>
+          <option value="ID">{$t('profile.addresses.fields.country_id') || 'ID (Indonesia)'}</option>
+          <option value="US">{$t('profile.addresses.fields.country_us') || 'US (United States)'}</option>
         </select>
       </div>
     </div>

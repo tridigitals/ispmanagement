@@ -37,7 +37,10 @@
       "postal_code": "Kode pos",
       "country_code": "Kode negara",
       "default_shipping": "Default pengiriman",
-      "default_billing": "Default billing"
+      "default_billing": "Default billing",
+      "label_placeholder": "Home, Office, etc",
+      "country_id": "ID (Indonesia)",
+      "country_us": "US (Amerika Serikat)"
     },
     "validation": {
       "line1_required": "Alamat baris 1 wajib diisi."
@@ -47,12 +50,15 @@
     "title": "Informasi Profil",
     "subtitle": "Perbarui detail akun dan profil publik Anda.",
     "change_avatar": "Ubah Avatar",
+    "avatar_alt": "Avatar",
     "your_name": "Nama Anda",
     "role_label": "Peran",
     "display_name": "Nama Tampilan",
     "display_name_placeholder": "Masukkan nama lengkap",
     "email_address": "Alamat Email",
     "email_placeholder": "nama@contoh.com",
+    "phone": "No. HP",
+    "phone_placeholder": "Masukkan nomor telepon",
     "save_button": "Simpan Perubahan",
     "saving": "Menyimpan..."
   },
@@ -70,22 +76,59 @@
     "req_special": "Satu karakter spesial",
     "update_button": "Perbarui Kata Sandi",
     "updating": "Memperbarui...",
+    "settings_desc_current": "Masukkan kata sandi Anda saat ini untuk melakukan perubahan.",
+    "settings_desc_new": "Pilih kata sandi yang kuat dengan setidaknya",
+    "settings_desc_confirm": "Masukkan ulang kata sandi baru Anda untuk konfirmasi.",
     "twofa": {
       "title": "Autentikasi Dua Faktor",
       "subtitle": "Lindungi akun Anda dengan lapisan keamanan tambahan.",
       "enabled_title": "2FA Aktif",
       "enabled_desc": "Akun Anda terlindungi dengan 2FA.",
       "recovery_title": "Simpan Kode Pemulihan Anda!",
+      "recovery_desc": "Kode ini adalah SATU-SATUNYA cara untuk mengakses akun Anda jika Anda kehilangan ponsel.",
       "recovery": {
         "saved_button": "Saya sudah menyimpannya"
       },
       "disable_title": "Nonaktifkan 2FA",
+      "disable_desc": "Masukkan kode dari perangkat Anda untuk menonaktifkan 2FA.",
       "methods": {
         "authenticator_app": "Aplikasi Authenticator",
         "email_verification": "Verifikasi Email"
       },
       "disable": {
         "placeholder": "Masukkan kode autentikasi"
+      },
+      "enabled_methods": "Metode Aktif",
+      "enabled_badge": "Aktif",
+      "enable_button": "Aktifkan",
+      "disable_button": "Nonaktifkan",
+      "sending": "Mengirim...",
+      "resend": "Kirim Ulang",
+      "send_code": "Kirim Kode",
+      "disable_code_placeholder": "Masukkan kode",
+      "enhance_security": "Tingkatkan Keamanan Anda",
+      "enhance_desc": "Tambahkan lapisan keamanan ekstra dengan mewajibkan kode verifikasi saat login.",
+      "authenticator_app": "Aplikasi Authenticator",
+      "email_verification": "Verifikasi Email",
+      "step_scan": "1. Pindai kode QR ini",
+      "secret_key": "Kunci",
+      "step_enter_code": "2. Masukkan kode",
+      "cancel": "Batal",
+      "verifying": "Memverifikasi...",
+      "activate": "Aktifkan",
+      "verify_email": "Verifikasi Email Anda",
+      "sent_code_to": "Kami telah mengirim kode verifikasi ke",
+      "verify_enable": "Verifikasi & Aktifkan",
+      "trusted_devices": {
+        "title": "Perangkat Tepercaya",
+        "loading": "Memuat perangkat...",
+        "empty": "Tidak ada perangkat tepercaya.",
+        "desc": "Perangkat yang telah diotorisasi untuk melewati 2FA selama 30 hari.",
+        "unknown_device": "Perangkat Tidak Dikenal",
+        "last_used": "Terakhir digunakan",
+        "revoke": "Cabut",
+        "revoke_title": "Cabut Perangkat",
+        "revoke_message": "Apakah Anda yakin ingin mencabut akses perangkat ini? 2FA akan diperlukan saat login berikutnya."
       }
     }
   },
@@ -93,7 +136,8 @@
     "title": "Tampilan",
     "subtitle": "Sesuaikan tampilan dan nuansa aplikasi.",
     "dark_mode": "Mode Gelap",
-    "dark_mode_desc": "Beralih antara tema gelap dan terang."
+    "dark_mode_desc": "Beralih antara tema gelap dan terang.",
+    "dark": "Gelap"
   },
   "notifications": {
     "title": "Preferensi Notifikasi",

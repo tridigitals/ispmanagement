@@ -95,6 +95,37 @@
     "preview": "Invoice Preview",
     "download_pdf": "Download PDF",
     "generating": "Generating...",
-    "print": "Print"
+    "print": "Print",
+    "invoice": "INVOICE",
+    "bill_to": "Bill To",
+    "issue_date": "Issue Date",
+    "due_date": "Due Date",
+    "paid_at": "Paid At",
+    "billing_cycle": "Billing Cycle",
+    "unit_price": "Unit Price",
+    "subtotal": "Subtotal",
+    "items": "Items"
+  },
+  "topbar_global_search": {
+    "hint": "Type to search across available modules.",
+    "no_results": "No results match your query."
+  },
+  "service_coming_soon": {
+    "planned_scope": "Planned Scope",
+    "next_rollout": "Next rollout target"
+  },
+  "date_time_picker": {
+    "open": "Open date time picker"
+  },
+  "rich_text_editor": {
+    "toolbar": "Rich text toolbar",
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "bullet_list": "Bullet list",
+    "numbered_list": "Numbered list",
+    "quote": "Quote",
+    "link": "Link",
+    "clear_formatting": "Clear formatting"
   }
 }

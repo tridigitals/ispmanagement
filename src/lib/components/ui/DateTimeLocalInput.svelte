@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
 
   let {
@@ -45,8 +46,8 @@
       type="button"
       onclick={openPicker}
       {disabled}
-      aria-label="Open date time picker"
-      title="Open date time picker"
+      aria-label={$t('components.date_time_picker.open')}
+      title={$t('components.date_time_picker.open')}
     >
       <Icon name="calendar" size={16} />
     </button>
