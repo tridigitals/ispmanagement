@@ -227,9 +227,7 @@
         </div>
         <div class="chart-meta chart-meta-big muted">
           <span>{($t('admin.network.wallboard.chart.peak') || 'Peak') + ': ' + formatBps(rxPeak)}</span>
-          <span>{($t('admin.network.wallboard.chart.avg') || 'Avg') + ': ' + formatBps(rxAvg)}</span>
           <span>{($t('admin.network.wallboard.chart.peak_tx') || 'TX Peak') + ': ' + formatBps(txPeak)}</span>
-          <span>{($t('admin.network.wallboard.chart.avg_tx') || 'TX Avg') + ': ' + formatBps(txAvg)}</span>
         </div>
       {:else}
         <div class="metrics-filters">
@@ -376,9 +374,7 @@
             {/if}
             <div class="chart-meta chart-meta-big muted">
               <span>{($t('admin.network.wallboard.chart.peak') || 'Peak') + ': ' + formatBps(histRxPeak)}</span>
-              <span>{($t('admin.network.wallboard.chart.avg') || 'Avg') + ': ' + formatBps(histRxAvg)}</span>
               <span>{($t('admin.network.wallboard.chart.peak_tx') || 'TX Peak') + ': ' + formatBps(histTxPeak)}</span>
-              <span>{($t('admin.network.wallboard.chart.avg_tx') || 'TX Avg') + ': ' + formatBps(histTxAvg)}</span>
             </div>
           {/if}
         </div>

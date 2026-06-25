@@ -171,10 +171,6 @@
       <p>Tampilan NOC live.</p>
     </div>
     <div class="actions">
-      <button class="btn ghost" type="button" onclick={exitWithoutSave}>
-        <Icon name="arrow-left" size={16} />
-        {$t('common.cancel') || 'Exit'}
-      </button>
       <button class="btn primary" type="button" onclick={saveAndExit} disabled={saving}>
         <Icon name="save" size={16} />
         {saving ? ($t('common.saving') || 'Saving...') : ($t('common.save') || 'Save & Exit')}
