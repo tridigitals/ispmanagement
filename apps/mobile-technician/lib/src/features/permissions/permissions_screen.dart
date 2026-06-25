@@ -79,8 +79,8 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
   }
 
   Future<void> _openSettings() async {
-    // ignore: deprecated_member_use
-    await FirebaseMessaging.instance.openSettings();
+    // Re-request notification permission.
+    await _requestNotifications();
   }
 
   Future<void> _continueToLogin() async {
