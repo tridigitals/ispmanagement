@@ -20,7 +20,7 @@
   export let onSubmit: () => void;
 </script>
 
-<Modal {show} title={$t('network.asset.connect_ftth') || 'Connect FTTH Asset'}width="620px" onclose={() => !saving && onClose()}>
+<Modal {show} title={$t('network.asset.connect_ftth') || 'Connect FTTH Asset'} width="620px" onclose={() => !saving && onClose()}>
   <div class="asset-connect-shell">
     <div class="asset-connect-intro">
       <div class="asset-connect-kicker">{$t('network.asset.current_asset') || 'Current asset'}</div>
@@ -42,9 +42,9 @@
 
       {#if supportsCustomerDrop}
         <label class="field">
-          <span>Customer</span>
+          <span>{$t('common.customer') || 'Customer'}</span>
           <select class="input" bind:value={draft.customerId} disabled={saving || loadingCustomers}>
-            <option value="">{loadingCustomers ? 'Loading customers...' : 'No customer'}</option>
+            <option value="">{loadingCustomers ? ($t('common.loading') || 'Loading customers...') : ($t('network.asset.no_customer') || 'No customer')}</option>
             {#each customerOptions as option}
               <option value={option.value}>{option.label}</option>
             {/each}
@@ -52,7 +52,7 @@
         </label>
 
         <label class="field">
-          <span>Location</span>
+          <span>{$t('common.location') || 'Location'}</span>
           <select
             class="input"
             bind:value={draft.locationId}
@@ -60,24 +60,24 @@
           >
             <option value="">
               {!draft.customerId
-                ? 'Select customer first'
+                ? ($t('network.asset.select_customer_first') || 'Select customer first')
                 : loadingLocations
-                  ? 'Loading locations...'
-                  : 'No location'}
+                  ? ($t('common.loading') || 'Loading locations...')
+                  : ($t('network.asset.no_location') || 'No location')}
             </option>
             {#each locationOptions as option}
               <option value={option.value}>{option.label}</option>
             {/each}
           </select>
-          <small>Use this to draw the customer-side drop relation from ODP.</small>
+          <small>{$t('network.asset.location_hint') || 'Use this to draw the customer-side drop relation from ODP.'}</small>
         </label>
       {/if}
     </div>
 
     <div class="asset-connect-actions">
-      <button class="btn ghost" type="button" onclick={onClose} disabled={saving}>Cancel</button>
+      <button class="btn ghost" type="button" onclick={onClose} disabled={saving}>{$t('common.cancel') || 'Cancel'}</button>
       <button class="btn" type="button" onclick={onSubmit} disabled={saving}>
-        {saving ? 'Saving...' : 'Save Connection'}
+        {saving ? ($t('common.saving') || 'Saving...') : ($t('network.asset.save_connection') || 'Save Connection')}
       </button>
     </div>
   </div>

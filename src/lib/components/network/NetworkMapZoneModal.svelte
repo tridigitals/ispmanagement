@@ -17,39 +17,39 @@
 
 <Modal
   {show}
-  title={editingZoneId ? 'Edit Zone' : 'Add Zone'}
+  title={editingZoneId ? ($t('network.map.edit_zone') || 'Edit Zone') : ($t('network.map.add_zone') || 'Add Zone')}
   width="860px"
   onclose={() => !savingZone && onClose()}
 >
   <div class="form-grid two-col">
     <label class="field">
-      <span>Name</span>
+      <span>{$t('common.name') || 'Name'}</span>
       <input class="input" bind:value={zoneForm.name} />
     </label>
     <label class="field">
-      <span>Type</span>
+      <span>{$t('common.type') || 'Type'}</span>
       <input class="input" bind:value={zoneForm.zone_type} />
     </label>
     <label class="field">
-      <span>Status</span>
+      <span>{$t('common.status') || 'Status'}</span>
       <select class="input" bind:value={zoneForm.status}>
         <option value="active">active</option>
         <option value="inactive">inactive</option>
       </select>
     </label>
     <label class="field">
-      <span>Priority</span>
+      <span>{$t('network.map.priority') || 'Priority'}</span>
       <input class="input" type="number" min="1" bind:value={zoneForm.priority} />
     </label>
     <label class="field field-full">
-      <span>Geometry (GeoJSON Polygon/MultiPolygon)</span>
+      <span>{$t('network.map.geometry') || 'Geometry (GeoJSON Polygon/MultiPolygon)'}</span>
       <textarea class="input textarea" rows="9" bind:value={zoneForm.geometryText}></textarea>
     </label>
   </div>
   {#snippet footer()}
-    <button class="btn ghost" type="button" onclick={onClose} disabled={savingZone}>Cancel</button>
+    <button class="btn ghost" type="button" onclick={onClose} disabled={savingZone}>{$t('common.cancel') || 'Cancel'}</button>
     <button class="btn" type="button" onclick={onSubmit} disabled={savingZone}>
-      {savingZone ? 'Saving...' : 'Save'}
+      {savingZone ? ($t('common.saving') || 'Saving...') : ($t('common.save') || 'Save')}
     </button>
   {/snippet}
 </Modal>

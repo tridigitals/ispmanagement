@@ -192,16 +192,16 @@
           </span>
         </div>
         <div class="drow"><span class="muted">{$t('admin.network.incidents.drawer.assignee') || 'Assignee'}</span><span class="mono">{ownerLabel(incident.owner_user_id)}</span></div>
-        <div class="drow"><span class="muted">Router</span><span class="mono">{router?.identity || router?.name || incident.router_id}</span></div>
-        <div class="drow"><span class="muted">Interface</span><span class="mono">{incident.interface_name || '-'}</span></div>
+        <div class="drow"><span class="muted">{$t('admin.network.incidents.labels.router') || 'Router'}</span><span class="mono">{router?.identity || router?.name || incident.router_id}</span></div>
+        <div class="drow"><span class="muted">{$t('admin.network.incidents.labels.interface') || 'Interface'}</span><span class="mono">{incident.interface_name || '-'}</span></div>
         {#if router}
-          <div class="drow"><span class="muted">Host</span><span class="mono">{router.host}:{router.port}</span></div>
-          <div class="drow"><span class="muted">Latency</span><span class="mono">{router.latency_ms == null ? '—' : `${router.latency_ms} ms`}</span></div>
+          <div class="drow"><span class="muted">{$t('admin.network.incidents.labels.host') || 'Host'}</span><span class="mono">{router.host}:{router.port}</span></div>
+          <div class="drow"><span class="muted">{$t('admin.network.incidents.labels.latency') || 'Latency'}</span><span class="mono">{router.latency_ms == null ? '—' : `${router.latency_ms} ms`}</span></div>
         {/if}
         {#if metric}
-          <div class="drow"><span class="muted">CPU</span><span class="mono">{metric.cpu_load == null ? '—' : `${metric.cpu_load}%`}</span></div>
-          <div class="drow"><span class="muted">RX/TX</span><span class="mono">{formatBps(metric.rx_bps)} / {formatBps(metric.tx_bps)}</span></div>
-          <div class="drow"><span class="muted">Memory Use</span><span class="mono">{memoryUsePct(metric.total_memory_bytes, metric.free_memory_bytes) == null ? '—' : `${memoryUsePct(metric.total_memory_bytes, metric.free_memory_bytes)}%`}</span></div>
+          <div class="drow"><span class="muted">{$t('admin.network.incidents.labels.cpu') || 'CPU'}</span><span class="mono">{metric.cpu_load == null ? '—' : `${metric.cpu_load}%`}</span></div>
+          <div class="drow"><span class="muted">{$t('admin.network.incidents.labels.rx_tx') || 'RX/TX'}</span><span class="mono">{formatBps(metric.rx_bps)} / {formatBps(metric.tx_bps)}</span></div>
+          <div class="drow"><span class="muted">{$t('admin.network.incidents.labels.memory_use') || 'Memory Use'}</span><span class="mono">{memoryUsePct(metric.total_memory_bytes, metric.free_memory_bytes) == null ? '—' : `${memoryUsePct(metric.total_memory_bytes, metric.free_memory_bytes)}%`}</span></div>
         {/if}
       </div>
 
@@ -230,10 +230,10 @@
                 </div>
                 <div class="impact-tags">
                   {#if item.impacted_via_node}
-                    <span class="impact-tag">Node</span>
+                    <span class="impact-tag">{$t('admin.network.incidents.labels.via_node') || 'Node'}</span>
                   {/if}
                   {#if item.impacted_via_link}
-                    <span class="impact-tag">Link</span>
+                    <span class="impact-tag">{$t('admin.network.incidents.labels.via_link') || 'Link'}</span>
                   {/if}
                 </div>
               </div>

@@ -800,7 +800,7 @@
   <div class="icm-toolbar">
     <button class="btn ghost mini" type="button" onclick={toggleDraw} disabled={loading || saving}>
       <Icon name="map-pin" size={14} />
-      {drawing ? 'Drawing active' : 'Draw Cable'}
+      {drawing ? ($t('network.installation.drawing_active') || 'Drawing active') : ($t('network.installation.draw_cable') || 'Draw Cable')}
     </button>
     <button
       class="btn ghost mini"
@@ -809,11 +809,11 @@
       disabled={!drawing || bendPoints.length === 0 || saving}
     >
       <Icon name="arrow-left" size={14} />
-      Undo
+      {$t('common.undo') || 'Undo'}
     </button>
     <button class="btn ghost mini" type="button" onclick={cancelDraw} disabled={!drawing || saving}>
       <Icon name="x-circle" size={14} />
-      Cancel
+      {$t('common.cancel') || 'Cancel'}
     </button>
     <button
       class="btn mini"
@@ -822,30 +822,29 @@
       disabled={saving || !drawing || !sourceNodeId || (!targetNodeId && !targetLink)}
     >
       <Icon name="save" size={14} />
-      {saving ? 'Saving...' : 'Save Link'}
+      {saving ? ($t('common.saving') || 'Saving...') : ($t('network.installation.save_link') || 'Save Link')}
     </button>
   </div>
 
   <div class="icm-hints">
     {#if drawing}
       <span>
-        Route starts from the customer marker. Click map for bend points, then click a node or an
-        existing cable to finish.
+        {$t('network.installation.hint_drawing') || 'Route starts from the customer marker. Click map for bend points, then click a node or an existing cable to finish.'}
       </span>
     {:else}
-      <span>Start Draw Cable to create a route from the customer premise.</span>
+      <span>{$t('network.installation.hint_start') || 'Start Draw Cable to create a route from the customer premise.'}</span>
     {/if}
     <div class="icm-badges">
       {#if customerCoord}
-        <span class="tag">Customer marker focused</span>
+        <span class="tag">{$t('network.installation.customer_focused') || 'Customer marker focused'}</span>
       {/if}
       {#if sourceNodeId}
-        <span class="tag ok">Customer node ready</span>
+        <span class="tag ok">{$t('network.installation.customer_ready') || 'Customer node ready'}</span>
       {/if}
       {#if targetNodeId}
-        <span class="tag">Target node selected</span>
+        <span class="tag">{$t('network.installation.target_selected') || 'Target node selected'}</span>
       {:else if targetLink}
-        <span class="tag warn">Existing cable selected</span>
+        <span class="tag warn">{$t('network.installation.existing_cable_selected') || 'Existing cable selected'}</span>
       {/if}
     </div>
   </div>
