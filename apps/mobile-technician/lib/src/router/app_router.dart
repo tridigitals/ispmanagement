@@ -24,7 +24,6 @@ import '../features/tickets/ticket_detail_screen.dart';
 import '../features/work_orders/work_order_detail_screen.dart';
 import '../services/auth_providers.dart';
 import '../services/missing_providers.dart';
-import '../services/settings_providers.dart';
 
 GoRouter buildAppRouter({
   required WidgetRef ref,
@@ -41,11 +40,10 @@ GoRouter buildAppRouter({
       final onboardingDone = container.read(onboardingCompletedProvider);
       final loc = state.matchedLocation;
 
-      // Read permissions_completed directly from SharedPreferences to avoid
-      // stale overridden provider values.
-      final prefsAsync = container.read(sharedPreferencesProvider);
-      final permissionsDone = prefsAsync.valueOrNull?.getBool('permissions_completed') ?? false;
-
+      // Permissions is a normal public route — onboarding navigates to it via
+      // context.go() directly, no redirect needed. Checking permissions_completed
+      // here causes a redirect loop because onboardingCompletedProvider hasn't
+      // fired notifyListeners() yet when GoRouter re-evaluates after the go().
       final isPublic = loc == '/login' || loc == '/forgot-password'
           || loc == '/onboarding' || loc == '/loading' || loc == '/permissions';
 
@@ -54,13 +52,8 @@ GoRouter buildAppRouter({
         return '/onboarding';
       }
 
-      // Permissions gate: after onboarding, force /permissions
-      if (onboardingDone && !permissionsDone && loc != '/permissions') {
-        return '/permissions';
-      }
-
       // Auth gate
-      if (!loggedIn && !isPublic && loc != '/onboarding' && loc != '/permissions') {
+      if (!loggedIn && !isPublic) {
         return '/login';
       }
       if (loggedIn && (loc == '/login' || loc == '/onboarding' || loc == '/permissions')) {
