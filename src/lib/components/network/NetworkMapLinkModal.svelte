@@ -53,27 +53,27 @@
 
 <Modal
   {show}
-  title={editingLinkId ? 'Edit Link' : 'Add Link'}
+  title={editingLinkId ? ($t('network.map.edit_link') || 'Edit Link') : ($t('network.map.add_link') || 'Add Link')}
   width="920px"
   onclose={() => !savingLink && onClose()}
 >
   {#if !editingLinkId}
     <div class="link-workflow">
       <div class="workflow-main">
-        <div class="segmented-control" aria-label="Link drawing mode">
+        <div class="segmented-control" aria-label={$t('network.map.link_drawing_mode') || 'Link drawing mode'}>
           <button
             class:active={linkPickDrawMode === 'quick'}
             type="button"
             onclick={() => onSetDrawMode('quick')}
           >
-            Quick
+            {$t('network.map.quick') || 'Quick'}
           </button>
           <button
             class:active={linkPickDrawMode === 'path'}
             type="button"
             onclick={() => onSetDrawMode('path')}
           >
-            Draw Path
+            {$t('network.map.draw_path') || 'Draw Path'}
           </button>
         </div>
 
@@ -86,10 +86,10 @@
           <Icon name="map-pin" size={15} />
           <span>
             {linkPickMode
-              ? `Picking ${linkPickStep === 'from' ? 'source' : 'destination'}`
+              ? ($t('network.map.picking') || `Picking ${linkPickStep === 'from' ? 'source' : 'destination'}`)
               : linkPickDrawMode === 'quick'
-                ? 'Pick endpoints'
-                : 'Draw on map'}
+                ? ($t('network.map.pick_endpoints') || 'Pick endpoints')
+                : ($t('network.map.draw_on_map') || 'Draw on map')}
           </span>
         </button>
       </div>
@@ -102,10 +102,10 @@
               class:active={linkSnapToNodeEnabled}
               type="button"
               onclick={onToggleSnap}
-              title="Snap bend points to nearest node"
+              title={$t('network.map.snap_bend_points') || 'Snap bend points to nearest node'}
             >
               <Icon name="radio" size={14} />
-              Snap {linkSnapToNodeEnabled ? 'On' : 'Off'}
+              {$t('network.map.snap') || 'Snap'} {linkSnapToNodeEnabled ? ($t('common.on') || 'On') : ($t('common.off') || 'Off')}
             </button>
           {/if}
           {#if linkPickMode && linkPickDrawMode === 'path'}
@@ -116,7 +116,7 @@
               disabled={linkPathBendPoints.length === 0}
             >
               <Icon name="arrow-left" size={14} />
-              Undo
+              {$t('common.undo') || 'Undo'}
             </button>
             <button
               class="workflow-action"
@@ -125,7 +125,7 @@
               disabled={linkPathBendPoints.length === 0}
             >
               <Icon name="x-circle" size={14} />
-              Clear
+              {$t('common.clear') || 'Clear'}
             </button>
           {/if}
         </div>
@@ -133,14 +133,13 @@
 
       <div class="workflow-hint" class:active={linkPickMode}>
         {#if linkPickMode && linkPickDrawMode === 'quick'}
-          Click the source node, then click the destination node.
+          {$t('network.map.link_hint_quick') || 'Click the source node, then click the destination node.'}
         {:else if linkPickMode && linkPickStep === 'from'}
-          Click the source node to start drawing the path.
+          {$t('network.map.link_hint_path_from') || 'Click the source node to start drawing the path.'}
         {:else if linkPickMode}
-          Click the map to add bend points{linkSnapToNodeEnabled ? ' with snap enabled' : ''}, then
-          click the destination node.
+          {$t('network.map.link_hint_path') || 'Click the map to add bend points'}{linkSnapToNodeEnabled ? ($t('network.map.with_snap_enabled') || ' with snap enabled') : ''}, {$t('network.map.then_click_destination') || 'then click the destination node.'}
         {:else}
-          Choose a mode, then use the map picker or fill the endpoints manually.
+          {$t('network.map.link_hint_choose') || 'Choose a mode, then use the map picker or fill the endpoints manually.'}
         {/if}
       </div>
     </div>
@@ -149,37 +148,37 @@
   <div class="link-form">
     <section class="form-section">
       <div class="section-head">
-        <h4>Identity</h4>
+        <h4>{$t('network.map.identity') || 'Identity'}</h4>
       </div>
       <div class="form-grid identity-grid">
         <label class="field span-5">
-          <span>Name</span>
-          <input class="input" bind:value={linkForm.name} placeholder="e.g. POP A to ODP 1" />
+          <span>{$t('common.name') || 'Name'}</span>
+          <input class="input" bind:value={linkForm.name} placeholder={$t('network.map.name_placeholder') || 'e.g. POP A to ODP 1'} />
         </label>
         <label class="field span-2">
-          <span>Type</span>
+          <span>{$t('common.type') || 'Type'}</span>
           <Select2
             bind:value={linkForm.link_type}
             options={linkTypeOptions}
             width="100%"
-            placeholder="Select link type"
-            searchPlaceholder="Search type..."
-            noResultsText="No type found"
+            placeholder={$t('network.map.select_link_type') || 'Select link type'}
+            searchPlaceholder={$t('common.search') || 'Search type...'}
+            noResultsText={$t('common.not_found') || 'No type found'}
           />
         </label>
         <label class="field span-2">
-          <span>Status</span>
+          <span>{$t('common.status') || 'Status'}</span>
           <Select2
             bind:value={linkForm.status}
             options={linkStatusOptions}
             width="100%"
-            placeholder="Select status"
-            searchPlaceholder="Search status..."
-            noResultsText="No status found"
+            placeholder={$t('network.map.select_status') || 'Select status'}
+            searchPlaceholder={$t('common.search') || 'Search status...'}
+            noResultsText={$t('common.not_found') || 'No status found'}
           />
         </label>
         <label class="field span-3">
-          <span>Priority</span>
+          <span>{$t('network.map.priority') || 'Priority'}</span>
           <input class="input" type="number" min="1" bind:value={linkForm.priority} />
         </label>
       </div>
@@ -189,27 +188,27 @@
       <section class="form-section">
         <div class="section-head endpoints-head">
           <div>
-            <h4>Endpoints</h4>
+            <h4>{$t('network.map.endpoints') || 'Endpoints'}</h4>
           </div>
           <button class="inline-link-action" type="button" onclick={onUseStraightLine}>
             <Icon name="link" size={15} />
-            Use straight line
+            {$t('network.map.use_straight_line') || 'Use straight line'}
           </button>
         </div>
         <div class="form-grid endpoints-grid">
           <label class="field span-6">
-            <span>From Node</span>
+            <span>{$t('network.map.from_node') || 'From Node'}</span>
             <select class="input select-input" bind:value={linkForm.from_node_id}>
-              <option value="">Select node</option>
+              <option value="">{$t('network.map.select_node') || 'Select node'}</option>
               {#each nodeRows as n}
                 <option value={n.id}>{n.name}</option>
               {/each}
             </select>
           </label>
           <label class="field span-6">
-            <span>To Node</span>
+            <span>{$t('network.map.to_node') || 'To Node'}</span>
             <select class="input select-input" bind:value={linkForm.to_node_id}>
-              <option value="">Select node</option>
+              <option value="">{$t('network.map.select_node') || 'Select node'}</option>
               {#each nodeRows as n}
                 <option
                   value={n.id}
@@ -228,7 +227,7 @@
     <section class="form-section">
       <div class="section-head with-helper">
         <div>
-          <h4>Link Metrics</h4>
+          <h4>{$t('network.map.link_metrics') || 'Link Metrics'}</h4>
         </div>
         <div class="helper-pill">
           <Icon name="info" size={14} />
@@ -272,10 +271,10 @@
   </div>
   {#snippet footer()}
     <button class="modal-btn secondary" type="button" onclick={onClose} disabled={savingLink}>
-      Cancel
+      {$t('common.cancel') || 'Cancel'}
     </button>
     <button class="modal-btn primary" type="button" onclick={onSubmit} disabled={savingLink}>
-      {savingLink ? 'Saving...' : 'Save'}
+      {savingLink ? ($t('common.saving') || 'Saving...') : ($t('common.save') || 'Save')}
     </button>
   {/snippet}
 </Modal>

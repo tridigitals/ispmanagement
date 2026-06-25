@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from 'svelte';
+  import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
 
   type SearchResult = {
@@ -162,7 +163,7 @@
   >
     <div class="map-shell" style={`--map-shell-height:${height};`}>
       {#if loading}
-        <div class="map-loading">Loading...</div>
+        <div class="map-loading">{$t('common.loading') || 'Loading...'}</div>
       {/if}
       {#if mapUnavailable}
         <div class="map-unavailable">
@@ -184,10 +185,10 @@
             type="button"
             class={`map-view-toggle ${viewMenuOpen ? 'active' : ''}`}
             onclick={toggleViewMenu}
-            title="Map view mode"
-            aria-label="Map view mode"
+            title={$t('network.map.view_mode_title') || 'Map view mode'}
+            aria-label={$t('network.map.view_mode_title') || 'Map view mode'}
           >
-            <span class="map-view-toggle-label">View</span>
+            <span class="map-view-toggle-label">{$t('network.map.view') || 'View'}</span>
           </button>
           {#if viewMenuOpen}
             <div class="map-view-menu">
@@ -197,7 +198,7 @@
                 onclick={() => setViewMode('standard')}
               >
                 <Icon name="map" size={11} />
-                <span>Standard</span>
+                <span>{$t('network.map.standard') || 'Standard'}</span>
               </button>
               <button
                 type="button"
@@ -205,7 +206,7 @@
                 onclick={() => setViewMode('satellite')}
               >
                 <Icon name="satellite" size={11} />
-                <span>Satellite</span>
+                <span>{$t('network.map.satellite') || 'Satellite'}</span>
               </button>
             </div>
           {/if}
@@ -240,7 +241,7 @@
                   oninput={queueSearch}
                 />
                 <button class="map-search-btn" type="submit" disabled={searching}>
-                  {searching ? '...' : 'Search'}
+                  {searching ? '...' : $t('common.search') || 'Search'}
                 </button>
               </form>
               {#if searchError}

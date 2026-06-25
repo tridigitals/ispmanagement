@@ -323,6 +323,7 @@
   let livePollInFlight = $state(false);
   let alertSyncInFlight = $state(false);
   let remoteLoaded = $state(false);
+  let initialRemoteApplied = $state(false);
   let paused = $state(false);
   let documentVisible = $state(true);
   let focusMode = $state(true);
@@ -378,6 +379,8 @@
     },
     onSwapSlots: (from, to) => {
       slotsAll = swapWallboardSlots(slotsAll, from, to);
+      persistConfig();
+      schedulePersistRemote();
     },
   });
 
@@ -625,6 +628,8 @@
     metricsZoomFrom = next.metricsZoomFrom;
     metricsZoomTo = next.metricsZoomTo;
     metricsSelecting = next.metricsSelecting;
+    // Pre-load metrics so charts are ready when user switches to metrics tab.
+    void refreshMetricsForCurrentRange();
   }
 
   function closeFull() {
@@ -831,6 +836,7 @@
     slotsAll = next.slotsAll;
     thresholdIndex = next.thresholdIndex;
     persistConfig();
+    schedulePersistRemote();
   }
 
   function setSlot(
@@ -893,7 +899,9 @@
       setStatusFilter: (v) => (statusFilter = v),
       setPollMs: (v) => (pollMs = v),
       setCriticalSoundEnabled: (v) => (criticalSoundEnabled = v),
-      setSlotsAll: (v) => (slotsAll = v),
+      // Skip slotsAll from localStorage — slots come from DB (remote) only.
+      // This prevents localStorage all-null from overwriting DB data.
+      setSlotsAll: () => {},
     });
   }
 
@@ -910,9 +918,11 @@
       setRemoteLoaded: (v) => (remoteLoaded = v),
       },
     );
+    initialRemoteApplied = true;
   }
 
   function schedulePersistRemote() {
+    if (!initialRemoteApplied) return;
     remotePersister.schedulePersistRemote();
   }
 
@@ -928,7 +938,8 @@
         slots: slotsAll,
       });
       rows = next.rows;
-      slotsAll = next.slotsAll;
+      // Don't overwrite slotsAll with pruned data — DB is the source of truth.
+      // Only update rows (router status), keep slots intact.
     } catch (e: any) {
       toast.error(e?.message || e);
     } finally {
@@ -1068,12 +1079,15 @@
       return;
     }
 
-    loadConfig();
-    ensureSlots();
-    // Wallboard is meant for NOC/full window display. Keep kiosk enabled while this route is active.
+    // Load remote (DB) FIRST, then localStorage as fallback for non-slot settings only.
+    // This prevents the $effect from persisting all-null localStorage slots to the DB.
     kiosk = true;
     applyKiosk(true);
-    void loadRemoteConfig();
+    (async () => {
+      await loadRemoteConfig();
+      loadConfig();
+      ensureSlots();
+    })();
 
     uninstallAutoHide =
       installWallboardAutoHideListeners({
@@ -1186,15 +1200,6 @@
     }
 
     const size = slotCountForLayout(layout);
-    ensureSlots();
-    const normalized = normalizeSlotsForAutoSpare(slotsAll, size);
-    if (
-      normalized.length !== slotsAll.length ||
-      normalized.some((it, idx) => it !== slotsAll[idx])
-    ) {
-      slotsAll = normalized;
-      return;
-    }
     const pages = Math.max(1, Math.ceil(slotsAll.length / size));
     pageCount = pages;
     if (page >= pages) page = pages - 1;
@@ -1203,9 +1208,6 @@
     let view = slotsAll.slice(start, start + size);
     if (view.length < size) view = [...view, ...Array.from({ length: size - view.length }, () => null)];
     slots = view;
-
-    persistConfig();
-    schedulePersistRemote();
   });
 
   $effect(() => {

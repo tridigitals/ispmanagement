@@ -686,10 +686,10 @@
     min-height: 2px;
   }
   .bar.rx {
-    background: var(--bg-surface);
+    background: color-mix(in srgb, #22d3ee 65%, #2563eb 35%);
   }
   .bar.tx {
-    background: var(--bg-surface);
+    background: color-mix(in srgb, #fb7185 65%, #f97316 35%);
   }
   .bar.active {
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);

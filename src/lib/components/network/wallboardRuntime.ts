@@ -2,6 +2,8 @@ export function pruneSlotsByRouterIds<T extends { routerId: string }>(
   slots: (T | null)[],
   routerIds: string[],
 ): (T | null)[] {
+  // Don't prune when router list is empty — likely an API error, not "no routers exist".
+  if (routerIds.length === 0) return slots;
   const ids = new Set(routerIds);
   return slots.map((slot) => (slot && ids.has(slot.routerId) ? slot : null));
 }

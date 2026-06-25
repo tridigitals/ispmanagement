@@ -1,0 +1,71 @@
+{
+  "import_wizard": {
+    "title": "Import MixRadius",
+    "description": "Wizard migrasi backup MixRadius ke ISP Management dengan preview, mapping, dan execute mode.",
+    "current_step": "Langkah saat ini",
+    "latest_batch": "Batch terbaru",
+    "loading_history": "Memuat history import...",
+    "no_batch": "Belum ada batch MixRadius tersimpan.",
+    "upload_step": {
+      "title": "Upload Backup MixRadius",
+      "browser_upload": "Upload browser"
+    },
+    "source_summary": {
+      "title": "Review sumber",
+      "subtitle": "Ringkasan sumber",
+      "description": "Pastikan backup yang dipilih memang batch MixRadius yang ingin dimigrasikan.",
+      "parse_status": "Status parse",
+      "source_file": "File sumber",
+      "detail": "Detail backup yang akan diproses",
+      "filename": "Nama file",
+      "size": "Ukuran",
+      "checksum": "Checksum",
+      "back": "Kembali",
+      "continue": "Lanjutkan"
+    },
+    "mapping": {
+      "nas_to_router": "NAS ke router",
+      "no_nas_rows": "Tidak ada NAS row di preview awal.",
+      "select_router": "Pilih router...",
+      "plan_to_package": "Plan ke package",
+      "no_plan_rows": "Tidak ada plan row di preview awal.",
+      "target_provisioning": "Target provisioning PPPoE",
+      "customer_conflict": "Keputusan konflik pelanggan",
+      "default_safe_review": "Default safe review",
+      "merge": "Gabung",
+      "create_new": "Buat baru",
+      "skip": "Lewati",
+      "decision_info": "Tentukan cara menangani pelanggan yang sudah ada.",
+      "nas_field": "Field NAS",
+      "router_field": "Field Router"
+    },
+    "preview": {
+      "title": "Preview hasil import",
+      "total": "Total",
+      "auto_matched": "Auto matched",
+      "needs_review": "Perlu review",
+      "conflicts": "Konflik",
+      "blocked": "Terblokir",
+      "no_rows": "Tidak ada row untuk tab ini.",
+      "back": "Kembali",
+      "execute": "Jalankan Import"
+    },
+    "execution": {
+      "title": "Eksekusi import",
+      "description": "Pilih mode eksekusi sesuai tingkat kehati-hatian yang diinginkan.",
+      "legacy_transactions": "Transaksi legacy",
+      "production_invoices": "Invoice produksi",
+      "back": "Kembali",
+      "cancel_batch": "Batalkan batch"
+    },
+    "batch_report": {
+      "title": "Laporan batch",
+      "close": "Tutup laporan",
+      "loading": "Memuat report batch...",
+      "unavailable": "Batch report belum tersedia.",
+      "status": "Status",
+      "source_summary": "Ringkasan sumber",
+      "phase_report": "Laporan fase"
+    }
+  }
+}

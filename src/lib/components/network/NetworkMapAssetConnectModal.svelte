@@ -20,24 +20,24 @@
   export let onSubmit: () => void;
 </script>
 
-<Modal {show} title="Connect FTTH Asset" width="620px" onclose={() => !saving && onClose()}>
+<Modal {show} title={$t('network.asset.connect_ftth') || 'Connect FTTH Asset'}width="620px" onclose={() => !saving && onClose()}>
   <div class="asset-connect-shell">
     <div class="asset-connect-intro">
-      <div class="asset-connect-kicker">Current asset</div>
+      <div class="asset-connect-kicker">{$t('network.asset.current_asset') || 'Current asset'}</div>
       <div class="asset-connect-title">{assetName}</div>
       <div class="asset-connect-subtitle">{assetTypeLabel}</div>
     </div>
 
     <div class="asset-connect-grid">
       <label class="field span-2">
-        <span>Upstream Parent</span>
+        <span>{$t('network.asset.upstream_parent') || 'Upstream Parent'}</span>
         <select class="input" bind:value={draft.parentAssetId} disabled={saving}>
-          <option value="">No parent</option>
+          <option value="">{$t('network.asset.no_parent') || 'No parent'}</option>
           {#each parentOptions as option}
             <option value={option.value}>{option.label}</option>
           {/each}
         </select>
-        <small>Use this for links like ODC to ODP or OLT to ODC.</small>
+        <small>{$t('network.asset.parent_hint') || 'Use this for links like ODC to ODP or OLT to ODC.'}</small>
       </label>
 
       {#if supportsCustomerDrop}

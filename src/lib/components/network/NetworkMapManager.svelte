@@ -87,7 +87,7 @@
   <div class="manager-wrap">
     <div class="manager-header">
       <div class="manager-heading">
-        <div class="manager-kicker">Manage Mode</div>
+        <div class="manager-kicker">{$t('network.map.manage_mode') || 'Manage Mode'}</div>
         <div class="manager-title">{title}</div>
         <div class="manager-subtitle">{subtitle}</div>
       </div>
@@ -95,16 +95,16 @@
       <div class="manager-header-main">
         <div class="manager-tabs">
           <button class:active={selectedTab === 'nodes'} onclick={() => onSelectTab('nodes')}
-            >Nodes</button
+            >{$t('network.map.nodes') || 'Nodes'}</button
           >
           <button class:active={selectedTab === 'links'} onclick={() => onSelectTab('links')}
-            >Links</button
+            >{$t('network.map.links') || 'Links'}</button
           >
           <button class:active={selectedTab === 'zones'} onclick={() => onSelectTab('zones')}
-            >Zones</button
+            >{$t('network.map.zones') || 'Zones'}</button
           >
           <button class:active={selectedTab === 'bindings'} onclick={() => onSelectTab('bindings')}>
-            Zone Bindings
+            {$t('network.map.zone_bindings') || 'Zone Bindings'}
           </button>
         </div>
 
@@ -112,22 +112,22 @@
           {#if selectedTab === 'nodes'}
             <button class="btn" type="button" onclick={onOpenCreateNode}>
               <Icon name="plus" size={14} />
-              Add Node
+              {$t('network.map.add_node') || 'Add Node'}
             </button>
           {:else if selectedTab === 'links'}
             <button class="btn" type="button" onclick={onOpenCreateLink}>
               <Icon name="plus" size={14} />
-              Add Link
+              {$t('network.map.add_link') || 'Add Link'}
             </button>
           {:else if selectedTab === 'zones'}
             <button class="btn" type="button" onclick={onOpenCreateZone}>
               <Icon name="plus" size={14} />
-              Add Zone
+              {$t('network.map.add_zone') || 'Add Zone'}
             </button>
           {/if}
           <button class="btn ghost" type="button" onclick={onClose}>
             <Icon name="x-circle" size={14} />
-            Close
+            {$t('common.close') || 'Close'}
           </button>
         </div>
       </div>
@@ -135,46 +135,46 @@
 
     {#if selectedTab === 'nodes'}
       <div class="table-wrap">
-        <div class="table-top"><strong>{nodeRows.length}</strong> nodes in viewport</div>
+        <div class="table-top"><strong>{nodeRows.length}</strong> {$t('network.map.nodes_in_viewport') || 'nodes in viewport'}</div>
         <table class="table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Source</th>
-              <th>Status</th>
-              <th>Coordinates</th>
-              <th class="right">Actions</th>
+              <th>{$t('common.name') || 'Name'}</th>
+              <th>{$t('common.type') || 'Type'}</th>
+              <th>{$t('network.map.source') || 'Source'}</th>
+              <th>{$t('common.status') || 'Status'}</th>
+              <th>{$t('network.map.coordinates') || 'Coordinates'}</th>
+              <th class="right">{$t('common.actions') || 'Actions'}</th>
             </tr>
           </thead>
           <tbody>
             {#if nodeRows.length === 0}
-              <tr><td colspan="6" class="empty">No nodes</td></tr>
+              <tr><td colspan="6" class="empty">{$t('network.map.no_nodes') || 'No nodes'}</td></tr>
             {:else}
               {#each nodeRows as row}
                 <tr>
                   <td>{row.name}</td>
                   <td>{nodeTypeLabel(row.node_type)}</td>
-                  <td>{systemManagedNodeSourceLabel(row) || 'Manual'}</td>
+                  <td>{systemManagedNodeSourceLabel(row) || $t('network.map.manual') || 'Manual'}</td>
                   <td>{row.status}</td>
                   <td>{row.lat.toFixed(6)}, {row.lng.toFixed(6)}</td>
                   <td class="right">
                     <button class="btn ghost btn-xs" onclick={() => onStartConnectNode(row.id)}
-                      >Connect</button
+                      >{$t('network.map.connect') || 'Connect'}</button
                     >
                     <button
                       class="btn ghost btn-xs"
                       onclick={() => onOpenEditNode(row)}
                       disabled={isSystemManagedNode(row)}
                     >
-                      Edit
+                      {$t('common.edit') || 'Edit'}
                     </button>
                     <button
                       class="btn ghost btn-xs danger"
                       onclick={() => onOpenDeleteConfirm('node', row.id, row.name)}
                       disabled={deletingId === row.id || isSystemManagedNode(row)}
                     >
-                      Delete
+                      {$t('common.delete') || 'Delete'}
                     </button>
                   </td>
                 </tr>
@@ -187,21 +187,21 @@
 
     {#if selectedTab === 'links'}
       <div class="table-wrap">
-        <div class="table-top"><strong>{linkRows.length}</strong> links in viewport</div>
+        <div class="table-top"><strong>{linkRows.length}</strong> {$t('network.map.links_in_viewport') || 'links in viewport'}</div>
         <table class="table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th>Health</th>
-              <th>Endpoints</th>
-              <th class="right">Actions</th>
+              <th>{$t('common.name') || 'Name'}</th>
+              <th>{$t('common.type') || 'Type'}</th>
+              <th>{$t('common.status') || 'Status'}</th>
+              <th>{$t('network.map.health') || 'Health'}</th>
+              <th>{$t('network.map.endpoints') || 'Endpoints'}</th>
+              <th class="right">{$t('common.actions') || 'Actions'}</th>
             </tr>
           </thead>
           <tbody>
             {#if linkRows.length === 0}
-              <tr><td colspan="6" class="empty">No links</td></tr>
+              <tr><td colspan="6" class="empty">{$t('network.map.no_links') || 'No links'}</td></tr>
             {:else}
               {#each linkRows as row}
                 {@const health = computeLinkHealth(row)}
@@ -215,12 +215,12 @@
                   <td>{row.from_node_id || '-'} -> {row.to_node_id || '-'}</td>
                   <td class="right">
                     <button class="btn ghost btn-xs" onclick={() => onOpenEditLink(row)}
-                      >Edit</button
+                      >{$t('common.edit') || 'Edit'}</button
                     >
                     <button
                       class="btn ghost btn-xs danger"
                       onclick={() => onOpenDeleteConfirm('link', row.id, row.name)}
-                      disabled={deletingId === row.id}>Delete</button
+                      disabled={deletingId === row.id}>{$t('common.delete') || 'Delete'}</button
                     >
                   </td>
                 </tr>
@@ -233,19 +233,19 @@
 
     {#if selectedTab === 'zones'}
       <div class="table-wrap">
-        <div class="table-top"><strong>{zoneRows.length}</strong> zones in viewport</div>
+        <div class="table-top"><strong>{zoneRows.length}</strong> {$t('network.map.zones_in_viewport') || 'zones in viewport'}</div>
         <table class="table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th class="right">Actions</th>
+              <th>{$t('common.name') || 'Name'}</th>
+              <th>{$t('common.type') || 'Type'}</th>
+              <th>{$t('common.status') || 'Status'}</th>
+              <th class="right">{$t('common.actions') || 'Actions'}</th>
             </tr>
           </thead>
           <tbody>
             {#if zoneRows.length === 0}
-              <tr><td colspan="4" class="empty">No zones</td></tr>
+              <tr><td colspan="4" class="empty">{$t('network.map.no_zones') || 'No zones'}</td></tr>
             {:else}
               {#each zoneRows as row}
                 <tr>
@@ -254,12 +254,12 @@
                   <td>{row.status}</td>
                   <td class="right">
                     <button class="btn ghost btn-xs" onclick={() => onOpenEditZone(row)}
-                      >Edit</button
+                      >{$t('common.edit') || 'Edit'}</button
                     >
                     <button
                       class="btn ghost btn-xs danger"
                       onclick={() => onOpenDeleteConfirm('zone', row.id, row.name)}
-                      disabled={deletingId === row.id}>Delete</button
+                      disabled={deletingId === row.id}>{$t('common.delete') || 'Delete'}</button
                     >
                   </td>
                 </tr>
@@ -274,21 +274,21 @@
       <div class="bindings-wrap">
         <div class="binding-form">
           <div class="control">
-            <label for="zone-id">Zone</label>
+            <label for="zone-id">{$t('network.map.zone') || 'Zone'}</label>
             <select
               id="zone-id"
               class="input"
               value={selectedZoneId}
               onchange={(e) => onSelectedZoneChange((e.currentTarget as HTMLSelectElement).value)}
             >
-              <option value="">Select zone</option>
+              <option value="">{$t('network.map.select_zone') || 'Select zone'}</option>
               {#each zoneRows as z}
                 <option value={z.id}>{z.name}</option>
               {/each}
             </select>
           </div>
           <div class="control">
-            <label for="node-id">Node</label>
+            <label for="node-id">{$t('network.map.node') || 'Node'}</label>
             <select
               id="node-id"
               class="input"
@@ -296,14 +296,14 @@
               disabled={!selectedZoneId}
               onchange={(e) => onBindingNodeChange((e.currentTarget as HTMLSelectElement).value)}
             >
-              <option value="">Select node</option>
+              <option value="">{$t('network.map.select_node') || 'Select node'}</option>
               {#each nodeRows as n}
                 <option value={n.id}>{n.name}</option>
               {/each}
             </select>
           </div>
           <div class="control">
-            <label for="binding-weight">Weight</label>
+            <label for="binding-weight">{$t('network.map.weight') || 'Weight'}</label>
             <input
               id="binding-weight"
               class="input"
@@ -320,7 +320,7 @@
               onchange={(e) =>
                 onBindingPrimaryChange((e.currentTarget as HTMLInputElement).checked)}
             />
-            <span>Primary</span>
+            <span>{$t('network.map.primary') || 'Primary'}</span>
           </label>
           <button
             class="btn"
@@ -329,39 +329,39 @@
             disabled={!selectedZoneId || savingBinding}
           >
             <Icon name="plus" size={14} />
-            Add Binding
+            {$t('network.map.add_binding') || 'Add Binding'}
           </button>
         </div>
 
         <div class="table-wrap">
-          <div class="table-top"><strong>{zoneBindings.length}</strong> bindings</div>
+          <div class="table-top"><strong>{zoneBindings.length}</strong> {$t('network.map.bindings') || 'bindings'}</div>
           <table class="table">
             <thead>
               <tr>
-                <th>Zone</th>
-                <th>Node</th>
-                <th>Primary</th>
-                <th>Weight</th>
-                <th class="right">Actions</th>
+                <th>{$t('network.map.zone') || 'Zone'}</th>
+                <th>{$t('network.map.node') || 'Node'}</th>
+                <th>{$t('network.map.primary') || 'Primary'}</th>
+                <th>{$t('network.map.weight') || 'Weight'}</th>
+                <th class="right">{$t('common.actions') || 'Actions'}</th>
               </tr>
             </thead>
             <tbody>
               {#if loadingManager}
-                <tr><td colspan="5" class="empty">Loading...</td></tr>
+                <tr><td colspan="5" class="empty">{$t('common.loading') || 'Loading...'}</td></tr>
               {:else if zoneBindings.length === 0}
-                <tr><td colspan="5" class="empty">No bindings</td></tr>
+                <tr><td colspan="5" class="empty">{$t('network.map.no_bindings') || 'No bindings'}</td></tr>
               {:else}
                 {#each zoneBindings as row}
                   <tr>
                     <td>{zoneRows.find((z) => z.id === row.zone_id)?.name || row.zone_id}</td>
                     <td>{nodeRows.find((n) => n.id === row.node_id)?.name || row.node_id}</td>
-                    <td>{row.is_primary ? 'Yes' : 'No'}</td>
+                    <td>{row.is_primary ? ($t('common.yes') || 'Yes') : ($t('common.no') || 'No')}</td>
                     <td>{row.weight}</td>
                     <td class="right">
                       <button
                         class="btn ghost btn-xs danger"
                         onclick={() => onOpenDeleteConfirm('binding', row.id)}
-                        disabled={deletingId === row.id}>Delete</button
+                        disabled={deletingId === row.id}>{$t('common.delete') || 'Delete'}</button
                       >
                     </td>
                   </tr>

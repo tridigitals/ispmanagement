@@ -16,6 +16,8 @@ export const I18N_ALL_NAMESPACES = [
   'dashboard',
   'profile',
   'admin',
+  'network',
+  'mixradius',
 ] as const;
 
 export type I18nNamespace = (typeof I18N_ALL_NAMESPACES)[number];
@@ -31,6 +33,8 @@ const BASE_NAMESPACES: I18nNamespace[] = [
   'payment',
   'components',
   'utils',
+  'network',
+  'mixradius',
 ];
 
 export function normalizeAppLocale(input: string | null | undefined): AppLocale {

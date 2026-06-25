@@ -1,0 +1,71 @@
+{
+  "import_wizard": {
+    "title": "Import MixRadius",
+    "description": "Migration wizard for MixRadius backup to ISP Management with preview, mapping, and execute mode.",
+    "current_step": "Current step",
+    "latest_batch": "Latest batch",
+    "loading_history": "Loading import history...",
+    "no_batch": "No saved MixRadius batch yet.",
+    "upload_step": {
+      "title": "Upload MixRadius Backup",
+      "browser_upload": "Browser upload"
+    },
+    "source_summary": {
+      "title": "Source review",
+      "subtitle": "Source summary",
+      "description": "Make sure the selected backup is the MixRadius batch you want to migrate.",
+      "parse_status": "Parse status",
+      "source_file": "Source file",
+      "detail": "Backup details to be processed",
+      "filename": "Filename",
+      "size": "Size",
+      "checksum": "Checksum",
+      "back": "Back",
+      "continue": "Continue"
+    },
+    "mapping": {
+      "nas_to_router": "NAS to router",
+      "no_nas_rows": "No NAS rows in initial preview.",
+      "select_router": "Select router...",
+      "plan_to_package": "Plan to package",
+      "no_plan_rows": "No plan rows in initial preview.",
+      "target_provisioning": "Target provisioning PPPoE",
+      "customer_conflict": "Customer conflict decision",
+      "default_safe_review": "Default safe review",
+      "merge": "Merge",
+      "create_new": "Create new",
+      "skip": "Skip",
+      "decision_info": "Decide how to handle customers that already exist.",
+      "nas_field": "NAS field",
+      "router_field": "Router field"
+    },
+    "preview": {
+      "title": "Import preview results",
+      "total": "Total",
+      "auto_matched": "Auto matched",
+      "needs_review": "Needs review",
+      "conflicts": "Conflicts",
+      "blocked": "Blocked",
+      "no_rows": "No rows for this tab.",
+      "back": "Back",
+      "execute": "Execute Import"
+    },
+    "execution": {
+      "title": "Execute import",
+      "description": "Select execution mode according to desired caution level.",
+      "legacy_transactions": "Legacy transactions",
+      "production_invoices": "Production invoices",
+      "back": "Back",
+      "cancel_batch": "Cancel batch"
+    },
+    "batch_report": {
+      "title": "Batch report",
+      "close": "Close report",
+      "loading": "Loading batch report...",
+      "unavailable": "Batch report not yet available.",
+      "status": "Status",
+      "source_summary": "Source summary",
+      "phase_report": "Phase report"
+    }
+  }
+}
