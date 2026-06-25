@@ -63,7 +63,7 @@
           <label class="setting-label" for="current-pass">
             {$t('profile.security.current_password') || 'Current Password'}
           </label>
-          <p class="setting-description">Enter your existing password to make changes.</p>
+          <p class="setting-description">{$t('profile.security.settings_desc_current') || 'Enter your existing password to make changes.'}</p>
         </div>
         <div class="input-wrapper">
           <input
@@ -89,10 +89,8 @@
           <label class="setting-label" for="new-pass">
             {$t('profile.security.new_password') || 'New Password'}
           </label>
-          <p class="setting-description">
-            Choose a strong password with at least {policy.password_min_length}
-            characters.
-          </p>
+          <p class="setting-description">{$t('profile.security.settings_desc_new') || 'Choose a strong password with at least'} {policy.password_min_length}
+            {$t('common.units.chars') || 'chars'}.</p>
         </div>
         <div class="input-wrapper">
           <input
@@ -118,7 +116,7 @@
           <label class="setting-label" for="confirm-pass">
             {$t('profile.security.confirm_password') || 'Confirm Password'}
           </label>
-          <p class="setting-description">Re-enter your new password to confirm.</p>
+          <p class="setting-description">{$t('profile.security.settings_desc_confirm') || 'Re-enter your new password to confirm.'}</p>
         </div>
         <div class="input-wrapper">
           <input
@@ -207,7 +205,7 @@
 
       <!-- Enabled Methods -->
       <div class="methods-section">
-        <span class="section-title">Enabled Methods</span>
+        <span class="section-title">{$t('profile.security.twofa.enabled_methods') || 'Enabled Methods'}</span>
         <div class="method-list">
           <div class="method-item">
             <Icon name="smartphone" size={18} />
@@ -215,12 +213,12 @@
               >{$t('profile.security.twofa.methods.authenticator_app') || 'Authenticator App'}</span
             >
             {#if user?.totp_enabled}
-              <span class="badge success">Enabled</span>
+              <span class="badge success">{$t('profile.security.twofa.enabled_badge') || 'Enabled'}</span>
             {:else}
               <button
                 class="btn btn-sm btn-outline"
                 onclick={() => onStart2FA('totp')}
-                disabled={loading}>Enable</button
+                disabled={loading}>{$t('profile.security.twofa.enable_button') || 'Enable'}</button
               >
             {/if}
           </div>
@@ -231,12 +229,12 @@
                 'Email Verification'}</span
             >
             {#if user?.email_2fa_enabled}
-              <span class="badge success">Enabled</span>
+              <span class="badge success">{$t('profile.security.twofa.enabled_badge') || 'Enabled'}</span>
             {:else}
               <button
                 class="btn btn-sm btn-outline"
                 onclick={() => onStart2FA('email')}
-                disabled={loading}>Enable</button
+                disabled={loading}>{$t('profile.security.twofa.enable_button') || 'Enable'}</button
               >
             {/if}
           </div>
@@ -252,7 +250,7 @@
               {$t('profile.security.twofa.recovery_title') || 'Save Your Recovery Codes'}
             </h4>
           </div>
-          <p>These codes are the ONLY way to access your account if you lose your phone.</p>
+          <p>{$t('profile.security.twofa.recovery_desc') || 'These codes are the ONLY way to access your account if you lose your phone.'}</p>
           <div class="code-grid">
             {#each twoFactorData.recoveryCodes as code}
               <div class="code-item">{code}</div>
@@ -272,7 +270,7 @@
             <span class="setting-label"
               >{$t('profile.security.twofa.disable_title') || 'Disable 2FA'}</span
             >
-            <p class="setting-description">Enter a code from your device to disable 2FA.</p>
+            <p class="setting-description">{$t('profile.security.twofa.disable_desc') || 'Enter a code from your device to disable 2FA.'}</p>
           </div>
           <div class="disable-actions">
             {#if user?.preferred_2fa_method === 'email'}
@@ -281,21 +279,21 @@
                 onclick={onSendDisableEmailOtp}
                 disabled={disableOtpSending}
               >
-                {disableOtpSending ? 'Sending...' : disableOtpSent ? 'Resend' : 'Send Code'}
+                {disableOtpSending ? $t('profile.security.twofa.sending') || 'Sending...' : disableOtpSent ? $t('profile.security.twofa.resend') || 'Resend' : $t('profile.security.twofa.send_code') || 'Send Code'}
               </button>
             {/if}
             <input
               type="text"
               class="form-input code-input"
               bind:value={twoFactorData.disableCode}
-              placeholder="Enter code"
+              placeholder={$t('profile.security.twofa.disable_code_placeholder') || 'Enter code'}
             />
             <button
               class="btn btn-danger btn-sm"
               onclick={onDisable2FA}
               disabled={twoFactorData.disableCode.length < 6 || loading}
             >
-              Disable
+              {$t('profile.security.twofa.disable_button') || 'Disable'}
             </button>
           </div>
         </div>

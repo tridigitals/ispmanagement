@@ -32,8 +32,8 @@
     { key: 'name', label: $t('admin.customers.columns.customer') || 'Customer' },
     { key: 'contact', label: $t('admin.customers.columns.contact') || 'Contact' },
     { key: 'status', label: $t('admin.customers.columns.status') || 'Status' },
-    { key: 'health', label: 'Health' },
-    { key: 'service', label: 'Service' },
+    { key: 'health', label: $t('admin.customers.columns.health') || 'Health' },
+    { key: 'service', label: $t('admin.customers.columns.service') || 'Service' },
     { key: 'updated_at', label: $t('admin.customers.columns.updated') || 'Updated' },
     { key: 'actions', label: '', align: 'right' as const },
   ]);
@@ -266,18 +266,18 @@
   }
 
   function serviceStatusLabel(c: CustomerListItem) {
-    if (c.pending_installations > 0) return `${c.pending_installations} pending install`;
-    if (c.service_status === 'active') return `${c.active_subscriptions} active`;
-    if (c.service_status === 'inactive') return `${c.subscription_count} inactive`;
-    return 'No service';
+    if (c.pending_installations > 0) return `${c.pending_installations} ${$t('admin.customers.status.pending_install') || 'pending install'}`;
+    if (c.service_status === 'active') return `${c.active_subscriptions} ${$t('common.active') || 'active'}`;
+    if (c.service_status === 'inactive') return `${c.subscription_count} ${$t('common.inactive') || 'inactive'}`;
+    return $t('admin.customers.status.no_service') || 'No service';
   }
 
   function customerHealthLabel(c: CustomerListItem) {
-    if (!c.is_active) return 'Inactive';
-    if (c.pending_installations > 0) return 'Pending installation';
-    if (c.service_status === 'none') return 'No service';
-    if (c.service_status === 'inactive') return 'Service inactive';
-    return 'Healthy';
+    if (!c.is_active) return $t('admin.customers.status.inactive') || 'Inactive';
+    if (c.pending_installations > 0) return $t('admin.customers.status.pending_installation') || 'Pending installation';
+    if (c.service_status === 'none') return $t('admin.customers.status.no_service') || 'No service';
+    if (c.service_status === 'inactive') return $t('admin.customers.status.service_inactive') || 'Service inactive';
+    return $t('admin.customers.status.healthy') || 'Healthy';
   }
 
   function customerHealthTone(c: CustomerListItem) {
@@ -782,7 +782,7 @@
   <div class="page-header">
     <div>
       <h1>{$t('admin.customers.title') || 'Customers'}</h1>
-      <p class="subtitle">Kelola pelanggan dan lokasi layanan.</p>
+      <p class="subtitle">{$t('admin.customers.subtitle') || 'Manage customer accounts and service locations.'}</p>
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary" onclick={() => refreshCustomers()} disabled={loading}>
@@ -792,13 +792,13 @@
       {#if canCreateOrders}
         <button class="btn btn-secondary" onclick={() => goto('/admin/customers/orders/new')}>
           <Icon name="file-text" size={16} />
-          Create Order
+          {$t('admin.customers.actions.create_order') || 'Create Order'}
         </button>
       {/if}
       {#if canManageCustomers}
         <button class="btn btn-secondary" onclick={openInviteModal}>
           <Icon name="link" size={16} />
-          Invite Link
+          {$t('admin.customers.actions.invite_link') || 'Invite Link'}
         </button>
         <button class="btn btn-primary" onclick={() => (showCreate = true)}>
           <Icon name="plus" size={16} />
@@ -856,7 +856,7 @@
       onclick={() => setInstallationFilter('pending')}
     >
       <StatsCard
-        title="Pending installation"
+        title={$t('admin.customers.stats.pending_installation') || 'Pending installation'}
         value={stats.pendingInstallation}
         icon="wrench"
         color="orange"
@@ -876,51 +876,51 @@
       {#snippet filters()}
         <div class="toolbar-filters">
           <label class="customer-filter-field">
-            <span>Status</span>
+            <span>{$t('admin.customers.filters.status') || 'Status'}</span>
             <select
               class="customer-filter-select"
-              aria-label="Customer status filter"
+              aria-label={$t('admin.customers.filters.aria_status') || 'Customer status filter'}
               value={statusFilter}
               onchange={(event) =>
                 setStatusFilter(
                   (event.currentTarget as HTMLSelectElement).value as CustomerStatusFilter,
                 )}
             >
-              <option value="all">All customers</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="all">{$t('admin.customers.filters.all_customers') || 'All customers'}</option>
+              <option value="active">{$t('common.active') || 'Active'}</option>
+              <option value="inactive">{$t('common.inactive') || 'Inactive'}</option>
             </select>
           </label>
           <label class="customer-filter-field">
-            <span>Service</span>
+            <span>{$t('admin.customers.filters.service') || 'Service'}</span>
             <select
               class="customer-filter-select"
-              aria-label="Customer service filter"
+              aria-label={$t('admin.customers.filters.aria_service') || 'Customer service filter'}
               value={serviceFilter}
               onchange={(event) =>
                 setServiceFilter(
                   (event.currentTarget as HTMLSelectElement).value as CustomerServiceFilter,
                 )}
             >
-              <option value="all">All services</option>
-              <option value="active">Active service</option>
-              <option value="inactive">Inactive service</option>
-              <option value="none">No service</option>
+              <option value="all">{$t('admin.customers.filters.all_services') || 'All services'}</option>
+              <option value="active">{$t('admin.customers.filters.active_service') || 'Active service'}</option>
+              <option value="inactive">{$t('admin.customers.filters.inactive_service') || 'Inactive service'}</option>
+              <option value="none">{$t('admin.customers.filters.no_service') || 'No service'}</option>
             </select>
           </label>
           <label class="customer-filter-field">
-            <span>Installation</span>
+            <span>{$t('admin.customers.filters.installation') || 'Installation'}</span>
             <select
               class="customer-filter-select"
-              aria-label="Customer installation filter"
+              aria-label={$t('admin.customers.filters.aria_installation') || 'Customer installation filter'}
               value={installationFilter}
               onchange={(event) =>
                 setInstallationFilter(
                   (event.currentTarget as HTMLSelectElement).value as CustomerInstallationFilter,
                 )}
             >
-              <option value="all">All installations</option>
-              <option value="pending">Pending installation</option>
+              <option value="all">{$t('admin.customers.filters.all_installations') || 'All installations'}</option>
+              <option value="pending">{$t('admin.customers.filters.pending_installation') || 'Pending installation'}</option>
             </select>
           </label>
         </div>
@@ -937,7 +937,7 @@
             onclick={openLifecycleReconciliation}
           >
             <Icon name="shield-check" size={16} />
-            <span>Lifecycle reconciliation</span>
+            <span>{$t('admin.customers.actions.lifecycle_reconciliation') || 'Lifecycle reconciliation'}</span>
             {#if lifecycleIssueCount > 0}
               <span class="toolbar-alert-count pulse-red">{lifecycleIssueCount}</span>
             {/if}
@@ -968,7 +968,7 @@
                 disabled={isSystemImportPlaceholder(c)}
               >
                 <div class="name">{c.name}</div>
-                <div class="sub">{c.email || c.phone || 'No contact'}</div>
+                <div class="sub">{c.email || c.phone || $t('admin.customers.no_contact') || 'No contact'}</div>
               </button>
               <span
                 class="pill"
@@ -988,16 +988,16 @@
               {#if !isSystemImportPlaceholder(c)}
                 <button class="btn btn-secondary" onclick={() => openCustomer(c)}>
                   <Icon name="arrow-right" size={15} />
-                  Open
+                  {$t('common.open') || 'Open'}
                 </button>
               {/if}
               {#if canManageCustomers && !isSystemImportPlaceholder(c)}
-                <button class="btn-icon" title="Add service" onclick={() => openAddService(c)}>
+                <button class="btn-icon" title={$t('admin.customers.actions.add_service') || 'Add service'} onclick={() => openAddService(c)}>
                   <Icon name="wifi" size={16} />
                 </button>
                 <button
                   class="btn-icon"
-                  title="Create invoice"
+                  title={$t('admin.customers.actions.create_invoice') || 'Create invoice'}
                   onclick={() => openCreateInvoice(c)}
                 >
                   <Icon name="receipt" size={16} />
@@ -1119,7 +1119,7 @@
                 {serviceStatusLabel(c)}
               </span>
               {#if c.subscription_count > 0 && c.active_subscriptions !== c.subscription_count}
-                <div class="sub">{c.subscription_count} total services</div>
+                <div class="sub">{c.subscription_count} {$t('admin.customers.status.total_services') || 'total services'}</div>
               {/if}
             </div>
           {:else if key === 'updated_at'}
@@ -1136,12 +1136,12 @@
                 </button>
               {/if}
               {#if canManageCustomers && !isSystemImportPlaceholder(c)}
-                <button class="btn-icon" title="Add service" onclick={() => openAddService(c)}>
+                <button class="btn-icon" title={$t('admin.customers.actions.add_service') || 'Add service'} onclick={() => openAddService(c)}>
                   <Icon name="wifi" size={16} />
                 </button>
                 <button
                   class="btn-icon"
-                  title="Create invoice"
+                  title={$t('admin.customers.actions.create_invoice') || 'Create invoice'}
                   onclick={() => openCreateInvoice(c)}
                 >
                   <Icon name="receipt" size={16} />

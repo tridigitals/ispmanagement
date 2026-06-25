@@ -400,10 +400,10 @@
       <section class="section-block kpi-strip">
         <div class="section-heading">
           <div>
-            <div class="section-kicker">At a glance</div>
+            <div class="section-kicker">{$t('admin.dashboard.sections.primary.kicker') || 'Snapshot'}</div>
             <h2>{$t('admin.dashboard.sections.primary.title') || 'Selected KPIs'}</h2>
           </div>
-          <div class="section-meta">{dashboardModel.primaryStats.length} cards</div>
+          <div class="section-meta">{dashboardModel.primaryStats.length} {$t('admin.dashboard.sections.primary.meta') || 'cards'}</div>
         </div>
 
         <div class="stats-grid">
@@ -439,10 +439,10 @@
       <section class="section-block focus-band">
         <div class="section-heading">
           <div>
-            <div class="section-kicker">Priority queue</div>
+            <div class="section-kicker">{$t('admin.dashboard.sections.focus.kicker') || 'Action'}</div>
             <h2>{$t('admin.dashboard.sections.focus.title') || 'My Focus Today'}</h2>
           </div>
-          <div class="section-meta">{dashboardModel.focusCards.length} items</div>
+          <div class="section-meta">{dashboardModel.focusCards.length} {$t('admin.dashboard.sections.focus.meta') || 'items'}</div>
         </div>
 
         <div class="focus-grid">
@@ -477,10 +477,10 @@
         <section class="section-block section-actions">
           <div class="section-heading">
             <div>
-              <div class="section-kicker">Fast lanes</div>
+              <div class="section-kicker">{$t('admin.dashboard.sections.actions.kicker') || 'Go next'}</div>
               <h2>{$t('admin.dashboard.sections.actions.title') || 'Quick Actions'}</h2>
             </div>
-            <div class="section-meta">{dashboardModel.quickActions.length} shortcuts</div>
+            <div class="section-meta">{dashboardModel.quickActions.length} {$t('admin.dashboard.sections.actions.meta') || 'shortcuts'}</div>
           </div>
 
           <div class="action-list action-rail">
@@ -504,10 +504,10 @@
         <section class="section-block section-trends">
           <div class="section-heading">
             <div>
-              <div class="section-kicker">Signal mix</div>
+              <div class="section-kicker">{$t('admin.dashboard.sections.trends.kicker') || 'Distribution'}</div>
               <h2>{$t('admin.dashboard.sections.trends.title') || 'Compact trends'}</h2>
             </div>
-            <div class="section-meta">{dashboardModel.trendCards.length} groups</div>
+            <div class="section-meta">{dashboardModel.trendCards.length} {$t('admin.dashboard.sections.trends.meta') || 'groups'}</div>
           </div>
 
           <div class="trend-list">
@@ -516,7 +516,7 @@
                 <div class="trend-card-top">
                   <div class="trend-title-group">
                     <div class="trend-title">{$t(trend.titleKey) || trend.fallbackTitle}</div>
-                    <div class="trend-caption">{getTrendTotal(trend.items)} tracked items</div>
+                    <div class="trend-caption">{$t('admin.dashboard.sections.trends.tracked_items') || 'tracked items'}</div>
                   </div>
                   {#if trend.items[0]}
                     <div class="trend-visual">

@@ -34,19 +34,24 @@
     "sections": {
       "primary": {
         "kicker": "Snapshot",
-        "title": "Selected KPIs"
+        "title": "Selected KPIs",
+        "meta": "cards"
       },
       "focus": {
         "kicker": "Action",
-        "title": "My Focus Today"
+        "title": "My Focus Today",
+        "meta": "items"
       },
       "actions": {
         "kicker": "Go next",
-        "title": "Quick Actions"
+        "title": "Quick Actions",
+        "meta": "shortcuts"
       },
       "trends": {
         "kicker": "Distribution",
-        "title": "Compact trends"
+        "title": "Compact trends",
+        "meta": "groups",
+        "tracked_items": "tracked items"
       }
     },
     "widgets": {

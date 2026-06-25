@@ -852,6 +852,15 @@
     pickerRouterId = next.pickerRouterId;
     persistConfig();
     schedulePersistRemote();
+
+    // Auto next page: if all slots on current page are filled, advance to next page.
+    const size = slotCountForLayout(layout);
+    const start = page * size;
+    const currentPageSlots = slotsAll.slice(start, start + size);
+    const allFilled = currentPageSlots.length >= size && currentPageSlots.every((s) => s != null);
+    if (allFilled) {
+      page = Math.min(page + 1, Math.max(1, Math.ceil(slotsAll.length / size)) - 1);
+    }
   }
 
   function clearSlot(idx: number) {
@@ -1266,6 +1275,14 @@
   <div class="wb-top" class:hidden={controlsHidden}>
     <div class="controls wall-actions">
       <div class="toolbar-left">
+        <button
+          class="icon-x"
+          type="button"
+          onclick={() => goto(`${tenantPrefix}/admin/network`)}
+          title={$t('common.exit') || 'Exit'}
+        >
+          <Icon name="arrow-left" size={16} />
+        </button>
         <WallboardTopPager bind:page {pageCount} />
         <button
           class="settings-btn"

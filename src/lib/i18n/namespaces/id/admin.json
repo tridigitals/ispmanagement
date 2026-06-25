@@ -34,19 +34,24 @@
     "sections": {
       "primary": {
         "kicker": "Ringkasan",
-        "title": "KPI terpilih"
+        "title": "KPI terpilih",
+        "meta": "kartu"
       },
       "focus": {
         "kicker": "Aksi",
-        "title": "Fokus Hari Ini"
+        "title": "Fokus Hari Ini",
+        "meta": "item"
       },
       "actions": {
         "kicker": "Lanjut ke",
-        "title": "Aksi Cepat"
+        "title": "Aksi Cepat",
+        "meta": "pintasan"
       },
       "trends": {
         "kicker": "Distribusi",
-        "title": "Tren ringkas"
+        "title": "Tren ringkas",
+        "meta": "grup",
+        "tracked_items": "item terlacak"
       }
     },
     "widgets": {
