@@ -2156,7 +2156,11 @@
         "interface": "Interface",
         "host": "Host",
         "latency": "Latency",
-        "cpu": "CPU"
+        "cpu": "CPU",
+        "rx_tx": "RX/TX",
+        "memory_use": "Memory Use",
+        "via_node": "Via Node",
+        "via_link": "Via Link"
       },
       "toasts": {
         "auto_escalation_done": "{count} incident(s) escalated"

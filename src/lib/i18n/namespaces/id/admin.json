@@ -1882,10 +1882,14 @@
       "labels": {
         "auto_escalated": "Auto Eskalasi",
         "router": "Router",
-        "interface": "Interface",
+        "interface": "Antarmuka",
         "host": "Host",
-        "latency": "Latency",
-        "cpu": "CPU"
+        "latency": "Latensi",
+        "cpu": "CPU",
+        "rx_tx": "RX/TX",
+        "memory_use": "Penggunaan Memori",
+        "via_node": "Via Node",
+        "via_link": "Via Link"
       },
       "toasts": {
         "auto_escalation_done": "{count} insiden berhasil dieskalasi"
