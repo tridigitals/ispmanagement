@@ -90,15 +90,15 @@ class AuthService {
   final Dio dio;
   final AuthTokenStorage tokenStorage;
 
-  /// Login with email + password.
+  /// Login with identifier (email OR phone) + password.
   Future<ServiceResult<AuthResponse>> login({
-    required String email,
+    required String identifier,
     required String password,
   }) async {
     return _execute(() async {
       final res = await dio.post<Map<String, dynamic>>(
         ApiEndpoints.authLogin,
-        data: {'email': email, 'password': password},
+        data: {'identifier': identifier, 'password': password},
       );
       return AuthResponse.fromJson(res.data ?? const {});
     });

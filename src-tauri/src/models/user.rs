@@ -190,17 +190,31 @@ pub struct UpdateUserDto {
     pub is_active: Option<bool>,
 }
 
-/// DTO for user login
+/// DTO for user login (supports email OR phone)
+/// Backward compatible: accepts both "email" (legacy) and "identifier" (new dual-login)
 #[derive(Debug, Deserialize, Validate)]
-#[serde(deny_unknown_fields)]
 pub struct LoginDto {
-    #[validate(
-        email(message = "Invalid email format"),
-        length(max = 255, message = "Email too long")
-    )]
-    pub email: String,
+    // New field: identifier (email OR phone)
+    #[validate(length(min = 1, max = 255, message = "Identifier required"))]
+    pub identifier: Option<String>,
+
+    // Legacy field: email (kept for backward compatibility)
+    #[validate(email(message = "Invalid email format"))]
+    #[validate(length(max = 255, message = "Email too long"))]
+    pub email: Option<String>,
+
     #[validate(length(min = 1, max = 128, message = "Password must be 1-128 characters"))]
     pub password: String,
+}
+
+impl LoginDto {
+    /// Get the login identifier (prefers identifier, falls back to email)
+    pub fn get_identifier(&self) -> String {
+        self.identifier
+            .clone()
+            .or_else(|| self.email.clone())
+            .unwrap_or_default()
+    }
 }
 
 /// DTO for user registration

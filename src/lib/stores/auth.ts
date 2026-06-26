@@ -162,12 +162,12 @@ tenant.subscribe((value) => {
 
 // Auth actions
 export async function login(
-  email: string,
+  identifier: string,
   password: string,
   remember: boolean = true,
 ): Promise<AuthResponse> {
   const { auth } = await import('$lib/api/auth');
-  const response = await auth.login(email, password);
+  const response = await auth.login(identifier, password);
   if (response.token) {
     setAuthData(response.token, response.user, remember, response.tenant);
   }

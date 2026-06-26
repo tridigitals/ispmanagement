@@ -10,19 +10,20 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailCtrl = TextEditingController();
+  final _identifierCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
+  String _loginMethod = 'email'; // 'email' | 'phone'
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
+    _identifierCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
   }
 
   void _login() {
-    ref.read(authProvider.notifier).login(_emailCtrl.text.trim(), _passwordCtrl.text);
+    ref.read(authProvider.notifier).login(_identifierCtrl.text.trim(), _passwordCtrl.text);
   }
 
   @override
@@ -45,12 +46,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 8),
                   Text('Masuk ke panel admin', style: Theme.of(context).textTheme.bodyMedium),
                   const SizedBox(height: 40),
+
+                  // Login method toggle
+                  SegmentedButton<String>(
+                    segments: [
+                      ButtonSegment(
+                        value: 'email',
+                        label: const Text('Email'),
+                        icon: const Icon(Icons.alternate_email, size: 18),
+                      ),
+                      ButtonSegment(
+                        value: 'phone',
+                        label: const Text('Phone'),
+                        icon: const Icon(Icons.phone, size: 18),
+                      ),
+                    ],
+                    selected: {_loginMethod},
+                    onSelectionChanged: (Set<String> selection) {
+                      setState(() {
+                        _loginMethod = selection.first;
+                        _identifierCtrl.clear();
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
                   TextField(
-                    controller: _emailCtrl,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
+                    controller: _identifierCtrl,
+                    keyboardType: _loginMethod == 'email'
+                        ? TextInputType.emailAddress
+                        : TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: _loginMethod == 'email' ? 'Email' : 'Nomor HP',
+                      prefixIcon: Icon(
+                        _loginMethod == 'email' ? Icons.alternate_email : Icons.phone,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),

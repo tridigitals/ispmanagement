@@ -149,20 +149,20 @@ class AuthTokenStorage {
   }
 
   // ── Credential storage for auto re-login on 401 ──
-  static const _kEmailKey = 'stored_email';
+  static const _kIdentifierKey = 'stored_identifier';
   static const _kPasswordKey = 'stored_password';
 
-  /// Save login credentials for auto re-login on 401.
+  /// Save login credentials (identifier = email OR phone) for auto re-login on 401.
   Future<void> saveCredentials({
-    required String email,
+    required String identifier,
     required String password,
   }) async {
-    await _safeWrite(_kEmailKey, email);
+    await _safeWrite(_kIdentifierKey, identifier);
     await _safeWrite(_kPasswordKey, password);
   }
 
-  /// Read stored email for auto re-login.
-  Future<String?> readEmail() => _safeRead(_kEmailKey);
+  /// Read stored identifier (email OR phone) for auto re-login.
+  Future<String?> readIdentifier() => _safeRead(_kIdentifierKey);
 
   /// Read stored password for auto re-login.
   Future<String?> readPassword() => _safeRead(_kPasswordKey);

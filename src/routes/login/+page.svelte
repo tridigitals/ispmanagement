@@ -15,8 +15,9 @@
   import { publicApi } from '$lib/api/public';
   import { getDefaultTenantLandingPath } from '$lib/utils/appLanding';
 
-  let email = '';
+  let identifier = '';
   let password = '';
+  let loginMethod: 'email' | 'phone' = 'email';
   let rememberMe = true;
   let error = '';
   let loading = false;
@@ -240,7 +241,7 @@
     loading = true;
 
     try {
-      const response = await login(email, password, rememberMe);
+      const response = await login(identifier, password, rememberMe);
 
       if (response.requires_2fa_setup) {
         // Forced 2FA enrollment — tenant requires 2FA, user hasn't set it up yet
@@ -404,21 +405,61 @@
 
       {#if step === 'login'}
         <form on:submit={handleSubmit}>
-          <div class="input-group" class:focus={activeField === 'email'}>
-            <label for="email">{$t('auth.login.email_label')}</label>
-            <div class="field">
-              <span class="icon"><Icon name="mail" size={18} /></span>
-              <input
-                type="email"
-                id="email"
-                bind:value={email}
-                on:focus={() => (activeField = 'email')}
-                on:blur={() => (activeField = '')}
-                placeholder={$t('auth.login.email_placeholder')}
-                required
-              />
-            </div>
+          <!-- Login Method Toggle -->
+          <div class="login-method-toggle">
+            <button
+              type="button"
+              class="toggle-btn"
+              class:active={loginMethod === 'email'}
+              on:click={() => { loginMethod = 'email'; identifier = ''; }}
+            >
+              <Icon name="mail" size={16} />
+              Email
+            </button>
+            <button
+              type="button"
+              class="toggle-btn"
+              class:active={loginMethod === 'phone'}
+              on:click={() => { loginMethod = 'phone'; identifier = ''; }}
+            >
+              <Icon name="phone" size={16} />
+              Phone
+            </button>
           </div>
+
+          {#if loginMethod === 'email'}
+            <div class="input-group" class:focus={activeField === 'identifier'}>
+              <label for="identifier">{$t('auth.login.email_label')}</label>
+              <div class="field">
+                <span class="icon"><Icon name="mail" size={18} /></span>
+                <input
+                  type="email"
+                  id="identifier"
+                  bind:value={identifier}
+                  on:focus={() => (activeField = 'identifier')}
+                  on:blur={() => (activeField = '')}
+                  placeholder={$t('auth.login.email_placeholder')}
+                  required
+                />
+              </div>
+            </div>
+          {:else}
+            <div class="input-group" class:focus={activeField === 'identifier'}>
+              <label for="identifier">Nomor HP</label>
+              <div class="field">
+                <span class="icon"><Icon name="phone" size={18} /></span>
+                <input
+                  type="tel"
+                  id="identifier"
+                  bind:value={identifier}
+                  on:focus={() => (activeField = 'identifier')}
+                  on:blur={() => (activeField = '')}
+                  placeholder="08xxxxxxxxxx"
+                  required
+                />
+              </div>
+            </div>
+          {/if}
 
           <div class="input-group" class:focus={activeField === 'password'}>
             <label for="password">{$t('auth.login.password_label')}</label>
@@ -639,7 +680,7 @@
           {#if setupLoading}
             <div style="text-align: center; padding: 2rem 0;">
               <div class="spinner" style="margin: 0 auto 1rem;"></div>
-              <span>Preparing setup...</span>
+              <span>{$t('auth.2fa.preparing') || 'Preparing setup...'}</span>
             </div>
           {:else if setupMethod === 'totp'}
             <div class="method-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
@@ -661,7 +702,7 @@
             <div class="qr-section" style="text-align: center; margin-bottom: 1.5rem;">
               <span class="step-label" style="display: block; margin-bottom: 1rem;">1. Scan this QR code with your authenticator app</span>
               <div class="qr-wrapper" style="background: white; padding: 1rem; border-radius: 8px; display: inline-block;">
-                <img src="data:image/png;base64,{setupQr}" alt="QR Code" style="width: 180px; height: 180px;" />
+                <img src="data:image/png;base64,{setupQr}" alt={$t('auth.2fa.qr_code') || 'QR Code'} style="width: 180px; height: 180px;" />
               </div>
               <p style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted); word-break: break-all;">
                 Key: {setupSecret}
@@ -714,7 +755,7 @@
             {#if setupEmailSent}
               <div style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-success); border-radius: 8px; color: var(--text-success);">
                 <Icon name="check-circle" size={18} />
-                <span>A verification code has been sent to your email.</span>
+                <span>{$t('auth.2fa.code_sent') || 'A verification code has been sent to your email.'}</span>
               </div>
             {/if}
             <p style="margin-bottom: 1rem; color: var(--text-secondary);">
@@ -722,7 +763,7 @@
             </p>
             <form on:submit|preventDefault={handle2FASetupVerify}>
               <div class="input-group" class:focus={activeField === 'setup'}>
-                <label for="setup-email-code">Enter verification code</label>
+                <label for="setup-email-code">{$t('auth.2fa.enter_code') || 'Enter verification code'}</label>
                 <div class="field">
                   <span class="icon"><Icon name="mail" size={18} /></span>
                   <input
@@ -1016,6 +1057,43 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+  }
+
+  /* Login Method Toggle */
+  .login-method-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1.25rem;
+    background: var(--bg-secondary, #f0f0f0);
+    border-radius: 8px;
+    padding: 4px;
+  }
+
+  .login-method-toggle .toggle-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary, #666);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  }
+
+  .login-method-toggle .toggle-btn:hover {
+    color: var(--text-primary, #333);
+  }
+
+  .login-method-toggle .toggle-btn.active {
+    background: var(--bg-primary, #fff);
+    color: var(--accent, #2563eb);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   }
 
   @media (max-width: 480px) {

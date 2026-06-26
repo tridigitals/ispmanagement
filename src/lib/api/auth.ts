@@ -5,8 +5,8 @@ export const auth = {
   register: (email: string, password: string, name: string): Promise<AuthResponse> =>
     safeInvoke('register', { email, password, name }),
 
-  login: (email: string, password: string): Promise<AuthResponse> =>
-    safeInvoke('login', { email, password }),
+  login: (identifier: string, password: string): Promise<AuthResponse> =>
+    safeInvoke('login', { identifier, password }),
 
   logout: (token: string): Promise<void> => safeInvoke('logout', { token }),
 

@@ -37,11 +37,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   AuthNotifier(this._api, this._ref) : super(const AuthState());
 
-  Future<void> login(String email, String password) async {
+  Future<void> login(String identifier, String password) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final res = await _api.post('/auth/login', data: {
-        'email': email,
+        'identifier': identifier,
         'password': password,
       });
       final token = res.data['token'] as String;

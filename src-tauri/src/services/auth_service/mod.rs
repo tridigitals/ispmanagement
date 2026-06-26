@@ -13,6 +13,7 @@ use crate::db::connection::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{LoginDto, RegisterDto, TrustedDevice, User};
 use crate::services::{AuditService, EmailService, SettingsService};
+use crate::services::whatsapp_gateway_service::normalize_phone;
 use argon2::{
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
@@ -861,18 +862,40 @@ impl AuthService {
     ) -> AppResult<AuthResponse> {
         let settings = self.get_auth_settings().await;
 
-        // Find user by email
-        let user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE email = $1")
-            .bind(&dto.email)
-            .fetch_optional(&self.pool)
-            .await?;
+        // Normalize identifier: if it looks like a phone number, normalize it
+        // Otherwise treat as email (lowercase, trimmed)
+        let id = dto.get_identifier();
+        let identifier = id.trim();
+        let (query_email, query_phone) = if identifier.contains('@') {
+            // Looks like email
+            (Some(identifier.to_lowercase()), None)
+        } else {
+            // Treat as phone number - normalize
+            let normalized = normalize_phone(identifier);
+            (None, Some(normalized))
+        };
+
+        // Find user by email OR phone
+        let user: Option<User> = if let Some(email_val) = &query_email {
+            sqlx::query_as("SELECT * FROM users WHERE email = $1")
+                .bind(email_val)
+                .fetch_optional(&self.pool)
+                .await?
+        } else if let Some(phone_val) = &query_phone {
+            sqlx::query_as("SELECT * FROM users WHERE phone = $1")
+                .bind(phone_val)
+                .fetch_optional(&self.pool)
+                .await?
+        } else {
+            None
+        };
 
         let user = match user {
             Some(u) => u,
             None => {
                 // Audit (best-effort). Avoid leaking sensitive info.
                 let details = serde_json::json!({
-                    "email": dto.email,
+                    "identifier": identifier,
                     "reason": "user_not_found"
                 })
                 .to_string();

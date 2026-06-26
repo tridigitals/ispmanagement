@@ -24,7 +24,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController();
+  final _identifierCtrl = TextEditingController();
+  String _loginMethod = 'email'; // 'email' | 'phone'
   late final IspThemeColors isp;
 
   @override
@@ -56,7 +57,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
+    _identifierCtrl.dispose();
     _passwordCtrl.dispose();
     _codeCtrl.dispose();
     _setupCodeCtrl.dispose();
@@ -159,7 +160,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     final auth = ref.read(authControllerProvider.notifier);
     final res = await auth.login(
-      email: _emailCtrl.text.trim(),
+      identifier: _identifierCtrl.text.trim(),
       password: _passwordCtrl.text,
     );
     if (!mounted) return;
@@ -374,17 +375,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: Text(l10n.back),
                     ),
                   ] else ...[
+                    // Login method toggle
+                    SegmentedButton<String>(
+                      segments: [
+                        ButtonSegment(
+                          value: 'email',
+                          label: Text(l10n.email),
+                          icon: const Icon(Icons.alternate_email, size: 18),
+                        ),
+                        ButtonSegment(
+                          value: 'phone',
+                          label: const Text('Phone'),
+                          icon: const Icon(Icons.phone, size: 18),
+                        ),
+                      ],
+                      selected: {_loginMethod},
+                      onSelectionChanged: (Set<String> selection) {
+                        setState(() {
+                          _loginMethod = selection.first;
+                          _identifierCtrl.clear();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     TextFormField(
-                      controller: _emailCtrl,
-                      keyboardType: TextInputType.emailAddress,
+                      controller: _identifierCtrl,
+                      keyboardType: _loginMethod == 'email'
+                          ? TextInputType.emailAddress
+                          : TextInputType.phone,
                       textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
-                        labelText: l10n.email,
-                        prefixIcon: const Icon(Icons.alternate_email),
+                        labelText: _loginMethod == 'email' ? l10n.email : 'Nomor HP',
+                        prefixIcon: Icon(
+                          _loginMethod == 'email'
+                              ? Icons.alternate_email
+                              : Icons.phone,
+                        ),
                       ),
-                      validator: (v) => (v == null || !v.contains('@'))
-                          ? l10n.invalidEmail
-                          : null,
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Wajib diisi';
+                        if (_loginMethod == 'email' && !v.contains('@')) {
+                          return l10n.invalidEmail;
+                        }
+                        if (_loginMethod == 'phone' && v.length < 8) {
+                          return 'Nomor HP minimal 8 digit';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 12),
                     TextFormField(

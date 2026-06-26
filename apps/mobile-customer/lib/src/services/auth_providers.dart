@@ -54,13 +54,13 @@ class AuthController extends Notifier<AuthState> {
   AuthState build() => const AuthState();
 
   Future<ServiceResult<AuthResponse>> login({
-    required String email,
+    required String identifier,
     required String password,
   }) async {
     state = state.copyWith(isLoading: true);
     try {
       final res = await ref.read(authServiceProvider).login(
-            email: email,
+            identifier: identifier,
             password: password,
           );
       // Save credentials for auto re-login on 401 (used with biometric).
@@ -74,7 +74,7 @@ class AuthController extends Notifier<AuthState> {
             try {
               final storage = ref.read(tokenStorageProvider);
               await storage
-                  .saveCredentials(email: email, password: password)
+                  .saveCredentials(identifier: identifier, password: password)
                   .timeout(const Duration(seconds: 5));
             } catch (e) {
               debugPrint('[auth] saveCredentials failed: $e');

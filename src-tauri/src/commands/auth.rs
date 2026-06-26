@@ -40,15 +40,16 @@ pub async fn register(
         .map_err(|e| e.to_string())
 }
 
-/// Login user
+/// Login user (supports email OR phone)
 #[tauri::command]
 pub async fn login(
-    email: String,
+    identifier: String,
     password: String,
     auth_service: State<'_, AuthService>,
 ) -> Result<AuthResponse, String> {
     let dto = LoginDto {
-        email: email.clone(),
+        identifier: Some(identifier.clone()),
+        email: None,
         password,
     };
 
