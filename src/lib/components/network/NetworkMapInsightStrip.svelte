@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import type { NetworkMapInsightCard } from '$lib/components/network/networkMapInsights';
 
   let {

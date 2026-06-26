@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import { appSettings } from '$lib/stores/settings';
   import { tenant } from '$lib/stores/auth';
   import { formatMoney } from '$lib/utils/money';

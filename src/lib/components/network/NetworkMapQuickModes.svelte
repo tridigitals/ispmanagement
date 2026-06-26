@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   export type NetworkMapQuickModeOption = {
     key: string;
     label: string;

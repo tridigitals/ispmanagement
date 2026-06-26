@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';

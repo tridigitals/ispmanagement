@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import Modal from '$lib/components/ui/Modal.svelte';
 
   export let show = false;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import Select2 from '$lib/components/ui/Select2.svelte';
 
   export let show = false;

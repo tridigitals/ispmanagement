@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import ServiceComingSoonPage from '$lib/components/services/ServiceComingSoonPage.svelte';
 
   const roadmap = [
