@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from '$lib/components/ui/Icon.svelte';
+  import { t } from 'svelte-i18n';
 
   let {
     searchQuery = $bindable(''),
@@ -93,7 +94,7 @@
       </div>
       {#if onReset}
         <div class="filter-panel-footer">
-          <button class="reset-link" type="button" onclick={onReset}>{$t('common.reset') || 'Reset filter'}</button>
+          <button class="reset-link" type="button" onclick={onReset}>{$t('common.reset')}</button>
         </div>
       {/if}
     </div>
