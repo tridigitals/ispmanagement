@@ -43,9 +43,9 @@
           <span class="p-name">{option.label}</span>
           <span class="p-desc">
             {#if option.value === 'smtp'}
-              Direct SMTP server connection.
+              {tt('admin.settings.email.desc_smtp', 'Direct SMTP server connection.')}
             {:else}
-              High-performance API delivery.
+              {tt('admin.settings.email.desc_api', 'High-performance API delivery.')}
             {/if}
           </span>
         </div>

@@ -2,6 +2,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
+  import { t } from 'svelte-i18n';
   import { can } from '$lib/stores/auth';
   import { api } from '$lib/api/client';
   import type { Olt, OltStats, OltDetails, OnuDetail, OltOnuHistoryEntry } from '$lib/api/olt';
@@ -34,10 +35,10 @@
 
   function signalLabel(dbm: number | null | undefined): string {
     if (dbm == null) return '—';
-    if (dbm > -20) return 'Baik';
-    if (dbm >= -24) return 'Cukup';
-    if (dbm >= -27) return 'Lemah';
-    return 'Sangat Lemah';
+    if (dbm > -20) return $t('network.olt.signal_good') || 'Good';
+    if (dbm >= -24) return $t('network.olt.signal_fair') || 'Fair';
+    if (dbm >= -27) return $t('network.olt.signal_weak') || 'Weak';
+    return $t('network.olt.signal_very_weak') || 'Very Weak';
   }
 
   function formatUptime(seconds?: number | null): string {
@@ -130,29 +131,29 @@
   });
 
   const tabItems = $derived.by(() => [
-    { id: 'overview', label: 'Ringkasan' },
+    { id: 'overview', label: $t('network.olt.overview') || 'Overview' },
     { id: 'onus', label: 'ONU', count: onus.length },
-    { id: 'history', label: 'Riwayat ONU' },
+    { id: 'history', label: $t('network.olt.onu_history') || 'ONU History' },
   ]);
 
   const onuColumns = $derived.by(() => [
     { key: 'onu', label: 'ONU', sortable: true },
-    { key: 'port', label: 'PON Port', sortable: true },
-    { key: 'status', label: 'Status', sortable: true },
-    { key: 'signal', label: 'Sinyal (dBm)', sortable: true },
-    { key: 'distance', label: 'Jarak', sortable: true },
-    { key: 'uptime', label: 'Uptime', sortable: true },
+    { key: 'port', label: $t('network.olt.pon_port') || 'PON Port', sortable: true },
+    { key: 'status', label: $t('common.status') || 'Status', sortable: true },
+    { key: 'signal', label: $t('network.olt.signal') || 'Signal (dBm)', sortable: true },
+    { key: 'distance', label: $t('network.olt.distance') || 'Distance', sortable: true },
+    { key: 'uptime', label: $t('network.router.uptime') || 'Uptime', sortable: true },
     { key: 'actions', label: '', align: 'right' as const, width: '60px' },
   ]);
 
   const historyColumns = $derived.by(() => [
-    { key: 'time', label: 'Waktu', sortable: true },
+    { key: 'time', label: $t('network.olt.time') || 'Time', sortable: true },
     { key: 'onu', label: 'ONU', sortable: true },
     { key: 'pon', label: 'PON', sortable: true },
-    { key: 'mac', label: 'MAC Address' },
-    { key: 'status', label: 'Status', sortable: true },
-    { key: 'rx', label: 'RX (dBm)', sortable: true },
-    { key: 'tx', label: 'TX (dBm)', sortable: true },
+    { key: 'mac', label: $t('network.olt.mac_address') || 'MAC Address' },
+    { key: 'status', label: $t('common.status') || 'Status', sortable: true },
+    { key: 'rx', label: $t('network.olt.rx_dbm') || 'RX (dBm)', sortable: true },
+    { key: 'tx', label: $t('network.olt.tx_dbm') || 'TX (dBm)', sortable: true },
   ]);
 
   let refreshHandle: any = null;
@@ -218,7 +219,7 @@
 
   function openOnMap() {
     if (!olt || olt.latitude == null || olt.longitude == null) {
-      toast.error('OLT belum memiliki koordinat lokasi.');
+      toast.error($t('network.olt.no_coordinates') || 'OLT does not have location coordinates yet.');
       return;
     }
     const params = new URLSearchParams({
@@ -256,7 +257,7 @@
       details = detailsResp;
       stats = detailsResp?.stats || null;
       onus = detailsResp?.onus || [];
-      toast.success('Data diperbarui.');
+      toast.success($t('common.data_refreshed') || 'Data refreshed.');
     } catch (e: any) {
       toast.error(e?.message || e);
     } finally {
@@ -276,7 +277,7 @@
     rebootTarget = null;
     try {
       await api.olt.rebootOnu(id, onu.onu_id, onu.onu_name || onu.onu_id);
-      toast.success(`ONU ${onu.onu_name || onu.onu_id} sedang di-reboot.`);
+      toast.success($t('network.olt.onu_rebooting', { values: { name: onu.onu_name || onu.onu_id } }) || `ONU ${onu.onu_name || onu.onu_id} is rebooting.`);
     } catch (e: any) {
       toast.error(e?.message || e);
     }
@@ -285,25 +286,25 @@
 
 <div class="page-content fade-in">
   <NetworkPageHeader
-    title={olt?.name || 'Detail OLT'}
+    title={olt?.name || ($t('network.olt.detail') || 'OLT Detail')}
     subtitle={olt ? `${friendlyOltType(olt.olt_type)} — ${olt.host}:${olt.port}` : ''}
   >
     {#snippet actions()}
       <a class="btn ghost" href={backTarget}>
         <Icon name="arrow-left" size={16} />
-        Kembali
+        {$t('common.back') || 'Back'}
       </a>
-      <button class="btn ghost" type="button" onclick={() => openOnMap()} disabled={!olt || olt.latitude == null || olt.longitude == null} title="Lihat di Peta">
+      <button class="btn ghost" type="button" onclick={() => openOnMap()} disabled={!olt || olt.latitude == null || olt.longitude == null} title={$t('network.olt.view_on_map') || 'Lihat di Peta'}>
         <Icon name="map-pin" size={16} />
-        Peta
+        {$t('common.map') || 'Map'}
       </button>
       <button class="btn ghost" type="button" onclick={() => void refresh({ silent: false })} disabled={refreshing}>
         <Icon name="refresh-cw" size={16} />
-        Refresh
+        {$t('common.refresh') || 'Refresh'}
       </button>
       <button class="btn" type="button" onclick={forceRefreshStats} disabled={refreshing}>
         <Icon name="zap" size={16} />
-        Refresh Stats
+        {$t('network.olt.refresh_stats') || 'Refresh Stats'}
       </button>
     {/snippet}
   </NetworkPageHeader>
@@ -311,16 +312,16 @@
   {#if initialLoading}
     <div class="loading-wrap">
       <Icon name="loader" size={24} />
-      <span>Memuat data OLT...</span>
+      <span>{$t('network.olt.loading') || 'Memuat data OLT...'}</span>
     </div>
   {:else if olt}
     <!-- Status bar -->
     <div class="status-bar">
       <span class="badge" class:online={olt.is_online} class:offline={!olt.is_online}>
-        {olt.is_online ? 'Online' : 'Offline'}
+        {olt.is_online ? ($t('network.olt.online') || 'Online') : ($t('network.olt.offline') || 'Offline')}
       </span>
       {#if olt.last_polled_at}
-        <span class="muted">Terakhir dilihat: {timeAgo(olt.last_polled_at)}</span>
+        <span class="muted">{$t('network.olt.last_seen') || 'Last seen'}: {timeAgo(olt.last_polled_at)}</span>
       {/if}
       {#if olt.last_error}
         <span class="error-text">{olt.last_error}</span>
@@ -349,42 +350,42 @@
       <!-- Summary cards -->
       <div class="stat-grid">
         <div class="stat-card">
-          <div class="stat-top"><span class="stat-label">ONU Total</span><Icon name="list" size={14} /></div>
+          <div class="stat-top"><span class="stat-label">{$t('network.olt.onu_total') || 'ONU Total'}</span><Icon name="list" size={14} /></div>
           <div class="stat-value">{stats?.total_onus ?? onuStats.total}</div>
         </div>
         <div class="stat-card tone-ok">
-          <div class="stat-top"><span class="stat-label">ONU Online</span><Icon name="check-circle" size={14} /></div>
+          <div class="stat-top"><span class="stat-label">{$t('network.olt.onu_online') || 'ONU Online'}</span><Icon name="check-circle" size={14} /></div>
           <div class="stat-value">{stats?.online_onus ?? onuStats.online}</div>
         </div>
         <div class="stat-card tone-bad">
-          <div class="stat-top"><span class="stat-label">ONU Offline</span><Icon name="alert-circle" size={14} /></div>
+          <div class="stat-top"><span class="stat-label">{$t('network.olt.onu_offline') || 'ONU Offline'}</span><Icon name="alert-circle" size={14} /></div>
           <div class="stat-value">{stats?.offline_onus ?? onuStats.offline}</div>
         </div>
         <div class="stat-card tone-warn">
-          <div class="stat-top"><span class="stat-label">Sinyal Lemah</span><Icon name="alert-triangle" size={14} /></div>
+          <div class="stat-top"><span class="stat-label">{$t('network.olt.weak_signal') || 'Sinyal Lemah'}</span><Icon name="alert-triangle" size={14} /></div>
           <div class="stat-value">{stats?.low_onus ?? onuStats.low}</div>
         </div>
       </div>
 
       {#if details?.info}
         <div class="section-card">
-          <h4 class="section-title">Informasi Sistem</h4>
+          <h4 class="section-title">{$t('network.olt.system_info') || 'Informasi Sistem'}</h4>
           <div class="info-grid">
             {#if details.info.model}
               <div class="info-item">
-                <span class="info-label">Model</span>
+                <span class="info-label">{$t('network.olt.model') || 'Model'}</span>
                 <span class="info-value">{details.info.model}</span>
               </div>
             {/if}
             {#if details.info.version}
               <div class="info-item">
-                <span class="info-label">Version</span>
+                <span class="info-label">{$t('network.olt.version') || 'Version'}</span>
                 <span class="info-value mono">{details.info.version}</span>
               </div>
             {/if}
             {#if details.info.address}
               <div class="info-item">
-                <span class="info-label">Address</span>
+                <span class="info-label">{$t('network.olt.address') || 'Address'}</span>
                 <span class="info-value mono">{details.info.address}</span>
               </div>
             {/if}
@@ -402,17 +403,17 @@
 
       {#if olt?.latitude != null || olt?.longitude != null || olt?.address_line}
         <div class="section-card">
-          <h4 class="section-title">Lokasi OLT</h4>
+          <h4 class="section-title">{$t('network.olt.location') || 'OLT Location'}</h4>
           <div class="info-grid">
             {#if olt.latitude != null && olt.longitude != null}
               <div class="info-item">
-                <span class="info-label">Koordinat</span>
+                <span class="info-label">{$t('network.olt.coordinates') || 'Coordinates'}</span>
                 <span class="info-value mono">{olt.latitude}, {olt.longitude}</span>
               </div>
             {/if}
             {#if olt.address_line}
               <div class="info-item">
-                <span class="info-label">Alamat</span>
+                <span class="info-label">{$t('network.olt.address') || 'Address'}</span>
                 <span class="info-value">{olt.address_line}</span>
               </div>
             {/if}
@@ -420,7 +421,7 @@
               <div class="info-item">
                 <button class="btn ghost" type="button" onclick={openOnMap}>
                   <Icon name="map-pin" size={14} />
-                  Lihat di Peta
+                  {$t('network.olt.view_on_map') || 'Lihat di Peta'}
                 </button>
               </div>
             {/if}
@@ -430,15 +431,15 @@
 
       {#if olt?.uplink_router_id}
         <div class="section-card">
-          <h4 class="section-title">Uplink Router</h4>
+          <h4 class="section-title">{$t('network.olt.uplink_router') || 'Uplink Router'}</h4>
           <div class="info-grid">
             <div class="info-item">
-              <span class="info-label">Router</span>
+              <span class="info-label">{$t('common.router') || 'Router'}</span>
               <span class="info-value">{olt.uplink_router_name || olt.uplink_router_id}</span>
             </div>
             {#if olt.uplink_port}
               <div class="info-item">
-                <span class="info-label">Port</span>
+                <span class="info-label">{$t('common.port') || 'Port'}</span>
                 <span class="info-value mono">{olt.uplink_port}</span>
               </div>
             {/if}
@@ -448,19 +449,19 @@
 
       {#if stats?.pon_ports && stats.pon_ports.length > 0}
         <div class="section-card">
-          <h4 class="section-title">Port PON</h4>
+          <h4 class="section-title">{$t('network.olt.pon_ports') || 'PON Ports'}</h4>
           <div class="table-wrap">
             <Table
               columns={[
-                { key: 'name', label: 'Port' },
-                { key: 'status', label: 'Status' },
+                { key: 'name', label: $t('network.olt.port') || 'Port' },
+                { key: 'status', label: $t('common.status') || 'Status' },
                 { key: 'total', label: 'ONU' },
-                { key: 'online', label: 'Online' },
-                { key: 'offline', label: 'Offline' },
+                { key: 'online', label: $t('network.olt.online') || 'Online' },
+                { key: 'offline', label: $t('network.olt.offline') || 'Offline' },
               ]}
               data={stats.pon_ports}
               loading={false}
-              emptyText="Tidak ada port PON"
+              emptyText={$t('network.olt.no_pon_ports') || 'No PON ports'}
               mobileView={isMobile ? 'card' : 'scroll'}
             >
               {#snippet cell({ item, key }: any)}
@@ -473,7 +474,7 @@
                     class:warning={item.online > 0 && item.offline > 0}
                     class:offline={item.online === 0 && item.total > 0}
                   >
-                    {item.online > 0 && item.offline === 0 ? 'Active' : item.online > 0 ? 'Degraded' : item.total > 0 ? 'Down' : 'Empty'}
+                    {item.online > 0 && item.offline === 0 ? ($t('network.olt.active') || 'Active') : item.online > 0 ? ($t('network.olt.degraded') || 'Degraded') : item.total > 0 ? ($t('network.olt.down') || 'Down') : ($t('network.olt.empty_port') || 'Empty')}
                   </span>
                 {:else}
                   <span class="mono">{item[key] ?? '—'}</span>
@@ -497,10 +498,10 @@
           data={sortedOnus}
           keyField="onu_id"
           loading={false}
-          emptyText="Tidak ada ONU"
+          emptyText={$t('network.olt.no_onus') || 'No ONUs'}
           mobileView={isMobile ? 'card' : 'scroll'}
           searchable={true}
-          searchPlaceholder="Cari ONU ID, nama, atau MAC..."
+          searchPlaceholder={$t('network.olt.search_onus') || 'Search ONU ID, name, or MAC...'}
           pagination={true}
           pageSize={25}
           sortKey={onuSortKey}
@@ -552,7 +553,7 @@
               <span class="muted">{item.temperature ? `${item.temperature}°C` : '—'}</span>
             {:else if key === 'actions'}
               {#if $can('manage', 'router_inventory')}
-                <button class="icon-btn danger" type="button" onclick={() => promptReboot(item)} title="Reboot ONU">
+                <button class="icon-btn danger" type="button" onclick={() => promptReboot(item)} title={$t('network.olt.reboot_onu') || 'Reboot ONU'}>
                   <Icon name="power" size={14} />
                 </button>
               {/if}
@@ -570,10 +571,10 @@
           data={history}
           keyField="id"
           loading={historyLoading}
-          emptyText="Tidak ada riwayat"
+          emptyText={$t('network.olt.no_history') || 'No history'}
           mobileView={isMobile ? 'card' : 'scroll'}
           searchable={true}
-          searchPlaceholder="Cari ONU ID atau nama..."
+          searchPlaceholder={$t('network.olt.search_onu_history') || 'Search ONU ID or name...'}
           pagination={true}
           pageSize={25}
           sortKey={historySortKey}
@@ -622,17 +623,17 @@
   {:else}
     <div class="empty-state">
       <Icon name="alert-circle" size={32} />
-      <p>OLT tidak ditemukan.</p>
+      <p>{$t('network.olt.not_found') || 'OLT not found.'}</p>
     </div>
   {/if}
 </div>
 
 <ConfirmDialog
   bind:show={showRebootConfirm}
-  title="Konfirmasi Reboot ONU"
-  message={rebootTarget ? `Yakin ingin me-reboot ONU "${rebootTarget.name || rebootTarget.onu_id}"? ONU akan restart.` : ''}
-  confirmText="Reboot"
-  cancelText="Batal"
+  title={$t('network.olt.confirm_reboot') || 'Confirm ONU Reboot'}
+  message={rebootTarget ? ($t('network.olt.reboot_confirm_message', { values: { name: rebootTarget.name || rebootTarget.onu_id } }) || `Are you sure you want to reboot ONU "${rebootTarget.name || rebootTarget.onu_id}"? The ONU will restart.`) : ''}
+  confirmText={$t('network.olt.reboot') || 'Reboot'}
+  cancelText={$t('common.cancel') || 'Cancel'}
   type="danger"
   onconfirm={confirmReboot}
   oncancel={() => { rebootTarget = null; }}

@@ -882,10 +882,15 @@ impl AuthService {
                 .fetch_optional(&self.pool)
                 .await?
         } else if let Some(phone_val) = &query_phone {
-            sqlx::query_as("SELECT * FROM users WHERE phone = $1")
-                .bind(phone_val)
-                .fetch_optional(&self.pool)
-                .await?
+            // Try both normalized (62...) and original (08...) values
+            let original = identifier.to_string();
+            sqlx::query_as(
+                "SELECT * FROM users WHERE phone = $1 OR phone = $2",
+            )
+            .bind(phone_val)
+            .bind(original)
+            .fetch_optional(&self.pool)
+            .await?
         } else {
             None
         };

@@ -212,7 +212,7 @@
       </div>
       <h1>{$t('dashboard.locations.title') || 'My Locations'}</h1>
       <p class="subtitle">
-        Kelola lokasi layanan Anda di sini. Saat membuat atau mengubah lokasi, titik map wajib dipilih.
+        {$t('dashboard.locations.subtitle')}
       </p>
     </div>
     <div class="header-actions">
@@ -229,15 +229,15 @@
 
   <div class="summary-grid">
     <div class="summary card">
-      <div class="summary-label">Total lokasi</div>
+      <div class="summary-label">{$t('dashboard.locations.summary.total')}</div>
       <div class="summary-value">{totalLocations}</div>
     </div>
     <div class="summary card">
-      <div class="summary-label">Sudah pin map</div>
+      <div class="summary-label">{$t('dashboard.locations.summary.pinned')}</div>
       <div class="summary-value">{mappedLocations}</div>
     </div>
     <div class="summary card">
-      <div class="summary-label">Ada catatan</div>
+      <div class="summary-label">{$t('dashboard.locations.summary.has_notes')}</div>
       <div class="summary-value">{notedLocations}</div>
     </div>
   </div>
@@ -245,7 +245,7 @@
   {#if !hasLinkedCustomer}
     <div class="error-banner">
       <Icon name="alert-triangle" size={18} />
-      <span>Akun ini belum terhubung ke customer, jadi lokasi layanan belum bisa dikelola.</span>
+      <span>{$t('dashboard.locations.no_customer_hint')}</span>
     </div>
   {/if}
 
@@ -265,8 +265,8 @@
     <div class="empty card">
       <Icon name="map-pin" size={28} />
       <div class="empty-text">
-        <div class="title">Belum ada lokasi layanan.</div>
-        <div class="sub">Tambahkan lokasi baru lalu pilih titik map agar bisa dipakai untuk order dan coverage check.</div>
+        <div class="title">{$t('dashboard.locations.empty')}</div>
+        <div class="sub">{$t('dashboard.locations.empty_hint')}</div>
       </div>
     </div>
   {:else}
@@ -276,7 +276,7 @@
           <div class="top">
             <div class="badge">
               <Icon name="map-pin" size={16} />
-              <span>Service Location</span>
+              <span>{$t('dashboard.locations.title') || 'Service Location'}</span>
             </div>
             <div class="row-actions">
               <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEditLocation(loc)}>
@@ -293,7 +293,7 @@
             {#if loc.latitude != null && loc.longitude != null}
               <span class="coord-chip">{Number(loc.latitude).toFixed(6)}, {Number(loc.longitude).toFixed(6)}</span>
             {:else}
-              <span class="coord-chip missing">Belum ada titik map</span>
+              <span class="coord-chip missing">{$t('dashboard.locations.form.no_map_pin')}</span>
             {/if}
           </div>
           {#if loc.notes}

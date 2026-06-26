@@ -67,18 +67,18 @@
   function activeSuspendPreview() {
     if (suspendMode() === 'fixed_day') {
       const day = clampInt(localSettings['billing_auto_suspend_fixed_day'] || '1', 1, 28, 1);
-      return `Tanggal tetap ${day} setiap bulan`;
+      return tt('admin.settings.service_tab.suspend_fixed_day_preview', 'Tanggal tetap {day} setiap bulan').replace('{day}', String(day));
     }
 
     const days = clampInt(localSettings['billing_auto_suspend_grace_days'] || '3', 0, 365, 3);
-    return `Tenggang ${days} hari setelah jatuh tempo`;
+    return tt('admin.settings.service_tab.suspend_grace_preview', 'Tenggang {days} hari setelah jatuh tempo').replace('{days}', String(days));
   }
 
   function activeSuspendPppoePreview() {
     if (suspendPppoeAction() === 'move_to_isolation_pool')
-      return 'Mengikuti pool isolir di service/router';
+      return tt('admin.settings.service_tab.pppoe_isolation_preview', 'Mengikuti pool isolir di service/router');
 
-    return 'Secret PPPoE dinonaktifkan';
+    return tt('admin.settings.service_tab.pppoe_disable_preview', 'Secret PPPoE dinonaktifkan');
   }
 
   function invoicePreview() {
@@ -89,33 +89,33 @@
       60,
       7,
     );
-    return enabled ? `Aktif, dibuat H-${leadDays}` : 'Nonaktif';
+    return enabled ? tt('admin.settings.service_tab.invoice_active_preview', 'Aktif, dibuat H-{days}').replace('{days}', String(leadDays)) : tt('admin.settings.service_tab.disabled', 'Nonaktif');
   }
 
   function autoResumePreview() {
     return localSettings['billing_auto_resume_on_payment'] !== 'false'
-      ? 'Otomatis aktif setelah pembayaran'
-      : 'Aktifkan manual';
+      ? tt('admin.settings.service_tab.auto_resume_on_payment', 'Otomatis aktif setelah pembayaran')
+      : tt('admin.settings.service_tab.auto_resume_manual', 'Aktifkan manual');
   }
 
   function reminderPreview() {
     const enabled = localSettings['billing_reminder_enabled'] !== 'false';
     const codes = parseReminderSchedule(localSettings['billing_reminder_schedule']);
     const grouped = groupReminderCodes(codes);
-    if (!enabled) return 'Nonaktif';
-    return `${grouped.before.length} sebelum, ${grouped.after.length} sesudah jatuh tempo`;
+    if (!enabled) return tt('admin.settings.service_tab.disabled', 'Nonaktif');
+    return tt('admin.settings.service_tab.reminder_preview', '{before} sebelum, {after} sesudah jatuh tempo').replace('{before}', String(grouped.before.length)).replace('{after}', String(grouped.after.length));
   }
 
   function schedulerStatusLabel() {
-    if (!formattedLastRunAt || formattedLastRunAt === '-') return 'Belum ada run tercatat';
+    if (!formattedLastRunAt || formattedLastRunAt === '-') return tt('admin.settings.service_tab.no_runs_recorded', 'Belum ada run tercatat');
     return formattedLastRunAt;
   }
 
   function schedulerStatusHelp() {
     if (!formattedLastRunAt || formattedLastRunAt === '-') {
-      return 'Jalankan generate invoice manual sekali untuk memastikan scheduler sudah aktif.';
+      return tt('admin.settings.service_tab.scheduler_help_no_runs', 'Jalankan generate invoice manual sekali untuk memastikan scheduler sudah aktif.');
     }
-    return 'Terakhir diperbarui saat generate invoice pelanggan berjalan.';
+    return tt('admin.settings.service_tab.scheduler_help_updated', 'Terakhir diperbarui saat generate invoice pelanggan berjalan.');
   }
 
   function reminderCodes() {
@@ -132,9 +132,9 @@
   }
 
   function reminderCountLabel(codes: string[]) {
-    if (codes.length === 0) return 'Belum ada';
-    if (codes.length === 1) return '1 pengingat';
-    return `${codes.length} pengingat`;
+    if (codes.length === 0) return tt('admin.settings.service_tab.reminder_none', 'Belum ada');
+    if (codes.length === 1) return tt('admin.settings.service_tab.reminder_count_one', '1 pengingat');
+    return tt('admin.settings.service_tab.reminder_count', '{count} pengingat').replace('{count}', String(codes.length));
   }
 
   function applyReminderPreset(preset: keyof typeof REMINDER_PRESETS) {
@@ -171,41 +171,41 @@
 <div class="service-settings">
   <div class="intro-card">
     <h3>{tt('admin.settings.categories.service', 'Service')}</h3>
-    <p>Pengaturan global untuk billing dan lifecycle layanan.</p>
+    <p>{tt('admin.settings.service_tab.subtitle', 'Pengaturan global untuk billing dan lifecycle layanan.')}</p>
 
     <div class="summary-grid">
       <div class="summary-card">
         <div>
-          <span class="summary-label">Health scheduler</span>
+          <span class="summary-label">{tt('admin.settings.service_tab.health_scheduler', 'Health scheduler')}</span>
           <strong>{schedulerStatusLabel()}</strong>
           <small>{schedulerStatusHelp()}</small>
         </div>
       </div>
       <div class="summary-card">
         <div>
-          <span class="summary-label">Invoice otomatis</span>
+          <span class="summary-label">{tt('admin.settings.service_tab.auto_invoice', 'Invoice otomatis')}</span>
           <strong>{invoicePreview()}</strong>
         </div>
       </div>
       <div class="summary-card">
         <div>
-          <span class="summary-label">Suspend otomatis</span>
+          <span class="summary-label">{tt('admin.settings.service_tab.auto_suspend', 'Suspend otomatis')}</span>
           <strong
             >{localSettings['billing_auto_suspend_enabled'] === 'true'
               ? activeSuspendPreview()
-              : 'Nonaktif'}</strong
+              : (tt('admin.settings.service_tab.disabled', 'Nonaktif'))}</strong>
           >
         </div>
       </div>
       <div class="summary-card">
         <div>
-          <span class="summary-label">Auto resume</span>
+          <span class="summary-label">{tt('admin.settings.service_tab.auto_resume', 'Auto resume')}</span>
           <strong>{autoResumePreview()}</strong>
         </div>
       </div>
       <div class="summary-card">
         <div>
-          <span class="summary-label">Reminder</span>
+          <span class="summary-label">{tt('admin.settings.service_tab.reminder', 'Reminder')}</span>
           <strong>{reminderPreview()}</strong>
         </div>
       </div>
@@ -214,14 +214,14 @@
     <div class="quick-actions">
       <a class="quick-link" href={invoicesPath || '/admin/invoices'}>
         <span>
-          <strong>Lihat invoice</strong>
-          <small>Status tagihan pelanggan</small>
+          <strong>{tt('admin.settings.service_tab.view_invoices', 'Lihat invoice')}</strong>
+          <small>{tt('admin.settings.service_tab.invoice_status', 'Status tagihan pelanggan')}</small>
         </span>
       </a>
       <a class="quick-link" href={billingLogsPath || '/admin/invoices/collection'}>
         <span>
-          <strong>Lihat log automation</strong>
-          <small>Riwayat scheduler billing</small>
+          <strong>{tt('admin.settings.service_tab.view_automation_log', 'Lihat log automation')}</strong>
+          <small>{tt('admin.settings.service_tab.scheduler_history', 'Riwayat scheduler billing')}</small>
         </span>
       </a>
     </div>
@@ -254,7 +254,7 @@
       </div>
 
       <div class="policy-preview">
-        <span class="policy-preview-label">Status</span>
+        <span class="policy-preview-label">{tt('common.status', 'Status')}</span>
         <strong>{invoicePreview()}</strong>
       </div>
 
@@ -343,7 +343,7 @@
         <span class="field-title">
           {tt('admin.settings.service.auto_suspend_mode_label', 'Metode suspend')}
         </span>
-        <div class="mode-picker" role="radiogroup" aria-label="Metode suspend">
+        <div class="mode-picker" role="radiogroup" aria-label={$t('admin.settings.service_tab.suspend_method') || 'Metode suspend'}>
           <button
             type="button"
             class:selected={suspendMode() === 'grace_period'}
@@ -380,7 +380,7 @@
       </div>
 
       <div class="policy-preview">
-        <span class="policy-preview-label">Kebijakan aktif</span>
+        <span class="policy-preview-label">{tt('admin.settings.service_tab.active_policy', 'Kebijakan aktif')}</span>
         <strong>{activeSuspendPreview()}</strong>
       </div>
 
@@ -422,24 +422,24 @@
                 handleChange('billing_auto_suspend_fixed_day', clampInt(e.target.value, 1, 28, 1))}
               placeholder="1"
             />
-            <p class="help-text">Gunakan 1-28 agar selalu valid di semua bulan.</p>
+            <p class="help-text">{tt('admin.settings.service_tab.suspend_fixed_day_help', 'Gunakan 1-28 agar selalu valid di semua bulan.')}</p>
           </div>
         {/if}
       </div>
 
       <div class="mode-detail-card">
         <div class="setting-item full-width">
-          <span class="field-title">Aksi PPPoE saat suspend</span>
+          <span class="field-title">{tt('admin.settings.service_tab.pppoe_action_title', 'Aksi PPPoE saat suspend')}</span>
 
-          <div class="mode-picker" role="radiogroup" aria-label="Aksi PPPoE saat suspend">
+          <div class="mode-picker" role="radiogroup" aria-label={tt('admin.settings.service_tab.pppoe_action_title', 'Aksi PPPoE saat suspend')}>
             <button
               type="button"
               class:selected={suspendPppoeAction() === 'disable_secret'}
               class="mode-card"
               onclick={() => selectSuspendPppoeAction('disable_secret')}
             >
-              <strong>Disable PPP</strong>
-              <span>Secret PPPoE dinonaktifkan dan sesi aktif diputus.</span>
+              <strong>{tt('admin.settings.service_tab.pppoe_disable_title', 'Disable PPP')}</strong>
+              <span>{tt('admin.settings.service_tab.pppoe_disable_desc', 'Secret PPPoE dinonaktifkan dan sesi aktif diputus.')}</span>
             </button>
             <button
               type="button"
@@ -447,19 +447,19 @@
               class="mode-card"
               onclick={() => selectSuspendPppoeAction('move_to_isolation_pool')}
             >
-              <strong>Pool Isolir</strong>
-              <span>PPPoE tetap aktif, tapi dipindah ke pool isolir lalu reconnect otomatis.</span>
+              <strong>{tt('admin.settings.service_tab.pppoe_isolation_title', 'Pool Isolir')}</strong>
+              <span>{tt('admin.settings.service_tab.pppoe_isolation_desc', 'PPPoE tetap aktif, tapi dipindah ke pool isolir lalu reconnect otomatis.')}</span>
             </button>
           </div>
         </div>
 
         <div class="policy-preview">
-          <span class="policy-preview-label">Aksi aktif</span>
+          <span class="policy-preview-label">{tt('admin.settings.service_tab.active_action', 'Aksi aktif')}</span>
           <strong>{activeSuspendPppoePreview()}</strong>
         </div>
 
       <div class="setting-item full-width">
-          <p class="help-text">Pool isolir diatur di mapping service/router.</p>
+          <p class="help-text">{tt('admin.settings.service_tab.isolation_pool_help', 'Pool isolir diatur di mapping service/router.')}</p>
         </div>
       </div>
     </div>
@@ -491,7 +491,7 @@
       </div>
 
       <div class="policy-preview">
-        <span class="policy-preview-label">Status</span>
+        <span class="policy-preview-label">{tt('common.status', 'Status')}</span>
         <strong>{autoResumePreview()}</strong>
       </div>
     </div>
@@ -519,7 +519,7 @@
       </div>
 
       <div class="policy-preview">
-        <span class="policy-preview-label">Ringkasan</span>
+        <span class="policy-preview-label">{tt('admin.settings.service_tab.summary', 'Ringkasan')}</span>
         <strong>{reminderPreview()}</strong>
       </div>
 
@@ -536,7 +536,7 @@
           >
             <div class="preset-card-head">
               <strong>{REMINDER_PRESET_DETAILS.light.label}</strong>
-              <span class="preset-card-meta">{REMINDER_PRESETS.light.length} pengingat</span>
+              <span class="preset-card-meta">{tt('admin.settings.service_tab.preset_reminder_count', '{count} pengingat').replace('{count}', String(REMINDER_PRESETS.light.length))}</span>
             </div>
             <p>{REMINDER_PRESET_DETAILS.light.description}</p>
           </button>
@@ -548,7 +548,7 @@
           >
             <div class="preset-card-head">
               <strong>{REMINDER_PRESET_DETAILS.standard.label}</strong>
-              <span class="preset-card-meta">{REMINDER_PRESETS.standard.length} pengingat</span>
+              <span class="preset-card-meta">{tt('admin.settings.service_tab.preset_reminder_count', '{count} pengingat').replace('{count}', String(REMINDER_PRESETS.standard.length))}</span>
             </div>
             <p>{REMINDER_PRESET_DETAILS.standard.description}</p>
           </button>
@@ -560,7 +560,7 @@
           >
             <div class="preset-card-head">
               <strong>{REMINDER_PRESET_DETAILS.aggressive.label}</strong>
-              <span class="preset-card-meta">{REMINDER_PRESETS.aggressive.length} pengingat</span>
+              <span class="preset-card-meta">{tt('admin.settings.service_tab.preset_reminder_count', '{count} pengingat').replace('{count}', String(REMINDER_PRESETS.aggressive.length))}</span>
             </div>
             <p>{REMINDER_PRESET_DETAILS.aggressive.description}</p>
           </button>
@@ -569,7 +569,7 @@
         <div class="reminder-groups">
           <div class="reminder-group">
             <div class="reminder-group-head">
-              <span class="policy-preview-label">Sebelum jatuh tempo</span>
+              <span class="policy-preview-label">{tt('admin.settings.service_tab.before_due', 'Sebelum jatuh tempo')}</span>
               <strong>{reminderCountLabel(reminderGroups().before)}</strong>
             </div>
             <div class="chip-list">
@@ -577,18 +577,18 @@
                 {#each reminderGroups().before as code}
                   <button type="button" class="schedule-chip" onclick={() => removeReminder(code)}>
                     <span>{formatReminderCodeLabel(code)}</span>
-                    <small>hapus</small>
+                    <small>{tt('admin.settings.service_tab.delete_label', 'hapus')}</small>
                   </button>
                 {/each}
               {:else}
-                <span class="empty-chip">Belum ada</span>
+                <span class="empty-chip">{tt('admin.settings.service_tab.reminder_none', 'Belum ada')}</span>
               {/if}
             </div>
           </div>
 
           <div class="reminder-group">
             <div class="reminder-group-head">
-              <span class="policy-preview-label">Sesudah jatuh tempo</span>
+              <span class="policy-preview-label">{tt('admin.settings.service_tab.after_due', 'Sesudah jatuh tempo')}</span>
               <strong>{reminderCountLabel(reminderGroups().after)}</strong>
             </div>
             <div class="chip-list">
@@ -596,11 +596,11 @@
                 {#each reminderGroups().after as code}
                   <button type="button" class="schedule-chip" onclick={() => removeReminder(code)}>
                     <span>{formatReminderCodeLabel(code)}</span>
-                    <small>hapus</small>
+                    <small>{tt('admin.settings.service_tab.delete_label', 'hapus')}</small>
                   </button>
                 {/each}
               {:else}
-                <span class="empty-chip">Belum ada</span>
+                <span class="empty-chip">{tt('admin.settings.service_tab.reminder_none', 'Belum ada')}</span>
               {/if}
             </div>
           </div>
@@ -608,17 +608,17 @@
 
         <div class="reminder-builder">
           <div class="builder-head">
-            <span class="policy-preview-label">Tambah aturan manual</span>
+            <span class="policy-preview-label">{tt('admin.settings.service_tab.add_rule_manual', 'Tambah aturan manual')}</span>
           </div>
           <div class="builder-controls">
-            <div class="timing-toggle" role="radiogroup" aria-label="Waktu reminder">
+            <div class="timing-toggle" role="radiogroup" aria-label={tt('admin.settings.service_tab.reminder_timing_label', 'Waktu reminder')}>
               <button
                 type="button"
                 class:active={reminderDraftTiming === 'before'}
                 class="timing-chip"
                 onclick={() => (reminderDraftTiming = 'before')}
               >
-                Sebelum jatuh tempo
+                {tt('admin.settings.service_tab.before_due', 'Sebelum jatuh tempo')}
               </button>
               <button
                 type="button"
@@ -626,7 +626,7 @@
                 class="timing-chip"
                 onclick={() => (reminderDraftTiming = 'after')}
               >
-                Sesudah jatuh tempo
+                {tt('admin.settings.service_tab.after_due', 'Sesudah jatuh tempo')}
               </button>
             </div>
             <div class="days-input-wrap">
@@ -639,10 +639,10 @@
                   (reminderDraftDays = Math.max(1, Math.min(30, Number(e.target.value || 1))))}
                 placeholder="3"
               />
-              <span class="days-suffix">hari</span>
+              <span class="days-suffix">{tt('admin.settings.service_tab.days_suffix', 'hari')}</span>
             </div>
             <button type="button" class="btn-add-chip" onclick={addDraftReminder}>
-              Tambah pengingat
+              {tt('admin.settings.service_tab.add_reminder', 'Tambah pengingat')}
             </button>
           </div>
           <div class="quick-add-row">
@@ -651,38 +651,38 @@
               class="quick-add-chip"
               onclick={() => updateReminderCodes(addReminderCode(reminderCodes(), 'H-1'))}
             >
-              + 1 hari sebelum
+              {tt('admin.settings.service_tab.quick_add_1_before', '+ 1 hari sebelum')}
             </button>
             <button
               type="button"
               class="quick-add-chip"
               onclick={() => updateReminderCodes(addReminderCode(reminderCodes(), 'H-3'))}
             >
-              + 3 hari sebelum
+              {tt('admin.settings.service_tab.quick_add_3_before', '+ 3 hari sebelum')}
             </button>
             <button
               type="button"
               class="quick-add-chip"
               onclick={() => updateReminderCodes(addReminderCode(reminderCodes(), 'H+1'))}
             >
-              + 1 hari sesudah
+              {tt('admin.settings.service_tab.quick_add_1_after', '+ 1 hari sesudah')}
             </button>
             <button
               type="button"
               class="quick-add-chip"
               onclick={() => updateReminderCodes(addReminderCode(reminderCodes(), 'H+3'))}
             >
-              + 3 hari sesudah
+              {tt('admin.settings.service_tab.quick_add_3_after', '+ 3 hari sesudah')}
             </button>
           </div>
         </div>
 
         <details class="raw-schedule">
-          <summary>Format teknis tersimpan</summary>
+          <summary>{tt('admin.settings.service_tab.technical_format_saved', 'Format teknis tersimpan')}</summary>
           <code>{stringifyReminderSchedule(reminderCodes())}</code>
         </details>
 
-        <p class="help-text">Format teknis tetap disimpan sebagai kode H-.</p>
+        <p class="help-text">{tt('admin.settings.service_tab.technical_format_help', 'Format teknis tetap disimpan sebagai kode H-.')}</p>
       </div>
     </div>
   </section>

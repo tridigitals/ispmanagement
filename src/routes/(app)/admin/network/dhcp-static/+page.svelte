@@ -744,7 +744,7 @@
 <div class="page-content">
   <NetworkPageHeader
     title={$t('admin.network.dhcp_static.title') || 'DHCP Static'}
-    subtitle="Pantau lease DHCP static."
+    subtitle={$t('network.dhcp.title') || 'Pantau lease DHCP static.'}
   />
 
   <section class="stats-grid">

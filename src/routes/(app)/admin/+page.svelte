@@ -116,7 +116,7 @@
   const heroSummary = $derived.by(() => {
     const focus = dashboardModel.focusCards.length;
     const actions = dashboardModel.quickActions.length;
-    return `${focus} priorities • ${actions} actions`;
+    return ($t('admin.overview.hero_summary', { values: { focus, actions } }) || `${focus} priorities • ${actions} actions`);
   });
 
   onMount(() => {

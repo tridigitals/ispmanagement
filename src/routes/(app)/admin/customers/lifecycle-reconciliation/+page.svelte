@@ -300,7 +300,7 @@
           <span>{$t('admin.customers.reconciliation.filters.issue_type') || 'Issue type'}</span>
           <select
             class="reconciliation-filter-select"
-            aria-label="Lifecycle issue type filter"
+            aria-label={$t('admin.customers.reconciliation.filters.issue_type') || 'Lifecycle issue type filter'}
             value={issueFilter}
             onchange={(event) =>
               setIssueFilter(

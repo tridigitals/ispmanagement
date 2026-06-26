@@ -226,7 +226,9 @@
       "custom": "Custom"
     },
     "channels": {
-      "both": "Both"
+      "both": "Both",
+      "whatsapp": "WhatsApp",
+      "email": "Email"
     },
     "statuses": {
       "draft": "Draft",
@@ -276,7 +278,10 @@
       "deleted": "Message template deleted",
       "delete_failed": "Failed to delete message template",
       "preview_failed": "Template preview failed"
-    }
+    },
+    "subtitle_desc": "Template messages for WhatsApp and email.",
+    "both": "Both",
+    "variable_hint": "Click a token to insert a variable."
   },
   "settings": {
     "title": "Global Settings",
@@ -399,7 +404,13 @@
           "label": "Scheduler interval (minutes)",
           "desc": "How often the backend checks all tenants for overdue installation work orders."
         }
-      }
+      },
+      "midtrans_desc": "Accept payments via Credit Card, GoPay, ShopeePay, VA, etc.",
+      "enable_live": "Enable Production Mode (Live)",
+      "duitku_title": "Duitku Payment Gateway",
+      "duitku_desc": "Accept payments via Duitku checkout redirect.",
+      "merchant_code": "Merchant Code",
+      "api_key": "API Key"
     },
     "categories": {
       "general": "General",
@@ -524,6 +535,24 @@
       "test_configuration": "Test Configuration",
       "midtrans": "Midtrans Payment Gateway",
       "bank_transfer_manual": "Bank Transfer (Manual)"
+    },
+    "company": {
+      "name_placeholder": "PT Internet Service Provider",
+      "address_placeholder": "Jl. Raya No. 123, Jakarta 12345",
+      "logo_preview_alt": "Logo preview"
+    },
+    "service_tab": {
+      "subtitle": "Global settings for billing and service lifecycle.",
+      "health_scheduler": "Health scheduler",
+      "auto_invoice": "Auto invoice",
+      "auto_suspend": "Auto suspend",
+      "auto_resume": "Auto resume",
+      "reminder": "Reminder",
+      "view_invoices": "View invoices",
+      "invoice_status": "Customer invoice status",
+      "view_automation_log": "View automation log",
+      "scheduler_history": "Billing scheduler history",
+      "suspend_method": "Suspend method"
     }
   },
   "customers": {
@@ -676,7 +705,8 @@
       "billing": "Billing",
       "pppoe": "PPPoE",
       "dhcp_static": "DHCP Static",
-      "assets": "FTTH Assets"
+      "assets": "FTTH Assets",
+      "timeline": "Timeline"
     },
     "assets": {
       "subtitle": "FTTH devices connected to this customer.",
@@ -693,7 +723,8 @@
       }
     },
     "overview": {
-      "title": "Customer profile"
+      "title": "Customer profile",
+      "profile_quality": "Profile quality"
     },
     "locations": {
       "title": "Locations",
@@ -790,38 +821,19 @@
         "ends_at": "Ends at",
         "notes": "Notes"
       },
-      "change_package": {
-        "title": "Change Package",
-        "current_package": "Current Package",
-        "new_package": "New Package",
-        "select_placeholder": "— Select package —",
-        "old_package_label": "Old package (remaining days)",
-        "new_package_label": "New package (remaining days)",
-        "pro_rata_estimate": "Pro-rata charge (estimate)",
-        "pro_rata_note": "* Actual amount is calculated based on remaining days in the current billing period.",
-        "success_title": "Success!",
-        "success_message": "Package changed from",
-        "old_price": "Old price",
-        "new_price": "New price",
-        "credit": "Credit (unused days on old package)",
-        "charge": "Charge (remaining days on new package)",
-        "net_amount": "Net charge",
-        "view_invoice": "View invoice →",
-        "cancel": "Cancel",
-        "processing": "Processing...",
-        "submit": "Change Package",
-        "close": "Close",
-        "toasts": {
-          "success_with_charge": "Package changed! Pro-rata charge:",
-          "success_no_charge": "Package changed! No additional charge",
-          "error": "Failed to change package:"
-        },
-        "success_message_to": "to"
-      }
+      "change_package": "Change Package",
+      "total_services": "Total services",
+      "grace_active": "Grace period active",
+      "wo_active": "Active work orders",
+      "active_period": "Active period",
+      "policy": "Policy",
+      "estimated_suspend": "Estimated suspend",
+      "access_on_suspend": "Access on suspend",
+      "no_active_period": "No active period yet"
     },
     "billing": {
       "title": "Billing",
-      "subtitle": "Invoice history generated from this customer subscriptions.",
+      "subtitle": "Customer invoices.",
       "empty": "No invoices for this customer yet.",
       "stats": {
         "total": "Total invoices",
@@ -876,7 +888,7 @@
     },
     "pppoe": {
       "title": "PPPoE accounts",
-      "subtitle": "Manage PPPoE secrets for this customer (per-router). The database is the source of truth.",
+      "subtitle": "Customer access accounts.",
       "search": "Search username...",
       "empty": "No PPPoE accounts yet.",
       "confirm_delete": "Delete this PPPoE account?",
@@ -957,7 +969,54 @@
       "update_failed": "Failed to update customer: {message}",
       "deleted": "Customer deleted",
       "delete_failed": "Failed to delete customer: {message}"
-    }
+    },
+    "invite": {
+      "title": "Customer Invite Link",
+      "generate": "Generate invite",
+      "default_policy": "Default policy",
+      "default_expiry": "Default expiry (hours)",
+      "default_max_uses": "Default max uses",
+      "expire_hours": "Expire (hours)",
+      "max_uses": "Max uses",
+      "note_optional": "Note (optional)",
+      "generate_btn": "Generate Invite Link",
+      "generating": "Generating...",
+      "generated_link": "Generated link",
+      "share_hint": "Share this link with the customer or related team.",
+      "recent_links": "Recent invite links",
+      "recent_hint": "Monitor active links, usage, and revoke unused links.",
+      "show_inactive": "Show inactive",
+      "no_links": "No invite links yet.",
+      "uses": "Uses",
+      "created_at": "Created",
+      "expires_at": "Expires",
+      "revoke": "Revoke",
+      "revoking": "Revoking...",
+      "invite_summary": "Invite summary",
+      "save_defaults": "Save defaults",
+      "link_only_available": "Link is only available when invite is first created.",
+      "toasts": {
+        "generated": "Invite link generated",
+        "generate_failed": "Failed to generate invite link",
+        "revoked": "Invite link revoked",
+        "revoke_failed": "Failed to revoke invite",
+        "policy_updated": "Invite defaults updated",
+        "policy_failed": "Failed to update invite defaults",
+        "load_failed": "Failed to load customer invite links",
+        "summary_failed": "Failed to load invite summary"
+      },
+      "used_up": "Used up",
+      "expired": "Expired",
+      "revoked": "Revoked",
+      "utilization": "Utilization",
+      "note_placeholder": "Campaign, PIC, or internal remark"
+    },
+    "timeline": {
+      "subtitle": "Customer activity.",
+      "empty": "No timeline yet.",
+      "search_placeholder": "Search timeline..."
+    },
+    "search_placeholder": "Name, email, phone"
   },
   "ftth_assets": {
     "page": {
@@ -1069,7 +1128,7 @@
     },
     "type_picker": {
       "title": "Choose Service Type",
-      "subtitle": "Select the service category first, then continue to the detailed service form.",
+      "subtitle": "Choose a service category.",
       "continue": "Continue",
       "change": "Change type",
       "add_as_feature": "Add as feature",
@@ -1103,7 +1162,9 @@
     "toasts": {
       "created": "Service created",
       "updated": "Service updated"
-    }
+    },
+    "subtitle_desc": "Manage services and their configuration.",
+    "category_hint": "Select a service category."
   },
   "network": {
     "import_center": {
@@ -2250,6 +2311,20 @@
       "cancel_reason_required": "Cancellation reason is required (minimum 10 characters).",
       "cancel_reason_hint": "Add cancellation reason (minimum 10 characters) in detail modal.",
       "details_title": "Installation Details",
+      "assignment": "Assignment",
+      "all_work_orders": "All work orders",
+      "assigned_only": "Assigned only",
+      "unassigned_only": "Unassigned only",
+      "assignee_filter": "Assignee",
+      "sort_by": "Sort by",
+      "latest_updated": "Latest updated",
+      "oldest_updated": "Oldest updated",
+      "scheduled_earliest": "Scheduled earliest",
+      "scheduled_latest": "Scheduled latest",
+      "customer_az": "Customer A-Z",
+      "customer_za": "Customer Z-A",
+      "assignee_az": "Assignee A-Z",
+      "assignee_za": "Assignee Z-A",
       "step_assign": "Assign",
       "step_schedule": "Schedule",
       "step_onsite": "On-site & Test",
@@ -2360,7 +2435,88 @@
       "reopen_notes": "Optional note before reopening work order",
       "save_plan": "Save Plan",
       "history": "Latest Notes",
-      "timeline": "Work Order Timeline"
+      "timeline": "Work Order Timeline",
+      "create_order": "Create Installation Order",
+      "loading_wizard": "Loading order wizard...",
+      "order_subtitle": "Customer, service, and installation in one flow.",
+      "customer_context": "Customer Context",
+      "customer_context_hint": "Use a new customer or select an existing profile.",
+      "new_customer": "New Customer",
+      "existing_customer": "Existing Customer",
+      "address_service": "Address & Service",
+      "address_service_hint": "Set the install address and package.",
+      "use_existing_address": "Use Existing Address",
+      "add_new_address": "Add New Address",
+      "customer_address": "Customer address",
+      "select_address": "Select address",
+      "review_order": "Review Order",
+      "review_hint": "Review before creating the work order.",
+      "location_mode": "Location mode",
+      "use_saved_address": "Use saved address",
+      "create_new_address": "Create new installation address",
+      "select_package": "Select package",
+      "billing_cycle": "Billing cycle",
+      "requested_install_date": "Requested installation date",
+      "order_notes": "Order notes",
+      "subscription_pending_note": "Subscription status will be pending_installation and the work order will be created immediately.",
+      "pick_installation_point": "Pick Installation Point",
+      "map_picker_help": "Click the map to choose a point, then drag the marker if you need better precision.",
+      "use_this_point": "Use This Point",
+      "update_map_point": "Update Map Point",
+      "pick_map_point": "Pick Map Point",
+      "installation_point": "Installation point on map",
+      "installation_point_hint": "Choose the map point for accurate coordinates.",
+      "continue": "Continue",
+      "create_order_btn": "Create Order",
+      "submitting": "Submitting...",
+      "customer_active": "Customer active",
+      "no_contact": "No contact",
+      "pending_install": "Pending install",
+      "search_customer": "Search customer",
+      "search_customer_placeholder": "Name, email, phone",
+      "searching": "Searching...",
+      "no_address_line": "No address line",
+      "location_label": "Label",
+      "address_line1": "Address line 1",
+      "address_line2": "Address line 2",
+      "city": "City",
+      "state": "State",
+      "postal_code": "Postal code",
+      "country": "Country",
+      "select_country": "Select country...",
+      "search_country": "Search country...",
+      "no_country_found": "No country found",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "location_notes": "Location notes",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "address": "Address",
+      "billing": "Billing",
+      "requested_install": "Requested install",
+      "map_unavailable": "Map unavailable",
+      "map_unavailable_subtitle": "Unable to initialize WebGL map on this browser/device.",
+      "phone_code": "Code",
+      "search_country_code": "Search country code...",
+      "no_code_found": "No code found",
+      "toasts": {
+        "load_wizard_failed": "Failed to load order wizard",
+        "search_customers_failed": "Failed to search customers",
+        "order_created": "Installation order created",
+        "order_create_failed": "Failed to create installation order",
+        "pick_location_first": "Pick a location point first",
+        "map_init_failed": "Failed to initialize map"
+      },
+      "validation": {
+        "select_existing_customer": "Select an existing customer first",
+        "customer_name_required": "Customer name is required",
+        "customer_email_or_phone_required": "Customer email or phone is required",
+        "select_existing_address": "Select an existing address first",
+        "location_label_required": "Location label is required",
+        "address_line1_required": "Address line 1 is required",
+        "package_required": "Package is required",
+        "complete_form": "Please complete the form first"
+      }
     },
     "logs": {
       "title": "Router Logs",
@@ -2441,7 +2597,8 @@
     "errors": {
       "save_failed": "Failed to save role",
       "delete_failed": "Failed to delete role: "
-    }
+    },
+    "subtitle_desc": "Roles and access permissions."
   },
   "support": {
     "title": "Support Tickets",
@@ -2473,7 +2630,8 @@
     },
     "toasts": {
       "updated": "Ticket updated"
-    }
+    },
+    "unassigned": "Unassigned"
   },
   "email_outbox": {
     "title": "Email Outbox",
@@ -2530,7 +2688,8 @@
       "not_found": "Not found."
     },
     "selected": "Selected",
-    "confirm_bulk_delete": "Delete selected outbox items?"
+    "confirm_bulk_delete": "Delete selected outbox items?",
+    "html_preview": "HTML preview"
   },
   "backups": {
     "disabled_title": "Disabled for Tenants",
@@ -2564,7 +2723,11 @@
         "title": "Billing",
         "desc": "Manage subscription and invoices."
       }
-    }
+    },
+    "at_a_glance": "At a glance",
+    "priority_queue": "Priority queue",
+    "fast_lanes": "Fast lanes",
+    "signal_mix": "Signal mix"
   },
   "subscription": {
     "title": "Subscription",
@@ -2663,7 +2826,13 @@
     "toasts": {
       "load_failed": "Failed to load invoices"
     },
-    "print_pdf": "Print / Download PDF"
+    "print_pdf": "Print / Download PDF",
+    "breadcrumb": "Breadcrumb",
+    "subtitle_tagihan": "Billing, collection, and customer invoices.",
+    "subtitle_monitor": "Monitor active invoices without leaving the page.",
+    "subtitle_manual": "Select a subscription to create a manual invoice.",
+    "subtitle_summary": "Payment status summary.",
+    "subtitle_filter": "Filter and check customer invoices."
   },
   "billing_collection": {
     "title": "Billing Collection Logs",
@@ -2966,7 +3135,8 @@
       "description": "Add your colleagues to collaborate on this workspace.",
       "no_results": "No members found",
       "try_adjusting": "Try adjusting your search or filters."
-    }
+    },
+    "subtitle_desc": "Team members and access."
   },
   "billing": {
     "analytics": {

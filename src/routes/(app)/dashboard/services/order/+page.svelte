@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
+  import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { api } from '$lib/api/client';
 
@@ -43,8 +44,8 @@
 <div class="service-order-page fade-in">
   <section class="hero card">
     <div>
-      <h1>Order Service</h1>
-      <p>Choose service type first. Each type has its own dedicated order flow.</p>
+      <h1>{$t('dashboard.services.order.title')}</h1>
+      <p>{$t('dashboard.services.order.subtitle')}</p>
       <div class="hero-meta">
         <span>{locationsCount} location</span>
         <span>{internetPackageCount + hotspotPackageCount + vpnPackageCount} active package</span>
@@ -61,7 +62,7 @@
       </button>
       <button class="btn btn-secondary" type="button" onclick={loadSummary} disabled={loading}>
         <Icon name="refresh-cw" size={15} />
-        Refresh
+        {$t('common.refresh')}
       </button>
     </div>
   </section>
@@ -74,9 +75,9 @@
     <article class="service-card live">
       <div class="service-head">
         <span class="service-icon"><Icon name="wifi" size={18} /></span>
-        <span class="service-status live">Ready</span>
+        <span class="service-status live">{$t('dashboard.services.order.ready')}</span>
       </div>
-      <h3>Internet Access (PPPoE)</h3>
+      <h3>{$t('dashboard.services.order.internet_pppoe')}</h3>
       <p>Fiber/cable internet installation flow with address and package selection.</p>
       <div class="service-meta">
         <span>{internetPackageCount} package</span>
@@ -97,11 +98,11 @@
       <div class="service-head">
         <span class="service-icon"><Icon name="radio" size={18} /></span>
         <span class={`service-status ${hotspotPackageCount > 0 ? 'live' : 'soon'}`}>
-          {hotspotPackageCount > 0 ? 'Ready' : 'Soon'}
+          {$t('dashboard.services.order.ready')}
         </span>
       </div>
-      <h3>Hotspot Service</h3>
-      <p>Voucher-based hotspot and captive portal deployment.</p>
+      <h3>{$t('dashboard.services.order.hotspot')}</h3>
+      <p>{$t('dashboard.services.order.hotspot_desc')}</p>
       <div class="service-meta">
         <span>{hotspotPackageCount} package</span>
       </div>
@@ -114,13 +115,13 @@
       <div class="service-head">
         <span class="service-icon"><Icon name="router" size={18} /></span>
         <span class={`service-status ${dedicatedLinkEnabled ? 'live' : 'soon'}`}>
-          {dedicatedLinkEnabled ? 'Ready' : 'Soon'}
+          {dedicatedLinkEnabled ? $t('dashboard.services.order.ready') : 'Soon'}
         </span>
       </div>
-      <h3>Dedicated Link</h3>
-      <p>Point-to-point business connectivity with SLA profile.</p>
+      <h3>{$t('dashboard.services.order.dedicated_link')}</h3>
+      <p>{$t('dashboard.services.order.dedicated_desc')}</p>
       <div class="service-meta">
-        <span>Not enabled yet</span>
+        <span>{$t('dashboard.services.order.not_enabled')}</span>
       </div>
       <button
         class="btn btn-secondary"
@@ -135,11 +136,11 @@
       <div class="service-head">
         <span class="service-icon"><Icon name="shield" size={18} /></span>
         <span class={`service-status ${vpnPackageCount > 0 ? 'live' : 'soon'}`}>
-          {vpnPackageCount > 0 ? 'Ready' : 'Soon'}
+          {vpnPackageCount > 0 ? $t('dashboard.services.order.ready') : 'Soon'}
         </span>
       </div>
-      <h3>Managed VPN</h3>
-      <p>Private encrypted access for branch and remote users.</p>
+      <h3>{$t('dashboard.services.order.managed_vpn')}</h3>
+      <p>{$t('dashboard.services.order.vpn_desc')}</p>
       <div class="service-meta">
         <span>{vpnPackageCount} package</span>
       </div>

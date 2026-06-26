@@ -242,31 +242,31 @@
   <div class="form">
     <div class="grid2">
       <label>
-        <span>Label lokasi</span>
+        <span>{$t('dashboard.locations.form.label')}</span>
         <input class="input" bind:value={fLabel} placeholder="Contoh: Rumah, Kantor, Gudang" />
       </label>
       <label>
-        <span>Negara</span>
+        <span>{$t('dashboard.locations.form.country')}</span>
         <select class="input" bind:value={fCountry}>
-          <option value="ID">ID (Indonesia)</option>
-          <option value="US">US (United States)</option>
+          <option value="ID">{$t('profile.addresses.fields.country_id') || 'ID (Indonesia)'}</option>
+          <option value="US">{$t('profile.addresses.fields.country_us') || 'US (United States)'}</option>
         </select>
       </label>
     </div>
 
     <label>
-      <span>Alamat line 1</span>
+      <span>{$t('dashboard.locations.form.line1')}</span>
       <input class="input" bind:value={fLine1} placeholder="Jl. / street / building" />
     </label>
 
     <label>
-      <span>Alamat line 2</span>
+      <span>{$t('dashboard.locations.form.line2')}</span>
       <input class="input" bind:value={fLine2} placeholder="Blok, RT/RW, unit, lantai, dll" />
     </label>
 
     <div class="grid3">
       <label>
-        <span>Kota</span>
+        <span>{$t('dashboard.locations.form.city')}</span>
         <input class="input" bind:value={fCity} />
       </label>
       <label>
@@ -274,39 +274,39 @@
         <input class="input" bind:value={fState} />
       </label>
       <label>
-        <span>Kode pos</span>
+        <span>{$t('dashboard.locations.form.postal_code')}</span>
         <input class="input" bind:value={fPostal} />
       </label>
     </div>
 
     <label>
-      <span>Catatan</span>
+      <span>{$t('dashboard.locations.form.notes')}</span>
       <textarea
         class="input textarea"
         bind:value={fNotes}
         rows="3"
-        placeholder="Catatan akses lokasi, patokan rumah, dll"
+        placeholder={$t('dashboard.locations.form.notes_placeholder')}
       ></textarea>
     </label>
 
     <div class="map-picked-box">
       <div>
-        <div class="map-picked-title">Titik lokasi di map</div>
-        <div class="map-picked-sub">Wajib pilih titik map saat create atau edit.</div>
+        <div class="map-picked-title">{$t('dashboard.locations.form.pick_on_map')}</div>
+        <div class="map-picked-sub">{$t('dashboard.locations.form.no_map_pin')}</div>
       </div>
       <button class="btn-secondary" type="button" onclick={openMapPicker}>
         <Icon name="map" size={16} />
-        {fLatitude && fLongitude ? 'Ubah Titik Map' : 'Pilih Titik Map'}
+        {$t('dashboard.locations.form.pick_on_map')}
       </button>
     </div>
 
     <div class="grid2">
       <label>
-        <span>Latitude</span>
+        <span>{$t('common.latitude') || 'Latitude'}</span>
         <input class="input mono" bind:value={fLatitude} readonly />
       </label>
       <label>
-        <span>Longitude</span>
+        <span>{$t('common.longitude') || 'Longitude'}</span>
         <input class="input mono" bind:value={fLongitude} readonly />
       </label>
     </div>

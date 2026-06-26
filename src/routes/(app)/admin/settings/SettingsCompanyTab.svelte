@@ -141,7 +141,7 @@
               value={localSettings['organization_name'] || ''}
               oninput={(e: Event) =>
                 handleChange('organization_name', (e.target as HTMLInputElement).value)}
-              placeholder="PT Internet Service Provider"
+              placeholder={tt('admin.settings.company.name_placeholder', 'PT Internet Service Provider')}
             />
           </div>
 
@@ -154,7 +154,7 @@
               value={localSettings['company_address'] || ''}
               oninput={(e) =>
                 handleChange('company_address', (e.target as HTMLTextAreaElement).value)}
-              placeholder="Jl. Raya No. 123, Jakarta 12345"
+              placeholder={tt('admin.settings.company.address_placeholder', 'Jl. Raya No. 123, Jakarta 12345')}
             ></textarea>
           </div>
 
@@ -232,7 +232,7 @@
         <div class="logo-row">
           <div class="logo-preview">
             {#if localSettings['company_logo']}
-              <img src={localSettings['company_logo']} alt="Logo preview" />
+              <img src={localSettings['company_logo']} alt={tt('admin.settings.company.logo_preview_alt', 'Logo preview')} />
             {:else}
               <div class="logo-empty">
                 {tt('admin.settings.company.logo_empty', 'Belum ada logo')}

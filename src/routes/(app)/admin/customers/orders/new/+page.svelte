@@ -4,6 +4,7 @@
   import { onDestroy, onMount, tick } from 'svelte';
   import { get } from 'svelte/store';
   import { toast } from 'svelte-sonner';
+  import { t } from 'svelte-i18n';
   import Modal from '$lib/components/ui/Modal.svelte';
   import Select2 from '$lib/components/ui/Select2.svelte';
   import { api, type Customer, type CustomerLocation, type CustomerListItem, type IspPackage } from '$lib/api/client';
@@ -143,7 +144,7 @@
         await loadLocations(prefilledCustomerId);
       }
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to load order wizard');
+      toast.error(e?.message || $t('admin.network.installations.toasts.load_wizard_failed'));
     } finally {
       loading = false;
     }
@@ -164,7 +165,7 @@
       const result = await api.customers.list({ q: query, page: 1, perPage: 10 });
       customerResults = result.data || [];
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to search customers');
+      toast.error(e?.message || $t('admin.network.installations.toasts.search_customers_failed'));
     } finally {
       customerSearchLoading = false;
     }
@@ -189,12 +190,12 @@
     try {
       if (step === 1) {
         if (draft.customerMode === 'existing' && !draft.existingCustomerId.trim()) {
-          throw new Error('Select an existing customer first');
+          throw new Error($t('admin.network.installations.validation.select_existing_customer'));
         }
         if (draft.customerMode === 'new') {
-          if (!draft.customer.name.trim()) throw new Error('Customer name is required');
+          if (!draft.customer.name.trim()) throw new Error($t('admin.network.installations.validation.customer_name_required'));
           if (!draft.customer.email.trim() && !draft.customer.phone.trim()) {
-            throw new Error('Customer email or phone is required');
+            throw new Error($t('admin.network.installations.validation.customer_email_or_phone_required'));
           }
         }
         step = 2;
@@ -203,17 +204,17 @@
 
       if (step === 2) {
         if (draft.locationMode === 'existing' && !draft.existingLocationId.trim()) {
-          throw new Error('Select an existing address first');
+          throw new Error($t('admin.network.installations.validation.select_existing_address'));
         }
         if (draft.locationMode === 'new') {
-          if (!draft.location.label.trim()) throw new Error('Location label is required');
-          if (!draft.location.address_line1.trim()) throw new Error('Address line 1 is required');
+          if (!draft.location.label.trim()) throw new Error($t('admin.network.installations.validation.location_label_required'));
+          if (!draft.location.address_line1.trim()) throw new Error($t('admin.network.installations.validation.address_line1_required'));
         }
-        if (!draft.packageId.trim()) throw new Error('Package is required');
+        if (!draft.packageId.trim()) throw new Error($t('admin.network.installations.validation.package_required'));
         step = 3;
       }
     } catch (e: any) {
-      toast.error(e?.message || 'Please complete the form first');
+      toast.error(e?.message || $t('admin.network.installations.validation.complete_form'));
     }
   }
 
@@ -226,7 +227,7 @@
     try {
       const payload = buildBackofficeInstallationOrderPayload(draft);
       const result = await api.customers.orders.createInstallation(payload);
-      toast.success('Installation order created');
+      toast.success($t('admin.network.installations.toasts.order_created'));
 
       if (canReadWorkOrders && result.work_order?.id) {
         goto(`/admin/network/installations?work_order_id=${encodeURIComponent(result.work_order.id)}`);
@@ -235,7 +236,7 @@
 
       goto(`${customersPath}/${result.customer.id}`);
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to create installation order');
+      toast.error(e?.message || $t('admin.network.installations.toasts.order_create_failed'));
     } finally {
       submitting = false;
     }
@@ -392,7 +393,7 @@
       setPickerPoint(nextLat, nextLng);
     } catch (e: any) {
       pickerMapUnavailable = true;
-      pickerMapErrorMessage = e?.message || 'Failed to initialize map';
+      pickerMapErrorMessage = e?.message || $t('admin.network.installations.toasts.map_init_failed');
     } finally {
       pickerMapLoading = false;
       pickerMap?.resize();
@@ -415,7 +416,7 @@
 
   function applyPickedCoordinates() {
     if (!Number.isFinite(pickerLat) || !Number.isFinite(pickerLng)) {
-      toast.error('Pilih titik lokasi terlebih dulu');
+      toast.error($t('admin.network.installations.toasts.pick_location_first'));
       return;
     }
     draft.location.latitude = String(pickerLat);
@@ -441,32 +442,32 @@
 </script>
 
 <svelte:head>
-  <title>Create Installation Order</title>
+  <title>{$t('admin.network.installations.create_order')}</title>
 </svelte:head>
 
 {#if loading}
-  <div class="page-content"><div class="hero-card">Loading order wizard...</div></div>
+  <div class="page-content"><div class="hero-card">{$t('admin.network.installations.loading_wizard')}</div></div>
 {:else}
   <div class="page-content fade-in">
     <section class="hero-card">
       <div class="hero-copy">
-        <h1>Create Installation Order</h1>
-        <p class="subtitle">Customer, service, and installation in one flow.</p>
+        <h1>{$t('admin.network.installations.create_order')}</h1>
+        <p class="subtitle">{$t('admin.network.installations.order_subtitle')}</p>
       </div>
     </section>
 
     <div class="stepper">
       <div class:active={step === 1}>
         <span class="step-index">1</span>
-        <span>Customer</span>
+        <span>{$t('common.customer')}</span>
       </div>
       <div class:active={step === 2}>
         <span class="step-index">2</span>
-        <span>Address & Service</span>
+        <span>{$t('admin.network.installations.address_service')}</span>
       </div>
       <div class:active={step === 3}>
         <span class="step-index">3</span>
-        <span>Review</span>
+        <span>{$t('common.review')}</span>
       </div>
     </div>
 
@@ -474,32 +475,32 @@
       <section class="form-card section">
         <div class="section-header">
           <div>
-            <h2>Customer Context</h2>
-            <p>Use a new customer or select an existing profile.</p>
+            <h2>{$t('admin.network.installations.customer_context')}</h2>
+            <p>{$t('admin.network.installations.customer_context_hint')}</p>
           </div>
         </div>
 
         <div class="segmented">
           <button class:active-mode={draft.customerMode === 'new'} class="mode-btn" onclick={() => (draft.customerMode = 'new')}>
             <Icon name="plus" size={15} />
-            New Customer
+            {$t('admin.network.installations.new_customer')}
           </button>
           <button class:active-mode={draft.customerMode === 'existing'} class="mode-btn" onclick={() => (draft.customerMode = 'existing')}>
             <Icon name="users" size={15} />
-            Existing Customer
+            {$t('admin.network.installations.existing_customer')}
           </button>
         </div>
 
         {#if draft.customerMode === 'existing'}
           <div class="form-grid">
             <label>
-              <span>Search customer</span>
+              <span>{$t('admin.network.installations.search_customer')}</span>
               <div class="inline-search">
                 <Icon name="search" size={16} />
                 <input
                   class="input"
                   bind:value={customerSearch}
-                  placeholder="Name, email, phone"
+                  placeholder={$t('admin.network.installations.search_customer_placeholder')}
                   onkeydown={handleCustomerSearchKeydown}
                 />
                 <button
@@ -508,7 +509,7 @@
                   onclick={searchCustomers}
                   disabled={customerSearchLoading || customerSearch.trim().length < 2}
                 >
-                  {customerSearchLoading ? 'Searching...' : 'Search'}
+                  {customerSearchLoading ? $t('admin.network.installations.searching') : $t('common.search')}
                 </button>
               </div>
             </label>
@@ -525,37 +526,37 @@
                 <button class:selected={draft.existingCustomerId === customer.id} class="result-card" onclick={() => void selectCustomer(customer.id)}>
                   <div class="result-main">
                     <strong>{customer.name}</strong>
-                    <span>{customer.phone || customer.email || 'No contact'}</span>
+                    <span>{customer.phone || customer.email || $t('admin.network.installations.no_contact')}</span>
                   </div>
-                  <span class="result-status">{customer.pending_installations > 0 ? 'Pending install' : customer.service_status || 'Customer'}</span>
+                  <span class="result-status">{customer.pending_installations > 0 ? $t('admin.network.installations.pending_install') : customer.service_status || $t('common.customer')}</span>
                 </button>
               {/each}
             {/if}
           </div>
         {:else}
           <div class="form-grid">
-            <label><span>Name</span><input class="input" bind:value={draft.customer.name} /></label>
+            <label><span>{$t('common.name')}</span><input class="input" bind:value={draft.customer.name} /></label>
             <label>
-              <span>Phone</span>
+              <span>{$t('common.phone')}</span>
               <div class="phone-field">
                 <div class="phone-prefix">
                   <Select2
                     bind:value={phonePrefix}
                     options={phonePrefixOptions}
-                    placeholder="Code"
+                    placeholder={$t('admin.network.installations.phone_code')}
                     width="100%"
-                    searchPlaceholder="Search country code..."
-                    noResultsText="No code found"
+                    searchPlaceholder={$t('admin.network.installations.search_country_code')}
+                    noResultsText={$t('admin.network.installations.no_code_found')}
                     maxItems={300}
                   />
                 </div>
                 <input class="input" bind:value={phoneLocalNumber} placeholder="8123456789" inputmode="tel" />
               </div>
             </label>
-            <label><span>Email</span><input class="input" bind:value={draft.customer.email} /></label>
-            <label class="checkbox-row"><input type="checkbox" bind:checked={draft.customer.is_active} /> <span>Customer active</span></label>
+            <label><span>{$t('common.email')}</span><input class="input" bind:value={draft.customer.email} /></label>
+            <label class="checkbox-row"><input type="checkbox" bind:checked={draft.customer.is_active} /> <span>{$t('admin.network.installations.customer_active')}</span></label>
           </div>
-          <label><span>Notes</span><textarea class="input" rows="4" bind:value={draft.customer.notes}></textarea></label>
+          <label><span>{$t('common.notes')}</span><textarea class="input" rows="4" bind:value={draft.customer.notes}></textarea></label>
         {/if}
       </section>
     {/if}
@@ -564,49 +565,49 @@
       <section class="form-card section">
         <div class="section-header">
           <div>
-            <h2>Address & Service</h2>
-            <p>Set the install address and package.</p>
+            <h2>{$t('admin.network.installations.address_service')}</h2>
+            <p>{$t('admin.network.installations.address_service_hint')}</p>
           </div>
         </div>
 
         <div class="segmented">
           <button class:active-mode={draft.locationMode === 'existing'} class="mode-btn" disabled={draft.customerMode === 'new' && !draft.customer.name.trim()} onclick={() => (draft.locationMode = 'existing')}>
             <Icon name="map-pin" size={15} />
-            Use Existing Address
+            {$t('admin.network.installations.use_existing_address')}
           </button>
           <button class:active-mode={draft.locationMode === 'new'} class="mode-btn" onclick={() => (draft.locationMode = 'new')}>
             <Icon name="plus" size={15} />
-            Add New Address
+            {$t('admin.network.installations.add_new_address')}
           </button>
         </div>
 
         {#if draft.locationMode === 'existing'}
           <label>
-            <span>Customer address</span>
+            <span>{$t('admin.network.installations.customer_address')}</span>
             <select class="input" bind:value={draft.existingLocationId}>
-              <option value="">Select address</option>
+              <option value="">{$t('admin.network.installations.select_address')}</option>
               {#each locations as location}
-                <option value={location.id}>{location.label} - {location.address_line1 || 'No address line'}</option>
+                <option value={location.id}>{location.label} - {location.address_line1 || $t('admin.network.installations.no_address_line')}</option>
               {/each}
             </select>
           </label>
         {:else}
           <div class="form-grid">
-            <label><span>Label</span><input class="input" bind:value={draft.location.label} /></label>
-            <label><span>Address line 1</span><input class="input" bind:value={draft.location.address_line1} /></label>
-            <label><span>Address line 2</span><input class="input" bind:value={draft.location.address_line2} /></label>
-            <label><span>City</span><input class="input" bind:value={draft.location.city} /></label>
-            <label><span>State</span><input class="input" bind:value={draft.location.state} /></label>
-            <label><span>Postal code</span><input class="input" bind:value={draft.location.postal_code} /></label>
+            <label><span>{$t('admin.network.installations.location_label')}</span><input class="input" bind:value={draft.location.label} /></label>
+            <label><span>{$t('admin.network.installations.address_line1')}</span><input class="input" bind:value={draft.location.address_line1} /></label>
+            <label><span>{$t('admin.network.installations.address_line2')}</span><input class="input" bind:value={draft.location.address_line2} /></label>
+            <label><span>{$t('admin.network.installations.city')}</span><input class="input" bind:value={draft.location.city} /></label>
+            <label><span>{$t('admin.network.installations.state')}</span><input class="input" bind:value={draft.location.state} /></label>
+            <label><span>{$t('admin.network.installations.postal_code')}</span><input class="input" bind:value={draft.location.postal_code} /></label>
             <label>
-              <span>Country</span>
+              <span>{$t('admin.network.installations.country')}</span>
               <Select2
                 bind:value={draft.location.country}
                 options={countryOptions}
-                placeholder="Select country..."
+                placeholder={$t('admin.network.installations.select_country')}
                 width="100%"
-                searchPlaceholder="Search country..."
-                noResultsText="No country found"
+                searchPlaceholder={$t('admin.network.installations.search_country')}
+                noResultsText={$t('admin.network.installations.no_country_found')}
                 maxItems={500}
               />
             </label>
@@ -614,55 +615,55 @@
 
           <div class="map-picked-box">
             <div>
-              <div class="map-picked-title">Installation point on map</div>
-              <div class="map-picked-sub">Choose the map point for accurate coordinates.</div>
+              <div class="map-picked-title">{$t('admin.network.installations.installation_point')}</div>
+              <div class="map-picked-sub">{$t('admin.network.installations.installation_point_hint')}</div>
             </div>
             <button class="btn btn-secondary" type="button" onclick={openMapPicker}>
               <Icon name="map" size={16} />
-              {draft.location.latitude && draft.location.longitude ? 'Update Map Point' : 'Pick Map Point'}
+              {draft.location.latitude && draft.location.longitude ? $t('admin.network.installations.update_map_point') : $t('admin.network.installations.pick_map_point')}
             </button>
           </div>
 
           <div class="form-grid">
-            <label><span>Latitude</span><input class="input mono-input" bind:value={draft.location.latitude} readonly /></label>
-            <label><span>Longitude</span><input class="input mono-input" bind:value={draft.location.longitude} readonly /></label>
+            <label><span>{$t('admin.network.installations.latitude')}</span><input class="input mono-input" bind:value={draft.location.latitude} readonly /></label>
+            <label><span>{$t('admin.network.installations.longitude')}</span><input class="input mono-input" bind:value={draft.location.longitude} readonly /></label>
           </div>
-          <label><span>Location notes</span><textarea class="input" rows="3" bind:value={draft.location.notes}></textarea></label>
+          <label><span>{$t('admin.network.installations.location_notes')}</span><textarea class="input" rows="3" bind:value={draft.location.notes}></textarea></label>
         {/if}
 
         <div class="context-grid">
           <div class="context-card">
-            <span class="context-label">Customer</span>
+            <span class="context-label">{$t('common.customer')}</span>
             <strong>{formatSelectedCustomer()}</strong>
           </div>
           <div class="context-card">
-            <span class="context-label">Location mode</span>
-            <strong>{draft.locationMode === 'existing' ? 'Use saved address' : 'Create new installation address'}</strong>
+            <span class="context-label">{$t('admin.network.installations.location_mode')}</span>
+            <strong>{draft.locationMode === 'existing' ? $t('admin.network.installations.use_saved_address') : $t('admin.network.installations.create_new_address')}</strong>
           </div>
         </div>
 
         <div class="form-grid">
           <label>
-            <span>Package</span>
+            <span>{$t('common.package')}</span>
             <select class="input" bind:value={draft.packageId}>
-              <option value="">Select package</option>
+              <option value="">{$t('admin.network.installations.select_package')}</option>
               {#each packages as pkg}
                 <option value={pkg.id}>{pkg.name} - {packagePriceLabel(pkg)}</option>
               {/each}
             </select>
           </label>
           <label>
-            <span>Billing cycle</span>
+            <span>{$t('admin.network.installations.billing_cycle')}</span>
             <select class="input" bind:value={draft.billingCycle}>
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
+              <option value="monthly">{$t('admin.network.installations.monthly')}</option>
+              <option value="yearly">{$t('admin.network.installations.yearly')}</option>
             </select>
           </label>
         </div>
 
         <div class="form-grid">
-          <label><span>Requested installation date</span><input class="input" type="datetime-local" bind:value={draft.requestedInstallationDate} /></label>
-          <label><span>Order notes</span><input class="input" bind:value={draft.notes} /></label>
+          <label><span>{$t('admin.network.installations.requested_install_date')}</span><input class="input" type="datetime-local" bind:value={draft.requestedInstallationDate} /></label>
+          <label><span>{$t('admin.network.installations.order_notes')}</span><input class="input" bind:value={draft.notes} /></label>
         </div>
       </section>
     {/if}
@@ -671,34 +672,34 @@
       <section class="form-card section">
         <div class="section-header">
           <div>
-            <h2>Review Order</h2>
-            <p>Review before creating the work order.</p>
+            <h2>{$t('admin.network.installations.review_order')}</h2>
+            <p>{$t('admin.network.installations.review_hint')}</p>
           </div>
         </div>
 
         <div class="summary-grid">
           <div class="summary-card summary-card-wide">
-            <span>Customer</span>
+            <span>{$t('common.customer')}</span>
             <strong>{formatSelectedCustomer()}</strong>
           </div>
           <div class="summary-card">
-            <span>Address</span>
+            <span>{$t('admin.network.installations.address')}</span>
             <strong>{formatSelectedLocation()}</strong>
           </div>
           <div class="summary-card">
-            <span>Package</span>
+            <span>{$t('common.package')}</span>
             <strong>{selectedPackage?.name || '-'}</strong>
           </div>
           <div class="summary-card">
-            <span>Billing</span>
+            <span>{$t('admin.network.installations.billing')}</span>
             <strong>{draft.billingCycle}</strong>
           </div>
           <div class="summary-card">
-            <span>Requested install</span>
+            <span>{$t('admin.network.installations.requested_install')}</span>
             <strong>{draft.requestedInstallationDate || '-'}</strong>
           </div>
           <div class="summary-card summary-card-wide">
-            <span>Notes</span>
+            <span>{$t('common.notes')}</span>
             <strong>{draft.notes || '-'}</strong>
           </div>
         </div>
@@ -706,38 +707,36 @@
         <div class="review-band">
           <Icon name="shield-check" size={18} />
           <span>
-            Subscription status will be
-            <strong class="status-token">pending_installation</strong>
-            and the work order will be created immediately.
+            {$t('admin.network.installations.subscription_pending_note')}
           </span>
         </div>
       </section>
     {/if}
 
     <div class="actions footer-actions">
-      <button class="btn btn-secondary" onclick={() => goto(customersPath)}>Cancel</button>
+      <button class="btn btn-secondary" onclick={() => goto(customersPath)}>{$t('common.cancel')}</button>
       {#if step > 1}
-        <button class="btn btn-secondary" onclick={prevStep}>Back</button>
+        <button class="btn btn-secondary" onclick={prevStep}>{$t('common.back')}</button>
       {/if}
       {#if step < 3}
         <button class="btn btn-primary" onclick={nextStep}>
-          Continue
+          {$t('admin.network.installations.continue')}
           <Icon name="chevron-right" size={16} />
         </button>
       {:else}
         <button class="btn btn-primary" onclick={submitOrder} disabled={submitting}>
           <Icon name="file-text" size={16} />
-          {submitting ? 'Submitting...' : 'Create Order'}
+          {submitting ? $t('admin.network.installations.submitting') : $t('admin.network.installations.create_order_btn')}
         </button>
       {/if}
     </div>
   </div>
 {/if}
 
-<Modal show={showMapPicker} title="Pick Installation Point" width="860px" onclose={closeMapPicker}>
+<Modal show={showMapPicker} title={$t('admin.network.installations.pick_installation_point')} width="860px" onclose={closeMapPicker}>
   <div class="map-picker-shell">
     <div class="map-picker-help">
-      Click the map to choose a point, then drag the marker if you need better precision.
+      {$t('admin.network.installations.map_picker_help')}
     </div>
     <div class="map-picker-cords">
       {#if pickerLat != null && pickerLng != null}
@@ -751,15 +750,15 @@
       loading={pickerMapLoading}
       mapUnavailable={pickerMapUnavailable}
       mapErrorMessage={pickerMapErrorMessage}
-      mapUnavailableTitle="Map unavailable"
-      mapUnavailableSubtitle="Unable to initialize WebGL map on this browser/device."
+      mapUnavailableTitle={$t('admin.network.installations.map_unavailable')}
+      mapUnavailableSubtitle={$t('admin.network.installations.map_unavailable_subtitle')}
       height="min(58vh, 520px)"
     />
     <div class="actions">
-      <button class="btn btn-secondary" type="button" onclick={closeMapPicker}>Cancel</button>
+      <button class="btn btn-secondary" type="button" onclick={closeMapPicker}>{$t('common.cancel')}</button>
       <button class="btn btn-primary" type="button" onclick={applyPickedCoordinates}>
         <Icon name="check" size={16} />
-        Use This Point
+        {$t('admin.network.installations.use_this_point')}
       </button>
     </div>
   </div>

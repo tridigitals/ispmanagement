@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import { t } from 'svelte-i18n';
 
   let {
     loadingTimeline,
@@ -15,19 +16,19 @@
 <div class="card section">
   <div class="section-head">
     <div>
-      <h3>Timeline</h3>
-      <p class="subtitle">Aktivitas pelanggan.</p>
+      <h3>{$t('admin.customers.tabs.timeline')}</h3>
+      <p class="subtitle">{$t('admin.customers.timeline.subtitle')}</p>
     </div>
     <div class="timeline-toolbar">
       <div class="timeline-filters">
-        <button class:active={timelineType === 'all'} onclick={() => (timelineType = 'all')}>All</button>
-        <button class:active={timelineType === 'customer'} onclick={() => (timelineType = 'customer')}>Profile</button>
-        <button class:active={timelineType === 'location'} onclick={() => (timelineType = 'location')}>Location</button>
-        <button class:active={timelineType === 'subscription'} onclick={() => (timelineType = 'subscription')}>Subscription</button>
+        <button class:active={timelineType === 'all'} onclick={() => (timelineType = 'all')}>{$t('common.all') || 'All'}</button>
+        <button class:active={timelineType === 'customer'} onclick={() => (timelineType = 'customer')}>{$t('common.profile') || 'Profile'}</button>
+        <button class:active={timelineType === 'location'} onclick={() => (timelineType = 'location')}>{$t('common.location')}</button>
+        <button class:active={timelineType === 'subscription'} onclick={() => (timelineType = 'subscription')}>{$t('common.subscription')}</button>
       </div>
       <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingTimeline}>
         <Icon name="refresh-cw" size={16} />
-        Refresh
+        {$t('common.refresh')}
       </button>
     </div>
   </div>
@@ -35,10 +36,10 @@
     columns={timelineColumns}
     data={timelineRows}
     loading={loadingTimeline}
-    emptyText="No timeline yet."
+    emptyText={$t('admin.customers.timeline.empty') || 'No timeline yet.'}
     pagination
     searchable
-    searchPlaceholder="Search timeline..."
+    searchPlaceholder={$t('admin.customers.timeline.search') || 'Search timeline...'}
     mobileView="card"
   >
     {#snippet cell({ item, key })}
@@ -54,7 +55,7 @@
       {:else if key === 'actor'}
         <div class="timeline-table-actor">{item.actor}</div>
       {:else if key === 'details'}
-        <div class:subtle-empty={!item.details}>{item.details || 'No detail'}</div>
+        <div class:subtle-empty={!item.details}>{item.details || ($t('common.no_detail') || 'No detail')}</div>
       {:else}
         {item[key] ?? ''}
       {/if}

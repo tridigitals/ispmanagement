@@ -226,7 +226,9 @@
       "custom": "Custom"
     },
     "channels": {
-      "both": "Keduanya"
+      "both": "Keduanya",
+      "whatsapp": "WhatsApp",
+      "email": "Email"
     },
     "statuses": {
       "draft": "Draft",
@@ -276,7 +278,10 @@
       "deleted": "Template pesan dihapus",
       "delete_failed": "Gagal menghapus template pesan",
       "preview_failed": "Preview template gagal"
-    }
+    },
+    "subtitle_desc": "Template pesan untuk WhatsApp dan email.",
+    "both": "Keduanya",
+    "variable_hint": "Klik token untuk menyisipkan variabel."
   },
   "customers": {
     "title": "Pelanggan",
@@ -429,7 +434,8 @@
       "billing": "Billing",
       "pppoe": "PPPoE",
       "dhcp_static": "DHCP Static",
-      "assets": "Aset FTTH"
+      "assets": "Aset FTTH",
+      "timeline": "Timeline"
     },
     "assets": {
       "subtitle": "Perangkat FTTH yang terhubung ke pelanggan ini.",
@@ -446,7 +452,8 @@
       }
     },
     "overview": {
-      "title": "Profil pelanggan"
+      "title": "Profil pelanggan",
+      "profile_quality": "Kualitas profil"
     },
     "locations": {
       "title": "Lokasi",
@@ -543,38 +550,19 @@
         "ends_at": "Berakhir",
         "notes": "Catatan"
       },
-      "change_package": {
-        "title": "Ganti Paket",
-        "current_package": "Paket Saat Ini",
-        "new_package": "Paket Baru",
-        "select_placeholder": "— Pilih paket —",
-        "old_package_label": "Paket lama (sisa hari)",
-        "new_package_label": "Paket baru (sisa hari)",
-        "pro_rata_estimate": "Tagihan pro-rata (estimasi)",
-        "pro_rata_note": "* Nilai aktual dihitung berdasarkan sisa hari dalam periode billing saat ini.",
-        "success_title": "Berhasil!",
-        "success_message": "Paket diubah dari",
-        "old_price": "Harga lama",
-        "new_price": "Harga baru",
-        "credit": "Kredit (sisa hari paket lama)",
-        "charge": "Tagihan (sisa hari paket baru)",
-        "net_amount": "Tagihan bersih",
-        "view_invoice": "Lihat invoice →",
-        "cancel": "Batal",
-        "processing": "Memproses...",
-        "submit": "Ganti Paket",
-        "close": "Tutup",
-        "toasts": {
-          "success_with_charge": "Paket diganti! Tagihan pro-rata:",
-          "success_no_charge": "Paket diganti! Tidak ada tagihan tambahan",
-          "error": "Gagal ganti paket:"
-        },
-        "success_message_to": "ke"
-      }
+      "change_package": "Ganti Paket",
+      "total_services": "Total layanan",
+      "grace_active": "Masa tenggang aktif",
+      "wo_active": "WO berjalan",
+      "active_period": "Masa aktif",
+      "policy": "Kebijakan",
+      "estimated_suspend": "Perkiraan suspend",
+      "access_on_suspend": "Akses saat suspend",
+      "no_active_period": "Belum ada masa aktif akhir"
     },
     "billing": {
       "title": "Billing",
-      "subtitle": "Riwayat invoice yang terbentuk dari langganan pelanggan ini.",
+      "subtitle": "Invoice pelanggan.",
       "empty": "Belum ada invoice untuk pelanggan ini.",
       "stats": {
         "total": "Total invoice",
@@ -629,7 +617,7 @@
     },
     "pppoe": {
       "title": "Akun PPPoE",
-      "subtitle": "Kelola PPPoE secret untuk pelanggan ini (per-router). Database adalah sumber kebenaran.",
+      "subtitle": "Akun akses pelanggan.",
       "search": "Cari username...",
       "empty": "Belum ada akun PPPoE.",
       "confirm_delete": "Hapus akun PPPoE ini?",
@@ -710,7 +698,54 @@
       "update_failed": "Gagal memperbarui pelanggan: {message}",
       "deleted": "Pelanggan dihapus",
       "delete_failed": "Gagal menghapus pelanggan: {message}"
-    }
+    },
+    "invite": {
+      "title": "Link Undangan Pelanggan",
+      "generate": "Buat undangan",
+      "default_policy": "Kebijakan default",
+      "default_expiry": "Batas waktu default (jam)",
+      "default_max_uses": "Maks penggunaan default",
+      "expire_hours": "Batas waktu (jam)",
+      "max_uses": "Maks penggunaan",
+      "note_optional": "Catatan (opsional)",
+      "generate_btn": "Buat Tautan Undangan",
+      "generating": "Membuat...",
+      "generated_link": "Tautan yang dibuat",
+      "share_hint": "Bagikan link ini ke customer atau tim terkait.",
+      "recent_links": "Tautan undangan terkini",
+      "recent_hint": "Pantau link aktif, usage, dan revoke link yang sudah tidak dipakai.",
+      "show_inactive": "Tampilkan nonaktif",
+      "no_links": "Belum ada tautan undangan.",
+      "uses": "Penggunaan",
+      "created_at": "Dibuat",
+      "expires_at": "Berakhir",
+      "revoke": "Cabut",
+      "revoking": "Mencabut...",
+      "invite_summary": "Ringkasan undangan",
+      "save_defaults": "Simpan default",
+      "link_only_available": "Link hanya tersedia saat invite baru dibuat.",
+      "toasts": {
+        "generated": "Tautan undangan dibuat",
+        "generate_failed": "Gagal membuat tautan undangan",
+        "revoked": "Tautan undangan dicabut",
+        "revoke_failed": "Gagal mencabut undangan",
+        "policy_updated": "Default undangan diperbarui",
+        "policy_failed": "Gagal memperbarui default undangan",
+        "load_failed": "Gagal memuat tautan undangan pelanggan",
+        "summary_failed": "Gagal memuat ringkasan undangan"
+      },
+      "used_up": "Habis",
+      "expired": "Kedaluwarsa",
+      "revoked": "Dicabut",
+      "utilization": "Utilisasi",
+      "note_placeholder": "Campaign, PIC, atau remark internal"
+    },
+    "timeline": {
+      "subtitle": "Aktivitas pelanggan.",
+      "empty": "Belum ada timeline.",
+      "search_placeholder": "Cari timeline..."
+    },
+    "search_placeholder": "Nama, email, telepon"
   },
   "ftth_assets": {
     "page": {
@@ -822,7 +857,7 @@
     },
     "type_picker": {
       "title": "Pilih Tipe Layanan",
-      "subtitle": "Pilih kategori layanan dulu, lalu lanjut ke form detail layanan.",
+      "subtitle": "Pilih kategori layanan.",
       "continue": "Lanjut",
       "change": "Ubah tipe",
       "add_as_feature": "Tambahkan sebagai fitur",
@@ -856,7 +891,9 @@
     "toasts": {
       "created": "Layanan dibuat",
       "updated": "Layanan diperbarui"
-    }
+    },
+    "subtitle_desc": "Kelola layanan dan konfigurasinya.",
+    "category_hint": "Pilih kategori layanan."
   },
   "network": {
     "import_center": {
@@ -2003,6 +2040,20 @@
       "cancel_reason_required": "Alasan pembatalan wajib diisi (minimal 10 karakter).",
       "cancel_reason_hint": "Isi alasan pembatalan (minimal 10 karakter) di detail work order.",
       "details_title": "Detail Instalasi",
+      "assignment": "Assignment",
+      "all_work_orders": "Semua work order",
+      "assigned_only": "Hanya yang di-assign",
+      "unassigned_only": "Hanya yang belum di-assign",
+      "assignee_filter": "Assignee",
+      "sort_by": "Urutkan",
+      "latest_updated": "Terbaru diperbarui",
+      "oldest_updated": "Terlama diperbarui",
+      "scheduled_earliest": "Jadwal terdekat",
+      "scheduled_latest": "Jadwal terjauh",
+      "customer_az": "Pelanggan A-Z",
+      "customer_za": "Pelanggan Z-A",
+      "assignee_az": "Assignee A-Z",
+      "assignee_za": "Assignee Z-A",
       "step_assign": "Assign",
       "step_schedule": "Jadwal",
       "step_onsite": "On-site & Tes",
@@ -2113,7 +2164,88 @@
       "reopen_notes": "Catatan opsional sebelum membuka ulang work order",
       "save_plan": "Simpan Rencana",
       "history": "Catatan Terakhir",
-      "timeline": "Timeline Work Order"
+      "timeline": "Timeline Work Order",
+      "create_order": "Buat Pesanan Instalasi",
+      "loading_wizard": "Memuat wizard pesanan...",
+      "order_subtitle": "Pelanggan, layanan, dan instalasi dalam satu alur.",
+      "customer_context": "Konteks Pelanggan",
+      "customer_context_hint": "Gunakan pelanggan baru atau pilih profil yang sudah ada.",
+      "new_customer": "Pelanggan Baru",
+      "existing_customer": "Pelanggan yang Ada",
+      "address_service": "Alamat & Layanan",
+      "address_service_hint": "Atur alamat instalasi dan paket.",
+      "use_existing_address": "Gunakan Alamat yang Ada",
+      "add_new_address": "Tambah Alamat Baru",
+      "customer_address": "Alamat pelanggan",
+      "select_address": "Pilih alamat",
+      "review_order": "Tinjau Pesanan",
+      "review_hint": "Tinjau sebelum membuat work order.",
+      "location_mode": "Mode lokasi",
+      "use_saved_address": "Gunakan alamat tersimpan",
+      "create_new_address": "Buat alamat instalasi baru",
+      "select_package": "Pilih paket",
+      "billing_cycle": "Siklus tagihan",
+      "requested_install_date": "Tanggal instalasi yang diminta",
+      "order_notes": "Catatan pesanan",
+      "subscription_pending_note": "Status langganan akan menjadi pending_installation dan work order akan langsung dibuat.",
+      "pick_installation_point": "Pilih Titik Instalasi",
+      "map_picker_help": "Klik peta untuk memilih titik, lalu geser marker jika perlu presisi lebih.",
+      "use_this_point": "Gunakan Titik Ini",
+      "update_map_point": "Perbarui Titik Peta",
+      "pick_map_point": "Pilih Titik Peta",
+      "installation_point": "Titik instalasi di peta",
+      "installation_point_hint": "Pilih titik peta untuk koordinat yang akurat.",
+      "continue": "Lanjutkan",
+      "create_order_btn": "Buat Pesanan",
+      "submitting": "Mengirim...",
+      "customer_active": "Pelanggan aktif",
+      "no_contact": "Tidak ada kontak",
+      "pending_install": "Menunggu instalasi",
+      "search_customer": "Cari pelanggan",
+      "search_customer_placeholder": "Nama, email, telepon",
+      "searching": "Mencari...",
+      "no_address_line": "Tidak ada alamat",
+      "location_label": "Label",
+      "address_line1": "Alamat baris 1",
+      "address_line2": "Alamat baris 2",
+      "city": "Kota",
+      "state": "Provinsi",
+      "postal_code": "Kode pos",
+      "country": "Negara",
+      "select_country": "Pilih negara...",
+      "search_country": "Cari negara...",
+      "no_country_found": "Negara tidak ditemukan",
+      "latitude": "Lintang",
+      "longitude": "Bujur",
+      "location_notes": "Catatan lokasi",
+      "monthly": "Bulanan",
+      "yearly": "Tahunan",
+      "address": "Alamat",
+      "billing": "Tagihan",
+      "requested_install": "Instalasi diminta",
+      "map_unavailable": "Peta tidak tersedia",
+      "map_unavailable_subtitle": "Tidak dapat menginisialisasi peta WebGL di browser/perangkat ini.",
+      "phone_code": "Kode",
+      "search_country_code": "Cari kode negara...",
+      "no_code_found": "Kode tidak ditemukan",
+      "toasts": {
+        "load_wizard_failed": "Gagal memuat wizard pesanan",
+        "search_customers_failed": "Gagal mencari pelanggan",
+        "order_created": "Pesanan instalasi berhasil dibuat",
+        "order_create_failed": "Gagal membuat pesanan instalasi",
+        "pick_location_first": "Pilih titik lokasi terlebih dulu",
+        "map_init_failed": "Gagal menginisialisasi peta"
+      },
+      "validation": {
+        "select_existing_customer": "Pilih pelanggan yang sudah ada terlebih dahulu",
+        "customer_name_required": "Nama pelanggan wajib diisi",
+        "customer_email_or_phone_required": "Email atau telepon pelanggan wajib diisi",
+        "select_existing_address": "Pilih alamat yang sudah ada terlebih dahulu",
+        "location_label_required": "Label lokasi wajib diisi",
+        "address_line1_required": "Alamat baris 1 wajib diisi",
+        "package_required": "Paket wajib dipilih",
+        "complete_form": "Harap lengkapi formulir terlebih dahulu"
+      }
     },
     "logs": {
       "title": "Log Router",
@@ -2194,7 +2326,8 @@
     "errors": {
       "save_failed": "Gagal menyimpan peran",
       "delete_failed": "Gagal menghapus peran: "
-    }
+    },
+    "subtitle_desc": "Role dan izin akses."
   },
   "support": {
     "title": "Tiket Dukungan",
@@ -2226,7 +2359,8 @@
     },
     "toasts": {
       "updated": "Tiket diperbarui"
-    }
+    },
+    "unassigned": "Belum Assign"
   },
   "email_outbox": {
     "title": "Email Outbox",
@@ -2283,7 +2417,8 @@
       "not_found": "Tidak ditemukan."
     },
     "selected": "Dipilih",
-    "confirm_bulk_delete": "Hapus item outbox yang dipilih?"
+    "confirm_bulk_delete": "Hapus item outbox yang dipilih?",
+    "html_preview": "HTML preview"
   },
   "backups": {
     "disabled_title": "Dinonaktifkan untuk Tenant",
@@ -2317,7 +2452,11 @@
         "title": "Penagihan",
         "desc": "Kelola langganan dan invoice."
       }
-    }
+    },
+    "at_a_glance": "Sekilas pandang",
+    "priority_queue": "Antrian prioritas",
+    "fast_lanes": "Jalur cepat",
+    "signal_mix": "Campuran sinyal"
   },
   "subscription": {
     "title": "Langganan",
@@ -2416,7 +2555,13 @@
     "toasts": {
       "load_failed": "Gagal memuat invoice"
     },
-    "print_pdf": "Cetak / Unduh PDF"
+    "print_pdf": "Cetak / Unduh PDF",
+    "breadcrumb": "Breadcrumb",
+    "subtitle_tagihan": "Tagihan, collection, dan invoice pelanggan.",
+    "subtitle_monitor": "Pantau invoice aktif tanpa pindah halaman.",
+    "subtitle_manual": "Pilih subscription untuk membuat invoice manual.",
+    "subtitle_summary": "Ringkasan status pembayaran.",
+    "subtitle_filter": "Filter dan cek invoice pelanggan."
   },
   "billing_collection": {
     "title": "Log Billing Collection",
@@ -2771,7 +2916,13 @@
           "label": "Interval scheduler (menit)",
           "desc": "Seberapa sering backend mengecek work order instalasi overdue di semua tenant."
         }
-      }
+      },
+      "midtrans_desc": "Terima pembayaran via Credit Card, GoPay, ShopeePay, VA, dll.",
+      "enable_live": "Aktifkan Mode Produksi (Live)",
+      "duitku_title": "Gateway Pembayaran Duitku",
+      "duitku_desc": "Terima pembayaran via redirect checkout Duitku.",
+      "merchant_code": "Kode Merchant",
+      "api_key": "API Key"
     },
     "categories": {
       "general": "Umum",
@@ -2896,6 +3047,24 @@
       "test_configuration": "Tes Konfigurasi",
       "midtrans": "Payment Gateway Midtrans",
       "bank_transfer_manual": "Transfer Bank (Manual)"
+    },
+    "company": {
+      "name_placeholder": "PT Internet Service Provider",
+      "address_placeholder": "Jl. Raya No. 123, Jakarta 12345",
+      "logo_preview_alt": "Preview Logo"
+    },
+    "service_tab": {
+      "subtitle": "Pengaturan global untuk billing dan lifecycle layanan.",
+      "health_scheduler": "Health scheduler",
+      "auto_invoice": "Invoice otomatis",
+      "auto_suspend": "Suspend otomatis",
+      "auto_resume": "Auto resume",
+      "reminder": "Reminder",
+      "view_invoices": "Lihat invoice",
+      "invoice_status": "Status tagihan pelanggan",
+      "view_automation_log": "Lihat log automation",
+      "scheduler_history": "Riwayat scheduler billing",
+      "suspend_method": "Metode suspend"
     }
   },
   "team": {
@@ -2967,7 +3136,8 @@
       "description": "Tambahkan rekan kerja Anda untuk berkolaborasi di ruang kerja ini.",
       "no_results": "Anggota tidak ditemukan",
       "try_adjusting": "Coba ubah pencarian atau filter."
-    }
+    },
+    "subtitle_desc": "Anggota tim dan akses."
   },
   "billing": {
     "analytics": {

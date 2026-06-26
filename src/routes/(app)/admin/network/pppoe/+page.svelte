@@ -682,7 +682,7 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.network.pppoe.title') || 'PPPoE'}
-    subtitle="Kelola akun PPPoE."
+    subtitle={$t('network.pppoe.title') || 'Kelola akun PPPoE.'}
   >
     {#snippet actions()}
       {#if $can('manage', 'pppoe') && autoApplyOnSave}

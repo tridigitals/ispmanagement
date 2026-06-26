@@ -99,16 +99,16 @@
 
           {#if newTenant.customDomainStatus === 'failed'}
             <Input
-              label="Alasan Gagal"
+              label={$t('superadmin.tenants.modal.domain_status.failure_reason_label')}
               bind:value={newTenant.domainStatusReason}
-              placeholder="Contoh: DNS belum mengarah ke target yang benar"
+              placeholder={$t('superadmin.tenants.modal.domain_status.failure_reason_placeholder')}
               disabled={hasUnsavedDomainChange || loading || domainStatusLoading}
             />
           {/if}
 
           {#if hasUnsavedDomainChange}
             <div class="domain-status-note">
-              Simpan perubahan custom domain dulu sebelum mengubah status verifikasinya.
+              {$t('superadmin.tenants.modal.domain_status.unsaved_note')}
             </div>
           {/if}
 
@@ -122,7 +122,7 @@
               {#if domainStatusLoading}
                 <div class="spinner-sm"></div>
               {/if}
-              Terapkan Status Domain
+              {$t('superadmin.tenants.modal.domain_status.apply_button')}
             </button>
           </div>
         </div>

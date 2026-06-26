@@ -35,6 +35,11 @@ export function applyRemoteWallboardConfigState(
   // Remote returns all-nulls when no slots were ever persisted — don't clobber local state.
   if (conf.slotsAll && conf.slotsAll.some((s) => s != null)) {
     setters.setSlotsAll(conf.slotsAll);
+    console.log('[WB] Applied remote slots:', conf.slotsAll.length, 'items');
+  } else if (conf.slotsAll) {
+    console.log('[WB] Remote slots all-null, skipping apply');
+  } else {
+    console.log('[WB] No remote slots data');
   }
   setters.setRemoteLoaded(conf.remoteLoaded);
 }

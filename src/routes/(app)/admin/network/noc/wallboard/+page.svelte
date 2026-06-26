@@ -564,7 +564,9 @@
   }
 
   function ensureSlots() {
+    const size = slotCountForLayout(layout);
     slotsAll = ensureSlotsForLayout(slotsAll, layout);
+    slotsAll = normalizeSlotsForAutoSpare(slotsAll, size);
   }
 
   function ensureSlotIndex(idx: number) {
@@ -858,6 +860,7 @@
     const start = page * size;
     const currentPageSlots = slotsAll.slice(start, start + size);
     const allFilled = currentPageSlots.length >= size && currentPageSlots.every((s) => s != null);
+    console.log('[WB]', {page, size, start, slotsLen: slotsAll.length, filled: currentPageSlots.filter(s=>s).length, allFilled});
     if (allFilled) {
       // Grow array by one page so pageCount increases and pagination appears.
       if (slotsAll.length <= start + size) {
@@ -922,7 +925,7 @@
     await loadRemoteWallboardConfigState(
       () =>
         loadWallboardRemoteConfigValue({
-          canUseTenantSettings,
+          canUseTenantSettings: () => canUseTenantSettings,
           getValue: (key) => api.settings.getValue(key),
         }),
       {

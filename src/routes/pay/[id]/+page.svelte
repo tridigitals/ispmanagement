@@ -467,7 +467,7 @@
           <span class="invoice-number">#{invoice.invoice_number}</span>
         </div>
         <div class="head-right">
-          <span class="doc-mark">INVOICE</span>
+          <span class="doc-mark">{$t('components.invoice_print.invoice') || 'INVOICE'}</span>
           <span class="status-pill {invoice.status}">{invoice.status}</span>
         </div>
       </div>
@@ -475,13 +475,13 @@
       <div class="invoice-body">
         <div class="party-grid">
           <div class="party-card">
-            <span class="party-k">From</span>
+            <span class="party-k">{$t('common.from') || 'From'}</span>
             <strong>{publicSettings?.app_name || 'ISP Management'}</strong>
             <span>{publicSettings?.support_email || '-'}</span>
             <span>{publicSettings?.company_phone || '-'}</span>
           </div>
           <div class="party-card">
-            <span class="party-k">Bill to</span>
+            <span class="party-k">{$t('components.invoice_print.bill_to') || 'Bill to'}</span>
             <strong>{$user?.name || 'Customer'}</strong>
             <span>{$user?.email || '-'}</span>
             <span>{publicSettings?.tenant_name || '-'}</span>
@@ -494,11 +494,11 @@
             <span class="v">{invoice.invoice_number}</span>
           </div>
           <div class="meta-item">
-            <span class="k">Created</span>
+            <span class="k">{$t('payment.checkout.created') || 'Created'}</span>
             <span class="v">{formatDateValue(invoice.created_at)}</span>
           </div>
           <div class="meta-item">
-            <span class="k">Due date</span>
+            <span class="k">{$t('components.invoice_print.due_date') || 'Due date'}</span>
             <span class="v">{formatDateValue(invoice.due_date)}</span>
           </div>
           <div class="meta-item">
@@ -512,9 +512,9 @@
             <thead>
               <tr>
                 <th>{$t('payment.checkout.item') || 'Item'}</th>
-                <th>Unit Price</th>
+                <th>{$t('components.invoice_print.unit_price') || 'Unit Price'}</th>
                 <th>Qty</th>
-                <th>Amount</th>
+                <th>{$t('common.amount') || 'Amount'}</th>
               </tr>
             </thead>
             <tbody>
@@ -527,7 +527,7 @@
             </tbody>
           </table>
           <div class="totals-box">
-            <div><span>Subtotal</span><strong>{formatCurrency(invoice.amount)}</strong></div>
+            <div><span>{$t('components.invoice_print.subtotal') || 'Subtotal'}</span><strong>{formatCurrency(invoice.amount)}</strong></div>
             <div><span>Tax</span><strong>{formatCurrency(0)}</strong></div>
             <div class="grand-total">
               <span>{$t('payment.checkout.total') || 'Total'}</span>
@@ -631,7 +631,7 @@
                 {@const methodInfo = getDuitkuPaymentMethodInfo(selectedDuitkuPaymentMethod)}
                 <div class="selected-method">
                   <span>
-                    <small>Metode pembayaran</small>
+                    <small>{$t('payment.checkout.payment_method') || 'Metode pembayaran'}</small>
                     <strong>{methodInfo.name}</strong>
                     <em>{methodInfo.description}</em>
                   </span>

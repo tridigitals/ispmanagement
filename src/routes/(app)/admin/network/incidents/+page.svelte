@@ -949,7 +949,7 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.network.incidents.title') || 'Network Incidents'}
-    subtitle="Insiden operasional dari alert."
+    subtitle={$t('network.incident.title') || 'Insiden operasional dari alert.'}
   >
     {#snippet actions()}
       <AlertsIncidentsSwitch

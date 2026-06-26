@@ -131,7 +131,7 @@
       </label>
     </div>
 
-    <span class="section-label">Provider</span>
+    <span class="section-label">{$t('superadmin.settings.whatsapp_gateway.provider') || 'Provider'}</span>
     <div class="provider-grid">
       {#each providerOptions as option}
         <button
@@ -157,10 +157,10 @@
 
   {#if provider === 'fonnte'}
     <div class="config-panel fade-in mt-6">
-      <h3>Fonnte Configuration</h3>
+      <h3>{$t('superadmin.settings.whatsapp_gateway.fonnte_config') || 'Fonnte Configuration'}</h3>
       <div class="config-grid">
         <div class="setting-item full-width">
-          <label for="wa-fonnte-token">API Token</label>
+          <label for="wa-fonnte-token">{$t('superadmin.settings.whatsapp_gateway.api_token') || 'API Token'}</label>
           <Input
             id="wa-fonnte-token"
             type="password"
@@ -168,11 +168,11 @@
             showPasswordToggle={true}
             oninput={(event: any) =>
               handleChange('wa_gateway_fonnte_token', event.target.value)}
-            placeholder="Fonnte token"
+            placeholder={$t('superadmin.settings.whatsapp_gateway.fonnte_token_placeholder') || 'Fonnte token'}
           />
         </div>
         <div class="setting-item">
-          <label for="wa-fonnte-base-url">Base URL</label>
+          <label for="wa-fonnte-base-url">{$t('superadmin.settings.whatsapp_gateway.base_url') || 'Base URL'}</label>
           <Input
             id="wa-fonnte-base-url"
             value={localSettings['wa_gateway_fonnte_base_url'] || ''}
@@ -182,7 +182,7 @@
           />
         </div>
         <div class="setting-item">
-          <label for="wa-fonnte-sender">Sender</label>
+          <label for="wa-fonnte-sender">{$t('superadmin.settings.whatsapp_gateway.sender') || 'Sender'}</label>
           <Input
             id="wa-fonnte-sender"
             value={localSettings['wa_gateway_fonnte_sender'] || ''}
@@ -195,10 +195,10 @@
     </div>
   {:else if provider === 'triwax'}
     <div class="config-panel fade-in mt-6">
-      <h3>Triwax Configuration</h3>
+      <h3>{$t('superadmin.settings.whatsapp_gateway.triwax_config') || 'Triwax Configuration'}</h3>
       <div class="config-grid">
         <div class="setting-item full-width">
-          <label for="wa-triwax-api-key">API Key</label>
+          <label for="wa-triwax-api-key">{$t('superadmin.settings.whatsapp_gateway.api_key') || 'API Key'}</label>
           <Input
             id="wa-triwax-api-key"
             type="password"
@@ -214,10 +214,10 @@
   {/if}
 
   <div class="config-panel fade-in mt-6">
-    <h3>Send Test</h3>
+    <h3>{$t('superadmin.settings.whatsapp_gateway.send_test')}</h3>
     <div class="config-grid">
       <div class="setting-item">
-        <label for="wa-test-phone">Recipient Phone</label>
+        <label for="wa-test-phone">{$t('superadmin.settings.whatsapp_gateway.recipient_phone')}</label>
         <Input
           id="wa-test-phone"
           value={testPhone}
@@ -226,21 +226,21 @@
         />
       </div>
       <div class="setting-item">
-        <label for="wa-test-event">Event Code</label>
+        <label for="wa-test-event">{$t('superadmin.settings.whatsapp_gateway.event_code')}</label>
         <select
           id="wa-test-event"
           class="form-input"
           bind:value={testEventCode}
           disabled={scopedEvents.length === 0}
         >
-          <option value="">Manual test</option>
+          <option value="">{$t('superadmin.settings.whatsapp_gateway.manual_test')}</option>
           {#each scopedEvents as event}
             <option value={event.code}>{event.label}</option>
           {/each}
         </select>
       </div>
       <div class="setting-item full-width">
-        <label for="wa-test-message">Message</label>
+        <label for="wa-test-message">{$t('superadmin.settings.whatsapp_gateway.message')}</label>
         <textarea
           id="wa-test-message"
           class="form-textarea"
@@ -258,10 +258,10 @@
       >
         {#if sendingTest}
           <div class="spinner-sm"></div>
-          Sending...
+          {$t('superadmin.settings.whatsapp_gateway.sending')}
         {:else}
           <Icon name="send" size={16} />
-          Send Test
+          {$t('superadmin.settings.whatsapp_gateway.send_test_button')}
         {/if}
       </button>
       {#if testResult}

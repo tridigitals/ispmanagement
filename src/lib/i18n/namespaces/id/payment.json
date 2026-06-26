@@ -5,6 +5,8 @@
     "item": "Item",
     "total": "Total",
     "status": "Status",
+    "created": "Dibuat",
+    "payment_method": "Metode Pembayaran",
     "tabs": {
       "online": "Pembayaran Online",
       "manual": "Transfer Bank"

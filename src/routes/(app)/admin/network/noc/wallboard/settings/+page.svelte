@@ -168,7 +168,7 @@
     <div>
       <div class="kicker">{$t('admin.network.wallboard.controls.title') || 'Wallboard'}</div>
       <h1>{$t('admin.network.wallboard.title') || 'Network Wallboard'}</h1>
-      <p>Tampilan NOC live.</p>
+      <p>{$t('network.noc.wallboard_settings') || 'Tampilan NOC live.'}</p>
     </div>
     <div class="actions">
       <button class="btn primary" type="button" onclick={saveAndExit} disabled={saving}>

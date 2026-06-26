@@ -606,7 +606,7 @@
 
         {#if detailTab === 'html' && detailItem.body_html}
           <div class="viewer">
-            <iframe class="iframe" sandbox="" srcdoc={detailItem.body_html} title="HTML preview"
+            <iframe class="iframe" sandbox="" srcdoc={detailItem.body_html} title={$t('admin.email_outbox.html_preview') || 'HTML preview'}
             ></iframe>
           </div>
           <details class="source">

@@ -92,7 +92,7 @@
     if (occupancy.length > 0) return occupancy;
     const detailSummary = getNetworkAssetDetailSummary(item);
     const coordinateSummary = formatNetworkAssetCoordinates(item.latitude, item.longitude);
-    return coordinateSummary ? [...detailSummary, `Map: ${coordinateSummary}`] : detailSummary;
+    return coordinateSummary ? [...detailSummary, `${$t('network.asset.map_prefix') || 'Map:'} ${coordinateSummary}`] : detailSummary;
   }
   const columns = $derived.by(() => [
     { key: 'name', label: $t('admin.ftth_assets.table.asset') || 'Asset' },
@@ -140,7 +140,7 @@
       const result = await api.networkAssets.list({ page: 1, per_page: 500 });
       rows = result.data || [];
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to load FTTH assets');
+      toast.error(e?.message || ($t('admin.ftth_assets.toasts.load_failed') || 'Failed to load FTTH assets'));
     } finally {
       loading = false;
     }
@@ -185,16 +185,16 @@
       }
       const parsedCoordinates = parseNetworkAssetCoordinates(draft.latitude, draft.longitude);
       if (parsedCoordinates.error === 'pair') {
-        throw new Error('Latitude and longitude must be filled together.');
+        throw new Error($t('network.asset.error_coordinates_pair') || 'Latitude and longitude must be filled together.');
       }
       if (parsedCoordinates.error === 'invalid') {
-        throw new Error('Latitude and longitude must be valid numbers.');
+        throw new Error($t('network.asset.error_coordinates_invalid') || 'Latitude and longitude must be valid numbers.');
       }
       if (parsedCoordinates.error === 'latitude_range') {
-        throw new Error('Latitude must be between -90 and 90.');
+        throw new Error($t('network.asset.error_latitude_range') || 'Latitude must be between -90 and 90.');
       }
       if (parsedCoordinates.error === 'longitude_range') {
-        throw new Error('Longitude must be between -180 and 180.');
+        throw new Error($t('network.asset.error_longitude_range') || 'Longitude must be between -180 and 180.');
       }
 
       const payload = buildNetworkAssetSavePayload({
@@ -226,9 +226,9 @@
 
       showModal = false;
       await load();
-      toast.success(editing ? 'FTTH asset updated' : 'FTTH asset created');
+      toast.success(editing ? ($t('admin.ftth_assets.toasts.updated') || 'FTTH asset updated') : ($t('admin.ftth_assets.toasts.created') || 'FTTH asset created'));
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to save FTTH asset');
+      toast.error(e?.message || ($t('admin.ftth_assets.toasts.save_failed') || 'Failed to save FTTH asset'));
     } finally {
       saving = false;
     }
@@ -246,15 +246,15 @@
     try {
       await api.networkAssets.delete(row.id);
       rows = rows.filter((item) => item.id !== row.id);
-      toast.success('FTTH asset deleted');
+      toast.success($t('admin.ftth_assets.toasts.deleted') || 'FTTH asset deleted');
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to delete FTTH asset');
+      toast.error(e?.message || ($t('admin.ftth_assets.toasts.delete_failed') || 'Failed to delete FTTH asset'));
     }
   }
 
   function openOnMap(row: NetworkAssetListItem) {
     if (row.latitude == null || row.longitude == null) {
-      toast.error('Asset does not have map coordinates yet');
+      toast.error($t('network.asset.no_coordinates') || 'Asset does not have map coordinates yet');
       return;
     }
 
@@ -318,10 +318,10 @@
     <div class="filter-shell">
       <div class="filter-shell__head">
         <div>
-          <span class="filter-kicker">Filter Registry</span>
-          <strong>Find and narrow FTTH assets quickly</strong>
+          <span class="filter-kicker">{$t('admin.ftth_assets.filters.title') || 'Filter Registry'}</span>
+          <strong>{$t('admin.ftth_assets.filters.subtitle') || 'Find and narrow FTTH assets quickly'}</strong>
         </div>
-        <span class="filter-count">{filteredRows.length} asset{filteredRows.length === 1 ? '' : 's'}</span>
+        <span class="filter-count">{filteredRows.length} {$t('admin.ftth_assets.filters.asset_count', { values: { count: filteredRows.length } }) || `asset${filteredRows.length === 1 ? '' : 's'}`}</span>
       </div>
 
       <div class="toolbar">
@@ -394,16 +394,16 @@
                 <button
                   class="btn-icon"
                   type="button"
-                  title="Open on map"
+                  title={$t('network.asset.open_on_map') || 'Open on map'}
                   onclick={() => openOnMap(item)}
                   disabled={item.latitude == null || item.longitude == null}
                 >
                   <Icon name="map-pin" size={15} />
                 </button>
-                <button class="btn-icon" type="button" title="Edit" onclick={() => openEdit(item)}>
+                <button class="btn-icon" type="button" title={$t('common.edit') || 'Edit'} onclick={() => openEdit(item)}>
                   <Icon name="pencil" size={15} />
                 </button>
-                <button class="btn-icon danger" type="button" title="Delete" onclick={() => remove(item)}>
+                <button class="btn-icon danger" type="button" title={$t('common.delete') || 'Delete'} onclick={() => remove(item)}>
                   <Icon name="trash-2" size={15} />
                 </button>
               {/if}
@@ -432,7 +432,7 @@
 <ConfirmDialog
   bind:show={showDeleteConfirm}
   title={$t('common.confirm_delete_title') || 'Confirm Delete'}
-  message={(deleteTarget ? `Delete asset "${deleteTarget.name}"?` : '') || $t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
+  message={(deleteTarget ? ($t('admin.ftth_assets.confirm_delete', { values: { name: deleteTarget.name } }) || `Delete asset "${deleteTarget.name}"?`) : '') || $t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
   confirmText={$t('common.delete') || 'Delete'}
   cancelText={$t('common.cancel') || 'Cancel'}
   type="danger"

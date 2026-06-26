@@ -29,7 +29,7 @@
   <div class="section-head">
     <div>
       <h3>{$t('admin.customers.pppoe.title') || 'PPPoE accounts'}</h3>
-      <p class="subtitle">Akun akses pelanggan.</p>
+      <p class="subtitle">{$t('admin.customers.pppoe.subtitle')}</p>
     </div>
     <div class="pppoe-toolbar">
       {#if pppoeToolbar.showSearch}

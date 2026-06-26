@@ -306,7 +306,7 @@
             <button
               class="clear"
               onclick={() => (searchQuery = '')}
-              aria-label="Clear"
+              aria-label={$t('common.clear') || 'Clear'}
             >
               <Icon name="x" size={12} />
             </button>
@@ -363,7 +363,7 @@
                   {#if !n.is_read}
                     <button
                       class="icon-btn"
-                      title="Mark as read"
+                      title={$t('notifications_page.mark_as_read') || 'Mark as read'}
                       onclick={() => markAsRead(n.id)}
                     >
                       <Icon name="check" size={14} />
@@ -371,7 +371,7 @@
                   {/if}
                   <button
                     class="icon-btn danger"
-                    title="Delete"
+                    title={$t('common.delete') || 'Delete'}
                     onclick={() => requestDelete(n)}
                   >
                     <Icon name="trash" size={14} />

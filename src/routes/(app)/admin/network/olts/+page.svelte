@@ -2,6 +2,7 @@
   import { onDestroy, onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
+  import { t } from 'svelte-i18n';
   import { can } from '$lib/stores/auth';
   import { api } from '$lib/api/client';
   import type { Olt } from '$lib/api/olt';
@@ -246,12 +247,12 @@
   });
 
   const columns = $derived.by(() => [
-    { key: 'name', label: 'Nama' },
-    { key: 'type', label: 'Tipe' },
-    { key: 'host', label: 'Host' },
-    { key: 'uplink', label: 'Uplink' },
-    { key: 'status', label: 'Status' },
-    { key: 'seen', label: 'Terakhir Dilihat' },
+    { key: 'name', label: $t('common.name') || 'Name' },
+    { key: 'type', label: $t('common.type') || 'Type' },
+    { key: 'host', label: $t('network.olt.host') || 'Host' },
+    { key: 'uplink', label: $t('network.olt.uplink') || 'Uplink' },
+    { key: 'status', label: $t('common.status') || 'Status' },
+    { key: 'seen', label: $t('network.olt.last_seen') || 'Last Seen' },
     { key: 'actions', label: '', align: 'right' as const, width: '200px' },
   ]);
 
@@ -348,11 +349,11 @@
     const host = formHost.trim();
     const username = formUsername.trim();
     if (!name || !host || !username) {
-      toast.error('Harap isi semua kolom wajib.');
+      toast.error($t('common.required_fields') || 'Please fill in all required fields.');
       return;
     }
     if (!editing && !formPassword.trim()) {
-      toast.error('Password wajib diisi.');
+      toast.error($t('common.password_required') || 'Password is required.');
       return;
     }
     saving = true;
@@ -376,7 +377,7 @@
           longitude: formLongitude,
           address_line: formAddressLine.trim() || null,
         });
-        toast.success('OLT berhasil diperbarui.');
+        toast.success($t('network.olt.updated') || 'OLT updated successfully.');
       } else {
         await api.olt.create({
           name,
@@ -392,7 +393,7 @@
           uplink_router_id: formUplinkRouterId || null,
           uplink_port: formUplinkPort.trim() || null,
         } as any);
-        toast.success('OLT berhasil ditambahkan.');
+        toast.success($t('network.olt.created') || 'OLT created successfully.');
       }
       showModal = false;
       await load();
@@ -405,7 +406,7 @@
 
   function openOnMap(o: Olt) {
     if (o.latitude == null || o.longitude == null) {
-      toast.error('OLT belum memiliki koordinat lokasi.');
+      toast.error($t('network.olt.no_coordinates') || 'OLT does not have location coordinates yet.');
       return;
     }
     const params = new URLSearchParams({
@@ -428,9 +429,9 @@
         olt_type: o.olt_type,
       });
       if (result?.success) {
-        toast.success(`Koneksi berhasil! ${result.info?.model || ''} ${result.info?.version ? `v${result.info.version}` : ''}`);
+        toast.success(`${$t('network.olt.connection_success') || 'Connection successful!'} ${result.info?.model || ''} ${result.info?.version ? `v${result.info.version}` : ''}`);
       } else {
-        toast.error(result?.error || 'Gagal terhubung.');
+        toast.error(result?.error || ($t('network.olt.connection_failed') || 'Connection failed.'));
       }
       await loadSilent();
     } catch (e: any) {
@@ -451,7 +452,7 @@
     deleteTarget = null;
     try {
       await api.olt.delete(o.id);
-      toast.success('OLT berhasil dihapus.');
+      toast.success($t('network.olt.deleted') || 'OLT deleted successfully.');
       await load();
     } catch (e: any) {
       toast.error(e?.message || e);
@@ -464,16 +465,16 @@
 </script>
 
 <div class="page-content fade-in">
-  <NetworkPageHeader title="OLT Monitoring" subtitle="Kelola perangkat OLT dan pantau status ONU.">
+  <NetworkPageHeader title={$t('network.olt.title') || 'OLT Monitoring'} subtitle={$t('network.olt.description') || 'Kelola perangkat OLT dan pantau status ONU.'}>
     {#snippet actions()}
-      <button class="btn ghost" type="button" onclick={load} title="Refresh">
+      <button class="btn ghost" type="button" onclick={load} title={$t('common.refresh') || 'Refresh'}>
         <Icon name="refresh-cw" size={16} />
-        Refresh
+        {$t('common.refresh') || 'Refresh'}
       </button>
       {#if $can('manage', 'router_inventory')}
         <button class="btn" type="button" onclick={openCreate}>
           <Icon name="plus" size={16} />
-          Tambah OLT
+          {$t('network.olt.add') || 'Add OLT'}
         </button>
       {/if}
     {/snippet}
@@ -482,21 +483,21 @@
   <div class="stats">
     <div class="stat-card">
       <div class="stat-top">
-        <span class="stat-label">Total</span>
+        <span class="stat-label">{$t('network.olt.total') || 'Total'}</span>
         <Icon name="list" size={14} />
       </div>
       <div class="stat-value">{stats.total}</div>
     </div>
     <div class="stat-card tone-ok">
       <div class="stat-top">
-        <span class="stat-label">Online</span>
+        <span class="stat-label">{$t('network.olt.online') || 'Online'}</span>
         <Icon name="check-circle" size={14} />
       </div>
       <div class="stat-value">{stats.online}</div>
     </div>
     <div class="stat-card tone-bad">
       <div class="stat-top">
-        <span class="stat-label">Offline</span>
+        <span class="stat-label">{$t('network.olt.offline') || 'Offline'}</span>
         <Icon name="alert-circle" size={14} />
       </div>
       <div class="stat-value">{stats.offline}</div>
@@ -506,7 +507,7 @@
   <div class="toolbar">
     <div class="search">
       <Icon name="search" size={16} />
-      <input class="search-input" bind:value={search} placeholder="Cari OLT..." />
+      <input class="search-input" bind:value={search} placeholder={$t('network.olt.search') || 'Cari OLT...'} />
       {#if search}
         <button class="clear" type="button" onclick={() => (search = '')}>
           <Icon name="x" size={14} />
@@ -520,7 +521,7 @@
       {columns}
       data={filtered}
       loading={loading}
-      emptyText="Belum ada OLT"
+      emptyText={$t('network.olt.empty') || 'No OLTs yet'}
       mobileView={isMobile ? 'card' : 'scroll'}
     >
       {#snippet cell({ item, key }: any)}
@@ -552,7 +553,7 @@
           {/if}
         {:else if key === 'status'}
           <span class="badge" class:online={item.is_online} class:offline={!item.is_online}>
-            {item.is_online ? 'Online' : 'Offline'}
+            {item.is_online ? ($t('network.olt.online') || 'Online') : ($t('network.olt.offline') || 'Offline')}
           </span>
         {:else if key === 'seen'}
           {#if item.last_polled_at}
@@ -564,20 +565,20 @@
           {/if}
         {:else if key === 'actions'}
           <div class="actions">
-            <button class="icon-btn" type="button" onclick={() => openDetail(item)} title="Buka">
+            <button class="icon-btn" type="button" onclick={() => openDetail(item)} title={$t('common.open') || 'Buka'}>
               <Icon name="arrow-right" size={16} />
             </button>
-            <button class="icon-btn" type="button" onclick={() => openOnMap(item)} disabled={item.latitude == null || item.longitude == null} title="Lihat di Peta">
+            <button class="icon-btn" type="button" onclick={() => openOnMap(item)} disabled={item.latitude == null || item.longitude == null} title={$t('network.olt.view_on_map') || 'Lihat di Peta'}>
               <Icon name="map-pin" size={16} />
             </button>
-            <button class="icon-btn" type="button" onclick={() => testConnection(item)} disabled={testingId === item.id} title="Test Koneksi">
+            <button class="icon-btn" type="button" onclick={() => testConnection(item)} disabled={testingId === item.id} title={$t('network.olt.test_connection') || 'Test Koneksi'}>
               <Icon name="zap" size={16} />
             </button>
             {#if $can('manage', 'router_inventory')}
-              <button class="icon-btn" type="button" onclick={() => openEdit(item)} title="Edit">
+              <button class="icon-btn" type="button" onclick={() => openEdit(item)} title={$t('common.edit') || 'Edit'}>
                 <Icon name="edit" size={16} />
               </button>
-              <button class="icon-btn danger" type="button" onclick={() => remove(item)} title="Hapus">
+              <button class="icon-btn danger" type="button" onclick={() => remove(item)} title={$t('common.delete') || 'Hapus'}>
                 <Icon name="trash-2" size={16} />
               </button>
             {/if}
@@ -592,22 +593,22 @@
   <div class="modal-backdrop" onclick={() => (showModal = false)} role="presentation">
     <div class="modal" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
       <div class="modal-header">
-        <h3>{editing ? 'Edit OLT' : 'Tambah OLT'}</h3>
+        <h3>{editing ? ($t('common.edit') || 'Edit') : ($t('network.olt.add') || 'Add OLT')}</h3>
         <button class="icon-btn" type="button" onclick={() => (showModal = false)}>
           <Icon name="x" size={18} />
         </button>
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label for="olt-name">Nama <span class="req">*</span></label>
-          <input id="olt-name" type="text" bind:value={formName} placeholder="OLT Gedung A" />
+          <label for="olt-name">{$t('common.name') || 'Name'} <span class="req">*</span></label>
+          <input id="olt-name" type="text" bind:value={formName} placeholder={$t('network.olt.name_placeholder') || 'e.g. Building A OLT'} />
         </div>
         <div class="form-group">
-          <label for="olt-desc">Deskripsi</label>
-          <input id="olt-desc" type="text" bind:value={formDescription} placeholder="OLT untuk area gedung A" />
+          <label for="olt-desc">{$t('common.description') || 'Description'}</label>
+          <input id="olt-desc" type="text" bind:value={formDescription} placeholder={$t('network.olt.desc_placeholder') || 'OLT for Building A area'} />
         </div>
         <div class="form-group">
-          <label for="olt-type">Tipe OLT <span class="req">*</span></label>
+          <label for="olt-type">{$t('network.olt.type') || 'OLT Type'} <span class="req">*</span></label>
           <select id="olt-type" bind:value={formOltType} disabled={!!editing}>
             <option value="hioso_ha7302cst">HIOSO HA-7302CST (EPON)</option>
             <option value="vsol_epon">VSOL (EPON)</option>
@@ -615,62 +616,62 @@
         </div>
         <div class="form-row">
           <div class="form-group flex-2">
-            <label for="olt-host">Host <span class="req">*</span></label>
+            <label for="olt-host">{$t('common.host') || 'Host'} <span class="req">*</span></label>
             <input id="olt-host" type="text" bind:value={formHost} placeholder="192.168.1.1" />
           </div>
           <div class="form-group flex-1">
-            <label for="olt-port">Port <span class="req">*</span></label>
+            <label for="olt-port">{$t('common.port') || 'Port'} <span class="req">*</span></label>
             <input id="olt-port" type="number" bind:value={formPort} min="1" max="65535" />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group flex-1">
-            <label for="olt-user">Username <span class="req">*</span></label>
+            <label for="olt-user">{$t('common.username') || 'Username'} <span class="req">*</span></label>
             <input id="olt-user" type="text" bind:value={formUsername} placeholder="admin" />
           </div>
           <div class="form-group flex-1">
-            <label for="olt-pass">Password {@html editing ? '' : '<span class="req">*</span>'}</label>
-            <input id="olt-pass" type="password" bind:value={formPassword} placeholder={editing ? 'Kosongkan jika tidak diubah' : '••••••'} />
+            <label for="olt-pass">{$t('common.password') || 'Password'} {@html editing ? '' : '<span class="req">*</span>'}</label>
+            <input id="olt-pass" type="password" bind:value={formPassword} placeholder={editing ? ($t('network.olt.leave_blank_to_keep') || 'Leave blank to keep current') : '••••••'} />
           </div>
           </div>
           <hr class="form-divider">
-          <div class="section-label">Lokasi OLT</div>
+          <div class="section-label">{$t('network.olt.location') || 'OLT Location'}</div>
           <div class="form-group">
             <button class="btn ghost map-pick-btn btn-block" type="button" onclick={openMapPicker} disabled={saving}>
               <Icon name="map-pin" size={15} />
-              {formLatitude != null && formLongitude != null ? `Ubah Titik (${formLatitude.toFixed(6)}, ${formLongitude.toFixed(6)})` : 'Pilih Lokasi di Peta'}
+              {formLatitude != null && formLongitude != null ? `${$t('network.olt.change_point') || 'Change Point'} (${formLatitude.toFixed(6)}, ${formLongitude.toFixed(6)})` : ($t('network.olt.pick_on_map') || 'Pick Location on Map')}
             </button>
           </div>
           <div class="form-group addr-group">
-          <label for="olt-addr">Alamat</label>
-          <input id="olt-addr" type="text" bind:value={formAddressLine} placeholder="Jl. Raya No. 123, Kecamatan..." />
+          <label for="olt-addr">{$t('network.olt.address') || 'Address'}</label>
+          <input id="olt-addr" type="text" bind:value={formAddressLine} placeholder={$t('network.olt.address_placeholder') || '123 Main St, District...'} />
           </div>
           <hr class="form-divider">
-          <div class="section-label">Uplink Router</div>
+          <div class="section-label">{$t('network.olt.uplink_router') || 'Uplink Router'}</div>
           <div class="form-row">
             <div class="form-group flex-2">
-              <label for="olt-uplink-router">Router Uplink</label>
+              <label for="olt-uplink-router">{$t('network.olt.uplink_router') || 'Uplink Router'}</label>
               <select id="olt-uplink-router" bind:value={formUplinkRouterId}>
-                <option value="">— Tidak Ada —</option>
+                <option value="">— {$t('common.none') || 'None'} —</option>
                 {#each routers as r}
                   <option value={r.id}>{r.name} ({r.host})</option>
                 {/each}
               </select>
             </div>
             <div class="form-group flex-1">
-              <label for="olt-uplink-port">Port</label>
+              <label for="olt-uplink-port">{$t('common.port') || 'Port'}</label>
               <input id="olt-uplink-port" type="text" bind:value={formUplinkPort} placeholder="ether1, sfp1..." />
             </div>
           </div>
           </div>
           <div class="modal-footer">
-        <button class="btn ghost" type="button" onclick={() => (showModal = false)}>Batal</button>
+        <button class="btn ghost" type="button" onclick={() => (showModal = false)}>{$t('common.cancel') || 'Cancel'}</button>
         <button class="btn" type="button" onclick={save} disabled={saving}>
           {#if saving}
             <Icon name="loader" size={16} />
-            Menyimpan...
+            {$t('common.saving') || 'Saving...'}
           {:else}
-            {editing ? 'Perbarui' : 'Simpan'}
+            {editing ? ($t('common.update') || 'Update') : ($t('common.save') || 'Save')}
           {/if}
         </button>
       </div>
@@ -680,10 +681,10 @@
 
 <ConfirmDialog
   bind:show={showDeleteConfirm}
-  title="Konfirmasi Hapus"
-  message="Yakin ingin menghapus OLT ini? Tindakan ini tidak dapat dibatalkan."
-  confirmText="Hapus"
-  cancelText="Batal"
+  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
+  message={$t('network.olt.confirm_delete') || 'Are you sure you want to delete this OLT? This action cannot be undone.'}
+  confirmText={$t('common.delete') || 'Delete'}
+  cancelText={$t('common.cancel') || 'Cancel'}
   type="danger"
   onconfirm={handleConfirmDelete}
   oncancel={() => { deleteTarget = null; }}
@@ -694,13 +695,13 @@
   <div class="modal-backdrop" onclick={closeMapPicker} role="presentation">
     <div class="modal map-picker-modal" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
       <div class="modal-header">
-        <h3>Pilih Lokasi OLT</h3>
+        <h3>{$t('network.olt.pick_location') || 'Pick OLT Location'}</h3>
         <button class="icon-btn" type="button" onclick={closeMapPicker}>
           <Icon name="x" size={18} />
         </button>
       </div>
       <div class="modal-body map-picker-body">
-        <div class="map-picker-help">Klik peta untuk pilih titik, lalu drag marker jika perlu presisi.</div>
+        <div class="map-picker-help">{$t('network.router.click_map_to_select') || 'Click map to select a point, then drag the marker for precision.'}</div>
         <div class="map-picker-cords">
           {#if pickerLat != null && pickerLng != null}
             <span class="mono-input">{pickerLat.toFixed(7)}, {pickerLng.toFixed(7)}</span>
@@ -713,15 +714,15 @@
           loading={pickerMapLoading}
           mapUnavailable={pickerMapUnavailable}
           mapErrorMessage={pickerMapErrorMessage}
-          mapUnavailableTitle="Map unavailable"
-          mapUnavailableSubtitle="Unable to initialize WebGL map on this browser/device."
+          mapUnavailableTitle={$t('network.map.map_unavailable_title') || 'Map unavailable'}
+          mapUnavailableSubtitle={$t('network.map.map_unavailable_subtitle') || 'Unable to initialize WebGL map on this browser/device.'}
           height="min(55vh, 480px)"
         />
         <div class="picker-actions">
-          <button class="btn ghost" type="button" onclick={closeMapPicker}>Batal</button>
+          <button class="btn ghost" type="button" onclick={closeMapPicker}>{$t('network.map.cancel') || ($t('common.cancel') || 'Cancel')}</button>
           <button class="btn" type="button" onclick={applyPickedCoordinates}>
             <Icon name="check" size={16} />
-            Gunakan Titik Ini
+            {$t('network.olt.use_this_point') || 'Use This Point'}
           </button>
         </div>
       </div>

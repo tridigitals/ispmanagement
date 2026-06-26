@@ -31,7 +31,7 @@
   <div class="section-head">
     <div>
       <h3>{$t('admin.customers.subscriptions.title') || 'Layanan'}</h3>
-      <p class="subtitle">Layanan pelanggan.</p>
+      <p class="subtitle">{$t('admin.customers.subscriptions.subtitle')}</p>
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingSubscriptions}>
@@ -50,25 +50,25 @@
   <div class="summary-strip">
     <div class="summary-card">
       <div>
-        <span class="summary-label">Total layanan</span>
+        <span class="summary-label">{$t('admin.customers.subscriptions.total_services')}</span>
         <strong>{subscriptions.length}</strong>
       </div>
     </div>
     <div class="summary-card emphasis">
       <div>
-        <span class="summary-label">Masa tenggang aktif</span>
+        <span class="summary-label">{$t('admin.customers.subscriptions.grace_active')}</span>
         <strong>{metricCount('grace_active') || metricCount('installation_done_awaiting_payment')}</strong>
       </div>
     </div>
     <div class="summary-card">
       <div>
-        <span class="summary-label">Aktif</span>
+        <span class="summary-label">{$t('common.active')}</span>
         <strong>{metricCount('active')}</strong>
       </div>
     </div>
     <div class="summary-card">
       <div>
-        <span class="summary-label">WO berjalan</span>
+        <span class="summary-label">{$t('admin.customers.subscriptions.wo_active')}</span>
         <strong>{metricCount('in_progress', 'work_order')}</strong>
       </div>
     </div>
@@ -105,19 +105,19 @@
         {@const accessState = getSubscriptionAccessState(row)}
         <div class="policy-card">
           <div class="policy-row">
-            <span class="policy-label">Masa aktif</span>
+            <span class="policy-label">{$t('admin.customers.subscriptions.active_period')}</span>
             <div class="policy-value">
               {summary.activeUntilMissing
-                ? 'Belum ada masa aktif akhir'
+                : $t('admin.customers.subscriptions.active_period') + ' —'
                 : formatCustomerPolicyDate(summary.activeUntilIso)}
             </div>
           </div>
           <div class="policy-row">
-            <span class="policy-label">Kebijakan</span>
+            <span class="policy-label">{$t('admin.customers.subscriptions.policy')}</span>
             <div class="policy-value">{summary.policyLabel}</div>
           </div>
           <div class="policy-row">
-            <span class="policy-label">Perkiraan suspend</span>
+            <span class="policy-label">{$t('admin.customers.subscriptions.estimated_suspend')}</span>
             <div class="policy-value emphasis">
               {summary.estimatedSuspendIso
                 ? formatCustomerPolicyDate(summary.estimatedSuspendIso)
@@ -126,7 +126,7 @@
           </div>
           {#if accessState}
             <div class="policy-row">
-              <span class="policy-label">Akses saat suspend</span>
+              <span class="policy-label">{$t('admin.customers.subscriptions.access_on_suspend')}</span>
               <div class="access-state">
                 <span class={`access-badge ${accessState.tone}`}>{accessState.label}</span>
                 <div class="policy-value subtle">{accessState.detail}</div>
@@ -148,7 +148,7 @@
             {#if row.status === 'active' && onChangePackage}
               <button
                 class="btn-icon"
-                title="Ganti Paket"
+                title={$t('admin.customers.subscriptions.change_package')}
                 onclick={() => onChangePackage(row)}
                 disabled={togglingSubscription === row.id || deletingSubscription === row.id}
               >
@@ -158,7 +158,7 @@
             {#if row.status === 'active'}
               <button
                 class="btn-icon"
-                title="Suspend"
+                title={$t('common.suspend') || 'Suspend'}
                 onclick={() => onSetSubscriptionStatus(row, 'suspended')}
                 disabled={togglingSubscription === row.id || deletingSubscription === row.id}
               >
@@ -167,7 +167,7 @@
             {:else if row.status === 'suspended'}
               <button
                 class="btn-icon"
-                title="Aktifkan lagi"
+                title={$t('common.activate') || 'Activate'}
                 onclick={() => onSetSubscriptionStatus(row, 'active')}
                 disabled={togglingSubscription === row.id || deletingSubscription === row.id}
               >

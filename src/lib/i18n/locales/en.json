@@ -35,19 +35,24 @@
       "sections": {
         "primary": {
           "kicker": "Snapshot",
-          "title": "Selected KPIs"
+          "title": "Selected KPIs",
+          "meta": "cards"
         },
         "focus": {
           "kicker": "Action",
-          "title": "My Focus Today"
+          "title": "My Focus Today",
+          "meta": "items"
         },
         "actions": {
           "kicker": "Go next",
-          "title": "Quick Actions"
+          "title": "Quick Actions",
+          "meta": "shortcuts"
         },
         "trends": {
           "kicker": "Distribution",
-          "title": "Compact trends"
+          "title": "Compact trends",
+          "meta": "groups",
+          "tracked_items": "tracked items"
         }
       },
       "widgets": {
@@ -222,7 +227,9 @@
         "custom": "Custom"
       },
       "channels": {
-        "both": "Both"
+        "both": "Both",
+        "whatsapp": "WhatsApp",
+        "email": "Email"
       },
       "statuses": {
         "draft": "Draft",
@@ -272,7 +279,10 @@
         "deleted": "Message template deleted",
         "delete_failed": "Failed to delete message template",
         "preview_failed": "Template preview failed"
-      }
+      },
+      "subtitle_desc": "Template messages for WhatsApp and email.",
+      "both": "Both",
+      "variable_hint": "Click a token to insert a variable."
     },
     "settings": {
       "title": "Global Settings",
@@ -395,7 +405,13 @@
             "label": "Scheduler interval (minutes)",
             "desc": "How often the backend checks all tenants for overdue installation work orders."
           }
-        }
+        },
+        "midtrans_desc": "Accept payments via Credit Card, GoPay, ShopeePay, VA, etc.",
+        "enable_live": "Enable Production Mode (Live)",
+        "duitku_title": "Duitku Payment Gateway",
+        "duitku_desc": "Accept payments via Duitku checkout redirect.",
+        "merchant_code": "Merchant Code",
+        "api_key": "API Key"
       },
       "categories": {
         "general": "General",
@@ -520,6 +536,24 @@
         "test_configuration": "Test Configuration",
         "midtrans": "Midtrans Payment Gateway",
         "bank_transfer_manual": "Bank Transfer (Manual)"
+      },
+      "company": {
+        "name_placeholder": "PT Internet Service Provider",
+        "address_placeholder": "Jl. Raya No. 123, Jakarta 12345",
+        "logo_preview_alt": "Logo preview"
+      },
+      "service_tab": {
+        "subtitle": "Global settings for billing and service lifecycle.",
+        "health_scheduler": "Health scheduler",
+        "auto_invoice": "Auto invoice",
+        "auto_suspend": "Auto suspend",
+        "auto_resume": "Auto resume",
+        "reminder": "Reminder",
+        "view_invoices": "View invoices",
+        "invoice_status": "Customer invoice status",
+        "view_automation_log": "View automation log",
+        "scheduler_history": "Billing scheduler history",
+        "suspend_method": "Suspend method"
       }
     },
     "customers": {
@@ -672,7 +706,8 @@
         "billing": "Billing",
         "pppoe": "PPPoE",
         "dhcp_static": "DHCP Static",
-        "assets": "FTTH Assets"
+        "assets": "FTTH Assets",
+        "timeline": "Timeline"
       },
       "assets": {
         "subtitle": "FTTH devices connected to this customer.",
@@ -689,7 +724,8 @@
         }
       },
       "overview": {
-        "title": "Customer profile"
+        "title": "Customer profile",
+        "profile_quality": "Profile quality"
       },
       "locations": {
         "title": "Locations",
@@ -786,38 +822,19 @@
           "ends_at": "Ends at",
           "notes": "Notes"
         },
-        "change_package": {
-          "title": "Change Package",
-          "current_package": "Current Package",
-          "new_package": "New Package",
-          "select_placeholder": "— Select package —",
-          "old_package_label": "Old package (remaining days)",
-          "new_package_label": "New package (remaining days)",
-          "pro_rata_estimate": "Pro-rata charge (estimate)",
-          "pro_rata_note": "* Actual amount is calculated based on remaining days in the current billing period.",
-          "success_title": "Success!",
-          "success_message": "Package changed from",
-          "old_price": "Old price",
-          "new_price": "New price",
-          "credit": "Credit (unused days on old package)",
-          "charge": "Charge (remaining days on new package)",
-          "net_amount": "Net charge",
-          "view_invoice": "View invoice →",
-          "cancel": "Cancel",
-          "processing": "Processing...",
-          "submit": "Change Package",
-          "close": "Close",
-          "toasts": {
-            "success_with_charge": "Package changed! Pro-rata charge:",
-            "success_no_charge": "Package changed! No additional charge",
-            "error": "Failed to change package:"
-          },
-          "success_message_to": "to"
-        }
+        "change_package": "Change Package",
+        "total_services": "Total services",
+        "grace_active": "Grace period active",
+        "wo_active": "Active work orders",
+        "active_period": "Active period",
+        "policy": "Policy",
+        "estimated_suspend": "Estimated suspend",
+        "access_on_suspend": "Access on suspend",
+        "no_active_period": "No active period yet"
       },
       "billing": {
         "title": "Billing",
-        "subtitle": "Invoice history generated from this customer subscriptions.",
+        "subtitle": "Customer invoices.",
         "empty": "No invoices for this customer yet.",
         "stats": {
           "total": "Total invoices",
@@ -846,6 +863,24 @@
         "actions": {
           "generate_from_subscription": "Generate invoice"
         },
+        "analytics": {
+          "title": "Billing Dashboard",
+          "subtitle": "Revenue metrics and collection overview",
+          "load_error": "Failed to load analytics",
+          "monthly_recurring": "Monthly Recurring Revenue",
+          "annual_recurring": "Annual Recurring Revenue",
+          "revenue_this_month": "Revenue This Month",
+          "active_subs": "Active Subscriptions",
+          "customers": "customers",
+          "collection_rate": "Collection Rate",
+          "avg_days_pay": "Avg days to pay",
+          "churn_rate": "Churn Rate",
+          "this_month": "This month",
+          "aging_report": "Aging Report (Overdue)",
+          "total_overdue": "Total Overdue",
+          "no_overdue": "No overdue invoices 🎉",
+          "revenue_trend": "Revenue Trend (6 months)"
+        },
         "toasts": {
           "load_failed": "Failed to load billing invoices: {message}",
           "generated": "Invoice generated successfully",
@@ -854,7 +889,7 @@
       },
       "pppoe": {
         "title": "PPPoE accounts",
-        "subtitle": "Manage PPPoE secrets for this customer (per-router). The database is the source of truth.",
+        "subtitle": "Customer access accounts.",
         "search": "Search username...",
         "empty": "No PPPoE accounts yet.",
         "confirm_delete": "Delete this PPPoE account?",
@@ -935,7 +970,54 @@
         "update_failed": "Failed to update customer: {message}",
         "deleted": "Customer deleted",
         "delete_failed": "Failed to delete customer: {message}"
-      }
+      },
+      "invite": {
+        "title": "Customer Invite Link",
+        "generate": "Generate invite",
+        "default_policy": "Default policy",
+        "default_expiry": "Default expiry (hours)",
+        "default_max_uses": "Default max uses",
+        "expire_hours": "Expire (hours)",
+        "max_uses": "Max uses",
+        "note_optional": "Note (optional)",
+        "generate_btn": "Generate Invite Link",
+        "generating": "Generating...",
+        "generated_link": "Generated link",
+        "share_hint": "Share this link with the customer or related team.",
+        "recent_links": "Recent invite links",
+        "recent_hint": "Monitor active links, usage, and revoke unused links.",
+        "show_inactive": "Show inactive",
+        "no_links": "No invite links yet.",
+        "uses": "Uses",
+        "created_at": "Created",
+        "expires_at": "Expires",
+        "revoke": "Revoke",
+        "revoking": "Revoking...",
+        "invite_summary": "Invite summary",
+        "save_defaults": "Save defaults",
+        "link_only_available": "Link is only available when invite is first created.",
+        "toasts": {
+          "generated": "Invite link generated",
+          "generate_failed": "Failed to generate invite link",
+          "revoked": "Invite link revoked",
+          "revoke_failed": "Failed to revoke invite",
+          "policy_updated": "Invite defaults updated",
+          "policy_failed": "Failed to update invite defaults",
+          "load_failed": "Failed to load customer invite links",
+          "summary_failed": "Failed to load invite summary"
+        },
+        "used_up": "Used up",
+        "expired": "Expired",
+        "revoked": "Revoked",
+        "utilization": "Utilization",
+        "note_placeholder": "Campaign, PIC, or internal remark"
+      },
+      "timeline": {
+        "subtitle": "Customer activity.",
+        "empty": "No timeline yet.",
+        "search_placeholder": "Search timeline..."
+      },
+      "search_placeholder": "Name, email, phone"
     },
     "ftth_assets": {
       "page": {
@@ -1047,7 +1129,7 @@
       },
       "type_picker": {
         "title": "Choose Service Type",
-        "subtitle": "Select the service category first, then continue to the detailed service form.",
+        "subtitle": "Choose a service category.",
         "continue": "Continue",
         "change": "Change type",
         "add_as_feature": "Add as feature",
@@ -1081,7 +1163,9 @@
       "toasts": {
         "created": "Service created",
         "updated": "Service updated"
-      }
+      },
+      "subtitle_desc": "Manage services and their configuration.",
+      "category_hint": "Select a service category."
     },
     "network": {
       "import_center": {
@@ -2228,6 +2312,20 @@
         "cancel_reason_required": "Cancellation reason is required (minimum 10 characters).",
         "cancel_reason_hint": "Add cancellation reason (minimum 10 characters) in detail modal.",
         "details_title": "Installation Details",
+        "assignment": "Assignment",
+        "all_work_orders": "All work orders",
+        "assigned_only": "Assigned only",
+        "unassigned_only": "Unassigned only",
+        "assignee_filter": "Assignee",
+        "sort_by": "Sort by",
+        "latest_updated": "Latest updated",
+        "oldest_updated": "Oldest updated",
+        "scheduled_earliest": "Scheduled earliest",
+        "scheduled_latest": "Scheduled latest",
+        "customer_az": "Customer A-Z",
+        "customer_za": "Customer Z-A",
+        "assignee_az": "Assignee A-Z",
+        "assignee_za": "Assignee Z-A",
         "step_assign": "Assign",
         "step_schedule": "Schedule",
         "step_onsite": "On-site & Test",
@@ -2338,7 +2436,88 @@
         "reopen_notes": "Optional note before reopening work order",
         "save_plan": "Save Plan",
         "history": "Latest Notes",
-        "timeline": "Work Order Timeline"
+        "timeline": "Work Order Timeline",
+        "create_order": "Create Installation Order",
+        "loading_wizard": "Loading order wizard...",
+        "order_subtitle": "Customer, service, and installation in one flow.",
+        "customer_context": "Customer Context",
+        "customer_context_hint": "Use a new customer or select an existing profile.",
+        "new_customer": "New Customer",
+        "existing_customer": "Existing Customer",
+        "address_service": "Address & Service",
+        "address_service_hint": "Set the install address and package.",
+        "use_existing_address": "Use Existing Address",
+        "add_new_address": "Add New Address",
+        "customer_address": "Customer address",
+        "select_address": "Select address",
+        "review_order": "Review Order",
+        "review_hint": "Review before creating the work order.",
+        "location_mode": "Location mode",
+        "use_saved_address": "Use saved address",
+        "create_new_address": "Create new installation address",
+        "select_package": "Select package",
+        "billing_cycle": "Billing cycle",
+        "requested_install_date": "Requested installation date",
+        "order_notes": "Order notes",
+        "subscription_pending_note": "Subscription status will be pending_installation and the work order will be created immediately.",
+        "pick_installation_point": "Pick Installation Point",
+        "map_picker_help": "Click the map to choose a point, then drag the marker if you need better precision.",
+        "use_this_point": "Use This Point",
+        "update_map_point": "Update Map Point",
+        "pick_map_point": "Pick Map Point",
+        "installation_point": "Installation point on map",
+        "installation_point_hint": "Choose the map point for accurate coordinates.",
+        "continue": "Continue",
+        "create_order_btn": "Create Order",
+        "submitting": "Submitting...",
+        "customer_active": "Customer active",
+        "no_contact": "No contact",
+        "pending_install": "Pending install",
+        "search_customer": "Search customer",
+        "search_customer_placeholder": "Name, email, phone",
+        "searching": "Searching...",
+        "no_address_line": "No address line",
+        "location_label": "Label",
+        "address_line1": "Address line 1",
+        "address_line2": "Address line 2",
+        "city": "City",
+        "state": "State",
+        "postal_code": "Postal code",
+        "country": "Country",
+        "select_country": "Select country...",
+        "search_country": "Search country...",
+        "no_country_found": "No country found",
+        "latitude": "Latitude",
+        "longitude": "Longitude",
+        "location_notes": "Location notes",
+        "monthly": "Monthly",
+        "yearly": "Yearly",
+        "address": "Address",
+        "billing": "Billing",
+        "requested_install": "Requested install",
+        "map_unavailable": "Map unavailable",
+        "map_unavailable_subtitle": "Unable to initialize WebGL map on this browser/device.",
+        "phone_code": "Code",
+        "search_country_code": "Search country code...",
+        "no_code_found": "No code found",
+        "toasts": {
+          "load_wizard_failed": "Failed to load order wizard",
+          "search_customers_failed": "Failed to search customers",
+          "order_created": "Installation order created",
+          "order_create_failed": "Failed to create installation order",
+          "pick_location_first": "Pick a location point first",
+          "map_init_failed": "Failed to initialize map"
+        },
+        "validation": {
+          "select_existing_customer": "Select an existing customer first",
+          "customer_name_required": "Customer name is required",
+          "customer_email_or_phone_required": "Customer email or phone is required",
+          "select_existing_address": "Select an existing address first",
+          "location_label_required": "Location label is required",
+          "address_line1_required": "Address line 1 is required",
+          "package_required": "Package is required",
+          "complete_form": "Please complete the form first"
+        }
       },
       "logs": {
         "title": "Router Logs",
@@ -2419,7 +2598,8 @@
       "errors": {
         "save_failed": "Failed to save role",
         "delete_failed": "Failed to delete role: "
-      }
+      },
+      "subtitle_desc": "Roles and access permissions."
     },
     "support": {
       "title": "Support Tickets",
@@ -2432,7 +2612,8 @@
         "status": "Status",
         "priority": "Priority",
         "updated": "Updated",
-        "messages": "Messages"
+        "messages": "Messages",
+        "category": "Category"
       },
       "panels": {
         "manage": "Manage",
@@ -2441,6 +2622,7 @@
       "fields": {
         "status": "Status",
         "priority": "Priority",
+        "category": "Category",
         "assignee": "Assignee",
         "internal": "Internal note"
       },
@@ -2449,7 +2631,8 @@
       },
       "toasts": {
         "updated": "Ticket updated"
-      }
+      },
+      "unassigned": "Unassigned"
     },
     "email_outbox": {
       "title": "Email Outbox",
@@ -2506,7 +2689,8 @@
         "not_found": "Not found."
       },
       "selected": "Selected",
-      "confirm_bulk_delete": "Delete selected outbox items?"
+      "confirm_bulk_delete": "Delete selected outbox items?",
+      "html_preview": "HTML preview"
     },
     "backups": {
       "disabled_title": "Disabled for Tenants",
@@ -2540,7 +2724,11 @@
           "title": "Billing",
           "desc": "Manage subscription and invoices."
         }
-      }
+      },
+      "at_a_glance": "At a glance",
+      "priority_queue": "Priority queue",
+      "fast_lanes": "Fast lanes",
+      "signal_mix": "Signal mix"
     },
     "subscription": {
       "title": "Subscription",
@@ -2639,7 +2827,13 @@
       "toasts": {
         "load_failed": "Failed to load invoices"
       },
-      "print_pdf": "Print / Download PDF"
+      "print_pdf": "Print / Download PDF",
+      "breadcrumb": "Breadcrumb",
+      "subtitle_tagihan": "Billing, collection, and customer invoices.",
+      "subtitle_monitor": "Monitor active invoices without leaving the page.",
+      "subtitle_manual": "Select a subscription to create a manual invoice.",
+      "subtitle_summary": "Payment status summary.",
+      "subtitle_filter": "Filter and check customer invoices."
     },
     "billing_collection": {
       "title": "Billing Collection Logs",
@@ -2792,7 +2986,11 @@
           "created": "Customer service invoice created",
           "create_failed": "Failed to create invoice",
           "bulk_generated": "Bulk generated",
-          "bulk_generate_failed": "Failed to generate due invoices"
+          "bulk_generate_failed": "Failed to generate due invoices",
+          "bulk_sent": "Bulk send complete",
+          "bulk_sent_stats": "{sent} sent, {skipped} skipped, {failed} failed",
+          "bulk_send_failed": "Failed to send invoices",
+          "bulk_send_no_selection": "Select at least one invoice"
         },
         "stats": {
           "total": "Total",
@@ -2939,28 +3137,26 @@
         "no_results": "No members found",
         "try_adjusting": "Try adjusting your search or filters."
       },
-      "deleted_tab": "Deleted",
-      "deleted_at": "Deleted At",
-      "deleted_empty": "No deleted members",
-      "restore": "Restore",
-      "permanent_delete": "Delete Permanently",
-      "hard_delete": {
-        "title": "Delete Permanently",
-        "message": "Are you sure you want to permanently delete {name}? This action CANNOT be undone. The user account will also be deleted if they have no other team memberships."
-      },
-      "toasts": {
-        "load_failed": "Failed to load team data",
-        "load_deleted_failed": "Failed to load deleted members",
-        "added": "Team member added successfully",
-        "add_failed": "Failed to add member: {message}",
-        "removed": "Member removed successfully",
-        "remove_failed": "Failed to remove member: {message}",
-        "role_updated": "Member role updated successfully",
-        "role_update_failed": "Failed to update role: {message}",
-        "restored": "Member restored successfully",
-        "restore_failed": "Failed to restore member: {message}",
-        "hard_deleted": "Member permanently deleted",
-        "hard_delete_failed": "Failed to delete permanently: {message}"
+      "subtitle_desc": "Team members and access."
+    },
+    "billing": {
+      "analytics": {
+        "title": "Billing Dashboard",
+        "subtitle": "Revenue metrics and collection overview",
+        "load_error": "Failed to load analytics",
+        "monthly_recurring": "Monthly Recurring Revenue",
+        "annual_recurring": "Annual Recurring Revenue",
+        "revenue_this_month": "Revenue This Month",
+        "active_subs": "Active Subscriptions",
+        "customers": "customers",
+        "collection_rate": "Collection Rate",
+        "avg_days_pay": "Avg days to pay",
+        "churn_rate": "Churn Rate",
+        "this_month": "This month",
+        "aging_report": "Aging Report (Overdue)",
+        "total_overdue": "Total Overdue",
+        "no_overdue": "No overdue invoices 🎉",
+        "revenue_trend": "Revenue Trend (6 months)"
       }
     }
   },
@@ -2980,7 +3176,11 @@
     },
     "audiences": {
       "all": "All users",
-      "admins": "Admins only"
+      "admins": "Admins only",
+      "customers": "Customers",
+      "active_subscribers": "Active subscribers",
+      "suspended_subscribers": "Suspended subscribers",
+      "target_package": "Specific package"
     },
     "modes": {
       "post": "Post",
@@ -3058,9 +3258,9 @@
       "footer_text": "Need an account?",
       "register_link": "Register here",
       "error_wrong_tenant": "You do not have access to this workspace. Please login at your own workspace URL.",
-      "error_generic": "An unexpected error occurred. Please try again.",
       "error_pending_approval": "Your account is pending approval. Please wait for an administrator to review your registration.",
-      "error_rejected": "Your registration has been rejected. Please contact support for assistance."
+      "error_rejected": "Your registration has been rejected. Please contact support for assistance.",
+      "error_generic": "An unexpected error occurred. Please try again."
     },
     "register": {
       "title": "Create Account",
@@ -3077,9 +3277,9 @@
       "loading_button": "Creating...",
       "footer_text": "Already have an account?",
       "login_link": "Sign in",
-      "back_to_login": "Back to Login",
+      "pending_title": "Registration Pending",
       "pending_message": "Your account has been created and is awaiting approval by an administrator. You will receive an email once your account is approved.",
-      "pending_title": "Registration Pending"
+      "back_to_login": "Back to Login"
     },
     "validation": {
       "passwords_do_not_match": "Passwords do not match",
@@ -3093,7 +3293,10 @@
       "select_method_desc": "Choose how you'd like to verify your identity",
       "use_app": "Authenticator App",
       "use_email": "Email Code",
-      "enter_code": "Enter Verification Code",
+      "enter_code": "Enter verification code",
+      "preparing": "Preparing setup...",
+      "qr_code": "QR Code",
+      "code_sent": "A verification code has been sent to your email.",
       "totp_desc": "Enter the 6-digit code from your authenticator app",
       "enter_email_code": "Enter Email Code",
       "email_desc": "We'll send a verification code to your email",
@@ -3235,7 +3438,43 @@
       "fri": "Fri",
       "sat": "Sat",
       "sun": "Sun"
-    }
+    },
+    "role": "Role",
+    "title": "Title",
+    "logo": "Logo",
+    "type": "Type",
+    "mark_as_read": "Mark as read",
+    "review": "Review",
+    "breadcrumb": "Breadcrumb",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "app_logo": "App Logo",
+    "description": "Description",
+    "amount": "Amount",
+    "host": "Host",
+    "port": "Port",
+    "username": "Username",
+    "password": "Password",
+    "none": "None",
+    "required_fields": "Please fill in all required fields.",
+    "password_required": "Password is required.",
+    "confirm_delete_title": "Confirm Delete",
+    "map": "Map",
+    "data_refreshed": "Data refreshed.",
+    "update": "Update",
+    "router": "Router",
+    "size": "Size",
+    "send": "Send",
+    "message": "Message",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "default": "Default",
+    "preserve": "Preserve",
+    "replace": "Replace",
+    "enabled": "Enabled",
+    "enable": "Enable",
+    "invoice": "Invoice"
   },
   "components": {
     "lightbox": {
@@ -3334,7 +3573,40 @@
       "preview": "Invoice Preview",
       "download_pdf": "Download PDF",
       "generating": "Generating...",
-      "print": "Print"
+      "print": "Print",
+      "invoice": "INVOICE",
+      "bill_to": "Bill To",
+      "issue_date": "Issue Date",
+      "due_date": "Due Date",
+      "paid_at": "Paid At",
+      "billing_cycle": "Billing Cycle",
+      "unit_price": "Unit Price",
+      "subtotal": "Subtotal",
+      "items": "Items",
+      "amount": "Amount",
+      "payment_instructions": "Payment Instructions"
+    },
+    "topbar_global_search": {
+      "hint": "Type to search across available modules.",
+      "no_results": "No results match your query."
+    },
+    "service_coming_soon": {
+      "planned_scope": "Planned Scope",
+      "next_rollout": "Next rollout target"
+    },
+    "date_time_picker": {
+      "open": "Open date time picker"
+    },
+    "rich_text_editor": {
+      "toolbar": "Rich text toolbar",
+      "bold": "Bold",
+      "italic": "Italic",
+      "underline": "Underline",
+      "bullet_list": "Bullet list",
+      "numbered_list": "Numbered list",
+      "quote": "Quote",
+      "link": "Link",
+      "clear_formatting": "Clear formatting"
     }
   },
   "dashboard": {
@@ -3362,13 +3634,34 @@
       "summary": {
         "total": "Total locations",
         "customer": "Customer-linked",
-        "profile": "Profile addresses"
+        "profile": "Profile addresses",
+        "pinned": "Map pinned",
+        "has_notes": "Has notes"
       },
       "empty": "No locations yet.",
-      "empty_hint": "Your admin has not linked your account to a customer location.",
+      "empty_hint": "Add a new location and select a map point so it can be used for orders and coverage checks.",
       "toasts": {
         "load_failed": "Failed to load locations"
-      }
+      },
+      "form": {
+        "label": "Location label",
+        "country": "Country",
+        "line1": "Address line 1",
+        "line2": "Address line 2",
+        "city": "City",
+        "postal_code": "Postal code",
+        "notes": "Notes",
+        "notes_placeholder": "Location access notes, house landmarks, etc",
+        "pick_on_map": "Pick Location on Map",
+        "no_map_pin": "No map pin yet",
+        "pick_location_title": "Pick Location Point",
+        "pick_location_help": "Click the map to pick a point. After that the marker can be dragged for precision.",
+        "use_this_point": "Use This Point",
+        "service_location": "Service Location",
+        "pick_province_state": "Province / State"
+      },
+      "no_customer_hint": "This account is not linked to a customer, so service locations cannot be managed.",
+      "service_location": "Service Location"
     },
     "stats": {
       "account_role": "Account Role",
@@ -3736,6 +4029,28 @@
       "check_messages": "Check Messages",
       "security_settings": "Security Settings",
       "contact_support": "Contact Support"
+    },
+    "services": {
+      "order": {
+        "title": "Order Service",
+        "subtitle": "Choose service type first. Each type has its own dedicated order flow.",
+        "ready": "Ready",
+        "internet_pppoe": "Internet Access (PPPoE)",
+        "hotspot": "Hotspot Service",
+        "hotspot_desc": "Voucher-based hotspot and captive portal deployment.",
+        "dedicated_link": "Dedicated Link",
+        "dedicated_desc": "Point-to-point business connectivity with SLA profile.",
+        "not_enabled": "Not enabled yet",
+        "managed_vpn": "Managed VPN",
+        "vpn_desc": "Site-to-site or remote access VPN for enterprise clients."
+      },
+      "tracker": {
+        "invoice": "Invoice",
+        "invoice_number": "Invoice Number",
+        "amount": "Amount",
+        "due_date": "Due Date",
+        "paid_at": "Paid At"
+      }
     }
   },
   "install": {
@@ -3774,6 +4089,371 @@
     "success": {
       "title": "Installation Complete!",
       "redirecting": "Redirecting you to login..."
+    }
+  },
+  "mixradius": {
+    "import_wizard": {
+      "title": "Import MixRadius",
+      "description": "Migration wizard for MixRadius backup to ISP Management with preview, mapping, and execute mode.",
+      "current_step": "Current step",
+      "latest_batch": "Latest batch",
+      "loading_history": "Loading import history...",
+      "no_batch": "No saved MixRadius batch yet.",
+      "upload_step": {
+        "title": "Upload MixRadius Backup",
+        "browser_upload": "Browser upload"
+      },
+      "source_summary": {
+        "title": "Source review",
+        "subtitle": "Source summary",
+        "description": "Make sure the selected backup is the MixRadius batch you want to migrate.",
+        "parse_status": "Parse status",
+        "source_file": "Source file",
+        "detail": "Backup details to be processed",
+        "filename": "Filename",
+        "size": "Size",
+        "checksum": "Checksum",
+        "back": "Back",
+        "continue": "Continue"
+      },
+      "mapping": {
+        "nas_to_router": "NAS to router",
+        "no_nas_rows": "No NAS rows in initial preview.",
+        "select_router": "Select router...",
+        "plan_to_package": "Plan to package",
+        "no_plan_rows": "No plan rows in initial preview.",
+        "target_provisioning": "Target provisioning PPPoE",
+        "customer_conflict": "Customer conflict decision",
+        "default_safe_review": "Default safe review",
+        "merge": "Merge",
+        "replace": "Replace",
+        "create_new": "Create new",
+        "skip": "Skip",
+        "decision_info": "Decide how to handle customers that already exist.",
+        "nas_field": "NAS field",
+        "router_field": "Router field"
+      },
+      "preview": {
+        "title": "Import preview results",
+        "total": "Total",
+        "auto_matched": "Auto matched",
+        "needs_review": "Needs review",
+        "conflicts": "Conflicts",
+        "blocked": "Blocked",
+        "no_rows": "No rows for this tab.",
+        "back": "Back",
+        "execute": "Execute Import"
+      },
+      "execution": {
+        "title": "Execute import",
+        "description": "Select execution mode according to desired caution level.",
+        "legacy_transactions": "Legacy transactions",
+        "production_invoices": "Production invoices",
+        "back": "Back",
+        "cancel_batch": "Cancel batch"
+      },
+      "batch_report": {
+        "title": "Batch report",
+        "close": "Close report",
+        "loading": "Loading batch report...",
+        "unavailable": "Batch report not yet available.",
+        "status": "Status",
+        "source_summary": "Source summary",
+        "phase_report": "Phase report"
+      }
+    }
+  },
+  "network": {
+    "map": {
+      "controls": "Controls",
+      "workspace_controls": "Map workspace controls",
+      "quick_modes": "Workspace quick modes",
+      "smart_inspector": "Smart inspector",
+      "operational_insight": "Operational insight strip",
+      "show_controls": "Show map controls",
+      "manage_mode": "Manage Mode",
+      "nodes": "Nodes",
+      "links": "Links",
+      "zones": "Zones",
+      "name": "Name",
+      "type": "Type",
+      "source": "Source",
+      "status": "Status",
+      "priority": "Priority",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "identity": "Identity",
+      "view": "View",
+      "standard": "Standard",
+      "satellite": "Satellite",
+      "map_view_mode": "Map view mode",
+      "link_drawing_mode": "Link drawing mode",
+      "snap_bend_points": "Snap bend points to nearest node",
+      "select_link_type": "Select link type",
+      "select_status": "Select status",
+      "select_node_type": "Select node type",
+      "cancel": "Cancel",
+      "current_asset": "Current asset",
+      "upstream_parent": "Upstream Parent",
+      "no_parent": "No parent",
+      "connect_ftth_asset": "Connect FTTH Asset",
+      "use_for_odc_odp": "Use this for links like ODC to ODP or OLT to ODC.",
+      "use_for_drop": "Use this to draw the customer-side drop relation from ODP.",
+      "start_draw_cable": "Start Draw Cable to create a route from the customer premise.",
+      "customer_marker_focused": "Customer marker focused",
+      "customer_node_ready": "Customer node ready",
+      "target_node_selected": "Target node selected",
+      "existing_cable_selected": "Existing cable selected",
+      "loading": "Loading...",
+      "optional_hardware": "Optional Hardware Reference",
+      "brand_model_serial": "Brand, model, and serial",
+      "open_if_needed": "Open if needed",
+      "recommended": "Recommended",
+      "map_location": "Map Location",
+      "asset_coordinates": "Asset coordinates",
+      "router": "Router",
+      "interface": "Interface",
+      "host": "Host",
+      "latency": "Latency",
+      "memory_use": "Memory Use",
+      "node": "Node",
+      "link": "Link",
+      "map_unavailable_title": "Map unavailable",
+      "map_unavailable_subtitle": "Unable to initialize WebGL map on this browser/device.",
+      "latitude_range_error": "Latitude must be between -90 and 90",
+      "longitude_range_error": "Longitude must be between -180 and 180"
+    },
+    "olt": {
+      "title": "OLT Monitoring",
+      "description": "Manage OLT devices and monitor ONU status.",
+      "total": "Total",
+      "online": "Online",
+      "offline": "Offline",
+      "search": "Search OLT...",
+      "open": "Open",
+      "view_on_map": "View on map",
+      "test_connection": "Test Connection",
+      "refresh": "Refresh",
+      "loading": "Loading OLT data...",
+      "onu_total": "ONU Total",
+      "onu_online": "ONU Online",
+      "onu_offline": "ONU Offline",
+      "weak_signal": "Weak Signal",
+      "system_info": "System Information",
+      "model": "Model",
+      "version": "Version",
+      "address": "Address",
+      "serial": "Serial",
+      "last_seen": "Last Seen",
+      "add": "Add OLT",
+      "updated": "OLT updated successfully.",
+      "created": "OLT created successfully.",
+      "deleted": "OLT deleted successfully.",
+      "no_coordinates": "OLT does not have location coordinates yet.",
+      "connection_success": "Connection successful!",
+      "connection_failed": "Connection failed.",
+      "empty": "No OLTs yet",
+      "name_placeholder": "e.g. Building A OLT",
+      "desc_placeholder": "OLT for Building A area",
+      "type": "OLT Type",
+      "leave_blank_to_keep": "Leave blank to keep current",
+      "location": "OLT Location",
+      "change_point": "Change Point",
+      "pick_on_map": "Pick Location on Map",
+      "address_placeholder": "123 Main St, District...",
+      "uplink_router": "Uplink Router",
+      "pick_location": "Pick OLT Location",
+      "use_this_point": "Use This Point",
+      "confirm_delete": "Are you sure you want to delete this OLT? This action cannot be undone.",
+      "reboot_onu": "Reboot ONU",
+      "detail": "OLT Detail",
+      "refresh_stats": "Refresh Stats",
+      "overview": "Overview",
+      "onu_history": "ONU History",
+      "pon_ports": "PON Ports",
+      "no_pon_ports": "No PON ports",
+      "coordinates": "Coordinates",
+      "no_onus": "No ONUs",
+      "search_onus": "Search ONU ID, name, or MAC...",
+      "search_onu_history": "Search ONU ID or name...",
+      "no_history": "No history",
+      "not_found": "OLT not found.",
+      "confirm_reboot": "Confirm ONU Reboot",
+      "reboot_confirm_message": "Are you sure you want to reboot ONU \"{name}\"? The ONU will restart.",
+      "onu_rebooting": "ONU {name} is rebooting.",
+      "pon_port": "PON Port",
+      "signal": "Signal (dBm)",
+      "signal_good": "Good",
+      "signal_fair": "Fair",
+      "signal_weak": "Weak",
+      "signal_very_weak": "Very Weak",
+      "distance": "Distance",
+      "mac_address": "MAC Address",
+      "time": "Time",
+      "rx_dbm": "RX (dBm)",
+      "tx_dbm": "TX (dBm)",
+      "active": "Active",
+      "degraded": "Degraded",
+      "down": "Down",
+      "empty_port": "Empty",
+      "reboot": "Reboot",
+      "host": "Host",
+      "uplink": "Uplink",
+      "port": "Port"
+    },
+    "router": {
+      "manage_routers": "Manage MikroTik routers.",
+      "total": "Total",
+      "online": "Online",
+      "offline": "Offline",
+      "mikrotik": "MikroTik",
+      "last_seen": "Last seen",
+      "last_120_samples": "Last 120 samples",
+      "no_metrics_yet": "No metrics yet.",
+      "resources": "Resources",
+      "live_snapshot": "Live snapshot",
+      "cpu_load": "CPU load",
+      "memory_used": "Memory used",
+      "disk_used": "Disk used",
+      "pick_location": "Pick Router Location",
+      "click_map_to_select": "Click on map to select a point, then drag marker if precision is needed.",
+      "interface_traffic": "Interface Traffic",
+      "interface": "Interface",
+      "no_history_yet": "No history yet (wait for poller).",
+      "no_rx_samples": "No RX samples.",
+      "no_tx_samples": "No TX samples.",
+      "latency": "Latency",
+      "retention": "Router retention",
+      "unlimited": "Unlimited",
+      "month": "Month",
+      "year": "Year",
+      "tab_overview": "Overview",
+      "tab_interfaces": "Interfaces",
+      "tab_ip_addresses": "IP Addresses",
+      "tab_metrics": "Metrics",
+      "use_this_point": "Use this point",
+      "not_found": "Router not found.",
+      "connection_failed": "Failed to connect",
+      "interfaces_shown": "{count} shown",
+      "ip_total": "{count} total",
+      "metrics_samples": "{count} samples",
+      "filter_all": "All",
+      "filter_running": "Running",
+      "filter_down": "Down",
+      "filter_disabled": "Disabled",
+      "search_interfaces": "Search interfaces...",
+      "search_ips": "Search IPs...",
+      "search_metrics": "Search metrics...",
+      "double_click_to_open": "Double click to open",
+      "status_running": "Running",
+      "status_down": "Down",
+      "status_disabled": "Disabled",
+      "dynamic": "Dynamic",
+      "hardware": "Hardware",
+      "health": "Health",
+      "board": "Board",
+      "architecture": "Architecture",
+      "temperature": "Temperature",
+      "cpu_temperature": "CPU temperature",
+      "voltage": "Voltage",
+      "not_supported": "Not supported on this device.",
+      "no_snapshot": "No snapshot yet.",
+      "live": "Live",
+      "optional": "Optional",
+      "cpu": "CPU",
+      "memory": "Memory",
+      "disk": "Disk",
+      "uptime": "Uptime",
+      "time": "Time",
+      "mtu": "MTU",
+      "mac": "MAC",
+      "rx_rate": "RX Rate",
+      "tx_rate": "TX Rate",
+      "rx": "RX",
+      "tx": "TX",
+      "downs": "Downs",
+      "address": "Address",
+      "network": "Network",
+      "flags": "Flags",
+      "leave_blank_password": "Leave blank to keep current password",
+      "name_placeholder": "e.g. POP Router 1",
+      "host_placeholder": "192.168.88.1",
+      "upgrade_firmware_placeholder": "e.g. Upgrade firmware"
+    },
+    "incident": {
+      "title": "Operational incidents from alerts.",
+      "router": "Router",
+      "interface": "Interface",
+      "host": "Host",
+      "latency": "Latency",
+      "memory_use": "Memory Use",
+      "node": "Node",
+      "link": "Link"
+    },
+    "alert": {
+      "title": "Alert from router polling."
+    },
+    "noc": {
+      "title": "Operational summary of all routers.",
+      "disk": "DISK",
+      "wallboard_settings": "NOC live display settings."
+    },
+    "dhcp": {
+      "title": "Monitor DHCP static leases."
+    },
+    "ip_pool": {
+      "title": "RouterOS IP pools per router."
+    },
+    "ppp_profile": {
+      "title": "RouterOS PPP profiles per router."
+    },
+    "pppoe": {
+      "title": "Manage PPPoE accounts.",
+      "missing": "Missing",
+      "errors": "Errors"
+    },
+    "log": {
+      "title": "MikroTik logs for audit and troubleshooting."
+    },
+    "asset": {
+      "title": "Asset Registry",
+      "subtitle": "Find and narrow FTTH assets quickly",
+      "open_on_map": "Open on map",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "import": {
+      "title": "Network data import center.",
+      "overview": "Import center overview",
+      "sources": "Import sources"
+    },
+    "installation": {
+      "title": "Installation pipeline until service is active.",
+      "assignment": "Assignment",
+      "all_work_orders": "All work orders",
+      "assigned_only": "Assigned only",
+      "unassigned_only": "Unassigned only",
+      "assignee": "Assignee",
+      "all_assignees": "All assignees",
+      "sort_by": "Sort by",
+      "latest_updated": "Latest updated",
+      "oldest_updated": "Oldest updated",
+      "no_queue": "No queue",
+      "simple_queue": "Simple queue",
+      "no_subscription_found": "Internet subscription for this work order has not been found.",
+      "scheduled_earliest": "Scheduled earliest",
+      "scheduled_latest": "Scheduled latest",
+      "customer_az": "Customer A-Z",
+      "customer_za": "Customer Z-A",
+      "assignee_az": "Assignee A-Z",
+      "assignee_za": "Assignee Z-A"
+    },
+    "wallboard": {
+      "router": "Router",
+      "interface": "Interface",
+      "kbps": "Kbps",
+      "mbps": "Mbps",
+      "gbps": "Gbps"
     }
   },
   "notifications": {
@@ -3842,6 +4522,8 @@
       "item": "Item",
       "total": "Total",
       "status": "Status",
+      "created": "Created",
+      "payment_method": "Payment Method",
       "tabs": {
         "online": "Online Payment",
         "manual": "Bank Transfer"
@@ -3932,7 +4614,10 @@
         "postal_code": "Postal code",
         "country_code": "Country code",
         "default_shipping": "Default shipping",
-        "default_billing": "Default billing"
+        "default_billing": "Default billing",
+        "label_placeholder": "Home, Office, etc",
+        "country_id": "ID (Indonesia)",
+        "country_us": "US (United States)"
       },
       "validation": {
         "line1_required": "Address line is required."
@@ -3942,12 +4627,15 @@
       "title": "Profile Information",
       "subtitle": "Update your account details and public profile.",
       "change_avatar": "Change Avatar",
+      "avatar_alt": "Avatar",
       "your_name": "Your Name",
       "role_label": "Role",
       "display_name": "Display Name",
       "display_name_placeholder": "Enter your full name",
       "email_address": "Email Address",
       "email_placeholder": "name@example.com",
+      "phone": "Phone",
+      "phone_placeholder": "Enter phone number",
       "save_button": "Save Changes",
       "saving": "Saving..."
     },
@@ -3965,30 +4653,70 @@
       "req_special": "One special character",
       "update_button": "Update Password",
       "updating": "Updating...",
+      "settings_desc_current": "Enter your existing password to make changes.",
+      "settings_desc_new": "Choose a strong password with at least",
+      "settings_desc_confirm": "Re-enter your new password to confirm.",
       "twofa": {
         "title": "Two-Factor Authentication",
         "subtitle": "Protect your account with an extra layer of security.",
         "enabled_title": "2FA is Enabled",
         "enabled_desc": "Your account is secured with 2FA.",
         "recovery_title": "Save your Recovery Codes!",
+        "recovery_desc": "These codes are the ONLY way to access your account if you lose your phone.",
         "recovery": {
           "saved_button": "I have saved them"
         },
         "disable_title": "Disable 2FA",
+        "disable_desc": "Enter a code from your device to disable 2FA.",
         "methods": {
           "authenticator_app": "Authenticator App",
           "email_verification": "Email Verification"
         },
         "disable": {
           "placeholder": "Enter authentication code"
-        }
+        },
+        "enabled_methods": "Enabled Methods",
+        "enabled_badge": "Enabled",
+        "enable_button": "Enable",
+        "disable_button": "Disable",
+        "sending": "Sending...",
+        "resend": "Resend",
+        "send_code": "Send Code",
+        "disable_code_placeholder": "Enter code",
+        "enhance_security": "Enhance Your Security",
+        "enhance_desc": "Add an extra layer of security by requiring a verification code.",
+        "authenticator_app": "Authenticator App",
+        "email_verification": "Email Verification",
+        "step_scan": "1. Scan this QR code",
+        "secret_key": "Key",
+        "step_enter_code": "2. Enter the code",
+        "cancel": "Cancel",
+        "verifying": "Verifying...",
+        "activate": "Activate",
+        "verify_email": "Verify your Email",
+        "sent_code_to": "We sent a verification code to",
+        "verify_enable": "Verify & Enable",
+        "trusted_devices": {
+          "title": "Trusted Devices",
+          "loading": "Loading devices...",
+          "empty": "No trusted devices found.",
+          "desc": "Devices that have been authorized to skip 2FA for 30 days.",
+          "unknown_device": "Unknown Device",
+          "last_used": "Last used",
+          "revoke": "Revoke",
+          "revoke_title": "Revoke Device",
+          "revoke_message": "Are you sure you want to revoke access for this device? 2FA will be required on the next login."
+        },
+        "qr_code": "QR Code",
+        "recovery_warning": "These codes are the ONLY way to access your account if you lose your phone."
       }
     },
     "preferences": {
       "title": "Appearance",
       "subtitle": "Customize the look and feel of the application.",
       "dark_mode": "Dark Mode",
-      "dark_mode_desc": "Toggle between dark and light themes."
+      "dark_mode_desc": "Toggle between dark and light themes.",
+      "dark": "Dark"
     },
     "notifications": {
       "title": "Notification Preferences",
@@ -4079,6 +4807,7 @@
     "dhcp_static": "DHCP Static",
     "ftth_assets": "FTTH Assets",
     "imports": "Imports",
+    "olt_monitoring": "OLT Monitoring",
     "ppp_profiles": "PPP Profiles",
     "ip_pools": "IP Pools",
     "services": "Services",
@@ -4159,7 +4888,34 @@
         "ip": "IP",
         "time_ip": "Time / IP",
         "user_tenant": "User / Tenant",
-        "action_resource": "Action / Resource"
+        "action_resource": "Action / Resource",
+        "scope": "Scope",
+        "severity": "Severity",
+        "audience": "Audience",
+        "mode": "Mode",
+        "deliver_in_app": "Deliver in app",
+        "deliver_email": "Deliver email",
+        "starts": "Starts",
+        "ends": "Ends"
+      },
+      "columns_extended": {
+        "scope": "Scope",
+        "severity": "Severity",
+        "audience": "Audience",
+        "mode": "Mode",
+        "deliver_in_app": "Deliver in app",
+        "deliver_email": "Deliver email",
+        "starts": "Starts",
+        "ends": "Ends",
+        "notified": "Notified",
+        "cause": "Cause",
+        "delivered_now": "Delivered now",
+        "subject": "Subject",
+        "priority": "Priority",
+        "internal": "Internal",
+        "message": "Message",
+        "attachments": "Attachments",
+        "changed": "Changed"
       },
       "filters": {
         "action": "Action (exact)",
@@ -4551,6 +5307,16 @@
         "actions": {
           "create": "Create Tenant",
           "update": "Update Tenant"
+        },
+        "domain_status_label": "Domain Status",
+        "failure_reason": "Failure Reason",
+        "failure_reason_placeholder": "e.g. DNS not pointing to the correct target",
+        "save_domain_first": "Save custom domain changes before changing verification status.",
+        "apply_domain_status": "Apply Domain Status",
+        "status_options": {
+          "pending": "Pending",
+          "active": "Active",
+          "failed": "Failed"
         }
       },
       "empty": {
@@ -4566,7 +5332,9 @@
         "delete_failed": "Failed to delete tenant: {message}",
         "activated": "Tenant activated",
         "deactivated": "Tenant deactivated"
-      }
+      },
+      "domain_status": "Domain Status",
+      "failure_reason": "Failure Reason"
     },
     "invoices": {
       "aria": {
@@ -4643,7 +5411,8 @@
         "click_enlarge": "Click to enlarge",
         "no_proof": "No proof uploaded yet.",
         "not_found": "Invoice not found"
-      }
+      },
+      "payment_proof": "Payment Proof"
     },
     "system": {
       "tabs": {
@@ -4666,11 +5435,12 @@
       },
       "title": "System Health",
       "subtitle": "Monitor platform status and metrics",
+      "views": "System views",
       "loading": "Loading system health...",
       "retry": "Retry",
       "db_connected": "Database Connected",
       "db_disconnected": "Database Disconnected",
-      "tables": "tables",
+      "tables": "Tables",
       "uptime": "Uptime:",
       "cpu_usage": "CPU Usage",
       "memory_usage": "Memory Usage",
@@ -4687,7 +5457,35 @@
       "table_headers": {
         "table": "Table",
         "rows": "Rows"
-      }
+      },
+      "avg_response": "Avg Response",
+      "p95_latency": "P95 Latency",
+      "total_requests": "Total Requests",
+      "errors": "Errors",
+      "rate_limited": "Rate Limited",
+      "server": "Server",
+      "size": "Size",
+      "tenants": "Tenants",
+      "users": "Users",
+      "missing_migrations": "Missing migrations detected",
+      "pending_migrations": "Pending migrations",
+      "latest_applied": "Latest Applied",
+      "version": "Version",
+      "installed": "Installed",
+      "ok": "OK",
+      "failed": "FAILED",
+      "app_name": "App Name",
+      "public_url": "Public URL",
+      "timezone": "Timezone",
+      "base_currency": "Base Currency",
+      "display_currency": "Display Currency",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "global": "Global",
+      "tenant": "Tenant",
+      "schedule": "Schedule",
+      "last_run_utc": "Last Run (UTC)",
+      "retention": "Retention"
     },
     "settings": {
       "title": "Platform Settings",
@@ -4835,7 +5633,10 @@
           "client_key": "Client Key",
           "client_key_hint": "Public key for frontend Snap.js.",
           "production_mode": "Production Mode",
-          "production_mode_desc": "Enable for real transactions. Disable for Sandbox."
+          "production_mode_desc": "Enable for real transactions. Disable for Sandbox.",
+          "environment": "Environment",
+          "production_mode_label": "Production Mode (Live Payments)",
+          "sandbox_mode_label": "Sandbox Mode (Testing)"
         },
         "manual": {
           "title": "Manual Bank Transfer",
@@ -5020,6 +5821,55 @@
           "label": "Timezone",
           "desc": "Used to interpret daily/weekly schedule times."
         }
+      },
+      "midtrans": {
+        "merchant_id": "Merchant ID",
+        "client_key": "Client Key",
+        "server_key": "Server Key",
+        "environment": "Environment"
+      },
+      "duitku": {
+        "title": "Duitku Gateway",
+        "enable": "Enable Duitku",
+        "description": "Use Duitku hosted checkout for automated payments.",
+        "merchant_code": "Merchant Code",
+        "api_key": "API Key",
+        "enabled_payment_methods": "Enabled Payment Methods",
+        "select_channels": "Select which Duitku channels customers can choose during checkout.",
+        "load_methods": "Load Duitku Methods",
+        "loading": "Loading...",
+        "no_methods": "No Duitku payment methods returned for this merchant.",
+        "load_failed": "Failed to load Duitku payment methods",
+        "saved_method": "Saved method"
+      },
+      "whatsapp_gateway": {
+        "title": "WhatsApp Gateway",
+        "provider": "Provider",
+        "fonnte_config": "Fonnte Configuration",
+        "api_token": "API Token",
+        "fonnte_token_placeholder": "Fonnte token",
+        "base_url": "Base URL",
+        "sender": "Sender",
+        "triwax_config": "Triwax Configuration",
+        "api_key": "API Key",
+        "disabled": "Disabled",
+        "fonnte": "Fonnte",
+        "triwax": "Triwax",
+        "event_notifications": {
+          "title": "Event Notifications",
+          "empty": "No event notifications yet.",
+          "event": "Event",
+          "whatsapp": "WhatsApp",
+          "email": "Email",
+          "in_app": "In App"
+        },
+        "send_test": "Send Test",
+        "recipient_phone": "Recipient Phone",
+        "event_code": "Event Code",
+        "manual_test": "Manual test",
+        "message": "Message",
+        "sending": "Sending...",
+        "send_test_button": "Send Test"
       }
     },
     "plans": {
@@ -5198,6 +6048,15 @@
       "rejected_success": "User rejected successfully",
       "approve_failed": "Failed to approve user",
       "reject_failed": "Failed to reject user"
+    },
+    "customers": {
+      "invite": {
+        "title": "Customer Invite Link",
+        "generate": "Generate invite",
+        "default_policy": "Default policy",
+        "default_expiry": "Default expiry (hours)",
+        "default_max_uses": "Default max uses"
+      }
     }
   },
   "support": {
@@ -5207,26 +6066,21 @@
     "loading": "Loading tickets...",
     "loading_detail": "Loading ticket...",
     "actions": {
-      "new": "New Ticket",
-      "create": "Create",
-      "creating": "Creating...",
-      "send": "Send",
-      "sending": "Sending..."
+      "claim": "Claim Ticket",
+      "claiming": "Claiming..."
     },
     "fields": {
       "subject": "Subject",
       "subject_placeholder": "e.g. Cannot login to my account",
+      "category": "Category",
+      "subscription": "Related Subscription (optional)",
+      "no_subscription": "Not related",
       "priority": "Priority",
       "message": "Message",
       "message_placeholder": "Describe your issue or request...",
       "attachments": "Attachments",
       "reply": "Reply",
-      "reply_placeholder": "Write your reply...",
-      "subscription": "Related Subscription (optional)",
-      "no_subscription": "Not linked"
-    },
-    "quick": {
-      "label": "Quick:"
+      "reply_placeholder": "Write your reply..."
     },
     "filters": {
       "aria": "Filter tickets",
@@ -5247,7 +6101,9 @@
       "create_failed": "Create failed: {message}",
       "replied": "Reply sent",
       "reply_failed": "Reply failed: {message}",
-      "ticket_closed": "Ticket is closed"
+      "ticket_closed": "Ticket is closed",
+      "claimed": "Ticket claimed successfully",
+      "claim_failed": "Failed to claim ticket: {message}"
     },
     "status": {
       "open": "Open",
@@ -5273,11 +6129,9 @@
       "not_found": "Ticket not found",
       "thread": "Conversation",
       "messages": "messages",
-      "closed_notice": "This ticket is closed. You can’t reply.",
-      "view_subscription": "View related subscription"
-    },
-    "create": {
-      "title": "Create Ticket"
+      "closed_notice": "This ticket is closed. You can't reply.",
+      "view_subscription": "Linked subscription",
+      "view_customer": "View Customer"
     },
     "categories": {
       "all": "All",
@@ -5287,8 +6141,10 @@
       "installation": "Installation"
     },
     "satisfaction": {
-      "title": "⭐ Satisfaction Rating",
-      "no_rating": "No rating yet"
+      "title": "Satisfaction Rating"
+    },
+    "create": {
+      "title": "Create Ticket"
     }
   },
   "topbar": {
@@ -5337,29 +6193,6 @@
       "downloading": "Downloading {filename}...",
       "failed": "Download failed: {message}",
       "failed_generic": "Download failed"
-    }
-  },
-  "customers": {
-    "subscriptions": {}
-  },
-  "billing": {
-    "analytics": {
-      "title": "Billing Dashboard",
-      "subtitle": "Revenue metrics and collection overview",
-      "load_error": "Failed to load analytics",
-      "monthly_recurring": "Monthly Recurring Revenue",
-      "annual_recurring": "Annual Recurring Revenue",
-      "revenue_this_month": "Revenue This Month",
-      "active_subs": "Active Subscriptions",
-      "customers": "customers",
-      "collection_rate": "Collection Rate",
-      "avg_days_pay": "Avg days to pay",
-      "churn_rate": "Churn Rate",
-      "this_month": "This month",
-      "aging_report": "Aging Report (Overdue)",
-      "total_overdue": "Total Overdue",
-      "no_overdue": "No overdue invoices 🎉",
-      "revenue_trend": "Revenue Trend (6 months)"
     }
   }
 }

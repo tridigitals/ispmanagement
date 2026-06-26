@@ -302,16 +302,16 @@
       <!-- 2FA Not Enabled -->
       <div class="empty-state">
         <div class="empty-icon"><Icon name="shield" size={32} /></div>
-        <h4>Enhance Your Security</h4>
-        <p>Add an extra layer of security by requiring a verification code when logging in.</p>
+        <h4>{$t('profile.security.twofa.enhance_security') || 'Enhance Your Security'}</h4>
+        <p>{$t('profile.security.twofa.enhance_desc') || 'Add an extra layer of security by requiring a verification code when logging in.'}</p>
         <div class="setup-actions">
           <button class="btn btn-primary" onclick={() => onStart2FA('totp')} disabled={loading}>
             <Icon name="smartphone" size={18} />
-            Authenticator App
+            {$t('profile.security.twofa.authenticator_app')}
           </button>
           <button class="btn btn-secondary" onclick={() => onStart2FA('email')} disabled={loading}>
             <Icon name="mail" size={18} />
-            Email Verification
+            {$t('profile.security.twofa.email_verification')}
           </button>
         </div>
       </div>
@@ -320,14 +320,14 @@
       {#if setupMethod === 'totp'}
         <div class="setup-flow">
           <div class="qr-section">
-            <span class="step-label">1. Scan this QR code</span>
+            <span class="step-label">{$t('profile.security.twofa.step_scan')}</span>
             <div class="qr-wrapper">
-              <img src="data:image/png;base64,{twoFactorData.qr}" alt="QR Code" class="qr-img" />
+              <img src="data:image/png;base64,{twoFactorData.qr}" alt={$t('profile.security.twofa.qr_code') || 'QR Code'} class="qr-img" />
             </div>
             <p class="secret-text">Key: {twoFactorData.secret}</p>
           </div>
           <div class="verify-section">
-            <span class="step-label">2. Enter the code</span>
+            <span class="step-label">{$t('profile.security.twofa.step_enter_code')}</span>
             <input
               type="text"
               class="form-input code-input-lg"
@@ -337,14 +337,14 @@
             />
             <div class="setup-actions">
               <button class="btn btn-outline" onclick={() => (twoFactorData.showSetup = false)}
-                >Cancel</button
+                >{$t('profile.security.twofa.cancel')}</button
               >
               <button
                 class="btn btn-primary"
                 onclick={onVerify2FA}
                 disabled={twoFactorData.code.length < 6 || loading}
               >
-                {loading ? 'Verifying...' : 'Activate'}
+                {loading ? $t('profile.security.twofa.verifying') : $t('profile.security.twofa.activate')}
               </button>
             </div>
           </div>
@@ -352,9 +352,9 @@
       {:else}
         <div class="setup-flow centered">
           <div class="empty-icon"><Icon name="mail" size={32} /></div>
-          <h4>Verify your Email</h4>
+          <h4>{$t('profile.security.twofa.verify_email')}</h4>
           <p>
-            We sent a verification code to <strong>{user?.email}</strong>
+            {$t('profile.security.twofa.sent_code_to')} <strong>{user?.email}</strong>
           </p>
           <input
             type="text"
@@ -365,14 +365,14 @@
           />
           <div class="setup-actions">
             <button class="btn btn-outline" onclick={() => (twoFactorData.showSetup = false)}
-              >Cancel</button
+              >{$t('profile.security.twofa.cancel')}</button
             >
             <button
               class="btn btn-primary"
               onclick={onVerify2FA}
               disabled={twoFactorData.code.length < 6 || loading}
             >
-              {loading ? 'Verifying...' : 'Verify & Enable'}
+              {loading ? $t('profile.security.twofa.verifying') : $t('profile.security.twofa.verify_enable')}
             </button>
           </div>
         </div>
@@ -384,21 +384,21 @@
 <!-- Trusted Devices Section -->
 <div class="card section fade-in">
   <div class="card-header">
-    <h3>Trusted Devices</h3>
+    <h3>{$t('profile.security.twofa.trusted_devices.title')}</h3>
   </div>
   <div class="card-body">
     {#if loadingDevices}
       <div class="loading-state">
         <span class="spinner"></span>
-        <span>Loading devices...</span>
+        <span>{$t('profile.security.twofa.trusted_devices.loading')}</span>
       </div>
     {:else if trustedDevices.length === 0}
       <div class="empty-state small">
         <Icon name="monitor" size={24} />
-        <p>No trusted devices found.</p>
+        <p>{$t('profile.security.twofa.trusted_devices.empty')}</p>
       </div>
     {:else}
-      <p class="section-desc">Devices that have been authorized to skip 2FA for 30 days.</p>
+      <p class="section-desc">{$t('profile.security.twofa.trusted_devices.desc')}</p>
       <div class="device-list">
         {#each trustedDevices as device (device.id)}
           <div class="device-item">
@@ -410,17 +410,17 @@
               {/if}
             </div>
             <div class="device-info">
-              <span class="device-name">{device.user_agent || 'Unknown Device'}</span>
+              <span class="device-name">{device.user_agent || $t('profile.security.twofa.trusted_devices.unknown_device')}</span>
               <span class="device-meta">
                 {#if device.ip_address}{device.ip_address} •
                 {/if}
-                Last used: {formatDate(device.last_used_at, {
+                {$t('profile.security.twofa.trusted_devices.last_used')}: {formatDate(device.last_used_at, {
                   timeZone: $appSettings.app_timezone,
                 })}
               </span>
             </div>
-            <button class="btn btn-danger btn-sm" onclick={() => confirmRevoke(device)}
-              >Revoke</button
+            <button class="btn btn-danger btn-sm" onclick={() => confirmRevoke(device)}>
+              {$t('profile.security.twofa.trusted_devices.revoke')}</button
             >
           </div>
         {/each}
@@ -431,9 +431,9 @@
 
 <ConfirmDialog
   bind:show={showRevokeConfirm}
-  title="Revoke Device"
-  message="Are you sure you want to revoke access for this device? 2FA will be required on the next login."
-  confirmText="Revoke"
+  title={$t('profile.security.twofa.trusted_devices.revoke_title')}
+  message={$t('profile.security.twofa.trusted_devices.revoke_message')}
+  confirmText={$t('profile.security.twofa.trusted_devices.revoke')}
   type="danger"
   {loading}
   onconfirm={handleRevokeConfirm}

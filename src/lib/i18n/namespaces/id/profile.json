@@ -68,7 +68,7 @@
     "current_password": "Kata Sandi Saat Ini",
     "new_password": "Kata Sandi Baru",
     "confirm_password": "Konfirmasi Kata Sandi",
-    "password_placeholder": "••••••••",
+    "password_placeholder": "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
     "requirements_title": "Syarat kata sandi:",
     "req_length": "Minimal {length} karakter",
     "req_uppercase": "Satu huruf besar",
@@ -107,7 +107,7 @@
       "send_code": "Kirim Kode",
       "disable_code_placeholder": "Masukkan kode",
       "enhance_security": "Tingkatkan Keamanan Anda",
-      "enhance_desc": "Tambahkan lapisan keamanan ekstra dengan mewajibkan kode verifikasi saat login.",
+      "enhance_desc": "Tambah lapisan keamanan ekstra dengan memerlukan kode verifikasi.",
       "authenticator_app": "Aplikasi Authenticator",
       "email_verification": "Verifikasi Email",
       "step_scan": "1. Pindai kode QR ini",
@@ -129,7 +129,9 @@
         "revoke": "Cabut",
         "revoke_title": "Cabut Perangkat",
         "revoke_message": "Apakah Anda yakin ingin mencabut akses perangkat ini? 2FA akan diperlukan saat login berikutnya."
-      }
+      },
+      "qr_code": "Kode QR",
+      "recovery_warning": "Kode ini SATU-SATUNYA cara mengakses akun Anda jika ponsel hilang."
     }
   },
   "preferences": {

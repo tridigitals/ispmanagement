@@ -47,7 +47,34 @@
       "ip": "IP",
       "time_ip": "Waktu / IP",
       "user_tenant": "Pengguna / Tenant",
-      "action_resource": "Aksi / Resource"
+      "action_resource": "Aksi / Resource",
+      "scope": "Cakupan",
+      "severity": "Tingkat",
+      "audience": "Audiens",
+      "mode": "Mode",
+      "deliver_in_app": "Kirim di aplikasi",
+      "deliver_email": "Kirim email",
+      "starts": "Mulai",
+      "ends": "Berakhir"
+    },
+    "columns_extended": {
+      "scope": "Cakupan",
+      "severity": "Tingkat",
+      "audience": "Audiens",
+      "mode": "Mode",
+      "deliver_in_app": "Kirim di aplikasi",
+      "deliver_email": "Kirim email",
+      "starts": "Mulai",
+      "ends": "Berakhir",
+      "notified": "Diberitahu",
+      "cause": "Penyebab",
+      "delivered_now": "Dikirim sekarang",
+      "subject": "Subjek",
+      "priority": "Prioritas",
+      "internal": "Internal",
+      "message": "Pesan",
+      "attachments": "Lampiran",
+      "changed": "Diubah"
     },
     "filters": {
       "action": "Aksi (tepat)",
@@ -439,6 +466,16 @@
       "actions": {
         "create": "Buat Tenant",
         "update": "Perbarui Tenant"
+      },
+      "domain_status_label": "Status Domain",
+      "failure_reason": "Alasan Gagal",
+      "failure_reason_placeholder": "contoh: DNS belum mengarah ke target yang benar",
+      "save_domain_first": "Simpan perubahan custom domain dulu sebelum mengubah status verifikasinya.",
+      "apply_domain_status": "Terapkan Status Domain",
+      "status_options": {
+        "pending": "Pending",
+        "active": "Aktif",
+        "failed": "Gagal"
       }
     },
     "empty": {
@@ -454,7 +491,9 @@
       "delete_failed": "Gagal menghapus tenant: {message}",
       "activated": "Tenant diaktifkan",
       "deactivated": "Tenant dinonaktifkan"
-    }
+    },
+    "domain_status": "Status Domain",
+    "failure_reason": "Alasan Gagal"
   },
   "invoices": {
     "aria": {
@@ -531,7 +570,8 @@
       "click_enlarge": "Klik untuk memperbesar",
       "no_proof": "Belum ada bukti yang diunggah.",
       "not_found": "Invoice tidak ditemukan"
-    }
+    },
+    "payment_proof": "Bukti Pembayaran"
   },
   "system": {
     "tabs": {
@@ -554,11 +594,12 @@
     },
     "title": "Kesehatan Sistem",
     "subtitle": "Pantau status platform dan metrik",
+    "views": "Tampilan sistem",
     "loading": "Memuat kesehatan sistem...",
     "retry": "Coba Lagi",
     "db_connected": "Database Terhubung",
     "db_disconnected": "Database Terputus",
-    "tables": "tabel",
+    "tables": "Tabel",
     "uptime": "Uptime:",
     "cpu_usage": "Penggunaan CPU",
     "memory_usage": "Penggunaan Memori",
@@ -575,7 +616,35 @@
     "table_headers": {
       "table": "Tabel",
       "rows": "Baris"
-    }
+    },
+    "avg_response": "Rata-rata Respons",
+    "p95_latency": "Latensi P95",
+    "total_requests": "Total Request",
+    "errors": "Error",
+    "rate_limited": "Dibatasi Rate",
+    "server": "Server",
+    "size": "Ukuran",
+    "tenants": "Tenant",
+    "users": "Pengguna",
+    "missing_migrations": "Migrasi yang hilang terdeteksi",
+    "pending_migrations": "Migrasi tertunda",
+    "latest_applied": "Terakhir Diterapkan",
+    "version": "Versi",
+    "installed": "Terpasang",
+    "ok": "OK",
+    "failed": "GAGAL",
+    "app_name": "Nama Aplikasi",
+    "public_url": "URL Publik",
+    "timezone": "Timezone",
+    "base_currency": "Mata Uang Dasar",
+    "display_currency": "Mata Uang Tampilan",
+    "enabled": "Aktif",
+    "disabled": "Nonaktif",
+    "global": "Global",
+    "tenant": "Tenant",
+    "schedule": "Jadwal",
+    "last_run_utc": "Terakhir Dijalankan (UTC)",
+    "retention": "Retensi"
   },
   "settings": {
     "title": "Pengaturan Platform",
@@ -723,7 +792,8 @@
         "client_key": "Client Key",
         "client_key_hint": "Kunci publik untuk frontend Snap.js.",
         "production_mode": "Mode Produksi",
-        "production_mode_desc": "Aktifkan untuk transaksi nyata. Nonaktifkan untuk Sandbox."
+        "production_mode_desc": "Aktifkan untuk transaksi nyata. Nonaktifkan untuk Sandbox.",
+        "environment": "Lingkungan"
       },
       "manual": {
         "title": "Transfer Bank Manual",
@@ -908,6 +978,57 @@
         "label": "Timezone",
         "desc": "Dipakai untuk interpretasi jam jadwal harian/mingguan."
       }
+    },
+    "midtrans": {
+      "merchant_id": "Merchant ID",
+      "client_key": "Client Key",
+      "server_key": "Server Key",
+      "environment": "Lingkungan",
+      "production_mode_label": "Mode Produksi (Pembayaran Langsung)",
+      "sandbox_mode_label": "Mode Sandbox (Pengujian)"
+    },
+    "duitku": {
+      "title": "Gateway Duitku",
+      "enable": "Aktifkan Duitku",
+      "description": "Gunakan checkout hosted Duitku untuk pembayaran otomatis.",
+      "merchant_code": "Kode Merchant",
+      "api_key": "API Key",
+      "enabled_payment_methods": "Metode Pembayaran Aktif",
+      "select_channels": "Pilih channel Duitku yang dapat dipilih pelanggan saat checkout.",
+      "load_methods": "Muat Metode Duitku",
+      "loading": "Memuat...",
+      "no_methods": "Tidak ada metode pembayaran Duitku untuk merchant ini.",
+      "load_failed": "Gagal memuat metode pembayaran Duitku",
+      "saved_method": "Metode tersimpan"
+    },
+    "whatsapp_gateway": {
+      "title": "WhatsApp Gateway",
+      "provider": "Provider",
+      "fonnte_config": "Konfigurasi Fonnte",
+      "api_token": "API Token",
+      "fonnte_token_placeholder": "Fonnte token",
+      "base_url": "Base URL",
+      "sender": "Pengirim",
+      "triwax_config": "Konfigurasi Triwax",
+      "api_key": "API Key",
+      "disabled": "Nonaktif",
+      "fonnte": "Fonnte",
+      "triwax": "Triwax",
+      "event_notifications": {
+        "title": "Notifikasi Event",
+        "empty": "Belum ada event notifikasi.",
+        "event": "Event",
+        "whatsapp": "WhatsApp",
+        "email": "Email",
+        "in_app": "In App"
+      },
+      "send_test": "Kirim Tes",
+      "recipient_phone": "No. HP Penerima",
+      "event_code": "Kode Event",
+      "manual_test": "Tes manual",
+      "message": "Pesan",
+      "sending": "Mengirim...",
+      "send_test_button": "Kirim Tes"
     }
   },
   "plans": {
@@ -1086,5 +1207,14 @@
     "rejected_success": "Pengguna berhasil ditolak",
     "approve_failed": "Gagal menyetujui pengguna",
     "reject_failed": "Gagal menolak pengguna"
+  },
+  "customers": {
+    "invite": {
+      "title": "Link Undangan Pelanggan",
+      "generate": "Buat undangan",
+      "default_policy": "Kebijakan default",
+      "default_expiry": "Batas waktu default (jam)",
+      "default_max_uses": "Maks penggunaan default"
+    }
   }
 }

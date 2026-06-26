@@ -23,13 +23,34 @@
     "summary": {
       "total": "Total locations",
       "customer": "Customer-linked",
-      "profile": "Profile addresses"
+      "profile": "Profile addresses",
+      "pinned": "Map pinned",
+      "has_notes": "Has notes"
     },
     "empty": "No locations yet.",
-    "empty_hint": "Your admin has not linked your account to a customer location.",
+    "empty_hint": "Add a new location and select a map point so it can be used for orders and coverage checks.",
     "toasts": {
       "load_failed": "Failed to load locations"
-    }
+    },
+    "form": {
+      "label": "Location label",
+      "country": "Country",
+      "line1": "Address line 1",
+      "line2": "Address line 2",
+      "city": "City",
+      "postal_code": "Postal code",
+      "notes": "Notes",
+      "notes_placeholder": "Location access notes, house landmarks, etc",
+      "pick_on_map": "Pick Location on Map",
+      "no_map_pin": "No map pin yet",
+      "pick_location_title": "Pick Location Point",
+      "pick_location_help": "Click the map to pick a point. After that the marker can be dragged for precision.",
+      "use_this_point": "Use This Point",
+      "service_location": "Service Location",
+      "pick_province_state": "Province / State"
+    },
+    "no_customer_hint": "This account is not linked to a customer, so service locations cannot be managed.",
+    "service_location": "Service Location"
   },
   "stats": {
     "account_role": "Account Role",
@@ -397,5 +418,27 @@
     "check_messages": "Check Messages",
     "security_settings": "Security Settings",
     "contact_support": "Contact Support"
+  },
+  "services": {
+    "order": {
+      "title": "Order Service",
+      "subtitle": "Choose service type first. Each type has its own dedicated order flow.",
+      "ready": "Ready",
+      "internet_pppoe": "Internet Access (PPPoE)",
+      "hotspot": "Hotspot Service",
+      "hotspot_desc": "Voucher-based hotspot and captive portal deployment.",
+      "dedicated_link": "Dedicated Link",
+      "dedicated_desc": "Point-to-point business connectivity with SLA profile.",
+      "not_enabled": "Not enabled yet",
+      "managed_vpn": "Managed VPN",
+      "vpn_desc": "Site-to-site or remote access VPN for enterprise clients."
+    },
+    "tracker": {
+      "invoice": "Invoice",
+      "invoice_number": "Invoice Number",
+      "amount": "Amount",
+      "due_date": "Due Date",
+      "paid_at": "Paid At"
+    }
   }
 }

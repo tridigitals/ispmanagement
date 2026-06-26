@@ -24,7 +24,7 @@
   <div class="section-head">
     <div>
       <h3>{$t('admin.customers.billing.title') || 'Billing'}</h3>
-      <p class="subtitle">Invoice pelanggan.</p>
+      <p class="subtitle">{$t('admin.customers.billing.subtitle')}</p>
     </div>
   </div>
 

@@ -267,7 +267,7 @@
             <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
             <img
               src={getProofUrl(invoice.proof_attachment)}
-              alt="Payment Proof"
+              alt={$t('superadmin.invoices.payment_proof') || 'Payment Proof'}
               class="proof-img"
               onclick={() => openLightbox(invoice!.proof_attachment!)}
             />

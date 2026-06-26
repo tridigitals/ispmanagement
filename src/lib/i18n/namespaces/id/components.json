@@ -104,7 +104,9 @@
     "billing_cycle": "Siklus Tagihan",
     "unit_price": "Harga Satuan",
     "subtotal": "Subtotal",
-    "items": "Item"
+    "items": "Item",
+    "amount": "Jumlah",
+    "payment_instructions": "Instruksi Pembayaran"
   },
   "topbar_global_search": {
     "hint": "Ketik untuk mencari di seluruh modul yang tersedia.",

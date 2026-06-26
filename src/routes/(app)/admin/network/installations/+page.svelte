@@ -356,7 +356,7 @@
         }
       }
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to load installation work orders');
+      toast.error(e?.message || tr('admin.network.installations.toasts.load_failed', 'Failed to load installation work orders'));
     } finally {
       loading = false;
     }
@@ -392,7 +392,7 @@
       visibilitySettingsOpen = false;
       await loadAll();
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to save work order visibility');
+      toast.error(e?.message || tr('admin.network.installations.toasts.visibility_save_failed', 'Failed to save work order visibility'));
     } finally {
       savingVisibilityMode = false;
     }
@@ -407,7 +407,7 @@
       const modules = await loadInstallationDetailDialogs();
       InstallationDetailDialogsComponent = modules.InstallationDetailDialogsComponent;
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to load installation tools');
+      toast.error(e?.message || tr('admin.network.installations.toasts.tools_load_failed', 'Failed to load installation tools'));
     } finally {
       detailDialogsLoading = false;
     }
@@ -521,7 +521,7 @@
 
       return true;
     } catch (e: any) {
-      toast.error(e?.message || 'Update failed');
+      toast.error(e?.message || tr('admin.network.installations.toasts.update_failed', 'Update failed'));
       return false;
     } finally {
       busyId = null;
@@ -569,7 +569,7 @@
       }
       closeQuickAssignDialog();
     } catch (e: any) {
-      toast.error(e?.message || 'Assign failed');
+      toast.error(e?.message || tr('admin.network.installations.toasts.assign_failed', 'Assign failed'));
     } finally {
       busyId = null;
     }
@@ -906,7 +906,7 @@
         nextTargetOptions,
       );
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to prepare PPPoE installation form');
+      toast.error(e?.message || tr('admin.network.installations.toasts.pppoe_form_prepare_failed', 'Failed to prepare PPPoE installation form'));
     } finally {
       loadingInstallationPppoe = false;
       loadingInstallationDhcp = false;
@@ -931,7 +931,7 @@
           parent_asset_id: binding.parent_asset_id,
         });
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to load installation asset registry');
+      toast.error(e?.message || tr('admin.network.installations.toasts.asset_registry_load_failed', 'Failed to load installation asset registry'));
     } finally {
       loadingInstallationAssets = false;
     }
@@ -1020,9 +1020,9 @@
       installationTerminalAssetId = created.id;
       installationAssetStepComplete = false;
       installationQuickAssetOpen = false;
-      toast.success('Terminal asset created');
+      toast.success(tr('admin.network.installations.toasts.terminal_asset_created', 'Terminal asset created'));
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to create terminal asset');
+      toast.error(e?.message || tr('admin.network.installations.toasts.terminal_asset_create_failed', 'Failed to create terminal asset'));
     } finally {
       creatingInstallationQuickAsset = false;
     }
@@ -1174,15 +1174,15 @@
     const packageId =
       subscription?.package_id || row?.package_id || installationPppoeAccount?.package_id || mapping?.package_id || '';
     if (!row) {
-      toast.error('Work order context is not ready yet');
+      toast.error(tr('admin.network.installations.toasts.work_order_not_ready', 'Work order context is not ready yet'));
       return;
     }
     if (!routerId) {
-      toast.error('Internet service does not have router assigned yet');
+      toast.error(tr('admin.network.installations.toasts.no_router_assigned', 'Internet service does not have router assigned yet'));
       return;
     }
     if (!mapping?.router_profile_name) {
-      toast.error('Router profile mapping for this internet package is not configured');
+      toast.error(tr('admin.network.installations.toasts.profile_mapping_missing', 'Router profile mapping for this internet package is not configured'));
       return;
     }
     if (!installationPppoeUsername.trim()) {
@@ -1262,7 +1262,7 @@
           : tr('admin.network.installations.pppoe_applied', 'PPPoE account applied to router'),
       );
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to save test account');
+      toast.error(e?.message || tr('admin.network.installations.toasts.test_account_save_failed', 'Failed to save test account'));
     } finally {
       savingInstallationPppoe = false;
     }
@@ -1287,7 +1287,7 @@
           : tr('admin.network.installations.pppoe_applied', 'PPPoE account applied to router'),
       );
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to apply PPPoE account');
+      toast.error(e?.message || tr('admin.network.installations.toasts.pppoe_apply_failed', 'Failed to apply PPPoE account'));
     } finally {
       savingInstallationPppoe = false;
     }
@@ -1301,7 +1301,7 @@
     const packageId =
       subscription?.package_id || row?.package_id || installationDhcpService?.package_id || '';
     if (!row || !subscription) {
-      toast.error('Work order context is not ready yet');
+      toast.error(tr('admin.network.installations.toasts.work_order_not_ready', 'Work order context is not ready yet'));
       return;
     }
     if (!routerId) {
@@ -1321,7 +1321,7 @@
     }
     installationDhcpServerNameError = null;
     if (!installationDhcpMacAddress.trim() || !installationDhcpIpAddress.trim()) {
-      toast.error('DHCP server, MAC address, and IP address are required');
+      toast.error(tr('admin.network.installations.toasts.dhcp_fields_required', 'DHCP server, MAC address, and IP address are required'));
       return;
     }
 
@@ -1389,7 +1389,7 @@
       };
       if (!service) {
         service = await api.dhcpStatic.services.create(payload);
-        toast.success('DHCP static service created');
+        toast.success(tr('admin.network.installations.toasts.dhcp_created', 'DHCP static service created'));
       } else {
         service = await api.dhcpStatic.services.update(service.id, {
           router_id: payload.router_id,
@@ -1402,16 +1402,16 @@
           queue_rate_limit: payload.queue_rate_limit,
           work_order_id: row.id,
         });
-        toast.success('DHCP static service updated');
+        toast.success(tr('admin.network.installations.toasts.dhcp_updated', 'DHCP static service updated'));
       }
       installationDhcpService = service;
       const applied = await api.dhcpStatic.services.apply(service.id, { work_order_id: row.id });
       installationDhcpService = applied;
       checkPppoe = true;
       await savePlan();
-      toast.success('DHCP static lease applied to router');
+      toast.success(tr('admin.network.installations.toasts.dhcp_applied', 'DHCP static lease applied to router'));
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to save DHCP static service');
+      toast.error(e?.message || tr('admin.network.installations.toasts.dhcp_save_failed', 'Failed to save DHCP static service'));
     } finally {
       savingInstallationDhcp = false;
     }
@@ -1427,9 +1427,9 @@
       installationDhcpService = applied;
       checkPppoe = true;
       await savePlan();
-      toast.success('DHCP static lease applied to router');
+      toast.success(tr('admin.network.installations.toasts.dhcp_applied', 'DHCP static lease applied to router'));
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to apply DHCP static lease');
+      toast.error(e?.message || tr('admin.network.installations.toasts.dhcp_apply_failed', 'Failed to apply DHCP static lease'));
     } finally {
       savingInstallationDhcp = false;
     }
@@ -1597,7 +1597,7 @@
       const refreshed = rows.find((x) => x.id === row.id);
       if (refreshed) openDetail(refreshed);
     } catch (e: any) {
-      toast.error(e?.message || 'Assign failed');
+      toast.error(e?.message || tr('admin.network.installations.toasts.assign_failed', 'Assign failed'));
     } finally {
       busyId = null;
     }
@@ -1777,7 +1777,7 @@
       }
       installationAssetStepComplete = true;
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to save installation asset binding');
+      toast.error(e?.message || tr('admin.network.installations.toasts.asset_binding_save_failed', 'Failed to save installation asset binding'));
     } finally {
       savingInstallationAssets = false;
     }
@@ -1928,7 +1928,7 @@
       const refreshed = rows.find((x) => x.id === rowId);
       if (refreshed) openDetail(refreshed);
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to approve reschedule request');
+      toast.error(e?.message || tr('admin.network.installations.toasts.reschedule_approve_failed', 'Failed to approve reschedule request'));
     } finally {
       rescheduleDecisionBusy = false;
     }
@@ -1960,7 +1960,7 @@
       const refreshed = rows.find((x) => x.id === rowId);
       if (refreshed) openDetail(refreshed);
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to reject reschedule request');
+      toast.error(e?.message || tr('admin.network.installations.toasts.reschedule_reject_failed', 'Failed to reject reschedule request'));
     } finally {
       rescheduleDecisionBusy = false;
     }
@@ -1970,7 +1970,7 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={tr('admin.network.installations.title', 'Installation Work Orders')}
-    subtitle="Pipeline instalasi hingga layanan aktif."
+    subtitle={tr('admin.network.installations.subtitle', 'Pipeline instalasi hingga layanan aktif.')}
   >
     {#snippet actions()}
       {#if isAdminOwner}
@@ -2068,31 +2068,31 @@
       </div>
 
       <div class="control">
-        <label for="installations-assignment">Assignment</label>
+        <label for="installations-assignment">{$t('network.installation.assignment') || 'Assignment'}</label>
         <select id="installations-assignment" class="input" bind:value={assignmentFilter}>
-          <option value="all">All work orders</option>
-          <option value="assigned">Assigned only</option>
-          <option value="unassigned">Unassigned only</option>
+          <option value="all">{$t('network.installation.all_work_orders') || 'All work orders'}</option>
+          <option value="assigned">{$t('network.installation.assigned_only') || 'Assigned only'}</option>
+          <option value="unassigned">{$t('network.installation.unassigned_only') || 'Unassigned only'}</option>
         </select>
       </div>
 
       <div class="control">
-        <label for="installations-assignee-user">Assignee</label>
+        <label for="installations-assignee-user">{$t('network.installation.assignee') || 'Assignee'}</label>
         <Select2
           id="installations-assignee-user"
           bind:value={assigneeFilterUserId}
           options={installationAssigneeFilterOptions}
-          placeholder="All assignees"
+          placeholder={$t('network.installation.all_assignees') || 'All assignees'}
           width="100%"
           disabled={installationAssigneeFilterOptions.length <= 1}
-          searchPlaceholder="Search assignee..."
-          noResultsText="No assignee found"
+          searchPlaceholder={$t('common.search') || 'Search...'}
+          noResultsText={$t('common.no_results') || 'No results'}
           maxItems={500}
         />
       </div>
 
       <div class="control">
-        <label for="installations-sort">Sort by</label>
+        <label for="installations-sort">{$t('network.installation.sort_by') || 'Sort by'}</label>
         <select
           id="installations-sort"
           class="input"
@@ -2103,14 +2103,14 @@
             sortDirection = nextDirection as 'asc' | 'desc';
           }}
         >
-          <option value="updated_at:desc">Latest updated</option>
-          <option value="updated_at:asc">Oldest updated</option>
-          <option value="scheduled_at:asc">Scheduled earliest</option>
-          <option value="scheduled_at:desc">Scheduled latest</option>
-          <option value="customer_name:asc">Customer A-Z</option>
-          <option value="customer_name:desc">Customer Z-A</option>
-          <option value="assigned_to_name:asc">Assignee A-Z</option>
-          <option value="assigned_to_name:desc">Assignee Z-A</option>
+          <option value="updated_at:desc">{$t('network.installation.latest_updated') || 'Latest updated'}</option>
+          <option value="updated_at:asc">{$t('network.installation.oldest_updated') || 'Oldest updated'}</option>
+          <option value="scheduled_at:asc">{$t('network.installation.scheduled_earliest') || 'Scheduled earliest'}</option>
+          <option value="scheduled_at:desc">{$t('network.installation.scheduled_latest') || 'Scheduled latest'}</option>
+          <option value="customer_name:asc">{$t('network.installation.customer_az') || 'Customer A-Z'}</option>
+          <option value="customer_name:desc">{$t('network.installation.customer_za') || 'Customer Z-A'}</option>
+          <option value="assigned_to_name:asc">{$t('network.installation.assignee_az') || 'Assignee A-Z'}</option>
+          <option value="assigned_to_name:desc">{$t('network.installation.assignee_za') || 'Assignee Z-A'}</option>
         </select>
       </div>
     </NetworkFilterPanel>

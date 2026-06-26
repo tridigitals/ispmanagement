@@ -56,19 +56,19 @@
   let showClearConfirm = $state(false);
 
   const monthOptions = [
-    { value: '', label: 'All months' },
-    { value: '1', label: 'January' },
-    { value: '2', label: 'February' },
-    { value: '3', label: 'March' },
-    { value: '4', label: 'April' },
-    { value: '5', label: 'May' },
-    { value: '6', label: 'June' },
-    { value: '7', label: 'July' },
-    { value: '8', label: 'August' },
-    { value: '9', label: 'September' },
-    { value: '10', label: 'October' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'December' },
+    { value: '', label: get(t)('common.all_months') || 'All months' },
+    { value: '1', label: get(t)('common.month.january') || 'January' },
+    { value: '2', label: get(t)('common.month.february') || 'February' },
+    { value: '3', label: get(t)('common.month.march') || 'March' },
+    { value: '4', label: get(t)('common.month.april') || 'April' },
+    { value: '5', label: get(t)('common.month.may') || 'May' },
+    { value: '6', label: get(t)('common.month.june') || 'June' },
+    { value: '7', label: get(t)('common.month.july') || 'July' },
+    { value: '8', label: get(t)('common.month.august') || 'August' },
+    { value: '9', label: get(t)('common.month.september') || 'September' },
+    { value: '10', label: get(t)('common.month.october') || 'October' },
+    { value: '11', label: get(t)('common.month.november') || 'November' },
+    { value: '12', label: get(t)('common.month.december') || 'December' },
   ];
 
   const yearOptions = $derived.by(() => {
@@ -212,7 +212,7 @@
         toast.success($t('admin.network.logs.toasts.sync_ok') || 'Log sync completed');
       }
       if (failed > 0) {
-        toast.error(`Failed to sync ${failed} router(s)`);
+        toast.error($t('admin.network.logs.toasts.sync_failed_count', { values: { count: failed } }) || `Failed to sync ${failed} router(s)`);
       }
       await loadRowsPage(1);
     } catch (e: any) {
@@ -256,7 +256,7 @@
         retentionValue === 'unlimited' ? null : Number(retentionValue),
       );
       retentionValue = res.retention_days ? String(res.retention_days) : 'unlimited';
-      toast.success('Log retention updated');
+      toast.success($t('admin.network.logs.toasts.retention_updated') || 'Log retention updated');
       await loadRowsPage(1);
     } catch (e: any) {
       toast.error(e?.message || e);
@@ -271,7 +271,7 @@
     clearingLogs = true;
     try {
       const res = await api.mikrotik.logs.clear(routerId);
-      toast.success(`Cleared ${res.deleted} logs from ${routerName(routerId)}`);
+      toast.success($t('admin.network.logs.toasts.cleared', { values: { count: res.deleted, router: routerName(routerId) } }) || `Cleared ${res.deleted} logs from ${routerName(routerId)}`);
       showClearConfirm = false;
       await loadRowsPage(1);
     } catch (e: any) {
@@ -300,7 +300,7 @@
   <div class="logs-shell">
     <NetworkPageHeader
       title={$t('admin.network.logs.title') || 'Router Logs'}
-      subtitle="Log MikroTik untuk audit dan troubleshooting."
+      subtitle={$t('network.log.title') || 'Log MikroTik untuk audit dan troubleshooting.'}
     >
       {#snippet actions()}
         <button class="btn ghost" type="button" onclick={() => void loadRowsPage(1)} title={$t('common.refresh') || 'Refresh'}>
@@ -324,7 +324,7 @@
           disabled={!routerId || clearingLogs}
         >
           <Icon name="trash-2" size={16} />
-          Clear logs
+          {$t('admin.network.logs.actions.clear') || 'Clear logs'}
         </button>
       {/snippet}
     </NetworkPageHeader>
@@ -358,7 +358,7 @@
       </label>
 
       <label class="filter-field">
-        <span>Month</span>
+        <span>{$t('network.router.month') || 'Month'}</span>
         <select bind:value={month} onchange={() => void loadRowsPage(1)}>
           {#each monthOptions as option}
             <option value={option.value}>{option.label}</option>
@@ -367,7 +367,7 @@
       </label>
 
       <label class="filter-field">
-        <span>Year</span>
+        <span>{$t('network.router.year') || 'Year'}</span>
         <select bind:value={year} onchange={() => void loadRowsPage(1)}>
           <option value="">{$t('common.all') || 'All years'}</option>
           {#each yearOptions as value}
@@ -390,27 +390,27 @@
 
     <div class="retention-panel">
       <div class="retention-copy">
-        <strong>Router retention</strong>
+        <strong>{$t('network.router.retention') || 'Router retention'}</strong>
         <p>
           {#if routerId}
-            Sync akan mengambil semua log dari router ini, lalu auto-clear mengikuti retention yang dipilih.
+            {$t('admin.network.logs.retention.description_with_router') || 'Sync will fetch all logs from this router, then auto-clear follows the chosen retention.'}
           {:else}
-            Pilih router dulu untuk atur retention dan clear logs.
+            {$t('admin.network.logs.retention.description_no_router') || 'Select a router first to manage retention and clear logs.'}
           {/if}
         </p>
       </div>
       <div class="retention-controls">
         <select bind:value={retentionValue} disabled={!routerId || retentionLoading || retentionSaving} onchange={saveRetention}>
-          <option value="unlimited">Unlimited</option>
-          <option value="30">30 days</option>
-          <option value="90">90 days</option>
-          <option value="360">360 days</option>
+          <option value="unlimited">{$t('network.router.unlimited') || 'Unlimited'}</option>
+          <option value="30">{$t('admin.network.logs.retention.30_days') || '30 days'}</option>
+          <option value="90">{$t('admin.network.logs.retention.90_days') || '90 days'}</option>
+          <option value="360">{$t('admin.network.logs.retention.360_days') || '360 days'}</option>
         </select>
         <span class="muted hint">
           {#if routerId}
-            {retentionLoading ? 'Loading retention...' : retentionSaving ? 'Saving retention...' : `Applied to ${routerName(routerId)}`}
+            {retentionLoading ? ($t('common.loading') || 'Loading...') : retentionSaving ? ($t('common.saving') || 'Saving...') : `${$t('admin.network.logs.retention.applied_to') || 'Applied to'} ${routerName(routerId)}`}
           {:else}
-            Router not selected
+            {$t('admin.network.logs.retention.no_router') || 'Router not selected'}
           {/if}
         </span>
       </div>
@@ -680,10 +680,10 @@
 
 <ConfirmDialog
   show={showClearConfirm}
-  title="Clear router logs?"
-  message={routerId ? `All stored logs for ${routerName(routerId)} will be deleted from the database.` : 'Select a router first.'}
-  confirmText={clearingLogs ? 'Clearing...' : 'Clear logs'}
-  cancelText="Cancel"
+  title={$t('admin.network.logs.clear.title') || 'Clear router logs?'}
+  message={routerId ? ($t('admin.network.logs.clear.message', { values: { router: routerName(routerId) } }) || `All stored logs for ${routerName(routerId)} will be deleted from the database.`) : ($t('admin.network.logs.clear.select_router') || 'Select a router first.')}
+  confirmText={clearingLogs ? ($t('admin.network.logs.clear.clearing') || 'Clearing...') : ($t('admin.network.logs.clear.confirm') || 'Clear logs')}
+  cancelText={$t('common.cancel') || 'Cancel'}
   loading={clearingLogs}
   onconfirm={clearLogs}
   oncancel={() => !clearingLogs && (showClearConfirm = false)}

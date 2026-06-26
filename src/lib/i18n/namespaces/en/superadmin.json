@@ -47,7 +47,34 @@
       "ip": "IP",
       "time_ip": "Time / IP",
       "user_tenant": "User / Tenant",
-      "action_resource": "Action / Resource"
+      "action_resource": "Action / Resource",
+      "scope": "Scope",
+      "severity": "Severity",
+      "audience": "Audience",
+      "mode": "Mode",
+      "deliver_in_app": "Deliver in app",
+      "deliver_email": "Deliver email",
+      "starts": "Starts",
+      "ends": "Ends"
+    },
+    "columns_extended": {
+      "scope": "Scope",
+      "severity": "Severity",
+      "audience": "Audience",
+      "mode": "Mode",
+      "deliver_in_app": "Deliver in app",
+      "deliver_email": "Deliver email",
+      "starts": "Starts",
+      "ends": "Ends",
+      "notified": "Notified",
+      "cause": "Cause",
+      "delivered_now": "Delivered now",
+      "subject": "Subject",
+      "priority": "Priority",
+      "internal": "Internal",
+      "message": "Message",
+      "attachments": "Attachments",
+      "changed": "Changed"
     },
     "filters": {
       "action": "Action (exact)",
@@ -439,6 +466,16 @@
       "actions": {
         "create": "Create Tenant",
         "update": "Update Tenant"
+      },
+      "domain_status_label": "Domain Status",
+      "failure_reason": "Failure Reason",
+      "failure_reason_placeholder": "e.g. DNS not pointing to the correct target",
+      "save_domain_first": "Save custom domain changes before changing verification status.",
+      "apply_domain_status": "Apply Domain Status",
+      "status_options": {
+        "pending": "Pending",
+        "active": "Active",
+        "failed": "Failed"
       }
     },
     "empty": {
@@ -454,7 +491,9 @@
       "delete_failed": "Failed to delete tenant: {message}",
       "activated": "Tenant activated",
       "deactivated": "Tenant deactivated"
-    }
+    },
+    "domain_status": "Domain Status",
+    "failure_reason": "Failure Reason"
   },
   "invoices": {
     "aria": {
@@ -531,7 +570,8 @@
       "click_enlarge": "Click to enlarge",
       "no_proof": "No proof uploaded yet.",
       "not_found": "Invoice not found"
-    }
+    },
+    "payment_proof": "Payment Proof"
   },
   "system": {
     "tabs": {
@@ -554,11 +594,12 @@
     },
     "title": "System Health",
     "subtitle": "Monitor platform status and metrics",
+    "views": "System views",
     "loading": "Loading system health...",
     "retry": "Retry",
     "db_connected": "Database Connected",
     "db_disconnected": "Database Disconnected",
-    "tables": "tables",
+    "tables": "Tables",
     "uptime": "Uptime:",
     "cpu_usage": "CPU Usage",
     "memory_usage": "Memory Usage",
@@ -575,7 +616,35 @@
     "table_headers": {
       "table": "Table",
       "rows": "Rows"
-    }
+    },
+    "avg_response": "Avg Response",
+    "p95_latency": "P95 Latency",
+    "total_requests": "Total Requests",
+    "errors": "Errors",
+    "rate_limited": "Rate Limited",
+    "server": "Server",
+    "size": "Size",
+    "tenants": "Tenants",
+    "users": "Users",
+    "missing_migrations": "Missing migrations detected",
+    "pending_migrations": "Pending migrations",
+    "latest_applied": "Latest Applied",
+    "version": "Version",
+    "installed": "Installed",
+    "ok": "OK",
+    "failed": "FAILED",
+    "app_name": "App Name",
+    "public_url": "Public URL",
+    "timezone": "Timezone",
+    "base_currency": "Base Currency",
+    "display_currency": "Display Currency",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "global": "Global",
+    "tenant": "Tenant",
+    "schedule": "Schedule",
+    "last_run_utc": "Last Run (UTC)",
+    "retention": "Retention"
   },
   "settings": {
     "title": "Platform Settings",
@@ -723,7 +792,10 @@
         "client_key": "Client Key",
         "client_key_hint": "Public key for frontend Snap.js.",
         "production_mode": "Production Mode",
-        "production_mode_desc": "Enable for real transactions. Disable for Sandbox."
+        "production_mode_desc": "Enable for real transactions. Disable for Sandbox.",
+        "environment": "Environment",
+        "production_mode_label": "Production Mode (Live Payments)",
+        "sandbox_mode_label": "Sandbox Mode (Testing)"
       },
       "manual": {
         "title": "Manual Bank Transfer",
@@ -908,6 +980,55 @@
         "label": "Timezone",
         "desc": "Used to interpret daily/weekly schedule times."
       }
+    },
+    "midtrans": {
+      "merchant_id": "Merchant ID",
+      "client_key": "Client Key",
+      "server_key": "Server Key",
+      "environment": "Environment"
+    },
+    "duitku": {
+      "title": "Duitku Gateway",
+      "enable": "Enable Duitku",
+      "description": "Use Duitku hosted checkout for automated payments.",
+      "merchant_code": "Merchant Code",
+      "api_key": "API Key",
+      "enabled_payment_methods": "Enabled Payment Methods",
+      "select_channels": "Select which Duitku channels customers can choose during checkout.",
+      "load_methods": "Load Duitku Methods",
+      "loading": "Loading...",
+      "no_methods": "No Duitku payment methods returned for this merchant.",
+      "load_failed": "Failed to load Duitku payment methods",
+      "saved_method": "Saved method"
+    },
+    "whatsapp_gateway": {
+      "title": "WhatsApp Gateway",
+      "provider": "Provider",
+      "fonnte_config": "Fonnte Configuration",
+      "api_token": "API Token",
+      "fonnte_token_placeholder": "Fonnte token",
+      "base_url": "Base URL",
+      "sender": "Sender",
+      "triwax_config": "Triwax Configuration",
+      "api_key": "API Key",
+      "disabled": "Disabled",
+      "fonnte": "Fonnte",
+      "triwax": "Triwax",
+      "event_notifications": {
+        "title": "Event Notifications",
+        "empty": "No event notifications yet.",
+        "event": "Event",
+        "whatsapp": "WhatsApp",
+        "email": "Email",
+        "in_app": "In App"
+      },
+      "send_test": "Send Test",
+      "recipient_phone": "Recipient Phone",
+      "event_code": "Event Code",
+      "manual_test": "Manual test",
+      "message": "Message",
+      "sending": "Sending...",
+      "send_test_button": "Send Test"
     }
   },
   "plans": {
@@ -1086,5 +1207,14 @@
     "rejected_success": "User rejected successfully",
     "approve_failed": "Failed to approve user",
     "reject_failed": "Failed to reject user"
+  },
+  "customers": {
+    "invite": {
+      "title": "Customer Invite Link",
+      "generate": "Generate invite",
+      "default_policy": "Default policy",
+      "default_expiry": "Default expiry (hours)",
+      "default_max_uses": "Default max uses"
+    }
   }
 }

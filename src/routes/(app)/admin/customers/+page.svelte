@@ -639,7 +639,7 @@
 
   function inviteStatusLabel(invite: CustomerRegistrationInviteView) {
     const s = inviteStatus(invite);
-    if (s === 'revoked') return 'Revoked';
+    if (s === 'revoked') return $t('admin.customers.invite.revoked') || 'Revoked';
     if (s === 'used') return 'Used';
     if (s === 'expired') return 'Expired';
     return 'Active';
@@ -654,7 +654,7 @@
         limit: 50,
       });
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to load customer invite links');
+      toast.error(e?.message || $t('admin.customers.invite.toasts.load_failed') || 'Failed to load customer invite links');
     } finally {
       inviteLoading = false;
     }
@@ -673,7 +673,7 @@
       const msg = String(e?.message || '');
       const isMissingEndpoint = msg.includes('404') || msg.toLowerCase().includes('not found');
       if (!isMissingEndpoint) {
-        toast.error(msg || 'Failed to load invite defaults');
+        toast.error(msg || $t('admin.customers.invite.toasts.policy_failed') || 'Failed to load invite defaults');
       }
     } finally {
       invitePolicyLoading = false;
@@ -694,9 +694,9 @@
       invitePolicyMaxUses = policy.default_max_uses;
       inviteExpiresInHours = policy.default_expires_in_hours;
       inviteMaxUses = policy.default_max_uses;
-      toast.success('Invite defaults updated');
+      toast.success($t('admin.customers.invite.toasts.policy_updated') || 'Invite defaults updated');
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to update invite defaults');
+      toast.error(e?.message || $t('admin.customers.invite.toasts.policy_failed') || 'Failed to update invite defaults');
     } finally {
       invitePolicySaving = false;
     }
@@ -711,7 +711,7 @@
       const msg = String(e?.message || '');
       const isMissingEndpoint = msg.includes('404') || msg.toLowerCase().includes('not found');
       if (!isMissingEndpoint) {
-        toast.error(msg || 'Failed to load invite summary');
+        toast.error(msg || $t('admin.customers.invite.toasts.summary_failed') || 'Failed to load invite summary');
       }
     } finally {
       inviteSummaryLoading = false;
@@ -744,10 +744,10 @@
       generatedInviteUrl = res.invite_url;
       generatedInviteExpiresAt = res.invite.expires_at;
       inviteNote = '';
-      toast.success('Invite link generated');
+      toast.success($t('admin.customers.invite.toasts.generated') || 'Invite link generated');
       await Promise.all([loadInvites(), loadInviteSummary()]);
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to generate invite link');
+      toast.error(e?.message || $t('admin.customers.invite.toasts.generate_failed') || 'Failed to generate invite link');
     } finally {
       inviteGenerating = false;
     }
@@ -758,10 +758,10 @@
     inviteRevokingId = inviteId;
     try {
       await api.customers.invites.revoke(inviteId);
-      toast.success('Invite link revoked');
+      toast.success($t('admin.customers.invite.toasts.revoked') || 'Invite link revoked');
       await Promise.all([loadInvites(), loadInviteSummary()]);
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to revoke invite');
+      toast.error(e?.message || $t('admin.customers.invite.toasts.revoke_failed') || 'Failed to revoke invite');
     } finally {
       inviteRevokingId = null;
     }
@@ -1190,7 +1190,7 @@
   <div class="form">
     <label>
       <span>{$t('admin.customers.fields.name') || 'Name'}</span>
-      <input class="input" bind:value={createName} placeholder="PT Example" />
+      <input class="input" bind:value={createName} placeholder={$t('admin.settings.company.name_placeholder') || 'PT Example'} />
     </label>
     <div class="grid2">
       <label>
@@ -1241,7 +1241,7 @@
 
 <Modal
   show={showInviteModal}
-  title="Customer Invite Link"
+  title={$t('admin.customers.invite.title') || 'Customer Invite Link'}
   width="760px"
   onclose={() => (showInviteModal = false)}
 >
@@ -1249,10 +1249,9 @@
     <section class="invite-section invite-generate-card">
       <div class="invite-section-head invite-section-heading-block">
         <div>
-          <strong>Generate invite</strong>
+          <strong>{$t('admin.customers.invite.generate') || 'Generate invite'}</strong>
           <p class="invite-section-copy">
-            Buat link pendaftaran customer yang bisa langsung dibagikan ke tim sales atau calon
-            pelanggan.
+            {$t('admin.customers.invite.share_hint') || 'Buat link pendaftaran customer yang bisa langsung dibagikan ke tim sales atau calon pelanggan.'}
           </p>
         </div>
       </div>
@@ -1260,14 +1259,14 @@
       <div class="invite-overview-grid">
         <section class="invite-section invite-section-subtle">
           <div class="invite-section-head">
-            <strong>Default policy</strong>
+            <strong>{$t('admin.customers.invite.default_policy') || 'Default policy'}</strong>
             {#if invitePolicyLoading}
               <span class="muted">{$t('common.loading') || 'Loading...'}</span>
             {/if}
           </div>
           <div class="grid2">
             <label>
-              <span>Default expiry (hours)</span>
+              <span>{$t('admin.customers.invite.default_expiry') || 'Default expiry (hours)'}</span>
               <input
                 class="input"
                 type="number"
@@ -1277,7 +1276,7 @@
               />
             </label>
             <label>
-              <span>Default max uses</span>
+              <span>{$t('admin.customers.invite.default_max_uses') || 'Default max uses'}</span>
               <input
                 class="input"
                 type="number"
@@ -1294,41 +1293,41 @@
               disabled={invitePolicySaving}
             >
               <Icon name="save" size={14} />
-              {invitePolicySaving ? 'Saving...' : 'Save defaults'}
+              {invitePolicySaving ? ($t('common.saving') || 'Saving...') : ($t('admin.customers.invite.save_defaults') || 'Save defaults')}
             </button>
           </div>
         </section>
 
         <section class="invite-section invite-section-subtle">
           <div class="invite-section-head">
-            <strong>Invite summary</strong>
+            <strong>{$t('admin.customers.invite.invite_summary') || 'Invite summary'}</strong>
           </div>
           {#if inviteSummaryLoading}
             <div class="muted">{$t('common.loading') || 'Loading...'}</div>
           {:else if inviteSummary}
             <div class="invite-summary-grid">
               <div class="invite-summary-item">
-                <small>Total</small>
+                <small>{$t('common.total') || 'Total'}</small>
                 <strong>{inviteSummary.total}</strong>
               </div>
               <div class="invite-summary-item">
-                <small>Active</small>
+                <small>{$t('common.active') || 'Active'}</small>
                 <strong>{inviteSummary.active}</strong>
               </div>
               <div class="invite-summary-item">
-                <small>Used up</small>
+                <small>{$t('admin.customers.invite.used_up') || 'Used up'}</small>
                 <strong>{inviteSummary.used_up}</strong>
               </div>
               <div class="invite-summary-item">
-                <small>Expired</small>
+                <small>{$t('admin.customers.invite.expired') || 'Expired'}</small>
                 <strong>{inviteSummary.expired}</strong>
               </div>
               <div class="invite-summary-item">
-                <small>Revoked</small>
+                <small>{$t('admin.customers.invite.revoked') || 'Revoked'}</small>
                 <strong>{inviteSummary.revoked}</strong>
               </div>
               <div class="invite-summary-item">
-                <small>Utilization</small>
+                <small>{$t('admin.customers.invite.utilization') || 'Utilization'}</small>
                 <strong>{inviteSummary.utilization_percent.toFixed(1)}%</strong>
               </div>
             </div>
@@ -1338,27 +1337,27 @@
 
       <div class="grid2">
         <label>
-          <span>Expire (hours)</span>
+          <span>{$t('admin.customers.invite.expire_hours') || 'Expire (hours)'}</span>
           <input class="input" type="number" min="1" max="720" bind:value={inviteExpiresInHours} />
         </label>
         <label>
-          <span>Max uses</span>
+          <span>{$t('admin.customers.invite.max_uses') || 'Max uses'}</span>
           <input class="input" type="number" min="1" max="100" bind:value={inviteMaxUses} />
         </label>
       </div>
       <label>
-        <span>Note (optional)</span>
+        <span>{$t('admin.customers.invite.note_optional') || 'Note (optional)'}</span>
         <input
           class="input"
           bind:value={inviteNote}
-          placeholder="Campaign, PIC, atau remark internal"
+          placeholder={$t('admin.customers.invite.note_placeholder') || 'Campaign, PIC, atau remark internal'}
         />
       </label>
 
       <div class="actions actions-inline">
         <button class="btn btn-primary" onclick={generateInvite} disabled={inviteGenerating}>
           <Icon name="plus" size={16} />
-          {inviteGenerating ? 'Generating...' : 'Generate Invite Link'}
+          {inviteGenerating ? ($t('admin.customers.invite.generating') || 'Generating...') : ($t('admin.customers.invite.generate_btn') || 'Generate Invite Link')}
         </button>
       </div>
 
@@ -1366,8 +1365,8 @@
         <div class="invite-result-panel">
           <div class="invite-result-head">
             <div>
-              <strong>Generated link</strong>
-              <div class="sub">Bagikan link ini ke customer atau tim terkait.</div>
+              <strong>{$t('admin.customers.invite.generated_link') || 'Generated link'}</strong>
+              <div class="sub">{$t('admin.customers.invite.share_hint') || 'Bagikan link ini ke customer atau tim terkait.'}</div>
             </div>
             <small class="sub">
               Expires: {new Date(generatedInviteExpiresAt).toLocaleString()}
@@ -1387,8 +1386,8 @@
     <section class="invite-section invite-history-section">
       <div class="invite-history-toolbar">
         <div>
-          <strong>Recent invite links</strong>
-          <div class="sub">Pantau link aktif, usage, dan revoke link yang sudah tidak dipakai.</div>
+          <strong>{$t('admin.customers.invite.recent_links') || 'Recent invite links'}</strong>
+          <div class="sub">{$t('admin.customers.invite.recent_hint') || 'Pantau link aktif, usage, dan revoke link yang sudah tidak dipakai.'}</div>
         </div>
         <label class="inline-check">
           <input
@@ -1396,7 +1395,7 @@
             bind:checked={inviteIncludeInactive}
             onchange={() => loadInvites()}
           />
-          <span>Show inactive</span>
+          <span>{$t('admin.customers.invite.show_inactive') || 'Show inactive'}</span>
         </label>
       </div>
 
@@ -1405,7 +1404,7 @@
       {:else if inviteRows.length === 0}
         <div class="invite-empty-state">
           <Icon name="link" size={18} />
-          <span>No invite links yet.</span>
+          <span>{$t('admin.customers.invite.no_links') || 'No invite links yet.'}</span>
         </div>
       {:else}
         <div class="invite-list">
@@ -1423,11 +1422,11 @@
                     {inviteStatusLabel(invite)}
                   </span>
                   <span class="mono">
-                    Uses: {invite.used_count}/{invite.max_uses}
+                    {$t('admin.customers.invite.uses') || 'Uses'}: {invite.used_count}/{invite.max_uses}
                   </span>
                 </div>
                 <div class="sub">
-                  Created: {new Date(invite.created_at).toLocaleString()} · Expires: {new Date(
+                  {$t('admin.customers.invite.created_at') || 'Created'}: {new Date(invite.created_at).toLocaleString()} · {$t('admin.customers.invite.expires_at') || 'Expires'}: {new Date(
                     invite.expires_at,
                   ).toLocaleString()}
                 </div>
@@ -1444,7 +1443,7 @@
                     {invite.invite_url}
                   </a>
                 {:else}
-                  <div class="sub">Link hanya tersedia saat invite baru dibuat.</div>
+                  <div class="sub">{$t('admin.customers.invite.link_only_available') || 'Link hanya tersedia saat invite baru dibuat.'}</div>
                 {/if}
               </div>
               <div class="invite-item-actions">
@@ -1463,7 +1462,7 @@
                     disabled={inviteRevokingId === invite.id}
                   >
                     <Icon name="x" size={14} />
-                    {inviteRevokingId === invite.id ? 'Revoking...' : 'Revoke'}
+                    {inviteRevokingId === invite.id ? ($t('admin.customers.invite.revoking') || 'Revoking...') : ($t('admin.customers.invite.revoke') || 'Revoke')}
                   </button>
                 {/if}
               </div>

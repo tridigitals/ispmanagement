@@ -23,7 +23,7 @@
         <span class="metric-value">
           {health.request_metrics.requests_last_minute}
         </span>
-        <span class="metric-label">Requests/min</span>
+        <span class="metric-label">{$t('superadmin.system.requests_per_min') || 'Requests/min'}</span>
       </div>
     </div>
     <div class="metric-card">
@@ -34,7 +34,7 @@
         <span class="metric-value">
           {health.request_metrics.avg_response_time_ms.toFixed(1)}ms
         </span>
-        <span class="metric-label">Avg Response</span>
+        <span class="metric-label">{$t('superadmin.system.avg_response') || 'Avg Response'}</span>
       </div>
     </div>
     <div class="metric-card">
@@ -45,7 +45,7 @@
         <span class="metric-value">
           {health.request_metrics.p95_response_time_ms.toFixed(1)}ms
         </span>
-        <span class="metric-label">P95 Latency</span>
+        <span class="metric-label">{$t('superadmin.system.p95_latency') || 'P95 Latency'}</span>
       </div>
     </div>
     <div class="metric-card">
@@ -56,7 +56,7 @@
         <span class="metric-value">
           {health.request_metrics.total_requests.toLocaleString()}
         </span>
-        <span class="metric-label">Total Requests</span>
+        <span class="metric-label">{$t('superadmin.system.total_requests') || 'Total Requests'}</span>
       </div>
     </div>
     <div class="metric-card">
@@ -67,7 +67,7 @@
         <span class="metric-value">
           {health.request_metrics.error_count}
         </span>
-        <span class="metric-label">Errors</span>
+        <span class="metric-label">{$t('superadmin.system.errors') || 'Errors'}</span>
       </div>
     </div>
     <div class="metric-card">
@@ -78,7 +78,7 @@
         <span class="metric-value">
           {health.request_metrics.rate_limited_count}
         </span>
-        <span class="metric-label">Rate Limited</span>
+        <span class="metric-label">{$t('superadmin.system.rate_limited') || 'Rate Limited'}</span>
       </div>
     </div>
   </div>

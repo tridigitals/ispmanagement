@@ -1,6 +1,7 @@
 <script lang="ts">
   import { resolveCustomDomainStatusView } from '$lib/utils/customDomainStatus';
   import CustomDomainStatusBadge from './CustomDomainStatusBadge.svelte';
+  import { t } from 'svelte-i18n';
 
   let {
     customDomain = null,
@@ -26,8 +27,8 @@
 <section class="domain-status-panel">
   <div class="domain-status-header">
     <div>
-      <div class="domain-status-title">Status Domain</div>
-      <div class="domain-status-domain">{customDomain || 'Belum dikonfigurasi'}</div>
+      <div class="domain-status-title">{$t('admin.settings.branding.domain_status') || 'Status Domain'}</div>
+      <div class="domain-status-domain">{customDomain || $t('admin.settings.branding.not_configured') || 'Belum dikonfigurasi'}</div>
     </div>
     <CustomDomainStatusBadge {customDomain} {status} {failureReason} />
   </div>

@@ -243,10 +243,10 @@
       class:active={assignedFilter === 'unassigned'}
       type="button"
       onclick={() => setAssignedFilter(assignedFilter === 'unassigned' ? 'all' : 'unassigned')}
-      title="Belum Assign"
+      title={$t('admin.support.unassigned') || 'Belum Assign'}
     >
       <div class="stat-top">
-        <span class="stat-label">Belum Assign</span>
+        <span class="stat-label">{$t('admin.support.unassigned') || 'Belum Assign'}</span>
         <Icon name="user" size={14} />
       </div>
       <div class="stat-value">—</div>

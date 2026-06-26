@@ -277,7 +277,7 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.network.noc.title') || 'Network NOC'}
-    subtitle="Ringkasan operasional seluruh router."
+    subtitle={$t('network.noc.title') || 'Ringkasan operasional seluruh router.'}
   >
     {#snippet actions()}
       <AlertsIncidentsSwitch
@@ -423,7 +423,7 @@
             <span class="muted">MEM</span>
             <span class="sep">·</span>
             <span class:bad={disk != null && disk >= 90} class="mono">{disk == null ? '—' : `${disk}%`}</span>
-            <span class="muted">DISK</span>
+            <span class="muted">{$t('network.noc.disk') || 'DISK'}</span>
           </div>
         {:else if key === 'traffic'}
           <div class="mini">

@@ -5,6 +5,8 @@
     "item": "Item",
     "total": "Total",
     "status": "Status",
+    "created": "Created",
+    "payment_method": "Payment Method",
     "tabs": {
       "online": "Online Payment",
       "manual": "Bank Transfer"

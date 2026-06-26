@@ -395,7 +395,7 @@
 </script>
 
 <div class="page-container fade-in">
-  <nav class="breadcrumb" aria-label="Breadcrumb">
+  <nav class="breadcrumb" aria-label={$t('common.breadcrumb') || 'Breadcrumb'}>
     <button class="crumb-link" type="button" onclick={() => goto(adminHomePath)}>
       {$t('sidebar.overview') || 'Overview'}
     </button>
@@ -409,7 +409,7 @@
         {$t('admin.package_invoices.list.eyebrow') || 'Customer billing'}
       </span>
       <h1>{$t('admin.package_invoices.list.title') || 'Billing'}</h1>
-      <p class="subtitle">Tagihan, collection, dan invoice pelanggan.</p>
+      <p class="subtitle">{$t('admin.package_invoices.list.subtitle') || 'Tagihan, collection, dan invoice pelanggan.'}</p>
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary" onclick={goToBillingLogs}>
@@ -497,7 +497,7 @@
         {$t('admin.package_invoices.list.workspace.queue_title') || 'Invoice queue'}
       </span>
       <strong class="workspace-card__value">{invoiceStats.total}</strong>
-      <p>Pantau invoice aktif tanpa pindah halaman.</p>
+      <p>{$t('admin.package_invoices.list.workspace.queue_title_desc') || 'Pantau invoice aktif tanpa pindah halaman.'}</p>
     </article>
   </div>
 
@@ -507,7 +507,7 @@
         <h2>
           {$t('admin.package_invoices.list.sections.manual_title') || 'Manual billing action'}
         </h2>
-        <p>Pilih subscription untuk membuat invoice manual.</p>
+        <p>{$t('admin.package_invoices.list.subtitle_manual') || 'Pilih subscription untuk membuat invoice manual.'}</p>
       </div>
     </div>
 
@@ -554,7 +554,7 @@
     <div class="section-heading">
       <div>
         <h2>{$t('admin.package_invoices.list.sections.summary_title') || 'Billing overview'}</h2>
-        <p>Ringkasan status pembayaran.</p>
+        <p>{$t('admin.package_invoices.list.subtitle_summary') || 'Ringkasan status pembayaran.'}</p>
       </div>
     </div>
 
@@ -588,7 +588,7 @@
     <div class="section-heading">
       <div>
         <h2>{$t('admin.package_invoices.list.sections.queue_title') || 'Invoice queue'}</h2>
-        <p>Filter dan cek invoice pelanggan.</p>
+        <p>{$t('admin.package_invoices.list.subtitle_filter') || 'Filter dan cek invoice pelanggan.'}</p>
       </div>
     </div>
 

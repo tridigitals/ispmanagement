@@ -33,6 +33,7 @@
       "customer_conflict": "Keputusan konflik pelanggan",
       "default_safe_review": "Default safe review",
       "merge": "Gabung",
+      "replace": "Ganti",
       "create_new": "Buat baru",
       "skip": "Lewati",
       "decision_info": "Tentukan cara menangani pelanggan yang sudah ada.",

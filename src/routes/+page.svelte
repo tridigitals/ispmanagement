@@ -13,9 +13,10 @@
   import { publicApi } from '$lib/api/public';
   import { getDefaultTenantLandingPath } from '$lib/utils/appLanding';
 
-  let email = '';
+  let identifier = '';
   let password = '';
   let rememberMe = true;
+  let loginMethod: 'email' | 'phone' = 'email';
   let error = '';
   let loading = false;
   let activeField = '';
@@ -78,7 +79,7 @@
     loading = true;
 
     try {
-      const response = await login(email, password, rememberMe);
+      const response = await login(identifier, password, rememberMe);
       const slug = response.user?.tenant_slug;
       const currentHost = window.location.hostname;
       const mainDomain = $appSettings.auth?.main_domain;
@@ -119,21 +120,61 @@
       {/if}
 
       <form on:submit={handleSubmit}>
-        <div class="input-group" class:focus={activeField === 'email'}>
-          <label for="email">{$t('auth.login.email_label')}</label>
-          <div class="field">
-            <span class="icon"><Icon name="mail" size={18} /></span>
-            <input
-              type="email"
-              id="email"
-              bind:value={email}
-              on:focus={() => (activeField = 'email')}
-              on:blur={() => (activeField = '')}
-              placeholder={$t('auth.login.email_placeholder')}
-              required
-            />
-          </div>
+        <!-- Login Method Toggle -->
+        <div class="login-method-toggle">
+          <button
+            type="button"
+            class="toggle-btn"
+            class:active={loginMethod === 'email'}
+            on:click={() => { loginMethod = 'email'; identifier = ''; }}
+          >
+            <Icon name="mail" size={16} />
+            Email
+          </button>
+          <button
+            type="button"
+            class="toggle-btn"
+            class:active={loginMethod === 'phone'}
+            on:click={() => { loginMethod = 'phone'; identifier = ''; }}
+          >
+            <Icon name="smartphone" size={16} />
+            Phone
+          </button>
         </div>
+
+        {#if loginMethod === 'email'}
+          <div class="input-group" class:focus={activeField === 'email'}>
+            <label for="email">{$t('auth.login.email_label')}</label>
+            <div class="field">
+              <span class="icon"><Icon name="mail" size={18} /></span>
+              <input
+                type="email"
+                id="email"
+                bind:value={identifier}
+                on:focus={() => (activeField = 'email')}
+                on:blur={() => (activeField = '')}
+                placeholder={$t('auth.login.email_placeholder')}
+                required
+              />
+            </div>
+          </div>
+        {:else}
+          <div class="input-group" class:focus={activeField === 'phone'}>
+            <label for="phone">Phone</label>
+            <div class="field">
+              <span class="icon"><Icon name="smartphone" size={18} /></span>
+              <input
+                type="tel"
+                id="phone"
+                bind:value={identifier}
+                on:focus={() => (activeField = 'phone')}
+                on:blur={() => (activeField = '')}
+                placeholder="08xxxxxxxxxx"
+                required
+              />
+            </div>
+          </div>
+        {/if}
 
         <div class="input-group" class:focus={activeField === 'password'}>
           <label for="password">{$t('auth.login.password_label')}</label>
@@ -229,6 +270,44 @@
   .form-header p {
     color: var(--text-secondary);
     margin-top: 0.5rem;
+  }
+
+  /* Login Method Toggle */
+  .login-method-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1.5rem;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 4px;
+    border: 1px solid var(--border-color);
+  }
+
+  .toggle-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .toggle-btn:hover {
+    color: var(--text-primary);
+  }
+
+  .toggle-btn.active {
+    background: var(--color-primary);
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
   }
 
   .input-group {

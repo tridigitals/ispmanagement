@@ -239,7 +239,7 @@
   <!-- Payment instructions ------------------------------------------------- -->
   {#if bankAccounts.length > 0 && invoice?.status !== 'paid'}
     <section class="doc-payment">
-      <h3>Payment Instructions</h3>
+      <h3>{$t('components.invoice_print.payment_instructions') || 'Payment Instructions'}</h3>
       <p class="payment-hint">
         Lakukan transfer ke salah satu rekening berikut, lalu unggah bukti pembayaran melalui
         portal pelanggan.

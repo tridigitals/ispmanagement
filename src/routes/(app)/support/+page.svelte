@@ -505,7 +505,7 @@
             <div class="file-chip">
               <Icon name="file" size={14} />
               <span class="file-name">{att.name}</span>
-              <button class="file-remove" type="button" onclick={() => removeAttachment(i)} title="Remove">
+              <button class="file-remove" type="button" onclick={() => removeAttachment(i)} title={$t('common.remove') || 'Remove'}>
                 <Icon name="x" size={12} />
               </button>
             </div>

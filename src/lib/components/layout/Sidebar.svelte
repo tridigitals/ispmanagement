@@ -629,7 +629,7 @@
   <div class="sidebar-header">
     <div class="logo-wrapper">
       {#if $appLogo}
-        <img src={$appLogo} alt="Logo" class="app-logo" />
+        <img src={$appLogo} alt={$t('common.logo') || 'Logo'} class="app-logo" />
       {:else}
         <div class="logo-placeholder">
           <Icon name="app" size={20} />

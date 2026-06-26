@@ -167,10 +167,10 @@
     <label class="field panel">
       <span>{$t('mixradius.import_wizard.mapping.location_strategy') || 'Location strategy'}</span>
       <select class="input" bind:value={locationStrategy}>
-        <option value={null}>Default</option>
-        <option value="preserve">Preserve</option>
-        <option value="merge">Merge</option>
-        <option value="replace">Replace</option>
+        <option value={null}>{$t('common.default') || 'Default'}</option>
+        <option value="preserve">{$t('common.preserve') || 'Preserve'}</option>
+        <option value="merge">{$t('mixradius.import_wizard.mapping.merge') || 'Merge'}</option>
+        <option value="replace">{$t('mixradius.import_wizard.mapping.replace')}</option>
       </select>
     </label>
   </div>

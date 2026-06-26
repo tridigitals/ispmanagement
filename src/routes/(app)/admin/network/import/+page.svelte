@@ -20,10 +20,10 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.network.import_center.title') || 'Network Imports'}
-    subtitle="Pusat import data jaringan."
+    subtitle={$t('network.import.title') || 'Pusat import data jaringan.'}
   />
 
-  <section class="import-overview" aria-label="Import center overview">
+  <section class="import-overview" aria-label={$t('network.import.overview') || 'Import center overview'}>
     <div>
       <h2>{$t('admin.network.import_center.panel_title') || 'Import aman untuk lifecycle ISP'}</h2>
       <p>
@@ -43,7 +43,7 @@
     </div>
   </section>
 
-  <section class="source-section" aria-label="Import sources">
+  <section class="source-section" aria-label={$t('network.import.sources') || 'Import sources'}>
     <div class="section-head">
       <div>
         <h2>{$t('admin.network.import_center.sources_title') || 'Pilih source import'}</h2>

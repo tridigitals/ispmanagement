@@ -677,7 +677,7 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.services.title') || $t('admin.network.packages.title') || 'Services'}
-    subtitle="Kelola layanan dan konfigurasinya."
+    subtitle={$t('admin.services.subtitle_desc') || 'Kelola layanan dan konfigurasinya.'}
   >
     {#snippet actions()}
       <button class="btn ghost" type="button" onclick={() => void load()} disabled={loading}>

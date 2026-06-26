@@ -72,9 +72,9 @@
     loadingDuitkuMethods = true;
     try {
       duitkuMethods = await api.payment.listDuitkuPaymentMethods(10000);
-      if (!duitkuMethods.length) toast.info('No Duitku payment methods returned for this merchant.');
+      if (!duitkuMethods.length) toast.info($t('superadmin.settings.payment.duitku.no_methods'));
     } catch (error: any) {
-      toast.error(error?.message || 'Failed to load Duitku payment methods');
+      toast.error(error?.message || $t('superadmin.settings.payment.duitku.load_failed'));
     } finally {
       loadingDuitkuMethods = false;
     }
@@ -113,7 +113,7 @@
       <div class="sub-settings fade-in">
         <div class="setting-row">
           <div class="setting-info">
-            <label class="setting-label" for="midtrans-merchant-id">Merchant ID</label>
+            <label class="setting-label" for="midtrans-merchant-id">{$t('superadmin.settings.payment.midtrans.merchant_id')}</label>
           </div>
           <input
             type="text"
@@ -125,7 +125,7 @@
         </div>
         <div class="setting-row">
           <div class="setting-info">
-            <label class="setting-label" for="midtrans-client-key">Client Key</label>
+            <label class="setting-label" for="midtrans-client-key">{$t('superadmin.settings.payment.midtrans.client_key')}</label>
           </div>
           <input
             type="text"
@@ -137,7 +137,7 @@
         </div>
         <div class="setting-row">
           <div class="setting-info">
-            <label class="setting-label" for="midtrans-server-key">Server Key</label>
+            <label class="setting-label" for="midtrans-server-key">{$t('superadmin.settings.payment.midtrans.server_key')}</label>
           </div>
           <input
             type="password"
@@ -149,11 +149,11 @@
         </div>
         <div class="setting-row">
           <div class="setting-info">
-            <label class="setting-label" for="midtrans-production">Environment</label>
+            <label class="setting-label" for="midtrans-production">{$t('superadmin.settings.payment.midtrans.environment')}</label>
             <p class="setting-description">
               {paymentMidtransIsProduction
-                ? 'Production Mode (Live Payments)'
-                : 'Sandbox Mode (Testing)'}
+                ? $t('superadmin.settings.payment.duitku.production_mode')
+                : $t('superadmin.settings.payment.duitku.sandbox_mode')}
             </p>
           </div>
           <label class="toggle">
@@ -173,13 +173,13 @@
 
 <div class="card section fade-in" style="margin-top: 1.5rem;">
   <div class="card-header">
-    <h3>Duitku Gateway</h3>
+    <h3>{$t('superadmin.settings.payment.duitku.title')}</h3>
   </div>
   <div class="card-body">
     <div class="setting-row">
       <div class="setting-info">
-        <label class="setting-label" for="duitku-toggle">Enable Duitku</label>
-        <p class="setting-description">Use Duitku hosted checkout for automated payments.</p>
+        <label class="setting-label" for="duitku-toggle">{$t('superadmin.settings.payment.duitku.enable.label')}</label>
+        <p class="setting-description">{$t('superadmin.settings.payment.duitku.enable.desc')}</p>
       </div>
       <label class="toggle">
         <input
@@ -196,7 +196,7 @@
       <div class="sub-settings fade-in">
         <div class="setting-row">
           <div class="setting-info">
-            <label class="setting-label" for="duitku-merchant-code">Merchant Code</label>
+            <label class="setting-label" for="duitku-merchant-code">{$t('superadmin.settings.payment.duitku.merchant_code')}</label>
           </div>
           <input
             type="text"
@@ -209,7 +209,7 @@
         </div>
         <div class="setting-row">
           <div class="setting-info">
-            <label class="setting-label" for="duitku-api-key">API Key</label>
+            <label class="setting-label" for="duitku-api-key">{$t('superadmin.settings.payment.duitku.api_key')}</label>
           </div>
           <input
             type="password"
@@ -221,11 +221,11 @@
         </div>
         <div class="setting-row">
           <div class="setting-info">
-            <label class="setting-label" for="duitku-production">Environment</label>
+            <label class="setting-label" for="duitku-production">{$t('superadmin.settings.payment.duitku.environment')}</label>
             <p class="setting-description">
               {paymentDuitkuIsProduction
-                ? 'Production Mode (Live Payments)'
-                : 'Sandbox Mode (Testing)'}
+                ? $t('superadmin.settings.payment.duitku.production_mode')
+                : $t('superadmin.settings.payment.duitku.sandbox_mode')}
             </p>
           </div>
           <label class="toggle">
@@ -242,9 +242,9 @@
           <div class="setting-info full-width">
             <div class="method-list-header">
               <div>
-                <div class="setting-label">Enabled Payment Methods</div>
+                <div class="setting-label">{$t('superadmin.settings.payment.duitku.methods_title')}</div>
                 <p class="setting-description">
-                  Select which Duitku channels customers can choose during checkout.
+                  {$t('superadmin.settings.payment.duitku.methods_desc')}
                 </p>
               </div>
               <button
@@ -254,7 +254,7 @@
                 disabled={loadingDuitkuMethods}
               >
                 <Icon name="refresh-cw" size={14} />
-                {loadingDuitkuMethods ? 'Loading...' : 'Load Duitku Methods'}
+                {loadingDuitkuMethods ? $t('common.loading') : $t('superadmin.settings.payment.duitku.load_methods')}
               </button>
             </div>
             {#if duitkuMethods.length}
@@ -285,7 +285,7 @@
                     />
                     <span>
                       <strong>{code}</strong>
-                      <small>Saved method</small>
+                      <small>{$t('superadmin.settings.payment.duitku.saved_method')}</small>
                     </span>
                   </label>
                 {/each}

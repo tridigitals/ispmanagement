@@ -33,6 +33,7 @@
       "customer_conflict": "Customer conflict decision",
       "default_safe_review": "Default safe review",
       "merge": "Merge",
+      "replace": "Replace",
       "create_new": "Create new",
       "skip": "Skip",
       "decision_info": "Decide how to handle customers that already exist.",

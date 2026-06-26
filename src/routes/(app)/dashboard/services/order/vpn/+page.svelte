@@ -10,7 +10,7 @@
 </script>
 
 <ServiceComingSoonPage
-  title="Managed VPN Service"
+  title={$t('dashboard.services.order.managed_vpn') || 'Managed VPN Service'}
   description="VPN ordering and provisioning flow will be activated after policy and security module hardening."
   statusLabel="Coming Soon"
   icon="shield"

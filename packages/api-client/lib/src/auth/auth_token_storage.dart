@@ -181,7 +181,7 @@ class AuthTokenStorage {
       _kUserIdKey,
       _kTenantIdKey,
       _kTokenExpiryKey,
-      _kEmailKey,
+      _kIdentifierKey,
       _kPasswordKey,
     ]) {
       try {

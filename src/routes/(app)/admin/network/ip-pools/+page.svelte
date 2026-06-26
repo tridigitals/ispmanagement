@@ -309,7 +309,7 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.network.routers.ip_pools.title') || 'IP Pools'}
-    subtitle="IP pool RouterOS per router."
+    subtitle={$t('network.ip_pool.title') || 'IP pool RouterOS per router.'}
   >
     {#snippet actions()}
       {#if loading}

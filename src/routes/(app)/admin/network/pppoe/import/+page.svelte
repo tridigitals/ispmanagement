@@ -375,9 +375,9 @@
               {/if}
             {:else if key === 'pw'}
               {#if item.pw}
-                <span class="pill ok">OK</span>
+                <span class="pill ok">{$t('admin.network.pppoe.import.labels.ok') || 'OK'}</span>
               {:else}
-                <span class="pill warn">Missing</span>
+                <span class="pill warn">{$t('admin.network.pppoe.import.labels.missing_password') || 'Missing'}</span>
               {/if}
             {:else}
               {item[key] ?? ''}
@@ -423,7 +423,7 @@
 
         {#if result?.errors?.length}
           <div class="error-box">
-            <div class="k">Errors</div>
+            <div class="k">{$t('admin.network.pppoe.import.result.errors') || 'Errors'}</div>
             <ul class="err-list">
               {#each result.errors as e}
                 <li><span class="mono">{e.username}</span>: {e.message}</li>

@@ -104,7 +104,9 @@
     "billing_cycle": "Billing Cycle",
     "unit_price": "Unit Price",
     "subtotal": "Subtotal",
-    "items": "Items"
+    "items": "Items",
+    "amount": "Amount",
+    "payment_instructions": "Payment Instructions"
   },
   "topbar_global_search": {
     "hint": "Type to search across available modules.",

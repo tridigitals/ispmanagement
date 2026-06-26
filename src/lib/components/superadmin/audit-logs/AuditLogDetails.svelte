@@ -22,8 +22,8 @@
   }
 
   function fmtBool(v: unknown) {
-    if (v === true) return 'Yes';
-    if (v === false) return 'No';
+    if (v === true) return $t('common.yes');
+    if (v === false) return $t('common.no');
     return '—';
   }
 
@@ -55,58 +55,58 @@
     {#if log.resource === 'announcements'}
       <div class="kv-grid">
         <div class="kv">
-          <div class="k">Action</div>
+          <div class="k">{$t('superadmin.audit_logs.columns.action')}</div>
           <div class="v"><span class="pill">{log.action}</span></div>
         </div>
         <div class="kv">
-          <div class="k">Scope</div>
+          <div class="k">{$t('superadmin.audit_logs.columns.scope')}</div>
           <div class="v">{pick(parsed, 'scope') || (log.tenant_id ? 'tenant' : 'global')}</div>
         </div>
         <div class="kv">
-          <div class="k">Title</div>
+          <div class="k">{$t('common.title')}</div>
           <div class="v">{pick(parsed, 'announcement.title') || '—'}</div>
         </div>
         <div class="kv">
-          <div class="k">Severity</div>
+          <div class="k">{$t('superadmin.audit_logs.columns.severity')}</div>
           <div class="v">{pick(parsed, 'announcement.severity') || '—'}</div>
         </div>
         <div class="kv">
-          <div class="k">Audience</div>
+          <div class="k">{$t('superadmin.audit_logs.columns.audience')}</div>
           <div class="v">{pick(parsed, 'announcement.audience') || '—'}</div>
         </div>
         <div class="kv">
-          <div class="k">Mode</div>
+          <div class="k">{$t('superadmin.audit_logs.columns.mode')}</div>
           <div class="v">{pick(parsed, 'announcement.mode') || '—'}</div>
         </div>
         <div class="kv">
-          <div class="k">Deliver in app</div>
+          <div class="k">{$t('superadmin.audit_logs.columns.deliver_in_app')}</div>
           <div class="v">{fmtBool(pick(parsed, 'announcement.deliver_in_app'))}</div>
         </div>
         <div class="kv">
-          <div class="k">Deliver email</div>
+          <div class="k">{$t('superadmin.audit_logs.columns.deliver_email')}</div>
           <div class="v">{fmtBool(pick(parsed, 'announcement.deliver_email'))}</div>
         </div>
         <div class="kv">
-          <div class="k">Starts</div>
+          <div class="k">{$t('superadmin.audit_logs.columns.starts')}</div>
           <div class="v">{pick(parsed, 'announcement.starts_at') || '—'}</div>
         </div>
         <div class="kv">
-          <div class="k">Ends</div>
+          <div class="k">{$t('superadmin.audit_logs.columns.ends')}</div>
           <div class="v">{pick(parsed, 'announcement.ends_at') || '—'}</div>
         </div>
         <div class="kv">
-          <div class="k">Notified</div>
+          <div class="k">{$t('superadmin.audit_logs.columns_extended.notified')}</div>
           <div class="v">{pick(parsed, 'announcement.notified_at') || '—'}</div>
         </div>
         {#if pick(parsed, 'cause')}
           <div class="kv">
-            <div class="k">Cause</div>
+            <div class="k">{$t('superadmin.audit_logs.columns_extended.cause')}</div>
             <div class="v">{pick(parsed, 'cause')}</div>
           </div>
         {/if}
         {#if typeof pick(parsed, 'delivered_immediately') !== 'undefined'}
           <div class="kv">
-            <div class="k">Delivered now</div>
+            <div class="k">{$t('superadmin.audit_logs.columns_extended.delivered_now')}</div>
             <div class="v">{fmtBool(pick(parsed, 'delivered_immediately'))}</div>
           </div>
         {/if}
@@ -114,7 +114,7 @@
 
       {#if annChanged.length > 0}
         <div class="sub-block">
-          <div class="sub-title">Changed</div>
+          <div class="sub-title">{$t('superadmin.audit_logs.columns_extended.changed')}</div>
           <div class="chips">
             {#each annChanged as f}
               <span class="chip">{f}</span>
@@ -125,40 +125,40 @@
     {:else if log.resource === 'support_ticket'}
       <div class="kv-grid">
         <div class="kv">
-          <div class="k">Action</div>
+          <div class="k">{$t('superadmin.audit_logs.columns.action')}</div>
           <div class="v"><span class="pill">{log.action}</span></div>
         </div>
         <div class="kv">
-          <div class="k">Subject</div>
+          <div class="k">{$t('superadmin.audit_logs.columns_extended.subject')}</div>
           <div class="v">{pick(parsed, 'subject') || '—'}</div>
         </div>
         {#if pick(parsed, 'priority')}
           <div class="kv">
-            <div class="k">Priority</div>
+            <div class="k">{$t('superadmin.audit_logs.columns_extended.priority')}</div>
             <div class="v">{pick(parsed, 'priority')}</div>
           </div>
         {/if}
         {#if typeof pick(parsed, 'is_internal') !== 'undefined'}
           <div class="kv">
-            <div class="k">Internal</div>
+            <div class="k">{$t('superadmin.audit_logs.columns_extended.internal')}</div>
             <div class="v">{fmtBool(pick(parsed, 'is_internal'))}</div>
           </div>
         {/if}
         {#if pick(parsed, 'message_id')}
           <div class="kv">
-            <div class="k">Message</div>
+            <div class="k">{$t('superadmin.audit_logs.columns_extended.message')}</div>
             <div class="v text-mono">{shortId(pick(parsed, 'message_id'))}</div>
           </div>
         {/if}
         {#if typeof pick(parsed, 'attachments') !== 'undefined'}
           <div class="kv">
-            <div class="k">Attachments</div>
+            <div class="k">{$t('superadmin.audit_logs.columns_extended.attachments')}</div>
             <div class="v">{pick(parsed, 'attachments')}</div>
           </div>
         {/if}
         {#if pick(parsed, 'from.status') || pick(parsed, 'to.status')}
           <div class="kv">
-            <div class="k">Status</div>
+            <div class="k">{$t('common.status')}</div>
             <div class="v">
               {pick(parsed, 'from.status') || '—'} → {pick(parsed, 'to.status') || '—'}
             </div>
@@ -166,7 +166,7 @@
         {/if}
         {#if pick(parsed, 'from.assigned_to') || pick(parsed, 'to.assigned_to')}
           <div class="kv">
-            <div class="k">Assignee</div>
+            <div class="k">{$t('common.assignee')}</div>
             <div class="v">
               <span class="text-mono">{shortId(pick(parsed, 'from.assigned_to'))}</span>
               →

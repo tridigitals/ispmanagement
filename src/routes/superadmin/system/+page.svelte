@@ -160,7 +160,7 @@
       <p class="subtitle">
         {$t('superadmin.system.subtitle') || 'Monitor platform status and metrics'}
       </p>
-      <div class="view-toggle" role="group" aria-label="System views">
+      <div class="view-toggle" role="group" aria-label={$t('superadmin.system.views') || 'System views'}>
         <button class:active={activeView === 'health'} onclick={() => switchView('health')}>
           {$t('superadmin.system.tabs.health') || 'Health'}
         </button>

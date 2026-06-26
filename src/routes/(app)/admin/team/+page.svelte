@@ -329,7 +329,7 @@
     <div class="card-header glass">
       <div>
         <h3>{$t('admin.team.title') || 'Team Members'}</h3>
-        <span class="muted">Anggota tim dan akses.</span>
+        <span class="muted">{$t('admin.team.subtitle_desc') || 'Anggota tim dan akses.'}</span>
       </div>
       <span class="count-badge">
         {$t('admin.team.count', { values: { count: stats.total } }) || `${stats.total} members`}

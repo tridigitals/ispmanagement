@@ -452,7 +452,7 @@
 </script>
 
 <div class="page-container fade-in">
-  <nav class="breadcrumb" aria-label="Breadcrumb">
+  <nav class="breadcrumb" aria-label={$t('common.breadcrumb') || 'Breadcrumb'}>
     <button class="crumb-link" type="button" onclick={() => goto(invoicesPath)}>
       {$t('sidebar.invoices') || 'Invoices'}
     </button>

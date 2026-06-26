@@ -24,7 +24,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController();
+  final _identifierCtrl = TextEditingController();
+  String _loginMethod = 'email';
   late final IspThemeColors isp;
 
   @override
@@ -56,7 +57,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
+    _identifierCtrl.dispose();
     _passwordCtrl.dispose();
     _codeCtrl.dispose();
     _setupCodeCtrl.dispose();
@@ -159,7 +160,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     final auth = ref.read(authControllerProvider.notifier);
     final res = await auth.login(
-      email: _emailCtrl.text.trim(),
+      identifier: _identifierCtrl.text.trim(),
       password: _passwordCtrl.text,
     );
     if (!mounted) return;
@@ -374,17 +375,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: Text(l10n.back),
                     ),
                   ] else ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: SegmentedButton<String>(
+                        segments: [
+                          ButtonSegment(
+                            value: 'email',
+                            label: Text(l10n.email),
+                            icon: const Icon(Icons.email_outlined),
+                          ),
+                          ButtonSegment(
+                            value: 'phone',
+                            label: Text(l10n.phone),
+                            icon: const Icon(Icons.phone),
+                          ),
+                        ],
+                        selected: {_loginMethod},
+                        onSelectionChanged: (sel) {
+                          setState(() {
+                            _loginMethod = sel.first;
+                            _identifierCtrl.clear();
+                          });
+                        },
+                      ),
+                    ),
                     TextFormField(
-                      controller: _emailCtrl,
-                      keyboardType: TextInputType.emailAddress,
+                      controller: _identifierCtrl,
+                      keyboardType: _loginMethod == 'phone'
+                          ? TextInputType.phone
+                          : TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
-                        labelText: l10n.email,
-                        prefixIcon: const Icon(Icons.alternate_email),
+                        labelText: _loginMethod == 'phone'
+                            ? l10n.phone
+                            : l10n.email,
+                        prefixIcon: Icon(_loginMethod == 'phone'
+                            ? Icons.phone
+                            : Icons.alternate_email),
                       ),
-                      validator: (v) => (v == null || !v.contains('@'))
-                          ? l10n.invalidEmail
-                          : null,
+                      validator: (v) {
+                        if (v == null || v.isEmpty) {
+                          return 'This field is required';
+                        }
+                        if (_loginMethod == 'email' && !v.contains('@')) {
+                          return l10n.invalidEmail;
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 12),
                     TextFormField(

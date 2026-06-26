@@ -168,17 +168,17 @@
     {:else if eventsError}
       <div class="status error">
         <span>{eventsError}</span>
-        <button class="btn btn-secondary btn-sm" type="button" onclick={loadEvents}>Retry</button>
+        <button class="btn btn-secondary btn-sm" type="button" onclick={loadEvents}>{$t('common.retry') || 'Retry'}</button>
       </div>
     {:else if scopedEvents.length === 0}
-      <p class="help-text">Belum ada event notifikasi.</p>
+      <p class="help-text">{$t('superadmin.settings.whatsapp_gateway.event_notifications.empty') || 'Belum ada event notifikasi.'}</p>
     {:else}
       <div class="event-table">
         <div class="event-row header">
-          <span>Event</span>
-          <span>WhatsApp</span>
-          <span>Email</span>
-          <span>In App</span>
+          <span>{$t('superadmin.settings.whatsapp_gateway.event_notifications.event') || 'Event'}</span>
+          <span>{$t('superadmin.settings.whatsapp_gateway.event_notifications.whatsapp') || 'WhatsApp'}</span>
+          <span>{$t('superadmin.settings.whatsapp_gateway.event_notifications.email') || 'Email'}</span>
+          <span>{$t('superadmin.settings.whatsapp_gateway.event_notifications.in_app') || 'In App'}</span>
         </div>
         {#each scopedEvents as event}
           {@const pref = eventPreferences[event.code] || { whatsapp: false, email: false, in_app: false }}

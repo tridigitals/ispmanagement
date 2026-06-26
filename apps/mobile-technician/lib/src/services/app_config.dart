@@ -94,9 +94,9 @@ Future<String?> _attemptReLogin(
   }
   if (bioVal != 'true') return null;
 
-  final email = await storage.readEmail();
+  final identifier = await storage.readIdentifier();
   final password = await storage.readPassword();
-  if (email == null || password == null || email.isEmpty || password.isEmpty) {
+  if (identifier == null || password == null || identifier.isEmpty || password.isEmpty) {
     return null;
   }
 
@@ -115,7 +115,7 @@ Future<String?> _attemptReLogin(
     ),
   );
   final authSvc = AuthService(dio: plainDio, tokenStorage: storage);
-  final result = await authSvc.login(email: email, password: password);
+  final result = await authSvc.login(identifier: identifier, password: password);
   switch (result) {
     case Success(:final data):
       await authSvc.persistSession(data);

@@ -91,7 +91,7 @@
   onclose={() => (showServiceTypePicker = false)}
 >
   <div class="type-picker-wrap">
-    <p class="type-picker-subtitle">Pilih kategori layanan.</p>
+    <p class="type-picker-subtitle">{$t('admin.services.category_hint') || 'Pilih kategori layanan.'}</p>
     <div class="type-card-grid">
       {#each serviceTypeCards as card}
         <button type="button" class="type-card" onclick={() => startCreateWithType(card.value)}>

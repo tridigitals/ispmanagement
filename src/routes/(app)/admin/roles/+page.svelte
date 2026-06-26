@@ -202,7 +202,7 @@
     <div class="card-header glass">
       <div>
         <h3>{$t('admin.roles.title') || 'All Roles'}</h3>
-        <span class="muted">Role dan izin akses.</span>
+        <span class="muted">{$t('admin.roles.subtitle_desc') || 'Role dan izin akses.'}</span>
       </div>
       <span class="count-badge">
         {filteredRoles.length}
@@ -326,7 +326,7 @@
       transition:fly={{ y: 20, duration: 300 }}
     >
       <div class="modal-header">
-        <h3>{editingRole ? 'Edit Role' : 'Create New Role'}</h3>
+        <h3>{editingRole ? ($t('admin.roles.modal.edit_title') || 'Edit Role') : ($t('admin.roles.modal.create_title') || 'Create New Role')}</h3>
         <button class="close-btn" onclick={() => (showModal = false)}>
           <Icon name="x" size={20} />
         </button>
@@ -387,7 +387,7 @@
               <button type="button" class="btn-text-action" onclick={toggleAllPermissions}>
                 {permissions.length > 0 &&
                 permissions.every((p) => selectedPermissions.has(`${p.resource}:${p.action}`))
-                  ? 'Deselect All'
+                  ? ($t('common.deselect_all') || 'Deselect All')
                   : $t('common.select_all') || 'Select All'}
               </button>
             </div>
@@ -401,7 +401,7 @@
                     <div class="resource-info">
                       <span class="resource-name">{resource}</span>
                       <span class="resource-hint"
-                        >Manage permissions for {resource.toLowerCase()}</span
+                        >{$t('admin.roles.manage_permissions_for', { values: { resource: resource.toLowerCase() } }) || `Manage permissions for ${resource.toLowerCase()}`}</span
                       >
                     </div>
                     <label class="select-all-toggle">

@@ -71,7 +71,7 @@
       <div class="m-icon midtrans">M</div>
       <div class="m-info">
         <h4>{tt('admin.settings.sections.midtrans', 'Midtrans Payment Gateway')}</h4>
-        <p>Accept payments via Credit Card, GoPay, ShopeePay, VA, etc.</p>
+        <p>{tt('admin.settings.payment.midtrans_desc', 'Accept payments via Credit Card, GoPay, ShopeePay, VA, etc.')}</p>
       </div>
       <label class="toggle">
         <input
@@ -129,7 +129,7 @@
                 onchange={(e: any) =>
                   handleChange('payment_midtrans_is_production', e.currentTarget.checked)}
               />
-              <span>Enable Production Mode (Live)</span>
+              <span>{tt('admin.settings.payment.enable_live', 'Enable Production Mode (Live)')}</span>
             </label>
           </div>
         </div>
@@ -141,8 +141,8 @@
     <div class="method-header">
       <div class="m-icon duitku">D</div>
       <div class="m-info">
-        <h4>Duitku Payment Gateway</h4>
-        <p>Accept payments via Duitku checkout redirect.</p>
+        <h4>{tt('admin.settings.payment.duitku_title', 'Duitku Payment Gateway')}</h4>
+        <p>{tt('admin.settings.payment.duitku_desc', 'Accept payments via Duitku checkout redirect.')}</p>
       </div>
       <label class="toggle">
         <input
@@ -158,7 +158,7 @@
       <div class="method-config fade-in">
         <div class="config-grid">
           <div class="setting-item">
-            <label for="duitku-merchant-code">Merchant Code</label>
+            <label for="duitku-merchant-code">{tt('admin.settings.payment.merchant_code', 'Merchant Code')}</label>
             <Input
               id="duitku-merchant-code"
               value={localSettings['payment_duitku_merchant_code']}
@@ -167,7 +167,7 @@
             />
           </div>
           <div class="setting-item full-width">
-            <label for="duitku-api-key">API Key</label>
+            <label for="duitku-api-key">{tt('admin.settings.payment.api_key', 'API Key')}</label>
             <Input
               id="duitku-api-key"
               type="password"
@@ -185,12 +185,12 @@
                 onchange={(e: any) =>
                   handleChange('payment_duitku_is_production', e.currentTarget.checked)}
               />
-              <span>Enable Production Mode (Live)</span>
+              <span>{tt('admin.settings.payment.enable_live', 'Enable Production Mode (Live)')}</span>
             </label>
           </div>
           <div class="setting-item full-width">
             <div class="bm-header">
-              <span class="label-text">Enabled Payment Methods</span>
+              <span class="label-text">{tt('admin.settings.payment.enabled_methods', 'Enabled Payment Methods')}</span>
               <button
                 class="btn btn-secondary btn-sm"
                 type="button"
@@ -198,11 +198,11 @@
                 disabled={loadingDuitkuMethods}
               >
                 <Icon name="refresh-cw" size={14} />
-                {loadingDuitkuMethods ? 'Loading...' : 'Load Duitku Methods'}
+                {loadingDuitkuMethods ? ($t('common.loading') || 'Loading...') : tt('admin.settings.payment.load_duitku_methods', 'Load Duitku Methods')}
               </button>
             </div>
             <p class="help-text">
-              Select which Duitku channels customers can choose during checkout.
+              {tt('admin.settings.payment.duitku_channels_help', 'Select which Duitku channels customers can choose during checkout.')}
             </p>
             {#if duitkuMethods.length}
               <div class="method-checklist">
@@ -232,7 +232,7 @@
                     />
                     <span>
                       <strong>{code}</strong>
-                      <small>Saved method</small>
+                      <small>{tt('admin.settings.payment.saved_method', 'Saved method')}</small>
                     </span>
                   </label>
                 {/each}
@@ -251,7 +251,7 @@
       </div>
       <div class="m-info">
         <h4>{tt('admin.settings.sections.bank_transfer_manual', 'Bank Transfer (Manual)')}</h4>
-        <p>Accept payments via direct bank transfer verification.</p>
+        <p>{tt('admin.settings.payment.manual_desc', 'Accept payments via direct bank transfer verification.')}</p>
       </div>
       <label class="toggle">
         <input
@@ -280,7 +280,7 @@
               'Please transfer to BCA 1234567890 a/n PT Company...',
             )}
           ></textarea>
-          <p class="help-text">These instructions will be shown to the user during checkout.</p>
+          <p class="help-text">{tt('admin.settings.payment.manual.checkout_help', 'These instructions will be shown to the user during checkout.')}</p>
         </div>
 
         <div class="bank-accounts-manager mt-6">
@@ -348,7 +348,7 @@
                 <div class="icon-placeholder">
                   <Icon name="landmark" size={24} />
                 </div>
-                <p>No bank accounts added yet.</p>
+                <p>{tt('admin.settings.payment.manual.no_bank_accounts', 'No bank accounts added yet.')}</p>
                 <button class="btn btn-primary btn-sm mt-2" onclick={() => (showAddBank = true)}>
                   {tt('admin.settings.payment.manual.add_one', 'Add One')}
                 </button>

@@ -117,26 +117,26 @@
       {#if trackerInvoice}
         <section class="reschedule-status">
           <div class="reschedule-status-head">
-            <h4>Invoice</h4>
+            <h4>{tt('dashboard.services.tracker.invoice', 'Invoice')}</h4>
             <span class={`request-status ${invoiceStatusTone(trackerInvoice.status)}`}>
               {String(trackerInvoice.status || 'pending').toUpperCase()}
             </span>
           </div>
           <div class="reschedule-status-grid">
             <div>
-              <small>Invoice Number</small>
+              <small>{tt('dashboard.services.tracker.invoice_number', 'Invoice Number')}</small>
               <strong>{trackerInvoice.invoice_number || '-'}</strong>
             </div>
             <div>
-              <small>Amount</small>
+              <small>{tt('dashboard.services.tracker.amount', 'Amount')}</small>
               <strong>{formatCurrency(Number(trackerInvoice.amount || 0), trackerInvoice.currency_code)}</strong>
             </div>
             <div>
-              <small>Due Date</small>
+              <small>{tt('dashboard.services.tracker.due_date', 'Due Date')}</small>
               <strong>{formatDate(trackerInvoice.due_date)}</strong>
             </div>
             <div>
-              <small>Paid At</small>
+              <small>{tt('dashboard.services.tracker.paid_at', 'Paid At')}</small>
               <strong>{formatDate(trackerInvoice.paid_at)}</strong>
             </div>
           </div>

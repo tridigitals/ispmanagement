@@ -68,7 +68,7 @@
     "current_password": "Current Password",
     "new_password": "New Password",
     "confirm_password": "Confirm Password",
-    "password_placeholder": "••••••••",
+    "password_placeholder": "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
     "requirements_title": "Password requirements:",
     "req_length": "At least {length} characters long",
     "req_uppercase": "One uppercase letter",
@@ -107,7 +107,7 @@
       "send_code": "Send Code",
       "disable_code_placeholder": "Enter code",
       "enhance_security": "Enhance Your Security",
-      "enhance_desc": "Add an extra layer of security by requiring a verification code when logging in.",
+      "enhance_desc": "Add an extra layer of security by requiring a verification code.",
       "authenticator_app": "Authenticator App",
       "email_verification": "Email Verification",
       "step_scan": "1. Scan this QR code",
@@ -129,7 +129,9 @@
         "revoke": "Revoke",
         "revoke_title": "Revoke Device",
         "revoke_message": "Are you sure you want to revoke access for this device? 2FA will be required on the next login."
-      }
+      },
+      "qr_code": "QR Code",
+      "recovery_warning": "These codes are the ONLY way to access your account if you lose your phone."
     }
   },
   "preferences": {

@@ -121,10 +121,15 @@ export function loadWallboardLocalConfig(): LocalWallboardConfig {
 }
 
 export async function loadWallboardRemoteConfig(args: {
-  canUseTenantSettings: boolean;
+  canUseTenantSettings: boolean | (() => boolean);
   getValue: (key: string) => Promise<string | null>;
 }): Promise<{ layout?: LayoutPreset; slotsAll?: (WallboardSlot | null)[]; remoteLoaded: true }> {
-  if (!args.canUseTenantSettings) {
+  const canUse =
+    typeof args.canUseTenantSettings === 'function'
+      ? args.canUseTenantSettings()
+      : args.canUseTenantSettings;
+  if (!canUse) {
+    console.warn('[WB] Remote config skipped: canUseTenantSettings is false');
     return { remoteLoaded: true };
   }
 
@@ -138,10 +143,16 @@ export async function loadWallboardRemoteConfig(args: {
       remoteLoaded: true,
     };
     if (isLayoutPreset(remoteLayout)) out.layout = remoteLayout;
-    if (remoteSlots) out.slotsAll = normalizeSlots(JSON.parse(remoteSlots));
+    if (remoteSlots) {
+      const parsed = JSON.parse(remoteSlots);
+      out.slotsAll = normalizeSlots(parsed);
+      console.log('[WB] Remote slots loaded:', out.slotsAll.length, 'items,', out.slotsAll.filter(s => s != null).length, 'non-null');
+    } else {
+      console.log('[WB] Remote slots: getValue returned null/empty');
+    }
     return out;
-  } catch {
-    // ignore (wallboard should always load)
+  } catch (e) {
+    console.warn('[WB] Remote config load failed:', e);
     return { remoteLoaded: true };
   }
 }

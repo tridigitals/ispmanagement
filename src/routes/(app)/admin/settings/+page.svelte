@@ -927,7 +927,7 @@
             <h2 class="card-title">
               {categories[activeTab as keyof typeof categories].label}
             </h2>
-            <p class="card-subtitle">Pengaturan {categories[activeTab as keyof typeof categories].label}.</p>
+            <p class="card-subtitle">{$t('admin.settings.page_subtitle', { values: { tab: categories[activeTab as keyof typeof categories].label } }) || `Pengaturan ${categories[activeTab as keyof typeof categories].label}.`}</p>
           </div>
 
           <div class="settings-body">
@@ -1386,11 +1386,11 @@
                         <span class="p-name">{option.label}</span>
                         <span class="p-desc">
                           {#if option.value === 's3'}
-                            Scalable object storage by AWS.
+                            {$t('admin.settings.storage.desc_s3', 'Scalable object storage by AWS.')}
                           {:else if option.value === 'r2'}
-                            Zero egress fee storage by Cloudflare.
+                            {$t('admin.settings.storage.desc_r2', 'Zero egress fee storage by Cloudflare.')}
                           {:else}
-                            Local disk storage (Default).
+                            {$t('admin.settings.storage.desc_system', 'Local disk storage (Default).')}
                           {/if}
                         </span>
                       </div>
@@ -1543,7 +1543,7 @@
                       {#if key === 'app_logo_path'}
                         <div class="file-upload">
                           {#if logoBase64}
-                            <img src={logoBase64} class="logo-preview" alt="Logo" />
+                            <img src={logoBase64} class="logo-preview" alt={$t('common.logo') || 'Logo'} />
                           {/if}
                           <input type="file" accept="image/*" onchange={handleFileUpload} />
                         </div>

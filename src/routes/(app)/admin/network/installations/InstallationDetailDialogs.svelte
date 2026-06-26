@@ -379,11 +379,11 @@
                 {#if activeRow?.package_provisioning_type === 'dhcp_static' ? loadingInstallationDhcp : loadingInstallationPppoe}
                   <p class="helper-text">{tr('common.loading', 'Loading...')}</p>
                 {:else if !installationSubscription && !activeRow?.package_id && !(activeRow?.package_provisioning_type === 'dhcp_static' ? installationDhcpService?.package_id : installationPppoeAccount?.package_id)}
-                  <p class="helper-text">Subscription internet untuk work order ini belum ditemukan.</p>
+                  <p class="helper-text">{tr('admin.network.installations.subscription_not_found', 'Subscription internet untuk work order ini belum ditemukan.')}</p>
                 {:else if activeRow?.package_provisioning_type === 'dhcp_static'}
                   <div class="form-grid two-col compact">
                     <label class="summary-field">
-                      Router
+                      {tr('common.router', 'Router')}
                       <input
                         class:error={!!installationDhcpRouterError}
                         class="input"
@@ -395,7 +395,7 @@
                       {/if}
                     </label>
                     <label class="summary-field">
-                      DHCP Server
+                      {tr('admin.network.installations.dhcp_server', 'DHCP Server')}
                       <input
                         class:error={!!installationDhcpServerNameError}
                         class="input"
@@ -407,7 +407,7 @@
                       {/if}
                     </label>
                     <label class="summary-field">
-                      MAC Address
+                      {tr('admin.network.installations.mac_address', 'MAC Address')}
                       <input
                         class:error={!!installationDhcpMacAddressError}
                         class="input"
@@ -423,23 +423,23 @@
                       {/if}
                     </label>
                     <label class="summary-field">
-                      IP Address
+                      {tr('admin.network.installations.ip_address', 'IP Address')}
                       <input class:error={!!installationDhcpIpAddressError} class="input" bind:value={installationDhcpIpAddress} placeholder="192.168.1.10" />
                       {#if installationDhcpIpAddressError}
                         <span class="field-error">{installationDhcpIpAddressError}</span>
                       {/if}
                     </label>
                     <label class="summary-field">
-                      Queue Mode
+                      {tr('admin.network.installations.queue_mode', 'Queue Mode')}
                       <select class="input" bind:value={installationDhcpQueueMode}>
-                        <option value="none">No queue</option>
-                        <option value="simple_queue">Simple queue</option>
+                        <option value="none">{tr('admin.network.installations.queue_none', 'No queue')}</option>
+                        <option value="simple_queue">{tr('admin.network.installations.queue_simple', 'Simple queue')}</option>
                       </select>
                     </label>
                   </div>
                   {#if installationDhcpQueueMode === 'simple_queue'}
                     <label class="summary-field">
-                      Queue Rate Limit
+                      {tr('admin.network.installations.queue_rate_limit', 'Queue Rate Limit')}
                       <input class:error={!!installationDhcpQueueRateLimitError} class="input" bind:value={installationDhcpQueueRateLimit} placeholder="20M/20M" />
                       <span class="helper-text">
                         {tr(
@@ -469,12 +469,12 @@
                     </label>
                   {/if}
                   <label class="notes">
-                    Comment
-                    <input class="input" bind:value={installationDhcpComment} placeholder="Optional DHCP lease comment" />
+                    {tr('common.comment', 'Comment')}
+                    <input class="input" bind:value={installationDhcpComment} placeholder={tr('admin.network.installations.dhcp_comment_placeholder', 'Optional DHCP lease comment')} />
                   </label>
                   {#if installationDhcpService}
                     <div class="pppoe-existing">
-                      <span>Existing DHCP:</span>
+                      <span>{tr('admin.network.installations.existing_dhcp', 'Existing DHCP:')}</span>
                       <strong>{installationDhcpService.mac_address}</strong>
                       <span>{installationDhcpService.ip_address}</span>
                     </div>
@@ -482,8 +482,8 @@
                   <div class="test-outcome">
                     <span class:ok={!!installationDhcpService} class="test-state">
                       {installationDhcpService
-                        ? 'DHCP static lease is ready for live testing.'
-                        : 'Create the static lease first, then verify connectivity from the customer side.'}
+                        ? tr('admin.network.installations.dhcp_ready_state', 'DHCP static lease is ready for live testing.')
+                        : tr('admin.network.installations.dhcp_pending_state', 'Create the static lease first, then verify connectivity from the customer side.')}
                     </span>
                   </div>
                   <div class="modal-actions">
@@ -494,7 +494,7 @@
                         onclick={saveInstallationDhcp}
                         disabled={savingInstallationDhcp || !installationDhcpServerName.trim() || !installationDhcpMacAddress.trim() || !installationDhcpIpAddress.trim()}
                       >
-                        {savingInstallationDhcp ? tr('common.loading', 'Loading...') : 'Create & Apply Lease'}
+                        {savingInstallationDhcp ? tr('common.loading', 'Loading...') : tr('admin.network.installations.create_apply_lease', 'Create & Apply Lease')}
                       </button>
                     {:else}
                       <button
@@ -503,10 +503,10 @@
                         onclick={saveInstallationDhcp}
                         disabled={savingInstallationDhcp || !installationDhcpServerName.trim() || !installationDhcpMacAddress.trim() || !installationDhcpIpAddress.trim()}
                       >
-                        {savingInstallationDhcp ? tr('common.loading', 'Loading...') : 'Save & Re-apply Lease'}
+                        {savingInstallationDhcp ? tr('common.loading', 'Loading...') : tr('admin.network.installations.save_reapply_lease', 'Save & Re-apply Lease')}
                       </button>
                       <button class="btn ghost" type="button" onclick={applyInstallationDhcp} disabled={savingInstallationDhcp}>
-                        {savingInstallationDhcp ? tr('common.loading', 'Loading...') : 'Apply Existing Lease'}
+                        {savingInstallationDhcp ? tr('common.loading', 'Loading...') : tr('admin.network.installations.apply_existing_lease', 'Apply Existing Lease')}
                       </button>
                     {/if}
                   </div>

@@ -33,7 +33,7 @@
 
 <CompactFilterToolbar
   bind:searchQuery
-  placeholder="Search users..."
+  placeholder={$t('superadmin.users.search') || 'Search users...'}
   bind:filterPanelOpen={filtersOpen}
   {activeFilterCount}
   onReset={resetFilters}
@@ -43,21 +43,21 @@
   {#snippet advancedFilters()}
     <div class="field-grid">
       <div class="field">
-        <label for="user-role-filter">Role</label>
+        <label for="user-role-filter">{$t('common.role') || 'Role'}</label>
         <select id="user-role-filter" bind:value={roleFilter}>
-          <option value="all">All Roles</option>
-          <option value="admin">Admin</option>
-          <option value="user">User</option>
-          <option value="superadmin">Super Admin</option>
+          <option value="all">{$t('superadmin.users.filters.all_roles') || 'All Roles'}</option>
+          <option value="admin">{$t('superadmin.users.filters.admin') || 'Admin'}</option>
+          <option value="user">{$t('superadmin.users.filters.user') || 'User'}</option>
+          <option value="superadmin">{$t('superadmin.users.filters.superadmin') || 'Super Admin'}</option>
         </select>
       </div>
 
       <div class="field">
-        <label for="user-status-filter">Status</label>
+        <label for="user-status-filter">{$t('common.status') || 'Status'}</label>
         <select id="user-status-filter" bind:value={statusFilter}>
-          <option value="all">All</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="all">{$t('common.all') || 'All'}</option>
+          <option value="active">{$t('superadmin.users.filters.active') || 'Active'}</option>
+          <option value="inactive">{$t('superadmin.users.filters.inactive') || 'Inactive'}</option>
         </select>
       </div>
     </div>

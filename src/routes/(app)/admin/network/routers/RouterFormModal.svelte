@@ -258,7 +258,7 @@
 
     <div class="grid2">
       <label>
-        <span>Latitude</span>
+        <span>{$t('network.map.latitude') || 'Latitude'}</span>
         <input
           type="number"
           bind:value={formLatitude}
@@ -269,7 +269,7 @@
         />
       </label>
       <label>
-        <span>Longitude</span>
+        <span>{$t('network.map.longitude') || 'Longitude'}</span>
         <input
           type="number"
           bind:value={formLongitude}
@@ -284,7 +284,7 @@
     <div class="coord-actions">
       <button class="btn ghost" type="button" onclick={openMapPicker}>
         <Icon name="map-pin" size={16} />
-        Pick on map
+        {$t('network.router.pick_location') || 'Pick on map'}
       </button>
     </div>
 
@@ -344,9 +344,9 @@
   </form>
 </Modal>
 
-<Modal show={showMapPicker} title="Pick Router Location" width="860px" onclose={closeMapPicker}>
+<Modal show={showMapPicker} title={$t('network.router.pick_location') || 'Pick Router Location'} width="860px" onclose={closeMapPicker}>
   <div class="map-picker-shell">
-    <div class="map-picker-help">Klik peta untuk pilih titik, lalu drag marker jika perlu presisi.</div>
+    <div class="map-picker-help">{$t('network.router.click_map_to_select') || 'Klik peta untuk pilih titik, lalu drag marker jika perlu presisi.'}</div>
     <div class="map-picker-cords">
       {#if pickerLat != null && pickerLng != null}
         <span class="mono">{pickerLat.toFixed(7)}, {pickerLng.toFixed(7)}</span>
@@ -359,15 +359,15 @@
       loading={pickerMapLoading}
       mapUnavailable={pickerMapUnavailable}
       mapErrorMessage={pickerMapErrorMessage}
-      mapUnavailableTitle="Map unavailable"
-      mapUnavailableSubtitle="Unable to initialize WebGL map on this browser/device."
+      mapUnavailableTitle={$t('network.map.map_unavailable_title') || 'Map unavailable'}
+      mapUnavailableSubtitle={$t('network.map.map_unavailable_subtitle') || 'Unable to initialize WebGL map on this browser/device.'}
       height="min(58vh, 520px)"
     />
     <div class="modal-actions">
-      <button class="btn ghost" type="button" onclick={closeMapPicker}>Cancel</button>
+      <button class="btn ghost" type="button" onclick={closeMapPicker}>{$t('common.cancel') || 'Cancel'}</button>
       <button class="btn" type="button" onclick={applyPickedCoordinates}>
         <Icon name="check" size={16} />
-        Use this point
+        {$t('network.router.use_this_point') || 'Use this point'}
       </button>
     </div>
   </div>

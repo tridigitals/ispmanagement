@@ -422,7 +422,7 @@
               class:active={loginMethod === 'phone'}
               on:click={() => { loginMethod = 'phone'; identifier = ''; }}
             >
-              <Icon name="phone" size={16} />
+              <Icon name="smartphone" size={16} />
               Phone
             </button>
           </div>
@@ -447,7 +447,7 @@
             <div class="input-group" class:focus={activeField === 'identifier'}>
               <label for="identifier">Nomor HP</label>
               <div class="field">
-                <span class="icon"><Icon name="phone" size={18} /></span>
+                <span class="icon"><Icon name="smartphone" size={18} /></span>
                 <input
                   type="tel"
                   id="identifier"

@@ -23,13 +23,34 @@
     "summary": {
       "total": "Total lokasi",
       "customer": "Terhubung pelanggan",
-      "profile": "Alamat profil"
+      "profile": "Alamat profil",
+      "pinned": "Sudah pin map",
+      "has_notes": "Ada catatan"
     },
     "empty": "Belum ada lokasi.",
-    "empty_hint": "Admin belum menautkan akun Anda ke lokasi pelanggan.",
+    "empty_hint": "Tambahkan lokasi baru lalu pilih titik map agar bisa dipakai untuk order dan coverage check.",
     "toasts": {
       "load_failed": "Gagal memuat lokasi"
-    }
+    },
+    "form": {
+      "label": "Label lokasi",
+      "country": "Negara",
+      "line1": "Alamat line 1",
+      "line2": "Alamat line 2",
+      "city": "Kota",
+      "postal_code": "Kode pos",
+      "notes": "Catatan",
+      "notes_placeholder": "Catatan akses lokasi, patokan rumah, dll",
+      "pick_on_map": "Pilih Titik Lokasi",
+      "no_map_pin": "Belum ada titik map",
+      "pick_location_title": "Pilih Titik Lokasi",
+      "pick_location_help": "Klik peta untuk memilih titik. Setelah itu marker bisa di-drag untuk presisi.",
+      "use_this_point": "Gunakan Titik Ini",
+      "service_location": "Lokasi Layanan",
+      "pick_province_state": "Provinsi / State"
+    },
+    "no_customer_hint": "Akun ini belum terhubung ke customer, jadi lokasi layanan belum bisa dikelola.",
+    "service_location": "Lokasi Layanan"
   },
   "stats": {
     "account_role": "Peran Akun",
@@ -396,5 +417,27 @@
     "check_messages": "Cek Pesan",
     "security_settings": "Pengaturan Keamanan",
     "contact_support": "Hubungi Dukungan"
+  },
+  "services": {
+    "order": {
+      "title": "Order Service",
+      "subtitle": "Pilih tipe layanan dulu. Setiap tipe punya alur order tersendiri.",
+      "ready": "Siap",
+      "internet_pppoe": "Internet Access (PPPoE)",
+      "hotspot": "Layanan Hotspot",
+      "hotspot_desc": "Deploy hotspot voucher dan captive portal.",
+      "dedicated_link": "Link Dedicated",
+      "dedicated_desc": "Konektivitas bisnis point-to-point dengan profil SLA.",
+      "not_enabled": "Belum diaktifkan",
+      "managed_vpn": "Managed VPN",
+      "vpn_desc": "VPN site-to-site atau remote access untuk klien enterprise."
+    },
+    "tracker": {
+      "invoice": "Invoice",
+      "invoice_number": "Nomor Invoice",
+      "amount": "Jumlah",
+      "due_date": "Tanggal Jatuh Tempo",
+      "paid_at": "Dibayar Pada"
+    }
   }
 }

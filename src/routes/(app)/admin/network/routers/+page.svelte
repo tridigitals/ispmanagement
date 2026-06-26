@@ -223,11 +223,11 @@
     const parsedLat = latRaw ? Number(latRaw) : NaN;
     const parsedLng = lngRaw ? Number(lngRaw) : NaN;
     if (latRaw && (Number.isNaN(parsedLat) || parsedLat < -90 || parsedLat > 90)) {
-      toast.error('Latitude must be between -90 and 90');
+      toast.error($t('network.map.latitude_range_error') || 'Latitude must be between -90 and 90');
       return;
     }
     if (lngRaw && (Number.isNaN(parsedLng) || parsedLng < -180 || parsedLng > 180)) {
-      toast.error('Longitude must be between -180 and 180');
+      toast.error($t('network.map.longitude_range_error') || 'Longitude must be between -180 and 180');
       return;
     }
     const latitude = latRaw ? parsedLat : null;
@@ -283,7 +283,7 @@
           `${res.identity || r.name} • RouterOS ${res.ros_version || ''} • ${res.latency_ms ?? ''}ms`,
         );
       } else {
-        toast.error(res?.error || 'Failed to connect');
+        toast.error(res?.error || ($t('network.router.connection_failed') || 'Failed to connect'));
       }
       await refreshSilent();
     } catch (e: any) {
@@ -323,7 +323,7 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.network.routers.title') || 'Routers'}
-    subtitle="Kelola router MikroTik."
+    subtitle={$t('network.router.manage_routers') || 'Kelola router MikroTik.'}
   >
     {#snippet actions()}
       <button class="btn ghost" type="button" onclick={load} title={$t('common.refresh') || 'Refresh'}>
@@ -343,21 +343,21 @@
   <div class="stats">
     <div class="stat-card">
       <div class="stat-top">
-        <span class="stat-label">Total</span>
+        <span class="stat-label">{$t('network.router.total') || 'Total'}</span>
         <Icon name="list" size={14} />
       </div>
       <div class="stat-value">{stats.total}</div>
     </div>
     <div class="stat-card tone-ok">
       <div class="stat-top">
-        <span class="stat-label">Online</span>
+        <span class="stat-label">{$t('network.router.online') || 'Online'}</span>
         <Icon name="check-circle" size={14} />
       </div>
       <div class="stat-value">{stats.online}</div>
     </div>
     <div class="stat-card tone-bad">
       <div class="stat-top">
-        <span class="stat-label">Offline</span>
+        <span class="stat-label">{$t('network.router.offline') || 'Offline'}</span>
         <Icon name="alert-circle" size={14} />
       </div>
       <div class="stat-value">{stats.offline}</div>

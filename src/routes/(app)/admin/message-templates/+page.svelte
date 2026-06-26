@@ -208,7 +208,7 @@
   <header class="page-header">
     <div>
       <h1>{$t('topbar.titles.message_templates') || 'Message Templates'}</h1>
-      <p class="subtitle">Template pesan untuk WhatsApp dan email.</p>
+      <p class="subtitle">{$t('admin.message_templates.subtitle_desc') || 'Template pesan untuk WhatsApp dan email.'}</p>
     </div>
     {#if canManageTemplates}
       <button class="btn btn-primary" onclick={openCreate}>
@@ -231,9 +231,9 @@
     </select>
     <select class="input" bind:value={channel} onchange={loadTemplates}>
       <option value="all">{$t('admin.message_templates.filters.all_channels') || 'All channels'}</option>
-      <option value="whatsapp">WhatsApp</option>
-      <option value="email">Email</option>
-      <option value="both">Both</option>
+      <option value="whatsapp">{$t('admin.message_templates.channels.whatsapp') || 'WhatsApp'}</option>
+      <option value="email">{$t('admin.message_templates.channels.email') || 'Email'}</option>
+      <option value="both">{$t('admin.message_templates.channels.both') || 'Both'}</option>
     </select>
     <select class="input" bind:value={status} onchange={loadTemplates}>
       <option value="all">{$t('admin.message_templates.filters.all_statuses') || 'All statuses'}</option>
@@ -269,11 +269,11 @@
             </div>
           </div>
           <div class="actions">
-            <button class="btn-icon" title="Edit" onclick={() => openEdit(template)}>
+            <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEdit(template)}>
               <Icon name="pencil" size={16} />
             </button>
             {#if canManageTemplates}
-              <button class="btn-icon danger" title="Delete" onclick={() => confirmDeleteTemplate(template)}>
+              <button class="btn-icon danger" title={$t('common.delete') || 'Delete'} onclick={() => confirmDeleteTemplate(template)}>
                 <Icon name="trash-2" size={16} />
               </button>
             {/if}
@@ -294,7 +294,7 @@
     <div class="editor-intro">
       <div>
         <strong>{$t('admin.message_templates.editor.content_title') || 'Template content'}</strong>
-        <p>Gunakan variabel untuk personalisasi pesan.</p>
+        <p>{$t('admin.message_templates.variable_hint') || 'Gunakan variabel untuk personalisasi pesan.'}</p>
       </div>
       <span class="editor-badge">{editing ? `v${editing.version}` : $t('admin.message_templates.editor.draft_badge') || 'Draft'}</span>
     </div>
@@ -321,8 +321,8 @@
         <label>
           <span>{$t('admin.message_templates.fields.channel') || 'Channel'}</span>
           <select class="input" bind:value={form.channel}>
-            <option value="whatsapp">WhatsApp</option>
-            <option value="email">Email</option>
+            <option value="whatsapp">{$t('admin.message_templates.channels.whatsapp')}</option>
+            <option value="email">{$t('admin.message_templates.channels.email')}</option>
             <option value="both">{$t('admin.message_templates.channels.both') || 'Both'}</option>
           </select>
         </label>
@@ -353,7 +353,7 @@
 
       <aside class="side-panel">
         <strong>{$t('admin.message_templates.variables.title') || 'Variable Picker'}</strong>
-        <p>Klik token untuk menyisipkan variabel.</p>
+        <p>{$t('admin.message_templates.variable_insert_hint') || 'Klik token untuk menyisipkan variabel.'}</p>
       {#each variableGroups as group}
         <div class="variable-group">
           <span>{$t(group.labelKey)}</span>

@@ -48,11 +48,11 @@
 
       <div class="kv">
         <div class="row">
-          <div class="k">Type</div>
+          <div class="k">{$t('common.type')}</div>
           <div class="v">{diagnostics.database?.database_type || $t('common.na') || '—'}</div>
         </div>
         <div class="row">
-          <div class="k">Server</div>
+          <div class="k">{$t('superadmin.system.server')}</div>
           <div class="v">
             <span class="mono">{diagnostics.database_server_version || $t('common.na') || '—'}</span
             >
@@ -60,7 +60,7 @@
               <button
                 class="icon-btn"
                 onclick={() => copy(diagnostics.database_server_version)}
-                title="Copy"
+                title={$t('common.copy')}
               >
                 <Icon name="copy" size={14} />
               </button>
@@ -68,19 +68,19 @@
           </div>
         </div>
         <div class="row">
-          <div class="k">Size</div>
+          <div class="k">{$t('superadmin.system.size')}</div>
           <div class="v">{formatBytes(diagnostics.database?.database_size_bytes)}</div>
         </div>
         <div class="row">
-          <div class="k">Tables</div>
+          <div class="k">{$t('superadmin.system.tables')}</div>
           <div class="v">{diagnostics.database?.total_tables ?? ($t('common.na') || '—')}</div>
         </div>
         <div class="row">
-          <div class="k">Tenants</div>
+          <div class="k">{$t('superadmin.system.tenants')}</div>
           <div class="v">{diagnostics.database?.tenants_count ?? ($t('common.na') || '—')}</div>
         </div>
         <div class="row">
-          <div class="k">Users</div>
+          <div class="k">{$t('superadmin.system.users')}</div>
           <div class="v">{diagnostics.database?.users_count ?? ($t('common.na') || '—')}</div>
         </div>
       </div>
@@ -105,7 +105,7 @@
         <div class="banner danger">
           <Icon name="alert-triangle" size={16} />
           <div>
-            <div class="b-title">Missing migrations detected</div>
+            <div class="b-title">{$t('superadmin.system.missing_migrations')}</div>
             <div class="b-sub mono">
               {diagnostics.migrations?.missing_versions?.join(', ') || ''}
             </div>
@@ -117,7 +117,7 @@
         <div class="banner warn">
           <Icon name="alert-circle" size={16} />
           <div>
-            <div class="b-title">Pending migrations</div>
+            <div class="b-title">{$t('superadmin.system.pending_migrations')}</div>
             <div class="b-sub mono">
               {diagnostics.migrations?.pending_versions?.join(', ') || ''}
             </div>
@@ -127,7 +127,7 @@
 
       <div class="kv">
         <div class="row">
-          <div class="k">Latest Applied</div>
+          <div class="k">{$t('superadmin.system.latest_applied')}</div>
           <div class="v mono">
             {diagnostics.migrations?.latest_applied_version ?? ($t('common.na') || '—')}
           </div>
@@ -142,10 +142,10 @@
           <table>
             <thead>
               <tr>
-                <th>Version</th>
-                <th>Description</th>
-                <th>Installed</th>
-                <th>Status</th>
+                <th>{$t('superadmin.system.version')}</th>
+                <th>{$t('common.description')}</th>
+                <th>{$t('superadmin.system.installed')}</th>
+                <th>{$t('common.status')}</th>
               </tr>
             </thead>
             <tbody>
@@ -158,9 +158,9 @@
                   </td>
                   <td>
                     {#if m.success}
-                      <span class="tag ok">OK</span>
+                      <span class="tag ok">{$t('superadmin.system.ok')}</span>
                     {:else}
-                      <span class="tag bad">FAILED</span>
+                      <span class="tag bad">{$t('superadmin.system.failed')}</span>
                     {/if}
                   </td>
                 </tr>
@@ -177,11 +177,11 @@
       </div>
       <div class="kv">
         <div class="row">
-          <div class="k">App Name</div>
+          <div class="k">{$t('superadmin.system.app_name_label')}</div>
           <div class="v">{diagnostics.settings?.app_name || $t('common.na') || '—'}</div>
         </div>
         <div class="row">
-          <div class="k">Public URL</div>
+          <div class="k">{$t('superadmin.system.public_url_label')}</div>
           <div class="v">
             <span class="mono"
               >{diagnostics.settings?.app_public_url || $t('common.na') || '—'}</span
@@ -190,7 +190,7 @@
               <button
                 class="icon-btn"
                 onclick={() => copy(diagnostics.settings.app_public_url)}
-                title="Copy"
+                title={$t('common.copy')}
               >
                 <Icon name="copy" size={14} />
               </button>
@@ -198,17 +198,17 @@
           </div>
         </div>
         <div class="row">
-          <div class="k">Timezone</div>
+          <div class="k">{$t('superadmin.system.timezone_label')}</div>
           <div class="v mono">{diagnostics.settings?.app_timezone || $t('common.na') || '—'}</div>
         </div>
         <div class="row">
-          <div class="k">Base Currency</div>
+          <div class="k">{$t('superadmin.system.base_currency')}</div>
           <div class="v mono">
             {diagnostics.settings?.base_currency_code || $t('common.na') || '—'}
           </div>
         </div>
         <div class="row">
-          <div class="k">Display Currency</div>
+          <div class="k">{$t('superadmin.system.display_currency')}</div>
           <div class="v mono">{diagnostics.settings?.currency_code || $t('common.na') || '—'}</div>
         </div>
       </div>
@@ -220,17 +220,17 @@
       </div>
       <div class="kv">
         <div class="row">
-          <div class="k">Global</div>
+          <div class="k">{$t('common.global')}</div>
           <div class="v">
             {#if diagnostics.backups?.global_enabled}
-              <span class="tag ok">Enabled</span>
+              <span class="tag ok">{$t('superadmin.system.enabled')}</span>
             {:else}
-              <span class="tag muted">Disabled</span>
+              <span class="tag muted">{$t('common.disabled')}</span>
             {/if}
           </div>
         </div>
         <div class="row">
-          <div class="k">Schedule</div>
+          <div class="k">{$t('common.schedule')}</div>
           <div class="v mono">
             {diagnostics.backups?.global_mode || '—'}
             {#if diagnostics.backups?.global_mode === 'minute' || diagnostics.backups?.global_mode === 'hour'}
@@ -242,7 +242,7 @@
           </div>
         </div>
         <div class="row">
-          <div class="k">Last Run (UTC)</div>
+          <div class="k">{$t('superadmin.system.last_run_utc')}</div>
           <div class="v mono">
             {diagnostics.backups?.global_last_run_utc
               ? formatDateTime(diagnostics.backups.global_last_run_utc, { timeZone: 'UTC' })
@@ -250,26 +250,26 @@
           </div>
         </div>
         <div class="row">
-          <div class="k">Retention</div>
+          <div class="k">{$t('superadmin.system.retention')}</div>
           <div class="v mono">
-            {diagnostics.backups?.global_retention_days ?? ($t('common.na') || '—')} days
+            {diagnostics.backups?.global_retention_days ?? ($t('common.na') || '—')} {$t('common.days')}
           </div>
         </div>
 
         <div class="divider"></div>
 
         <div class="row">
-          <div class="k">Tenant</div>
+          <div class="k">{$t('superadmin.system.tenant_label')}</div>
           <div class="v">
             {#if diagnostics.backups?.tenant_enabled}
-              <span class="tag ok">Enabled</span>
+              <span class="tag ok">{$t('superadmin.system.enabled')}</span>
             {:else}
-              <span class="tag muted">Disabled</span>
+              <span class="tag muted">{$t('common.disabled')}</span>
             {/if}
           </div>
         </div>
         <div class="row">
-          <div class="k">Schedule</div>
+          <div class="k">{$t('common.schedule')}</div>
           <div class="v mono">
             {diagnostics.backups?.tenant_mode || '—'}
             {#if diagnostics.backups?.tenant_mode === 'minute' || diagnostics.backups?.tenant_mode === 'hour'}
@@ -281,9 +281,9 @@
           </div>
         </div>
         <div class="row">
-          <div class="k">Retention</div>
+          <div class="k">{$t('superadmin.system.retention')}</div>
           <div class="v mono">
-            {diagnostics.backups?.tenant_retention_days ?? ($t('common.na') || '—')} days
+            {diagnostics.backups?.tenant_retention_days ?? ($t('common.na') || '—')} {$t('common.days')}
           </div>
         </div>
       </div>

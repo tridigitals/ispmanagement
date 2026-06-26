@@ -272,9 +272,9 @@
   ]);
 
   const subscriptionColumns = $derived.by(() => [
-    { key: 'package', label: 'Package' },
-    { key: 'billing', label: 'Billing' },
-    { key: 'location', label: 'Location' },
+    { key: 'package', label: $t('common.package') || 'Package' },
+    { key: 'billing', label: $t('admin.customers.tabs.billing') || 'Billing' },
+    { key: 'location', label: $t('common.location') || 'Location' },
     { key: 'router', label: 'Router' },
     { key: 'lifecycle', label: 'Lifecycle' },
     { key: 'actions', label: '', align: 'right' as const },
@@ -301,7 +301,7 @@
   ];
 
   const subscriptionStatusOptions = [
-    { label: 'Active', value: 'active' },
+    { label: $t('common.active') || 'Active', value: 'active' },
     { label: 'Suspended', value: 'suspended' },
     { label: 'Cancelled', value: 'cancelled' },
   ];
@@ -367,7 +367,7 @@
     if (canCreateOrders && customer) {
       items.push({
         id: 'create-order',
-        label: 'Create Order',
+        label: $t('admin.network.installations.create_order_btn') || 'Create Order',
         icon: 'file-text',
       });
     }
@@ -431,7 +431,7 @@
       });
     }
     if (visibleTabs.includes('timeline')) {
-      items.push({ id: 'timeline', label: 'Timeline' });
+      items.push({ id: 'timeline', label: $t('admin.customers.tabs.timeline') || 'Timeline' });
     }
     return items;
   });
@@ -456,11 +456,11 @@
     () => new Map(subscriptions.map((sub) => [sub.id, sub] as const)),
   );
   const timelineColumns = $derived.by(() => [
-    { key: 'created_at', label: 'Waktu' },
-    { key: 'action', label: 'Aksi' },
+    { key: 'created_at', label: $t('common.updated') || 'Waktu' },
+    { key: 'action', label: $t('common.action') || 'Aksi' },
     { key: 'resource', label: 'Resource' },
     { key: 'actor', label: 'Actor' },
-    { key: 'details', label: 'Detail' },
+    { key: 'details', label: $t('common.details') || 'Detail' },
   ]);
   const timelineRows = $derived.by(() =>
     timelineHelperModule ? timelineHelperModule.buildCustomerTimelineRows(timelineFilteredLogs) : [],
@@ -1887,7 +1887,7 @@
         <div class="section-head">
           <div>
             <h3>{$t('admin.customers.overview.title') || 'Customer profile'}</h3>
-            <p class="subtitle">Profil dan kontak.</p>
+            <p class="subtitle">{$t('admin.customers.detail.subtitle')}</p>
           </div>
           {#if canManageCustomers}
             <button
@@ -1924,25 +1924,25 @@
             </label>
           </div>
           <aside class="overview-side">
-            <div class="side-title">Profile quality</div>
+            <div class="side-title">{$t('admin.customers.overview.profile_quality')}</div>
             <div class="side-item">
-              <span>Name</span>
-              <strong>{name.trim() ? 'Complete' : 'Missing'}</strong>
+              <span>{$t('common.name')}</span>
+              <strong>{name.trim() ? ($t('common.complete') || 'Complete') : ($t('common.missing') || 'Missing')}</strong>
             </div>
             <div class="side-item">
-              <span>Email</span>
-              <strong>{email.trim() ? 'Complete' : 'Missing'}</strong>
+              <span>{$t('common.email')}</span>
+              <strong>{email.trim() ? ($t('common.complete') || 'Complete') : ($t('common.missing') || 'Missing')}</strong>
             </div>
             <div class="side-item">
-              <span>Phone</span>
-              <strong>{phone.trim() ? 'Complete' : 'Missing'}</strong>
+              <span>{$t('common.phone')}</span>
+              <strong>{phone.trim() ? ($t('common.complete') || 'Complete') : ($t('common.missing') || 'Missing')}</strong>
             </div>
             <div class="side-item">
-              <span>Status</span>
-              <strong>{isActive ? 'Active' : 'Inactive'}</strong>
+              <span>{$t('common.status')}</span>
+              <strong>{isActive ? ($t('common.active') || 'Active') : ($t('common.inactive') || 'Inactive')}</strong>
             </div>
             <div class="side-divider"></div>
-            <p class="side-note">Pastikan data kontak tetap akurat.</p>
+            <p class="side-note">{$t('admin.customers.overview.contact_accuracy_note') || 'Pastikan data kontak tetap akurat.'}</p>
           </aside>
         </div>
       </div>
@@ -1951,7 +1951,7 @@
         <div class="section-head">
           <div>
             <h3>{$t('admin.customers.locations.title') || 'Locations'}</h3>
-            <p class="subtitle">Lokasi layanan.</p>
+            <p class="subtitle">{$t('admin.customers.locations.subtitle') || 'Lokasi layanan.'}</p>
           </div>
           {#if canManageCustomerLocations}
             <button class="btn btn-primary" onclick={() => void openCreateLocation()}>
@@ -2460,7 +2460,7 @@
       </div>
       {#if changePackageResult.invoice_id}
         <div class="result-row">
-          <span>Invoice</span>
+          <span>{$t('common.invoice') || 'Invoice'}</span>
           <a href="/admin/invoices/{changePackageResult.invoice_id}" class="link">{$t('admin.customers.subscriptions.change_package.view_invoice') || 'Lihat invoice →'}</a>
         </div>
       {/if}

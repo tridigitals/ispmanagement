@@ -256,20 +256,20 @@
 
 <Modal
   bind:show={showInterfaceTrafficModal}
-  title="Interface Traffic"
+  title={$t('network.router.interface_traffic') || 'Interface Traffic'}
   width="980px"
   onclose={closeInterfaceTrafficModal}
 >
   {#if selectedInterface}
     <div class="traffic-modal-head">
-      <span class="muted">Interface</span>
+      <span class="muted">{$t('network.router.interface') || 'Interface'}</span>
       <span class="mono">{selectedInterface}</span>
     </div>
 
     {#if ifaceHistoryLoading}
       <div class="muted">{$t('common.loading') || 'Loading...'}</div>
     {:else if ifaceHistoryLength === 0}
-      <div class="muted">No history yet (wait for poller).</div>
+      <div class="muted">{$t('network.router.no_history_yet') || 'No history yet (wait for poller).'}</div>
     {:else}
       <div class="traffic-grid">
         <div class="traffic-card">
@@ -279,7 +279,7 @@
           </div>
           <div class="spark small">
             {#if rxSeries.length === 0}
-              <div class="muted">No RX samples.</div>
+              <div class="muted">{$t('network.router.no_rx_samples') || 'No RX samples.'}</div>
             {:else}
               {@const max = Math.max(...rxSeries, 1)}
               {#each rxSeries as v}
@@ -300,7 +300,7 @@
           </div>
           <div class="spark small">
             {#if txSeries.length === 0}
-              <div class="muted">No TX samples.</div>
+              <div class="muted">{$t('network.router.no_tx_samples') || 'No TX samples.'}</div>
             {:else}
               {@const max = Math.max(...txSeries, 1)}
               {#each txSeries as v}
