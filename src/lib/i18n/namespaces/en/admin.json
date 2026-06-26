@@ -2151,7 +2151,12 @@
         "run_auto_escalation": "Run Auto Escalation"
       },
       "labels": {
-        "auto_escalated": "Auto Escalated"
+        "auto_escalated": "Auto Escalated",
+        "router": "Router",
+        "interface": "Interface",
+        "host": "Host",
+        "latency": "Latency",
+        "cpu": "CPU"
       },
       "toasts": {
         "auto_escalation_done": "{count} incident(s) escalated"

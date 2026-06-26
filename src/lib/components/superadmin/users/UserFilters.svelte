@@ -1,5 +1,6 @@
 <script lang="ts">
   import CompactFilterToolbar from '$lib/components/superadmin/shared/CompactFilterToolbar.svelte';
+  import { t } from 'svelte-i18n';
 
   let {
     searchQuery = $bindable(),

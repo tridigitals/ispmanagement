@@ -5590,7 +5590,7 @@ impl MikrotikService {
             JOIN role_permissions rp ON rp.role_id = tm.role_id
             JOIN permissions p ON p.id = rp.permission_id
             WHERE tm.tenant_id = $1
-              AND p.resource IN ('network_noc', 'network_alerts', 'network_incidents', 'network_logs', 'router_inventory')
+              AND p.resource IN ('network_noc', 'network_alerts', 'network_incidents', 'network_logs')
               AND p.action IN ('read','manage')
             "#,
         )

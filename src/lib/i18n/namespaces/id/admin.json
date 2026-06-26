@@ -1880,7 +1880,12 @@
         "run_auto_escalation": "Jalankan Auto Eskalasi"
       },
       "labels": {
-        "auto_escalated": "Auto Eskalasi"
+        "auto_escalated": "Auto Eskalasi",
+        "router": "Router",
+        "interface": "Interface",
+        "host": "Host",
+        "latency": "Latency",
+        "cpu": "CPU"
       },
       "toasts": {
         "auto_escalation_done": "{count} insiden berhasil dieskalasi"
