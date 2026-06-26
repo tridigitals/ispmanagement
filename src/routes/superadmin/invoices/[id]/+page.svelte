@@ -159,14 +159,14 @@
   <div class="page-header">
     <button class="back-btn" onclick={() => goto('/superadmin/invoices')}>
       <Icon name="arrow-left" size={20} />
-      {$t('superadmin.invoices.detail.back') || 'Back to Invoices'}
+      {$t('superadmin.invoices.detail.back')}
     </button>
-    <h1>{$t('superadmin.invoices.detail.title') || 'Invoice Details'}</h1>
+    <h1>{$t('superadmin.invoices.detail.title')}</h1>
   </div>
 
   {#if loading}
     <div class="loading">
-      {$t('superadmin.invoices.detail.loading') || 'Loading details...'}
+      {$t('superadmin.invoices.detail.loading')}
     </div>
   {:else if invoice}
     <div class="details-grid">
@@ -174,7 +174,7 @@
       <div class="card info-card">
         <div class="card-header">
           <h2>
-            {$t('superadmin.invoices.detail.invoice') || 'Invoice'}
+            {$t('superadmin.invoices.detail.invoice')}
             #{invoice.invoice_number}
           </h2>
           <span class="status-pill {invoice.status}">{invoice.status}</span>
@@ -182,7 +182,7 @@
 
         <div class="info-rows">
           <div class="row">
-            <span class="label">{$t('superadmin.invoices.detail.tenant') || 'Tenant'}</span>
+            <span class="label">{$t('superadmin.invoices.detail.tenant')}</span>
             <span class="value">
               {#if tenantName}
                 {tenantName}
@@ -196,18 +196,18 @@
           </div>
           <div class="row">
             <span class="label"
-              >{$t('superadmin.invoices.detail.description') || 'Description'}</span
+              >{$t('superadmin.invoices.detail.description')}</span
             >
             <span class="value">{invoice.description}</span>
           </div>
           <div class="row">
-            <span class="label">{$t('superadmin.invoices.detail.amount') || 'Amount'}</span>
+            <span class="label">{$t('superadmin.invoices.detail.amount')}</span>
             <span class="value highlight"
               >{formatCurrency(invoice.amount, invoice.currency_code)}</span
             >
           </div>
           <div class="row">
-            <span class="label">{$t('superadmin.invoices.detail.created_at') || 'Created At'}</span>
+            <span class="label">{$t('superadmin.invoices.detail.created_at')}</span>
             <span class="value"
               >{invoice.created_at
                 ? formatDateTime(invoice.created_at, { timeZone: $appSettings.app_timezone })
@@ -215,7 +215,7 @@
             >
           </div>
           <div class="row">
-            <span class="label">{$t('superadmin.invoices.detail.updated_at') || 'Updated At'}</span>
+            <span class="label">{$t('superadmin.invoices.detail.updated_at')}</span>
             <span class="value"
               >{invoice.updated_at
                 ? formatDateTime(invoice.updated_at, { timeZone: $appSettings.app_timezone })
@@ -227,7 +227,7 @@
         <div class="actions">
           {#if invoice.status === 'verification_pending' || invoice.status === 'pending'}
             <h3 class="section-title">
-              {$t('superadmin.invoices.detail.manual_verification') || 'Manual Verification'}
+              {$t('superadmin.invoices.detail.manual_verification')}
             </h3>
             <div class="btn-group">
               <button
@@ -236,7 +236,7 @@
                 disabled={processing}
               >
                 <Icon name="check" size={18} />
-                {$t('superadmin.invoices.detail.approve_title') || 'Approve Payment'}
+                {$t('superadmin.invoices.detail.approve_title')}
               </button>
               <button
                 class="btn btn-danger"
@@ -244,12 +244,12 @@
                 disabled={processing}
               >
                 <Icon name="x" size={18} />
-                {$t('superadmin.invoices.detail.reject') || 'Reject'}
+                {$t('superadmin.invoices.detail.reject')}
               </button>
             </div>
           {:else}
             <p class="info-text">
-              {$t('superadmin.invoices.detail.already_status') || 'This invoice is already'}
+              {$t('superadmin.invoices.detail.already_status')}
               {invoice.status}.
             </p>
           {/if}
@@ -259,7 +259,7 @@
       <!-- Right: Proof Attachment -->
       <div class="card proof-card">
         <h2>
-          {$t('superadmin.invoices.detail.payment_proof') || 'Payment Proof'}
+          {$t('superadmin.invoices.detail.payment_proof')}
         </h2>
         {#if invoice.proof_attachment}
           <div class="proof-wrapper">
@@ -267,19 +267,19 @@
             <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
             <img
               src={getProofUrl(invoice.proof_attachment)}
-              alt={$t('superadmin.invoices.payment_proof') || 'Payment Proof'}
+              alt={$t('superadmin.invoices.payment_proof')}
               class="proof-img"
               onclick={() => openLightbox(invoice!.proof_attachment!)}
             />
             <p class="hint">
-              {$t('superadmin.invoices.detail.click_enlarge') || 'Click to enlarge'}
+              {$t('superadmin.invoices.detail.click_enlarge')}
             </p>
           </div>
         {:else}
           <div class="no-proof">
             <Icon name="image" size={48} />
             <p>
-              {$t('superadmin.invoices.detail.no_proof') || 'No proof uploaded yet.'}
+              {$t('superadmin.invoices.detail.no_proof')}
             </p>
           </div>
         {/if}
@@ -287,7 +287,7 @@
     </div>
   {:else}
     <div class="error">
-      {$t('superadmin.invoices.detail.not_found') || 'Invoice not found'}
+      {$t('superadmin.invoices.detail.not_found')}
     </div>
   {/if}
 </div>

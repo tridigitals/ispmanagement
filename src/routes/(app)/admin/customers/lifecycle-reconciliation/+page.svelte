@@ -204,7 +204,7 @@
 </script>
 
 <svelte:head>
-  <title>{$t('admin.customers.reconciliation.title') || 'Lifecycle Reconciliation'}</title>
+  <title>{$t('admin.customers.reconciliation.title')}</title>
 </svelte:head>
 
 <div class="page-content fade-in lifecycle-page">
@@ -212,18 +212,17 @@
     <div>
       <button class="back-link" onclick={() => goto(`${adminBasePath()}/customers`)}>
         <Icon name="arrow-left" size={16} />
-        <span>{$t('common.back') || 'Back'}</span>
+        <span>{$t('common.back')}</span>
       </button>
-      <h1>{$t('admin.customers.reconciliation.title') || 'Lifecycle Reconciliation'}</h1>
+      <h1>{$t('admin.customers.reconciliation.title')}</h1>
       <p class="subtitle muted">
-        {$t('admin.customers.reconciliation.subtitle') ||
-          'Review service lifecycle anomalies before applying safe mass repair actions.'}
+        {$t('admin.customers.reconciliation.subtitle')}
       </p>
     </div>
     <div class="header-actions">
       <button class="btn ghost" onclick={loadReport} disabled={loading || repairing}>
         <Icon name="refresh-cw" size={16} />
-        <span>{$t('common.refresh') || 'Refresh'}</span>
+        <span>{$t('common.refresh')}</span>
       </button>
       {#if canRepairLifecycle}
         <button
@@ -233,8 +232,7 @@
         >
           <Icon name="receipt" size={16} />
           <span>
-            {$t('admin.customers.reconciliation.actions.bootstrap_missing_invoices') ||
-              'Buat Invoice Awal'}
+            {$t('admin.customers.reconciliation.actions.bootstrap_missing_invoices')}
           </span>
         </button>
         <button
@@ -244,8 +242,7 @@
         >
           <Icon name="alert-triangle" size={16} />
           <span>
-            {$t('admin.customers.reconciliation.actions.suspend_invalid_active_lifecycle') ||
-              'Suspend Invalid Services'}
+            {$t('admin.customers.reconciliation.actions.suspend_invalid_active_lifecycle')}
           </span>
         </button>
       {/if}
@@ -254,27 +251,25 @@
 
   <div class="stats-grid reconciliation-stats-grid">
     <StatsCard
-      title={$t('admin.customers.reconciliation.stats.total_issues') || 'Total issues'}
+      title={$t('admin.customers.reconciliation.stats.total_issues')}
       value={report.total_issues}
       icon="shield-alert"
       color="orange"
     />
     <StatsCard
-      title={$t('admin.customers.reconciliation.stats.missing_bootstrap_invoice') ||
-        'Belum ada invoice awal'}
+      title={$t('admin.customers.reconciliation.stats.missing_bootstrap_invoice')}
       value={report.missing_bootstrap_invoice}
       icon="alert-triangle"
       color="orange"
     />
     <StatsCard
-      title={$t('admin.customers.reconciliation.stats.invalid_active_lifecycle') ||
-        'Lifecycle aktif tidak valid'}
+      title={$t('admin.customers.reconciliation.stats.invalid_active_lifecycle')}
       value={report.invalid_active_lifecycle}
       icon="alert-triangle"
       color="orange"
     />
     <StatsCard
-      title={$t('admin.customers.reconciliation.stats.visible_rows') || 'Visible rows'}
+      title={$t('admin.customers.reconciliation.stats.visible_rows')}
       value={visibleRows}
       icon="list"
       color="blue"
@@ -284,8 +279,7 @@
   <div class="card table-card">
     <TableToolbar
       bind:searchQuery={q}
-      placeholder={$t('admin.customers.reconciliation.search') ||
-        'Search customer, package, location, or subscription...'}
+      placeholder={$t('admin.customers.reconciliation.search')}
       onsearch={async () => {
         page = 0;
         await loadReport();
@@ -297,10 +291,10 @@
     >
       {#snippet filters()}
         <label class="reconciliation-filter-field">
-          <span>{$t('admin.customers.reconciliation.filters.issue_type') || 'Issue type'}</span>
+          <span>{$t('admin.customers.reconciliation.filters.issue_type')}</span>
           <select
             class="reconciliation-filter-select"
-            aria-label={$t('admin.customers.reconciliation.filters.issue_type') || 'Lifecycle issue type filter'}
+            aria-label={$t('admin.customers.reconciliation.filters.issue_type')}
             value={issueFilter}
             onchange={(event) =>
               setIssueFilter(
@@ -311,22 +305,20 @@
               )}
           >
             <option value="all">
-              {$t('admin.customers.reconciliation.filters.all_issues') || 'All issues'}
+              {$t('admin.customers.reconciliation.filters.all_issues')}
             </option>
             <option value="missing_bootstrap_invoice">
-              {$t('admin.customers.reconciliation.issue_types.missing_bootstrap_invoice') ||
-                'Belum ada invoice awal'}
+              {$t('admin.customers.reconciliation.issue_types.missing_bootstrap_invoice')}
             </option>
             <option value="invalid_active_lifecycle">
-              {$t('admin.customers.reconciliation.issue_types.invalid_active_lifecycle') ||
-                'Lifecycle aktif tidak valid'}
+              {$t('admin.customers.reconciliation.issue_types.invalid_active_lifecycle')}
             </option>
           </select>
         </label>
       {/snippet}
       {#snippet actions()}
         <span class="muted">
-          {$t('admin.customers.reconciliation.generated_at') || 'Generated'}
+          {$t('admin.customers.reconciliation.generated_at')}
           {' '}
           {report.generated_at ? report.generated_at.replace('T', ' ').slice(0, 16) : '-'}
         </span>
@@ -345,36 +337,35 @@
         <div class="repair-result-header">
           <div>
             <div class="customer-name">
-              {$t('admin.customers.reconciliation.repair_result.title') || 'Hasil perbaikan'}
+              {$t('admin.customers.reconciliation.repair_result.title')}
             </div>
             <div class="muted small">
-              {$t('admin.customers.reconciliation.repair_result.subtitle') ||
-                'Ringkasan hasil eksekusi mass action terakhir.'}
+              {$t('admin.customers.reconciliation.repair_result.subtitle')}
             </div>
           </div>
         </div>
         <div class="repair-result-grid">
           <div class="repair-stat">
             <span class="muted small">
-              {$t('admin.customers.reconciliation.repair_result.matched') || 'Dicek'}
+              {$t('admin.customers.reconciliation.repair_result.matched')}
             </span>
             <strong>{repairResult.matched_count}</strong>
           </div>
           <div class="repair-stat">
             <span class="muted small">
-              {$t('admin.customers.reconciliation.repair_result.repaired') || 'Berhasil'}
+              {$t('admin.customers.reconciliation.repair_result.repaired')}
             </span>
             <strong>{repairResult.repaired_count}</strong>
           </div>
           <div class="repair-stat">
             <span class="muted small">
-              {$t('admin.customers.reconciliation.repair_result.skipped') || 'Dilewati'}
+              {$t('admin.customers.reconciliation.repair_result.skipped')}
             </span>
             <strong>{repairResult.skipped_count}</strong>
           </div>
           <div class="repair-stat">
             <span class="muted small">
-              {$t('admin.customers.reconciliation.repair_result.failed') || 'Gagal'}
+              {$t('admin.customers.reconciliation.repair_result.failed')}
             </span>
             <strong>{repairResult.failed_count}</strong>
           </div>
@@ -382,7 +373,7 @@
         {#if repairResult.errors.length > 0}
           <div class="repair-errors">
             <div class="muted small">
-              {$t('admin.customers.reconciliation.repair_result.errors') || 'Detail error'}
+              {$t('admin.customers.reconciliation.repair_result.errors')}
             </div>
             <ul class="repair-error-list">
               {#each repairResult.errors as repairError}
@@ -404,7 +395,7 @@
       pageSize={perPage}
       onchange={handlePageChange}
       onpageSizeChange={handlePageSizeChange}
-      emptyText={$t('admin.customers.reconciliation.empty') || 'No lifecycle issues found'}
+      emptyText={$t('admin.customers.reconciliation.empty')}
     >
       {#snippet cell({ item, column })}
         {#if column.key === 'customer'}
@@ -428,7 +419,7 @@
             <button class="btn btn-secondary btn-xs" onclick={() => openCustomer(item)}>
               <Icon name="arrow-right" size={14} />
               <span
-                >{$t('admin.customers.reconciliation.actions.open_service') || 'Open service'}</span
+                >{$t('admin.customers.reconciliation.actions.open_service')}</span
               >
             </button>
           </div>

@@ -897,7 +897,7 @@
 
 <div class="page-content fade-in">
   <NetworkPageHeader
-    title={$t('admin.network.routers.title') || 'Routers'}
+    title={$t('admin.network.routers.title')}
     subtitle={router
       ? `${router.name} • ${router.host}:${router.port}`
       : $t('admin.network.routers.subtitle') || 'Manage MikroTik routers and monitoring'}
@@ -909,21 +909,21 @@
         onclick={() => goto(routerBackTarget)}
       >
         <Icon name="arrow-left" size={16} />
-        {$t('common.back') || 'Back'}
+        {$t('common.back')}
       </button>
 
       <button
         class="btn ghost"
         type="button"
         onclick={() => refresh()}
-        title={$t('common.refresh') || 'Refresh'}
+        title={$t('common.refresh')}
       >
         <Icon name="refresh-cw" size={16} />
         {$t('admin.network.routers.actions.refresh') || $t('common.refresh') || 'Refresh'}
       </button>
       <button class="btn" type="button" onclick={test} disabled={!router}>
         <Icon name="zap" size={16} />
-        {$t('admin.network.routers.actions.test') || 'Test Connection'}
+        {$t('admin.network.routers.actions.test')}
       </button>
     {/snippet}
   </NetworkPageHeader>
@@ -939,10 +939,10 @@
       <div class="hero-left">
         <div class="kicker">
           <span class="dot" class:online={router.is_online}></span>
-          <span class="k">{$t('network.router.mikrotik') || 'MikroTik'}</span>
+          <span class="k">{$t('network.router.mikrotik')}</span>
           {#if router.maintenance_until && new Date(router.maintenance_until).getTime() > Date.now()}
             <span class="chip warn" title={router.maintenance_reason || ''}>
-              {$t('admin.network.routers.badges.maintenance') || 'Maintenance'}
+              {$t('admin.network.routers.badges.maintenance')}
             </span>
           {/if}
         </div>
@@ -970,7 +970,7 @@
         {#if $can('manage', 'router_inventory')}
           <button class="btn ghost btn-sm hero-action" type="button" onclick={openManagedRadiusModal}>
             <Icon name="shield" size={14} />
-            {$t('admin.network.routers.managed_radius.trigger.label') || 'Managed RADIUS'}
+            {$t('admin.network.routers.managed_radius.trigger.label')}
           </button>
         {/if}
 
@@ -980,18 +980,18 @@
         <div class="hint">
           {#if refreshing}
             <span class="spin"><Icon name="refresh-cw" size={14} /></span>
-            <span class="muted">{$t('common.loading') || 'Loading...'}</span>
+            <span class="muted">{$t('common.loading')}</span>
           {:else}
-            <span class="muted">{$t('common.updated') || 'Updated'}</span>
+            <span class="muted">{$t('common.updated')}</span>
           {/if}
         </div>
         <div class="kv">
           <div class="kv-item">
-            <span class="kv-label">{$t('network.router.latency') || 'Latency'}</span>
+            <span class="kv-label">{$t('network.router.latency')}</span>
             <span class="kv-value mono">{router.latency_ms ?? '—'} ms</span>
           </div>
           <div class="kv-item">
-            <span class="kv-label">{$t('network.router.last_seen') || 'Last seen'}</span>
+            <span class="kv-label">{$t('network.router.last_seen')}</span>
             {#if router.last_seen_at}
               <span
                 class="kv-value"
@@ -1020,11 +1020,11 @@
         <div class="card">
           <div class="card-head">
             <h2>CPU</h2>
-            <span class="muted">{$t('network.router.last_120_samples') || 'Last 120 samples'}</span>
+            <span class="muted">{$t('network.router.last_120_samples')}</span>
           </div>
           <div class="spark">
             {#if cpuSeries.length === 0}
-              <div class="muted">{$t('network.router.no_metrics_yet') || 'No metrics yet.'}</div>
+              <div class="muted">{$t('network.router.no_metrics_yet')}</div>
             {:else}
               {#each cpuSeries as v}
                 <div class="bar" style={`height:${v}%;`} title={`${v}%`}></div>
@@ -1035,8 +1035,8 @@
 
         <div class="card">
           <div class="card-head">
-            <h2>{$t('network.router.resources') || 'Resources'}</h2>
-            <span class="muted">{$t('network.router.live_snapshot') || 'Live snapshot'}</span>
+            <h2>{$t('network.router.resources')}</h2>
+            <span class="muted">{$t('network.router.live_snapshot')}</span>
           </div>
 
           {#if snapshot}
@@ -1045,23 +1045,23 @@
 
             <div class="rows">
               <div class="row">
-                <span class="muted">{$t('network.router.cpu_load') || 'CPU load'}</span>
+                <span class="muted">{$t('network.router.cpu_load')}</span>
                 <span class="mono">{snapshot.cpu_load ?? '—'}%</span>
               </div>
               <div class="row">
-                <span class="muted">{$t('network.router.memory_used') || 'Memory used'}</span>
+                <span class="muted">{$t('network.router.memory_used')}</span>
                 <span class="mono">{memUsed == null ? '—' : `${memUsed}%`}</span>
               </div>
               <div class="row">
-                <span class="muted">{$t('network.router.disk_used') || 'Disk used'}</span>
+                <span class="muted">{$t('network.router.disk_used')}</span>
                 <span class="mono">{diskUsed == null ? '—' : `${diskUsed}%`}</span>
               </div>
               <div class="row">
-                <span class="muted">{$t('network.router.uptime') || 'Uptime'}</span>
+                <span class="muted">{$t('network.router.uptime')}</span>
                 <span class="mono">{formatUptime(snapshot.uptime_seconds)}</span>
               </div>
               <div class="row">
-                <span class="muted">{$t('network.router.memory') || 'Memory'}</span>
+                <span class="muted">{$t('network.router.memory')}</span>
                 <span class="mono"
                   >{formatBytes(snapshot.free_memory_bytes)} / {formatBytes(
                     snapshot.total_memory_bytes,
@@ -1069,7 +1069,7 @@
                 >
               </div>
               <div class="row">
-                <span class="muted">{$t('network.router.disk') || 'Disk'}</span>
+                <span class="muted">{$t('network.router.disk')}</span>
                 <span class="mono"
                   >{formatBytes(snapshot.free_hdd_bytes)} / {formatBytes(
                     snapshot.total_hdd_bytes,
@@ -1078,7 +1078,7 @@
               </div>
             </div>
           {:else}
-            <div class="muted">{$t('network.router.no_snapshot_yet') || 'No snapshot yet.'}</div>
+            <div class="muted">{$t('network.router.no_snapshot_yet')}</div>
           {/if}
         </div>
       </div>
@@ -1087,20 +1087,20 @@
         <div class="grid2">
           <div class="card">
             <div class="card-head">
-              <h2>{$t('network.router.hardware') || 'Hardware'}</h2>
-              <span class="muted">{$t('network.router.live_snapshot') || 'Live'}</span>
+              <h2>{$t('network.router.hardware')}</h2>
+              <span class="muted">{$t('network.router.live_snapshot')}</span>
             </div>
             <div class="rows">
               <div class="row">
-                <span class="muted">{$t('network.router.board') || 'Board'}</span>
+                <span class="muted">{$t('network.router.board')}</span>
                 <span class="mono">{snapshot.board_name || '—'}</span>
               </div>
               <div class="row">
-                <span class="muted">{$t('network.router.architecture') || 'Architecture'}</span>
+                <span class="muted">{$t('network.router.architecture')}</span>
                 <span class="mono">{snapshot.architecture || '—'}</span>
               </div>
               <div class="row">
-                <span class="muted">{$t('network.router.cpu') || 'CPU'}</span>
+                <span class="muted">{$t('network.router.cpu')}</span>
                 <span class="mono">{snapshot.cpu || '—'}</span>
               </div>
             </div>
@@ -1108,26 +1108,26 @@
 
           <div class="card">
             <div class="card-head">
-              <h2>{$t('network.router.health') || 'Health'}</h2>
-              <span class="muted">{$t('network.router.optional') || 'Optional'}</span>
+              <h2>{$t('network.router.health')}</h2>
+              <span class="muted">{$t('network.router.optional')}</span>
             </div>
             {#if snapshot.health}
               <div class="rows">
                 <div class="row">
-                  <span class="muted">{$t('network.router.temperature') || 'Temperature'}</span>
+                  <span class="muted">{$t('network.router.temperature')}</span>
                   <span class="mono">{snapshot.health.temperature_c ?? '—'} °C</span>
                 </div>
                 <div class="row">
-                  <span class="muted">{$t('network.router.cpu_temperature') || 'CPU temperature'}</span>
+                  <span class="muted">{$t('network.router.cpu_temperature')}</span>
                   <span class="mono">{snapshot.health.cpu_temperature_c ?? '—'} °C</span>
                 </div>
                 <div class="row">
-                  <span class="muted">{$t('network.router.voltage') || 'Voltage'}</span>
+                  <span class="muted">{$t('network.router.voltage')}</span>
                   <span class="mono">{snapshot.health.voltage_v ?? '—'} V</span>
                 </div>
               </div>
             {:else}
-              <div class="muted">{$t('network.router.health_not_supported') || 'Not supported on this device.'}</div>
+              <div class="muted">{$t('network.router.health_not_supported')}</div>
             {/if}
           </div>
         </div>
@@ -1136,8 +1136,8 @@
     {:else if activeTab === 'interfaces'}
       <div class="card full">
         <div class="card-head">
-          <h2>{$t('network.router.tab_interfaces') || 'Interfaces'}</h2>
-          <span class="muted">{interfaceRows.length} {$t('common.shown') || 'shown'}</span>
+          <h2>{$t('network.router.tab_interfaces')}</h2>
+          <span class="muted">{interfaceRows.length} {$t('common.shown')}</span>
         </div>
 
         <div class="seg">
@@ -1146,28 +1146,28 @@
             class="seg-btn {ifFilter === 'all' ? 'active' : ''}"
             onclick={() => (ifFilter = 'all')}
           >
-            {$t('common.all') || 'All'}
+            {$t('common.all')}
           </button>
           <button
             type="button"
             class="seg-btn {ifFilter === 'running' ? 'active' : ''}"
             onclick={() => (ifFilter = 'running')}
           >
-            {$t('common.running') || 'Running'}
+            {$t('common.running')}
           </button>
           <button
             type="button"
             class="seg-btn {ifFilter === 'down' ? 'active' : ''}"
             onclick={() => (ifFilter = 'down')}
           >
-            {$t('common.down') || 'Down'}
+            {$t('common.down')}
           </button>
           <button
             type="button"
             class="seg-btn {ifFilter === 'disabled' ? 'active' : ''}"
             onclick={() => (ifFilter = 'disabled')}
           >
-            {$t('common.disabled') || 'Disabled'}
+            {$t('common.disabled')}
           </button>
         </div>
 
@@ -1179,7 +1179,7 @@
             pagination={true}
             pageSize={10}
             searchable={true}
-            searchPlaceholder={$t('network.router.search_interfaces') || 'Search interfaces...'}
+            searchPlaceholder={$t('network.router.search_interfaces')}
             mobileView={isMobile ? 'card' : 'scroll'}
           >
             {#snippet cell({ item, key }: any)}
@@ -1188,17 +1188,17 @@
                   class="link"
                   type="button"
                   ondblclick={() => openInterface(item.name)}
-                  title={$t('network.router.double_click_open') || 'Double click to open'}
+                  title={$t('network.router.double_click_open')}
                 >
                   <span class="mono">{item.name}</span>
                 </button>
               {:else if key === 'status'}
                 {#if item.status === 'disabled'}
-                  <span class="pill off">{$t('common.disabled') || 'Disabled'}</span>
+                  <span class="pill off">{$t('common.disabled')}</span>
                 {:else if item.status === 'running'}
-                  <span class="pill ok">{$t('common.running') || 'Running'}</span>
+                  <span class="pill ok">{$t('common.running')}</span>
                 {:else}
-                  <span class="pill warn">{$t('common.down') || 'Down'}</span>
+                  <span class="pill warn">{$t('common.down')}</span>
                 {/if}
               {:else}
                 {item[key] ?? ''}
@@ -1210,8 +1210,8 @@
     {:else if activeTab === 'ip'}
       <div class="card full">
         <div class="card-head">
-          <h2>{$t('network.router.tab_ip_addresses') || 'IP Addresses'}</h2>
-          <span class="muted">{ipRows.length} {$t('common.total') || 'total'}</span>
+          <h2>{$t('network.router.tab_ip_addresses')}</h2>
+          <span class="muted">{ipRows.length} {$t('common.total')}</span>
         </div>
         <div class="table-wrap">
           <Table
@@ -1221,17 +1221,17 @@
             pagination={true}
             pageSize={10}
             searchable={true}
-            searchPlaceholder={$t('network.router.search_ips') || 'Search IPs...'}
+            searchPlaceholder={$t('network.router.search_ips')}
             mobileView={isMobile ? 'card' : 'scroll'}
           >
             {#snippet cell({ item, key }: any)}
               {#if key === 'flags'}
                 <div class="flag-row">
                   {#if item.dynamic}
-                    <span class="pill info">{$t('common.dynamic') || 'Dynamic'}</span>
+                    <span class="pill info">{$t('common.dynamic')}</span>
                   {/if}
                   {#if item.disabled}
-                    <span class="pill off">{$t('common.disabled') || 'Disabled'}</span>
+                    <span class="pill off">{$t('common.disabled')}</span>
                   {/if}
                   {#if !item.dynamic && !item.disabled}
                     <span class="muted">—</span>
@@ -1247,8 +1247,8 @@
     {:else if activeTab === 'metrics'}
       <div class="card full">
         <div class="card-head">
-          <h2>{$t('network.router.tab_metrics') || 'Metrics'}</h2>
-          <span class="muted">{metrics.length} {$t('network.router.samples') || 'samples'}</span>
+          <h2>{$t('network.router.tab_metrics')}</h2>
+          <span class="muted">{metrics.length} {$t('network.router.samples')}</span>
         </div>
         <div class="table-wrap">
           <Table
@@ -1258,7 +1258,7 @@
             pagination={true}
             pageSize={25}
             searchable={true}
-            searchPlaceholder={$t('network.router.search_metrics') || 'Search metrics...'}
+            searchPlaceholder={$t('network.router.search_metrics')}
             mobileView={isMobile ? 'card' : 'scroll'}
           />
         </div>
@@ -1267,7 +1267,7 @@
   {:else}
     <div class="empty">
       <Icon name="alert-circle" size={18} />
-      {$t('network.router.not_found') || 'Router not found.'}
+      {$t('network.router.not_found')}
     </div>
   {/if}
 </div>

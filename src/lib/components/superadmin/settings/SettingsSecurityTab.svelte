@@ -21,18 +21,17 @@
 <div class="card section fade-in">
   <div class="card-header">
     <h3>
-      {$t('superadmin.settings.sections.security') || 'Security & Rate Limiting'}
+      {$t('superadmin.settings.sections.security')}
     </h3>
   </div>
   <div class="card-body">
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="max-login-attempts">
-          {$t('superadmin.settings.security.max_login_attempts.label') || 'Max Login Attempts'}
+          {$t('superadmin.settings.security.max_login_attempts.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.security.max_login_attempts.desc') ||
-            'Number of failed login attempts before account lockout.'}
+          {$t('superadmin.settings.security.max_login_attempts.desc')}
         </p>
       </div>
       <div class="input-group">
@@ -45,18 +44,17 @@
           max="20"
           class="form-input"
         />
-        <span class="input-suffix">{$t('common.units.attempts') || 'attempts'}</span>
+        <span class="input-suffix">{$t('common.units.attempts')}</span>
       </div>
     </div>
 
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="lockout-duration">
-          {$t('superadmin.settings.security.lockout_duration.label') || 'Lockout Duration'}
+          {$t('superadmin.settings.security.lockout_duration.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.security.lockout_duration.desc') ||
-            'How long a user stays locked out after max failed attempts.'}
+          {$t('superadmin.settings.security.lockout_duration.desc')}
         </p>
       </div>
       <div class="input-group">
@@ -69,18 +67,17 @@
           max="1440"
           class="form-input"
         />
-        <span class="input-suffix">{$t('common.units.minutes') || 'minutes'}</span>
+        <span class="input-suffix">{$t('common.units.minutes')}</span>
       </div>
     </div>
 
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="api-rate-limit">
-          {$t('superadmin.settings.security.api_rate_limit.label') || 'API Rate Limit'}
+          {$t('superadmin.settings.security.api_rate_limit.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.security.api_rate_limit.desc') ||
-            'Baseline API requests allowed per minute per user; auth and heavy endpoints stay stricter.'}
+          {$t('superadmin.settings.security.api_rate_limit.desc')}
         </p>
       </div>
       <div class="input-group">
@@ -93,18 +90,17 @@
           max="5000"
           class="form-input"
         />
-        <span class="input-suffix">{$t('common.units.req_per_min') || 'req/min'}</span>
+        <span class="input-suffix">{$t('common.units.req_per_min')}</span>
       </div>
     </div>
 
     <div class="setting-row">
       <div class="setting-info">
         <span class="setting-label">
-          {$t('superadmin.settings.security.ip_blocking.label') || 'Enable IP Blocking'}
+          {$t('superadmin.settings.security.ip_blocking.label')}
         </span>
         <p class="setting-description">
-          {$t('superadmin.settings.security.ip_blocking.desc') ||
-            'Automatically block IP addresses with suspicious activity.'}
+          {$t('superadmin.settings.security.ip_blocking.desc')}
         </p>
       </div>
       <label class="toggle">
@@ -112,7 +108,7 @@
           type="checkbox"
           bind:checked={enableIpBlocking}
           on:change={handleChange}
-          aria-label={$t('superadmin.settings.security.ip_blocking.aria') || 'Enable IP Blocking'}
+          aria-label={$t('superadmin.settings.security.ip_blocking.aria')}
         />
         <span class="slider"></span>
       </label>
@@ -123,18 +119,17 @@
 <div class="card section fade-in" style="margin-top: 1.5rem;">
   <div class="card-header">
     <h3>
-      {$t('superadmin.settings.sections.twofa') || 'Two-Factor Authentication'}
+      {$t('superadmin.settings.sections.twofa')}
     </h3>
   </div>
   <div class="card-body">
     <div class="setting-row">
       <div class="setting-info">
         <span class="setting-label">
-          {$t('superadmin.settings.twofa.enable_2fa.label') || 'Enable 2FA'}
+          {$t('superadmin.settings.twofa.enable_2fa.label')}
         </span>
         <p class="setting-description">
-          {$t('superadmin.settings.twofa.enable_2fa.desc') ||
-            'Allow users to set up two-factor authentication for enhanced security.'}
+          {$t('superadmin.settings.twofa.enable_2fa.desc')}
         </p>
       </div>
       <label class="toggle">
@@ -142,7 +137,7 @@
           type="checkbox"
           bind:checked={twoFAEnabled}
           on:change={handleChange}
-          aria-label={$t('superadmin.settings.twofa.enable_2fa.aria') || 'Enable 2FA'}
+          aria-label={$t('superadmin.settings.twofa.enable_2fa.aria')}
         />
         <span class="slider"></span>
       </label>
@@ -151,11 +146,10 @@
     <div class="setting-row">
       <div class="setting-info">
         <span class="setting-label">
-          {$t('superadmin.settings.twofa.enable_totp.label') || 'TOTP (Authenticator App)'}
+          {$t('superadmin.settings.twofa.enable_totp.label')}
         </span>
         <p class="setting-description">
-          {$t('superadmin.settings.twofa.enable_totp.desc') ||
-            'Allow users to verify with Google Authenticator, Authy, etc.'}
+          {$t('superadmin.settings.twofa.enable_totp.desc')}
         </p>
       </div>
       <label class="toggle">
@@ -163,7 +157,7 @@
           type="checkbox"
           bind:checked={twoFAMethodTotp}
           on:change={handleChange}
-          aria-label={$t('superadmin.settings.twofa.enable_totp.aria') || 'Enable TOTP'}
+          aria-label={$t('superadmin.settings.twofa.enable_totp.aria')}
         />
         <span class="slider"></span>
       </label>
@@ -172,11 +166,10 @@
     <div class="setting-row">
       <div class="setting-info">
         <span class="setting-label">
-          {$t('superadmin.settings.twofa.email_otp.label') || 'Email OTP'}
+          {$t('superadmin.settings.twofa.email_otp.label')}
         </span>
         <p class="setting-description">
-          {$t('superadmin.settings.twofa.email_otp.desc') ||
-            'Allow users to receive verification codes via email.'}
+          {$t('superadmin.settings.twofa.email_otp.desc')}
         </p>
       </div>
       <label class="toggle">
@@ -184,7 +177,7 @@
           type="checkbox"
           bind:checked={twoFAMethodEmail}
           on:change={handleChange}
-          aria-label={$t('superadmin.settings.twofa.enable_email_otp.aria') || 'Enable Email OTP'}
+          aria-label={$t('superadmin.settings.twofa.enable_email_otp.aria')}
         />
         <span class="slider"></span>
       </label>
@@ -194,11 +187,10 @@
       <div class="setting-row">
         <div class="setting-info">
           <label class="setting-label" for="email-otp-expiry">
-            {$t('superadmin.settings.twofa.email_otp_expiry.label') || 'Email OTP Expiry'}
+            {$t('superadmin.settings.twofa.email_otp_expiry.label')}
           </label>
           <p class="setting-description">
-            {$t('superadmin.settings.twofa.email_otp_expiry.desc') ||
-              'How long email verification codes remain valid.'}
+            {$t('superadmin.settings.twofa.email_otp_expiry.desc')}
           </p>
         </div>
         <div class="input-group">
@@ -211,7 +203,7 @@
             max="60"
             class="form-input"
           />
-          <span class="input-suffix">{$t('common.units.minutes') || 'minutes'}</span>
+          <span class="input-suffix">{$t('common.units.minutes')}</span>
         </div>
       </div>
     {/if}

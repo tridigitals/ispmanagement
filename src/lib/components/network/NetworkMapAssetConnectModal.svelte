@@ -20,29 +20,29 @@
   export let onSubmit: () => void;
 </script>
 
-<Modal {show} title={$t('network.asset.connect_ftth') || 'Connect FTTH Asset'} width="620px" onclose={() => !saving && onClose()}>
+<Modal {show} title={$t('network.asset.connect_ftth')} width="620px" onclose={() => !saving && onClose()}>
   <div class="asset-connect-shell">
     <div class="asset-connect-intro">
-      <div class="asset-connect-kicker">{$t('network.asset.current_asset') || 'Current asset'}</div>
+      <div class="asset-connect-kicker">{$t('network.asset.current_asset')}</div>
       <div class="asset-connect-title">{assetName}</div>
       <div class="asset-connect-subtitle">{assetTypeLabel}</div>
     </div>
 
     <div class="asset-connect-grid">
       <label class="field span-2">
-        <span>{$t('network.asset.upstream_parent') || 'Upstream Parent'}</span>
+        <span>{$t('network.asset.upstream_parent')}</span>
         <select class="input" bind:value={draft.parentAssetId} disabled={saving}>
-          <option value="">{$t('network.asset.no_parent') || 'No parent'}</option>
+          <option value="">{$t('network.asset.no_parent')}</option>
           {#each parentOptions as option}
             <option value={option.value}>{option.label}</option>
           {/each}
         </select>
-        <small>{$t('network.asset.parent_hint') || 'Use this for links like ODC to ODP or OLT to ODC.'}</small>
+        <small>{$t('network.asset.parent_hint')}</small>
       </label>
 
       {#if supportsCustomerDrop}
         <label class="field">
-          <span>{$t('common.customer') || 'Customer'}</span>
+          <span>{$t('common.customer')}</span>
           <select class="input" bind:value={draft.customerId} disabled={saving || loadingCustomers}>
             <option value="">{loadingCustomers ? ($t('common.loading') || 'Loading customers...') : ($t('network.asset.no_customer') || 'No customer')}</option>
             {#each customerOptions as option}
@@ -52,7 +52,7 @@
         </label>
 
         <label class="field">
-          <span>{$t('common.location') || 'Location'}</span>
+          <span>{$t('common.location')}</span>
           <select
             class="input"
             bind:value={draft.locationId}
@@ -69,13 +69,13 @@
               <option value={option.value}>{option.label}</option>
             {/each}
           </select>
-          <small>{$t('network.asset.location_hint') || 'Use this to draw the customer-side drop relation from ODP.'}</small>
+          <small>{$t('network.asset.location_hint')}</small>
         </label>
       {/if}
     </div>
 
     <div class="asset-connect-actions">
-      <button class="btn ghost" type="button" onclick={onClose} disabled={saving}>{$t('common.cancel') || 'Cancel'}</button>
+      <button class="btn ghost" type="button" onclick={onClose} disabled={saving}>{$t('common.cancel')}</button>
       <button class="btn" type="button" onclick={onSubmit} disabled={saving}>
         {saving ? ($t('common.saving') || 'Saving...') : ($t('network.asset.save_connection') || 'Save Connection')}
       </button>

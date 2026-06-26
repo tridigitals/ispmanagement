@@ -221,12 +221,12 @@
   <div class="head">
     <button class="btn" type="button" onclick={goBack}>
       <Icon name="arrow-left" size={16} />
-      {$t('common.back') || 'Back'}
+      {$t('common.back')}
     </button>
     <div class="right">
       <button class="btn" type="button" onclick={load}>
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
+        {$t('common.refresh')}
       </button>
       <button class="btn-primary" type="button" onclick={saveTicket} disabled={saving || loading}>
         <Icon name="save" size={16} />
@@ -238,7 +238,7 @@
   {#if loading}
     <div class="loading">
       <div class="spinner"></div>
-      <p>{$t('support.loading_detail') || 'Loading ticket...'}</p>
+      <p>{$t('support.loading_detail')}</p>
     </div>
   {:else if detail}
     <div class="ticket-card">
@@ -255,7 +255,7 @@
       </div>
       <div class="subrow">
         <span>
-          {$t('support.detail.updated') || 'Updated'}:
+          {$t('support.detail.updated')}:
           {formatDateTime(detail.ticket.updated_at, { timeZone: $appSettings.app_timezone })}
         </span>
         {#if detail.ticket.subscription_id}
@@ -264,10 +264,10 @@
             class="subscription-badge"
             type="button"
             onclick={() => openSubscription(detail!.ticket.subscription_id)}
-            title={$t('support.detail.view_customer') || 'Lihat Pelanggan'}
+            title={$t('support.detail.view_customer')}
           >
             <Icon name="link" size={13} />
-            {$t('support.detail.view_subscription') || 'Langganan terkait'}:
+            {$t('support.detail.view_subscription')}:
             <code>{detail.ticket.subscription_id.slice(0, 8)}</code>
           </button>
         {/if}
@@ -278,13 +278,13 @@
       <aside class="side">
         <div class="panel">
           <div class="panel-head">
-            <div class="panel-title">{$t('admin.support.panels.manage') || 'Manage'}</div>
+            <div class="panel-title">{$t('admin.support.panels.manage')}</div>
             <button
               class="btn-primary"
               type="button"
               onclick={saveTicket}
               disabled={saving}
-              title={$t('common.save') || 'Save'}
+              title={$t('common.save')}
             >
               <Icon name="save" size={16} />
               {saving ? $t('common.saving') || 'Saving...' : $t('common.save') || 'Save'}
@@ -292,23 +292,23 @@
           </div>
           <div class="form">
             <Select
-              label={$t('admin.support.fields.status') || 'Status'}
+              label={$t('admin.support.fields.status')}
               bind:value={status}
               options={statusOptions}
             />
             <Select
-              label={$t('admin.support.fields.priority') || 'Priority'}
+              label={$t('admin.support.fields.priority')}
               bind:value={priority}
               options={priorityOptions}
             />
             <Select
-              label={$t('admin.support.fields.category') || 'Category'}
+              label={$t('admin.support.fields.category')}
               bind:value={category}
               options={categoryOptions}
             />
             {#if canChangeAssignee}
               <Select
-                label={$t('admin.support.fields.assignee') || 'Assignee'}
+                label={$t('admin.support.fields.assignee')}
                 bind:value={assignedTo}
                 options={memberOptions}
               />
@@ -325,15 +325,14 @@
           </div>
           {#if canChangeAssignee}
             <p class="hint">
-              {$t('admin.support.hints.assign') ||
-                'Assignee expects a team member user_id. Leave empty to keep unassigned.'}
+              {$t('admin.support.hints.assign')}
             </p>
           {/if}
         </div>
 
         {#if detail.ticket.satisfaction_rating}
         <div class="panel">
-          <div class="panel-title">{$t('support.satisfaction.title') || '⭐ Satisfaction Rating'}</div>
+          <div class="panel-title">{$t('support.satisfaction.title')}</div>
           <div class="satisfaction-display">
             <div class="rating-stars">
               {#each [1,2,3,4,5] as star}
@@ -349,12 +348,12 @@
         {/if}
 
         <div class="panel">
-          <div class="panel-title">{$t('admin.support.panels.reply') || 'Reply'}</div>
+          <div class="panel-title">{$t('admin.support.panels.reply')}</div>
           {#if isClosed}
             <div class="closed-note">
               <Icon name="lock" size={16} />
               <span>
-                {$t('support.detail.closed_notice') || 'This ticket is closed. You can’t reply.'}
+                {$t('support.detail.closed_notice')}
               </span>
             </div>
           {/if}
@@ -362,13 +361,13 @@
             class="textarea"
             rows="5"
             bind:value={reply}
-            placeholder={$t('support.fields.reply_placeholder') || 'Write your reply...'}
+            placeholder={$t('support.fields.reply_placeholder')}
             disabled={isClosed}
           ></textarea>
           <div class="reply-row">
             <div class="file-col">
               <label class="file-label" for="admin-support-reply-files">
-                {$t('support.fields.attachments') || 'Attachments'}
+                {$t('support.fields.attachments')}
               </label>
               <input
                 id="admin-support-reply-files"
@@ -390,7 +389,7 @@
             {#if $can('internal', 'support')}
               <label class="check">
                 <input type="checkbox" bind:checked={internalNote} disabled={isClosed} />
-                <span>{$t('admin.support.fields.internal') || 'Internal note'}</span>
+                <span>{$t('admin.support.fields.internal')}</span>
               </label>
             {/if}
             <button
@@ -411,10 +410,10 @@
       <section class="main">
         <div class="thread-card">
           <div class="thread-head">
-            <div class="thread-title">{$t('support.detail.thread') || 'Conversation'}</div>
+            <div class="thread-title">{$t('support.detail.thread')}</div>
             <div class="thread-sub">
               {detail.messages.length}
-              {$t('support.detail.messages') || 'messages'}
+              {$t('support.detail.messages')}
             </div>
           </div>
 
@@ -436,7 +435,7 @@
                   </div>
                   <span class="who">{who}</span>
                   {#if m.is_internal}
-                    <span class="tag">{$t('support.tags.internal') || 'internal'}</span>
+                    <span class="tag">{$t('support.tags.internal')}</span>
                   {/if}
                   <span class="dot"></span>
                   <span class="time">
@@ -470,7 +469,7 @@
   {:else}
     <div class="empty">
       <Icon name="alert-circle" size={24} />
-      <p>{$t('support.detail.not_found') || 'Ticket not found'}</p>
+      <p>{$t('support.detail.not_found')}</p>
     </div>
   {/if}
 </div>

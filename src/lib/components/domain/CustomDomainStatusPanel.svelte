@@ -27,7 +27,7 @@
 <section class="domain-status-panel">
   <div class="domain-status-header">
     <div>
-      <div class="domain-status-title">{$t('admin.settings.branding.domain_status') || 'Status Domain'}</div>
+      <div class="domain-status-title">{$t('admin.settings.branding.domain_status')}</div>
       <div class="domain-status-domain">{customDomain || $t('admin.settings.branding.not_configured') || 'Belum dikonfigurasi'}</div>
     </div>
     <CustomDomainStatusBadge {customDomain} {status} {failureReason} />

@@ -151,7 +151,7 @@
       type="button"
       class="backdrop"
       onclick={close}
-      aria-label={$t('common.cancel') || 'Close'}
+      aria-label={$t('common.cancel')}
     ></button>
     <div
       class="dropdown-panel"
@@ -164,7 +164,7 @@
         <div class="actions">
           {#if visibleUnreadCount > 0}
             <button class="text-btn" onclick={() => markAllAsRead()}>
-              {$t('topbar.notifications_menu.mark_all_read') || 'Mark all read'}
+              {$t('topbar.notifications_menu.mark_all_read')}
             </button>
           {/if}
           <button
@@ -173,8 +173,8 @@
               openProfileModal({ tab: 'notifications' });
               close();
             }}
-            title={$t('topbar.notifications_menu.settings') || 'Settings'}
-            aria-label={$t('topbar.notifications_menu.settings') || 'Settings'}
+            title={$t('topbar.notifications_menu.settings')}
+            aria-label={$t('topbar.notifications_menu.settings')}
           >
             <Icon name="settings" size={14} />
           </button>
@@ -192,7 +192,7 @@
               <Icon name="bell" size={24} color="var(--text-tertiary)" />
             </div>
             <p>
-              {$t('topbar.notifications_menu.empty') || 'No notifications yet'}
+              {$t('topbar.notifications_menu.empty')}
             </p>
           </div>
         {:else}
@@ -226,8 +226,8 @@
                         e.stopPropagation();
                         markAsRead(n.id);
                       }}
-                      title={$t('topbar.notifications_menu.mark_read') || 'Mark as read'}
-                      aria-label={$t('topbar.notifications_menu.mark_read') || 'Mark as read'}
+                      title={$t('topbar.notifications_menu.mark_read')}
+                      aria-label={$t('topbar.notifications_menu.mark_read')}
                     >
                       <div class="dot"></div>
                     </button>
@@ -238,8 +238,8 @@
                       e.stopPropagation();
                       deleteNotification(n.id);
                     }}
-                    title={$t('topbar.notifications_menu.delete') || 'Delete'}
-                    aria-label={$t('topbar.notifications_menu.delete') || 'Delete'}
+                    title={$t('topbar.notifications_menu.delete')}
+                    aria-label={$t('topbar.notifications_menu.delete')}
                   >
                     <Icon name="x" size={12} />
                   </button>
@@ -259,7 +259,7 @@
             close();
           }}
         >
-          {$t('topbar.notifications_menu.view_all') || 'View all'}
+          {$t('topbar.notifications_menu.view_all')}
         </button>
         {#if $notifications.length > 0}
           <button
@@ -270,7 +270,7 @@
             }}
           >
             <Icon name="trash" size={12} />
-            {$t('topbar.notifications_menu.clear_all') || 'Clear all'}
+            {$t('topbar.notifications_menu.clear_all')}
           </button>
         {/if}
       </div>

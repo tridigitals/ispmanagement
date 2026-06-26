@@ -17,7 +17,7 @@
   } = $props();
 </script>
 
-<section class="quick-modes" aria-label={$t('network.map.quick_modes_label') || 'Workspace quick modes'}>
+<section class="quick-modes" aria-label={$t('network.map.quick_modes_label')}>
   {#each modes as mode (mode.key)}
     <button
       type="button"

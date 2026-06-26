@@ -455,19 +455,19 @@
 <div class="checkout-page fade-in">
   <div class="invoice-shell">
     {#if loading}
-      <div class="state">{$t('payment.checkout.loading') || 'Loading invoice...'}</div>
+      <div class="state">{$t('payment.checkout.loading')}</div>
     {:else if invoice}
       <div class="invoice-head">
         <button class="back-link" onclick={() => goto(returnPath)}>
           <Icon name="arrow-left" size={16} />
-          <span>{$t('common.back') || 'Back'}</span>
+          <span>{$t('common.back')}</span>
         </button>
         <div class="head-title">
-          <h1>{$t('payment.checkout.title') || 'Checkout'}</h1>
+          <h1>{$t('payment.checkout.title')}</h1>
           <span class="invoice-number">#{invoice.invoice_number}</span>
         </div>
         <div class="head-right">
-          <span class="doc-mark">{$t('components.invoice_print.invoice') || 'INVOICE'}</span>
+          <span class="doc-mark">{$t('components.invoice_print.invoice')}</span>
           <span class="status-pill {invoice.status}">{invoice.status}</span>
         </div>
       </div>
@@ -475,13 +475,13 @@
       <div class="invoice-body">
         <div class="party-grid">
           <div class="party-card">
-            <span class="party-k">{$t('common.from') || 'From'}</span>
+            <span class="party-k">{$t('common.from')}</span>
             <strong>{publicSettings?.app_name || 'ISP Management'}</strong>
             <span>{publicSettings?.support_email || '-'}</span>
             <span>{publicSettings?.company_phone || '-'}</span>
           </div>
           <div class="party-card">
-            <span class="party-k">{$t('components.invoice_print.bill_to') || 'Bill to'}</span>
+            <span class="party-k">{$t('components.invoice_print.bill_to')}</span>
             <strong>{$user?.name || 'Customer'}</strong>
             <span>{$user?.email || '-'}</span>
             <span>{publicSettings?.tenant_name || '-'}</span>
@@ -494,15 +494,15 @@
             <span class="v">{invoice.invoice_number}</span>
           </div>
           <div class="meta-item">
-            <span class="k">{$t('payment.checkout.created') || 'Created'}</span>
+            <span class="k">{$t('payment.checkout.created')}</span>
             <span class="v">{formatDateValue(invoice.created_at)}</span>
           </div>
           <div class="meta-item">
-            <span class="k">{$t('components.invoice_print.due_date') || 'Due date'}</span>
+            <span class="k">{$t('components.invoice_print.due_date')}</span>
             <span class="v">{formatDateValue(invoice.due_date)}</span>
           </div>
           <div class="meta-item">
-            <span class="k">{$t('payment.checkout.status') || 'Status'}</span>
+            <span class="k">{$t('payment.checkout.status')}</span>
             <span class="status-pill {invoice.status}">{invoice.status}</span>
           </div>
         </div>
@@ -511,10 +511,10 @@
           <table class="invoice-table">
             <thead>
               <tr>
-                <th>{$t('payment.checkout.item') || 'Item'}</th>
-                <th>{$t('components.invoice_print.unit_price') || 'Unit Price'}</th>
+                <th>{$t('payment.checkout.item')}</th>
+                <th>{$t('components.invoice_print.unit_price')}</th>
                 <th>Qty</th>
-                <th>{$t('common.amount') || 'Amount'}</th>
+                <th>{$t('common.amount')}</th>
               </tr>
             </thead>
             <tbody>
@@ -527,10 +527,10 @@
             </tbody>
           </table>
           <div class="totals-box">
-            <div><span>{$t('components.invoice_print.subtotal') || 'Subtotal'}</span><strong>{formatCurrency(invoice.amount)}</strong></div>
+            <div><span>{$t('components.invoice_print.subtotal')}</span><strong>{formatCurrency(invoice.amount)}</strong></div>
             <div><span>Tax</span><strong>{formatCurrency(0)}</strong></div>
             <div class="grand-total">
-              <span>{$t('payment.checkout.total') || 'Total'}</span>
+              <span>{$t('payment.checkout.total')}</span>
               <strong>{formatCurrency(invoice.amount)}</strong>
             </div>
           </div>
@@ -539,7 +539,7 @@
         {#if invoice.status === 'pending' || invoice.status === 'failed'}
           {#if invoice.status === 'failed' && invoice.rejection_reason}
             <div class="failed-reason">
-              <span>{$t('payment.checkout.failed.reason_label') || 'Alasan Ditolak'}</span>
+              <span>{$t('payment.checkout.failed.reason_label')}</span>
               <strong>{invoice.rejection_reason}</strong>
             </div>
           {/if}
@@ -568,7 +568,7 @@
                 onclick={() => (paymentMethod = 'manual')}
               >
                 <Icon name="landmark" size={16} />
-                {$t('payment.checkout.tabs.manual') || 'Bank Transfer'}
+                {$t('payment.checkout.tabs.manual')}
               </button>
             {/if}
           </div>
@@ -576,11 +576,10 @@
           <div class="payment-block">
             {#if paymentMethod === 'midtrans' && midtransEnabled}
               <p class="helper">
-                {$t('payment.checkout.online.description') ||
-                  'Pay securely with Credit Card, GoPay, ShopeePay, or Virtual Account via Midtrans.'}
+                {$t('payment.checkout.online.description')}
               </p>
               <button class="btn btn-primary w-full" onclick={handlePayOnline}>
-                {$t('payment.checkout.online.pay_now') || 'Pay Now'}
+                {$t('payment.checkout.online.pay_now')}
               </button>
               <button
                 class="btn btn-secondary w-full"
@@ -592,9 +591,9 @@
                 disabled={autoChecking}
               >
                 {#if autoChecking}
-                  {$t('payment.checkout.online.checking') || 'Checking...'}
+                  {$t('payment.checkout.online.checking')}
                 {:else}
-                  {$t('payment.checkout.online.check_status') || 'Check Payment Status'}
+                  {$t('payment.checkout.online.check_status')}
                 {/if}
               </button>
             {:else if paymentMethod === 'duitku' && duitkuEnabled}
@@ -631,7 +630,7 @@
                 {@const methodInfo = getDuitkuPaymentMethodInfo(selectedDuitkuPaymentMethod)}
                 <div class="selected-method">
                   <span>
-                    <small>{$t('payment.checkout.payment_method') || 'Metode pembayaran'}</small>
+                    <small>{$t('payment.checkout.payment_method')}</small>
                     <strong>{methodInfo.name}</strong>
                     <em>{methodInfo.description}</em>
                   </span>
@@ -639,7 +638,7 @@
                 </div>
               {/if}
               <button class="btn btn-primary w-full" onclick={handlePayOnline}>
-                {$t('payment.checkout.online.pay_now') || 'Pay Now'}
+                {$t('payment.checkout.online.pay_now')}
               </button>
               <button
                 class="btn btn-secondary w-full"
@@ -651,15 +650,14 @@
                 disabled={autoChecking}
               >
                 {#if autoChecking}
-                  {$t('payment.checkout.online.checking') || 'Checking...'}
+                  {$t('payment.checkout.online.checking')}
                 {:else}
-                  {$t('payment.checkout.online.check_status') || 'Check Payment Status'}
+                  {$t('payment.checkout.online.check_status')}
                 {/if}
               </button>
             {:else if paymentMethod === 'manual' && manualEnabled}
               <p class="helper">
-                {$t('payment.checkout.manual.instructions') ||
-                  'Please transfer the exact amount to one of the following accounts:'}
+                {$t('payment.checkout.manual.instructions')}
               </p>
 
               <div class="bank-list">
@@ -676,8 +674,7 @@
 
               <div class="upload-card">
                 <p>
-                  {$t('payment.checkout.manual.upload_hint') ||
-                    'Already transferred? Upload your receipt.'}
+                  {$t('payment.checkout.manual.upload_hint')}
                 </p>
                 <input
                   type="file"
@@ -692,10 +689,10 @@
                   disabled={uploading}
                 >
                   {#if uploading}
-                    {$t('payment.checkout.manual.uploading') || 'Uploading...'}
+                    {$t('payment.checkout.manual.uploading')}
                   {:else}
                     <Icon name="upload" size={16} />
-                    {$t('payment.checkout.manual.upload') || 'Upload Proof of Payment'}
+                    {$t('payment.checkout.manual.upload')}
                   {/if}
                 </button>
               </div>
@@ -706,13 +703,12 @@
             <div class="icon-circle pending">
               <Icon name="clock" size={26} />
             </div>
-            <h3>{$t('payment.checkout.pending.title') || 'Payment Verification Pending'}</h3>
+            <h3>{$t('payment.checkout.pending.title')}</h3>
             <p>
-              {$t('payment.checkout.pending.message') ||
-                'We have received your payment proof. Our team is verifying it. We will notify you once approved.'}
+              {$t('payment.checkout.pending.message')}
             </p>
             <button class="btn btn-secondary" onclick={() => goto(returnPath)}>
-              {$t('payment.checkout.pending.back') || 'Return to Dashboard'}
+              {$t('payment.checkout.pending.back')}
             </button>
           </div>
         {:else if invoice.status === 'paid'}
@@ -720,19 +716,18 @@
             <div class="icon-circle success">
               <Icon name="check" size={26} />
             </div>
-            <h3>{$t('payment.checkout.success.title') || 'Payment Successful!'}</h3>
+            <h3>{$t('payment.checkout.success.title')}</h3>
             <p>
-              {$t('payment.checkout.success.message') ||
-                'Thank you for your payment. Your subscription has been activated.'}
+              {$t('payment.checkout.success.message')}
             </p>
             <button class="btn btn-primary" onclick={() => goto(returnPath)}>
-              {$t('payment.checkout.success.cta') || 'Go to Subscription'}
+              {$t('payment.checkout.success.cta')}
             </button>
           </div>
         {/if}
       </div>
     {:else}
-      <div class="state">{$t('payment.checkout.not_found') || 'Invoice not found'}</div>
+      <div class="state">{$t('payment.checkout.not_found')}</div>
     {/if}
   </div>
 </div>

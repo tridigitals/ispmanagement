@@ -122,7 +122,7 @@
               onchange={(event) =>
                 setOverride('plan', row.sourceRef, 'package', event.currentTarget.value)}
             >
-              <option value="">{$t('mixradius.import_wizard.mapping.auto_new_package') || 'Auto/new package'}</option>
+              <option value="">{$t('mixradius.import_wizard.mapping.auto_new_package')}</option>
               {#each packageOptions as option}
                 <option value={option.value}>{option.label}</option>
               {/each}
@@ -165,11 +165,11 @@
     </label>
 
     <label class="field panel">
-      <span>{$t('mixradius.import_wizard.mapping.location_strategy') || 'Location strategy'}</span>
+      <span>{$t('mixradius.import_wizard.mapping.location_strategy')}</span>
       <select class="input" bind:value={locationStrategy}>
-        <option value={null}>{$t('common.default') || 'Default'}</option>
-        <option value="preserve">{$t('common.preserve') || 'Preserve'}</option>
-        <option value="merge">{$t('mixradius.import_wizard.mapping.merge') || 'Merge'}</option>
+        <option value={null}>{$t('common.default')}</option>
+        <option value="preserve">{$t('common.preserve')}</option>
+        <option value="merge">{$t('mixradius.import_wizard.mapping.merge')}</option>
         <option value="replace">{$t('mixradius.import_wizard.mapping.replace')}</option>
       </select>
     </label>

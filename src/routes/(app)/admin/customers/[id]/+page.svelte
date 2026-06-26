@@ -1400,13 +1400,13 @@
       changePackageResult = result;
       toast.success(
         result.net_amount > 0
-          ? `${$t('admin.customers.subscriptions.change_package.toasts.success_with_charge') || 'Paket diganti! Tagihan pro-rata:'} ${formatMoney(result.net_amount)}`
+          ? `${$t('admin.customers.subscriptions.change_package.toasts.success_with_charge')} ${formatMoney(result.net_amount)}`
           : ($t('admin.customers.subscriptions.change_package.toasts.success_no_charge') || 'Paket diganti! Tidak ada tagihan tambahan'),
       );
       await loadSubscriptions({ force: true });
       await loadBillingInvoices();
     } catch (e: any) {
-      toast.error(`${$t('admin.customers.subscriptions.change_package.toasts.error') || 'Gagal ganti paket:'} ${e?.message || e}`);
+      toast.error(`${$t('admin.customers.subscriptions.change_package.toasts.error')} ${e?.message || e}`);
     } finally {
       changePackageLoading = false;
     }
@@ -1826,7 +1826,7 @@
     <div class="hero-top">
       <button class="btn btn-secondary" onclick={() => goto(customerBackTarget)}>
         <Icon name="arrow-left" size={16} />
-        {$t('common.back') || 'Back'}
+        {$t('common.back')}
       </button>
       <div class="header-actions hero-actions">
         <MobileOverflowActions
@@ -1873,20 +1873,20 @@
     bind:activeId={activeTab}
     {isMobile}
     priorityCount={2}
-    ariaLabel={$t('admin.customers.detail.title') || 'Customer detail tabs'}
+    ariaLabel={$t('admin.customers.detail.title')}
   />
 
   {#if loadingCustomer}
     <div class="card loading-card">
       <div class="spinner"></div>
-      <p>{$t('common.loading') || 'Loading...'}</p>
+      <p>{$t('common.loading')}</p>
     </div>
   {:else if customer}
     {#if activeTab === 'overview'}
       <div class="card section">
         <div class="section-head">
           <div>
-            <h3>{$t('admin.customers.overview.title') || 'Customer profile'}</h3>
+            <h3>{$t('admin.customers.overview.title')}</h3>
             <p class="subtitle">{$t('admin.customers.detail.subtitle')}</p>
           </div>
           {#if canManageCustomers}
@@ -1896,7 +1896,7 @@
               disabled={saving || !name.trim()}
             >
               <Icon name="check-circle" size={16} />
-              {$t('common.save') || 'Save'}
+              {$t('common.save')}
             </button>
           {/if}
         </div>
@@ -1904,21 +1904,21 @@
         <div class="overview-grid">
           <div class="form overview-form">
             <label>
-              <span>{$t('admin.customers.fields.name') || 'Name'}</span>
+              <span>{$t('admin.customers.fields.name')}</span>
               <input class="input" bind:value={name} disabled={!canManageCustomers} />
             </label>
             <div class="grid2">
               <label>
-                <span>{$t('admin.customers.fields.email') || 'Email'}</span>
+                <span>{$t('admin.customers.fields.email')}</span>
                 <input class="input" bind:value={email} disabled={!canManageCustomers} />
               </label>
               <label>
-                <span>{$t('admin.customers.fields.phone') || 'Phone'}</span>
+                <span>{$t('admin.customers.fields.phone')}</span>
                 <input class="input" bind:value={phone} disabled={!canManageCustomers} />
               </label>
             </div>
             <label>
-              <span>{$t('admin.customers.fields.notes') || 'Notes'}</span>
+              <span>{$t('admin.customers.fields.notes')}</span>
               <textarea class="input" rows="5" bind:value={notes} disabled={!canManageCustomers}
               ></textarea>
             </label>
@@ -1942,7 +1942,7 @@
               <strong>{isActive ? ($t('common.active') || 'Active') : ($t('common.inactive') || 'Inactive')}</strong>
             </div>
             <div class="side-divider"></div>
-            <p class="side-note">{$t('admin.customers.overview.contact_accuracy_note') || 'Pastikan data kontak tetap akurat.'}</p>
+            <p class="side-note">{$t('admin.customers.overview.contact_accuracy_note')}</p>
           </aside>
         </div>
       </div>
@@ -1950,13 +1950,13 @@
       <div class="card section">
         <div class="section-head">
           <div>
-            <h3>{$t('admin.customers.locations.title') || 'Locations'}</h3>
-            <p class="subtitle">{$t('admin.customers.locations.subtitle') || 'Lokasi layanan.'}</p>
+            <h3>{$t('admin.customers.locations.title')}</h3>
+            <p class="subtitle">{$t('admin.customers.locations.subtitle')}</p>
           </div>
           {#if canManageCustomerLocations}
             <button class="btn btn-primary" onclick={() => void openCreateLocation()}>
               <Icon name="plus" size={16} />
-              {$t('admin.customers.locations.actions.add') || 'Add location'}
+              {$t('admin.customers.locations.actions.add')}
             </button>
           {/if}
         </div>
@@ -1965,7 +1965,7 @@
           columns={locColumns}
           data={locations}
           loading={loadingLocations}
-          emptyText={$t('admin.customers.locations.empty') || 'No locations yet.'}
+          emptyText={$t('admin.customers.locations.empty')}
           pagination
         >
           {#snippet cell({ item, key })}
@@ -1987,7 +1987,7 @@
               <div class="row-actions">
                 <button
                   class="btn-icon"
-                  title={$t('common.refresh') || 'Refresh'}
+                  title={$t('common.refresh')}
                   onclick={() => void loadLocations({ force: true })}
                 >
                   <Icon name="refresh-cw" size={16} />
@@ -1995,14 +1995,14 @@
                 {#if canManageCustomerLocations}
                   <button
                     class="btn-icon"
-                    title={$t('common.edit') || 'Edit'}
+                    title={$t('common.edit')}
                     onclick={() => void openEditLocation(loc)}
                   >
                     <Icon name="edit-3" size={16} />
                   </button>
                   <button
                     class="btn-icon danger"
-                    title={$t('common.delete') || 'Delete'}
+                    title={$t('common.delete')}
                     onclick={() => void confirmDeleteLocation(loc)}
                   >
                     <Icon name="trash-2" size={16} />
@@ -2042,7 +2042,7 @@
       {:else if activeDeferredTabLoading === 'subscriptions'}
         <div class="card loading-card">
           <div class="spinner"></div>
-          <p>{$t('common.loading') || 'Loading...'}</p>
+          <p>{$t('common.loading')}</p>
         </div>
       {/if}
     {:else if activeTab === 'billing'}
@@ -2064,7 +2064,7 @@
       {:else if activeDeferredTabLoading === 'billing'}
         <div class="card loading-card">
           <div class="spinner"></div>
-          <p>{$t('common.loading') || 'Loading...'}</p>
+          <p>{$t('common.loading')}</p>
         </div>
       {/if}
     {:else if activeTab === 'assets'}
@@ -2073,7 +2073,7 @@
       {:else if activeDeferredTabLoading === 'assets'}
         <div class="card loading-card">
           <div class="spinner"></div>
-          <p>{$t('common.loading') || 'Loading...'}</p>
+          <p>{$t('common.loading')}</p>
         </div>
       {/if}
     {:else if activeTab === 'pppoe'}
@@ -2101,57 +2101,57 @@
       {:else if activeDeferredTabLoading === 'pppoe' || !pppoeHelperModule}
         <div class="card loading-card">
           <div class="spinner"></div>
-          <p>{$t('common.loading') || 'Loading...'}</p>
+          <p>{$t('common.loading')}</p>
         </div>
       {/if}
     {:else if activeTab === 'dhcp_static'}
       <div class="card section-card">
         <div class="section-head">
           <div>
-            <h3>{$t('admin.customers.tabs.dhcp_static') || 'DHCP Static'}</h3>
+            <h3>{$t('admin.customers.tabs.dhcp_static')}</h3>
             <p class="muted">
-              {$t('admin.customers.dhcp_static.subtitle') || 'Lease statis dan status queue.'}
+              {$t('admin.customers.dhcp_static.subtitle')}
             </p>
           </div>
           <button class="btn ghost" onclick={() => loadDhcpStaticServices({ force: true })}>
-            {$t('common.refresh') || 'Refresh'}
+            {$t('common.refresh')}
           </button>
         </div>
         {#if dhcpStaticServices.length === 0}
           <p class="muted">
-            {$t('admin.customers.dhcp_static.empty') || 'No DHCP static services.'}
+            {$t('admin.customers.dhcp_static.empty')}
           </p>
         {:else}
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>{$t('admin.customers.dhcp_static.columns.server') || 'Server'}</th>
-                  <th>{$t('admin.customers.dhcp_static.columns.mac') || 'MAC'}</th>
-                  <th>{$t('admin.customers.dhcp_static.columns.ip') || 'IP'}</th>
-                  <th>{$t('admin.customers.dhcp_static.columns.lease') || 'Lease'}</th>
-                  <th>{$t('admin.customers.dhcp_static.columns.queue') || 'Queue'}</th>
+                  <th>{$t('admin.customers.dhcp_static.columns.server')}</th>
+                  <th>{$t('admin.customers.dhcp_static.columns.mac')}</th>
+                  <th>{$t('admin.customers.dhcp_static.columns.ip')}</th>
+                  <th>{$t('admin.customers.dhcp_static.columns.lease')}</th>
+                  <th>{$t('admin.customers.dhcp_static.columns.queue')}</th>
                 </tr>
               </thead>
               <tbody>
                 {#each dhcpStaticServices as row}
                   <tr>
-                    <td data-label={$t('admin.customers.dhcp_static.columns.server') || 'Server'}>
+                    <td data-label={$t('admin.customers.dhcp_static.columns.server')}>
                       {row.dhcp_server_name}
                     </td>
-                    <td data-label={$t('admin.customers.dhcp_static.columns.mac') || 'MAC'}>
+                    <td data-label={$t('admin.customers.dhcp_static.columns.mac')}>
                       {row.mac_address}
                     </td>
-                    <td data-label={$t('admin.customers.dhcp_static.columns.ip') || 'IP'}>
+                    <td data-label={$t('admin.customers.dhcp_static.columns.ip')}>
                       {row.ip_address}
                     </td>
-                    <td data-label={$t('admin.customers.dhcp_static.columns.lease') || 'Lease'}>
+                    <td data-label={$t('admin.customers.dhcp_static.columns.lease')}>
                       {row.lease_present
                         ? $t('admin.customers.dhcp_static.sync.present') || 'Present'
                         : row.lease_last_error ||
                           ($t('admin.customers.dhcp_static.sync.missing') || 'Missing')}
                     </td>
-                    <td data-label={$t('admin.customers.dhcp_static.columns.queue') || 'Queue'}>
+                    <td data-label={$t('admin.customers.dhcp_static.columns.queue')}>
                       {row.queue_mode === 'none'
                         ? $t('admin.customers.dhcp_static.sync.none') || 'None'
                         : row.queue_present
@@ -2179,7 +2179,7 @@
       {:else if activeDeferredTabLoading === 'timeline' || !timelineHelperModule}
         <div class="card loading-card">
           <div class="spinner"></div>
-          <p>{$t('common.loading') || 'Loading...'}</p>
+          <p>{$t('common.loading')}</p>
         </div>
       {/if}
     {/if}
@@ -2188,7 +2188,7 @@
 
 <Modal
   show={showWhatsAppCompose}
-  title={$t('admin.customers.communication.title_whatsapp') || 'Send WhatsApp'}
+  title={$t('admin.customers.communication.title_whatsapp')}
   onclose={() => (showWhatsAppCompose = false)}
 >
   <div class="form">
@@ -2200,12 +2200,12 @@
         </div>
         <span class="status-pill" class:is-active={whatsappGatewayReady}>
           {whatsappGatewayReady
-            ? `${whatsappGatewayProvider || 'gateway'} ${$t('admin.customers.communication.gateway_ready') || 'ready'}`
+            ? `${whatsappGatewayProvider || 'gateway'} ${$t('admin.customers.communication.gateway_ready')}`
             : whatsappGatewayReason || $t('admin.customers.communication.gateway_not_ready') || 'Gateway not ready'}
         </span>
       </div>
       <label>
-        <span>{$t('admin.customers.communication.template') || 'Template'}</span>
+        <span>{$t('admin.customers.communication.template')}</span>
         <select
           class="input"
           bind:value={selectedWhatsappTemplateId}
@@ -2214,22 +2214,22 @@
           {#each whatsappTemplateOptions as template}
             <option value={template.id}>{template.name}</option>
           {/each}
-          <option value="custom">{$t('admin.customers.communication.custom_message') || 'Custom message'}</option>
+          <option value="custom">{$t('admin.customers.communication.custom_message')}</option>
         </select>
       </label>
       <label>
-        <span>{$t('admin.customers.communication.message') || 'Message'}</span>
+        <span>{$t('admin.customers.communication.message')}</span>
         <textarea class="input" rows="7" bind:value={whatsappMessage}></textarea>
       </label>
       <div class="compose-footnote">
-        <span>{whatsappMessage.trim().length} {$t('admin.customers.communication.characters') || 'characters'}</span>
+        <span>{whatsappMessage.trim().length} {$t('admin.customers.communication.characters')}</span>
         {#if !whatsappGatewayReady}
           <span>{whatsappGatewayReason}</span>
         {/if}
       </div>
       <div class="actions">
         <button class="btn btn-secondary" onclick={() => (showWhatsAppCompose = false)}>
-          {$t('common.cancel') || 'Cancel'}
+          {$t('common.cancel')}
         </button>
         <button
           class="btn btn-primary"
@@ -2248,7 +2248,7 @@
 
 <Modal
   show={showEmailCompose}
-  title={$t('admin.customers.communication.title_email') || 'Send Email'}
+  title={$t('admin.customers.communication.title_email')}
   onclose={() => (showEmailCompose = false)}
 >
   <div class="form">
@@ -2258,10 +2258,10 @@
           <strong>{customer.name}</strong>
           <span>{customer.email}</span>
         </div>
-        <span class="status-pill is-active">{$t('admin.customers.communication.email_outbox') || 'Email outbox'}</span>
+        <span class="status-pill is-active">{$t('admin.customers.communication.email_outbox')}</span>
       </div>
       <label>
-        <span>{$t('admin.customers.communication.template') || 'Template'}</span>
+        <span>{$t('admin.customers.communication.template')}</span>
         <select
           class="input"
           bind:value={selectedEmailTemplateId}
@@ -2270,24 +2270,24 @@
           {#each emailTemplateOptions as template}
             <option value={template.id}>{template.name}</option>
           {/each}
-          <option value="custom">{$t('admin.customers.communication.custom_email') || 'Custom email'}</option>
+          <option value="custom">{$t('admin.customers.communication.custom_email')}</option>
         </select>
       </label>
       <label>
-        <span>{$t('admin.customers.communication.subject') || 'Subject'}</span>
+        <span>{$t('admin.customers.communication.subject')}</span>
         <input class="input" bind:value={emailSubject} />
       </label>
       <label>
-        <span>{$t('admin.customers.communication.body') || 'Body'}</span>
+        <span>{$t('admin.customers.communication.body')}</span>
         <textarea class="input" rows="9" bind:value={emailBody}></textarea>
       </label>
       <div class="compose-footnote">
-        <span>{emailBody.trim().length} {$t('admin.customers.communication.characters') || 'characters'}</span>
-        <span>{$t('admin.customers.communication.queued_through_outbox') || 'Queued through email outbox'}</span>
+        <span>{emailBody.trim().length} {$t('admin.customers.communication.characters')}</span>
+        <span>{$t('admin.customers.communication.queued_through_outbox')}</span>
       </div>
       <div class="actions">
         <button class="btn btn-secondary" onclick={() => (showEmailCompose = false)}>
-          {$t('common.cancel') || 'Cancel'}
+          {$t('common.cancel')}
         </button>
         <button
           class="btn btn-primary"
@@ -2378,10 +2378,10 @@
 {/if}
 
 <!-- Change Package Dialog (Pro-rata) -->
-<Modal bind:show={showChangePackage} title="{$t('admin.customers.subscriptions.change_package.title') || 'Ganti Paket'} — {changePackageSubscription?.package_name || 'Subscription'}" width="520px">
+<Modal bind:show={showChangePackage} title="{$t('admin.customers.subscriptions.change_package.title')} — {changePackageSubscription?.package_name || 'Subscription'}" width="520px">
   {#if !changePackageResult}
     <div class="field-group">
-      <label class="field-label">{$t('admin.customers.subscriptions.change_package.current_package') || 'Paket Saat Ini'}</label>
+      <label class="field-label">{$t('admin.customers.subscriptions.change_package.current_package')}</label>
       <div class="field-static">
         <strong>{changePackageSubscription?.package_name || changePackageSubscription?.package_id}</strong>
         <span class="subtle"> · {changePackageSubscription?.billing_cycle} · {formatMoney(changePackageSubscription?.price || 0)}</span>
@@ -2389,9 +2389,9 @@
     </div>
 
     <div class="field-group">
-      <label class="field-label" for="new-package">{$t('admin.customers.subscriptions.change_package.new_package') || 'Paket Baru'}</label>
+      <label class="field-label" for="new-package">{$t('admin.customers.subscriptions.change_package.new_package')}</label>
       <select id="new-package" bind:value={changePackageNewId} class="field-input">
-        <option value="">{$t('admin.customers.subscriptions.change_package.select_placeholder') || '— Pilih paket —'}</option>
+        <option value="">{$t('admin.customers.subscriptions.change_package.select_placeholder')}</option>
         {#each subscriptionPackages.filter((p) => p.id !== changePackageSubscription?.package_id && p.is_active) as pkg}
           <option value={pkg.id}>
             {pkg.name} — {formatMoney(changePackageSubscription?.billing_cycle === 'yearly' ? pkg.price_yearly : pkg.price_monthly)}/{changePackageSubscription?.billing_cycle === 'yearly' ? 'tahun' : 'bulan'}
@@ -2405,16 +2405,16 @@
       {#if selectedPkg}
         <div class="pro-rata-preview">
           <div class="preview-row">
-            <span>{$t('admin.customers.subscriptions.change_package.old_package_label') || 'Paket lama (sisa hari)'}</span>
+            <span>{$t('admin.customers.subscriptions.change_package.old_package_label')}</span>
             <span class="preview-value">-{formatMoney(changePackageSubscription?.price || 0)}</span>
           </div>
           <div class="preview-row">
-            <span>{$t('admin.customers.subscriptions.change_package.new_package_label') || 'Paket baru (sisa hari)'}</span>
+            <span>{$t('admin.customers.subscriptions.change_package.new_package_label')}</span>
             <span class="preview-value">+{formatMoney(changePackageSubscription?.billing_cycle === 'yearly' ? selectedPkg.price_yearly : selectedPkg.price_monthly)}</span>
           </div>
           <div class="preview-divider"></div>
           <div class="preview-row preview-total">
-            <span>{$t('admin.customers.subscriptions.change_package.pro_rata_estimate') || 'Tagihan pro-rata (estimasi)'}</span>
+            <span>{$t('admin.customers.subscriptions.change_package.pro_rata_estimate')}</span>
             <span class="preview-value">
               {#if (changePackageSubscription?.billing_cycle === 'yearly' ? selectedPkg.price_yearly : selectedPkg.price_monthly) > (changePackageSubscription?.price || 0)}
                 {formatMoney((changePackageSubscription?.billing_cycle === 'yearly' ? selectedPkg.price_yearly : selectedPkg.price_monthly) - (changePackageSubscription?.price || 0))}
@@ -2423,7 +2423,7 @@
               {/if}
             </span>
           </div>
-          <p class="preview-note">{$t('admin.customers.subscriptions.change_package.pro_rata_note') || '* Nilai aktual dihitung berdasarkan sisa hari dalam periode billing saat ini.'}</p>
+          <p class="preview-note">{$t('admin.customers.subscriptions.change_package.pro_rata_note')}</p>
         </div>
       {/if}
     {/if}
@@ -2431,37 +2431,37 @@
     <div class="result-card success">
       <Icon name="check-circle" size={24} />
       <div>
-        <strong>{$t('admin.customers.subscriptions.change_package.success_title') || 'Berhasil!'}</strong>
-        <p>{$t('admin.customers.subscriptions.change_package.success_message') || 'Paket diubah dari'} <strong>{changePackageResult.old_package_name}</strong> {$t('admin.customers.subscriptions.change_package.success_message_to') || 'ke'} <strong>{changePackageResult.new_package_name}</strong></p>
+        <strong>{$t('admin.customers.subscriptions.change_package.success_title')}</strong>
+        <p>{$t('admin.customers.subscriptions.change_package.success_message')} <strong>{changePackageResult.old_package_name}</strong> {$t('admin.customers.subscriptions.change_package.success_message_to')} <strong>{changePackageResult.new_package_name}</strong></p>
       </div>
     </div>
 
     <div class="result-details">
       <div class="result-row">
-        <span>{$t('admin.customers.subscriptions.change_package.old_price') || 'Harga lama'}</span>
+        <span>{$t('admin.customers.subscriptions.change_package.old_price')}</span>
         <span>{formatMoney(changePackageResult.old_price)}/{changePackageResult.billing_cycle}</span>
       </div>
       <div class="result-row">
-        <span>{$t('admin.customers.subscriptions.change_package.new_price') || 'Harga baru'}</span>
+        <span>{$t('admin.customers.subscriptions.change_package.new_price')}</span>
         <span>{formatMoney(changePackageResult.new_price)}/{changePackageResult.billing_cycle}</span>
       </div>
       <div class="result-row">
-        <span>{$t('admin.customers.subscriptions.change_package.credit') || 'Kredit (sisa hari paket lama)'}</span>
+        <span>{$t('admin.customers.subscriptions.change_package.credit')}</span>
         <span>-{formatMoney(changePackageResult.pro_rata_credit)}</span>
       </div>
       <div class="result-row">
-        <span>{$t('admin.customers.subscriptions.change_package.charge') || 'Tagihan (sisa hari paket baru)'}</span>
+        <span>{$t('admin.customers.subscriptions.change_package.charge')}</span>
         <span>+{formatMoney(changePackageResult.pro_rata_charge)}</span>
       </div>
       <div class="result-divider"></div>
       <div class="result-row result-total">
-        <span>{$t('admin.customers.subscriptions.change_package.net_amount') || 'Tagihan bersih'}</span>
+        <span>{$t('admin.customers.subscriptions.change_package.net_amount')}</span>
         <span>{formatMoney(changePackageResult.net_amount)}</span>
       </div>
       {#if changePackageResult.invoice_id}
         <div class="result-row">
-          <span>{$t('common.invoice') || 'Invoice'}</span>
-          <a href="/admin/invoices/{changePackageResult.invoice_id}" class="link">{$t('admin.customers.subscriptions.change_package.view_invoice') || 'Lihat invoice →'}</a>
+          <span>{$t('common.invoice')}</span>
+          <a href="/admin/invoices/{changePackageResult.invoice_id}" class="link">{$t('admin.customers.subscriptions.change_package.view_invoice')}</a>
         </div>
       {/if}
     </div>
@@ -2469,7 +2469,7 @@
 
   {#snippet footer()}
     {#if !changePackageResult}
-      <button class="btn btn-secondary" onclick={() => { showChangePackage = false; }}>{$t('admin.customers.subscriptions.change_package.cancel') || 'Batal'}</button>
+      <button class="btn btn-secondary" onclick={() => { showChangePackage = false; }}>{$t('admin.customers.subscriptions.change_package.cancel')}</button>
       <button
         class="btn btn-primary"
         onclick={submitChangePackage}
@@ -2478,17 +2478,17 @@
         {changePackageLoading ? ($t('admin.customers.subscriptions.change_package.processing') || 'Memproses...') : ($t('admin.customers.subscriptions.change_package.submit') || 'Ganti Paket')}
       </button>
     {:else}
-      <button class="btn btn-primary" onclick={() => { showChangePackage = false; changePackageResult = null; }}>{$t('admin.customers.subscriptions.change_package.close') || 'Tutup'}</button>
+      <button class="btn btn-primary" onclick={() => { showChangePackage = false; changePackageResult = null; }}>{$t('admin.customers.subscriptions.change_package.close')}</button>
     {/if}
   {/snippet}
 </Modal>
 
 <ConfirmDialog
   bind:show={showSubDeleteConfirm}
-  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
-  message={$t('common.confirm_delete') || 'Are you sure? This action cannot be undone.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  title={$t('common.confirm_delete_title')}
+  message={$t('common.confirm_delete')}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   type="danger"
   onconfirm={confirmDeleteSubscription}
   oncancel={() => { subToDeleteId = null; }}
@@ -2496,10 +2496,10 @@
 
 <ConfirmDialog
   bind:show={showPppoeDeleteConfirm}
-  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
-  message={$t('admin.customers.pppoe.confirm_delete') || 'Delete this PPPoE account?'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  title={$t('common.confirm_delete_title')}
+  message={$t('admin.customers.pppoe.confirm_delete')}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   type="danger"
   onconfirm={confirmDeletePppoe}
   oncancel={() => { pppoeToDeleteId = null; }}

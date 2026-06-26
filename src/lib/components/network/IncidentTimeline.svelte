@@ -16,7 +16,7 @@
 
 <div class="timeline">
   <div class="timeline-title">
-    {$t('admin.network.incidents.activity.title') || 'Activity Timeline'}
+    {$t('admin.network.incidents.activity.title')}
   </div>
   <div class="timeline-list">
     {#each items as event}

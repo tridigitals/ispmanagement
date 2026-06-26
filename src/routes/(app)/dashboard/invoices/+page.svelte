@@ -129,14 +129,14 @@
 <div class="page-container fade-in">
   <div class="page-header">
     <div class="header-content">
-      <h1>{$t('admin.invoices.title') || 'Billing & Invoices'}</h1>
+      <h1>{$t('admin.invoices.title')}</h1>
       <p class="subtitle">
-        {$t('admin.invoices.subtitle') || 'View and manage your subscription payments'}
+        {$t('admin.invoices.subtitle')}
       </p>
     </div>
     <button class="btn btn-secondary" onclick={loadInvoices}>
       <Icon name="refresh-cw" size={18} />
-      <span>{$t('common.refresh') || 'Refresh'}</span>
+      <span>{$t('common.refresh')}</span>
     </button>
   </div>
 
@@ -150,7 +150,7 @@
       data={invoices}
       {columns}
       searchable={true}
-      searchPlaceholder={$t('admin.invoices.search_placeholder') || 'Search invoices...'}
+      searchPlaceholder={$t('admin.invoices.search_placeholder')}
     >
       {#snippet cell({ item, column })}
         {#if column.key === 'amount'}
@@ -168,14 +168,14 @@
                 onclick={() => goto(`/pay/${item.id}`)}
               >
                 <Icon name="credit-card" size={14} />
-                {$t('admin.invoices.pay_now') || 'Pay Now'}
+                {$t('admin.invoices.pay_now')}
               </button>
             {:else}
               <button
                 type="button"
                 class="action-btn"
-                title={$t('admin.invoices.view_details') || 'View Details'}
-                aria-label={$t('admin.invoices.view_details') || 'View Details'}
+                title={$t('admin.invoices.view_details')}
+                aria-label={$t('admin.invoices.view_details')}
                 onclick={() => goto(`/pay/${item.id}`)}
               >
                 <Icon name="eye" size={18} />
@@ -184,8 +184,8 @@
             <button
               type="button"
               class="action-btn"
-              title={$t('admin.invoices.print_pdf') || 'Print / Download PDF'}
-              aria-label={$t('admin.invoices.print_pdf') || 'Print / Download PDF'}
+              title={$t('admin.invoices.print_pdf')}
+              aria-label={$t('admin.invoices.print_pdf')}
               onclick={() => openPrintModal(item)}
               disabled={printPreparing}
             >

@@ -34,14 +34,14 @@
   <div class="card-header">
     <Icon name="clock" size={20} />
     <h3>
-      {$t('superadmin.system.recent_activity') || 'Recent Activity'}
+      {$t('superadmin.system.recent_activity')}
     </h3>
   </div>
   <div class="card-body">
     {#if health.recent_activity.length === 0}
       <div class="empty-mini">
         <p>
-          {$t('superadmin.system.no_recent_activity') || 'No recent activity'}
+          {$t('superadmin.system.no_recent_activity')}
         </p>
       </div>
     {:else}

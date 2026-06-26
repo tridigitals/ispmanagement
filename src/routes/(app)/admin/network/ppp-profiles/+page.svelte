@@ -366,27 +366,27 @@
 
 <div class="page-content fade-in">
   <NetworkPageHeader
-    title={$t('admin.network.routers.ppp_profiles.title') || 'PPP Profiles'}
-    subtitle={$t('network.ppp_profile.title') || 'PPP profile RouterOS per router.'}
+    title={$t('admin.network.routers.ppp_profiles.title')}
+    subtitle={$t('network.ppp_profile.title')}
   >
     {#snippet actions()}
       {#if loading}
-        <span class="syncing"><span class="spin"><Icon name="refresh-cw" size={14} /></span>{$t('common.loading') || 'Loading...'}</span>
+        <span class="syncing"><span class="spin"><Icon name="refresh-cw" size={14} /></span>{$t('common.loading')}</span>
       {:else}
-        <span class="syncing">{$t('common.updated') || 'Updated'}</span>
+        <span class="syncing">{$t('common.updated')}</span>
       {/if}
       <button class="btn ghost" type="button" onclick={() => void load()} disabled={!routerId || loading}>
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
+        {$t('common.refresh')}
       </button>
       <button class="btn ghost" type="button" onclick={() => void sync()} disabled={!routerId || loading}>
         <Icon name="download" size={16} />
-        {$t('admin.network.routers.ppp_profiles.actions.sync') || 'Sync from router'}
+        {$t('admin.network.routers.ppp_profiles.actions.sync')}
       </button>
       {#if $can('manage', 'ppp_profiles')}
         <button class="btn ghost" type="button" onclick={openCreate} disabled={!routerId || loading}>
           <Icon name="plus" size={16} />
-          {$t('admin.network.routers.ppp_profiles.actions.add') || 'Add profile'}
+          {$t('admin.network.routers.ppp_profiles.actions.add')}
         </button>
       {/if}
     {/snippet}
@@ -395,7 +395,7 @@
   <div class="filters-wrap">
     <NetworkFilterPanel>
       <div class="control">
-        <label for="ppp-profiles-router">{$t('admin.customers.pppoe.fields.router') || 'Router'}</label>
+        <label for="ppp-profiles-router">{$t('admin.customers.pppoe.fields.router')}</label>
         <select
           id="ppp-profiles-router"
           class="input"
@@ -415,12 +415,12 @@
   {#if !routerId}
     <div class="empty">
       <Icon name="info" size={18} />
-      <span>{$t('common.select') || 'Select'} router…</span>
+      <span>{$t('common.select')} router…</span>
     </div>
   {:else if tableData.length === 0 && !loading}
     <div class="empty">
       <Icon name="info" size={18} />
-      <span>{$t('admin.network.routers.ppp_profiles.empty') || 'No profiles found.'}</span>
+      <span>{$t('admin.network.routers.ppp_profiles.empty')}</span>
     </div>
   {:else}
     <div class="table-wrap">
@@ -431,21 +431,21 @@
         pagination={true}
         pageSize={10}
         searchable={true}
-        searchPlaceholder={$t('admin.network.routers.ppp_profiles.search') || 'Search profiles...'}
+        searchPlaceholder={$t('admin.network.routers.ppp_profiles.search')}
         mobileView="card"
       >
         {#snippet cell({ item, key }: any)}
           {#if key === 'state'}
             {#if item.state}
-              <span class="pill ok">{$t('admin.network.routers.ppp_profiles.state.present') || 'On router'}</span>
+              <span class="pill ok">{$t('admin.network.routers.ppp_profiles.state.present')}</span>
             {:else}
-              <span class="pill warn">{$t('admin.network.routers.ppp_profiles.state.missing') || 'Missing'}</span>
+              <span class="pill warn">{$t('admin.network.routers.ppp_profiles.state.missing')}</span>
             {/if}
           {:else if key === 'only_one'}
             {#if item.only_one}
-              <span class="pill ok">{$t('common.yes') || 'Yes'}</span>
+              <span class="pill ok">{$t('common.yes')}</span>
             {:else}
-              <span class="pill muted">{$t('common.no') || 'No'}</span>
+              <span class="pill muted">{$t('common.no')}</span>
             {/if}
           {:else if key === 'synced'}
             {#if item.synced}
@@ -458,10 +458,10 @@
           {:else if key === 'actions'}
             <div class="actions">
               {#if $can('manage', 'ppp_profiles')}
-                <button class="icon-btn" type="button" onclick={() => openEdit(item.raw)} title={$t('admin.network.routers.ppp_profiles.actions.edit') || 'Edit'}>
+                <button class="icon-btn" type="button" onclick={() => openEdit(item.raw)} title={$t('admin.network.routers.ppp_profiles.actions.edit')}>
                   <Icon name="edit" size={16} />
                 </button>
-                <button class="icon-btn danger" type="button" onclick={() => void openDelete(item.raw)} title={$t('admin.network.routers.ppp_profiles.actions.delete') || 'Delete'}>
+                <button class="icon-btn danger" type="button" onclick={() => void openDelete(item.raw)} title={$t('admin.network.routers.ppp_profiles.actions.delete')}>
                   <Icon name="trash-2" size={16} />
                 </button>
               {/if}
@@ -486,9 +486,9 @@
 
 <ConfirmDialog
   bind:show={showDelete}
-  title={$t('admin.network.routers.ppp_profiles.delete.title') || 'Delete PPP Profile'}
+  title={$t('admin.network.routers.ppp_profiles.delete.title')}
   message={deleteMessage}
-  confirmText={$t('common.delete') || 'Delete'}
+  confirmText={$t('common.delete')}
   confirmationKeyword={deleteKeyword}
   loading={deleting}
   onconfirm={() => void confirmDelete()}

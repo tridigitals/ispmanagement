@@ -123,19 +123,19 @@
   <div class="head">
     <button class="btn" type="button" onclick={goBack}>
       <Icon name="arrow-left" size={16} />
-      {$t('common.back') || 'Back'}
+      {$t('common.back')}
     </button>
 
-    <button class="btn" type="button" onclick={load} title={$t('common.refresh') || 'Refresh'}>
+    <button class="btn" type="button" onclick={load} title={$t('common.refresh')}>
       <Icon name="refresh-cw" size={16} />
-      {$t('common.refresh') || 'Refresh'}
+      {$t('common.refresh')}
     </button>
   </div>
 
   {#if loading}
     <div class="loading">
       <div class="spinner"></div>
-      <p>{$t('support.loading_detail') || 'Loading ticket...'}</p>
+      <p>{$t('support.loading_detail')}</p>
     </div>
   {:else if detail}
     <div class="layout">
@@ -161,14 +161,14 @@
             <span class="ticket-id mono">#{detail.ticket.id.slice(0, 8)}</span>
             <span class="dot"></span>
             <span>
-              {$t('support.detail.updated') || 'Updated'}:
+              {$t('support.detail.updated')}:
               {formatDateTime(detail.ticket.updated_at, { timeZone: $appSettings.app_timezone })}
             </span>
           </div>
           {#if detail.ticket.subscription_id}
             <div class="subrow">
               <a href="/subscriptions/{detail.ticket.subscription_id}" class="subscription-link">
-                {$t('support.detail.view_subscription') || 'View related subscription'} →
+                {$t('support.detail.view_subscription')} →
               </a>
             </div>
           {/if}
@@ -176,10 +176,10 @@
 
         <div class="reply">
           <div class="reply-head">
-            <div class="reply-title">{$t('support.fields.reply') || 'Reply'}</div>
+            <div class="reply-title">{$t('support.fields.reply')}</div>
             {#if isClosed}
               <span class="badge status closed">
-                {$t('support.status.closed') || 'Closed'}
+                {$t('support.status.closed')}
               </span>
             {/if}
           </div>
@@ -188,7 +188,7 @@
             <div class="closed-note">
               <Icon name="lock" size={16} />
               <span>
-                {$t('support.detail.closed_notice') || 'This ticket is closed. You can\u2019t reply.'}
+                {$t('support.detail.closed_notice')}
               </span>
             </div>
 
@@ -212,12 +212,12 @@
             class="textarea"
             rows="4"
             bind:value={message}
-            placeholder={$t('support.fields.reply_placeholder') || 'Write your reply...'}
+            placeholder={$t('support.fields.reply_placeholder')}
             disabled={isClosed}
           ></textarea>
           <div class="file-row">
             <label class="file-label" for="support-reply-files">
-              {$t('support.fields.attachments') || 'Attachments'}
+              {$t('support.fields.attachments')}
             </label>
             <input
               id="support-reply-files"
@@ -255,11 +255,11 @@
         <div class="thread-card">
           <div class="thread-head">
             <div class="thread-title">
-              {$t('support.detail.thread') || 'Conversation'}
+              {$t('support.detail.thread')}
             </div>
             <div class="thread-sub">
               {detail.messages.length}
-              {$t('support.detail.messages') || 'messages'}
+              {$t('support.detail.messages')}
             </div>
           </div>
 
@@ -306,7 +306,7 @@
   {:else}
     <div class="empty">
       <Icon name="alert-circle" size={24} />
-      <p>{$t('support.detail.not_found') || 'Ticket not found'}</p>
+      <p>{$t('support.detail.not_found')}</p>
     </div>
   {/if}
 </div>

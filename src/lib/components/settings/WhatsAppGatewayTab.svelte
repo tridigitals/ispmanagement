@@ -131,7 +131,7 @@
       </label>
     </div>
 
-    <span class="section-label">{$t('superadmin.settings.whatsapp_gateway.provider') || 'Provider'}</span>
+    <span class="section-label">{$t('superadmin.settings.whatsapp_gateway.provider')}</span>
     <div class="provider-grid">
       {#each providerOptions as option}
         <button
@@ -157,10 +157,10 @@
 
   {#if provider === 'fonnte'}
     <div class="config-panel fade-in mt-6">
-      <h3>{$t('superadmin.settings.whatsapp_gateway.fonnte_config') || 'Fonnte Configuration'}</h3>
+      <h3>{$t('superadmin.settings.whatsapp_gateway.fonnte_config')}</h3>
       <div class="config-grid">
         <div class="setting-item full-width">
-          <label for="wa-fonnte-token">{$t('superadmin.settings.whatsapp_gateway.api_token') || 'API Token'}</label>
+          <label for="wa-fonnte-token">{$t('superadmin.settings.whatsapp_gateway.api_token')}</label>
           <Input
             id="wa-fonnte-token"
             type="password"
@@ -168,11 +168,11 @@
             showPasswordToggle={true}
             oninput={(event: any) =>
               handleChange('wa_gateway_fonnte_token', event.target.value)}
-            placeholder={$t('superadmin.settings.whatsapp_gateway.fonnte_token_placeholder') || 'Fonnte token'}
+            placeholder={$t('superadmin.settings.whatsapp_gateway.fonnte_token_placeholder')}
           />
         </div>
         <div class="setting-item">
-          <label for="wa-fonnte-base-url">{$t('superadmin.settings.whatsapp_gateway.base_url') || 'Base URL'}</label>
+          <label for="wa-fonnte-base-url">{$t('superadmin.settings.whatsapp_gateway.base_url')}</label>
           <Input
             id="wa-fonnte-base-url"
             value={localSettings['wa_gateway_fonnte_base_url'] || ''}
@@ -182,7 +182,7 @@
           />
         </div>
         <div class="setting-item">
-          <label for="wa-fonnte-sender">{$t('superadmin.settings.whatsapp_gateway.sender') || 'Sender'}</label>
+          <label for="wa-fonnte-sender">{$t('superadmin.settings.whatsapp_gateway.sender')}</label>
           <Input
             id="wa-fonnte-sender"
             value={localSettings['wa_gateway_fonnte_sender'] || ''}
@@ -195,10 +195,10 @@
     </div>
   {:else if provider === 'triwax'}
     <div class="config-panel fade-in mt-6">
-      <h3>{$t('superadmin.settings.whatsapp_gateway.triwax_config') || 'Triwax Configuration'}</h3>
+      <h3>{$t('superadmin.settings.whatsapp_gateway.triwax_config')}</h3>
       <div class="config-grid">
         <div class="setting-item full-width">
-          <label for="wa-triwax-api-key">{$t('superadmin.settings.whatsapp_gateway.api_key') || 'API Key'}</label>
+          <label for="wa-triwax-api-key">{$t('superadmin.settings.whatsapp_gateway.api_key')}</label>
           <Input
             id="wa-triwax-api-key"
             type="password"

@@ -47,7 +47,7 @@
       <div class="asset-customer-drop-modal-head">
         <div>
           <div class="asset-customer-drop-modal-kicker">
-            {$t('admin.network.map.asset_customer_drop.title') || 'Connected Customers'}
+            {$t('admin.network.map.asset_customer_drop.title')}
           </div>
           <h3 id="asset-customer-drop-modal-title">{title}</h3>
         </div>
@@ -77,7 +77,7 @@
                 </div>
                 <div class="asset-customer-drop-actions">
                   <button class="btn ghost btn-xs" type="button" onclick={() => onView(item)}>
-                    {$t('admin.network.map.asset_customer_drop.view') || 'View'}
+                    {$t('admin.network.map.asset_customer_drop.view')}
                   </button>
                 </div>
               </div>
@@ -88,8 +88,7 @@
         <div class="asset-customer-drop-empty">
           <Icon name="users" size={18} />
           <span>
-            {$t('admin.network.map.asset_customer_drop.empty') ||
-              'No customers are connected to this asset yet.'}
+            {$t('admin.network.map.asset_customer_drop.empty')}
           </span>
         </div>
       {/if}

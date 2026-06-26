@@ -103,45 +103,45 @@
   <div class="modal-form">
     <div class="grid three">
       <Select
-        label={$t('superadmin.radius.form.tenant') || 'Tenant'}
+        label={$t('superadmin.radius.form.tenant')}
         options={tenantOptions}
         bind:value={mapping.tenant_id}
-        placeholder={$t('superadmin.radius.form.select_tenant') || 'Select a tenant'}
+        placeholder={$t('superadmin.radius.form.select_tenant')}
         disabled={loading || isEditing}
       />
       <Select
-        label={$t('superadmin.radius.form.server') || 'Server'}
+        label={$t('superadmin.radius.form.server')}
         options={endpointOptions}
         bind:value={mapping.radius_endpoint_id}
-        placeholder={$t('superadmin.radius.form.select_server') || 'Active tenant assignment required'}
+        placeholder={$t('superadmin.radius.form.select_server')}
         disabled
       />
       <Select
-        label={$t('superadmin.radius.form.router') || 'Router'}
+        label={$t('superadmin.radius.form.router')}
         options={routerOptions}
         bind:value={mapping.router_id}
-        placeholder={$t('superadmin.radius.form.select_router') || 'Select a router'}
+        placeholder={$t('superadmin.radius.form.select_router')}
         disabled={loading || !mapping.tenant_id}
       />
     </div>
 
     <div class="grid two">
       <Input
-        label={$t('superadmin.radius.form.nas_name') || 'NAS name'}
+        label={$t('superadmin.radius.form.nas_name')}
         bind:value={mapping.nas_name}
-        placeholder={$t('superadmin.radius.form.nas_name_placeholder') || 'router-pop-a'}
+        placeholder={$t('superadmin.radius.form.nas_name_placeholder')}
         disabled={loading}
       />
       <Input
-        label={$t('superadmin.radius.form.shortname') || 'Shortname'}
+        label={$t('superadmin.radius.form.shortname')}
         bind:value={mapping.shortname}
-        placeholder={$t('superadmin.radius.form.shortname_placeholder') || 'POP-A'}
+        placeholder={$t('superadmin.radius.form.shortname_placeholder')}
         disabled={loading}
       />
     </div>
 
     <Input
-      label={$t('superadmin.radius.form.nas_ip_or_cidr') || 'NAS IP / CIDR'}
+      label={$t('superadmin.radius.form.nas_ip_or_cidr')}
       bind:value={mapping.nas_ip_or_cidr}
       placeholder="10.10.10.1/32"
       disabled={loading}
@@ -149,26 +149,26 @@
 
     <div class="secret-row">
       <Input
-        label={$t('superadmin.radius.form.shared_secret') || 'Shared secret'}
+        label={$t('superadmin.radius.form.shared_secret')}
         type="password"
         bind:value={mapping.shared_secret}
-        placeholder={$t('superadmin.radius.form.shared_secret_placeholder') || 'Leave blank to auto-generate'}
+        placeholder={$t('superadmin.radius.form.shared_secret_placeholder')}
         disabled={loading}
         showPasswordToggle
       />
       <button class="btn btn-secondary btn-inline" type="button" onclick={onGenerateSecret} disabled={loading}>
-        {$t('superadmin.radius.actions.generate_secret') || 'Generate'}
+        {$t('superadmin.radius.actions.generate_secret')}
       </button>
     </div>
 
     <label class="toggle-row">
       <input type="checkbox" bind:checked={mapping.is_active} disabled={loading} />
-      <span>{$t('superadmin.radius.form.active_mapping_hint') || 'Enable this NAS mapping immediately'}</span>
+      <span>{$t('superadmin.radius.form.active_mapping_hint')}</span>
     </label>
 
     <div class="modal-actions">
       <button class="btn btn-secondary" type="button" onclick={() => (show = false)} disabled={loading}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button class="btn btn-primary" type="button" onclick={onSubmit} disabled={loading}>
         {#if loading}<span class="spinner-sm"></span>{/if}

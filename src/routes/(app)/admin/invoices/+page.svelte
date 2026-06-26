@@ -395,36 +395,35 @@
 </script>
 
 <div class="page-container fade-in">
-  <nav class="breadcrumb" aria-label={$t('common.breadcrumb') || 'Breadcrumb'}>
+  <nav class="breadcrumb" aria-label={$t('common.breadcrumb')}>
     <button class="crumb-link" type="button" onclick={() => goto(adminHomePath)}>
-      {$t('sidebar.overview') || 'Overview'}
+      {$t('sidebar.overview')}
     </button>
     <span class="crumb-sep">/</span>
-    <span class="crumb-current">{$t('sidebar.billing') || 'Billing'}</span>
+    <span class="crumb-current">{$t('sidebar.billing')}</span>
   </nav>
 
   <div class="page-header">
     <div class="header-content">
       <span class="page-eyebrow">
-        {$t('admin.package_invoices.list.eyebrow') || 'Customer billing'}
+        {$t('admin.package_invoices.list.eyebrow')}
       </span>
-      <h1>{$t('admin.package_invoices.list.title') || 'Billing'}</h1>
-      <p class="subtitle">{$t('admin.package_invoices.list.subtitle') || 'Tagihan, collection, dan invoice pelanggan.'}</p>
+      <h1>{$t('admin.package_invoices.list.title')}</h1>
+      <p class="subtitle">{$t('admin.package_invoices.list.subtitle')}</p>
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary" onclick={goToBillingLogs}>
         <Icon name="activity" size={16} />
-        <span>{$t('sidebar.collections') || 'Collections'}</span>
+        <span>{$t('sidebar.collections')}</span>
       </button>
       {#if selectedIds.size === 0 && filteredInvoices.length > 0}
         <button
           class="btn btn-secondary"
           onclick={toggleSelectAllVisible}
-          title={$t('admin.package_invoices.list.actions.select_all_visible_title') ||
-            'Pilih semua invoice di halaman ini'}
+          title={$t('admin.package_invoices.list.actions.select_all_visible_title')}
         >
           <Icon name="check-square" size={16} />
-          <span>{$t('admin.package_invoices.list.actions.select_all_visible') || 'Pilih Semua'}</span>
+          <span>{$t('admin.package_invoices.list.actions.select_all_visible')}</span>
         </button>
       {/if}
       {#if selectedIds.size > 0}
@@ -432,17 +431,16 @@
           class="btn btn-secondary"
           onclick={() => (selectedIds = new Set())}
           disabled={bulkSending}
-          title={$t('admin.package_invoices.list.actions.clear_selection') || 'Batal pilih'}
+          title={$t('admin.package_invoices.list.actions.clear_selection')}
         >
           <Icon name="x" size={16} />
-          <span>{$t('common.cancel') || 'Batal'}</span>
+          <span>{$t('common.cancel')}</span>
         </button>
         <button
           class="btn btn-primary"
           onclick={openBulkSendModal}
           disabled={bulkSending}
-          title={$t('admin.package_invoices.list.actions.bulk_send_title') ||
-            'Kirim invoice terpilih via email + notifikasi'}
+          title={$t('admin.package_invoices.list.actions.bulk_send_title')}
         >
           <Icon name="send" size={16} />
           <span>
@@ -466,7 +464,7 @@
       </button>
       <button class="btn btn-secondary" onclick={loadInvoices}>
         <Icon name="refresh-cw" size={18} />
-        <span>{$t('common.refresh') || 'Refresh'}</span>
+        <span>{$t('common.refresh')}</span>
       </button>
     </div>
   </div>
@@ -474,30 +472,28 @@
   <div class="workspace-grid">
     <article class="workspace-card">
       <span class="workspace-card__label">
-        {$t('admin.package_invoices.list.workspace.action_needed') || 'Need action'}
+        {$t('admin.package_invoices.list.workspace.action_needed')}
       </span>
       <strong class="workspace-card__value tone-pending">{actionableInvoices}</strong>
       <p>
-        {$t('admin.package_invoices.list.workspace.action_needed_desc') ||
-          'Pending and verification-pending invoices still need follow-up.'}
+        {$t('admin.package_invoices.list.workspace.action_needed_desc')}
       </p>
     </article>
     <article class="workspace-card">
       <span class="workspace-card__label">
-        {$t('admin.package_invoices.list.workspace.overdue_now') || 'Overdue now'}
+        {$t('admin.package_invoices.list.workspace.overdue_now')}
       </span>
       <strong class="workspace-card__value tone-overdue">{invoiceStats.overdue}</strong>
       <p>
-        {$t('admin.package_invoices.list.workspace.overdue_now_desc') ||
-          'Focus collection reminders and service actions on these accounts first.'}
+        {$t('admin.package_invoices.list.workspace.overdue_now_desc')}
       </p>
     </article>
     <article class="workspace-card">
       <span class="workspace-card__label">
-        {$t('admin.package_invoices.list.workspace.queue_title') || 'Invoice queue'}
+        {$t('admin.package_invoices.list.workspace.queue_title')}
       </span>
       <strong class="workspace-card__value">{invoiceStats.total}</strong>
-      <p>{$t('admin.package_invoices.list.workspace.queue_title_desc') || 'Pantau invoice aktif tanpa pindah halaman.'}</p>
+      <p>{$t('admin.package_invoices.list.workspace.queue_title_desc')}</p>
     </article>
   </div>
 
@@ -505,16 +501,16 @@
     <div class="section-heading">
       <div>
         <h2>
-          {$t('admin.package_invoices.list.sections.manual_title') || 'Manual billing action'}
+          {$t('admin.package_invoices.list.sections.manual_title')}
         </h2>
-        <p>{$t('admin.package_invoices.list.subtitle_manual') || 'Pilih subscription untuk membuat invoice manual.'}</p>
+        <p>{$t('admin.package_invoices.list.subtitle_manual')}</p>
       </div>
     </div>
 
     <div class="create-row">
       <select bind:value={selectedCustomerId} class="select-input">
         <option value="">
-          {$t('admin.package_invoices.list.fields.select_customer') || 'Select customer'}
+          {$t('admin.package_invoices.list.fields.select_customer')}
         </option>
         {#each customers as customer}
           <option value={customer.id}>{customer.name}</option>
@@ -527,7 +523,7 @@
         disabled={!selectedCustomerId}
       >
         <option value="">
-          {$t('admin.package_invoices.list.fields.select_subscription') || 'Select subscription'}
+          {$t('admin.package_invoices.list.fields.select_subscription')}
         </option>
         {#each filteredSubscriptions as sub}
           <option value={sub.id}>{sub.label} - {sub.status}</option>
@@ -553,23 +549,23 @@
   <section class="section-block">
     <div class="section-heading">
       <div>
-        <h2>{$t('admin.package_invoices.list.sections.summary_title') || 'Billing overview'}</h2>
-        <p>{$t('admin.package_invoices.list.subtitle_summary') || 'Ringkasan status pembayaran.'}</p>
+        <h2>{$t('admin.package_invoices.list.sections.summary_title')}</h2>
+        <p>{$t('admin.package_invoices.list.subtitle_summary')}</p>
       </div>
     </div>
 
     <div class="stats-grid">
       <article class="stat-card">
-        <span class="stat-label">{$t('admin.package_invoices.list.stats.total') || 'Total'}</span>
+        <span class="stat-label">{$t('admin.package_invoices.list.stats.total')}</span>
         <strong class="stat-value">{invoiceStats.total}</strong>
       </article>
       <article class="stat-card">
-        <span class="stat-label">{$t('admin.package_invoices.list.stats.paid') || 'Paid'}</span>
+        <span class="stat-label">{$t('admin.package_invoices.list.stats.paid')}</span>
         <strong class="stat-value tone-paid">{invoiceStats.paid}</strong>
       </article>
       <article class="stat-card">
         <span class="stat-label"
-          >{$t('admin.package_invoices.list.stats.pending') || 'Pending'}</span
+          >{$t('admin.package_invoices.list.stats.pending')}</span
         >
         <strong class="stat-value tone-pending"
           >{invoiceStats.pending + invoiceStats.verificationPending}</strong
@@ -577,7 +573,7 @@
       </article>
       <article class="stat-card">
         <span class="stat-label"
-          >{$t('admin.package_invoices.list.stats.overdue') || 'Overdue'}</span
+          >{$t('admin.package_invoices.list.stats.overdue')}</span
         >
         <strong class="stat-value tone-overdue">{invoiceStats.overdue}</strong>
       </article>
@@ -587,8 +583,8 @@
   <section class="section-block">
     <div class="section-heading">
       <div>
-        <h2>{$t('admin.package_invoices.list.sections.queue_title') || 'Invoice queue'}</h2>
-        <p>{$t('admin.package_invoices.list.subtitle_filter') || 'Filter dan cek invoice pelanggan.'}</p>
+        <h2>{$t('admin.package_invoices.list.sections.queue_title')}</h2>
+        <p>{$t('admin.package_invoices.list.subtitle_filter')}</p>
       </div>
     </div>
 
@@ -600,18 +596,17 @@
       <div class="filter-row">
         <select bind:value={statusFilter} class="select-input">
           <option value="all">
-            {$t('admin.package_invoices.list.filters.all_status') || 'All status'}
+            {$t('admin.package_invoices.list.filters.all_status')}
           </option>
           <option value="pending"
-            >{$t('admin.package_invoices.list.filters.pending') || 'Pending'}</option
+            >{$t('admin.package_invoices.list.filters.pending')}</option
           >
           <option value="verification_pending">
-            {$t('admin.package_invoices.list.filters.verification_pending') ||
-              'Verification pending'}
+            {$t('admin.package_invoices.list.filters.verification_pending')}
           </option>
-          <option value="paid">{$t('admin.package_invoices.list.filters.paid') || 'Paid'}</option>
+          <option value="paid">{$t('admin.package_invoices.list.filters.paid')}</option>
           <option value="failed"
-            >{$t('admin.package_invoices.list.filters.failed') || 'Failed'}</option
+            >{$t('admin.package_invoices.list.filters.failed')}</option
           >
         </select>
 
@@ -619,17 +614,17 @@
           class="select-input"
           type="date"
           bind:value={dateFrom}
-          title={$t('admin.package_invoices.list.filters.created_from') || 'Created from'}
+          title={$t('admin.package_invoices.list.filters.created_from')}
         />
         <input
           class="select-input"
           type="date"
           bind:value={dateTo}
-          title={$t('admin.package_invoices.list.filters.created_to') || 'Created to'}
+          title={$t('admin.package_invoices.list.filters.created_to')}
         />
 
         <button class="btn btn-secondary btn-sm" onclick={clearFilters}>
-          {$t('admin.package_invoices.list.filters.clear') || 'Clear'}
+          {$t('admin.package_invoices.list.filters.clear')}
         </button>
       </div>
 
@@ -638,8 +633,7 @@
         data={filteredInvoices}
         {columns}
         searchable={true}
-        searchPlaceholder={$t('admin.package_invoices.list.search_placeholder') ||
-          'Search customer service invoices...'}
+        searchPlaceholder={$t('admin.package_invoices.list.search_placeholder')}
         sortKey={invoiceSortBy}
         sortDirection={invoiceSortDirection}
         onsort={handleInvoiceSort}
@@ -670,8 +664,7 @@
                   : $t('admin.package_invoices.list.actions.invoice_not_sendable') ||
                     'Invoice sudah settled dan tidak bisa dikirim'
               }
-              aria-label={$t('admin.package_invoices.list.actions.select_invoice') ||
-                'Pilih invoice'}
+              aria-label={$t('admin.package_invoices.list.actions.select_invoice')}
             />
           {:else if column.key === 'amount'}
             {formatCurrency(item.amount, item.currency_code)}
@@ -685,9 +678,8 @@
                 <button
                   type="button"
                   class="action-btn"
-                  title={$t('admin.package_invoices.list.actions.open_customer') || 'Open customer'}
-                  aria-label={$t('admin.package_invoices.list.actions.open_customer') ||
-                    'Open customer'}
+                  title={$t('admin.package_invoices.list.actions.open_customer')}
+                  aria-label={$t('admin.package_invoices.list.actions.open_customer')}
                   onclick={() =>
                     openCustomerDetail(
                       findCustomerPackageInvoiceRelation(item, subscriptionOptions)?.customerId ||
@@ -700,9 +692,8 @@
               <button
                 type="button"
                 class="action-btn"
-                title={$t('admin.package_invoices.list.actions.view_details') || 'View Details'}
-                aria-label={$t('admin.package_invoices.list.actions.view_details') ||
-                  'View Details'}
+                title={$t('admin.package_invoices.list.actions.view_details')}
+                aria-label={$t('admin.package_invoices.list.actions.view_details')}
                 onclick={() => openInvoiceDetail(item.id)}
               >
                 <Icon name="eye" size={18} />
@@ -717,7 +708,7 @@
   </section>
 </div>
 
-<Modal bind:show={showBulkSendModal} title={$t('admin.package_invoices.list.actions.bulk_send_modal_title') || 'Kirim Invoice'} width="480px">
+<Modal bind:show={showBulkSendModal} title={$t('admin.package_invoices.list.actions.bulk_send_modal_title')} width="480px">
   <div class="bulk-send-form">
     <p class="bulk-send-intro">
       {(
@@ -730,7 +721,7 @@
       <input type="checkbox" bind:checked={channelEmail} disabled={bulkSending} />
       <span class="channel-label">
         <Icon name="mail" size={16} />
-        <span>{$t('admin.package_invoices.list.actions.channel_email') || 'Email'}</span>
+        <span>{$t('admin.package_invoices.list.actions.channel_email')}</span>
       </span>
     </label>
 
@@ -739,7 +730,7 @@
         <input type="checkbox" bind:checked={channelAttachPdf} disabled={bulkSending} />
         <span class="channel-label">
           <Icon name="file-text" size={16} />
-          <span>{$t('admin.package_invoices.list.actions.attach_pdf_label') || 'Lampirkan PDF invoice'}</span>
+          <span>{$t('admin.package_invoices.list.actions.attach_pdf_label')}</span>
         </span>
       </label>
     {/if}
@@ -748,7 +739,7 @@
       <input type="checkbox" bind:checked={channelNotification} disabled={bulkSending} />
       <span class="channel-label">
         <Icon name="bell" size={16} />
-        <span>{$t('admin.package_invoices.list.actions.channel_notification') || 'Notifikasi in-app'}</span>
+        <span>{$t('admin.package_invoices.list.actions.channel_notification')}</span>
       </span>
     </label>
 
@@ -756,14 +747,14 @@
       <input type="checkbox" bind:checked={channelWhatsapp} disabled={bulkSending} />
       <span class="channel-label">
         <Icon name="message-circle" size={16} />
-        <span>{$t('admin.package_invoices.list.actions.channel_whatsapp') || 'WhatsApp'}</span>
+        <span>{$t('admin.package_invoices.list.actions.channel_whatsapp')}</span>
       </span>
     </label>
   </div>
 
   {#snippet footer()}
     <button class="btn btn-secondary" onclick={() => (showBulkSendModal = false)} disabled={bulkSending}>
-      {$t('common.cancel') || 'Batal'}
+      {$t('common.cancel')}
     </button>
     <button class="btn btn-primary" onclick={confirmBulkSend} disabled={bulkSending}>
       <Icon name="send" size={16} />

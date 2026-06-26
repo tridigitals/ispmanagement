@@ -40,12 +40,12 @@
     class="threshold-backdrop"
     type="button"
     onclick={onClose}
-    aria-label={$t('common.close') || 'Close'}
+    aria-label={$t('common.close')}
   ></button>
   <div class="threshold">
     <div class="threshold-head">
       <div>
-        <div class="full-kicker">{$t('admin.network.wallboard.thresholds.title') || 'Thresholds'}</div>
+        <div class="full-kicker">{$t('admin.network.wallboard.thresholds.title')}</div>
         <div class="full-title">
           <span class="mono">{iface || ''}</span>
           <span class="muted">·</span>
@@ -55,9 +55,9 @@
       <div class="full-actions">
         <button class="btn-mini" type="button" onclick={onChangeInterface}>
           <Icon name="settings" size={16} />
-          {$t('admin.network.wallboard.thresholds.change_interface') || 'Change interface'}
+          {$t('admin.network.wallboard.thresholds.change_interface')}
         </button>
-        <button class="icon-x" type="button" onclick={onClose} title={$t('common.close') || 'Close'}>
+        <button class="icon-x" type="button" onclick={onClose} title={$t('common.close')}>
           <Icon name="x" size={18} />
         </button>
       </div>
@@ -65,13 +65,13 @@
 
     <div class="threshold-summary">
       <div class="threshold-chip">
-        <span class="k">{$t('admin.network.wallboard.thresholds.current_rx') || 'Current RX threshold'}</span>
+        <span class="k">{$t('admin.network.wallboard.thresholds.current_rx')}</span>
         <span class="v mono">{currentRxBps != null
           ? formatBps(currentRxBps)
           : $t('admin.network.wallboard.thresholds.not_set') || 'Not set'}</span>
       </div>
       <div class="threshold-chip">
-        <span class="k">{$t('admin.network.wallboard.thresholds.current_tx') || 'Current TX threshold'}</span>
+        <span class="k">{$t('admin.network.wallboard.thresholds.current_tx')}</span>
         <span class="v mono">{currentTxBps != null
           ? formatBps(currentTxBps)
           : $t('admin.network.wallboard.thresholds.not_set') || 'Not set'}</span>
@@ -81,7 +81,7 @@
     <div class="tile-settings">
       <div class="settings-grid">
         <label class="field">
-          <span class="k">{$t('admin.network.wallboard.warn_below_rx') || 'Warn if RX below'}</span>
+          <span class="k">{$t('admin.network.wallboard.warn_below_rx')}</span>
           <div class="row">
             <input
               inputmode="numeric"
@@ -90,15 +90,15 @@
               placeholder="0"
             />
             <select class="unit-select" value={thWarnRxUnit} onchange={(e) => (thWarnRxUnit = (e.currentTarget as HTMLSelectElement).value as Unit)}>
-              <option value="Kbps">{$t('network.wallboard.kbps') || 'Kbps'}</option>
-              <option value="Mbps">{$t('network.wallboard.mbps') || 'Mbps'}</option>
-              <option value="Gbps">{$t('network.wallboard.gbps') || 'Gbps'}</option>
+              <option value="Kbps">{$t('network.wallboard.kbps')}</option>
+              <option value="Mbps">{$t('network.wallboard.mbps')}</option>
+              <option value="Gbps">{$t('network.wallboard.gbps')}</option>
             </select>
           </div>
-          <span class="hint">{$t('admin.network.wallboard.thresholds.hint') || 'Leave empty to disable warning.'}</span>
+          <span class="hint">{$t('admin.network.wallboard.thresholds.hint')}</span>
         </label>
         <label class="field">
-          <span class="k">{$t('admin.network.wallboard.warn_below_tx') || 'Warn if TX below'}</span>
+          <span class="k">{$t('admin.network.wallboard.warn_below_tx')}</span>
           <div class="row">
             <input
               inputmode="numeric"
@@ -107,22 +107,22 @@
               placeholder="0"
             />
             <select class="unit-select" value={thWarnTxUnit} onchange={(e) => (thWarnTxUnit = (e.currentTarget as HTMLSelectElement).value as Unit)}>
-              <option value="Kbps">{$t('network.wallboard.kbps') || 'Kbps'}</option>
-              <option value="Mbps">{$t('network.wallboard.mbps') || 'Mbps'}</option>
-              <option value="Gbps">{$t('network.wallboard.gbps') || 'Gbps'}</option>
+              <option value="Kbps">{$t('network.wallboard.kbps')}</option>
+              <option value="Mbps">{$t('network.wallboard.mbps')}</option>
+              <option value="Gbps">{$t('network.wallboard.gbps')}</option>
             </select>
           </div>
-          <span class="hint">{$t('admin.network.wallboard.thresholds.hint') || 'Leave empty to disable warning.'}</span>
+          <span class="hint">{$t('admin.network.wallboard.thresholds.hint')}</span>
         </label>
       </div>
 
       <div class="settings-actions">
         <button class="btn-mini ghost" type="button" onclick={onClear}>
-          {$t('common.clear') || 'Clear'}
+          {$t('common.clear')}
         </button>
         <button class="btn-mini primary" type="button" onclick={onSave}>
           <Icon name="save" size={16} />
-          {$t('common.save') || 'Save'}
+          {$t('common.save')}
         </button>
       </div>
     </div>

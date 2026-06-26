@@ -279,10 +279,9 @@
 <div class="page-container fade-in">
   <div class="head">
     <div>
-      <div class="h1">{$t('announcements.title') || 'Announcements'}</div>
+      <div class="h1">{$t('announcements.title')}</div>
       <div class="sub">
-        {$t('announcements.subtitle') ||
-          'Broadcast messages to users as banners and notifications.'}
+        {$t('announcements.subtitle')}
       </div>
     </div>
     <div class="actions">
@@ -290,10 +289,10 @@
         class="btn"
         type="button"
         onclick={() => { pageNum = 1; void load(); }}
-        title={$t('common.refresh') || 'Refresh'}
+        title={$t('common.refresh')}
       >
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
+        {$t('common.refresh')}
       </button>
     </div>
   </div>
@@ -306,7 +305,7 @@
       onclick={() => (activeTab = 'create')}
     >
       <Icon name="megaphone" size={16} />
-      {$t('announcements.create.title') || 'Create broadcast'}
+      {$t('announcements.create.title')}
     </button>
     <button
       class="tab-btn {activeTab === 'history' ? 'active' : ''}"
@@ -314,39 +313,39 @@
       onclick={() => (activeTab = 'history')}
     >
       <Icon name="list" size={16} />
-      {$t('announcements.list.title') || 'History'}
+      {$t('announcements.list.title')}
     </button>
   </div>
 
   <main class="content">
     {#if activeTab === 'create'}
       <div class="panel">
-        <div class="panel-title">{$t('announcements.create.title') || 'Create broadcast'}</div>
+        <div class="panel-title">{$t('announcements.create.title')}</div>
         <div class="form">
           {#if $isSuperAdmin}
             <Select
-              label={$t('announcements.fields.scope') || 'Scope'}
+              label={$t('announcements.fields.scope')}
               bind:value={scope}
               options={scopeOptions}
             />
           {/if}
           <Select
-            label={$t('announcements.fields.audience') || 'Audience'}
+            label={$t('announcements.fields.audience')}
             bind:value={audience}
             options={audienceOptions}
           />
           <Select
-            label={$t('announcements.fields.severity') || 'Severity'}
+            label={$t('announcements.fields.severity')}
             bind:value={severity}
             options={severityOptions}
           />
           <Select
-            label={$t('announcements.fields.mode') || 'Mode'}
+            label={$t('announcements.fields.mode')}
             bind:value={mode}
             options={modeOptions}
           />
           <label class="label span-2">
-            {$t('announcements.fields.cover') || 'Cover image (optional)'}
+            {$t('announcements.fields.cover')}
             <input class="input" type="file" accept="image/*" onchange={onPickCover} />
             {#if coverPreviewUrl}
               <div class="cover-preview">
@@ -358,11 +357,10 @@
             <div class="delivery-item">
               <div class="delivery-text">
                 <div class="delivery-title">
-                  {$t('announcements.fields.deliver_in_app') || 'Deliver in-app'}
+                  {$t('announcements.fields.deliver_in_app')}
                 </div>
                 <div class="delivery-sub">
-                  {$t('announcements.fields.deliver_in_app_desc') ||
-                    'Show to users in the app and send a notification.'}
+                  {$t('announcements.fields.deliver_in_app_desc')}
                 </div>
               </div>
               <Toggle bind:checked={deliverInApp} ariaLabel="Deliver in-app" />
@@ -370,11 +368,10 @@
             <div class="delivery-item">
               <div class="delivery-text">
                 <div class="delivery-title">
-                  {$t('announcements.fields.deliver_email') || 'Send email'}
+                  {$t('announcements.fields.deliver_email')}
                 </div>
                 <div class="delivery-sub">
-                  {$t('announcements.fields.deliver_email_desc') ||
-                    'Send this announcement to all recipients via email (ignores preferences).'}
+                  {$t('announcements.fields.deliver_email_desc')}
                 </div>
               </div>
               <Toggle bind:checked={deliverEmail} ariaLabel="Send email" />
@@ -383,11 +380,10 @@
               <div class="delivery-item">
                 <div class="delivery-text">
                   <div class="delivery-title">
-                    {$t('announcements.fields.deliver_email_force') || 'Ignore email preferences'}
+                    {$t('announcements.fields.deliver_email_force')}
                   </div>
                   <div class="delivery-sub">
-                    {$t('announcements.fields.deliver_email_force_desc') ||
-                      'When disabled, only users who enabled email announcements will receive it.'}
+                    {$t('announcements.fields.deliver_email_force_desc')}
                   </div>
                 </div>
                 <Toggle bind:checked={deliverEmailForce} ariaLabel="Ignore preferences" />
@@ -395,40 +391,38 @@
             {/if}
           </div>
           <label class="label span-2">
-            {$t('announcements.fields.title') || 'Title'}
+            {$t('announcements.fields.title')}
             <input class="input" bind:value={title} placeholder="e.g. Planned maintenance" />
           </label>
           <div class="span-2">
             {#if AnnouncementEditorComponent}
               <AnnouncementEditorComponent
-                label={$t('announcements.fields.body') || 'Body'}
+                label={$t('announcements.fields.body')}
                 bind:value={body}
-                placeholder={$t('announcements.placeholders.body') ||
-                  'Write something clear and short…'}
-                help={$t('announcements.hints.rich') ||
-                  'Tip: Keep it concise. Links are allowed; images should be added as cover.'}
+                placeholder={$t('announcements.placeholders.body')}
+                help={$t('announcements.hints.rich')}
                 minHeight={190}
               />
             {:else}
               <div class="editor-placeholder" aria-busy={announcementEditorLoading}>
-                <div class="label">{$t('announcements.fields.body') || 'Body'}</div>
+                <div class="label">{$t('announcements.fields.body')}</div>
                 <div class="editor-placeholder-shell">
                   <div class="editor-placeholder-toolbar"></div>
                   <div class="editor-placeholder-body"></div>
                 </div>
                 <div class="help">
-                  {$t('announcements.placeholders.body') || 'Write something clear and short…'}
+                  {$t('announcements.placeholders.body')}
                 </div>
               </div>
             {/if}
           </div>
           <div class="row span-2">
             <DateTimeLocalInput
-              label={$t('announcements.fields.starts_at') || 'Starts at'}
+              label={$t('announcements.fields.starts_at')}
               bind:value={startsAt}
             />
             <DateTimeLocalInput
-              label={$t('announcements.fields.ends_at') || 'Ends at'}
+              label={$t('announcements.fields.ends_at')}
               bind:value={endsAt}
             />
           </div>
@@ -442,13 +436,12 @@
           </button>
         </div>
         <p class="hint">
-          {$t('announcements.hints.schedule') ||
-            'Leave dates empty to publish immediately. End date controls when the banner stops showing.'}
+          {$t('announcements.hints.schedule')}
         </p>
       </div>
     {:else}
       <div class="panel">
-        <div class="panel-title">{$t('announcements.list.title') || 'History'}</div>
+        <div class="panel-title">{$t('announcements.list.title')}</div>
         <div class="history-controls">
           <div class="search">
             <Icon name="search" size={16} />
@@ -456,27 +449,27 @@
               class="search-input"
               value={searchQuery}
               oninput={(e) => (searchQuery = (e.currentTarget as HTMLInputElement).value)}
-              placeholder={$t('announcements.search_placeholder') || 'Search announcements...'}
+              placeholder={$t('announcements.search_placeholder')}
             />
           </div>
           <div class="filters">
             <div class="filter-slot">
               <Select
-                label={$t('announcements.fields.status') || 'Status'}
+                label={$t('announcements.fields.status')}
                 options={statusFilterOptions}
                 bind:value={statusFilter}
               />
             </div>
             <div class="filter-slot">
               <Select
-                label={$t('announcements.fields.severity') || 'Severity'}
+                label={$t('announcements.fields.severity')}
                 options={severityFilterOptions}
                 bind:value={severityFilter}
               />
             </div>
             <div class="filter-slot">
               <Select
-                label={$t('announcements.fields.mode') || 'Mode'}
+                label={$t('announcements.fields.mode')}
                 options={modeFilterOptions}
                 bind:value={modeFilter}
               />
@@ -484,7 +477,7 @@
             {#if $isSuperAdmin}
               <div class="filter-slot">
                 <Select
-                  label={$t('announcements.fields.scope') || 'Scope'}
+                  label={$t('announcements.fields.scope')}
                   options={scopeFilterOptions}
                   bind:value={scopeFilter}
                 />
@@ -496,20 +489,20 @@
         {#if loading && rows.length === 0}
           <div class="loading">
             <div class="spinner"></div>
-            <div>{$t('common.loading') || 'Loading...'}</div>
+            <div>{$t('common.loading')}</div>
           </div>
         {:else if rows.length === 0}
           <div class="empty-cta">
             <div class="empty-icon">
               <Icon name="megaphone" size={40} />
             </div>
-            <div class="empty-title">{$t('announcements.empty') || 'No announcements yet.'}</div>
+            <div class="empty-title">{$t('announcements.empty')}</div>
             <div class="empty-desc">
-              {$t('announcements.empty_desc') || 'Create your first broadcast to reach your users.'}
+              {$t('announcements.empty_desc')}
             </div>
             <button class="btn-primary" type="button" onclick={() => (activeTab = 'create')}>
               <Icon name="megaphone" size={16} />
-              {$t('announcements.empty_cta') || 'Create your first announcement'}
+              {$t('announcements.empty_cta')}
             </button>
           </div>
         {:else}
@@ -561,7 +554,7 @@
                   <button
                     class="btn-icon"
                     type="button"
-                    title={$t('common.edit') || 'Edit'}
+                    title={$t('common.edit')}
                     onclick={() => goto(`/admin/announcements/${a.id}`)}
                   >
                     <Icon name="edit" size={16} />
@@ -569,7 +562,7 @@
                   <button
                     class="btn-icon danger"
                     type="button"
-                    title={$t('common.delete') || 'Delete'}
+                    title={$t('common.delete')}
                     onclick={() => confirmDelete(a.id)}
                   >
                     <Icon name="trash-2" size={16} />
@@ -583,12 +576,12 @@
           <div class="pager">
             <div class="pager-left">
               <span class="pager-info">
-                {total} {$t('common.results') || 'results'}
+                {total} {$t('common.results')}
               </span>
             </div>
             <div class="pager-right">
               <label class="per-page">
-                <span class="pager-label">{$t('components.pagination.rows_per_page') || 'Per page:'}</span>
+                <span class="pager-label">{$t('components.pagination.rows_per_page')}</span>
                 <select class="per-page-select" value={perPage} onchange={onPerPageChange}>
                   <option value={10}>10</option>
                   <option value={20}>20</option>
@@ -596,7 +589,7 @@
                   <option value={100}>100</option>
                 </select>
               </label>
-              <span class="pager-info">{$t('common.page') || 'Page'} {pageNum}/{totalPages}</span>
+              <span class="pager-info">{$t('common.page')} {pageNum}/{totalPages}</span>
               <button class="btn-icon" type="button" onclick={() => goToPage(pageNum - 1)} disabled={pageNum <= 1}>
                 <Icon name="chevron-left" size={16} />
               </button>
@@ -613,10 +606,10 @@
 
 <ConfirmDialog
   bind:show={showDeleteConfirm}
-  title={$t('announcements.confirm_delete_title') || 'Delete Announcement'}
-  message={$t('announcements.confirm_delete') || 'Are you sure you want to permanently delete this announcement? This action cannot be undone.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  title={$t('announcements.confirm_delete_title')}
+  message={$t('announcements.confirm_delete')}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   type="danger"
   onconfirm={handleConfirmDelete}
   oncancel={() => { deleteTargetId = null; }}

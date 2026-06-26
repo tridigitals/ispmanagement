@@ -174,18 +174,18 @@
 <div class="page-content fade-in">
   <div class="head">
     <div>
-      <h1 class="title">{$t('admin.support.title') || 'Support Tickets'}</h1>
-      <p class="sub">{$t('admin.support.subtitle') || 'Tiket support pelanggan.'}</p>
+      <h1 class="title">{$t('admin.support.title')}</h1>
+      <p class="sub">{$t('admin.support.subtitle')}</p>
     </div>
 
     <button
       class="btn"
       type="button"
       onclick={() => load(true)}
-      title={$t('common.refresh') || 'Refresh'}
+      title={$t('common.refresh')}
     >
       <Icon name="refresh-cw" size={16} />
-      {$t('common.refresh') || 'Refresh'}
+      {$t('common.refresh')}
     </button>
   </div>
 
@@ -197,7 +197,7 @@
       onclick={() => setStatusFilter('all')}
     >
       <div class="stat-top">
-        <span class="stat-label">{$t('support.stats.total') || 'Total'}</span>
+        <span class="stat-label">{$t('support.stats.total')}</span>
         <Icon name="list" size={14} />
       </div>
       <div class="stat-value">{stats.all}</div>
@@ -209,7 +209,7 @@
       onclick={() => setStatusFilter('open')}
     >
       <div class="stat-top">
-        <span class="stat-label">{$t('support.filters.open') || 'Open'}</span>
+        <span class="stat-label">{$t('support.filters.open')}</span>
         <Icon name="info" size={14} />
       </div>
       <div class="stat-value">{stats.open}</div>
@@ -221,7 +221,7 @@
       onclick={() => setStatusFilter('pending')}
     >
       <div class="stat-top">
-        <span class="stat-label">{$t('support.filters.pending') || 'Pending'}</span>
+        <span class="stat-label">{$t('support.filters.pending')}</span>
         <Icon name="alert-triangle" size={14} />
       </div>
       <div class="stat-value">{stats.pending}</div>
@@ -233,7 +233,7 @@
       onclick={() => setStatusFilter('closed')}
     >
       <div class="stat-top">
-        <span class="stat-label">{$t('support.filters.closed') || 'Closed'}</span>
+        <span class="stat-label">{$t('support.filters.closed')}</span>
         <Icon name="check-circle" size={14} />
       </div>
       <div class="stat-value">{stats.closed}</div>
@@ -243,10 +243,10 @@
       class:active={assignedFilter === 'unassigned'}
       type="button"
       onclick={() => setAssignedFilter(assignedFilter === 'unassigned' ? 'all' : 'unassigned')}
-      title={$t('admin.support.unassigned') || 'Belum Assign'}
+      title={$t('admin.support.unassigned')}
     >
       <div class="stat-top">
-        <span class="stat-label">{$t('admin.support.unassigned') || 'Belum Assign'}</span>
+        <span class="stat-label">{$t('admin.support.unassigned')}</span>
         <Icon name="user" size={14} />
       </div>
       <div class="stat-value">—</div>
@@ -259,7 +259,7 @@
       <input
         class="search-input"
         bind:value={searchQuery}
-        placeholder={$t('admin.support.search') || 'Search tickets...'}
+        placeholder={$t('admin.support.search')}
       />
       {#if searchQuery}
         <button class="clear" type="button" onclick={() => (searchQuery = '')}>
@@ -285,7 +285,7 @@
     {columns}
     data={tickets}
     {loading}
-    emptyText={$t('admin.support.empty') || 'No tickets'}
+    emptyText={$t('admin.support.empty')}
     pagination={false}
   >
     {#snippet cell({ item, key }: any)}
@@ -297,7 +297,7 @@
               class="sub-link"
               role="button"
               tabindex="0"
-              title={$t('support.detail.view_subscription') || 'Langganan terkait'}
+              title={$t('support.detail.view_subscription')}
               onclick={(e) => { e.stopPropagation(); openSubscription(item.subscription_id); }}
               onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); openSubscription(item.subscription_id); } }}
             >
@@ -350,7 +350,7 @@
             class="icon-btn"
             type="button"
             onclick={() => open(item.id)}
-            title={$t('common.open') || 'Open'}
+            title={$t('common.open')}
           >
             <Icon name="arrow-right" size={16} />
           </button>
@@ -367,7 +367,7 @@
         {#if loadingMore}
           <div class="spinner-sm"></div>
         {/if}
-        {$t('common.load_more') || 'Load more'}
+        {$t('common.load_more')}
       </button>
       <div class="foot-note">{tickets.length}/{total}</div>
     </div>

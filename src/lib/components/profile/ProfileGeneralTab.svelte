@@ -52,14 +52,14 @@
     <div class="avatar-large-wrapper">
       <div class="avatar-large">
         {#if profileData.avatar_url}
-          <img src={profileData.avatar_url} alt={$t('profile.general.avatar_alt') || 'Avatar'} class="avatar-img" />
+          <img src={profileData.avatar_url} alt={$t('profile.general.avatar_alt')} class="avatar-img" />
         {:else}
           {initials}
         {/if}
       </div>
       <button
         class="avatar-edit-btn"
-        title={$t('profile.general.change_avatar') || 'Change Avatar'}
+        title={$t('profile.general.change_avatar')}
         type="button"
         onclick={handleAvatarClick}
       >
@@ -120,14 +120,14 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="phone">{$t('profile.general.phone') || 'Phone'}</label>
+        <label class="form-label" for="phone">{$t('profile.general.phone')}</label>
         <div class="input-wrapper">
           <Icon name="phone" size={18} class="input-icon" />
           <input
             type="tel"
             id="phone"
             class="form-input with-icon"
-            placeholder={$t('profile.general.phone_placeholder') || 'Enter phone number'}
+            placeholder={$t('profile.general.phone_placeholder')}
             bind:value={profileData.phone}
           />
         </div>

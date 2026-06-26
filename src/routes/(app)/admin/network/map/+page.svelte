@@ -2505,7 +2505,7 @@
       {syncingAssetNodes}
       {refreshing}
       {loading}
-      title={$t('admin.network.map.title') || 'Network Topology Map'}
+      title={$t('admin.network.map.title')}
       subtitle={workspaceSubtitle}
       labels={{
         backToInstallation: $t('admin.network.map.back_to_installation') || 'Back to Installation',
@@ -2527,10 +2527,8 @@
     {loading}
     {mapUnavailable}
     {mapErrorMessage}
-    mapUnavailableTitle={$t('admin.network.map.map_unavailable_title') ||
-      'Map preview unavailable on this device'}
-    mapUnavailableSubtitle={$t('admin.network.map.map_unavailable_subtitle') ||
-      'WebGL context failed. Data is still loaded and counts are visible.'}
+    mapUnavailableTitle={$t('admin.network.map.map_unavailable_title')}
+    mapUnavailableSubtitle={$t('admin.network.map.map_unavailable_subtitle')}
     height={compactMode ? 'min(82vh, 820px)' : 'calc(100vh - 150px)'}
   >
     <svelte:fragment slot="overlay">
@@ -2539,8 +2537,8 @@
           class="map-workspace-search-toggle"
           class:active={workspaceSearchOpen}
           type="button"
-          aria-label={$t('admin.network.map.search.toggle') || 'Search map assets'}
-          title={$t('admin.network.map.search.toggle') || 'Search map assets'}
+          aria-label={$t('admin.network.map.search.toggle')}
+          title={$t('admin.network.map.search.toggle')}
           onclick={() => (workspaceSearchOpen = !workspaceSearchOpen)}
         >
           <Icon name="search" size={18} />
@@ -2551,11 +2549,9 @@
               query={workspaceSearchQuery}
               groups={workspaceSearchGroups}
               summary=""
-              placeholder={$t('admin.network.map.search.placeholder') ||
-                'Search customer, service, node, link, zone, or router...'}
-              emptyTitle={$t('admin.network.map.search.empty_title') || 'No matching results'}
-              emptyHint={$t('admin.network.map.search.empty_hint') ||
-                'Try another keyword or switch quick mode to widen the result scope.'}
+              placeholder={$t('admin.network.map.search.placeholder')}
+              emptyTitle={$t('admin.network.map.search.empty_title')}
+              emptyHint={$t('admin.network.map.search.empty_hint')}
               onQueryChange={(value: string) => (workspaceSearchQuery = value)}
               onSelect={handleWorkspaceSearchSelect}
             />
@@ -2622,8 +2618,7 @@
         <div class="map-asset-create-hint">
           <Icon name="map-pin" size={14} />
           <span
-            >{$t('admin.network.map.asset_create.hint') ||
-              'Click a point on the map to add a new FTTH asset.'}</span
+            >{$t('admin.network.map.asset_create.hint')}</span
           >
         </div>
       {/if}
@@ -2651,12 +2646,12 @@
               disabled={linkPathBendPoints.length === 0}
             >
               <Icon name="arrow-left" size={14} />
-              {$t('common.back') || 'Back'}
+              {$t('common.back')}
             </button>
           {/if}
           <button class="btn ghost btn-xs danger" type="button" onclick={cancelLinkPicking}>
             <Icon name="x-circle" size={14} />
-            {$t('common.cancel') || 'Cancel'}
+            {$t('common.cancel')}
           </button>
         </div>
       {/if}
@@ -2734,8 +2729,8 @@
     show={showDeleteConfirm}
     title={deleteConfirmTitle}
     message={deleteConfirmMessage}
-    confirmText={$t('common.delete') || 'Delete'}
-    cancelText={$t('common.cancel') || 'Cancel'}
+    confirmText={$t('common.delete')}
+    cancelText={$t('common.cancel')}
     type="danger"
     loading={Boolean(deletingId)}
     onconfirm={() => void confirmDeleteAction()}

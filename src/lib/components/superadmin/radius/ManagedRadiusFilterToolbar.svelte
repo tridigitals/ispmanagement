@@ -85,7 +85,7 @@
       </div>
 
       <div class="filter-panel-footer">
-        <button class="reset-link" type="button" onclick={onReset}>{$t('common.reset') || 'Reset filter'}</button>
+        <button class="reset-link" type="button" onclick={onReset}>{$t('common.reset')}</button>
       </div>
     </div>
   {/if}

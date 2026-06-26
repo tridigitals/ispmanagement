@@ -49,7 +49,7 @@
 <!-- Change Password Section -->
 <div class="card section fade-in">
   <div class="card-header">
-    <h3>{$t('profile.security.title') || 'Change Password'}</h3>
+    <h3>{$t('profile.security.title')}</h3>
   </div>
   <div class="card-body">
     <form
@@ -61,9 +61,9 @@
       <div class="setting-row">
         <div class="setting-info">
           <label class="setting-label" for="current-pass">
-            {$t('profile.security.current_password') || 'Current Password'}
+            {$t('profile.security.current_password')}
           </label>
-          <p class="setting-description">{$t('profile.security.settings_desc_current') || 'Enter your existing password to make changes.'}</p>
+          <p class="setting-description">{$t('profile.security.settings_desc_current')}</p>
         </div>
         <div class="input-wrapper">
           <input
@@ -87,10 +87,10 @@
       <div class="setting-row">
         <div class="setting-info">
           <label class="setting-label" for="new-pass">
-            {$t('profile.security.new_password') || 'New Password'}
+            {$t('profile.security.new_password')}
           </label>
-          <p class="setting-description">{$t('profile.security.settings_desc_new') || 'Choose a strong password with at least'} {policy.password_min_length}
-            {$t('common.units.chars') || 'chars'}.</p>
+          <p class="setting-description">{$t('profile.security.settings_desc_new')} {policy.password_min_length}
+            {$t('common.units.chars')}.</p>
         </div>
         <div class="input-wrapper">
           <input
@@ -114,9 +114,9 @@
       <div class="setting-row">
         <div class="setting-info">
           <label class="setting-label" for="confirm-pass">
-            {$t('profile.security.confirm_password') || 'Confirm Password'}
+            {$t('profile.security.confirm_password')}
           </label>
-          <p class="setting-description">{$t('profile.security.settings_desc_confirm') || 'Re-enter your new password to confirm.'}</p>
+          <p class="setting-description">{$t('profile.security.settings_desc_confirm')}</p>
         </div>
         <div class="input-wrapper">
           <input
@@ -139,7 +139,7 @@
 
       <!-- Password Requirements -->
       <div class="requirements-box">
-        <span class="req-title">{$t('profile.security.requirements_title') || 'Requirements'}</span>
+        <span class="req-title">{$t('profile.security.requirements_title')}</span>
         <ul class="req-list">
           <li class:valid={passwordData.new.length >= policy.password_min_length}>
             <Icon name="check" size={14} />
@@ -150,19 +150,19 @@
           {#if policy.password_require_uppercase}
             <li class:valid={/[A-Z]/.test(passwordData.new)}>
               <Icon name="check" size={14} />
-              {$t('profile.security.req_uppercase') || 'One uppercase letter'}
+              {$t('profile.security.req_uppercase')}
             </li>
           {/if}
           {#if policy.password_require_number}
             <li class:valid={/[0-9]/.test(passwordData.new)}>
               <Icon name="check" size={14} />
-              {$t('profile.security.req_number') || 'One number'}
+              {$t('profile.security.req_number')}
             </li>
           {/if}
           {#if policy.password_require_special}
             <li class:valid={/[!@#$%^&*()_+\-=[\]{}|;:',.&lt;&gt;?/`~]/.test(passwordData.new)}>
               <Icon name="check" size={14} />
-              {$t('profile.security.req_special') || 'One special character'}
+              {$t('profile.security.req_special')}
             </li>
           {/if}
         </ul>
@@ -183,7 +183,7 @@
 <div class="card section fade-in">
   <div class="card-header">
     <h3>
-      {$t('profile.security.twofa.title') || 'Two-Factor Authentication'}
+      {$t('profile.security.twofa.title')}
     </h3>
   </div>
   <div class="card-body">
@@ -195,46 +195,45 @@
         </div>
         <div class="setting-info">
           <span class="setting-label"
-            >{$t('profile.security.twofa.enabled_title') || '2FA is Enabled'}</span
+            >{$t('profile.security.twofa.enabled_title')}</span
           >
           <p class="setting-description">
-            {$t('profile.security.twofa.enabled_desc') || 'Your account is secured with 2FA.'}
+            {$t('profile.security.twofa.enabled_desc')}
           </p>
         </div>
       </div>
 
       <!-- Enabled Methods -->
       <div class="methods-section">
-        <span class="section-title">{$t('profile.security.twofa.enabled_methods') || 'Enabled Methods'}</span>
+        <span class="section-title">{$t('profile.security.twofa.enabled_methods')}</span>
         <div class="method-list">
           <div class="method-item">
             <Icon name="smartphone" size={18} />
             <span class="method-name"
-              >{$t('profile.security.twofa.methods.authenticator_app') || 'Authenticator App'}</span
+              >{$t('profile.security.twofa.methods.authenticator_app')}</span
             >
             {#if user?.totp_enabled}
-              <span class="badge success">{$t('profile.security.twofa.enabled_badge') || 'Enabled'}</span>
+              <span class="badge success">{$t('profile.security.twofa.enabled_badge')}</span>
             {:else}
               <button
                 class="btn btn-sm btn-outline"
                 onclick={() => onStart2FA('totp')}
-                disabled={loading}>{$t('profile.security.twofa.enable_button') || 'Enable'}</button
+                disabled={loading}>{$t('profile.security.twofa.enable_button')}</button
               >
             {/if}
           </div>
           <div class="method-item">
             <Icon name="mail" size={18} />
             <span class="method-name"
-              >{$t('profile.security.twofa.methods.email_verification') ||
-                'Email Verification'}</span
+              >{$t('profile.security.twofa.methods.email_verification')}</span
             >
             {#if user?.email_2fa_enabled}
-              <span class="badge success">{$t('profile.security.twofa.enabled_badge') || 'Enabled'}</span>
+              <span class="badge success">{$t('profile.security.twofa.enabled_badge')}</span>
             {:else}
               <button
                 class="btn btn-sm btn-outline"
                 onclick={() => onStart2FA('email')}
-                disabled={loading}>{$t('profile.security.twofa.enable_button') || 'Enable'}</button
+                disabled={loading}>{$t('profile.security.twofa.enable_button')}</button
               >
             {/if}
           </div>
@@ -247,10 +246,10 @@
           <div class="recovery-header">
             <Icon name="alert-triangle" size={20} />
             <h4>
-              {$t('profile.security.twofa.recovery_title') || 'Save Your Recovery Codes'}
+              {$t('profile.security.twofa.recovery_title')}
             </h4>
           </div>
-          <p>{$t('profile.security.twofa.recovery_desc') || 'These codes are the ONLY way to access your account if you lose your phone.'}</p>
+          <p>{$t('profile.security.twofa.recovery_desc')}</p>
           <div class="code-grid">
             {#each twoFactorData.recoveryCodes as code}
               <div class="code-item">{code}</div>
@@ -268,9 +267,9 @@
         <div class="setting-row disable-row">
           <div class="setting-info">
             <span class="setting-label"
-              >{$t('profile.security.twofa.disable_title') || 'Disable 2FA'}</span
+              >{$t('profile.security.twofa.disable_title')}</span
             >
-            <p class="setting-description">{$t('profile.security.twofa.disable_desc') || 'Enter a code from your device to disable 2FA.'}</p>
+            <p class="setting-description">{$t('profile.security.twofa.disable_desc')}</p>
           </div>
           <div class="disable-actions">
             {#if user?.preferred_2fa_method === 'email'}
@@ -286,14 +285,14 @@
               type="text"
               class="form-input code-input"
               bind:value={twoFactorData.disableCode}
-              placeholder={$t('profile.security.twofa.disable_code_placeholder') || 'Enter code'}
+              placeholder={$t('profile.security.twofa.disable_code_placeholder')}
             />
             <button
               class="btn btn-danger btn-sm"
               onclick={onDisable2FA}
               disabled={twoFactorData.disableCode.length < 6 || loading}
             >
-              {$t('profile.security.twofa.disable_button') || 'Disable'}
+              {$t('profile.security.twofa.disable_button')}
             </button>
           </div>
         </div>
@@ -302,8 +301,8 @@
       <!-- 2FA Not Enabled -->
       <div class="empty-state">
         <div class="empty-icon"><Icon name="shield" size={32} /></div>
-        <h4>{$t('profile.security.twofa.enhance_security') || 'Enhance Your Security'}</h4>
-        <p>{$t('profile.security.twofa.enhance_desc') || 'Add an extra layer of security by requiring a verification code when logging in.'}</p>
+        <h4>{$t('profile.security.twofa.enhance_security')}</h4>
+        <p>{$t('profile.security.twofa.enhance_desc')}</p>
         <div class="setup-actions">
           <button class="btn btn-primary" onclick={() => onStart2FA('totp')} disabled={loading}>
             <Icon name="smartphone" size={18} />
@@ -322,7 +321,7 @@
           <div class="qr-section">
             <span class="step-label">{$t('profile.security.twofa.step_scan')}</span>
             <div class="qr-wrapper">
-              <img src="data:image/png;base64,{twoFactorData.qr}" alt={$t('profile.security.twofa.qr_code') || 'QR Code'} class="qr-img" />
+              <img src="data:image/png;base64,{twoFactorData.qr}" alt={$t('profile.security.twofa.qr_code')} class="qr-img" />
             </div>
             <p class="secret-text">Key: {twoFactorData.secret}</p>
           </div>

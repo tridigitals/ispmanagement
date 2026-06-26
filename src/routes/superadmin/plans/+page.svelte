@@ -283,16 +283,16 @@
 </script>
 
 <div class="superadmin-content fade-in">
-  <div class="stats-row" aria-label={$t('superadmin.plans.aria.stats') || 'Plan stats'}>
+  <div class="stats-row" aria-label={$t('superadmin.plans.aria.stats')}>
     <button
       class="stat-btn"
       class:active={statusFilter === 'all'}
       onclick={() => (statusFilter = 'all')}
       type="button"
-      title={$t('superadmin.plans.stats.show_all') || 'Show all plans'}
+      title={$t('superadmin.plans.stats.show_all')}
     >
       <StatsCard
-        title={$t('superadmin.plans.stats.all_title') || 'All Plans'}
+        title={$t('superadmin.plans.stats.all_title')}
         value={stats.total}
         icon="credit-card"
         color="primary"
@@ -303,7 +303,7 @@
       class:active={statusFilter === 'active'}
       onclick={() => (statusFilter = 'active')}
       type="button"
-      title={$t('superadmin.plans.stats.show_active') || 'Show active plans'}
+      title={$t('superadmin.plans.stats.show_active')}
     >
       <StatsCard
         title={$t('superadmin.plans.stats.active_title') || $t('common.active') || 'Active'}
@@ -317,7 +317,7 @@
       class:active={statusFilter === 'inactive'}
       onclick={() => (statusFilter = 'inactive')}
       type="button"
-      title={$t('superadmin.plans.stats.show_inactive') || 'Show inactive plans'}
+      title={$t('superadmin.plans.stats.show_inactive')}
     >
       <StatsCard
         title={$t('superadmin.plans.stats.inactive_title') || $t('common.inactive') || 'Inactive'}
@@ -329,11 +329,11 @@
     <button
       class="stat-btn"
       type="button"
-      title={$t('superadmin.plans.stats.current_default') || 'Current default plan'}
+      title={$t('superadmin.plans.stats.current_default')}
       disabled={!stats.defaultPlan}
     >
       <StatsCard
-        title={$t('superadmin.plans.stats.default_title') || 'Default'}
+        title={$t('superadmin.plans.stats.default_title')}
         value={stats.defaultPlan?.name || '—'}
         icon="star"
         color="primary"
@@ -344,25 +344,25 @@
   <div class="glass-card">
     <div class="card-header glass">
       <div>
-        <h3>{$t('superadmin.plans.title') || 'Subscription Plans'}</h3>
+        <h3>{$t('superadmin.plans.title')}</h3>
         <span class="muted">
-          {$t('superadmin.plans.subtitle') || 'Manage pricing tiers and plan status'}
+          {$t('superadmin.plans.subtitle')}
         </span>
       </div>
       <div class="header-actions">
         {#if isRefreshing}
           <span
             class="refresh-pill"
-            title={$t('superadmin.plans.refreshing_title') || 'Refreshing...'}
+            title={$t('superadmin.plans.refreshing_title')}
           >
             <span class="spinner-sm"></span>
-            {$t('superadmin.plans.refreshing') || 'Refreshing'}
+            {$t('superadmin.plans.refreshing')}
           </span>
         {/if}
         <button class="btn btn-primary" onclick={createPlan} type="button">
           <Icon name="plus" size={18} />
           <span>
-            {$t('superadmin.plans.actions.create') || 'Create plan'}
+            {$t('superadmin.plans.actions.create')}
           </span>
         </button>
       </div>
@@ -371,13 +371,13 @@
     {#if loading}
       <div class="loading-state">
         <div class="spinner"></div>
-        <p>{$t('superadmin.plans.loading') || 'Loading plans...'}</p>
+        <p>{$t('superadmin.plans.loading')}</p>
       </div>
     {:else}
       <div class="toolbar-wrapper">
         <CompactFilterToolbar
           bind:searchQuery={planSearch}
-          placeholder={$t('superadmin.plans.search') || 'Search plans...'}
+          placeholder={$t('superadmin.plans.search')}
           bind:filterPanelOpen={filtersOpen}
           activeFilterCount={statusFilter === 'all' ? 0 : 1}
           onReset={resetFilters}
@@ -387,7 +387,7 @@
           {#snippet advancedFilters()}
             <div class="toolbar-field">
               <label for="plan-status-filter">
-                {$t('superadmin.plans.filters.status') || 'Status'}
+                {$t('superadmin.plans.filters.status')}
               </label>
               <select id="plan-status-filter" bind:value={statusFilter}>
                 <option value="all">{$t('superadmin.plans.filters.all') || $t('common.all') || 'All'}</option>
@@ -400,7 +400,7 @@
       </div>
 
       {#if viewMode === 'cards' || isMobile}
-        <div class="plans-grid" aria-label={$t('superadmin.plans.aria.cards') || 'Plan cards'}>
+        <div class="plans-grid" aria-label={$t('superadmin.plans.aria.cards')}>
           {#each filteredPlans as plan (plan.id)}
             <div
               class="plan-card"
@@ -416,8 +416,8 @@
                     {#if plan.is_default}
                       <span
                         class="pill default"
-                        title={$t('superadmin.plans.badges.default_title') || 'Default plan'}
-                        >{$t('superadmin.plans.badges.default') || 'Default'}</span
+                        title={$t('superadmin.plans.badges.default_title')}
+                        >{$t('superadmin.plans.badges.default')}</span
                       >
                     {/if}
                     <span
@@ -436,12 +436,12 @@
                 <div class="plan-price">
                   <div class="price-main">
                     {formatPrice(plan.price_monthly)}<span class="unit"
-                      >{$t('common.per_month_short') || '/mo'}</span
+                      >{$t('common.per_month_short')}</span
                     >
                   </div>
                   <div class="price-sub">
                     {formatPrice(plan.price_yearly)}<span class="unit"
-                      >{$t('common.per_year_short') || '/yr'}</span
+                      >{$t('common.per_year_short')}</span
                     >
                   </div>
                 </div>
@@ -451,14 +451,14 @@
                 <div class="plan-desc">{plan.description}</div>
               {:else}
                 <div class="plan-desc muted-text">
-                  {$t('superadmin.plans.empty.description') || 'No description'}
+                  {$t('superadmin.plans.empty.description')}
                 </div>
               {/if}
 
               <div class="plan-actions">
                 <button
                   class="btn-icon"
-                  title={$t('common.edit') || 'Edit'}
+                  title={$t('common.edit')}
                   type="button"
                   onclick={(e) => {
                     e.stopPropagation();
@@ -496,7 +496,7 @@
                 </button>
                 <button
                   class="btn-icon danger"
-                  title={$t('common.delete') || 'Delete'}
+                  title={$t('common.delete')}
                   type="button"
                   onclick={(e) => {
                     e.stopPropagation();
@@ -515,22 +515,22 @@
                 <Icon name="credit-card" size={56} />
               </div>
               <h4>
-                {$t('superadmin.plans.empty.title') || 'No plans found'}
+                {$t('superadmin.plans.empty.title')}
               </h4>
               <p>
-                {$t('superadmin.plans.empty.subtitle') || 'Try adjusting your search or filters.'}
+                {$t('superadmin.plans.empty.subtitle')}
               </p>
               <button class="btn btn-primary" type="button" onclick={createPlan}>
                 <Icon name="plus" size={18} />
                 <span>
-                  {$t('superadmin.plans.actions.create') || 'Create plan'}
+                  {$t('superadmin.plans.actions.create')}
                 </span>
               </button>
             </div>
           {/if}
         </div>
       {:else if viewMode === 'table' && !isMobile}
-        <div class="table-wrapper" aria-label={$t('superadmin.plans.aria.table') || 'Plans table'}>
+        <div class="table-wrapper" aria-label={$t('superadmin.plans.aria.table')}>
           <Table
             columns={planColumns}
             data={filteredPlans}
@@ -563,7 +563,7 @@
                   </span>
                   {#if item.is_default}
                     <span class="badge primary"
-                      >{$t('superadmin.plans.badges.default') || 'Default'}</span
+                      >{$t('superadmin.plans.badges.default')}</span
                     >
                   {/if}
                 </div>
@@ -571,7 +571,7 @@
                 <div class="table-actions">
                   <button
                     class="btn-icon"
-                    title={$t('common.edit') || 'Edit'}
+                    title={$t('common.edit')}
                     type="button"
                     onclick={() => editPlan(item)}
                   >
@@ -600,7 +600,7 @@
                   </button>
                   <button
                     class="btn-icon danger"
-                    title={$t('common.delete') || 'Delete'}
+                    title={$t('common.delete')}
                     type="button"
                     onclick={() => confirmDeletePlan(item)}
                   >

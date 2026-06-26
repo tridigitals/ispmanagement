@@ -935,7 +935,7 @@
               <!-- Tenant Branding -->
               <div class="setting-group">
                 <label for="tenant-name"
-                  >{$t('admin.settings.keys.organization_name') || 'Organization Name'}</label
+                  >{$t('admin.settings.keys.organization_name')}</label
                 >
                 <Input
                   id="tenant-name"
@@ -946,21 +946,19 @@
 
               <div class="setting-group">
                 <label for="custom-domain"
-                  >{$t('admin.settings.keys.custom_domain') || 'Custom Domain'}</label
+                  >{$t('admin.settings.keys.custom_domain')}</label
                 >
                 {#if customDomainAccess}
                   <Input
                     id="custom-domain"
                     value={localSettings['custom_domain']}
                     oninput={(e: any) => handleChange('custom_domain', e.target.value)}
-                    placeholder={$t('admin.settings.placeholders.custom_domain') ||
-                      'e.g. app.yourcompany.com'}
+                    placeholder={$t('admin.settings.placeholders.custom_domain')}
                   />
                   <p class="help-text">
                     {$t('admin.settings.branding.custom_domain_help_prefix') ||
                       "Point your domain's CNAME record to"} <code>cname.tridigitals.com</code>
-                    {$t('admin.settings.branding.custom_domain_help_suffix') ||
-                      '(or configured alias).'}
+                    {$t('admin.settings.branding.custom_domain_help_suffix')}
                   </p>
                   <CustomDomainStatusPanel
                     customDomain={tenantInfo?.custom_domain || localSettings['custom_domain'] || null}
@@ -975,25 +973,23 @@
                     </div>
                     <div class="text">
                       <h4>
-                        {$t('admin.settings.branding.custom_domain_pro_title') ||
-                          'Custom Domain is a Pro Feature'}
+                        {$t('admin.settings.branding.custom_domain_pro_title')}
                       </h4>
                       <p>
-                        {$t('admin.settings.branding.custom_domain_pro_desc') ||
-                          'Upgrade your plan to use your own domain name.'}
+                        {$t('admin.settings.branding.custom_domain_pro_desc')}
                       </p>
                     </div>
                     <button
                       class="btn btn-primary btn-sm"
                       onclick={() => goto(billingPlanSettingsPath)}
                     >
-                      {$t('common.upgrade_plan') || 'Upgrade Plan'}
+                      {$t('common.upgrade_plan')}
                     </button>
                   </div>
                   <Input
                     value={localSettings['custom_domain']}
                     disabled={true}
-                    placeholder={$t('admin.settings.placeholders.locked') || 'Locked'}
+                    placeholder={$t('admin.settings.placeholders.locked')}
                   />
                 {/if}
               </div>
@@ -1012,12 +1008,10 @@
               <div class="setting-item setting-item-row mt-6">
                 <div class="setting-info">
                   <h3>
-                    {$t('admin.settings.sections.enforce_2fa') ||
-                      'Enforce Two-Factor Authentication'}
+                    {$t('admin.settings.sections.enforce_2fa')}
                   </h3>
                   <p>
-                    {$t('admin.settings.security.enforce_2fa_desc') ||
-                      'Require all members of this organization to enable 2FA before accessing the dashboard.'}
+                    {$t('admin.settings.security.enforce_2fa_desc')}
                   </p>
                 </div>
                 <label class="toggle">
@@ -1033,12 +1027,10 @@
               <div class="setting-item setting-item-row mt-6">
                 <div class="setting-info">
                   <h3>
-                    {$t('admin.settings.security.require_email_verification_title') ||
-                      'Require Email Verification'}
+                    {$t('admin.settings.security.require_email_verification_title')}
                   </h3>
                   <p>
-                    {$t('admin.settings.security.require_email_verification_desc') ||
-                      'Require users in this tenant to verify email before login. Can only be enabled after email provider is configured.'}
+                    {$t('admin.settings.security.require_email_verification_desc')}
                   </p>
                 </div>
                 <label class="toggle">
@@ -1064,12 +1056,10 @@
               <div class="setting-item setting-item-row mt-6">
                 <div class="setting-info">
                   <h3>
-                    {$t('admin.settings.security.customer_self_registration_title') ||
-                      'Customer Self Registration'}
+                    {$t('admin.settings.security.customer_self_registration_title')}
                   </h3>
                   <p>
-                    {$t('admin.settings.security.customer_self_registration_desc') ||
-                      'Allow customer signup from this tenant custom domain. Default is disabled.'}
+                    {$t('admin.settings.security.customer_self_registration_desc')}
                   </p>
                 </div>
                 <label class="toggle">
@@ -1085,10 +1075,9 @@
             {:else if activeTab === 'network'}
               <div class="setting-item setting-item-row mt-6">
                 <div class="setting-info">
-                  <h3>{$t('admin.settings.network.alerting.title') || 'Router Alerting'}</h3>
+                  <h3>{$t('admin.settings.network.alerting.title')}</h3>
                   <p>
-                    {$t('admin.settings.network.alerting.desc') ||
-                      'Enable incidents and notifications derived from MikroTik polling.'}
+                    {$t('admin.settings.network.alerting.desc')}
                   </p>
                 </div>
                 <label class="toggle">
@@ -1103,10 +1092,9 @@
               </div>
 
               <div class="config-panel fade-in mt-6">
-                <h3>{$t('admin.settings.network.thresholds.title') || 'Thresholds'}</h3>
+                <h3>{$t('admin.settings.network.thresholds.title')}</h3>
                 <p class="help-text">
-                  {$t('admin.settings.network.thresholds.desc') ||
-                    'Used by NOC filters and by the background poller to open incidents.'}
+                  {$t('admin.settings.network.thresholds.desc')}
                 </p>
                 <p class="help-text">
                   {$t('admin.settings.network.thresholds.sla_preview', {
@@ -1118,8 +1106,7 @@
                 <div class="config-grid">
                   <div class="setting-item">
                     <label for="mikrotik-alert-offline-after">
-                      {$t('admin.settings.network.thresholds.offline_after_secs') ||
-                        'Offline incident after (seconds)'}
+                      {$t('admin.settings.network.thresholds.offline_after_secs')}
                     </label>
                     <div class="setting-control">
                       <Input
@@ -1135,7 +1122,7 @@
 
                   <div class="setting-item">
                     <label for="mikrotik-alert-cpu-risk">
-                      {$t('admin.settings.network.thresholds.cpu_risk') || 'CPU risk (%)'}
+                      {$t('admin.settings.network.thresholds.cpu_risk')}
                     </label>
                     <div class="setting-control">
                       <Input
@@ -1150,7 +1137,7 @@
 
                   <div class="setting-item">
                     <label for="mikrotik-alert-cpu-hot">
-                      {$t('admin.settings.network.thresholds.cpu_hot') || 'CPU hot (%)'}
+                      {$t('admin.settings.network.thresholds.cpu_hot')}
                     </label>
                     <div class="setting-control">
                       <Input
@@ -1164,7 +1151,7 @@
 
                   <div class="setting-item">
                     <label for="mikrotik-alert-lat-risk">
-                      {$t('admin.settings.network.thresholds.latency_risk') || 'Latency risk (ms)'}
+                      {$t('admin.settings.network.thresholds.latency_risk')}
                     </label>
                     <div class="setting-control">
                       <Input
@@ -1179,7 +1166,7 @@
 
                   <div class="setting-item">
                     <label for="mikrotik-alert-lat-hot">
-                      {$t('admin.settings.network.thresholds.latency_hot') || 'Latency hot (ms)'}
+                      {$t('admin.settings.network.thresholds.latency_hot')}
                     </label>
                     <div class="setting-control">
                       <Input
@@ -1194,8 +1181,7 @@
 
                   <div class="setting-item">
                     <label for="mikrotik-sla-warn-minutes">
-                      {$t('admin.settings.network.thresholds.incident_sla_warn_minutes') ||
-                        'Incident SLA warning (minutes)'}
+                      {$t('admin.settings.network.thresholds.incident_sla_warn_minutes')}
                     </label>
                     <div class="setting-control">
                       <Input
@@ -1211,8 +1197,7 @@
 
                   <div class="setting-item">
                     <label for="mikrotik-sla-breach-minutes">
-                      {$t('admin.settings.network.thresholds.incident_sla_breach_minutes') ||
-                        'Incident SLA breach (minutes)'}
+                      {$t('admin.settings.network.thresholds.incident_sla_breach_minutes')}
                     </label>
                     <div class="setting-control">
                       <Input
@@ -1228,8 +1213,7 @@
 
                   <div class="setting-item">
                     <label for="mikrotik-escalation-minutes">
-                      {$t('admin.settings.network.thresholds.incident_escalation_minutes') ||
-                        'Incident auto escalation (minutes)'}
+                      {$t('admin.settings.network.thresholds.incident_escalation_minutes')}
                     </label>
                     <div class="setting-control">
                       <Input
@@ -1248,12 +1232,10 @@
               <div class="setting-item setting-item-row mt-6">
                 <div class="setting-info">
                   <h3>
-                    {$t('admin.settings.network.alerting.correlation_title') ||
-                      'Incident correlation'}
+                    {$t('admin.settings.network.alerting.correlation_title')}
                   </h3>
                   <p>
-                    {$t('admin.settings.network.alerting.correlation_desc') ||
-                      'Suppress CPU/latency incidents when offline incident is active as root cause.'}
+                    {$t('admin.settings.network.alerting.correlation_desc')}
                   </p>
                 </div>
                 <label class="toggle">
@@ -1273,12 +1255,10 @@
               <div class="setting-item setting-item-row mt-6">
                 <div class="setting-info">
                   <h3>
-                    {$t('admin.settings.network.alerting.auto_escalation_title') ||
-                      'Auto escalation'}
+                    {$t('admin.settings.network.alerting.auto_escalation_title')}
                   </h3>
                   <p>
-                    {$t('admin.settings.network.alerting.auto_escalation_desc') ||
-                      'Escalate unacknowledged open incidents to critical after threshold minutes.'}
+                    {$t('admin.settings.network.alerting.auto_escalation_desc')}
                   </p>
                 </div>
                 <label class="toggle">
@@ -1297,10 +1277,9 @@
 
               <div class="setting-item setting-item-row mt-6">
                 <div class="setting-info">
-                  <h3>{$t('admin.settings.network.alerting.email_title') || 'Email alerts'}</h3>
+                  <h3>{$t('admin.settings.network.alerting.email_title')}</h3>
                   <p>
-                    {$t('admin.settings.network.alerting.email_desc') ||
-                      'Also send email to members who can access Network Routers.'}
+                    {$t('admin.settings.network.alerting.email_desc')}
                   </p>
                 </div>
                 <label class="toggle">
@@ -1317,12 +1296,10 @@
               <div class="setting-item setting-item-row mt-6">
                 <div class="setting-info">
                   <h3>
-                    {$t('admin.settings.network.alerting.assignment_email_title') ||
-                      'Incident assignment emails'}
+                    {$t('admin.settings.network.alerting.assignment_email_title')}
                   </h3>
                   <p>
-                    {$t('admin.settings.network.alerting.assignment_email_desc') ||
-                      'Send email to the assigned member when incident assignee is changed.'}
+                    {$t('admin.settings.network.alerting.assignment_email_desc')}
                   </p>
                 </div>
                 <label class="toggle">
@@ -1342,12 +1319,10 @@
               <div class="setting-item setting-item-row mt-6">
                 <div class="setting-info">
                   <h3>
-                    {$t('admin.settings.network.alerting.pppoe_auto_apply_title') ||
-                      'PPPoE auto-apply after save'}
+                    {$t('admin.settings.network.alerting.pppoe_auto_apply_title')}
                   </h3>
                   <p>
-                    {$t('admin.settings.network.alerting.pppoe_auto_apply_desc') ||
-                      'Automatically apply PPPoE create/update changes to MikroTik right after save.'}
+                    {$t('admin.settings.network.alerting.pppoe_auto_apply_desc')}
                   </p>
                 </div>
                 <label class="toggle">
@@ -1364,7 +1339,7 @@
               <!-- Redesigned Storage Settings -->
               <div class="storage-settings">
                 <span class="section-label"
-                  >{$t('admin.settings.storage.select_provider') || 'Select Storage Provider'}</span
+                  >{$t('admin.settings.storage.select_provider')}</span
                 >
                 <div class="provider-grid">
                   {#each storageOptions as option}
@@ -1409,7 +1384,7 @@
                 {#if localSettings['storage_driver'] === 's3' || localSettings['storage_driver'] === 'r2'}
                   <div class="config-panel fade-in">
                     <h3>
-                      {$t('admin.settings.sections.configuration') || 'Configuration'}
+                      {$t('admin.settings.sections.configuration')}
                     </h3>
                     <div class="config-grid">
                       {#each categories['storage'].keys as key}
@@ -1504,9 +1479,8 @@
                   {localSettings}
                   {handleChange}
                   eventScope="tenant"
-                  title={$t('admin.settings.whatsapp.title') || 'WhatsApp Gateway'}
-                  description={$t('admin.settings.whatsapp.description') ||
-                    'Configure this tenant WhatsApp gateway.'}
+                  title={$t('admin.settings.whatsapp.title')}
+                  description={$t('admin.settings.whatsapp.description')}
                 />
               {:else}
                 <div class="inline-tab-loading" aria-busy={whatsappTabLoading}>
@@ -1523,9 +1497,8 @@
                   eventScope="tenant"
                   emailReady={emailVerificationReadiness.ready}
                   emailReadinessReason={emailVerificationReadiness.reason}
-                  title={$t('admin.settings.event_notifications.title') || 'Event Notifications'}
-                  description={$t('admin.settings.event_notifications.description') ||
-                    'Choose notification channels for each tenant event.'}
+                  title={$t('admin.settings.event_notifications.title')}
+                  description={$t('admin.settings.event_notifications.description')}
                 />
               {:else}
                 <div class="inline-tab-loading" aria-busy={notificationEventsTabLoading}>
@@ -1543,7 +1516,7 @@
                       {#if key === 'app_logo_path'}
                         <div class="file-upload">
                           {#if logoBase64}
-                            <img src={logoBase64} class="logo-preview" alt={$t('common.logo') || 'Logo'} />
+                            <img src={logoBase64} class="logo-preview" alt={$t('common.logo')} />
                           {/if}
                           <input type="file" accept="image/*" onchange={handleFileUpload} />
                         </div>
@@ -1607,7 +1580,7 @@
             <button
               class="btn btn-secondary"
               disabled={!hasChanges || saving}
-              onclick={discardChanges}>{$t('common.reset') || 'Reset'}</button
+              onclick={discardChanges}>{$t('common.reset')}</button
             >
             <button class="btn btn-primary" disabled={!hasChanges || saving} onclick={saveChanges}>
               {saving
@@ -1623,7 +1596,7 @@
   <MobileFabMenu
     items={mobileMenuItems}
     {activeTab}
-    title={$t('topbar.titles.settings') || 'Settings'}
+    title={$t('topbar.titles.settings')}
     on:change={(e) => {
       selectSettingsTab(e.detail);
       // Keep unsaved edits when switching tabs (avoid refetch/reset).

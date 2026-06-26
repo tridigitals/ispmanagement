@@ -356,7 +356,7 @@
         {#if lastLoadedAt}
           <div class="hero-updated">
             <span class="hero-meta-label"
-              >{$t('admin.dashboard.last_updated') || 'Last updated'}</span
+              >{$t('admin.dashboard.last_updated')}</span
             >
             <strong>{formatLastLoaded(lastLoadedAt)}</strong>
           </div>
@@ -382,17 +382,16 @@
   {#if loading}
     <div class="loading-panel">
       <div class="spinner"></div>
-      <p>{$t('admin.dashboard.loading') || 'Memuat ringkasan dashboard...'}</p>
+      <p>{$t('admin.dashboard.loading')}</p>
     </div>
   {:else if !hasVisibleContent}
     <section class="empty-panel">
       <div class="empty-icon">
         <Icon name="lock" size={26} />
       </div>
-      <h2>{$t('admin.dashboard.empty.title') || 'Belum ada modul dashboard'}</h2>
+      <h2>{$t('admin.dashboard.empty.title')}</h2>
       <p>
-        {$t('admin.dashboard.empty.description') ||
-          'Akun ini belum memiliki akses ke modul dashboard.'}
+        {$t('admin.dashboard.empty.description')}
       </p>
     </section>
   {:else}
@@ -400,10 +399,10 @@
       <section class="section-block kpi-strip">
         <div class="section-heading">
           <div>
-            <div class="section-kicker">{$t('admin.dashboard.sections.primary.kicker') || 'Snapshot'}</div>
-            <h2>{$t('admin.dashboard.sections.primary.title') || 'Selected KPIs'}</h2>
+            <div class="section-kicker">{$t('admin.dashboard.sections.primary.kicker')}</div>
+            <h2>{$t('admin.dashboard.sections.primary.title')}</h2>
           </div>
-          <div class="section-meta">{dashboardModel.primaryStats.length} {$t('admin.dashboard.sections.primary.meta') || 'cards'}</div>
+          <div class="section-meta">{dashboardModel.primaryStats.length} {$t('admin.dashboard.sections.primary.meta')}</div>
         </div>
 
         <div class="stats-grid">
@@ -439,10 +438,10 @@
       <section class="section-block focus-band">
         <div class="section-heading">
           <div>
-            <div class="section-kicker">{$t('admin.dashboard.sections.focus.kicker') || 'Action'}</div>
-            <h2>{$t('admin.dashboard.sections.focus.title') || 'My Focus Today'}</h2>
+            <div class="section-kicker">{$t('admin.dashboard.sections.focus.kicker')}</div>
+            <h2>{$t('admin.dashboard.sections.focus.title')}</h2>
           </div>
-          <div class="section-meta">{dashboardModel.focusCards.length} {$t('admin.dashboard.sections.focus.meta') || 'items'}</div>
+          <div class="section-meta">{dashboardModel.focusCards.length} {$t('admin.dashboard.sections.focus.meta')}</div>
         </div>
 
         <div class="focus-grid">
@@ -463,7 +462,7 @@
               </div>
               <p>{$t(card.descriptionKey) || card.fallbackDescription}</p>
               <div class="focus-link">
-                <span>{$t('admin.dashboard.open_area') || 'Open area'}</span>
+                <span>{$t('admin.dashboard.open_area')}</span>
                 <Icon name="arrow-right" size={14} />
               </div>
             </button>
@@ -477,10 +476,10 @@
         <section class="section-block section-actions">
           <div class="section-heading">
             <div>
-              <div class="section-kicker">{$t('admin.dashboard.sections.actions.kicker') || 'Go next'}</div>
-              <h2>{$t('admin.dashboard.sections.actions.title') || 'Quick Actions'}</h2>
+              <div class="section-kicker">{$t('admin.dashboard.sections.actions.kicker')}</div>
+              <h2>{$t('admin.dashboard.sections.actions.title')}</h2>
             </div>
-            <div class="section-meta">{dashboardModel.quickActions.length} {$t('admin.dashboard.sections.actions.meta') || 'shortcuts'}</div>
+            <div class="section-meta">{dashboardModel.quickActions.length} {$t('admin.dashboard.sections.actions.meta')}</div>
           </div>
 
           <div class="action-list action-rail">
@@ -504,10 +503,10 @@
         <section class="section-block section-trends">
           <div class="section-heading">
             <div>
-              <div class="section-kicker">{$t('admin.dashboard.sections.trends.kicker') || 'Distribution'}</div>
-              <h2>{$t('admin.dashboard.sections.trends.title') || 'Compact trends'}</h2>
+              <div class="section-kicker">{$t('admin.dashboard.sections.trends.kicker')}</div>
+              <h2>{$t('admin.dashboard.sections.trends.title')}</h2>
             </div>
-            <div class="section-meta">{dashboardModel.trendCards.length} {$t('admin.dashboard.sections.trends.meta') || 'groups'}</div>
+            <div class="section-meta">{dashboardModel.trendCards.length} {$t('admin.dashboard.sections.trends.meta')}</div>
           </div>
 
           <div class="trend-list">
@@ -516,7 +515,7 @@
                 <div class="trend-card-top">
                   <div class="trend-title-group">
                     <div class="trend-title">{$t(trend.titleKey) || trend.fallbackTitle}</div>
-                    <div class="trend-caption">{$t('admin.dashboard.sections.trends.tracked_items') || 'tracked items'}</div>
+                    <div class="trend-caption">{$t('admin.dashboard.sections.trends.tracked_items')}</div>
                   </div>
                   {#if trend.items[0]}
                     <div class="trend-visual">

@@ -38,17 +38,16 @@
 
 <div class="card section fade-in">
   <div class="card-header">
-    <h3>{$t('superadmin.settings.sections.backup_global') || 'Global Backups'}</h3>
+    <h3>{$t('superadmin.settings.sections.backup_global')}</h3>
   </div>
   <div class="card-body">
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="backup-global-enabled">
-          {$t('superadmin.settings.backups.global.enable') || 'Enable Global Backup Schedule'}
+          {$t('superadmin.settings.backups.global.enable')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.backups.global.enable_desc') ||
-            'Run automatic global backups on a simple schedule (uses app timezone).'}
+          {$t('superadmin.settings.backups.global.enable_desc')}
         </p>
       </div>
       <label class="toggle">
@@ -57,8 +56,7 @@
           id="backup-global-enabled"
           bind:checked={backupGlobalEnabled}
           on:change={handleChange}
-          aria-label={$t('superadmin.settings.backups.global.enable_aria') ||
-            'Enable global backup schedule'}
+          aria-label={$t('superadmin.settings.backups.global.enable_aria')}
         />
         <span class="slider"></span>
       </label>
@@ -68,10 +66,10 @@
       <div class="setting-row">
         <div class="setting-info">
           <label class="setting-label" for="backup-global-mode">
-            {$t('superadmin.settings.backups.mode.label') || 'Schedule Type'}
+            {$t('superadmin.settings.backups.mode.label')}
           </label>
           <p class="setting-description">
-            {$t('superadmin.settings.backups.mode.desc') || 'Choose how often backups are created.'}
+            {$t('superadmin.settings.backups.mode.desc')}
           </p>
         </div>
         <select
@@ -81,16 +79,16 @@
           class="form-input native-select"
         >
           <option value="minute"
-            >{$t('superadmin.settings.backups.modes.minute') || 'Every N minutes'}</option
+            >{$t('superadmin.settings.backups.modes.minute')}</option
           >
           <option value="hour"
-            >{$t('superadmin.settings.backups.modes.hour') || 'Every N hours'}</option
+            >{$t('superadmin.settings.backups.modes.hour')}</option
           >
           <option value="day"
-            >{$t('superadmin.settings.backups.modes.day') || 'Daily at a time'}</option
+            >{$t('superadmin.settings.backups.modes.day')}</option
           >
           <option value="week"
-            >{$t('superadmin.settings.backups.modes.week') || 'Weekly at a time'}</option
+            >{$t('superadmin.settings.backups.modes.week')}</option
           >
         </select>
       </div>
@@ -99,11 +97,10 @@
         <div class="setting-row">
           <div class="setting-info">
             <label class="setting-label" for="backup-global-every">
-              {$t('superadmin.settings.backups.every.label') || 'Every'}
+              {$t('superadmin.settings.backups.every.label')}
             </label>
             <p class="setting-description">
-              {$t('superadmin.settings.backups.every.desc') ||
-                'Interval value. Example: 15 minutes or 6 hours.'}
+              {$t('superadmin.settings.backups.every.desc')}
             </p>
           </div>
           <div class="input-group">
@@ -129,11 +126,11 @@
         <div class="setting-row">
           <div class="setting-info">
             <label class="setting-label" for="backup-global-at">
-              {$t('superadmin.settings.backups.at.label') || 'At'}
+              {$t('superadmin.settings.backups.at.label')}
               <span class="hint">({appTimezone})</span>
             </label>
             <p class="setting-description">
-              {$t('superadmin.settings.backups.at.desc') || 'Time of day to run the backup.'}
+              {$t('superadmin.settings.backups.at.desc')}
             </p>
           </div>
           <input
@@ -150,10 +147,10 @@
         <div class="setting-row">
           <div class="setting-info">
             <label class="setting-label" for="backup-global-weekday">
-              {$t('superadmin.settings.backups.weekday.label') || 'Weekday'}
+              {$t('superadmin.settings.backups.weekday.label')}
             </label>
             <p class="setting-description">
-              {$t('superadmin.settings.backups.weekday.desc') || 'Day of week to run the backup.'}
+              {$t('superadmin.settings.backups.weekday.desc')}
             </p>
           </div>
           <select
@@ -162,13 +159,13 @@
             on:change={handleChange}
             class="form-input native-select"
           >
-            <option value="mon">{$t('common.weekdays.mon') || 'Mon'}</option>
-            <option value="tue">{$t('common.weekdays.tue') || 'Tue'}</option>
-            <option value="wed">{$t('common.weekdays.wed') || 'Wed'}</option>
-            <option value="thu">{$t('common.weekdays.thu') || 'Thu'}</option>
-            <option value="fri">{$t('common.weekdays.fri') || 'Fri'}</option>
-            <option value="sat">{$t('common.weekdays.sat') || 'Sat'}</option>
-            <option value="sun">{$t('common.weekdays.sun') || 'Sun'}</option>
+            <option value="mon">{$t('common.weekdays.mon')}</option>
+            <option value="tue">{$t('common.weekdays.tue')}</option>
+            <option value="wed">{$t('common.weekdays.wed')}</option>
+            <option value="thu">{$t('common.weekdays.thu')}</option>
+            <option value="fri">{$t('common.weekdays.fri')}</option>
+            <option value="sat">{$t('common.weekdays.sat')}</option>
+            <option value="sun">{$t('common.weekdays.sun')}</option>
           </select>
         </div>
       {/if}
@@ -176,11 +173,10 @@
       <div class="setting-row">
         <div class="setting-info">
           <label class="setting-label" for="backup-global-retention">
-            {$t('superadmin.settings.backups.global.retention') || 'Retention (days)'}
+            {$t('superadmin.settings.backups.global.retention')}
           </label>
           <p class="setting-description">
-            {$t('superadmin.settings.backups.retention_desc') ||
-              'Old backups older than this will be deleted automatically.'}
+            {$t('superadmin.settings.backups.retention_desc')}
           </p>
         </div>
         <div class="input-group">
@@ -193,22 +189,21 @@
             max="3650"
             class="form-input"
           />
-          <span class="input-suffix">{$t('common.units.days') || 'days'}</span>
+          <span class="input-suffix">{$t('common.units.days')}</span>
         </div>
       </div>
 
       <div class="setting-row">
         <div class="setting-info">
           <span class="setting-label">
-            {$t('superadmin.settings.backups.global.run_now') || 'Run Global Backup Now'}
+            {$t('superadmin.settings.backups.global.run_now')}
           </span>
           <p class="setting-description">
-            {$t('superadmin.settings.backups.global.run_now_desc') ||
-              'Queue a one-time global backup on the scheduler.'}
+            {$t('superadmin.settings.backups.global.run_now_desc')}
           </p>
         </div>
         <button class="btn btn-secondary" on:click={triggerGlobal}>
-          {$t('superadmin.settings.backups.global.run_now_btn') || 'Run Now'}
+          {$t('superadmin.settings.backups.global.run_now_btn')}
         </button>
       </div>
     {/if}
@@ -217,17 +212,16 @@
 
 <div class="card section fade-in" style="margin-top: 1.5rem;">
   <div class="card-header">
-    <h3>{$t('superadmin.settings.sections.backup_tenant') || 'Tenant Backups'}</h3>
+    <h3>{$t('superadmin.settings.sections.backup_tenant')}</h3>
   </div>
   <div class="card-body">
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="backup-tenant-enabled">
-          {$t('superadmin.settings.backups.tenant.enable') || 'Enable Tenant Backup Schedule'}
+          {$t('superadmin.settings.backups.tenant.enable')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.backups.tenant.enable_desc') ||
-            'Run automatic backups for tenant data on a simple schedule (uses app timezone).'}
+          {$t('superadmin.settings.backups.tenant.enable_desc')}
         </p>
       </div>
       <label class="toggle">
@@ -236,8 +230,7 @@
           id="backup-tenant-enabled"
           bind:checked={backupTenantEnabled}
           on:change={handleChange}
-          aria-label={$t('superadmin.settings.backups.tenant.enable_aria') ||
-            'Enable tenant backup schedule'}
+          aria-label={$t('superadmin.settings.backups.tenant.enable_aria')}
         />
         <span class="slider"></span>
       </label>
@@ -247,10 +240,10 @@
       <div class="setting-row">
         <div class="setting-info">
           <label class="setting-label" for="backup-tenant-mode">
-            {$t('superadmin.settings.backups.mode.label') || 'Schedule Type'}
+            {$t('superadmin.settings.backups.mode.label')}
           </label>
           <p class="setting-description">
-            {$t('superadmin.settings.backups.mode.desc') || 'Choose how often backups are created.'}
+            {$t('superadmin.settings.backups.mode.desc')}
           </p>
         </div>
         <select
@@ -260,16 +253,16 @@
           class="form-input native-select"
         >
           <option value="minute"
-            >{$t('superadmin.settings.backups.modes.minute') || 'Every N minutes'}</option
+            >{$t('superadmin.settings.backups.modes.minute')}</option
           >
           <option value="hour"
-            >{$t('superadmin.settings.backups.modes.hour') || 'Every N hours'}</option
+            >{$t('superadmin.settings.backups.modes.hour')}</option
           >
           <option value="day"
-            >{$t('superadmin.settings.backups.modes.day') || 'Daily at a time'}</option
+            >{$t('superadmin.settings.backups.modes.day')}</option
           >
           <option value="week"
-            >{$t('superadmin.settings.backups.modes.week') || 'Weekly at a time'}</option
+            >{$t('superadmin.settings.backups.modes.week')}</option
           >
         </select>
       </div>
@@ -278,11 +271,10 @@
         <div class="setting-row">
           <div class="setting-info">
             <label class="setting-label" for="backup-tenant-every">
-              {$t('superadmin.settings.backups.every.label') || 'Every'}
+              {$t('superadmin.settings.backups.every.label')}
             </label>
             <p class="setting-description">
-              {$t('superadmin.settings.backups.every.desc') ||
-                'Interval value. Example: 30 minutes or 6 hours.'}
+              {$t('superadmin.settings.backups.every.desc')}
             </p>
           </div>
           <div class="input-group">
@@ -308,11 +300,11 @@
         <div class="setting-row">
           <div class="setting-info">
             <label class="setting-label" for="backup-tenant-at">
-              {$t('superadmin.settings.backups.at.label') || 'At'}
+              {$t('superadmin.settings.backups.at.label')}
               <span class="hint">({appTimezone})</span>
             </label>
             <p class="setting-description">
-              {$t('superadmin.settings.backups.at.desc') || 'Time of day to run the backup.'}
+              {$t('superadmin.settings.backups.at.desc')}
             </p>
           </div>
           <input
@@ -329,10 +321,10 @@
         <div class="setting-row">
           <div class="setting-info">
             <label class="setting-label" for="backup-tenant-weekday">
-              {$t('superadmin.settings.backups.weekday.label') || 'Weekday'}
+              {$t('superadmin.settings.backups.weekday.label')}
             </label>
             <p class="setting-description">
-              {$t('superadmin.settings.backups.weekday.desc') || 'Day of week to run the backup.'}
+              {$t('superadmin.settings.backups.weekday.desc')}
             </p>
           </div>
           <select
@@ -341,13 +333,13 @@
             on:change={handleChange}
             class="form-input native-select"
           >
-            <option value="mon">{$t('common.weekdays.mon') || 'Mon'}</option>
-            <option value="tue">{$t('common.weekdays.tue') || 'Tue'}</option>
-            <option value="wed">{$t('common.weekdays.wed') || 'Wed'}</option>
-            <option value="thu">{$t('common.weekdays.thu') || 'Thu'}</option>
-            <option value="fri">{$t('common.weekdays.fri') || 'Fri'}</option>
-            <option value="sat">{$t('common.weekdays.sat') || 'Sat'}</option>
-            <option value="sun">{$t('common.weekdays.sun') || 'Sun'}</option>
+            <option value="mon">{$t('common.weekdays.mon')}</option>
+            <option value="tue">{$t('common.weekdays.tue')}</option>
+            <option value="wed">{$t('common.weekdays.wed')}</option>
+            <option value="thu">{$t('common.weekdays.thu')}</option>
+            <option value="fri">{$t('common.weekdays.fri')}</option>
+            <option value="sat">{$t('common.weekdays.sat')}</option>
+            <option value="sun">{$t('common.weekdays.sun')}</option>
           </select>
         </div>
       {/if}
@@ -355,11 +347,10 @@
       <div class="setting-row">
         <div class="setting-info">
           <label class="setting-label" for="backup-tenant-retention">
-            {$t('superadmin.settings.backups.tenant.retention') || 'Retention (days)'}
+            {$t('superadmin.settings.backups.tenant.retention')}
           </label>
           <p class="setting-description">
-            {$t('superadmin.settings.backups.retention_desc') ||
-              'Old backups older than this will be deleted automatically.'}
+            {$t('superadmin.settings.backups.retention_desc')}
           </p>
         </div>
         <div class="input-group">
@@ -372,22 +363,21 @@
             max="3650"
             class="form-input"
           />
-          <span class="input-suffix">{$t('common.units.days') || 'days'}</span>
+          <span class="input-suffix">{$t('common.units.days')}</span>
         </div>
       </div>
 
       <div class="setting-row">
         <div class="setting-info">
           <span class="setting-label">
-            {$t('superadmin.settings.backups.tenant.run_now') || 'Run Tenant Backups Now'}
+            {$t('superadmin.settings.backups.tenant.run_now')}
           </span>
           <p class="setting-description">
-            {$t('superadmin.settings.backups.tenant.run_now_desc') ||
-              'Queue one-time backups for all active tenants.'}
+            {$t('superadmin.settings.backups.tenant.run_now_desc')}
           </p>
         </div>
         <button class="btn btn-secondary" on:click={triggerTenants}>
-          {$t('superadmin.settings.backups.tenant.run_now_btn') || 'Run Now'}
+          {$t('superadmin.settings.backups.tenant.run_now_btn')}
         </button>
       </div>
     {/if}

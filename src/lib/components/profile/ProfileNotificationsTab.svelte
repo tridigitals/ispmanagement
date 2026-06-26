@@ -22,20 +22,20 @@
   <div class="notifications-header">
     <div>
       <h2 class="section-title">
-        {$t('profile.notifications.title') || 'Notification Preferences'}
+        {$t('profile.notifications.title')}
       </h2>
       <p class="section-subtitle">
-        {$t('profile.notifications.subtitle') || 'Customize how and when you want to be notified.'}
+        {$t('profile.notifications.subtitle')}
       </p>
     </div>
     <div class="header-actions">
       <button class="btn btn-outline btn-sm" onclick={() => openNotificationModal()}>
         <Icon name="bell" size={14} />
-        <span>{$t('profile.notifications.view_all') || 'View all'}</span>
+        <span>{$t('profile.notifications.view_all')}</span>
       </button>
       <button class="btn btn-outline btn-sm" onclick={onSendTestNotification}>
         <Icon name="bell" size={14} />
-        <span>{$t('profile.notifications.test') || 'Test Notification'}</span>
+        <span>{$t('profile.notifications.test')}</span>
       </button>
     </div>
   </div>
@@ -50,16 +50,15 @@
           </div>
           <div class="push-text">
             <h4>
-              {$t('profile.notifications.push.active_title') || 'Push Notifications Active'}
+              {$t('profile.notifications.push.active_title')}
             </h4>
             <p>
-              {$t('profile.notifications.push.active_desc') ||
-                'You are subscribed to real-time updates on this device.'}
+              {$t('profile.notifications.push.active_desc')}
             </p>
           </div>
         </div>
         <button class="btn btn-outline btn-sm" onclick={onUnsubscribePush}>
-          {$t('profile.notifications.push.disable') || 'Disable'}
+          {$t('profile.notifications.push.disable')}
         </button>
       </div>
     {:else if pushPermission !== 'granted' || !pushEnabled}
@@ -71,11 +70,10 @@
           </div>
           <div class="push-text">
             <h4>
-              {$t('profile.notifications.push.enable_title') || 'Enable Push Notifications'}
+              {$t('profile.notifications.push.enable_title')}
             </h4>
             <p>
-              {$t('profile.notifications.push.enable_desc') ||
-                'Get real-time updates even when the app is closed.'}
+              {$t('profile.notifications.push.enable_desc')}
             </p>
           </div>
         </div>
@@ -86,7 +84,7 @@
             pushPermission = Notification.permission;
           }}
         >
-          {$t('profile.notifications.push.enable') || 'Enable Push'}
+          {$t('profile.notifications.push.enable')}
         </button>
       </div>
     {/if}
@@ -129,7 +127,7 @@
                 </span>
                 {#if isDisabled}
                   <span class="channel-note"
-                    >{$t('profile.notifications.channels.required') || 'Required'}</span
+                    >{$t('profile.notifications.channels.required')}</span
                   >
                 {/if}
               </div>

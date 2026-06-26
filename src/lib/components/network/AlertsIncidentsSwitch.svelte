@@ -14,17 +14,17 @@
   } = $props();
 </script>
 
-<div class="view-switch" role="tablist" aria-label={$t('sidebar.sections.network') || 'Network'}>
+<div class="view-switch" role="tablist" aria-label={$t('sidebar.sections.network')}>
   {#if nocHref}
     <a class={`switch-btn ${current === 'noc' ? 'active' : ''}`} href={nocHref}>
-      {$t('sidebar.noc') || 'NOC'}
+      {$t('sidebar.noc')}
     </a>
   {/if}
   <a class={`switch-btn ${current === 'alerts' ? 'active' : ''}`} href={alertsHref}>
-    {$t('sidebar.alerts') || 'Alerts'}
+    {$t('sidebar.alerts')}
   </a>
   <a class={`switch-btn ${current === 'incidents' ? 'active' : ''}`} href={incidentsHref}>
-    {$t('sidebar.incidents') || 'Incidents'}
+    {$t('sidebar.incidents')}
   </a>
 </div>
 

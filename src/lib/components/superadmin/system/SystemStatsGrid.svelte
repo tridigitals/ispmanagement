@@ -9,25 +9,25 @@
 
 <div class="stats-grid">
   <StatsCard
-    title={$t('superadmin.system.stats.total_tenants') || 'Total Tenants'}
+    title={$t('superadmin.system.stats.total_tenants')}
     value={health.database.tenants_count}
     icon="building"
     color="primary"
   />
   <StatsCard
-    title={$t('superadmin.system.stats.total_users') || 'Total Users'}
+    title={$t('superadmin.system.stats.total_users')}
     value={health.database.users_count}
     icon="users"
     color="info"
   />
   <StatsCard
-    title={$t('superadmin.system.stats.active_users') || 'Active Users'}
+    title={$t('superadmin.system.stats.active_users')}
     value={health.active_sessions}
     icon="user-check"
     color="success"
   />
   <StatsCard
-    title={$t('superadmin.system.stats.audit_logs') || 'Audit Logs'}
+    title={$t('superadmin.system.stats.audit_logs')}
     value={health.database.audit_logs_count}
     icon="activity"
     color="warning"

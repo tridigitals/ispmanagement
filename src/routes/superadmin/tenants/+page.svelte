@@ -485,17 +485,17 @@
 </script>
 
 <div class="superadmin-content fade-in">
-  <div class="stats-row" aria-label={$t('superadmin.tenants.aria.stats') || 'Tenant stats'}>
+  <div class="stats-row" aria-label={$t('superadmin.tenants.aria.stats')}>
     <button
       class="stat-btn"
       class:active={statusFilter === 'all'}
       onclick={() => (statusFilter = 'all')}
-      aria-label={$t('superadmin.tenants.stats.show_all') || 'Show all tenants'}
-      title={$t('superadmin.tenants.stats.show_all') || 'Show all tenants'}
+      aria-label={$t('superadmin.tenants.stats.show_all')}
+      title={$t('superadmin.tenants.stats.show_all')}
       type="button"
     >
       <StatsCard
-        title={$t('superadmin.tenants.stats.all_title') || 'All Tenants'}
+        title={$t('superadmin.tenants.stats.all_title')}
         value={stats.total}
         icon="database"
         color="primary"
@@ -505,12 +505,12 @@
       class="stat-btn"
       class:active={statusFilter === 'active'}
       onclick={() => (statusFilter = 'active')}
-      aria-label={$t('superadmin.tenants.stats.show_active') || 'Show active tenants'}
-      title={$t('superadmin.tenants.stats.show_active') || 'Show active tenants'}
+      aria-label={$t('superadmin.tenants.stats.show_active')}
+      title={$t('superadmin.tenants.stats.show_active')}
       type="button"
     >
       <StatsCard
-        title={$t('superadmin.tenants.stats.active_title') || 'Active Tenants'}
+        title={$t('superadmin.tenants.stats.active_title')}
         value={stats.active}
         icon="check-circle"
         color="success"
@@ -520,12 +520,12 @@
       class="stat-btn"
       class:active={statusFilter === 'inactive'}
       onclick={() => (statusFilter = 'inactive')}
-      aria-label={$t('superadmin.tenants.stats.show_inactive') || 'Show inactive tenants'}
-      title={$t('superadmin.tenants.stats.show_inactive') || 'Show inactive tenants'}
+      aria-label={$t('superadmin.tenants.stats.show_inactive')}
+      title={$t('superadmin.tenants.stats.show_inactive')}
       type="button"
     >
       <StatsCard
-        title={$t('superadmin.tenants.stats.inactive_title') || 'Inactive Tenants'}
+        title={$t('superadmin.tenants.stats.inactive_title')}
         value={stats.inactive}
         icon="slash"
         color="warning"
@@ -536,19 +536,19 @@
   <div class="glass-card" in:fly={{ y: 20, delay: 80 }}>
     <div class="card-header glass">
       <div>
-        <h3>{$t('superadmin.tenants.title') || 'Tenants'}</h3>
+        <h3>{$t('superadmin.tenants.title')}</h3>
         <span class="muted"
-          >{$t('superadmin.tenants.subtitle') || 'Manage all organizations in the platform'}</span
+          >{$t('superadmin.tenants.subtitle')}</span
         >
       </div>
       <div class="header-actions">
         {#if isRefreshing}
           <span
             class="refresh-pill"
-            title={$t('superadmin.tenants.refreshing_title') || 'Refreshing...'}
+            title={$t('superadmin.tenants.refreshing_title')}
           >
             <span class="spinner-xs"></span>
-            {$t('superadmin.tenants.refreshing') || 'Refreshing'}
+            {$t('superadmin.tenants.refreshing')}
           </span>
         {/if}
         <span class="count-badge"
@@ -562,7 +562,7 @@
     <div class="toolbar-wrapper">
       <CompactFilterToolbar
         bind:searchQuery
-        placeholder={$t('superadmin.tenants.search') || 'Search tenants...'}
+        placeholder={$t('superadmin.tenants.search')}
         bind:filterPanelOpen={filtersOpen}
         activeFilterCount={statusFilter === 'all' ? 0 : 1}
         onReset={resetFilters}
@@ -572,7 +572,7 @@
         {#snippet advancedFilters()}
           <div class="toolbar-field">
             <label for="tenant-status-filter">
-              {$t('superadmin.tenants.filters.status') || 'Status'}
+              {$t('superadmin.tenants.filters.status')}
             </label>
             <select id="tenant-status-filter" bind:value={statusFilter}>
               <option value="all">{$t('superadmin.tenants.filters.all') || $t('common.all') || 'All'}</option>
@@ -585,7 +585,7 @@
           <button class="btn btn-primary" onclick={openCreateModal}>
             <Icon name="plus" size={18} />
             <span>
-              {$t('superadmin.tenants.actions.new') || 'New Tenant'}
+              {$t('superadmin.tenants.actions.new')}
             </span>
           </button>
         {/snippet}
@@ -597,7 +597,7 @@
         <Icon name="alert-circle" size={48} class="error-icon" />
         <p>{error}</p>
         <button class="btn btn-secondary" onclick={() => loadData()}>
-          {$t('common.retry') || 'Retry'}
+          {$t('common.retry')}
         </button>
       </div>
     {:else}
@@ -615,7 +615,7 @@
       {:else}
         <div class="error-state">
           <Icon name="refresh-cw" size={28} class="spin" />
-          <p>{$t('superadmin.tenants.loading') || 'Loading tenants modules...'}</p>
+          <p>{$t('superadmin.tenants.loading')}</p>
         </div>
       {/if}
     {/if}
@@ -639,10 +639,9 @@
 {#if ConfirmDialogComponent}
   <ConfirmDialogComponent
     bind:show={showConfirm}
-    title={$t('superadmin.tenants.delete.title') || 'Delete Tenant'}
-    message={$t('superadmin.tenants.delete.message') ||
-      'Are you sure you want to delete this tenant? This action cannot be undone and will remove all associated data.'}
-    confirmText={$t('superadmin.tenants.delete.confirm') || 'Delete Permanently'}
+    title={$t('superadmin.tenants.delete.title')}
+    message={$t('superadmin.tenants.delete.message')}
+    confirmText={$t('superadmin.tenants.delete.confirm')}
     confirmationKeyword="DELETE"
     type="danger"
     loading={confirmLoading}

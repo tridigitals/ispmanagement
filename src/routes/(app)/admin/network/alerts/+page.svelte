@@ -266,8 +266,8 @@
 <div class="page-content fade-in">
   {#if NetworkPageHeaderComponent && AlertsIncidentsSwitchComponent && NetworkFilterPanelComponent}
     <NetworkPageHeaderComponent
-      title={$t('admin.network.alerts.title') || 'Router Alerts'}
-      subtitle={$t('network.alert.title') || 'Alert dari polling router.'}
+      title={$t('admin.network.alerts.title')}
+      subtitle={$t('network.alert.title')}
     >
       {#snippet actions()}
         <AlertsIncidentsSwitchComponent
@@ -284,15 +284,15 @@
           activeOnly = !activeOnly;
           void load();
         }}
-        title={$t('admin.network.alerts.actions.toggle') || 'Toggle active/resolved'}
+        title={$t('admin.network.alerts.actions.toggle')}
       >
         <Icon name={activeOnly ? 'filter' : 'archive'} size={16} />
         {activeOnly ? $t('admin.network.alerts.actions.active') || 'Active' : $t('admin.network.alerts.actions.all') || 'All'}
       </button>
 
-      <button class="btn ghost" type="button" onclick={load} title={$t('common.refresh') || 'Refresh'}>
+      <button class="btn ghost" type="button" onclick={load} title={$t('common.refresh')}>
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
+        {$t('common.refresh')}
       </button>
     {/snippet}
     </NetworkPageHeaderComponent>
@@ -300,28 +300,28 @@
     <div class="stats">
     <div class="stat-card">
       <div class="stat-top">
-        <span>{$t('common.total') || 'Total'}</span>
+        <span>{$t('common.total')}</span>
         <Icon name="activity" size={16} />
       </div>
       <div class="stat-value">{stats.total}</div>
     </div>
     <div class="stat-card tone-warn">
       <div class="stat-top">
-        <span>{$t('admin.network.alerts.filters.all_status') || 'Open'}</span>
+        <span>{$t('admin.network.alerts.filters.all_status')}</span>
         <Icon name="alert-triangle" size={16} />
       </div>
       <div class="stat-value">{stats.open}</div>
     </div>
     <div class="stat-card tone-ok">
       <div class="stat-top">
-        <span>{$t('admin.network.incidents.analytics.ack') || 'Ack'}</span>
+        <span>{$t('admin.network.incidents.analytics.ack')}</span>
         <Icon name="check-circle" size={16} />
       </div>
       <div class="stat-value">{stats.ack}</div>
     </div>
     <div class="stat-card tone-bad">
       <div class="stat-top">
-        <span>{$t('admin.network.alerts.severity.critical') || 'Critical'}</span>
+        <span>{$t('admin.network.alerts.severity.critical')}</span>
         <Icon name="shield-alert" size={16} />
       </div>
       <div class="stat-value">{stats.critical}</div>
@@ -331,9 +331,9 @@
   <div class="table-wrap">
       <NetworkFilterPanelComponent>
       <div class="control">
-        <label for="alert-filter-status">{$t('admin.network.alerts.columns.status') || 'Status'}</label>
+        <label for="alert-filter-status">{$t('admin.network.alerts.columns.status')}</label>
         <select id="alert-filter-status" class="input" bind:value={filterStatus}>
-          <option value="all">{$t('admin.network.alerts.filters.all_status') || 'All status'}</option>
+          <option value="all">{$t('admin.network.alerts.filters.all_status')}</option>
           <option value="open">open</option>
           <option value="ack">ack</option>
           <option value="resolved">resolved</option>
@@ -341,9 +341,9 @@
       </div>
 
       <div class="control">
-        <label for="alert-filter-severity">{$t('admin.network.alerts.columns.severity') || 'Severity'}</label>
+        <label for="alert-filter-severity">{$t('admin.network.alerts.columns.severity')}</label>
         <select id="alert-filter-severity" class="input" bind:value={filterSeverity}>
-          <option value="all">{$t('admin.network.alerts.filters.all_severity') || 'All severity'}</option>
+          <option value="all">{$t('admin.network.alerts.filters.all_severity')}</option>
           <option value="info">{severityLabel('info')}</option>
           <option value="warning">{severityLabel('warning')}</option>
           <option value="critical">{severityLabel('critical')}</option>
@@ -351,9 +351,9 @@
       </div>
 
       <div class="control">
-        <label for="alert-filter-type">{$t('admin.network.alerts.columns.type') || 'Type'}</label>
+        <label for="alert-filter-type">{$t('admin.network.alerts.columns.type')}</label>
         <select id="alert-filter-type" class="input" bind:value={filterType}>
-          <option value="all">{$t('admin.network.alerts.filters.all_types') || 'All types'}</option>
+          <option value="all">{$t('admin.network.alerts.filters.all_types')}</option>
           {#each alertTypeOptions as typeOption}
             <option value={typeOption}>{typeLabel(typeOption)}</option>
           {/each}
@@ -361,27 +361,27 @@
       </div>
 
       <div class="control">
-        <label for="alert-filter-sort">{$t('admin.network.alerts.filters.sort') || 'Sort'}</label>
+        <label for="alert-filter-sort">{$t('admin.network.alerts.filters.sort')}</label>
         <select id="alert-filter-sort" class="input" bind:value={filterSort}>
           <option value="last_seen_desc">
-            {$t('admin.network.alerts.filters.sort_last_seen_desc') || 'Last seen (newest)'}
+            {$t('admin.network.alerts.filters.sort_last_seen_desc')}
           </option>
           <option value="last_seen_asc">
-            {$t('admin.network.alerts.filters.sort_last_seen_asc') || 'Last seen (oldest)'}
+            {$t('admin.network.alerts.filters.sort_last_seen_asc')}
           </option>
           <option value="severity_desc">
-            {$t('admin.network.alerts.filters.sort_severity_desc') || 'Severity (highest)'}
+            {$t('admin.network.alerts.filters.sort_severity_desc')}
           </option>
         </select>
       </div>
 
       <div class="control">
-        <label for="alert-filter-from">{$t('admin.network.alerts.filters.from') || 'From'}</label>
+        <label for="alert-filter-from">{$t('admin.network.alerts.filters.from')}</label>
         <input id="alert-filter-from" class="input" type="date" bind:value={filterFrom} />
       </div>
 
       <div class="control">
-        <label for="alert-filter-to">{$t('admin.network.alerts.filters.to') || 'To'}</label>
+        <label for="alert-filter-to">{$t('admin.network.alerts.filters.to')}</label>
         <input id="alert-filter-to" class="input" type="date" bind:value={filterTo} />
       </div>
 
@@ -389,7 +389,7 @@
         <div class="control-spacer" aria-hidden="true"></div>
         <button class="btn ghost" type="button" onclick={resetFilters}>
           <Icon name="x-circle" size={14} />
-          {$t('admin.network.alerts.filters.reset') || 'Reset'}
+          {$t('admin.network.alerts.filters.reset')}
         </button>
       </div>
       </NetworkFilterPanelComponent>
@@ -402,9 +402,9 @@
       pagination={true}
       pageSize={10}
       searchable={true}
-      searchPlaceholder={$t('admin.network.alerts.search') || 'Search alerts...'}
+      searchPlaceholder={$t('admin.network.alerts.search')}
       mobileView={isMobile ? 'card' : 'scroll'}
-      emptyText={$t('admin.network.alerts.empty') || 'No alerts'}
+      emptyText={$t('admin.network.alerts.empty')}
     >
       {#snippet cell({ item, key }: any)}
         {#if key === 'title'}
@@ -449,7 +449,7 @@
     </div>
   {:else}
     <div class="table-wrap">
-      <div class="muted" style="padding: 16px 18px;">{$t('common.loading') || 'Loading...'}</div>
+      <div class="muted" style="padding: 16px 18px;">{$t('common.loading')}</div>
     </div>
   {/if}
 </div>

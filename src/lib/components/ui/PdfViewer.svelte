@@ -331,14 +331,14 @@
           class="btn"
           type="button"
           onclick={zoomOut}
-          title={$t('common.previous') || 'Zoom out'}
+          title={$t('common.previous')}
         >
           <Icon name="minus" size={16} />
         </button>
-        <button class="btn" type="button" onclick={zoomIn} title={$t('common.next') || 'Zoom in'}>
+        <button class="btn" type="button" onclick={zoomIn} title={$t('common.next')}>
           <Icon name="plus" size={16} />
         </button>
-        <button class="btn" type="button" onclick={resetZoom} title={$t('common.reset') || 'Reset'}>
+        <button class="btn" type="button" onclick={resetZoom} title={$t('common.reset')}>
           <Icon name="refresh-cw" size={16} />
         </button>
         <button
@@ -347,7 +347,7 @@
           onclick={() => downloadFile(downloadUrl, filename)}
         >
           <Icon name="download" size={16} />
-          {$t('common.download') || 'Download'}
+          {$t('common.download')}
         </button>
       </div>
     </div>
@@ -362,7 +362,7 @@
       <div class="overlay">
         <div class="spinner"></div>
         <div class="hint">
-          {$t('common.loading') || 'Loading...'}
+          {$t('common.loading')}
           <span class="muted">({stage})</span>
         </div>
       </div>
@@ -370,7 +370,7 @@
       <div class="overlay error">
         <Icon name="alert-circle" size={20} />
         <div class="hint">
-          {$t('components.lightbox.errors.load_failed') || 'Failed to load content.'}
+          {$t('components.lightbox.errors.load_failed')}
           {#if error}
             <span class="muted">({error})</span>
           {/if}
@@ -381,7 +381,7 @@
           onclick={() => downloadFile(downloadUrl, filename)}
         >
           <Icon name="download" size={16} />
-          {$t('components.lightbox.download_pdf') || 'Download PDF'}
+          {$t('components.lightbox.download_pdf')}
         </button>
       </div>
     {/if}
@@ -393,7 +393,7 @@
       <span class="text">{blankWarning}</span>
       <button class="btn tiny" type="button" onclick={() => downloadFile(downloadUrl, filename)}>
         <Icon name="download" size={14} />
-        {$t('common.download') || 'Download'}
+        {$t('common.download')}
       </button>
     </div>
   {/if}

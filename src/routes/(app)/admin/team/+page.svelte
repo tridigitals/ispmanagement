@@ -282,12 +282,12 @@
       class="stat-btn"
       class:active={statusFilter === 'all'}
       onclick={() => (statusFilter = 'all')}
-      aria-label={$t('admin.team.stats.show_all') || 'Show all members'}
-      title={$t('admin.team.stats.show_all') || 'Show all members'}
+      aria-label={$t('admin.team.stats.show_all')}
+      title={$t('admin.team.stats.show_all')}
       type="button"
     >
       <StatsCard
-        title={$t('admin.team.stats.total_title') || 'Total Members'}
+        title={$t('admin.team.stats.total_title')}
         value={stats.total}
         icon="users"
         color="primary"
@@ -297,12 +297,12 @@
       class="stat-btn"
       class:active={statusFilter === 'active'}
       onclick={() => (statusFilter = 'active')}
-      aria-label={$t('admin.team.stats.show_active') || 'Show active members'}
-      title={$t('admin.team.stats.show_active') || 'Show active members'}
+      aria-label={$t('admin.team.stats.show_active')}
+      title={$t('admin.team.stats.show_active')}
       type="button"
     >
       <StatsCard
-        title={$t('admin.team.stats.active_title') || 'Active Members'}
+        title={$t('admin.team.stats.active_title')}
         value={stats.active}
         icon="check-circle"
         color="success"
@@ -312,12 +312,12 @@
       class="stat-btn"
       class:active={statusFilter === 'inactive'}
       onclick={() => (statusFilter = 'inactive')}
-      aria-label={$t('admin.team.stats.show_inactive') || 'Show inactive members'}
-      title={$t('admin.team.stats.show_inactive') || 'Show inactive members'}
+      aria-label={$t('admin.team.stats.show_inactive')}
+      title={$t('admin.team.stats.show_inactive')}
       type="button"
     >
       <StatsCard
-        title={$t('admin.team.stats.inactive_title') || 'Inactive Members'}
+        title={$t('admin.team.stats.inactive_title')}
         value={stats.inactive}
         icon="slash"
         color="warning"
@@ -328,8 +328,8 @@
   <div class="glass-card" in:fly={{ y: 20, delay: 80 }}>
     <div class="card-header glass">
       <div>
-        <h3>{$t('admin.team.title') || 'Team Members'}</h3>
-        <span class="muted">{$t('admin.team.subtitle_desc') || 'Anggota tim dan akses.'}</span>
+        <h3>{$t('admin.team.title')}</h3>
+        <span class="muted">{$t('admin.team.subtitle_desc')}</span>
       </div>
       <span class="count-badge">
         {$t('admin.team.count', { values: { count: stats.total } }) || `${stats.total} members`}
@@ -341,13 +341,13 @@
           style="display:flex;align-items:center;gap:0.375rem;padding:0.375rem 0.75rem;font-size:0.8125rem;"
         >
           <Icon name="trash" size={15} />
-          {$t('admin.team.deleted_tab') || 'Deleted'} {deletedMembers.length > 0 ? `(${deletedMembers.length})` : ''}
+          {$t('admin.team.deleted_tab')} {deletedMembers.length > 0 ? `(${deletedMembers.length})` : ''}
         </button>
       {/if}
     </div>
 
     <div class="toolbar-wrapper">
-      <TableToolbar bind:searchQuery placeholder={$t('admin.team.search') || 'Search members...'}>
+      <TableToolbar bind:searchQuery placeholder={$t('admin.team.search')}>
         {#snippet filters()}
           <div class="filter-dropdown">
             <Select bind:value={roleFilter} options={roleOptions} width="100%" />
@@ -383,7 +383,7 @@
           {#if $can('create', 'team')}
             <button class="btn btn-primary" onclick={openInviteModal}>
               <Icon name="plus" size={18} />
-              {$t('admin.team.invite_button') || 'Add Member'}
+              {$t('admin.team.invite_button')}
             </button>
           {/if}
         {/snippet}
@@ -395,7 +395,7 @@
         <Icon name="alert-circle" size={48} color="#ef4444" />
         <p>{error}</p>
         <button class="btn btn-glass" onclick={loadData}>
-          {$t('common.retry') || 'Retry'}
+          {$t('common.retry')}
         </button>
       </div>
     {:else}
@@ -405,7 +405,7 @@
           {columns}
           data={filteredMembers}
           {loading}
-          emptyText={$t('admin.team.empty.no_results') || 'No members found'}
+          emptyText={$t('admin.team.empty.no_results')}
         >
           {#snippet empty()}
             <div class="empty-state-container">
@@ -413,10 +413,10 @@
                 <Icon name="users" size={64} />
               </div>
               <h3>
-                {$t('admin.team.empty.no_results') || 'No members found'}
+                {$t('admin.team.empty.no_results')}
               </h3>
               <p>
-                {$t('admin.team.empty.try_adjusting') || 'Try adjusting your search or filters.'}
+                {$t('admin.team.empty.try_adjusting')}
               </p>
             </div>
           {/snippet}
@@ -431,7 +431,7 @@
                   <div class="member-name">
                     {item.name}
                     {#if item.email === $user?.email}
-                      <span class="you-badge">{$t('common.you') || 'YOU'}</span>
+                      <span class="you-badge">{$t('common.you')}</span>
                     {/if}
                   </div>
                   <div class="text-muted" style="font-size: 0.85rem">
@@ -457,7 +457,7 @@
                 {#if $can('update', 'team') && myRoleLevel > (roles.find((r) => r.id === item.role_id)?.level || 0)}
                   <button
                     class="btn-icon primary"
-                    title={$t('admin.team.actions.edit_role') || 'Edit Role'}
+                    title={$t('admin.team.actions.edit_role')}
                     onclick={() => openEditModal(item)}
                   >
                     <Icon name="edit" size={18} />
@@ -466,7 +466,7 @@
                 {#if item.email !== $user?.email && $can('delete', 'team') && myRoleLevel > (roles.find((r) => r.id === item.role_id)?.level || 0)}
                   <button
                     class="btn-icon danger"
-                    title={$t('admin.team.actions.remove_member') || 'Remove Member'}
+                    title={$t('admin.team.actions.remove_member')}
                     onclick={() => confirmRemove(item)}
                   >
                     <Icon name="trash" size={18} />
@@ -485,29 +485,29 @@
           <div style="display:flex;align-items:center;gap:0.5rem;">
             <Icon name="trash" size={18} color="#ef4444" />
             <span style="font-weight:600;font-size:0.9375rem;">
-              {$t('admin.team.deleted_tab') || 'Deleted Members'}
+              {$t('admin.team.deleted_tab')}
             </span>
             <span class="count-badge">{deletedMembers.length}</span>
           </div>
           <button class="btn btn-ghost" onclick={toggleDeletedTab} style="font-size:0.8125rem;padding:0.25rem 0.5rem;">
-            {$t('common.close') || 'Close'}
+            {$t('common.close')}
           </button>
         </div>
 
         {#if deletedMembers.length === 0}
           <div class="deleted-empty">
             <Icon name="trash" size={48} />
-            <p>{$t('admin.team.deleted_empty') || 'No deleted members'}</p>
+            <p>{$t('admin.team.deleted_empty')}</p>
           </div>
         {:else}
           <div class="deleted-table-wrapper">
             <table class="deleted-table">
               <thead>
                 <tr>
-                  <th>{$t('admin.team.columns.member') || 'Member'}</th>
-                  <th>{$t('admin.team.columns.role') || 'Role'}</th>
-                  <th>{$t('admin.team.deleted_at') || 'Deleted At'}</th>
-                  <th style="text-align:right;">{$t('common.actions') || 'Actions'}</th>
+                  <th>{$t('admin.team.columns.member')}</th>
+                  <th>{$t('admin.team.columns.role')}</th>
+                  <th>{$t('admin.team.deleted_at')}</th>
+                  <th style="text-align:right;">{$t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -538,7 +538,7 @@
                             disabled={isRestoring}
                           >
                             <Icon name="rotate-ccw" size={14} />
-                            {$t('admin.team.restore') || 'Restore'}
+                            {$t('admin.team.restore')}
                           </button>
                         {/if}
                         {#if $can('delete', 'team')}
@@ -549,7 +549,7 @@
                             disabled={isHardDeleting}
                           >
                             <Icon name="trash" size={14} />
-                            {$t('admin.team.permanent_delete') || 'Delete Permanently'}
+                            {$t('admin.team.permanent_delete')}
                           </button>
                         {/if}
                       </div>
@@ -569,11 +569,11 @@
   {#if ConfirmDialogComponent}
     <ConfirmDialogComponent
       bind:show={confirmHardDelete}
-      title={$t('admin.team.hard_delete.title') || 'Delete Permanently'}
+      title={$t('admin.team.hard_delete.title')}
       message={$t('admin.team.hard_delete.message', {
         values: { name: confirmHardDeleteMember?.name || '' },
       }) || `Are you sure you want to permanently delete ${confirmHardDeleteMember?.name}? This action CANNOT be undone. The user account will be deleted too if they have no other team memberships.`}
-      confirmText={$t('admin.team.permanent_delete') || 'Delete Permanently'}
+      confirmText={$t('admin.team.permanent_delete')}
       type="danger"
       loading={isHardDeleting}
       onconfirm={hardDeleteMember}
@@ -584,12 +584,12 @@
 {#if ConfirmDialogComponent}
   <ConfirmDialogComponent
     bind:show={showDeleteModal}
-    title={$t('admin.team.remove.title') || 'Remove Team Member'}
+    title={$t('admin.team.remove.title')}
     message={$t('admin.team.remove.message', {
       values: { name: memberToDelete?.name || '' },
     }) ||
       `Are you sure you want to remove ${memberToDelete?.name} from the team? They will lose access immediately.`}
-    confirmText={$t('admin.team.remove.confirm') || 'Remove Member'}
+    confirmText={$t('admin.team.remove.confirm')}
     type="danger"
     loading={isDeleting}
     onconfirm={handleConfirmDelete}
@@ -599,7 +599,7 @@
 {#if ModalComponent}
   <ModalComponent
     show={showInviteModal}
-    title={$t('admin.team.add_member_modal_title') || 'Add Team Member'}
+    title={$t('admin.team.add_member_modal_title')}
     onclose={() => (showInviteModal = false)}
   >
     <form
@@ -610,39 +610,39 @@
     >
       <div class="form-group">
         <label>
-          {$t('admin.team.name_label') || 'Name'}
+          {$t('admin.team.name_label')}
           <input
             type="text"
             bind:value={inviteName}
-            placeholder={$t('admin.team.placeholders.name') || 'John Doe'}
+            placeholder={$t('admin.team.placeholders.name')}
             required
           />
         </label>
       </div>
       <div class="form-group">
         <label>
-          {$t('admin.team.email_label') || 'Email Address'}
+          {$t('admin.team.email_label')}
           <input
             type="email"
             bind:value={inviteEmail}
-            placeholder={$t('admin.team.placeholders.email') || 'colleague@company.com'}
+            placeholder={$t('admin.team.placeholders.email')}
             required
           />
         </label>
       </div>
       <div class="form-group">
         <label>
-          {$t('admin.team.password_label') || 'Password (Optional)'}
+          {$t('admin.team.password_label')}
           <input
             type="text"
             bind:value={invitePassword}
-            placeholder={$t('admin.team.placeholders.password_auto') || 'Auto-generated if empty'}
+            placeholder={$t('admin.team.placeholders.password_auto')}
           />
         </label>
       </div>
       <div class="form-group">
         <label>
-          {$t('admin.team.role_label') || 'Role'}
+          {$t('admin.team.role_label')}
           <select bind:value={inviteRoleId} required>
             {#each roles.filter((r) => r.name.toLowerCase() !== 'customer') as role}
               <option value={role.id}>{role.name}</option>
@@ -652,7 +652,7 @@
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" onclick={() => (showInviteModal = false)}>
-          {$t('admin.team.cancel') || 'Cancel'}
+          {$t('admin.team.cancel')}
         </button>
         <button type="submit" class="btn btn-primary" disabled={inviting}>
           {inviting ? $t('common.saving') || 'Saving...' : $t('admin.team.submit') || 'Add Member'}
@@ -663,7 +663,7 @@
 
   <ModalComponent
     show={showEditModal}
-    title={$t('admin.team.edit_role.title') || 'Edit Member Role'}
+    title={$t('admin.team.edit_role.title')}
     onclose={() => (showEditModal = false)}
   >
     <form
@@ -674,13 +674,13 @@
     >
       <div class="form-group">
         <label>
-          {$t('admin.team.edit_role.member_name') || 'Member Name'}
+          {$t('admin.team.edit_role.member_name')}
           <input type="text" value={editingMember?.name} disabled class="bg-disabled" />
         </label>
       </div>
       <div class="form-group">
         <label>
-          {$t('admin.team.edit_role.role_label') || 'Role'}
+          {$t('admin.team.edit_role.role_label')}
           <select bind:value={editRoleId} required>
             {#each roles as role}
               <option value={role.id}>{role.name}</option>
@@ -690,7 +690,7 @@
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" onclick={() => (showEditModal = false)}>
-          {$t('common.cancel') || 'Cancel'}
+          {$t('common.cancel')}
         </button>
         <button type="submit" class="btn btn-primary" disabled={savingRole}>
           {savingRole

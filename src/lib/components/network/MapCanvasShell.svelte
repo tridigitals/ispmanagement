@@ -163,7 +163,7 @@
   >
     <div class="map-shell" style={`--map-shell-height:${height};`}>
       {#if loading}
-        <div class="map-loading">{$t('common.loading') || 'Loading...'}</div>
+        <div class="map-loading">{$t('common.loading')}</div>
       {/if}
       {#if mapUnavailable}
         <div class="map-unavailable">
@@ -185,10 +185,10 @@
             type="button"
             class={`map-view-toggle ${viewMenuOpen ? 'active' : ''}`}
             onclick={toggleViewMenu}
-            title={$t('network.map.view_mode_title') || 'Map view mode'}
-            aria-label={$t('network.map.view_mode_title') || 'Map view mode'}
+            title={$t('network.map.view_mode_title')}
+            aria-label={$t('network.map.view_mode_title')}
           >
-            <span class="map-view-toggle-label">{$t('network.map.view') || 'View'}</span>
+            <span class="map-view-toggle-label">{$t('network.map.view')}</span>
           </button>
           {#if viewMenuOpen}
             <div class="map-view-menu">
@@ -198,7 +198,7 @@
                 onclick={() => setViewMode('standard')}
               >
                 <Icon name="map" size={11} />
-                <span>{$t('network.map.standard') || 'Standard'}</span>
+                <span>{$t('network.map.standard')}</span>
               </button>
               <button
                 type="button"
@@ -206,7 +206,7 @@
                 onclick={() => setViewMode('satellite')}
               >
                 <Icon name="satellite" size={11} />
-                <span>{$t('network.map.satellite') || 'Satellite'}</span>
+                <span>{$t('network.map.satellite')}</span>
               </button>
             </div>
           {/if}

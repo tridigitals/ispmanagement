@@ -230,8 +230,8 @@
         <Icon name="life-buoy" size={18} />
       </div>
       <div>
-        <h1 class="title">{$t('support.title') || 'Support Tickets'}</h1>
-        <p class="sub">{$t('support.subtitle') || 'Get help from your team or platform admins.'}</p>
+        <h1 class="title">{$t('support.title')}</h1>
+        <p class="sub">{$t('support.subtitle')}</p>
       </div>
     </div>
 
@@ -241,7 +241,7 @@
         <input
           class="search-input"
           bind:value={searchQuery}
-          placeholder={$t('support.search_placeholder') || 'Search tickets...'}
+          placeholder={$t('support.search_placeholder')}
         />
         {#if searchQuery}
           <button class="clear" type="button" onclick={() => (searchQuery = '')}>
@@ -251,31 +251,31 @@
       </div>
 
       <div class="actions">
-        <div class="filter" aria-label={$t('support.filters.aria') || 'Filter'}>
+        <div class="filter" aria-label={$t('support.filters.aria')}>
           <button class:active={statusFilter === 'all'} onclick={() => setStatusFilter('all')}>
-            {$t('support.filters.all') || 'All'}
+            {$t('support.filters.all')}
           </button>
           <button class:active={statusFilter === 'open'} onclick={() => setStatusFilter('open')}>
-            {$t('support.filters.open') || 'Open'}
+            {$t('support.filters.open')}
           </button>
           <button
             class:active={statusFilter === 'pending'}
             onclick={() => setStatusFilter('pending')}
           >
-            {$t('support.filters.pending') || 'Pending'}
+            {$t('support.filters.pending')}
           </button>
           <button
             class:active={statusFilter === 'closed'}
             onclick={() => setStatusFilter('closed')}
           >
-            {$t('support.filters.closed') || 'Closed'}
+            {$t('support.filters.closed')}
           </button>
         </div>
 
         {#if $can('create', 'support')}
           <button class="btn-primary" onclick={() => (showCreate = true)} type="button">
             <Icon name="plus" size={16} />
-            {$t('support.actions.new') || 'New Ticket'}
+            {$t('support.actions.new')}
           </button>
         {/if}
       </div>
@@ -307,7 +307,7 @@
       onclick={() => setStatusFilter('all')}
     >
       <div class="stat-top">
-        <span class="stat-label">{$t('support.stats.total') || 'Total'}</span>
+        <span class="stat-label">{$t('support.stats.total')}</span>
         <Icon name="list" size={14} />
       </div>
       <div class="stat-value">{stats.all}</div>
@@ -319,7 +319,7 @@
       onclick={() => setStatusFilter('open')}
     >
       <div class="stat-top">
-        <span class="stat-label">{$t('support.filters.open') || 'Open'}</span>
+        <span class="stat-label">{$t('support.filters.open')}</span>
         <Icon name="info" size={14} />
       </div>
       <div class="stat-value">{stats.open}</div>
@@ -331,7 +331,7 @@
       onclick={() => setStatusFilter('pending')}
     >
       <div class="stat-top">
-        <span class="stat-label">{$t('support.filters.pending') || 'Pending'}</span>
+        <span class="stat-label">{$t('support.filters.pending')}</span>
         <Icon name="alert-triangle" size={14} />
       </div>
       <div class="stat-value">{stats.pending}</div>
@@ -343,7 +343,7 @@
       onclick={() => setStatusFilter('closed')}
     >
       <div class="stat-top">
-        <span class="stat-label">{$t('support.filters.closed') || 'Closed'}</span>
+        <span class="stat-label">{$t('support.filters.closed')}</span>
         <Icon name="check-circle" size={14} />
       </div>
       <div class="stat-value">{stats.closed}</div>
@@ -353,18 +353,18 @@
   {#if loading}
     <div class="loading">
       <div class="spinner"></div>
-      <p>{$t('support.loading') || 'Loading tickets...'}</p>
+      <p>{$t('support.loading')}</p>
     </div>
   {:else if tickets.length === 0}
     <div class="empty">
       <Icon name="help-circle" size={28} />
-      <div class="empty-title">{$t('support.empty.title') || 'No tickets yet'}</div>
+      <div class="empty-title">{$t('support.empty.title')}</div>
       <div class="empty-sub">
-        {$t('support.empty.subtitle') || 'Create a ticket if you need help or have a request.'}
+        {$t('support.empty.subtitle')}
       </div>
       {#if $can('create', 'support')}
         <button class="btn-primary" onclick={() => (showCreate = true)} type="button">
-          {$t('support.actions.new') || 'New Ticket'}
+          {$t('support.actions.new')}
         </button>
       {/if}
     </div>
@@ -411,7 +411,7 @@
           {#if loadingMore}
             <div class="spinner-sm"></div>
           {/if}
-          {$t('common.load_more') || 'Load more'}
+          {$t('common.load_more')}
         </button>
         <div class="foot-note">
           {tickets.length}/{total}
@@ -423,13 +423,13 @@
 
 <Modal
   bind:show={showCreate}
-  title={$t('support.create.title') || 'Create Ticket'}
+  title={$t('support.create.title')}
   onclose={() => (showCreate = false)}
 >
   <div class="modal-body">
     <!-- Quick action chips — one-tap to pre-fill form -->
     <div class="quick-actions">
-      <span class="quick-label">{$t('support.quick.label') || 'Cepat:'}</span>
+      <span class="quick-label">{$t('support.quick.label')}</span>
       {#each quickActions as action}
         <button
           class="quick-chip"
@@ -444,32 +444,31 @@
     </div>
 
     <Input
-      label={$t('support.fields.subject') || 'Subject'}
-      placeholder={$t('support.fields.subject_placeholder') || 'e.g. Cannot login to my account'}
+      label={$t('support.fields.subject')}
+      placeholder={$t('support.fields.subject_placeholder')}
       bind:value={subject}
     />
 
     <div class="textarea-group">
-      <label class="label" for="support-message">{$t('support.fields.message') || 'Message'}</label>
+      <label class="label" for="support-message">{$t('support.fields.message')}</label>
       <textarea
         id="support-message"
         class="textarea"
         rows="6"
         bind:value={message}
-        placeholder={$t('support.fields.message_placeholder') ||
-          'Describe your issue or request...'}
+        placeholder={$t('support.fields.message_placeholder')}
       ></textarea>
     </div>
 
     <Select
-      label={$t('support.fields.category') || 'Category'}
+      label={$t('support.fields.category')}
       bind:value={category}
       options={createCategoryOptions}
     />
 
     {#if subscriptions.length > 0}
       <Select
-        label={$t('support.fields.subscription') || 'Langganan Terkait (opsional)'}
+        label={$t('support.fields.subscription')}
         bind:value={subscriptionId}
         options={[
           { label: $t('support.fields.no_subscription') || 'Tidak terkait', value: undefined },
@@ -479,7 +478,7 @@
     {/if}
 
     <Select
-      label={$t('support.fields.priority') || 'Priority'}
+      label={$t('support.fields.priority')}
       bind:value={priority}
       options={priorityOptions}
     />
@@ -487,12 +486,12 @@
     <div class="file-group">
       <label class="label" for="support-attachments">
         <Icon name="paperclip" size={14} />
-        {$t('support.fields.attachments') || 'Attachments'}
+        {$t('support.fields.attachments')}
       </label>
       <div class="file-input-row">
         <label class="btn-file" for="support-attachments">
           <Icon name="plus" size={14} />
-          {$t('support.actions.add_file') || 'Add File'}
+          {$t('support.actions.add_file')}
         </label>
         <input id="support-attachments" class="file-hidden" type="file" multiple onchange={onPickFiles} />
         {#if attachments.length}
@@ -505,7 +504,7 @@
             <div class="file-chip">
               <Icon name="file" size={14} />
               <span class="file-name">{att.name}</span>
-              <button class="file-remove" type="button" onclick={() => removeAttachment(i)} title={$t('common.remove') || 'Remove'}>
+              <button class="file-remove" type="button" onclick={() => removeAttachment(i)} title={$t('common.remove')}>
                 <Icon name="x" size={12} />
               </button>
             </div>
@@ -516,7 +515,7 @@
 
     <div class="modal-actions">
       <button class="btn" type="button" onclick={() => (showCreate = false)}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button class="btn-primary" type="button" onclick={submitCreate} disabled={creating}>
         {creating

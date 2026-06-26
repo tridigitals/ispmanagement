@@ -35,39 +35,39 @@
 >
   <div class="dialog">
     <div class="summary">
-      <span class="label">{$t('superadmin.radius.modals.secret.mapping') || 'Mapping'}</span>
+      <span class="label">{$t('superadmin.radius.modals.secret.mapping')}</span>
       <strong>{mappingLabel}</strong>
     </div>
 
     <div class="summary">
-      <span class="label">{$t('superadmin.radius.modals.secret.masked') || 'Masked secret'}</span>
+      <span class="label">{$t('superadmin.radius.modals.secret.masked')}</span>
       <code>{maskedSecret || '••••••••'}</code>
     </div>
 
     {#if mode === 'reveal'}
       <div class="summary">
-        <span class="label">{$t('superadmin.radius.modals.secret.revealed') || 'Revealed secret'}</span>
+        <span class="label">{$t('superadmin.radius.modals.secret.revealed')}</span>
         <code>{revealedSecret || ($t('superadmin.radius.modals.secret.not_loaded') || 'Click reveal to load the secret')}</code>
       </div>
     {:else}
       <div class="secret-row">
         <Input
-          label={$t('superadmin.radius.form.shared_secret') || 'Shared secret'}
+          label={$t('superadmin.radius.form.shared_secret')}
           type="password"
           bind:value={secretDraft}
-          placeholder={$t('superadmin.radius.form.shared_secret_placeholder') || 'Leave blank to auto-generate'}
+          placeholder={$t('superadmin.radius.form.shared_secret_placeholder')}
           disabled={loading}
           showPasswordToggle
         />
         <button class="btn btn-secondary btn-inline" type="button" onclick={onGenerate} disabled={loading}>
-          {$t('superadmin.radius.actions.generate_secret') || 'Generate'}
+          {$t('superadmin.radius.actions.generate_secret')}
         </button>
       </div>
     {/if}
 
     <div class="actions">
       <button class="btn btn-secondary" type="button" onclick={() => (show = false)} disabled={loading}>
-        {$t('common.close') || 'Close'}
+        {$t('common.close')}
       </button>
       <button class="btn btn-primary" type="button" onclick={onSubmit} disabled={loading}>
         {#if loading}<span class="spinner-sm"></span>{/if}

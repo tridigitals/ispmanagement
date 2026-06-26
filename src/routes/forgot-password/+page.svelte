@@ -32,7 +32,7 @@
         <div class="status-mark">
           <Icon name="key" size={28} />
         </div>
-        <h1>{$t('auth.forgot_password.title') || 'Reset Password'}</h1>
+        <h1>{$t('auth.forgot_password.title')}</h1>
         <p>
           {$t('auth.forgot_password.subtitle') ||
             "Enter your email and we'll send you a link to reset your password."}
@@ -48,14 +48,14 @@
       <form on:submit|preventDefault={handleReset}>
         <div class="form-group">
           <label class="form-label" for="email"
-            >{$t('auth.forgot_password.email_label') || 'Email Address'}</label
+            >{$t('auth.forgot_password.email_label')}</label
           >
           <input
             type="email"
             id="email"
             class="form-input"
             bind:value={email}
-            placeholder={$t('auth.forgot_password.email_placeholder') || 'you@example.com'}
+            placeholder={$t('auth.forgot_password.email_placeholder')}
             required
             disabled={loading}
           />
@@ -63,9 +63,9 @@
 
         <button type="submit" class="btn btn-primary w-full" disabled={loading}>
           {#if loading}
-            {$t('auth.forgot_password.sending') || 'Sending...'}
+            {$t('auth.forgot_password.sending')}
           {:else}
-            {$t('auth.forgot_password.submit') || 'Send Reset Link'}
+            {$t('auth.forgot_password.submit')}
           {/if}
         </button>
       </form>
@@ -75,21 +75,21 @@
           <Icon name="mail-check" size={28} />
         </div>
         <h1>
-          {$t('auth.forgot_password.check_email_title') || 'Check your email'}
+          {$t('auth.forgot_password.check_email_title')}
         </h1>
         <p>
           {$t('auth.forgot_password.check_email_message') || "We've sent a password reset link to"}
           <strong>{email}</strong>.
         </p>
         <button class="btn btn-secondary w-full" on:click={() => goto('/login')}>
-          {$t('auth.forgot_password.back_to_login') || 'Back to Login'}
+          {$t('auth.forgot_password.back_to_login')}
         </button>
       </div>
     {/if}
 
     <div class="auth-footer">
       <a href="/login" class="back-link"
-        >← {$t('auth.forgot_password.back_to_login') || 'Back to Login'}</a
+        >← {$t('auth.forgot_password.back_to_login')}</a
       >
     </div>
   </div>

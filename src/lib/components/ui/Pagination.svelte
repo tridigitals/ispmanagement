@@ -32,7 +32,7 @@
 <div class="pagination-container">
   <div class="rows-per-page">
     <label for="page-size">
-      {$t('components.pagination.rows_per_page') || 'Rows per page:'}
+      {$t('components.pagination.rows_per_page')}
     </label>
     <div class="select-width">
       <Select
@@ -55,7 +55,7 @@
         class="icon-btn"
         disabled={page === 0}
         onclick={() => handlePageChange(page - 1)}
-        aria-label={$t('components.pagination.previous_page') || 'Previous page'}
+        aria-label={$t('components.pagination.previous_page')}
       >
         <Icon name="chevron-left" size={20} />
       </button>
@@ -63,7 +63,7 @@
         class="icon-btn"
         disabled={page >= totalPages - 1}
         onclick={() => handlePageChange(page + 1)}
-        aria-label={$t('components.pagination.next_page') || 'Next page'}
+        aria-label={$t('components.pagination.next_page')}
       >
         <Icon name="chevron-right" size={20} />
       </button>

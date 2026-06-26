@@ -36,11 +36,11 @@
 </script>
 
 <div class="wbic-panel">
-  <div class="wbic-kicker">{$t('admin.network.wallboard.controls.open') || 'Controls'}</div>
+  <div class="wbic-kicker">{$t('admin.network.wallboard.controls.open')}</div>
   <div class="wbic-actions">
     <button onclick={() => onRefresh?.()} disabled={refreshing}>
       <Icon name="refresh-cw" size={16} />
-      {$t('common.refresh') || 'Refresh'}
+      {$t('common.refresh')}
     </button>
     <button
       onclick={() => onTogglePaused?.()}
@@ -57,7 +57,7 @@
     </button>
     <button
       onclick={() => onToggleCriticalSound?.()}
-      title={$t('admin.network.wallboard.sound_toggle') || 'Toggle critical alert sound'}
+      title={$t('admin.network.wallboard.sound_toggle')}
     >
       <Icon name="alert-triangle" size={16} />
       {criticalSoundEnabled
@@ -72,7 +72,7 @@
 
   <div class="wbic-selects">
     <label class="wbic-field">
-      <span class="muted">{$t('admin.network.wallboard.poll') || 'Poll'}</span>
+      <span class="muted">{$t('admin.network.wallboard.poll')}</span>
       <select
         value={String(pollMs)}
         onchange={(e) => {
@@ -87,7 +87,7 @@
     </label>
 
     <label class="wbic-field">
-      <span class="muted">{$t('admin.network.wallboard.controls.layout') || 'Layout'}</span>
+      <span class="muted">{$t('admin.network.wallboard.controls.layout')}</span>
       <select
         value={layout}
         onchange={(e) => {

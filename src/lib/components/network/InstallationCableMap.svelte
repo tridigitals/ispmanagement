@@ -809,11 +809,11 @@
       disabled={!drawing || bendPoints.length === 0 || saving}
     >
       <Icon name="arrow-left" size={14} />
-      {$t('common.undo') || 'Undo'}
+      {$t('common.undo')}
     </button>
     <button class="btn ghost mini" type="button" onclick={cancelDraw} disabled={!drawing || saving}>
       <Icon name="x-circle" size={14} />
-      {$t('common.cancel') || 'Cancel'}
+      {$t('common.cancel')}
     </button>
     <button
       class="btn mini"
@@ -829,22 +829,22 @@
   <div class="icm-hints">
     {#if drawing}
       <span>
-        {$t('network.installation.hint_drawing') || 'Route starts from the customer marker. Click map for bend points, then click a node or an existing cable to finish.'}
+        {$t('network.installation.hint_drawing')}
       </span>
     {:else}
-      <span>{$t('network.installation.hint_start') || 'Start Draw Cable to create a route from the customer premise.'}</span>
+      <span>{$t('network.installation.hint_start')}</span>
     {/if}
     <div class="icm-badges">
       {#if customerCoord}
-        <span class="tag">{$t('network.installation.customer_focused') || 'Customer marker focused'}</span>
+        <span class="tag">{$t('network.installation.customer_focused')}</span>
       {/if}
       {#if sourceNodeId}
-        <span class="tag ok">{$t('network.installation.customer_ready') || 'Customer node ready'}</span>
+        <span class="tag ok">{$t('network.installation.customer_ready')}</span>
       {/if}
       {#if targetNodeId}
-        <span class="tag">{$t('network.installation.target_selected') || 'Target node selected'}</span>
+        <span class="tag">{$t('network.installation.target_selected')}</span>
       {:else if targetLink}
-        <span class="tag warn">{$t('network.installation.existing_cable_selected') || 'Existing cable selected'}</span>
+        <span class="tag warn">{$t('network.installation.existing_cable_selected')}</span>
       {/if}
     </div>
   </div>

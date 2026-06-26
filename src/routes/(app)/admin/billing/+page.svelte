@@ -65,17 +65,17 @@
 <div class="billing-dashboard">
   <header class="page-header">
     <div>
-      <h1>{$t('admin.billing.analytics.title') || 'Billing Dashboard'}</h1>
-      <p class="subtitle">{$t('admin.billing.analytics.subtitle') || 'Revenue metrics and collection overview'}</p>
+      <h1>{$t('admin.billing.analytics.title')}</h1>
+      <p class="subtitle">{$t('admin.billing.analytics.subtitle')}</p>
     </div>
     <button class="btn btn-secondary" onclick={loadAnalytics} disabled={loading}>
       <Icon name="refresh-cw" size={16} />
-      <span>{$t('common.refresh') || 'Refresh'}</span>
+      <span>{$t('common.refresh')}</span>
     </button>
   </header>
 
   {#if loading}
-    <div class="state-card">{$t('common.loading') || 'Loading...'}</div>
+    <div class="state-card">{$t('common.loading')}</div>
   {:else if error}
     <div class="state-card error">{error}</div>
   {:else if analytics}
@@ -86,7 +86,7 @@
         <div class="kpi-body">
           <span class="kpi-label">MRR</span>
           <span class="kpi-value">{fmt(analytics.mrr)}</span>
-          <span class="kpi-sub">{$t('admin.billing.analytics.monthly_recurring') || 'Monthly Recurring Revenue'}</span>
+          <span class="kpi-sub">{$t('admin.billing.analytics.monthly_recurring')}</span>
         </div>
       </div>
 
@@ -95,14 +95,14 @@
         <div class="kpi-body">
           <span class="kpi-label">ARR</span>
           <span class="kpi-value">{fmt(analytics.arr)}</span>
-          <span class="kpi-sub">{$t('admin.billing.analytics.annual_recurring') || 'Annual Recurring Revenue'}</span>
+          <span class="kpi-sub">{$t('admin.billing.analytics.annual_recurring')}</span>
         </div>
       </div>
 
       <div class="kpi-card success">
         <div class="kpi-icon"><Icon name="dollar-sign" size={20} /></div>
         <div class="kpi-body">
-          <span class="kpi-label">{$t('admin.billing.analytics.revenue_this_month') || 'Revenue This Month'}</span>
+          <span class="kpi-label">{$t('admin.billing.analytics.revenue_this_month')}</span>
           <span class="kpi-value">{fmt(analytics.total_revenue)}</span>
         </div>
       </div>
@@ -110,9 +110,9 @@
       <div class="kpi-card">
         <div class="kpi-icon"><Icon name="users" size={20} /></div>
         <div class="kpi-body">
-          <span class="kpi-label">{$t('admin.billing.analytics.active_subs') || 'Active Subscriptions'}</span>
+          <span class="kpi-label">{$t('admin.billing.analytics.active_subs')}</span>
           <span class="kpi-value">{analytics.active_subscriptions}</span>
-          <span class="kpi-sub">{analytics.total_customers} {$t('admin.billing.analytics.customers') || 'customers'}</span>
+          <span class="kpi-sub">{analytics.total_customers} {$t('admin.billing.analytics.customers')}</span>
         </div>
       </div>
     </div>
@@ -120,7 +120,7 @@
     <!-- Collection & Churn row -->
     <div class="metrics-row">
       <div class="metric-card">
-        <h3>{$t('admin.billing.analytics.collection_rate') || 'Collection Rate'}</h3>
+        <h3>{$t('admin.billing.analytics.collection_rate')}</h3>
         <div class="progress-wrapper">
           <div class="progress-bar">
             <div
@@ -134,60 +134,60 @@
           <span class="progress-label">{fmtPct(analytics.collection_rate)}</span>
         </div>
         <p class="metric-detail">
-          {$t('admin.billing.analytics.avg_days_pay') || 'Avg days to pay'}: <strong>{analytics.avg_days_to_pay}</strong> {$t('common.days') || 'days'}
+          {$t('admin.billing.analytics.avg_days_pay')}: <strong>{analytics.avg_days_to_pay}</strong> {$t('common.days')}
         </p>
       </div>
 
       <div class="metric-card">
-        <h3>{$t('admin.billing.analytics.churn_rate') || 'Churn Rate'}</h3>
+        <h3>{$t('admin.billing.analytics.churn_rate')}</h3>
         <div class="churn-value" class:good={analytics.churn_rate < 5} class:warn={analytics.churn_rate >= 5}>
           {fmtPct(analytics.churn_rate)}
         </div>
         <p class="metric-detail">
-          {$t('admin.billing.analytics.this_month') || 'This month'}
+          {$t('admin.billing.analytics.this_month')}
         </p>
       </div>
     </div>
 
     <!-- Aging Report -->
     <div class="aging-card">
-      <h3>{$t('admin.billing.analytics.aging_report') || 'Aging Report (Overdue)'}</h3>
+      <h3>{$t('admin.billing.analytics.aging_report')}</h3>
       {#if agingTotal > 0}
         <div class="aging-bars">
           <div class="aging-row">
-            <span class="aging-label">0–30 {$t('common.days') || 'days'}</span>
+            <span class="aging-label">0–30 {$t('common.days')}</span>
             <div class="aging-bar-track">
               <div class="aging-bar current" style="width: {(analytics.aging.current / agingTotal) * 100}%"></div>
             </div>
             <span class="aging-value">{fmt(analytics.aging.current)}</span>
           </div>
           <div class="aging-row">
-            <span class="aging-label">31–60 {$t('common.days') || 'days'}</span>
+            <span class="aging-label">31–60 {$t('common.days')}</span>
             <div class="aging-bar-track">
               <div class="aging-bar warn" style="width: {(analytics.aging.days_31_60 / agingTotal) * 100}%"></div>
             </div>
             <span class="aging-value">{fmt(analytics.aging.days_31_60)}</span>
           </div>
           <div class="aging-row">
-            <span class="aging-label">61–90 {$t('common.days') || 'days'}</span>
+            <span class="aging-label">61–90 {$t('common.days')}</span>
             <div class="aging-bar-track">
               <div class="aging-bar danger" style="width: {(analytics.aging.days_61_90 / agingTotal) * 100}%"></div>
             </div>
             <span class="aging-value">{fmt(analytics.aging.days_61_90)}</span>
           </div>
           <div class="aging-row">
-            <span class="aging-label">&gt;90 {$t('common.days') || 'days'}</span>
+            <span class="aging-label">&gt;90 {$t('common.days')}</span>
             <div class="aging-bar-track">
               <div class="aging-bar critical" style="width: {(analytics.aging.over_90 / agingTotal) * 100}%"></div>
             </div>
             <span class="aging-value">{fmt(analytics.aging.over_90)}</span>
           </div>
         </div>
-        <p class="aging-total">{$t('admin.billing.analytics.total_overdue') || 'Total Overdue'}: <strong>{fmt(agingTotal)}</strong></p>
+        <p class="aging-total">{$t('admin.billing.analytics.total_overdue')}: <strong>{fmt(agingTotal)}</strong></p>
       {:else}
         <div class="empty-state">
           <Icon name="check-circle" size={24} />
-          <span>{$t('admin.billing.analytics.no_overdue') || 'No overdue invoices 🎉'}</span>
+          <span>{$t('admin.billing.analytics.no_overdue')}</span>
         </div>
       {/if}
     </div>
@@ -195,7 +195,7 @@
     <!-- Revenue Trend -->
     {#if analytics.revenue_trend.length > 0}
       <div class="trend-card">
-        <h3>{$t('admin.billing.analytics.revenue_trend') || 'Revenue Trend (6 months)'}</h3>
+        <h3>{$t('admin.billing.analytics.revenue_trend')}</h3>
         <div class="trend-chart">
           {#each analytics.revenue_trend as point}
             <div class="trend-bar-wrapper">

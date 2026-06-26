@@ -11,9 +11,9 @@
       <Icon name="shield-alert" size={32} />
     </div>
     <div class="error-code">403</div>
-    <h1>{$t('pages.unauthorized.title') || 'Access Denied'}</h1>
+    <h1>{$t('pages.unauthorized.title')}</h1>
     <p class="message">
-      {$t('pages.unauthorized.sorry') || 'Sorry,'}
+      {$t('pages.unauthorized.sorry')}
       <strong>{$user?.name || $t('profile.fallback.user') || 'User'}</strong>.
       {$t('pages.unauthorized.message') ||
         "You don't have the required permissions to view this page. This area is restricted to system administrators."}
@@ -21,7 +21,7 @@
 
     <div class="actions">
       <button class="btn btn-primary" on:click={() => goto('/dashboard')}>
-        {$t('pages.unauthorized.back') || 'Return to Safety'}
+        {$t('pages.unauthorized.back')}
       </button>
     </div>
   </div>

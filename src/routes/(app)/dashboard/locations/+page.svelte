@@ -208,9 +208,9 @@
     <div>
       <div class="kicker">
         <span class="dot"></span>
-        {$t('dashboard.locations.kicker') || 'Customer portal'}
+        {$t('dashboard.locations.kicker')}
       </div>
-      <h1>{$t('dashboard.locations.title') || 'My Locations'}</h1>
+      <h1>{$t('dashboard.locations.title')}</h1>
       <p class="subtitle">
         {$t('dashboard.locations.subtitle')}
       </p>
@@ -222,7 +222,7 @@
       </button>
       <button class="btn-secondary" onclick={load} disabled={loading}>
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
+        {$t('common.refresh')}
       </button>
     </div>
   </div>
@@ -259,7 +259,7 @@
   {#if loading}
     <div class="loading-card card">
       <div class="spinner"></div>
-      <p>{$t('common.loading') || 'Loading...'}</p>
+      <p>{$t('common.loading')}</p>
     </div>
   {:else if locations.length === 0}
     <div class="empty card">
@@ -276,13 +276,13 @@
           <div class="top">
             <div class="badge">
               <Icon name="map-pin" size={16} />
-              <span>{$t('dashboard.locations.title') || 'Service Location'}</span>
+              <span>{$t('dashboard.locations.title')}</span>
             </div>
             <div class="row-actions">
-              <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEditLocation(loc)}>
+              <button class="btn-icon" title={$t('common.edit')} onclick={() => openEditLocation(loc)}>
                 <Icon name="edit" size={14} />
               </button>
-              <button class="btn-icon danger" title={$t('common.delete') || 'Delete'} onclick={() => askDeleteLocation(loc.id)}>
+              <button class="btn-icon danger" title={$t('common.delete')} onclick={() => askDeleteLocation(loc.id)}>
                 <Icon name="trash-2" size={14} />
               </button>
             </div>
@@ -326,10 +326,10 @@
 
 <ConfirmDialog
   show={showDeleteDialog}
-  title={$t('common.delete') || 'Delete'}
+  title={$t('common.delete')}
   message="Lokasi ini akan dihapus dari akun customer. Lanjutkan?"
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   loading={deletingLocation}
   onconfirm={doDeleteLocation}
   oncancel={() => (showDeleteDialog = false)}

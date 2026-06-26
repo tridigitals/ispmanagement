@@ -149,7 +149,7 @@
             e.stopPropagation();
             onOpenAlerts();
           }}
-          title={`${routerAlertTotal} ${$t('admin.network.wallboard.alerts_open') || 'open alerts'}`}
+          title={`${routerAlertTotal} ${$t('admin.network.wallboard.alerts_open')}`}
         >
           <Icon name="alert-triangle" size={16} />
           <span class="attn-count">{routerAlertTotal}</span>
@@ -162,7 +162,7 @@
               e.stopPropagation();
               void onAckRouterAlerts(slot.routerId);
             }}
-            title={$t('admin.network.wallboard.ack_router_alerts') || 'Acknowledge router alerts'}
+            title={$t('admin.network.wallboard.ack_router_alerts')}
           >
             <Icon name="check-circle" size={16} />
           </button>
@@ -177,7 +177,7 @@
             e.stopPropagation();
             onToggleTileMenu(gidx);
           }}
-          title={$t('common.actions') || 'Actions'}
+          title={$t('common.actions')}
         >
           <Icon name="list" size={16} />
         </button>
@@ -193,7 +193,7 @@
               }}
             >
               <Icon name="monitor" size={15} />
-              {$t('admin.network.wallboard.view') || 'View'}
+              {$t('admin.network.wallboard.view')}
             </button>
             <button
               type="button"
@@ -205,7 +205,7 @@
               }}
             >
               <Icon name="edit" size={15} />
-              {$t('common.edit') || 'Edit'}
+              {$t('common.edit')}
             </button>
             <button
               type="button"
@@ -218,26 +218,26 @@
               }}
             >
               <Icon name="x" size={15} />
-              {$t('common.remove') || 'Remove'}
+              {$t('common.remove')}
             </button>
           </div>
         {/if}
       </div>
 
       {#if stale}
-        <span class="badge warn" title={$t('admin.network.wallboard.stale') || 'Data stale'}>
+        <span class="badge warn" title={$t('admin.network.wallboard.stale')}>
           <Icon name="alert-triangle" size={14} />
-          {$t('admin.network.wallboard.stale') || 'Stale'}
+          {$t('admin.network.wallboard.stale')}
         </span>
       {/if}
       {#if maintLeft}
         <span class="badge maintenance" title={($t('admin.network.wallboard.maintenance') || 'Maintenance') + ` ${maintLeft}`}>
           <Icon name="clock" size={13} />
-          {$t('admin.network.wallboard.maintenance') || 'Maintenance'} {maintLeft}
+          {$t('admin.network.wallboard.maintenance')} {maintLeft}
         </span>
       {/if}
       {#if pollDegraded}
-        <span class="badge poll-err" title={`${$t('admin.network.wallboard.poll_error') || 'Poll error'} (${pollFails}x)`}>
+        <span class="badge poll-err" title={`${$t('admin.network.wallboard.poll_error')} (${pollFails}x)`}>
           <Icon name="wifi-off" size={13} />
           {($t('admin.network.wallboard.poll_error') || 'Poll error') + ` ${pollFails}x`}
           {#if pollRetrySec > 0}

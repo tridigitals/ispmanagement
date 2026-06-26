@@ -452,27 +452,27 @@
 </script>
 
 <div class="page-container fade-in">
-  <nav class="breadcrumb" aria-label={$t('common.breadcrumb') || 'Breadcrumb'}>
+  <nav class="breadcrumb" aria-label={$t('common.breadcrumb')}>
     <button class="crumb-link" type="button" onclick={() => goto(invoicesPath)}>
-      {$t('sidebar.invoices') || 'Invoices'}
+      {$t('sidebar.invoices')}
     </button>
     <span class="crumb-sep">/</span>
     <span class="crumb-current"
-      >{$t('admin.billing_collection.title') || 'Billing Collection Logs'}</span
+      >{$t('admin.billing_collection.title')}</span
     >
   </nav>
 
   <div class="page-header">
     <div>
-      <h1>{$t('admin.billing_collection.title') || 'Billing Collection Logs'}</h1>
+      <h1>{$t('admin.billing_collection.title')}</h1>
       <p class="subtitle">
-        {$t('admin.billing_collection.subtitle') || 'Monitor reminder, suspend, dan resume billing.'}
+        {$t('admin.billing_collection.subtitle')}
       </p>
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary" type="button" onclick={refreshCurrent}>
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
+        {$t('common.refresh')}
       </button>
       <button
         class="btn btn-primary"
@@ -488,7 +488,7 @@
       <div class="export-wrap">
         <button class="btn btn-secondary" type="button" onclick={toggleExportMenu}>
           <Icon name="download" size={16} />
-          {$t('admin.billing_collection.actions.export') || 'Export'}
+          {$t('admin.billing_collection.actions.export')}
           <Icon name="chevron-down" size={14} />
         </button>
         {#if exportMenuOpen}
@@ -498,7 +498,7 @@
             onclick={() => {
               exportMenuOpen = false;
             }}
-            aria-label={$t('common.close') || 'Close'}
+            aria-label={$t('common.close')}
           ></button>
           <div class="export-menu">
             <button
@@ -509,7 +509,7 @@
                 exportCsv();
               }}
             >
-              {$t('admin.billing_collection.export.csv') || 'Export CSV'}
+              {$t('admin.billing_collection.export.csv')}
             </button>
             <button
               class="export-item"
@@ -519,7 +519,7 @@
                 exportExcel();
               }}
             >
-              {$t('admin.billing_collection.export.excel') || 'Export Excel'}
+              {$t('admin.billing_collection.export.excel')}
             </button>
           </div>
         {/if}
@@ -530,23 +530,23 @@
   {#if lastRunResult}
     <div class="run-summary">
       <div class="summary-item">
-        <span>{$t('admin.billing_collection.summary.evaluated') || 'Evaluated'}</span>
+        <span>{$t('admin.billing_collection.summary.evaluated')}</span>
         <strong>{lastRunResult.evaluated_count}</strong>
       </div>
       <div class="summary-item">
-        <span>{$t('admin.billing_collection.summary.reminders_sent') || 'Reminders sent'}</span>
+        <span>{$t('admin.billing_collection.summary.reminders_sent')}</span>
         <strong>{lastRunResult.reminder_sent_count}</strong>
       </div>
       <div class="summary-item">
-        <span>{$t('admin.billing_collection.summary.suspended') || 'Suspended'}</span>
+        <span>{$t('admin.billing_collection.summary.suspended')}</span>
         <strong>{lastRunResult.suspended_count}</strong>
       </div>
       <div class="summary-item">
-        <span>{$t('admin.billing_collection.summary.resumed') || 'Resumed'}</span>
+        <span>{$t('admin.billing_collection.summary.resumed')}</span>
         <strong>{lastRunResult.resumed_count}</strong>
       </div>
       <div class="summary-item">
-        <span>{$t('admin.billing_collection.summary.failed') || 'Failed'}</span>
+        <span>{$t('admin.billing_collection.summary.failed')}</span>
         <strong>{lastRunResult.failed_count}</strong>
       </div>
     </div>
@@ -558,7 +558,7 @@
       bind:activeId={activeTab}
       {isMobile}
       priorityCount={2}
-      ariaLabel={$t('admin.billing_collection.title') || 'Billing collection tabs'}
+      ariaLabel={$t('admin.billing_collection.title')}
       on:change={(event) => switchTab(event.detail as ActiveTab)}
     />
 
@@ -566,7 +566,7 @@
       <div class="filter-row">
         <select class="select-input" bind:value={collectionAction}>
           <option value="all"
-            >{$t('admin.billing_collection.filters.all_actions') || 'All actions'}</option
+            >{$t('admin.billing_collection.filters.all_actions')}</option
           >
           {#each collectionActionOptions as option}
             <option value={option}>{normalizeAction(option)}</option>
@@ -574,7 +574,7 @@
         </select>
         <select class="select-input" bind:value={collectionResult}>
           <option value="all"
-            >{$t('admin.billing_collection.filters.all_results') || 'All results'}</option
+            >{$t('admin.billing_collection.filters.all_results')}</option
           >
           {#each collectionResultOptions as option}
             <option value={option}>{normalizeStatus(option)}</option>
@@ -584,20 +584,19 @@
           class="text-input"
           type="text"
           bind:value={collectionSearch}
-          placeholder={$t('admin.billing_collection.filters.search_placeholder') ||
-            'Search invoice/customer/reason...'}
+          placeholder={$t('admin.billing_collection.filters.search_placeholder')}
         />
         <input
           class="text-input"
           type="datetime-local"
           bind:value={collectionFrom}
-          title={$t('common.from') || 'From'}
+          title={$t('common.from')}
         />
         <input
           class="text-input"
           type="datetime-local"
           bind:value={collectionTo}
-          title={$t('common.to') || 'To'}
+          title={$t('common.to')}
         />
         <select class="select-input limit-input" bind:value={collectionLimit}>
           <option value={100}>100</option>
@@ -606,14 +605,14 @@
           <option value={1000}>1000</option>
         </select>
         <button class="btn btn-clear" type="button" onclick={clearFilters}>
-          {$t('admin.billing_collection.filters.clear') || 'Clear'}
+          {$t('admin.billing_collection.filters.clear')}
         </button>
       </div>
     {:else}
       <div class="filter-row">
         <select class="select-input" bind:value={reminderCode}>
           <option value="all"
-            >{$t('admin.billing_collection.filters.all_reminders') || 'All reminders'}</option
+            >{$t('admin.billing_collection.filters.all_reminders')}</option
           >
           {#each reminderCodeOptions as option}
             <option value={option}>{normalizeReminder(option)}</option>
@@ -621,7 +620,7 @@
         </select>
         <select class="select-input" bind:value={reminderStatus}>
           <option value="all"
-            >{$t('admin.billing_collection.filters.all_statuses') || 'All statuses'}</option
+            >{$t('admin.billing_collection.filters.all_statuses')}</option
           >
           {#each reminderStatusOptions as option}
             <option value={option}>{normalizeStatus(option)}</option>
@@ -631,20 +630,19 @@
           class="text-input"
           type="text"
           bind:value={reminderSearch}
-          placeholder={$t('admin.billing_collection.filters.search_reminder') ||
-            'Search invoice/detail...'}
+          placeholder={$t('admin.billing_collection.filters.search_reminder')}
         />
         <input
           class="text-input"
           type="datetime-local"
           bind:value={reminderFrom}
-          title={$t('common.from') || 'From'}
+          title={$t('common.from')}
         />
         <input
           class="text-input"
           type="datetime-local"
           bind:value={reminderTo}
-          title={$t('common.to') || 'To'}
+          title={$t('common.to')}
         />
         <select class="select-input limit-input" bind:value={reminderLimit}>
           <option value={100}>100</option>
@@ -653,16 +651,16 @@
           <option value={1000}>1000</option>
         </select>
         <button class="btn btn-clear" type="button" onclick={clearFilters}>
-          {$t('admin.billing_collection.filters.clear') || 'Clear'}
+          {$t('admin.billing_collection.filters.clear')}
         </button>
       </div>
     {/if}
 
     <div class="result-meta">
       <span
-        >{$t('admin.billing_collection.meta.showing') || 'Showing'}
+        >{$t('admin.billing_collection.meta.showing')}
         {activeCount}
-        {$t('common.results') || 'results'}</span
+        {$t('common.results')}</span
       >
     </div>
 

@@ -17,14 +17,14 @@
 <div class="card section fade-in">
   <div class="card-header">
     <h3>
-      {$t('superadmin.settings.sections.password') || 'Password Policy'}
+      {$t('superadmin.settings.sections.password')}
     </h3>
   </div>
   <div class="card-body">
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="min-pwd-length">
-          {$t('superadmin.settings.password.min_length.label') || 'Minimum Length'}
+          {$t('superadmin.settings.password.min_length.label')}
         </label>
       </div>
       <div class="input-group">
@@ -36,14 +36,14 @@
           min="6"
           class="form-input"
         />
-        <span class="input-suffix">{$t('common.units.chars') || 'chars'}</span>
+        <span class="input-suffix">{$t('common.units.chars')}</span>
       </div>
     </div>
 
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="require-uppercase">
-          {$t('superadmin.settings.password.require_uppercase.label') || 'Require Uppercase'}
+          {$t('superadmin.settings.password.require_uppercase.label')}
         </label>
       </div>
       <label class="toggle">
@@ -60,7 +60,7 @@
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="require-number">
-          {$t('superadmin.settings.password.require_number.label') || 'Require Number'}
+          {$t('superadmin.settings.password.require_number.label')}
         </label>
       </div>
       <label class="toggle">
@@ -77,7 +77,7 @@
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="require-special">
-          {$t('superadmin.settings.password.require_special.label') || 'Require Special Character'}
+          {$t('superadmin.settings.password.require_special.label')}
         </label>
       </div>
       <label class="toggle">

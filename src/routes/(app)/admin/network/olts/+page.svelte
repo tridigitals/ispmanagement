@@ -429,7 +429,7 @@
         olt_type: o.olt_type,
       });
       if (result?.success) {
-        toast.success(`${$t('network.olt.connection_success') || 'Connection successful!'} ${result.info?.model || ''} ${result.info?.version ? `v${result.info.version}` : ''}`);
+        toast.success(`${$t('network.olt.connection_success')} ${result.info?.model || ''} ${result.info?.version ? `v${result.info.version}` : ''}`);
       } else {
         toast.error(result?.error || ($t('network.olt.connection_failed') || 'Connection failed.'));
       }
@@ -465,16 +465,16 @@
 </script>
 
 <div class="page-content fade-in">
-  <NetworkPageHeader title={$t('network.olt.title') || 'OLT Monitoring'} subtitle={$t('network.olt.description') || 'Kelola perangkat OLT dan pantau status ONU.'}>
+  <NetworkPageHeader title={$t('network.olt.title')} subtitle={$t('network.olt.description')}>
     {#snippet actions()}
-      <button class="btn ghost" type="button" onclick={load} title={$t('common.refresh') || 'Refresh'}>
+      <button class="btn ghost" type="button" onclick={load} title={$t('common.refresh')}>
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
+        {$t('common.refresh')}
       </button>
       {#if $can('manage', 'router_inventory')}
         <button class="btn" type="button" onclick={openCreate}>
           <Icon name="plus" size={16} />
-          {$t('network.olt.add') || 'Add OLT'}
+          {$t('network.olt.add')}
         </button>
       {/if}
     {/snippet}
@@ -483,21 +483,21 @@
   <div class="stats">
     <div class="stat-card">
       <div class="stat-top">
-        <span class="stat-label">{$t('network.olt.total') || 'Total'}</span>
+        <span class="stat-label">{$t('network.olt.total')}</span>
         <Icon name="list" size={14} />
       </div>
       <div class="stat-value">{stats.total}</div>
     </div>
     <div class="stat-card tone-ok">
       <div class="stat-top">
-        <span class="stat-label">{$t('network.olt.online') || 'Online'}</span>
+        <span class="stat-label">{$t('network.olt.online')}</span>
         <Icon name="check-circle" size={14} />
       </div>
       <div class="stat-value">{stats.online}</div>
     </div>
     <div class="stat-card tone-bad">
       <div class="stat-top">
-        <span class="stat-label">{$t('network.olt.offline') || 'Offline'}</span>
+        <span class="stat-label">{$t('network.olt.offline')}</span>
         <Icon name="alert-circle" size={14} />
       </div>
       <div class="stat-value">{stats.offline}</div>
@@ -507,7 +507,7 @@
   <div class="toolbar">
     <div class="search">
       <Icon name="search" size={16} />
-      <input class="search-input" bind:value={search} placeholder={$t('network.olt.search') || 'Cari OLT...'} />
+      <input class="search-input" bind:value={search} placeholder={$t('network.olt.search')} />
       {#if search}
         <button class="clear" type="button" onclick={() => (search = '')}>
           <Icon name="x" size={14} />
@@ -521,7 +521,7 @@
       {columns}
       data={filtered}
       loading={loading}
-      emptyText={$t('network.olt.empty') || 'No OLTs yet'}
+      emptyText={$t('network.olt.empty')}
       mobileView={isMobile ? 'card' : 'scroll'}
     >
       {#snippet cell({ item, key }: any)}
@@ -565,20 +565,20 @@
           {/if}
         {:else if key === 'actions'}
           <div class="actions">
-            <button class="icon-btn" type="button" onclick={() => openDetail(item)} title={$t('common.open') || 'Buka'}>
+            <button class="icon-btn" type="button" onclick={() => openDetail(item)} title={$t('common.open')}>
               <Icon name="arrow-right" size={16} />
             </button>
-            <button class="icon-btn" type="button" onclick={() => openOnMap(item)} disabled={item.latitude == null || item.longitude == null} title={$t('network.olt.view_on_map') || 'Lihat di Peta'}>
+            <button class="icon-btn" type="button" onclick={() => openOnMap(item)} disabled={item.latitude == null || item.longitude == null} title={$t('network.olt.view_on_map')}>
               <Icon name="map-pin" size={16} />
             </button>
-            <button class="icon-btn" type="button" onclick={() => testConnection(item)} disabled={testingId === item.id} title={$t('network.olt.test_connection') || 'Test Koneksi'}>
+            <button class="icon-btn" type="button" onclick={() => testConnection(item)} disabled={testingId === item.id} title={$t('network.olt.test_connection')}>
               <Icon name="zap" size={16} />
             </button>
             {#if $can('manage', 'router_inventory')}
-              <button class="icon-btn" type="button" onclick={() => openEdit(item)} title={$t('common.edit') || 'Edit'}>
+              <button class="icon-btn" type="button" onclick={() => openEdit(item)} title={$t('common.edit')}>
                 <Icon name="edit" size={16} />
               </button>
-              <button class="icon-btn danger" type="button" onclick={() => remove(item)} title={$t('common.delete') || 'Hapus'}>
+              <button class="icon-btn danger" type="button" onclick={() => remove(item)} title={$t('common.delete')}>
                 <Icon name="trash-2" size={16} />
               </button>
             {/if}
@@ -600,15 +600,15 @@
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label for="olt-name">{$t('common.name') || 'Name'} <span class="req">*</span></label>
-          <input id="olt-name" type="text" bind:value={formName} placeholder={$t('network.olt.name_placeholder') || 'e.g. Building A OLT'} />
+          <label for="olt-name">{$t('common.name')} <span class="req">*</span></label>
+          <input id="olt-name" type="text" bind:value={formName} placeholder={$t('network.olt.name_placeholder')} />
         </div>
         <div class="form-group">
-          <label for="olt-desc">{$t('common.description') || 'Description'}</label>
-          <input id="olt-desc" type="text" bind:value={formDescription} placeholder={$t('network.olt.desc_placeholder') || 'OLT for Building A area'} />
+          <label for="olt-desc">{$t('common.description')}</label>
+          <input id="olt-desc" type="text" bind:value={formDescription} placeholder={$t('network.olt.desc_placeholder')} />
         </div>
         <div class="form-group">
-          <label for="olt-type">{$t('network.olt.type') || 'OLT Type'} <span class="req">*</span></label>
+          <label for="olt-type">{$t('network.olt.type')} <span class="req">*</span></label>
           <select id="olt-type" bind:value={formOltType} disabled={!!editing}>
             <option value="hioso_ha7302cst">HIOSO HA-7302CST (EPON)</option>
             <option value="vsol_epon">VSOL (EPON)</option>
@@ -616,60 +616,60 @@
         </div>
         <div class="form-row">
           <div class="form-group flex-2">
-            <label for="olt-host">{$t('common.host') || 'Host'} <span class="req">*</span></label>
+            <label for="olt-host">{$t('common.host')} <span class="req">*</span></label>
             <input id="olt-host" type="text" bind:value={formHost} placeholder="192.168.1.1" />
           </div>
           <div class="form-group flex-1">
-            <label for="olt-port">{$t('common.port') || 'Port'} <span class="req">*</span></label>
+            <label for="olt-port">{$t('common.port')} <span class="req">*</span></label>
             <input id="olt-port" type="number" bind:value={formPort} min="1" max="65535" />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group flex-1">
-            <label for="olt-user">{$t('common.username') || 'Username'} <span class="req">*</span></label>
+            <label for="olt-user">{$t('common.username')} <span class="req">*</span></label>
             <input id="olt-user" type="text" bind:value={formUsername} placeholder="admin" />
           </div>
           <div class="form-group flex-1">
-            <label for="olt-pass">{$t('common.password') || 'Password'} {@html editing ? '' : '<span class="req">*</span>'}</label>
+            <label for="olt-pass">{$t('common.password')} {@html editing ? '' : '<span class="req">*</span>'}</label>
             <input id="olt-pass" type="password" bind:value={formPassword} placeholder={editing ? ($t('network.olt.leave_blank_to_keep') || 'Leave blank to keep current') : '••••••'} />
           </div>
           </div>
           <hr class="form-divider">
-          <div class="section-label">{$t('network.olt.location') || 'OLT Location'}</div>
+          <div class="section-label">{$t('network.olt.location')}</div>
           <div class="form-group">
             <button class="btn ghost map-pick-btn btn-block" type="button" onclick={openMapPicker} disabled={saving}>
               <Icon name="map-pin" size={15} />
-              {formLatitude != null && formLongitude != null ? `${$t('network.olt.change_point') || 'Change Point'} (${formLatitude.toFixed(6)}, ${formLongitude.toFixed(6)})` : ($t('network.olt.pick_on_map') || 'Pick Location on Map')}
+              {formLatitude != null && formLongitude != null ? `${$t('network.olt.change_point')} (${formLatitude.toFixed(6)}, ${formLongitude.toFixed(6)})` : ($t('network.olt.pick_on_map') || 'Pick Location on Map')}
             </button>
           </div>
           <div class="form-group addr-group">
-          <label for="olt-addr">{$t('network.olt.address') || 'Address'}</label>
-          <input id="olt-addr" type="text" bind:value={formAddressLine} placeholder={$t('network.olt.address_placeholder') || '123 Main St, District...'} />
+          <label for="olt-addr">{$t('network.olt.address')}</label>
+          <input id="olt-addr" type="text" bind:value={formAddressLine} placeholder={$t('network.olt.address_placeholder')} />
           </div>
           <hr class="form-divider">
-          <div class="section-label">{$t('network.olt.uplink_router') || 'Uplink Router'}</div>
+          <div class="section-label">{$t('network.olt.uplink_router')}</div>
           <div class="form-row">
             <div class="form-group flex-2">
-              <label for="olt-uplink-router">{$t('network.olt.uplink_router') || 'Uplink Router'}</label>
+              <label for="olt-uplink-router">{$t('network.olt.uplink_router')}</label>
               <select id="olt-uplink-router" bind:value={formUplinkRouterId}>
-                <option value="">— {$t('common.none') || 'None'} —</option>
+                <option value="">— {$t('common.none')} —</option>
                 {#each routers as r}
                   <option value={r.id}>{r.name} ({r.host})</option>
                 {/each}
               </select>
             </div>
             <div class="form-group flex-1">
-              <label for="olt-uplink-port">{$t('common.port') || 'Port'}</label>
+              <label for="olt-uplink-port">{$t('common.port')}</label>
               <input id="olt-uplink-port" type="text" bind:value={formUplinkPort} placeholder="ether1, sfp1..." />
             </div>
           </div>
           </div>
           <div class="modal-footer">
-        <button class="btn ghost" type="button" onclick={() => (showModal = false)}>{$t('common.cancel') || 'Cancel'}</button>
+        <button class="btn ghost" type="button" onclick={() => (showModal = false)}>{$t('common.cancel')}</button>
         <button class="btn" type="button" onclick={save} disabled={saving}>
           {#if saving}
             <Icon name="loader" size={16} />
-            {$t('common.saving') || 'Saving...'}
+            {$t('common.saving')}
           {:else}
             {editing ? ($t('common.update') || 'Update') : ($t('common.save') || 'Save')}
           {/if}
@@ -681,10 +681,10 @@
 
 <ConfirmDialog
   bind:show={showDeleteConfirm}
-  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
-  message={$t('network.olt.confirm_delete') || 'Are you sure you want to delete this OLT? This action cannot be undone.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  title={$t('common.confirm_delete_title')}
+  message={$t('network.olt.confirm_delete')}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   type="danger"
   onconfirm={handleConfirmDelete}
   oncancel={() => { deleteTarget = null; }}
@@ -695,13 +695,13 @@
   <div class="modal-backdrop" onclick={closeMapPicker} role="presentation">
     <div class="modal map-picker-modal" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
       <div class="modal-header">
-        <h3>{$t('network.olt.pick_location') || 'Pick OLT Location'}</h3>
+        <h3>{$t('network.olt.pick_location')}</h3>
         <button class="icon-btn" type="button" onclick={closeMapPicker}>
           <Icon name="x" size={18} />
         </button>
       </div>
       <div class="modal-body map-picker-body">
-        <div class="map-picker-help">{$t('network.router.click_map_to_select') || 'Click map to select a point, then drag the marker for precision.'}</div>
+        <div class="map-picker-help">{$t('network.router.click_map_to_select')}</div>
         <div class="map-picker-cords">
           {#if pickerLat != null && pickerLng != null}
             <span class="mono-input">{pickerLat.toFixed(7)}, {pickerLng.toFixed(7)}</span>
@@ -714,15 +714,15 @@
           loading={pickerMapLoading}
           mapUnavailable={pickerMapUnavailable}
           mapErrorMessage={pickerMapErrorMessage}
-          mapUnavailableTitle={$t('network.map.map_unavailable_title') || 'Map unavailable'}
-          mapUnavailableSubtitle={$t('network.map.map_unavailable_subtitle') || 'Unable to initialize WebGL map on this browser/device.'}
+          mapUnavailableTitle={$t('network.map.map_unavailable_title')}
+          mapUnavailableSubtitle={$t('network.map.map_unavailable_subtitle')}
           height="min(55vh, 480px)"
         />
         <div class="picker-actions">
           <button class="btn ghost" type="button" onclick={closeMapPicker}>{$t('network.map.cancel') || ($t('common.cancel') || 'Cancel')}</button>
           <button class="btn" type="button" onclick={applyPickedCoordinates}>
             <Icon name="check" size={16} />
-            {$t('network.olt.use_this_point') || 'Use This Point'}
+            {$t('network.olt.use_this_point')}
           </button>
         </div>
       </div>

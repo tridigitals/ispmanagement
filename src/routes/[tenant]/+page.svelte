@@ -420,7 +420,7 @@
         <!-- 2FA Method Selection -->
         <div class="twofa-section" in:fade>
           <h3>
-            {$t('auth.2fa.select_method') || 'Select Verification Method'}
+            {$t('auth.2fa.select_method')}
           </h3>
           <p>
             {$t('auth.2fa.select_method_desc') || "Choose how you'd like to verify your identity"}
@@ -429,13 +429,13 @@
             {#if available2FAMethods.includes('totp')}
               <button class="twofa-option" on:click={() => selectMethod('totp')}>
                 <Icon name="smartphone" size={24} />
-                <span>{$t('auth.2fa.use_app') || 'Authenticator App'}</span>
+                <span>{$t('auth.2fa.use_app')}</span>
               </button>
             {/if}
             {#if available2FAMethods.includes('email')}
               <button class="twofa-option" on:click={() => selectMethod('email')}>
                 <Icon name="mail" size={24} />
-                <span>{$t('auth.2fa.use_email') || 'Email Code'}</span>
+                <span>{$t('auth.2fa.use_email')}</span>
               </button>
             {/if}
           </div>
@@ -446,24 +446,24 @@
               error = '';
             }}
           >
-            {$t('common.back') || 'Back to Login'}
+            {$t('common.back')}
           </button>
         </div>
       {:else if step === '2fa-totp'}
         <!-- TOTP Verification -->
         <div class="twofa-section" in:fade>
           <h3>
-            {$t('auth.2fa.enter_code') || 'Enter Verification Code'}
+            {$t('auth.2fa.enter_code')}
           </h3>
           <p>
-            {$t('auth.2fa.totp_desc') || 'Enter the 6-digit code from your authenticator app'}
+            {$t('auth.2fa.totp_desc')}
           </p>
           <div class="input-group">
             <input
               type="text"
               bind:value={twoFactorCode}
               maxlength="6"
-              placeholder={$t('common.otp_placeholder') || '000000'}
+              placeholder={$t('common.otp_placeholder')}
               class="otp-input"
               autocomplete="one-time-code"
             />
@@ -471,7 +471,7 @@
           <label class="checkbox" style="margin-bottom: 1rem; justify-content: center;">
             <input type="checkbox" bind:checked={trustDevice} />
             <span class="checkmark"></span>
-            <span>{$t('auth.2fa.trust_device') || 'Trust this device for 30 days'}</span>
+            <span>{$t('auth.2fa.trust_device')}</span>
           </label>
           <button
             class="btn-primary"
@@ -481,7 +481,7 @@
             {#if loading}
               <div class="spinner"></div>
             {:else}
-              {$t('auth.2fa.verify') || 'Verify'}
+              {$t('auth.2fa.verify')}
             {/if}
           </button>
           <button
@@ -491,20 +491,20 @@
               error = '';
             }}
           >
-            {$t('common.back') || 'Back'}
+            {$t('common.back')}
           </button>
         </div>
       {:else if step === '2fa-email'}
         <!-- Email OTP Verification -->
         <div class="twofa-section" in:fade>
           <h3>
-            {$t('auth.2fa.enter_email_code') || 'Enter Email Code'}
+            {$t('auth.2fa.enter_email_code')}
           </h3>
           <p>
             {#if emailOtpSent}
-              {$t('auth.2fa.email_sent') || 'A verification code has been sent to your email.'}
+              {$t('auth.2fa.email_sent')}
             {:else if emailOtpSending}
-              {$t('auth.2fa.sending_email') || 'Sending verification code...'}
+              {$t('auth.2fa.sending_email')}
             {:else}
               {$t('auth.2fa.email_desc') || "We'll send a verification code to your email."}
             {/if}
@@ -514,7 +514,7 @@
               type="text"
               bind:value={twoFactorCode}
               maxlength="6"
-              placeholder={$t('common.otp_placeholder') || '000000'}
+              placeholder={$t('common.otp_placeholder')}
               class="otp-input"
               autocomplete="one-time-code"
             />
@@ -522,7 +522,7 @@
           <label class="checkbox" style="margin-bottom: 1rem; justify-content: center;">
             <input type="checkbox" bind:checked={trustDevice} />
             <span class="checkmark"></span>
-            <span>{$t('auth.2fa.trust_device') || 'Trust this device for 30 days'}</span>
+            <span>{$t('auth.2fa.trust_device')}</span>
           </label>
           <button
             class="btn-primary"
@@ -532,7 +532,7 @@
             {#if loading}
               <div class="spinner"></div>
             {:else}
-              {$t('auth.2fa.verify') || 'Verify'}
+              {$t('auth.2fa.verify')}
             {/if}
           </button>
           {#if emailOtpSent}
@@ -542,9 +542,9 @@
               on:click={() => sendEmailOtp(true)}
             >
               {#if resendCountdown > 0}
-                {$t('auth.2fa.resend_code') || 'Resend Code'} ({resendCountdown}s)
+                {$t('auth.2fa.resend_code')} ({resendCountdown}s)
               {:else}
-                {$t('auth.2fa.resend_code') || 'Resend Code'}
+                {$t('auth.2fa.resend_code')}
               {/if}
             </button>
           {/if}
@@ -555,7 +555,7 @@
               error = '';
             }}
           >
-            {$t('common.back') || 'Back'}
+            {$t('common.back')}
           </button>
         </div>
       {/if}

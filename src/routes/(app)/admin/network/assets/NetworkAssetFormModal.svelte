@@ -283,8 +283,8 @@
       <section class="panel-section full">
         <div class="section-head">
           <div>
-            <span class="section-kicker">{$t('admin.ftth_assets.modal.asset_identity') || 'Asset Identity'}</span>
-            <strong>{$t('admin.ftth_assets.modal.core_asset_data') || 'Core Asset Data'}</strong>
+            <span class="section-kicker">{$t('admin.ftth_assets.modal.asset_identity')}</span>
+            <strong>{$t('admin.ftth_assets.modal.core_asset_data')}</strong>
           </div>
         </div>
         <div class="form-grid">
@@ -377,8 +377,7 @@
               <strong>{formProfile.detailSectionTitle}</strong>
             </div>
             <p class="field-hint">
-              {$t('admin.ftth_assets.details.subtitle') ||
-                'Field ini menyesuaikan tipe asset yang sedang dipilih.'}
+              {$t('admin.ftth_assets.details.subtitle')}
             </p>
           </div>
           <div class="detail-grid">
@@ -403,14 +402,14 @@
           <details class="optional-card">
             <summary class="optional-card__summary">
               <div>
-                <span class="section-kicker">{$t('admin.ftth_assets.modal.optional_hardware') || 'Optional Hardware Reference'}</span>
-                <strong>{$t('admin.ftth_assets.modal.brand_model_serial') || 'Brand, model, and serial'}</strong>
+                <span class="section-kicker">{$t('admin.ftth_assets.modal.optional_hardware')}</span>
+                <strong>{$t('admin.ftth_assets.modal.brand_model_serial')}</strong>
               </div>
-              <span class="optional-card__hint">{$t('admin.ftth_assets.modal.open_if_needed') || 'Open if needed'}</span>
+              <span class="optional-card__hint">{$t('admin.ftth_assets.modal.open_if_needed')}</span>
             </summary>
             <div class="optional-card__body">
               <p class="field-hint">
-                {$t('admin.ftth_assets.modal.optional_hardware_hint') || 'Untuk asset distribusi seperti ODP/ODC/FAT/NAP, isi bagian ini hanya jika memang dibutuhkan untuk inventaris fisik atau audit.'}
+                {$t('admin.ftth_assets.modal.optional_hardware_hint')}
               </p>
               <div class="detail-grid hardware-grid">
                 <label>
@@ -449,8 +448,8 @@
       <section class="panel-section full">
         <div class="section-head">
           <div>
-            <span class="section-kicker">{$t('admin.ftth_assets.modal.notes_kicker') || 'Notes'}</span>
-            <strong>{$t('admin.ftth_assets.fields.notes') || 'Notes'}</strong>
+            <span class="section-kicker">{$t('admin.ftth_assets.modal.notes_kicker')}</span>
+            <strong>{$t('admin.ftth_assets.fields.notes')}</strong>
           </div>
         </div>
         <label class="full">
@@ -463,20 +462,20 @@
       <section class="panel-section map-section">
         <div class="section-head">
           <div>
-            <span class="section-kicker">{$t('admin.ftth_assets.modal.map_location') || 'Map Location'}</span>
-            <strong>{$t('admin.ftth_assets.modal.asset_coordinates') || 'Asset coordinates'}</strong>
+            <span class="section-kicker">{$t('admin.ftth_assets.modal.map_location')}</span>
+            <strong>{$t('admin.ftth_assets.modal.asset_coordinates')}</strong>
           </div>
           {#if showMapPriorityHint}
-            <span class="priority-chip">{$t('admin.ftth_assets.modal.recommended') || 'Recommended'}</span>
+            <span class="priority-chip">{$t('admin.ftth_assets.modal.recommended')}</span>
           {/if}
         </div>
         <p class="field-hint">
-          {$t('admin.ftth_assets.modal.coordinates_hint') || 'Koordinat ini adalah posisi fisik asset dan akan dipakai untuk topology map. Tidak harus sama dengan lokasi customer.'}
+          {$t('admin.ftth_assets.modal.coordinates_hint')}
         </p>
 
         <div class="coordinate-grid">
           <label>
-            <span>{$t('admin.ftth_assets.modal.latitude') || 'Latitude'}</span>
+            <span>{$t('admin.ftth_assets.modal.latitude')}</span>
             <input
               class="input mono-input"
               bind:value={draft.latitude}
@@ -486,7 +485,7 @@
             />
           </label>
           <label>
-            <span>{$t('admin.ftth_assets.modal.longitude') || 'Longitude'}</span>
+            <span>{$t('admin.ftth_assets.modal.longitude')}</span>
             <input
               class="input mono-input"
               bind:value={draft.longitude}
@@ -509,11 +508,11 @@
         <section class="panel-section connection-section">
           <div class="detail-section__head">
             <div>
-              <span class="section-kicker">{$t('admin.ftth_assets.modal.connected_to') || 'Connected To'}</span>
-              <strong>{$t('admin.ftth_assets.modal.relation_summary') || 'Current relation summary'}</strong>
+              <span class="section-kicker">{$t('admin.ftth_assets.modal.connected_to')}</span>
+              <strong>{$t('admin.ftth_assets.modal.relation_summary')}</strong>
             </div>
             <p class="field-hint">
-              {$t('admin.ftth_assets.modal.connection_hint') || 'Ringkasan ini membantu melihat keterhubungan asset tanpa keluar dari form.'}
+              {$t('admin.ftth_assets.modal.connection_hint')}
             </p>
           </div>
           <div class="connection-list">
@@ -531,7 +530,7 @@
 
   {#snippet footer()}
     <button class="btn ghost" type="button" onclick={onclose}>
-      {$t('admin.ftth_assets.actions.cancel') || 'Cancel'}
+      {$t('admin.ftth_assets.actions.cancel')}
     </button>
     <button class="btn" type="button" onclick={onsave} disabled={saving}>
       {saving
@@ -543,9 +542,9 @@
   {/snippet}
 </Modal>
 
-<Modal show={showMapPicker} title={$t('admin.ftth_assets.modal.pick_location') || 'Pick Asset Location'} width="860px" onclose={closeMapPicker}>
+<Modal show={showMapPicker} title={$t('admin.ftth_assets.modal.pick_location')} width="860px" onclose={closeMapPicker}>
   <div class="map-picker-shell">
-    <div class="map-picker-help">{$t('admin.ftth_assets.modal.map_picker_help') || 'Klik peta untuk pilih titik, lalu drag marker jika perlu presisi.'}</div>
+    <div class="map-picker-help">{$t('admin.ftth_assets.modal.map_picker_help')}</div>
     <div class="map-picker-cords">
       {#if pickerLat != null && pickerLng != null}
         <span class="mono-input">{pickerLat.toFixed(7)}, {pickerLng.toFixed(7)}</span>
@@ -558,15 +557,15 @@
       loading={pickerMapLoading}
       mapUnavailable={pickerMapUnavailable}
       mapErrorMessage={pickerMapErrorMessage}
-      mapUnavailableTitle={$t('admin.ftth_assets.modal.map_unavailable') || 'Map unavailable'}
-      mapUnavailableSubtitle={$t('admin.ftth_assets.modal.map_unavailable_subtitle') || 'Unable to initialize WebGL map on this browser/device.'}
+      mapUnavailableTitle={$t('admin.ftth_assets.modal.map_unavailable')}
+      mapUnavailableSubtitle={$t('admin.ftth_assets.modal.map_unavailable_subtitle')}
       height="min(58vh, 520px)"
     />
     <div class="picker-actions">
-      <button class="btn ghost" type="button" onclick={closeMapPicker}>{$t('common.cancel') || 'Cancel'}</button>
+      <button class="btn ghost" type="button" onclick={closeMapPicker}>{$t('common.cancel')}</button>
       <button class="btn" type="button" onclick={applyPickedCoordinates}>
         <Icon name="check" size={16} />
-        {$t('admin.ftth_assets.modal.use_this_point') || 'Use This Point'}
+        {$t('admin.ftth_assets.modal.use_this_point')}
       </button>
     </div>
   </div>

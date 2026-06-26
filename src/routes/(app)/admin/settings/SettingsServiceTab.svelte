@@ -343,7 +343,7 @@
         <span class="field-title">
           {tt('admin.settings.service.auto_suspend_mode_label', 'Metode suspend')}
         </span>
-        <div class="mode-picker" role="radiogroup" aria-label={$t('admin.settings.service_tab.suspend_method') || 'Metode suspend'}>
+        <div class="mode-picker" role="radiogroup" aria-label={$t('admin.settings.service_tab.suspend_method')}>
           <button
             type="button"
             class:selected={suspendMode() === 'grace_period'}

@@ -308,27 +308,27 @@
 
 <div class="page-content fade-in">
   <NetworkPageHeader
-    title={$t('admin.network.routers.ip_pools.title') || 'IP Pools'}
-    subtitle={$t('network.ip_pool.title') || 'IP pool RouterOS per router.'}
+    title={$t('admin.network.routers.ip_pools.title')}
+    subtitle={$t('network.ip_pool.title')}
   >
     {#snippet actions()}
       {#if loading}
-        <span class="syncing"><span class="spin"><Icon name="refresh-cw" size={14} /></span>{$t('common.loading') || 'Loading...'}</span>
+        <span class="syncing"><span class="spin"><Icon name="refresh-cw" size={14} /></span>{$t('common.loading')}</span>
       {:else}
-        <span class="syncing">{$t('common.updated') || 'Updated'}</span>
+        <span class="syncing">{$t('common.updated')}</span>
       {/if}
       <button class="btn ghost" type="button" onclick={() => void load()} disabled={!routerId || loading}>
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
+        {$t('common.refresh')}
       </button>
       <button class="btn ghost" type="button" onclick={() => void sync()} disabled={!routerId || loading}>
         <Icon name="download" size={16} />
-        {$t('admin.network.routers.ip_pools.actions.sync') || 'Sync from router'}
+        {$t('admin.network.routers.ip_pools.actions.sync')}
       </button>
       {#if $can('manage', 'ip_pools')}
         <button class="btn ghost" type="button" onclick={openCreate} disabled={!routerId || loading}>
           <Icon name="plus" size={16} />
-          {$t('admin.network.routers.ip_pools.actions.add') || 'Add pool'}
+          {$t('admin.network.routers.ip_pools.actions.add')}
         </button>
       {/if}
     {/snippet}
@@ -337,7 +337,7 @@
   <div class="filters-wrap">
     <NetworkFilterPanel>
       <div class="control">
-        <label for="ip-pools-router">{$t('admin.customers.pppoe.fields.router') || 'Router'}</label>
+        <label for="ip-pools-router">{$t('admin.customers.pppoe.fields.router')}</label>
         <select
           id="ip-pools-router"
           class="input"
@@ -357,12 +357,12 @@
   {#if !routerId}
     <div class="empty">
       <Icon name="info" size={18} />
-      <span>{$t('common.select') || 'Select'} router…</span>
+      <span>{$t('common.select')} router…</span>
     </div>
   {:else if tableData.length === 0 && !loading}
     <div class="empty">
       <Icon name="info" size={18} />
-      <span>{$t('admin.network.routers.ip_pools.empty') || 'No IP pools found.'}</span>
+      <span>{$t('admin.network.routers.ip_pools.empty')}</span>
     </div>
   {:else}
     <div class="table-wrap">
@@ -373,15 +373,15 @@
         pagination={true}
         pageSize={10}
         searchable={true}
-        searchPlaceholder={$t('admin.network.routers.ip_pools.search') || 'Search pools...'}
+        searchPlaceholder={$t('admin.network.routers.ip_pools.search')}
         mobileView="card"
       >
         {#snippet cell({ item, key }: any)}
           {#if key === 'state'}
             {#if item.state}
-              <span class="pill ok">{$t('admin.network.routers.ip_pools.state.present') || 'On router'}</span>
+              <span class="pill ok">{$t('admin.network.routers.ip_pools.state.present')}</span>
             {:else}
-              <span class="pill warn">{$t('admin.network.routers.ip_pools.state.missing') || 'Missing'}</span>
+              <span class="pill warn">{$t('admin.network.routers.ip_pools.state.missing')}</span>
             {/if}
           {:else if key === 'synced'}
             {#if item.synced}
@@ -394,10 +394,10 @@
           {:else if key === 'actions'}
             <div class="actions">
               {#if $can('manage', 'ip_pools')}
-                <button class="icon-btn" type="button" onclick={() => openEdit(item.raw)} title={$t('admin.network.routers.ip_pools.actions.edit') || 'Edit'}>
+                <button class="icon-btn" type="button" onclick={() => openEdit(item.raw)} title={$t('admin.network.routers.ip_pools.actions.edit')}>
                   <Icon name="edit" size={16} />
                 </button>
-                <button class="icon-btn danger" type="button" onclick={() => void openDelete(item.raw)} title={$t('admin.network.routers.ip_pools.actions.delete') || 'Delete'}>
+                <button class="icon-btn danger" type="button" onclick={() => void openDelete(item.raw)} title={$t('admin.network.routers.ip_pools.actions.delete')}>
                   <Icon name="trash-2" size={16} />
                 </button>
               {/if}
@@ -422,7 +422,7 @@
 
 <ConfirmDialog
   bind:show={showDelete}
-  title={$t('admin.network.routers.ip_pools.delete.title') || 'Delete IP Pool'}
+  title={$t('admin.network.routers.ip_pools.delete.title')}
   message={deleteMessage}
   confirmText={deleteDialogType === 'warning'
     ? $t('admin.network.routers.ip_pools.delete.confirm_warning') || 'Delete with warning'

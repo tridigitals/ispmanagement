@@ -266,9 +266,9 @@
   }
 
   function serviceStatusLabel(c: CustomerListItem) {
-    if (c.pending_installations > 0) return `${c.pending_installations} ${$t('admin.customers.status.pending_install') || 'pending install'}`;
-    if (c.service_status === 'active') return `${c.active_subscriptions} ${$t('common.active') || 'active'}`;
-    if (c.service_status === 'inactive') return `${c.subscription_count} ${$t('common.inactive') || 'inactive'}`;
+    if (c.pending_installations > 0) return `${c.pending_installations} ${$t('admin.customers.status.pending_install')}`;
+    if (c.service_status === 'active') return `${c.active_subscriptions} ${$t('common.active')}`;
+    if (c.service_status === 'inactive') return `${c.subscription_count} ${$t('common.inactive')}`;
     return $t('admin.customers.status.no_service') || 'No service';
   }
 
@@ -781,28 +781,28 @@
 <div class="page-content fade-in">
   <div class="page-header">
     <div>
-      <h1>{$t('admin.customers.title') || 'Customers'}</h1>
-      <p class="subtitle">{$t('admin.customers.subtitle') || 'Manage customer accounts and service locations.'}</p>
+      <h1>{$t('admin.customers.title')}</h1>
+      <p class="subtitle">{$t('admin.customers.subtitle')}</p>
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary" onclick={() => refreshCustomers()} disabled={loading}>
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
+        {$t('common.refresh')}
       </button>
       {#if canCreateOrders}
         <button class="btn btn-secondary" onclick={() => goto('/admin/customers/orders/new')}>
           <Icon name="file-text" size={16} />
-          {$t('admin.customers.actions.create_order') || 'Create Order'}
+          {$t('admin.customers.actions.create_order')}
         </button>
       {/if}
       {#if canManageCustomers}
         <button class="btn btn-secondary" onclick={openInviteModal}>
           <Icon name="link" size={16} />
-          {$t('admin.customers.actions.invite_link') || 'Invite Link'}
+          {$t('admin.customers.actions.invite_link')}
         </button>
         <button class="btn btn-primary" onclick={() => (showCreate = true)}>
           <Icon name="plus" size={16} />
-          {$t('admin.customers.actions.new') || 'New customer'}
+          {$t('admin.customers.actions.new')}
         </button>
       {/if}
     </div>
@@ -820,7 +820,7 @@
       }}
     >
       <StatsCard
-        title={$t('admin.customers.stats.total') || 'Total'}
+        title={$t('admin.customers.stats.total')}
         value={stats.total}
         icon="users"
         color="blue"
@@ -832,7 +832,7 @@
       onclick={() => setStatusFilter('active')}
     >
       <StatsCard
-        title={$t('admin.customers.stats.active') || 'Active'}
+        title={$t('admin.customers.stats.active')}
         value={stats.active}
         icon="check-circle"
         color="green"
@@ -844,7 +844,7 @@
       onclick={() => setStatusFilter('inactive')}
     >
       <StatsCard
-        title={$t('admin.customers.stats.inactive') || 'Inactive'}
+        title={$t('admin.customers.stats.inactive')}
         value={stats.inactive}
         icon="x-circle"
         color="orange"
@@ -856,7 +856,7 @@
       onclick={() => setInstallationFilter('pending')}
     >
       <StatsCard
-        title={$t('admin.customers.stats.pending_installation') || 'Pending installation'}
+        title={$t('admin.customers.stats.pending_installation')}
         value={stats.pendingInstallation}
         icon="wrench"
         color="orange"
@@ -867,7 +867,7 @@
   <div class="card table-card">
     <TableToolbar
       bind:searchQuery={q}
-      placeholder={$t('admin.customers.search') || 'Search customers...'}
+      placeholder={$t('admin.customers.search')}
       onsearch={() => {
         page = 0;
         refreshCustomers();
@@ -876,51 +876,51 @@
       {#snippet filters()}
         <div class="toolbar-filters">
           <label class="customer-filter-field">
-            <span>{$t('admin.customers.filters.status') || 'Status'}</span>
+            <span>{$t('admin.customers.filters.status')}</span>
             <select
               class="customer-filter-select"
-              aria-label={$t('admin.customers.filters.aria_status') || 'Customer status filter'}
+              aria-label={$t('admin.customers.filters.aria_status')}
               value={statusFilter}
               onchange={(event) =>
                 setStatusFilter(
                   (event.currentTarget as HTMLSelectElement).value as CustomerStatusFilter,
                 )}
             >
-              <option value="all">{$t('admin.customers.filters.all_customers') || 'All customers'}</option>
-              <option value="active">{$t('common.active') || 'Active'}</option>
-              <option value="inactive">{$t('common.inactive') || 'Inactive'}</option>
+              <option value="all">{$t('admin.customers.filters.all_customers')}</option>
+              <option value="active">{$t('common.active')}</option>
+              <option value="inactive">{$t('common.inactive')}</option>
             </select>
           </label>
           <label class="customer-filter-field">
-            <span>{$t('admin.customers.filters.service') || 'Service'}</span>
+            <span>{$t('admin.customers.filters.service')}</span>
             <select
               class="customer-filter-select"
-              aria-label={$t('admin.customers.filters.aria_service') || 'Customer service filter'}
+              aria-label={$t('admin.customers.filters.aria_service')}
               value={serviceFilter}
               onchange={(event) =>
                 setServiceFilter(
                   (event.currentTarget as HTMLSelectElement).value as CustomerServiceFilter,
                 )}
             >
-              <option value="all">{$t('admin.customers.filters.all_services') || 'All services'}</option>
-              <option value="active">{$t('admin.customers.filters.active_service') || 'Active service'}</option>
-              <option value="inactive">{$t('admin.customers.filters.inactive_service') || 'Inactive service'}</option>
-              <option value="none">{$t('admin.customers.filters.no_service') || 'No service'}</option>
+              <option value="all">{$t('admin.customers.filters.all_services')}</option>
+              <option value="active">{$t('admin.customers.filters.active_service')}</option>
+              <option value="inactive">{$t('admin.customers.filters.inactive_service')}</option>
+              <option value="none">{$t('admin.customers.filters.no_service')}</option>
             </select>
           </label>
           <label class="customer-filter-field">
-            <span>{$t('admin.customers.filters.installation') || 'Installation'}</span>
+            <span>{$t('admin.customers.filters.installation')}</span>
             <select
               class="customer-filter-select"
-              aria-label={$t('admin.customers.filters.aria_installation') || 'Customer installation filter'}
+              aria-label={$t('admin.customers.filters.aria_installation')}
               value={installationFilter}
               onchange={(event) =>
                 setInstallationFilter(
                   (event.currentTarget as HTMLSelectElement).value as CustomerInstallationFilter,
                 )}
             >
-              <option value="all">{$t('admin.customers.filters.all_installations') || 'All installations'}</option>
-              <option value="pending">{$t('admin.customers.filters.pending_installation') || 'Pending installation'}</option>
+              <option value="all">{$t('admin.customers.filters.all_installations')}</option>
+              <option value="pending">{$t('admin.customers.filters.pending_installation')}</option>
             </select>
           </label>
         </div>
@@ -929,7 +929,7 @@
         <div class="customer-toolbar-actions">
           <span class="customer-toolbar-results">
             {total}
-            {$t('admin.customers.results') || 'results'}
+            {$t('admin.customers.results')}
           </span>
           <button
             class="customer-toolbar-shortcut"
@@ -937,7 +937,7 @@
             onclick={openLifecycleReconciliation}
           >
             <Icon name="shield-check" size={16} />
-            <span>{$t('admin.customers.actions.lifecycle_reconciliation') || 'Lifecycle reconciliation'}</span>
+            <span>{$t('admin.customers.actions.lifecycle_reconciliation')}</span>
             {#if lifecycleIssueCount > 0}
               <span class="toolbar-alert-count pulse-red">{lifecycleIssueCount}</span>
             {/if}
@@ -955,9 +955,9 @@
 
     <div class="mobile-customer-list">
       {#if loading}
-        <div class="mobile-empty">{$t('common.loading') || 'Loading...'}</div>
+        <div class="mobile-empty">{$t('common.loading')}</div>
       {:else if customers.length === 0}
-        <div class="mobile-empty">{$t('admin.customers.empty') || 'No customers yet.'}</div>
+        <div class="mobile-empty">{$t('admin.customers.empty')}</div>
       {:else}
         {#each customers as c (c.id)}
           <article class="mobile-customer-card">
@@ -988,16 +988,16 @@
               {#if !isSystemImportPlaceholder(c)}
                 <button class="btn btn-secondary" onclick={() => openCustomer(c)}>
                   <Icon name="arrow-right" size={15} />
-                  {$t('common.open') || 'Open'}
+                  {$t('common.open')}
                 </button>
               {/if}
               {#if canManageCustomers && !isSystemImportPlaceholder(c)}
-                <button class="btn-icon" title={$t('admin.customers.actions.add_service') || 'Add service'} onclick={() => openAddService(c)}>
+                <button class="btn-icon" title={$t('admin.customers.actions.add_service')} onclick={() => openAddService(c)}>
                   <Icon name="wifi" size={16} />
                 </button>
                 <button
                   class="btn-icon"
-                  title={$t('admin.customers.actions.create_invoice') || 'Create invoice'}
+                  title={$t('admin.customers.actions.create_invoice')}
                   onclick={() => openCreateInvoice(c)}
                 >
                   <Icon name="receipt" size={16} />
@@ -1020,7 +1020,7 @@
                 </button>
                 <button
                   class="btn-icon danger"
-                  title={$t('common.delete') || 'Delete'}
+                  title={$t('common.delete')}
                   onclick={() => confirmDelete(c)}
                 >
                   <Icon name="trash-2" size={16} />
@@ -1057,7 +1057,7 @@
         data={customers}
         keyField="id"
         {loading}
-        emptyText={$t('admin.customers.empty') || 'No customers yet.'}
+        emptyText={$t('admin.customers.empty')}
         pagination
         serverSide
         pageSize={perPage}
@@ -1079,7 +1079,7 @@
               <div>
                 <div class="name">{c.name}</div>
                 <div class="sub">
-                  {$t('admin.network.pppoe.import.fields.unassigned') || 'Unassigned'}
+                  {$t('admin.network.pppoe.import.fields.unassigned')}
                 </div>
               </div>
             {:else}
@@ -1095,9 +1095,9 @@
             </div>
           {:else if key === 'status'}
             {#if c.is_active}
-              <span class="pill pill-green">{$t('common.active') || 'Active'}</span>
+              <span class="pill pill-green">{$t('common.active')}</span>
             {:else}
-              <span class="pill pill-gray">{$t('common.inactive') || 'Inactive'}</span>
+              <span class="pill pill-gray">{$t('common.inactive')}</span>
             {/if}
           {:else if key === 'health'}
             <span
@@ -1119,7 +1119,7 @@
                 {serviceStatusLabel(c)}
               </span>
               {#if c.subscription_count > 0 && c.active_subscriptions !== c.subscription_count}
-                <div class="sub">{c.subscription_count} {$t('admin.customers.status.total_services') || 'total services'}</div>
+                <div class="sub">{c.subscription_count} {$t('admin.customers.status.total_services')}</div>
               {/if}
             </div>
           {:else if key === 'updated_at'}
@@ -1129,19 +1129,19 @@
               {#if !isSystemImportPlaceholder(c)}
                 <button
                   class="btn-icon"
-                  title={$t('common.open') || 'Open'}
+                  title={$t('common.open')}
                   onclick={() => openCustomer(c)}
                 >
                   <Icon name="arrow-right" size={16} />
                 </button>
               {/if}
               {#if canManageCustomers && !isSystemImportPlaceholder(c)}
-                <button class="btn-icon" title={$t('admin.customers.actions.add_service') || 'Add service'} onclick={() => openAddService(c)}>
+                <button class="btn-icon" title={$t('admin.customers.actions.add_service')} onclick={() => openAddService(c)}>
                   <Icon name="wifi" size={16} />
                 </button>
                 <button
                   class="btn-icon"
-                  title={$t('admin.customers.actions.create_invoice') || 'Create invoice'}
+                  title={$t('admin.customers.actions.create_invoice')}
                   onclick={() => openCreateInvoice(c)}
                 >
                   <Icon name="receipt" size={16} />
@@ -1164,7 +1164,7 @@
                 </button>
                 <button
                   class="btn-icon danger"
-                  title={$t('common.delete') || 'Delete'}
+                  title={$t('common.delete')}
                   onclick={() => confirmDelete(c)}
                 >
                   <Icon name="trash-2" size={16} />
@@ -1184,43 +1184,43 @@
 
 <Modal
   show={showCreate}
-  title={$t('admin.customers.new.title') || 'New customer'}
+  title={$t('admin.customers.new.title')}
   onclose={() => (showCreate = false)}
 >
   <div class="form">
     <label>
-      <span>{$t('admin.customers.fields.name') || 'Name'}</span>
-      <input class="input" bind:value={createName} placeholder={$t('admin.settings.company.name_placeholder') || 'PT Example'} />
+      <span>{$t('admin.customers.fields.name')}</span>
+      <input class="input" bind:value={createName} placeholder={$t('admin.settings.company.name_placeholder')} />
     </label>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.fields.email') || 'Email'}</span>
+        <span>{$t('admin.customers.fields.email')}</span>
         <input class="input" bind:value={createEmail} placeholder="customer@example.com" />
       </label>
       <label>
-        <span>{$t('admin.customers.fields.phone') || 'Phone'}</span>
+        <span>{$t('admin.customers.fields.phone')}</span>
         <input class="input" bind:value={createPhone} placeholder="+62..." />
       </label>
     </div>
     <label>
-      <span>{$t('admin.customers.fields.notes') || 'Notes'}</span>
+      <span>{$t('admin.customers.fields.notes')}</span>
       <textarea class="input" rows="4" bind:value={createNotes}></textarea>
     </label>
 
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.new.portal.password') || 'Password'}</span>
+        <span>{$t('admin.customers.new.portal.password')}</span>
         <input class="input" type="text" bind:value={createPortalPassword} />
       </label>
       <label>
-        <span>{$t('admin.customers.new.portal.password_confirm') || 'Confirm password'}</span>
+        <span>{$t('admin.customers.new.portal.password_confirm')}</span>
         <input class="input" type="text" bind:value={createPortalPasswordConfirm} />
       </label>
     </div>
 
     <div class="actions">
       <button class="btn btn-secondary" onclick={() => (showCreate = false)}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button
         class="btn btn-primary"
@@ -1233,7 +1233,7 @@
           createPortalPassword !== createPortalPasswordConfirm}
       >
         <Icon name="plus" size={16} />
-        {$t('common.create') || 'Create'}
+        {$t('common.create')}
       </button>
     </div>
   </div>
@@ -1241,7 +1241,7 @@
 
 <Modal
   show={showInviteModal}
-  title={$t('admin.customers.invite.title') || 'Customer Invite Link'}
+  title={$t('admin.customers.invite.title')}
   width="760px"
   onclose={() => (showInviteModal = false)}
 >
@@ -1249,9 +1249,9 @@
     <section class="invite-section invite-generate-card">
       <div class="invite-section-head invite-section-heading-block">
         <div>
-          <strong>{$t('admin.customers.invite.generate') || 'Generate invite'}</strong>
+          <strong>{$t('admin.customers.invite.generate')}</strong>
           <p class="invite-section-copy">
-            {$t('admin.customers.invite.share_hint') || 'Buat link pendaftaran customer yang bisa langsung dibagikan ke tim sales atau calon pelanggan.'}
+            {$t('admin.customers.invite.share_hint')}
           </p>
         </div>
       </div>
@@ -1259,14 +1259,14 @@
       <div class="invite-overview-grid">
         <section class="invite-section invite-section-subtle">
           <div class="invite-section-head">
-            <strong>{$t('admin.customers.invite.default_policy') || 'Default policy'}</strong>
+            <strong>{$t('admin.customers.invite.default_policy')}</strong>
             {#if invitePolicyLoading}
-              <span class="muted">{$t('common.loading') || 'Loading...'}</span>
+              <span class="muted">{$t('common.loading')}</span>
             {/if}
           </div>
           <div class="grid2">
             <label>
-              <span>{$t('admin.customers.invite.default_expiry') || 'Default expiry (hours)'}</span>
+              <span>{$t('admin.customers.invite.default_expiry')}</span>
               <input
                 class="input"
                 type="number"
@@ -1276,7 +1276,7 @@
               />
             </label>
             <label>
-              <span>{$t('admin.customers.invite.default_max_uses') || 'Default max uses'}</span>
+              <span>{$t('admin.customers.invite.default_max_uses')}</span>
               <input
                 class="input"
                 type="number"
@@ -1300,34 +1300,34 @@
 
         <section class="invite-section invite-section-subtle">
           <div class="invite-section-head">
-            <strong>{$t('admin.customers.invite.invite_summary') || 'Invite summary'}</strong>
+            <strong>{$t('admin.customers.invite.invite_summary')}</strong>
           </div>
           {#if inviteSummaryLoading}
-            <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+            <div class="muted">{$t('common.loading')}</div>
           {:else if inviteSummary}
             <div class="invite-summary-grid">
               <div class="invite-summary-item">
-                <small>{$t('common.total') || 'Total'}</small>
+                <small>{$t('common.total')}</small>
                 <strong>{inviteSummary.total}</strong>
               </div>
               <div class="invite-summary-item">
-                <small>{$t('common.active') || 'Active'}</small>
+                <small>{$t('common.active')}</small>
                 <strong>{inviteSummary.active}</strong>
               </div>
               <div class="invite-summary-item">
-                <small>{$t('admin.customers.invite.used_up') || 'Used up'}</small>
+                <small>{$t('admin.customers.invite.used_up')}</small>
                 <strong>{inviteSummary.used_up}</strong>
               </div>
               <div class="invite-summary-item">
-                <small>{$t('admin.customers.invite.expired') || 'Expired'}</small>
+                <small>{$t('admin.customers.invite.expired')}</small>
                 <strong>{inviteSummary.expired}</strong>
               </div>
               <div class="invite-summary-item">
-                <small>{$t('admin.customers.invite.revoked') || 'Revoked'}</small>
+                <small>{$t('admin.customers.invite.revoked')}</small>
                 <strong>{inviteSummary.revoked}</strong>
               </div>
               <div class="invite-summary-item">
-                <small>{$t('admin.customers.invite.utilization') || 'Utilization'}</small>
+                <small>{$t('admin.customers.invite.utilization')}</small>
                 <strong>{inviteSummary.utilization_percent.toFixed(1)}%</strong>
               </div>
             </div>
@@ -1337,20 +1337,20 @@
 
       <div class="grid2">
         <label>
-          <span>{$t('admin.customers.invite.expire_hours') || 'Expire (hours)'}</span>
+          <span>{$t('admin.customers.invite.expire_hours')}</span>
           <input class="input" type="number" min="1" max="720" bind:value={inviteExpiresInHours} />
         </label>
         <label>
-          <span>{$t('admin.customers.invite.max_uses') || 'Max uses'}</span>
+          <span>{$t('admin.customers.invite.max_uses')}</span>
           <input class="input" type="number" min="1" max="100" bind:value={inviteMaxUses} />
         </label>
       </div>
       <label>
-        <span>{$t('admin.customers.invite.note_optional') || 'Note (optional)'}</span>
+        <span>{$t('admin.customers.invite.note_optional')}</span>
         <input
           class="input"
           bind:value={inviteNote}
-          placeholder={$t('admin.customers.invite.note_placeholder') || 'Campaign, PIC, atau remark internal'}
+          placeholder={$t('admin.customers.invite.note_placeholder')}
         />
       </label>
 
@@ -1365,8 +1365,8 @@
         <div class="invite-result-panel">
           <div class="invite-result-head">
             <div>
-              <strong>{$t('admin.customers.invite.generated_link') || 'Generated link'}</strong>
-              <div class="sub">{$t('admin.customers.invite.share_hint') || 'Bagikan link ini ke customer atau tim terkait.'}</div>
+              <strong>{$t('admin.customers.invite.generated_link')}</strong>
+              <div class="sub">{$t('admin.customers.invite.share_hint')}</div>
             </div>
             <small class="sub">
               Expires: {new Date(generatedInviteExpiresAt).toLocaleString()}
@@ -1376,7 +1376,7 @@
             <input class="input mono" readonly value={generatedInviteUrl} />
             <button class="btn btn-secondary" onclick={() => copyInviteLink(generatedInviteUrl)}>
               <Icon name="copy" size={16} />
-              {$t('common.copy') || 'Copy'}
+              {$t('common.copy')}
             </button>
           </div>
         </div>
@@ -1386,8 +1386,8 @@
     <section class="invite-section invite-history-section">
       <div class="invite-history-toolbar">
         <div>
-          <strong>{$t('admin.customers.invite.recent_links') || 'Recent invite links'}</strong>
-          <div class="sub">{$t('admin.customers.invite.recent_hint') || 'Pantau link aktif, usage, dan revoke link yang sudah tidak dipakai.'}</div>
+          <strong>{$t('admin.customers.invite.recent_links')}</strong>
+          <div class="sub">{$t('admin.customers.invite.recent_hint')}</div>
         </div>
         <label class="inline-check">
           <input
@@ -1395,16 +1395,16 @@
             bind:checked={inviteIncludeInactive}
             onchange={() => loadInvites()}
           />
-          <span>{$t('admin.customers.invite.show_inactive') || 'Show inactive'}</span>
+          <span>{$t('admin.customers.invite.show_inactive')}</span>
         </label>
       </div>
 
       {#if inviteLoading}
-        <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+        <div class="muted">{$t('common.loading')}</div>
       {:else if inviteRows.length === 0}
         <div class="invite-empty-state">
           <Icon name="link" size={18} />
-          <span>{$t('admin.customers.invite.no_links') || 'No invite links yet.'}</span>
+          <span>{$t('admin.customers.invite.no_links')}</span>
         </div>
       {:else}
         <div class="invite-list">
@@ -1422,11 +1422,11 @@
                     {inviteStatusLabel(invite)}
                   </span>
                   <span class="mono">
-                    {$t('admin.customers.invite.uses') || 'Uses'}: {invite.used_count}/{invite.max_uses}
+                    {$t('admin.customers.invite.uses')}: {invite.used_count}/{invite.max_uses}
                   </span>
                 </div>
                 <div class="sub">
-                  {$t('admin.customers.invite.created_at') || 'Created'}: {new Date(invite.created_at).toLocaleString()} · {$t('admin.customers.invite.expires_at') || 'Expires'}: {new Date(
+                  {$t('admin.customers.invite.created_at')}: {new Date(invite.created_at).toLocaleString()} · {$t('admin.customers.invite.expires_at')}: {new Date(
                     invite.expires_at,
                   ).toLocaleString()}
                 </div>
@@ -1443,7 +1443,7 @@
                     {invite.invite_url}
                   </a>
                 {:else}
-                  <div class="sub">{$t('admin.customers.invite.link_only_available') || 'Link hanya tersedia saat invite baru dibuat.'}</div>
+                  <div class="sub">{$t('admin.customers.invite.link_only_available')}</div>
                 {/if}
               </div>
               <div class="invite-item-actions">
@@ -1453,7 +1453,7 @@
                   disabled={!invite.invite_url}
                 >
                   <Icon name="copy" size={14} />
-                  {$t('common.copy') || 'Copy'}
+                  {$t('common.copy')}
                 </button>
                 {#if inviteStatus(invite) === 'active'}
                   <button
@@ -1476,7 +1476,7 @@
 
 <Modal
   show={showWhatsAppCompose}
-  title={$t('admin.customers.communication.title_whatsapp') || 'Send WhatsApp'}
+  title={$t('admin.customers.communication.title_whatsapp')}
   onclose={() => {
     showWhatsAppCompose = false;
     whatsappTarget = null;
@@ -1491,14 +1491,14 @@
         </div>
         <span class="pill" class:pill-green={whatsappGatewayReady}>
           {whatsappGatewayReady
-            ? `${whatsappGatewayProvider || 'gateway'} ${$t('admin.customers.communication.gateway_ready') || 'ready'}`
+            ? `${whatsappGatewayProvider || 'gateway'} ${$t('admin.customers.communication.gateway_ready')}`
             : whatsappGatewayReason ||
               $t('admin.customers.communication.gateway_not_ready') ||
               'Gateway not ready'}
         </span>
       </div>
       <label>
-        <span>{$t('admin.customers.communication.template') || 'Template'}</span>
+        <span>{$t('admin.customers.communication.template')}</span>
         <select
           class="input"
           bind:value={selectedMessageTemplateId}
@@ -1508,18 +1508,18 @@
             <option value={template.id}>{template.name}</option>
           {/each}
           <option value="custom"
-            >{$t('admin.customers.communication.custom_message') || 'Custom message'}</option
+            >{$t('admin.customers.communication.custom_message')}</option
           >
         </select>
       </label>
       <label>
-        <span>{$t('admin.customers.communication.message') || 'Message'}</span>
+        <span>{$t('admin.customers.communication.message')}</span>
         <textarea class="input" rows="7" bind:value={whatsappMessage}></textarea>
       </label>
       <div class="compose-footnote">
         <span
           >{whatsappMessage.trim().length}
-          {$t('admin.customers.communication.characters') || 'characters'}</span
+          {$t('admin.customers.communication.characters')}</span
         >
         {#if !whatsappGatewayReady}
           <span>{whatsappGatewayReason}</span>
@@ -1531,7 +1531,7 @@
           onclick={() => whatsappTarget && openWhatsAppApp(whatsappTarget)}
         >
           <Icon name="external-link" size={16} />
-          {$t('admin.customers.communication.actions.open_whatsapp_app') || 'Open WhatsApp App'}
+          {$t('admin.customers.communication.actions.open_whatsapp_app')}
         </button>
         <button
           class="btn btn-primary"
@@ -1550,7 +1550,7 @@
 
 <Modal
   show={showEmailCompose}
-  title={$t('admin.customers.communication.title_email') || 'Send Email'}
+  title={$t('admin.customers.communication.title_email')}
   onclose={() => {
     showEmailCompose = false;
     emailTarget = null;
@@ -1564,11 +1564,11 @@
           <span>{emailTarget.email}</span>
         </div>
         <span class="pill pill-green"
-          >{$t('admin.customers.communication.email_outbox') || 'Email outbox'}</span
+          >{$t('admin.customers.communication.email_outbox')}</span
         >
       </div>
       <label>
-        <span>{$t('admin.customers.communication.template') || 'Template'}</span>
+        <span>{$t('admin.customers.communication.template')}</span>
         <select
           class="input"
           bind:value={selectedEmailTemplateId}
@@ -1578,26 +1578,25 @@
             <option value={template.id}>{template.name}</option>
           {/each}
           <option value="custom"
-            >{$t('admin.customers.communication.custom_email') || 'Custom email'}</option
+            >{$t('admin.customers.communication.custom_email')}</option
           >
         </select>
       </label>
       <label>
-        <span>{$t('admin.customers.communication.subject') || 'Subject'}</span>
+        <span>{$t('admin.customers.communication.subject')}</span>
         <input class="input" bind:value={emailSubject} />
       </label>
       <label>
-        <span>{$t('admin.customers.communication.body') || 'Body'}</span>
+        <span>{$t('admin.customers.communication.body')}</span>
         <textarea class="input" rows="9" bind:value={emailBody}></textarea>
       </label>
       <div class="compose-footnote">
         <span
           >{emailBody.trim().length}
-          {$t('admin.customers.communication.characters') || 'characters'}</span
+          {$t('admin.customers.communication.characters')}</span
         >
         <span
-          >{$t('admin.customers.communication.queued_through_outbox') ||
-            'Queued through email outbox'}</span
+          >{$t('admin.customers.communication.queued_through_outbox')}</span
         >
       </div>
       <div class="actions">
@@ -1608,7 +1607,7 @@
             emailTarget = null;
           }}
         >
-          {$t('common.cancel') || 'Cancel'}
+          {$t('common.cancel')}
         </button>
         <button
           class="btn btn-primary"
@@ -1627,11 +1626,10 @@
 
 <ConfirmDialog
   show={showDelete}
-  title={$t('admin.customers.delete.title') || 'Delete customer'}
-  message={$t('admin.customers.delete.message') ||
-    'This will remove the customer and all related data.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  title={$t('admin.customers.delete.title')}
+  message={$t('admin.customers.delete.message')}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   loading={deleting}
   onconfirm={doDelete}
   oncancel={() => (showDelete = false)}

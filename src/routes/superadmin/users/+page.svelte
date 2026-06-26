@@ -292,7 +292,7 @@
 </script>
 
 <div class="superadmin-content fade-in">
-  <div class="stats-row" aria-label={$t('superadmin.users.aria.stats') || 'User stats'}>
+  <div class="stats-row" aria-label={$t('superadmin.users.aria.stats')}>
     <button
       class="stat-btn"
       class:active={statusFilter === 'all'}
@@ -300,12 +300,12 @@
         statusFilter = 'all';
         roleFilter = 'all';
       }}
-      aria-label={$t('superadmin.users.stats.show_all') || 'Show all users'}
-      title={$t('superadmin.users.stats.show_all') || 'Show all users'}
+      aria-label={$t('superadmin.users.stats.show_all')}
+      title={$t('superadmin.users.stats.show_all')}
       type="button"
     >
       <StatsCard
-        title={$t('superadmin.users.stats.all_title') || 'All Users'}
+        title={$t('superadmin.users.stats.all_title')}
         value={stats.total}
         icon="users"
         color="primary"
@@ -315,12 +315,12 @@
       class="stat-btn"
       class:active={statusFilter === 'active'}
       onclick={() => (statusFilter = 'active')}
-      aria-label={$t('superadmin.users.stats.show_active') || 'Show active users'}
-      title={$t('superadmin.users.stats.show_active') || 'Show active users'}
+      aria-label={$t('superadmin.users.stats.show_active')}
+      title={$t('superadmin.users.stats.show_active')}
       type="button"
     >
       <StatsCard
-        title={$t('superadmin.users.stats.active_title') || 'Active Users'}
+        title={$t('superadmin.users.stats.active_title')}
         value={stats.active}
         icon="check-circle"
         color="success"
@@ -330,12 +330,12 @@
       class="stat-btn"
       class:active={statusFilter === 'inactive'}
       onclick={() => (statusFilter = 'inactive')}
-      aria-label={$t('superadmin.users.stats.show_inactive') || 'Show inactive users'}
-      title={$t('superadmin.users.stats.show_inactive') || 'Show inactive users'}
+      aria-label={$t('superadmin.users.stats.show_inactive')}
+      title={$t('superadmin.users.stats.show_inactive')}
       type="button"
     >
       <StatsCard
-        title={$t('superadmin.users.stats.inactive_title') || 'Inactive Users'}
+        title={$t('superadmin.users.stats.inactive_title')}
         value={stats.inactive}
         icon="slash"
         color="warning"
@@ -348,12 +348,12 @@
         roleFilter = 'superadmin';
         statusFilter = 'all';
       }}
-      aria-label={$t('superadmin.users.stats.show_superadmins') || 'Show super admins'}
-      title={$t('superadmin.users.stats.show_superadmins') || 'Show super admins'}
+      aria-label={$t('superadmin.users.stats.show_superadmins')}
+      title={$t('superadmin.users.stats.show_superadmins')}
       type="button"
     >
       <StatsCard
-        title={$t('superadmin.users.stats.superadmins_title') || 'Super Admins'}
+        title={$t('superadmin.users.stats.superadmins_title')}
         value={stats.superadmins}
         icon="server"
         color="danger"
@@ -364,14 +364,14 @@
   <div class="glass-card" in:fly={{ y: 20, delay: 80 }}>
     <div class="card-header glass">
       <div>
-        <h3>{$t('superadmin.users.title') || 'Users'}</h3>
+        <h3>{$t('superadmin.users.title')}</h3>
         <span class="muted">
-          {$t('superadmin.users.subtitle') || 'Manage global users and access'}
+          {$t('superadmin.users.subtitle')}
         </span>
       </div>
       <span class="count-badge">
         {totalUsers || stats.total}
-        {$t('superadmin.users.count') || 'users'}
+        {$t('superadmin.users.count')}
       </span>
     </div>
 

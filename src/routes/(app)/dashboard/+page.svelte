@@ -332,7 +332,7 @@
         {#if annLoading && annPosts.length === 0}
           <div class="loading-state ann-state">
             <div class="spinner"></div>
-            <p class="muted">{$t('common.loading') || 'Loading...'}</p>
+            <p class="muted">{$t('common.loading')}</p>
           </div>
         {:else if annPosts.length === 0}
           <div class="empty-state ann-state">
@@ -345,14 +345,13 @@
                 'No announcements yet.'}
             </h3>
             <p>
-              {$t('dashboard.announcements.empty.description') ||
-                'When the team publishes updates, they will show up here.'}
+              {$t('dashboard.announcements.empty.description')}
             </p>
             <button
               class="btn btn-secondary mt-4"
               onclick={() => goto(`${tenantPrefix}/announcements`)}
             >
-              {$t('dashboard.announcements.empty.open') || 'Open announcements'}
+              {$t('dashboard.announcements.empty.open')}
             </button>
           </div>
         {:else}
@@ -382,17 +381,17 @@
     <aside class="quick-actions">
       {#if !$isAdmin}
         <div class="section-header">
-          <h2>{$t('dashboard.portal_summary.title') || 'Service Overview'}</h2>
+          <h2>{$t('dashboard.portal_summary.title')}</h2>
         </div>
         <div class="portal-summary-card">
           {#if portalSummaryLoading}
             <div class="summary-loading">
               <div class="spinner"></div>
-              <span>{$t('common.loading') || 'Loading...'}</span>
+              <span>{$t('common.loading')}</span>
             </div>
           {:else}
             <div class="summary-health-row">
-              <div class="summary-k">{$t('dashboard.portal_summary.health') || 'Status'}</div>
+              <div class="summary-k">{$t('dashboard.portal_summary.health')}</div>
               <span class="summary-health {portalHealthStatus}">
                 <span class="summary-health-dot"></span>
                 {portalStatusLabel(portalHealthStatus)}
@@ -401,13 +400,13 @@
 
             <div class="summary-row">
               <div class="summary-k">
-                {$t('dashboard.portal_summary.active_package') || 'Active package'}
+                {$t('dashboard.portal_summary.active_package')}
               </div>
               <div class="summary-v">
                 {#if activePortalSubscription}
                   {activePortalSubscription.package_name || activePortalSubscription.package_id}
                 {:else}
-                  {$t('dashboard.portal_summary.none') || '-'}
+                  {$t('dashboard.portal_summary.none')}
                 {/if}
               </div>
               {#if activePortalSubscription}
@@ -420,19 +419,19 @@
 
             <div class="summary-row">
               <div class="summary-k">
-                {$t('dashboard.portal_summary.next_invoice') || 'Next invoice'}
+                {$t('dashboard.portal_summary.next_invoice')}
               </div>
               <div class="summary-v">
                 {#if nextPendingInvoice}
                   {nextPendingInvoice.invoice_number}
                 {:else}
-                  {$t('dashboard.portal_summary.no_pending_invoice') || 'No pending invoice'}
+                  {$t('dashboard.portal_summary.no_pending_invoice')}
                 {/if}
               </div>
               {#if nextPendingInvoice}
                 <div class="summary-sub">
                   {formatInvoiceAmount(nextPendingInvoice)} ·
-                  {$t('dashboard.portal_summary.due') || 'Due'}:
+                  {$t('dashboard.portal_summary.due')}:
                   {formatDate(invoiceDateForDisplay(nextPendingInvoice), {
                     timeZone: $appSettings.app_timezone,
                   })}
@@ -446,7 +445,7 @@
                 onclick={() => goto(`${tenantPrefix}/dashboard/services`)}
               >
                 <Icon name="package" size={15} />
-                {$t('dashboard.portal_summary.manage_package') || 'Manage service'}
+                {$t('dashboard.portal_summary.manage_package')}
               </button>
               {#if nextPendingInvoice}
                 <button
@@ -454,7 +453,7 @@
                   onclick={() => goto(`/pay/${nextPendingInvoice!.id}`)}
                 >
                   <Icon name="credit-card" size={15} />
-                  {$t('dashboard.portal_summary.pay_now') || 'Pay now'}
+                  {$t('dashboard.portal_summary.pay_now')}
                 </button>
               {/if}
             </div>

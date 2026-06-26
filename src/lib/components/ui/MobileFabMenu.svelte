@@ -23,7 +23,7 @@
   <button
     class="mobile-fab"
     on:click={() => (isOpen = !isOpen)}
-    aria-label={$t('components.mobile_fab.open_menu') || 'Open Menu'}
+    aria-label={$t('components.mobile_fab.open_menu')}
     type="button"
   >
     <Icon name={isOpen ? 'x' : 'settings'} size={24} />
@@ -52,7 +52,7 @@
           <button
             class="close-btn"
             on:click={() => (isOpen = false)}
-            aria-label={$t('common.close') || 'Close'}
+            aria-label={$t('common.close')}
             type="button"
           >
             <Icon name="x" size={20} />

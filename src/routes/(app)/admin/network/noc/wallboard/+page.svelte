@@ -527,7 +527,7 @@
     try {
       await ackWallboardAlerts(
         ids.slice(0, 80),
-        `${$t('admin.network.alerts.toasts.acked') || 'Alert acknowledged'} (${Math.min(ids.length, 80)})`,
+        `${$t('admin.network.alerts.toasts.acked')} (${Math.min(ids.length, 80)})`,
       );
       pushIncident('ack', `Ack visible ${Math.min(ids.length, 80)} alert(s)`);
       await Promise.all([loadAlerts(false), loadIncidents(false)]);
@@ -1286,7 +1286,7 @@
           class="icon-x"
           type="button"
           onclick={() => goto(`${tenantPrefix}/admin/network`)}
-          title={$t('common.exit') || 'Exit'}
+          title={$t('common.exit')}
         >
           <Icon name="arrow-left" size={16} />
         </button>
@@ -1298,10 +1298,10 @@
           onclick={() => {
             insightsOpen = !insightsOpen;
           }}
-          title={$t('admin.network.wallboard.controls.open') || 'Open settings'}
+          title={$t('admin.network.wallboard.controls.open')}
         >
           <Icon name="settings" size={16} />
-          {$t('admin.network.wallboard.settings') || 'Settings'}
+          {$t('admin.network.wallboard.settings')}
           {#if insightsBadge.total > 0}
             <span class="insights-badge">
               {insightsBadge.total > 99 ? '99+' : insightsBadge.total}
@@ -1318,12 +1318,12 @@
       class="insights-backdrop"
       type="button"
       onclick={() => (insightsOpen = false)}
-      aria-label={$t('common.close') || 'Close'}
+      aria-label={$t('common.close')}
     ></button>
-    <aside class="wall-insights" aria-label={$t('admin.network.wallboard.settings') || 'Settings'}>
+    <aside class="wall-insights" aria-label={$t('admin.network.wallboard.settings')}>
       <div class="insights-head">
-        <span class="title">{$t('admin.network.wallboard.settings') || 'Settings'}</span>
-        <button class="icon-x" type="button" onclick={() => (insightsOpen = false)} title={$t('common.close') || 'Close'}>
+        <span class="title">{$t('admin.network.wallboard.settings')}</span>
+        <button class="icon-x" type="button" onclick={() => (insightsOpen = false)} title={$t('common.close')}>
           <Icon name="x" size={16} />
         </button>
       </div>
@@ -1398,14 +1398,14 @@
   {#if paused}
     <div class="pause-indicator">
       <Icon name="pause" size={16} />
-      <span>{$t('admin.network.wallboard.pause') || 'Pause'}</span>
+      <span>{$t('admin.network.wallboard.pause')}</span>
     </div>
   {/if}
 
   {#if loading}
     <div class="empty">
       <Icon name="loader" size={18} />
-      {$t('common.loading') || 'Loading...'}
+      {$t('common.loading')}
     </div>
   {:else}
     <div class="grid" class:compact={layout === '4x3'} style={`--cols:${colsForLayout(layout)}; --rows:${rowsForLayout(layout)};`}>
@@ -1423,10 +1423,10 @@
             <div class="add-inner">
               <div class="plus">+</div>
               <div class="add-title">
-                {$t('admin.network.wallboard.add_tile') || 'Add interface tile'}
+                {$t('admin.network.wallboard.add_tile')}
               </div>
               <div class="add-sub">
-                {$t('admin.network.wallboard.add_tile_sub') || 'Choose a router + interface'}
+                {$t('admin.network.wallboard.add_tile_sub')}
               </div>
             </div>
           </button>
@@ -1482,8 +1482,8 @@
       onclick={toggleAlertsPanel}
       aria-expanded={alertsOpen}
       aria-controls="wallboard-alert-panel"
-      aria-label={$t('admin.network.wallboard.alerts_open') || 'Open alerts'}
-      title={$t('admin.network.wallboard.alerts_open') || 'Open alerts'}
+      aria-label={$t('admin.network.wallboard.alerts_open')}
+      title={$t('admin.network.wallboard.alerts_open')}
     >
       <Icon name="alert-triangle" size={17} />
       <span class="floating-alert-count">{sortedAlerts.length > 99 ? '99+' : sortedAlerts.length}</span>

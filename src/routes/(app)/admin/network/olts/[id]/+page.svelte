@@ -292,19 +292,19 @@
     {#snippet actions()}
       <a class="btn ghost" href={backTarget}>
         <Icon name="arrow-left" size={16} />
-        {$t('common.back') || 'Back'}
+        {$t('common.back')}
       </a>
-      <button class="btn ghost" type="button" onclick={() => openOnMap()} disabled={!olt || olt.latitude == null || olt.longitude == null} title={$t('network.olt.view_on_map') || 'Lihat di Peta'}>
+      <button class="btn ghost" type="button" onclick={() => openOnMap()} disabled={!olt || olt.latitude == null || olt.longitude == null} title={$t('network.olt.view_on_map')}>
         <Icon name="map-pin" size={16} />
-        {$t('common.map') || 'Map'}
+        {$t('common.map')}
       </button>
       <button class="btn ghost" type="button" onclick={() => void refresh({ silent: false })} disabled={refreshing}>
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
+        {$t('common.refresh')}
       </button>
       <button class="btn" type="button" onclick={forceRefreshStats} disabled={refreshing}>
         <Icon name="zap" size={16} />
-        {$t('network.olt.refresh_stats') || 'Refresh Stats'}
+        {$t('network.olt.refresh_stats')}
       </button>
     {/snippet}
   </NetworkPageHeader>
@@ -312,7 +312,7 @@
   {#if initialLoading}
     <div class="loading-wrap">
       <Icon name="loader" size={24} />
-      <span>{$t('network.olt.loading') || 'Memuat data OLT...'}</span>
+      <span>{$t('network.olt.loading')}</span>
     </div>
   {:else if olt}
     <!-- Status bar -->
@@ -321,7 +321,7 @@
         {olt.is_online ? ($t('network.olt.online') || 'Online') : ($t('network.olt.offline') || 'Offline')}
       </span>
       {#if olt.last_polled_at}
-        <span class="muted">{$t('network.olt.last_seen') || 'Last seen'}: {timeAgo(olt.last_polled_at)}</span>
+        <span class="muted">{$t('network.olt.last_seen')}: {timeAgo(olt.last_polled_at)}</span>
       {/if}
       {#if olt.last_error}
         <span class="error-text">{olt.last_error}</span>
@@ -350,42 +350,42 @@
       <!-- Summary cards -->
       <div class="stat-grid">
         <div class="stat-card">
-          <div class="stat-top"><span class="stat-label">{$t('network.olt.onu_total') || 'ONU Total'}</span><Icon name="list" size={14} /></div>
+          <div class="stat-top"><span class="stat-label">{$t('network.olt.onu_total')}</span><Icon name="list" size={14} /></div>
           <div class="stat-value">{stats?.total_onus ?? onuStats.total}</div>
         </div>
         <div class="stat-card tone-ok">
-          <div class="stat-top"><span class="stat-label">{$t('network.olt.onu_online') || 'ONU Online'}</span><Icon name="check-circle" size={14} /></div>
+          <div class="stat-top"><span class="stat-label">{$t('network.olt.onu_online')}</span><Icon name="check-circle" size={14} /></div>
           <div class="stat-value">{stats?.online_onus ?? onuStats.online}</div>
         </div>
         <div class="stat-card tone-bad">
-          <div class="stat-top"><span class="stat-label">{$t('network.olt.onu_offline') || 'ONU Offline'}</span><Icon name="alert-circle" size={14} /></div>
+          <div class="stat-top"><span class="stat-label">{$t('network.olt.onu_offline')}</span><Icon name="alert-circle" size={14} /></div>
           <div class="stat-value">{stats?.offline_onus ?? onuStats.offline}</div>
         </div>
         <div class="stat-card tone-warn">
-          <div class="stat-top"><span class="stat-label">{$t('network.olt.weak_signal') || 'Sinyal Lemah'}</span><Icon name="alert-triangle" size={14} /></div>
+          <div class="stat-top"><span class="stat-label">{$t('network.olt.weak_signal')}</span><Icon name="alert-triangle" size={14} /></div>
           <div class="stat-value">{stats?.low_onus ?? onuStats.low}</div>
         </div>
       </div>
 
       {#if details?.info}
         <div class="section-card">
-          <h4 class="section-title">{$t('network.olt.system_info') || 'Informasi Sistem'}</h4>
+          <h4 class="section-title">{$t('network.olt.system_info')}</h4>
           <div class="info-grid">
             {#if details.info.model}
               <div class="info-item">
-                <span class="info-label">{$t('network.olt.model') || 'Model'}</span>
+                <span class="info-label">{$t('network.olt.model')}</span>
                 <span class="info-value">{details.info.model}</span>
               </div>
             {/if}
             {#if details.info.version}
               <div class="info-item">
-                <span class="info-label">{$t('network.olt.version') || 'Version'}</span>
+                <span class="info-label">{$t('network.olt.version')}</span>
                 <span class="info-value mono">{details.info.version}</span>
               </div>
             {/if}
             {#if details.info.address}
               <div class="info-item">
-                <span class="info-label">{$t('network.olt.address') || 'Address'}</span>
+                <span class="info-label">{$t('network.olt.address')}</span>
                 <span class="info-value mono">{details.info.address}</span>
               </div>
             {/if}
@@ -403,17 +403,17 @@
 
       {#if olt?.latitude != null || olt?.longitude != null || olt?.address_line}
         <div class="section-card">
-          <h4 class="section-title">{$t('network.olt.location') || 'OLT Location'}</h4>
+          <h4 class="section-title">{$t('network.olt.location')}</h4>
           <div class="info-grid">
             {#if olt.latitude != null && olt.longitude != null}
               <div class="info-item">
-                <span class="info-label">{$t('network.olt.coordinates') || 'Coordinates'}</span>
+                <span class="info-label">{$t('network.olt.coordinates')}</span>
                 <span class="info-value mono">{olt.latitude}, {olt.longitude}</span>
               </div>
             {/if}
             {#if olt.address_line}
               <div class="info-item">
-                <span class="info-label">{$t('network.olt.address') || 'Address'}</span>
+                <span class="info-label">{$t('network.olt.address')}</span>
                 <span class="info-value">{olt.address_line}</span>
               </div>
             {/if}
@@ -421,7 +421,7 @@
               <div class="info-item">
                 <button class="btn ghost" type="button" onclick={openOnMap}>
                   <Icon name="map-pin" size={14} />
-                  {$t('network.olt.view_on_map') || 'Lihat di Peta'}
+                  {$t('network.olt.view_on_map')}
                 </button>
               </div>
             {/if}
@@ -431,15 +431,15 @@
 
       {#if olt?.uplink_router_id}
         <div class="section-card">
-          <h4 class="section-title">{$t('network.olt.uplink_router') || 'Uplink Router'}</h4>
+          <h4 class="section-title">{$t('network.olt.uplink_router')}</h4>
           <div class="info-grid">
             <div class="info-item">
-              <span class="info-label">{$t('common.router') || 'Router'}</span>
+              <span class="info-label">{$t('common.router')}</span>
               <span class="info-value">{olt.uplink_router_name || olt.uplink_router_id}</span>
             </div>
             {#if olt.uplink_port}
               <div class="info-item">
-                <span class="info-label">{$t('common.port') || 'Port'}</span>
+                <span class="info-label">{$t('common.port')}</span>
                 <span class="info-value mono">{olt.uplink_port}</span>
               </div>
             {/if}
@@ -449,7 +449,7 @@
 
       {#if stats?.pon_ports && stats.pon_ports.length > 0}
         <div class="section-card">
-          <h4 class="section-title">{$t('network.olt.pon_ports') || 'PON Ports'}</h4>
+          <h4 class="section-title">{$t('network.olt.pon_ports')}</h4>
           <div class="table-wrap">
             <Table
               columns={[
@@ -461,7 +461,7 @@
               ]}
               data={stats.pon_ports}
               loading={false}
-              emptyText={$t('network.olt.no_pon_ports') || 'No PON ports'}
+              emptyText={$t('network.olt.no_pon_ports')}
               mobileView={isMobile ? 'card' : 'scroll'}
             >
               {#snippet cell({ item, key }: any)}
@@ -498,10 +498,10 @@
           data={sortedOnus}
           keyField="onu_id"
           loading={false}
-          emptyText={$t('network.olt.no_onus') || 'No ONUs'}
+          emptyText={$t('network.olt.no_onus')}
           mobileView={isMobile ? 'card' : 'scroll'}
           searchable={true}
-          searchPlaceholder={$t('network.olt.search_onus') || 'Search ONU ID, name, or MAC...'}
+          searchPlaceholder={$t('network.olt.search_onus')}
           pagination={true}
           pageSize={25}
           sortKey={onuSortKey}
@@ -553,7 +553,7 @@
               <span class="muted">{item.temperature ? `${item.temperature}°C` : '—'}</span>
             {:else if key === 'actions'}
               {#if $can('manage', 'router_inventory')}
-                <button class="icon-btn danger" type="button" onclick={() => promptReboot(item)} title={$t('network.olt.reboot_onu') || 'Reboot ONU'}>
+                <button class="icon-btn danger" type="button" onclick={() => promptReboot(item)} title={$t('network.olt.reboot_onu')}>
                   <Icon name="power" size={14} />
                 </button>
               {/if}
@@ -571,10 +571,10 @@
           data={history}
           keyField="id"
           loading={historyLoading}
-          emptyText={$t('network.olt.no_history') || 'No history'}
+          emptyText={$t('network.olt.no_history')}
           mobileView={isMobile ? 'card' : 'scroll'}
           searchable={true}
-          searchPlaceholder={$t('network.olt.search_onu_history') || 'Search ONU ID or name...'}
+          searchPlaceholder={$t('network.olt.search_onu_history')}
           pagination={true}
           pageSize={25}
           sortKey={historySortKey}
@@ -623,17 +623,17 @@
   {:else}
     <div class="empty-state">
       <Icon name="alert-circle" size={32} />
-      <p>{$t('network.olt.not_found') || 'OLT not found.'}</p>
+      <p>{$t('network.olt.not_found')}</p>
     </div>
   {/if}
 </div>
 
 <ConfirmDialog
   bind:show={showRebootConfirm}
-  title={$t('network.olt.confirm_reboot') || 'Confirm ONU Reboot'}
+  title={$t('network.olt.confirm_reboot')}
   message={rebootTarget ? ($t('network.olt.reboot_confirm_message', { values: { name: rebootTarget.name || rebootTarget.onu_id } }) || `Are you sure you want to reboot ONU "${rebootTarget.name || rebootTarget.onu_id}"? The ONU will restart.`) : ''}
-  confirmText={$t('network.olt.reboot') || 'Reboot'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  confirmText={$t('network.olt.reboot')}
+  cancelText={$t('common.cancel')}
   type="danger"
   onconfirm={confirmReboot}
   oncancel={() => { rebootTarget = null; }}

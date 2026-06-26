@@ -558,7 +558,7 @@
       {#if activeTabLoading}
         <div class="tab-loading-state">
           <div class="tab-loading-spinner"></div>
-          <span>{$t('common.loading') || 'Loading...'}</span>
+          <span>{$t('common.loading')}</span>
         </div>
       {:else if activeTab === 'general' && GeneralTabComponent}
         <GeneralTabComponent bind:profileData {loading} {initials} onSave={saveProfile} onAvatarUpload={handleAvatarUpload} />

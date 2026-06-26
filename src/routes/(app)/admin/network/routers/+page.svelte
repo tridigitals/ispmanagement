@@ -322,11 +322,11 @@
 
 <div class="page-content fade-in">
   <NetworkPageHeader
-    title={$t('admin.network.routers.title') || 'Routers'}
-    subtitle={$t('network.router.manage_routers') || 'Kelola router MikroTik.'}
+    title={$t('admin.network.routers.title')}
+    subtitle={$t('network.router.manage_routers')}
   >
     {#snippet actions()}
-      <button class="btn ghost" type="button" onclick={load} title={$t('common.refresh') || 'Refresh'}>
+      <button class="btn ghost" type="button" onclick={load} title={$t('common.refresh')}>
         <Icon name="refresh-cw" size={16} />
         {$t('admin.network.routers.actions.refresh') || $t('common.refresh') || 'Refresh'}
       </button>
@@ -334,7 +334,7 @@
       {#if $can('manage', 'router_inventory')}
         <button class="btn" type="button" onclick={openCreate}>
           <Icon name="plus" size={16} />
-          {$t('admin.network.routers.actions.add') || 'Add Router'}
+          {$t('admin.network.routers.actions.add')}
         </button>
       {/if}
     {/snippet}
@@ -343,21 +343,21 @@
   <div class="stats">
     <div class="stat-card">
       <div class="stat-top">
-        <span class="stat-label">{$t('network.router.total') || 'Total'}</span>
+        <span class="stat-label">{$t('network.router.total')}</span>
         <Icon name="list" size={14} />
       </div>
       <div class="stat-value">{stats.total}</div>
     </div>
     <div class="stat-card tone-ok">
       <div class="stat-top">
-        <span class="stat-label">{$t('network.router.online') || 'Online'}</span>
+        <span class="stat-label">{$t('network.router.online')}</span>
         <Icon name="check-circle" size={14} />
       </div>
       <div class="stat-value">{stats.online}</div>
     </div>
     <div class="stat-card tone-bad">
       <div class="stat-top">
-        <span class="stat-label">{$t('network.router.offline') || 'Offline'}</span>
+        <span class="stat-label">{$t('network.router.offline')}</span>
         <Icon name="alert-circle" size={14} />
       </div>
       <div class="stat-value">{stats.offline}</div>
@@ -370,7 +370,7 @@
       <input
         class="search-input"
         bind:value={search}
-        placeholder={$t('admin.network.routers.search') || 'Search routers...'}
+        placeholder={$t('admin.network.routers.search')}
       />
       {#if search}
         <button class="clear" type="button" onclick={() => (search = '')}>
@@ -385,7 +385,7 @@
       {columns}
       data={filtered}
       loading={loading}
-      emptyText={$t('admin.network.routers.empty') || 'No routers yet'}
+      emptyText={$t('admin.network.routers.empty')}
       mobileView={isMobile ? 'card' : 'scroll'}
     >
       {#snippet cell({ item, key }: any)}
@@ -398,7 +398,7 @@
               {/if}
               {#if item.maintenance_until && new Date(item.maintenance_until).getTime() > Date.now()}
                 <span class="chip warn" title={item.maintenance_reason || ''}>
-                  {$t('admin.network.routers.badges.maintenance') || 'Maintenance'}
+                  {$t('admin.network.routers.badges.maintenance')}
                 </span>
               {/if}
             </div>
@@ -434,17 +434,17 @@
           {/if}
         {:else if key === 'actions'}
           <div class="actions">
-            <button class="icon-btn" type="button" onclick={() => openDetail(item)} title={$t('admin.network.routers.actions.open') || 'Open'}>
+            <button class="icon-btn" type="button" onclick={() => openDetail(item)} title={$t('admin.network.routers.actions.open')}>
               <Icon name="arrow-right" size={16} />
             </button>
-            <button class="icon-btn" type="button" onclick={() => test(item)} title={$t('admin.network.routers.actions.test') || 'Test Connection'}>
+            <button class="icon-btn" type="button" onclick={() => test(item)} title={$t('admin.network.routers.actions.test')}>
               <Icon name="zap" size={16} />
             </button>
             {#if $can('manage', 'router_inventory')}
-              <button class="icon-btn" type="button" onclick={() => openEdit(item)} title={$t('admin.network.routers.actions.edit') || 'Edit'}>
+              <button class="icon-btn" type="button" onclick={() => openEdit(item)} title={$t('admin.network.routers.actions.edit')}>
                 <Icon name="edit" size={16} />
               </button>
-              <button class="icon-btn danger" type="button" onclick={() => remove(item)} title={$t('admin.network.routers.actions.delete') || 'Delete'}>
+              <button class="icon-btn danger" type="button" onclick={() => remove(item)} title={$t('admin.network.routers.actions.delete')}>
                 <Icon name="trash-2" size={16} />
               </button>
             {/if}
@@ -476,10 +476,10 @@
 
 <ConfirmDialog
   bind:show={showDeleteConfirm}
-  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
-  message={$t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  title={$t('common.confirm_delete_title')}
+  message={$t('common.confirm_delete')}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   type="danger"
   onconfirm={handleConfirmDelete}
   oncancel={() => { deleteTarget = null; }}

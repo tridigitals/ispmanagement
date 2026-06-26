@@ -188,16 +188,16 @@
       </h1>
       <div
         class="actions"
-        aria-label={$t('superadmin.plans.editor.aria.actions') || 'Plan actions'}
+        aria-label={$t('superadmin.plans.editor.aria.actions')}
       >
         <button class="btn btn-secondary" type="button" onclick={() => goto('/superadmin/plans')}>
-          {$t('common.cancel') || 'Cancel'}
+          {$t('common.cancel')}
         </button>
         <button class="btn btn-primary" onclick={savePlan} disabled={saving} type="button">
           {#if saving}
-            {$t('common.saving') || 'Saving...'}
+            {$t('common.saving')}
           {:else}
-            {$t('superadmin.plans.editor.actions.save') || 'Save Plan'}
+            {$t('superadmin.plans.editor.actions.save')}
           {/if}
         </button>
       </div>
@@ -205,14 +205,14 @@
   </div>
 
   {#if loading}
-    <div class="loading">{$t('common.loading') || 'Loading...'}</div>
+    <div class="loading">{$t('common.loading')}</div>
   {:else}
     <ResponsiveTabs
       items={planEditorTabs}
       bind:activeId={activeTab}
       {isMobile}
       priorityCount={2}
-      ariaLabel={$t('superadmin.plans.editor.aria.tabs') || 'Plan editor tabs'}
+      ariaLabel={$t('superadmin.plans.editor.aria.tabs')}
     />
 
     <div class="glass-card" role="tabpanel">
@@ -220,36 +220,36 @@
         <div class="form-grid fade-in">
           <div class="form-group">
             <label for="name">
-              {$t('superadmin.plans.editor.fields.name') || 'Plan Name'}
+              {$t('superadmin.plans.editor.fields.name')}
             </label>
             <input
               id="name"
               type="text"
               bind:value={planData.name}
               oninput={onNameChange}
-              placeholder={$t('superadmin.plans.editor.placeholders.name') || 'e.g. Pro Plan'}
+              placeholder={$t('superadmin.plans.editor.placeholders.name')}
             />
           </div>
 
           <div class="form-group">
             <label for="slug">
-              {$t('superadmin.plans.editor.fields.slug') || 'Slug (Code)'}
+              {$t('superadmin.plans.editor.fields.slug')}
             </label>
             <input
               id="slug"
               type="text"
               bind:value={planData.slug}
               disabled={!isNew}
-              placeholder={$t('superadmin.plans.editor.placeholders.slug') || 'e.g. pro-plan'}
+              placeholder={$t('superadmin.plans.editor.placeholders.slug')}
             />
             <small>
-              {$t('superadmin.plans.editor.help.slug') || 'Unique identifier used in code/API.'}
+              {$t('superadmin.plans.editor.help.slug')}
             </small>
           </div>
 
           <div class="form-group full-width">
             <label for="description">
-              {$t('superadmin.plans.editor.fields.description') || 'Description'}
+              {$t('superadmin.plans.editor.fields.description')}
             </label>
             <textarea id="description" bind:value={planData.description} rows="2"></textarea>
           </div>
@@ -300,7 +300,7 @@
 
           <div class="form-group">
             <label for="sort_order"
-              >{$t('superadmin.plans.editor.fields.sort_order') || 'Sort Order'}</label
+              >{$t('superadmin.plans.editor.fields.sort_order')}</label
             >
             <input id="sort_order" type="number" bind:value={planData.sort_order} />
           </div>

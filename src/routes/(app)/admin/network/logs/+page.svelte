@@ -299,23 +299,23 @@
 <div class="page-content fade-in logs-page">
   <div class="logs-shell">
     <NetworkPageHeader
-      title={$t('admin.network.logs.title') || 'Router Logs'}
-      subtitle={$t('network.log.title') || 'Log MikroTik untuk audit dan troubleshooting.'}
+      title={$t('admin.network.logs.title')}
+      subtitle={$t('network.log.title')}
     >
       {#snippet actions()}
-        <button class="btn ghost" type="button" onclick={() => void loadRowsPage(1)} title={$t('common.refresh') || 'Refresh'}>
+        <button class="btn ghost" type="button" onclick={() => void loadRowsPage(1)} title={$t('common.refresh')}>
           <Icon name="refresh-cw" size={16} />
-          {$t('admin.network.logs.actions.refresh') || 'Refresh'}
+          {$t('admin.network.logs.actions.refresh')}
         </button>
         {#if routerId}
           <button class="btn ghost" type="button" onclick={syncSelected} disabled={syncing}>
             <Icon name="download" size={16} />
-            {$t('admin.network.logs.actions.sync_selected') || 'Sync selected router'}
+            {$t('admin.network.logs.actions.sync_selected')}
           </button>
         {/if}
         <button class="btn" type="button" onclick={syncAll} disabled={syncing || routers.length === 0}>
           <Icon name="database" size={16} />
-          {$t('admin.network.logs.actions.sync_all') || 'Sync all routers'}
+          {$t('admin.network.logs.actions.sync_all')}
         </button>
         <button
           class="btn danger"
@@ -324,16 +324,16 @@
           disabled={!routerId || clearingLogs}
         >
           <Icon name="trash-2" size={16} />
-          {$t('admin.network.logs.actions.clear') || 'Clear logs'}
+          {$t('admin.network.logs.actions.clear')}
         </button>
       {/snippet}
     </NetworkPageHeader>
 
     <div class="filters">
       <label class="filter-field">
-        <span>{$t('admin.network.logs.filters.router') || 'Router'}</span>
+        <span>{$t('admin.network.logs.filters.router')}</span>
         <select bind:value={routerId} onchange={() => void loadRowsPage(1)}>
-          <option value="">{$t('admin.network.logs.filters.all_routers') || 'All routers'}</option>
+          <option value="">{$t('admin.network.logs.filters.all_routers')}</option>
           {#each routers as r}
             <option value={r.id}>{r.name}</option>
           {/each}
@@ -341,9 +341,9 @@
       </label>
 
       <label class="filter-field">
-        <span>{$t('admin.network.logs.filters.level') || 'Level'}</span>
+        <span>{$t('admin.network.logs.filters.level')}</span>
         <select bind:value={level} onchange={() => void loadRowsPage(1)}>
-          <option value="">{$t('admin.network.logs.filters.all_levels') || 'All levels'}</option>
+          <option value="">{$t('admin.network.logs.filters.all_levels')}</option>
           <option value="critical">critical</option>
           <option value="error">error</option>
           <option value="warning">warning</option>
@@ -353,12 +353,12 @@
       </label>
 
       <label class="filter-field">
-        <span>{$t('admin.network.logs.filters.topic') || 'Topic'}</span>
+        <span>{$t('admin.network.logs.filters.topic')}</span>
         <input bind:value={topic} placeholder="system,error,interface..." />
       </label>
 
       <label class="filter-field">
-        <span>{$t('network.router.month') || 'Month'}</span>
+        <span>{$t('network.router.month')}</span>
         <select bind:value={month} onchange={() => void loadRowsPage(1)}>
           {#each monthOptions as option}
             <option value={option.value}>{option.label}</option>
@@ -367,9 +367,9 @@
       </label>
 
       <label class="filter-field">
-        <span>{$t('network.router.year') || 'Year'}</span>
+        <span>{$t('network.router.year')}</span>
         <select bind:value={year} onchange={() => void loadRowsPage(1)}>
-          <option value="">{$t('common.all') || 'All years'}</option>
+          <option value="">{$t('common.all')}</option>
           {#each yearOptions as value}
             <option value={value}>{value}</option>
           {/each}
@@ -377,12 +377,12 @@
       </label>
 
       <label class="filter-field search-field">
-        <span>{$t('common.search') || 'Search'}</span>
+        <span>{$t('common.search')}</span>
         <div class="search-input-shell">
           <Icon name="search" size={16} />
           <input
             bind:value={q}
-            placeholder={$t('admin.network.logs.search') || 'Search log message...'}
+            placeholder={$t('admin.network.logs.search')}
           />
         </div>
       </label>
@@ -390,27 +390,27 @@
 
     <div class="retention-panel">
       <div class="retention-copy">
-        <strong>{$t('network.router.retention') || 'Router retention'}</strong>
+        <strong>{$t('network.router.retention')}</strong>
         <p>
           {#if routerId}
-            {$t('admin.network.logs.retention.description_with_router') || 'Sync will fetch all logs from this router, then auto-clear follows the chosen retention.'}
+            {$t('admin.network.logs.retention.description_with_router')}
           {:else}
-            {$t('admin.network.logs.retention.description_no_router') || 'Select a router first to manage retention and clear logs.'}
+            {$t('admin.network.logs.retention.description_no_router')}
           {/if}
         </p>
       </div>
       <div class="retention-controls">
         <select bind:value={retentionValue} disabled={!routerId || retentionLoading || retentionSaving} onchange={saveRetention}>
-          <option value="unlimited">{$t('network.router.unlimited') || 'Unlimited'}</option>
-          <option value="30">{$t('admin.network.logs.retention.30_days') || '30 days'}</option>
-          <option value="90">{$t('admin.network.logs.retention.90_days') || '90 days'}</option>
-          <option value="360">{$t('admin.network.logs.retention.360_days') || '360 days'}</option>
+          <option value="unlimited">{$t('network.router.unlimited')}</option>
+          <option value="30">{$t('admin.network.logs.retention.30_days')}</option>
+          <option value="90">{$t('admin.network.logs.retention.90_days')}</option>
+          <option value="360">{$t('admin.network.logs.retention.360_days')}</option>
         </select>
         <span class="muted hint">
           {#if routerId}
-            {retentionLoading ? ($t('common.loading') || 'Loading...') : retentionSaving ? ($t('common.saving') || 'Saving...') : `${$t('admin.network.logs.retention.applied_to') || 'Applied to'} ${routerName(routerId)}`}
+            {retentionLoading ? ($t('common.loading') || 'Loading...') : retentionSaving ? ($t('common.saving') || 'Saving...') : `${$t('admin.network.logs.retention.applied_to')} ${routerName(routerId)}`}
           {:else}
-            {$t('admin.network.logs.retention.no_router') || 'Router not selected'}
+            {$t('admin.network.logs.retention.no_router')}
           {/if}
         </span>
       </div>
@@ -425,7 +425,7 @@
         pagination={false}
         searchable={false}
         mobileView={isMobile ? 'card' : 'scroll'}
-        emptyText={$t('admin.network.logs.empty') || 'No logs'}
+        emptyText={$t('admin.network.logs.empty')}
       >
         {#snippet cell({ item, key }: any)}
           {#if key === 'time'}
@@ -458,13 +458,13 @@
             {#if total >= 0}
               / {total}
             {/if}
-            {$t('common.results') || 'results'}
+            {$t('common.results')}
           </span>
         </div>
         <div class="pager-right">
-          <span class="muted">{$t('common.page') || 'Page'} {pageNum}</span>
+          <span class="muted">{$t('common.page')} {pageNum}</span>
           <label class="per-page">
-            <span class="muted">{$t('components.pagination.rows_per_page') || 'Rows per page:'}</span>
+            <span class="muted">{$t('components.pagination.rows_per_page')}</span>
             <select bind:value={perPage} onchange={() => void loadRowsPage(1)}>
               <option value={25}>25</option>
               <option value={50}>50</option>
@@ -474,10 +474,10 @@
           </label>
           <button class="btn btn-secondary" type="button" onclick={() => void loadRowsPage(pageNum - 1)} disabled={loadingMore || loading || pageNum <= 1}>
             <Icon name="chevron-left" size={16} />
-            {$t('common.previous') || 'Previous'}
+            {$t('common.previous')}
           </button>
           <button class="btn btn-secondary" type="button" onclick={() => void loadRowsPage(pageNum + 1)} disabled={loadingMore || loading || !hasNext}>
-            {$t('common.next') || 'Next'}
+            {$t('common.next')}
             <Icon name="chevron-right" size={16} />
           </button>
         </div>
@@ -680,10 +680,10 @@
 
 <ConfirmDialog
   show={showClearConfirm}
-  title={$t('admin.network.logs.clear.title') || 'Clear router logs?'}
+  title={$t('admin.network.logs.clear.title')}
   message={routerId ? ($t('admin.network.logs.clear.message', { values: { router: routerName(routerId) } }) || `All stored logs for ${routerName(routerId)} will be deleted from the database.`) : ($t('admin.network.logs.clear.select_router') || 'Select a router first.')}
   confirmText={clearingLogs ? ($t('admin.network.logs.clear.clearing') || 'Clearing...') : ($t('admin.network.logs.clear.confirm') || 'Clear logs')}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  cancelText={$t('common.cancel')}
   loading={clearingLogs}
   onconfirm={clearLogs}
   oncancel={() => !clearingLogs && (showClearConfirm = false)}

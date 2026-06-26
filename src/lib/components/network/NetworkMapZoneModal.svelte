@@ -23,31 +23,31 @@
 >
   <div class="form-grid two-col">
     <label class="field">
-      <span>{$t('common.name') || 'Name'}</span>
+      <span>{$t('common.name')}</span>
       <input class="input" bind:value={zoneForm.name} />
     </label>
     <label class="field">
-      <span>{$t('common.type') || 'Type'}</span>
+      <span>{$t('common.type')}</span>
       <input class="input" bind:value={zoneForm.zone_type} />
     </label>
     <label class="field">
-      <span>{$t('common.status') || 'Status'}</span>
+      <span>{$t('common.status')}</span>
       <select class="input" bind:value={zoneForm.status}>
         <option value="active">active</option>
         <option value="inactive">inactive</option>
       </select>
     </label>
     <label class="field">
-      <span>{$t('network.map.priority') || 'Priority'}</span>
+      <span>{$t('network.map.priority')}</span>
       <input class="input" type="number" min="1" bind:value={zoneForm.priority} />
     </label>
     <label class="field field-full">
-      <span>{$t('network.map.geometry') || 'Geometry (GeoJSON Polygon/MultiPolygon)'}</span>
+      <span>{$t('network.map.geometry')}</span>
       <textarea class="input textarea" rows="9" bind:value={zoneForm.geometryText}></textarea>
     </label>
   </div>
   {#snippet footer()}
-    <button class="btn ghost" type="button" onclick={onClose} disabled={savingZone}>{$t('common.cancel') || 'Cancel'}</button>
+    <button class="btn ghost" type="button" onclick={onClose} disabled={savingZone}>{$t('common.cancel')}</button>
     <button class="btn" type="button" onclick={onSubmit} disabled={savingZone}>
       {savingZone ? ($t('common.saving') || 'Saving...') : ($t('common.save') || 'Save')}
     </button>

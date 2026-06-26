@@ -542,7 +542,7 @@
     <div class="head-actions">
       <button class="btn ghost" type="button" onclick={() => void refreshAll()} disabled={loading}>
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
+        {$t('common.refresh')}
       </button>
       <button class="btn ghost" type="button" onclick={() => goto('/dashboard/invoices')}>
         <Icon name="file-text" size={16} />
@@ -636,7 +636,7 @@
     {#if loading}
       <div class="state-block">
         <div class="spinner"></div>
-        <p>{$t('common.loading') || 'Loading...'}</p>
+        <p>{$t('common.loading')}</p>
       </div>
     {:else if filteredSubscriptions.length === 0}
       <div class="state-block empty">

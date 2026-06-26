@@ -743,32 +743,31 @@
 
 <div class="page-content">
   <NetworkPageHeader
-    title={$t('admin.network.dhcp_static.title') || 'DHCP Static'}
-    subtitle={$t('network.dhcp.title') || 'Pantau lease DHCP static.'}
+    title={$t('admin.network.dhcp_static.title')}
+    subtitle={$t('network.dhcp.title')}
   />
 
   <section class="stats-grid">
-    <article class="stat-card"><span>{$t('admin.network.dhcp_static.stats.total') || 'Total'}</span><strong>{stats.total}</strong></article>
-    <article class="stat-card"><span>{$t('admin.network.dhcp_static.stats.lease_ready') || 'Lease Ready'}</span><strong>{stats.leaseReady}</strong></article>
-    <article class="stat-card"><span>{$t('admin.network.dhcp_static.stats.queue_issues') || 'Queue Issues'}</span><strong>{stats.queueIssues}</strong></article>
-    <article class="stat-card"><span>{$t('admin.network.dhcp_static.stats.disabled') || 'Disabled'}</span><strong>{stats.disabled}</strong></article>
+    <article class="stat-card"><span>{$t('admin.network.dhcp_static.stats.total')}</span><strong>{stats.total}</strong></article>
+    <article class="stat-card"><span>{$t('admin.network.dhcp_static.stats.lease_ready')}</span><strong>{stats.leaseReady}</strong></article>
+    <article class="stat-card"><span>{$t('admin.network.dhcp_static.stats.queue_issues')}</span><strong>{stats.queueIssues}</strong></article>
+    <article class="stat-card"><span>{$t('admin.network.dhcp_static.stats.disabled')}</span><strong>{stats.disabled}</strong></article>
   </section>
 
   <div class="filters-wrap">
     <NetworkFilterPanel>
       <label>
-        <span>{$t('common.search') || 'Search'}</span>
+        <span>{$t('common.search')}</span>
         <input
           class="input"
           bind:value={search}
-          placeholder={$t('admin.network.dhcp_static.filters.search_placeholder') ||
-            'MAC, IP, server, comment'}
+          placeholder={$t('admin.network.dhcp_static.filters.search_placeholder')}
         />
       </label>
       <label>
-        <span>{$t('admin.network.dhcp_static.filters.router') || 'Router'}</span>
+        <span>{$t('admin.network.dhcp_static.filters.router')}</span>
         <select class="input" bind:value={routerId}>
-          <option value="">{$t('admin.network.dhcp_static.filters.all_routers') || 'All routers'}</option>
+          <option value="">{$t('admin.network.dhcp_static.filters.all_routers')}</option>
           {#each routerOptions as option}
             <option value={option.value}>{option.label}</option>
           {/each}
@@ -776,13 +775,13 @@
       </label>
       <div class="filter-actions">
         <button class="btn ghost" onclick={load} disabled={loading}>
-          {$t('common.refresh') || 'Refresh'}
+          {$t('common.refresh')}
         </button>
         <button class="btn ghost" onclick={reconcileRouter} disabled={loading || !routerId || !$can('manage', 'dhcp_static')}>
-          {$t('admin.network.dhcp_static.actions.reconcile') || 'Reconcile Router'}
+          {$t('admin.network.dhcp_static.actions.reconcile')}
         </button>
         <button class="btn" onclick={openCreate} disabled={!$can('manage', 'dhcp_static')}>
-          {$t('admin.network.dhcp_static.actions.create') || 'Create DHCP Static'}
+          {$t('admin.network.dhcp_static.actions.create')}
         </button>
       </div>
     </NetworkFilterPanel>
@@ -790,20 +789,20 @@
 
   <section class="table-card">
     {#if loading}
-      <div class="empty-state">{$t('common.loading') || 'Loading...'}</div>
+      <div class="empty-state">{$t('common.loading')}</div>
     {:else if filteredRows.length === 0}
-      <div class="empty-state">{$t('admin.network.dhcp_static.empty') || 'No DHCP static services.'}</div>
+      <div class="empty-state">{$t('admin.network.dhcp_static.empty')}</div>
     {:else}
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>{$t('admin.network.dhcp_static.columns.server') || 'Server'}</th>
-              <th>{$t('admin.network.dhcp_static.columns.mac') || 'MAC'}</th>
-              <th>{$t('admin.network.dhcp_static.columns.ip') || 'IP'}</th>
-              <th>{$t('admin.network.dhcp_static.columns.lease') || 'Lease'}</th>
-              <th>{$t('admin.network.dhcp_static.columns.queue') || 'Queue'}</th>
-              <th>{$t('admin.network.dhcp_static.columns.actions') || 'Actions'}</th>
+              <th>{$t('admin.network.dhcp_static.columns.server')}</th>
+              <th>{$t('admin.network.dhcp_static.columns.mac')}</th>
+              <th>{$t('admin.network.dhcp_static.columns.ip')}</th>
+              <th>{$t('admin.network.dhcp_static.columns.lease')}</th>
+              <th>{$t('admin.network.dhcp_static.columns.queue')}</th>
+              <th>{$t('admin.network.dhcp_static.columns.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -825,10 +824,10 @@
                 <td><span class:ok={row.queue_mode === 'none' || row.queue_present} class="status-pill">{row.queue_mode === 'none' ? ($t('admin.network.dhcp_static.sync.none') || 'None') : row.queue_present ? ($t('admin.network.dhcp_static.sync.present') || 'Present') : ($t('admin.network.dhcp_static.sync.missing') || 'Missing')}</span></td>
                 <td>
                   <div class="actions">
-                    <button class="btn ghost" onclick={() => applyRow(row)} disabled={!$can('manage', 'dhcp_static')}>{$t('admin.network.dhcp_static.actions.apply') || 'Apply'}</button>
-                    <button class="btn ghost" onclick={() => openEdit(row)} disabled={!$can('manage', 'dhcp_static')}>{$t('common.edit') || 'Edit'}</button>
-                    <button class="btn ghost" onclick={() => goto(`${tenantPrefix}/admin/network/installations`)} disabled={!$can('manage', 'work_orders')}>{$t('admin.network.dhcp_static.actions.install') || 'Install'}</button>
-                    <button class="btn danger" onclick={() => deleteRow(row)} disabled={!$can('manage', 'dhcp_static')}>{$t('common.delete') || 'Delete'}</button>
+                    <button class="btn ghost" onclick={() => applyRow(row)} disabled={!$can('manage', 'dhcp_static')}>{$t('admin.network.dhcp_static.actions.apply')}</button>
+                    <button class="btn ghost" onclick={() => openEdit(row)} disabled={!$can('manage', 'dhcp_static')}>{$t('common.edit')}</button>
+                    <button class="btn ghost" onclick={() => goto(`${tenantPrefix}/admin/network/installations`)} disabled={!$can('manage', 'work_orders')}>{$t('admin.network.dhcp_static.actions.install')}</button>
+                    <button class="btn danger" onclick={() => deleteRow(row)} disabled={!$can('manage', 'dhcp_static')}>{$t('common.delete')}</button>
                   </div>
                 </td>
               </tr>
@@ -855,24 +854,23 @@
     <section class="form-section">
       <div class="section-head">
         <div>
-          <h3>{$t('admin.network.dhcp_static.fields.subscription_context') || 'Subscription context'}</h3>
+          <h3>{$t('admin.network.dhcp_static.fields.subscription_context')}</h3>
           <p>
-            {$t('admin.network.dhcp_static.modal.context_help') ||
-              'Choose the customer and subscription first, then continue with lease provisioning.'}
+            {$t('admin.network.dhcp_static.modal.context_help')}
           </p>
         </div>
       </div>
 
       <div class="form-grid">
         <label>
-          <span>{$t('common.customer') || 'Customer'}</span>
+          <span>{$t('common.customer')}</span>
           <select
             class="input"
             bind:value={formCustomerId}
             onchange={(event) => handleCustomerChange((event.currentTarget as HTMLSelectElement).value)}
             disabled={saving || loadingFormOptions || showEdit}
           >
-            <option value="">{$t('admin.network.dhcp_static.fields.select_customer') || 'Select customer'}</option>
+            <option value="">{$t('admin.network.dhcp_static.fields.select_customer')}</option>
             {#each customers as customer}
               <option value={customer.id}>{customer.name}</option>
             {/each}
@@ -880,7 +878,7 @@
         </label>
 
         <label>
-          <span>{$t('common.location') || 'Location'}</span>
+          <span>{$t('common.location')}</span>
           <select
             class="input"
             bind:value={formLocationId}
@@ -889,7 +887,7 @@
             disabled={saving || loadingFormOptions || !formCustomerId}
           >
             <option value="">
-              {$t('admin.network.dhcp_static.fields.select_location') || 'Select location'}
+              {$t('admin.network.dhcp_static.fields.select_location')}
             </option>
             {#each locations as location}
               <option value={location.id}>{location.label}</option>
@@ -898,7 +896,7 @@
         </label>
 
         <label>
-          <span>{$t('admin.network.dhcp_static.fields.subscription') || 'Subscription'}</span>
+          <span>{$t('admin.network.dhcp_static.fields.subscription')}</span>
           <select
             class="input"
             bind:value={formSubscriptionId}
@@ -906,7 +904,7 @@
               handleSubscriptionChange((event.currentTarget as HTMLSelectElement).value)}
             disabled={saving || loadingFormOptions || !formCustomerId || !formLocationId || showEdit}
           >
-            <option value="">{$t('admin.network.dhcp_static.fields.select_subscription') || 'Select DHCP static subscription'}</option>
+            <option value="">{$t('admin.network.dhcp_static.fields.select_subscription')}</option>
             {#each visibleSubscriptions as subscription}
               <option value={subscription.id}>
                 {(subscription.package_name || selectedPackageName) + ' • ' + subscription.status}
@@ -915,8 +913,7 @@
           </select>
           {#if formCustomerId && formLocationId && visibleSubscriptions.length === 0}
             <div class="field-hint">
-              {$t('admin.network.dhcp_static.fields.no_subscription_for_location') ||
-                'No DHCP static subscription is available for this location yet.'}
+              {$t('admin.network.dhcp_static.fields.no_subscription_for_location')}
             </div>
           {/if}
         </label>
@@ -924,11 +921,11 @@
 
       <div class="context-grid">
         <div class="context-card">
-          <span class="context-label">{$t('common.location') || 'Location'}</span>
+          <span class="context-label">{$t('common.location')}</span>
           <strong>{selectedLocation?.label || selectedLocationName}</strong>
         </div>
         <div class="context-card">
-          <span class="context-label">{$t('common.package') || 'Package'}</span>
+          <span class="context-label">{$t('common.package')}</span>
           <strong>{selectedPackageName}</strong>
         </div>
       </div>
@@ -936,8 +933,7 @@
       <div class="existing-services-panel">
         <div class="existing-services-head">
           <strong>
-            {$t('admin.network.dhcp_static.fields.existing_services_title') ||
-              'Existing DHCP Static'}
+            {$t('admin.network.dhcp_static.fields.existing_services_title')}
           </strong>
           <span>
             {tr(
@@ -949,18 +945,15 @@
         </div>
         {#if !formCustomerId}
           <p class="field-hint">
-            {$t('admin.network.dhcp_static.fields.choose_customer_for_existing_services') ||
-              'Choose customer first to inspect existing DHCP static services.'}
+            {$t('admin.network.dhcp_static.fields.choose_customer_for_existing_services')}
           </p>
         {:else if !formLocationId}
           <p class="field-hint">
-            {$t('admin.network.dhcp_static.fields.choose_location_for_existing_services') ||
-              'Choose location to narrow existing DHCP static services.'}
+            {$t('admin.network.dhcp_static.fields.choose_location_for_existing_services')}
           </p>
         {:else if existingCustomerDhcpServices.length === 0}
           <p class="field-hint">
-            {$t('admin.network.dhcp_static.fields.no_existing_service_for_location') ||
-              'No existing DHCP static service for this location.'}
+            {$t('admin.network.dhcp_static.fields.no_existing_service_for_location')}
           </p>
         {:else}
           <div class="existing-service-list">
@@ -980,18 +973,17 @@
       <div class="section-head">
         <div>
           <h3>
-            {$t('admin.network.dhcp_static.modal.lease_title') || 'Lease Provisioning'}
+            {$t('admin.network.dhcp_static.modal.lease_title')}
           </h3>
           <p>
-            {$t('admin.network.dhcp_static.modal.lease_help') ||
-              'Fill router, DHCP server, customer MAC, and static IP assignment.'}
+            {$t('admin.network.dhcp_static.modal.lease_help')}
           </p>
         </div>
       </div>
 
       <div class="form-grid">
         <label>
-          <span>{$t('admin.network.dhcp_static.filters.router') || 'Router'}</span>
+          <span>{$t('admin.network.dhcp_static.filters.router')}</span>
           <select
             class:error={!!formRouterIdError}
             class="input"
@@ -1002,7 +994,7 @@
               })}
             disabled={saving || loadingFormOptions}
           >
-            <option value="">{$t('admin.network.dhcp_static.fields.select_router') || 'Select router'}</option>
+            <option value="">{$t('admin.network.dhcp_static.fields.select_router')}</option>
             {#each routers as router}
               <option value={router.id}>{router.name}</option>
             {/each}
@@ -1011,14 +1003,14 @@
             <div class="field-error">{formRouterIdError}</div>
           {:else}
             <div class="field-hint">
-              {$t('admin.network.dhcp_static.fields.selected_router') || 'Selected'}:
+              {$t('admin.network.dhcp_static.fields.selected_router')}:
               <strong>{selectedRouterName}</strong>
             </div>
           {/if}
         </label>
 
         <label>
-          <span>{$t('admin.network.dhcp_static.fields.dhcp_server_name') || 'DHCP Server Name'}</span>
+          <span>{$t('admin.network.dhcp_static.fields.dhcp_server_name')}</span>
           <select
             class:error={!!formDhcpServerNameError}
             class="input"
@@ -1026,8 +1018,7 @@
             disabled={saving || loadingRouterDhcpServers || !formRouterId}
           >
             <option value="">
-              {$t('admin.network.dhcp_static.fields.select_dhcp_server') ||
-                'Select DHCP server'}
+              {$t('admin.network.dhcp_static.fields.select_dhcp_server')}
             </option>
             {#each routerDhcpServerOptions as option}
               <option value={option.value}>{option.label}</option>
@@ -1037,13 +1028,11 @@
             <div class="field-error">{formDhcpServerNameError}</div>
           {:else if loadingRouterDhcpServers}
             <div class="field-hint">
-              {$t('admin.network.dhcp_static.fields.loading_dhcp_servers') ||
-                'Loading DHCP servers from router...'}
+              {$t('admin.network.dhcp_static.fields.loading_dhcp_servers')}
             </div>
           {:else if !formRouterId}
             <div class="field-hint">
-              {$t('admin.network.dhcp_static.fields.pick_router_first') ||
-                'Choose router first to load DHCP server names.'}
+              {$t('admin.network.dhcp_static.fields.pick_router_first')}
             </div>
           {:else if selectedRouterDhcpServer}
             <div class="field-hint">
@@ -1066,14 +1055,13 @@
             </div>
           {:else}
             <div class="field-hint">
-              {$t('admin.network.dhcp_static.fields.no_dhcp_servers_available') ||
-                'No DHCP server available from the selected router.'}
+              {$t('admin.network.dhcp_static.fields.no_dhcp_servers_available')}
             </div>
           {/if}
         </label>
 
         <label>
-          <span>{$t('admin.network.dhcp_static.fields.mac_address') || 'MAC Address'}</span>
+          <span>{$t('admin.network.dhcp_static.fields.mac_address')}</span>
           <input
             class:error={!!formMacAddressError}
             class="input mono"
@@ -1090,7 +1078,7 @@
         </label>
 
         <label>
-          <span>{$t('admin.network.dhcp_static.fields.ip_address') || 'IP Address'}</span>
+          <span>{$t('admin.network.dhcp_static.fields.ip_address')}</span>
           <input
             class:error={!!formIpAddressError}
             class="input mono"
@@ -1103,12 +1091,11 @@
         </label>
 
         <label class="full">
-          <span>{$t('common.notes') || 'Notes'}</span>
+          <span>{$t('common.notes')}</span>
           <input
             class="input"
             bind:value={formComment}
-            placeholder={$t('admin.network.dhcp_static.fields.comment_placeholder') ||
-              'Optional note for static lease'}
+            placeholder={$t('admin.network.dhcp_static.fields.comment_placeholder')}
           />
         </label>
       </div>
@@ -1118,26 +1105,25 @@
       <div class="section-head">
         <div>
           <h3>
-            {$t('admin.network.dhcp_static.modal.traffic_title') || 'Traffic Control'}
+            {$t('admin.network.dhcp_static.modal.traffic_title')}
           </h3>
           <p>
-            {$t('admin.network.dhcp_static.modal.traffic_help') ||
-              'Optional queue settings for bandwidth shaping on the router.'}
+            {$t('admin.network.dhcp_static.modal.traffic_help')}
           </p>
         </div>
       </div>
 
       <div class="form-grid queue-grid">
         <label>
-          <span>{$t('admin.network.dhcp_static.fields.queue_mode') || 'Queue Mode'}</span>
+          <span>{$t('admin.network.dhcp_static.fields.queue_mode')}</span>
           <select class="input" bind:value={formQueueMode}>
-            <option value="none">{$t('admin.network.dhcp_static.sync.none') || 'None'}</option>
-            <option value="simple_queue">{$t('admin.network.dhcp_static.fields.simple_queue') || 'Simple Queue'}</option>
+            <option value="none">{$t('admin.network.dhcp_static.sync.none')}</option>
+            <option value="simple_queue">{$t('admin.network.dhcp_static.fields.simple_queue')}</option>
           </select>
         </label>
 
         <label>
-          <span>{$t('admin.network.dhcp_static.fields.queue_rate_limit') || 'Queue Rate Limit'}</span>
+          <span>{$t('admin.network.dhcp_static.fields.queue_rate_limit')}</span>
           <input
             class:error={!!formQueueRateLimitError}
             class="input mono"
@@ -1146,8 +1132,7 @@
             disabled={formQueueMode !== 'simple_queue'}
           />
           <div class="field-hint">
-            {$t('admin.network.dhcp_static.fields.queue_rate_limit_hint') ||
-              'Use format like 20M/20M for download/upload.'}
+            {$t('admin.network.dhcp_static.fields.queue_rate_limit_hint')}
           </div>
           {#if formQueueRateLimitError}
             <div class="field-error">{formQueueRateLimitError}</div>
@@ -1157,7 +1142,7 @@
         {#if formQueueMode === 'simple_queue'}
           <div class="preset-panel">
             <span class="preset-label">
-              {$t('admin.network.dhcp_static.fields.queue_presets') || 'Quick presets'}
+              {$t('admin.network.dhcp_static.fields.queue_presets')}
             </span>
             <div class="preset-chips">
               {#each queueRateLimitPresets as preset}
@@ -1175,14 +1160,14 @@
 
         <label class="checkbox full checkbox-row">
           <input type="checkbox" bind:checked={formDisabled} />
-          <span>{$t('admin.network.dhcp_static.fields.disabled') || 'Disabled on router'}</span>
+          <span>{$t('admin.network.dhcp_static.fields.disabled')}</span>
         </label>
       </div>
     </section>
 
     {#if selectedSubscription}
       <div class="subscription-card">
-        <strong>{$t('admin.network.dhcp_static.fields.subscription_context') || 'Subscription context'}</strong>
+        <strong>{$t('admin.network.dhcp_static.fields.subscription_context')}</strong>
         <p>
           {customerNameById.get(selectedSubscription.customer_id) || selectedSubscription.customer_id}
           • {selectedSubscription.package_name || selectedPackageName}
@@ -1201,7 +1186,7 @@
       }}
       disabled={saving}
     >
-      {$t('common.cancel') || 'Cancel'}
+      {$t('common.cancel')}
     </button>
     <button class="btn" onclick={showEdit ? submitEdit : submitCreate} disabled={saving}>
       {saving
@@ -1215,10 +1200,10 @@
 
 <ConfirmDialog
   bind:show={showDeleteConfirm}
-  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
-  message={$t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  title={$t('common.confirm_delete_title')}
+  message={$t('common.confirm_delete')}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   type="danger"
   onconfirm={handleConfirmDelete}
   oncancel={() => { deleteTarget = null; }}

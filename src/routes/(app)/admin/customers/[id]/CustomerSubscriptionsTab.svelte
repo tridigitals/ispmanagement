@@ -30,18 +30,18 @@
 <div class="card section">
   <div class="section-head">
     <div>
-      <h3>{$t('admin.customers.subscriptions.title') || 'Layanan'}</h3>
+      <h3>{$t('admin.customers.subscriptions.title')}</h3>
       <p class="subtitle">{$t('admin.customers.subscriptions.subtitle')}</p>
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingSubscriptions}>
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Muat ulang'}
+        {$t('common.refresh')}
       </button>
       {#if canManageCustomers}
         <button class="btn btn-primary" onclick={onAdd}>
           <Icon name="plus" size={16} />
-          {$t('common.add') || 'Tambah'}
+          {$t('common.add')}
         </button>
       {/if}
     </div>
@@ -78,7 +78,7 @@
     columns={subscriptionColumns}
     data={subscriptions}
     loading={loadingSubscriptions}
-    emptyText={$t('admin.customers.subscriptions.empty') || 'Belum ada layanan.'}
+    emptyText={$t('admin.customers.subscriptions.empty')}
     pagination
   >
     {#snippet cell({ item, key })}
@@ -139,7 +139,7 @@
           {#if canManageCustomers}
             <button
               class="btn-icon"
-              title={$t('admin.customers.billing.actions.generate_from_subscription') || 'Buat invoice'}
+              title={$t('admin.customers.billing.actions.generate_from_subscription')}
               onclick={() => onGenerateInvoice(row.id)}
               disabled={generatingInvoiceFor === row.id || deletingSubscription === row.id}
             >
@@ -158,7 +158,7 @@
             {#if row.status === 'active'}
               <button
                 class="btn-icon"
-                title={$t('common.suspend') || 'Suspend'}
+                title={$t('common.suspend')}
                 onclick={() => onSetSubscriptionStatus(row, 'suspended')}
                 disabled={togglingSubscription === row.id || deletingSubscription === row.id}
               >
@@ -167,19 +167,19 @@
             {:else if row.status === 'suspended'}
               <button
                 class="btn-icon"
-                title={$t('common.activate') || 'Activate'}
+                title={$t('common.activate')}
                 onclick={() => onSetSubscriptionStatus(row, 'active')}
                 disabled={togglingSubscription === row.id || deletingSubscription === row.id}
               >
                 <Icon name="play" size={16} />
               </button>
             {/if}
-            <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => onEditSubscription(row)}>
+            <button class="btn-icon" title={$t('common.edit')} onclick={() => onEditSubscription(row)}>
               <Icon name="edit-3" size={16} />
             </button>
             <button
               class="btn-icon danger"
-              title={$t('common.delete') || 'Hapus'}
+              title={$t('common.delete')}
               onclick={() => onDeleteSubscription(row.id)}
               disabled={deletingSubscription === row.id}
             >

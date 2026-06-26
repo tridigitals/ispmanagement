@@ -61,18 +61,17 @@
 <div class="card section fade-in">
   <div class="card-header">
     <h3>
-      {$t('superadmin.settings.sections.general') || 'General Settings'}
+      {$t('superadmin.settings.sections.general')}
     </h3>
   </div>
   <div class="card-body">
     <div class="setting-row">
       <div class="setting-info full-width">
         <label class="setting-label" for="public-url">
-          {$t('superadmin.settings.fields.public_url.label') || 'Public Application URL'}
+          {$t('superadmin.settings.fields.public_url.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.fields.public_url.desc') ||
-            'Base URL for redirects, emails, and payment callbacks (e.g. https://app.example.com).'}
+          {$t('superadmin.settings.fields.public_url.desc')}
         </p>
         <input
           type="text"
@@ -80,7 +79,7 @@
           bind:value={appPublicUrl}
           on:input={handleChange}
           class="form-input"
-          placeholder={$t('superadmin.settings.placeholders.url') || 'https://...'}
+          placeholder={$t('superadmin.settings.placeholders.url')}
         />
       </div>
     </div>
@@ -88,11 +87,10 @@
     <div class="setting-row">
       <div class="setting-info full-width">
         <label class="setting-label" for="main-domain">
-          {$t('superadmin.settings.fields.main_domain.label') || 'Main Domain'}
+          {$t('superadmin.settings.fields.main_domain.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.fields.main_domain.desc') ||
-            'The primary domain where the application is hosted (e.g. example.com). Used for domain validation and tenant routing.'}
+          {$t('superadmin.settings.fields.main_domain.desc')}
         </p>
         <input
           type="text"
@@ -100,7 +98,7 @@
           bind:value={appMainDomain}
           on:input={handleChange}
           class="form-input"
-          placeholder={$t('superadmin.settings.placeholders.domain') || 'example.com'}
+          placeholder={$t('superadmin.settings.placeholders.domain')}
         />
       </div>
     </div>
@@ -108,11 +106,10 @@
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="currency-code">
-          {$t('superadmin.settings.fields.currency.label') || 'Default Currency'}
+          {$t('superadmin.settings.fields.currency.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.fields.currency.desc') ||
-            'Currency used for plan pricing and invoice display (ISO 4217, e.g. IDR, USD).'}
+          {$t('superadmin.settings.fields.currency.desc')}
         </p>
       </div>
       <select
@@ -130,11 +127,10 @@
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="app-timezone">
-          {$t('superadmin.settings.fields.timezone.label') || 'Timezone'}
+          {$t('superadmin.settings.fields.timezone.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.fields.timezone.desc') ||
-            'Used to interpret schedule times (e.g. backups). Choose an IANA timezone.'}
+          {$t('superadmin.settings.fields.timezone.desc')}
         </p>
       </div>
       <Select2
@@ -143,8 +139,8 @@
         bind:value={appTimezone}
         options={timezoneOptions}
         placeholder="UTC"
-        searchPlaceholder={$t('superadmin.settings.fields.timezone.search') || 'Search timezone...'}
-        noResultsText={$t('common.empty.no_results') || 'No results'}
+        searchPlaceholder={$t('superadmin.settings.fields.timezone.search')}
+        noResultsText={$t('common.empty.no_results')}
         onchange={handleChange}
       />
     </div>
@@ -152,11 +148,10 @@
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="maintenance-mode">
-          {$t('superadmin.settings.fields.maintenance_mode.label') || 'Enable Maintenance Mode'}
+          {$t('superadmin.settings.fields.maintenance_mode.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.fields.maintenance_mode.desc') ||
-            'When enabled, all users except superadmins will see a maintenance page.'}
+          {$t('superadmin.settings.fields.maintenance_mode.desc')}
         </p>
       </div>
       <label class="toggle">
@@ -173,11 +168,10 @@
     <div class="setting-row">
       <div class="setting-info full-width">
         <label class="setting-label" for="maintenance-message">
-          {$t('superadmin.settings.fields.maintenance_message.label') || 'Maintenance Message'}
+          {$t('superadmin.settings.fields.maintenance_message.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.fields.maintenance_message.desc') ||
-            'The message displayed to users when maintenance mode is active.'}
+          {$t('superadmin.settings.fields.maintenance_message.desc')}
         </p>
         <textarea
           id="maintenance-message"

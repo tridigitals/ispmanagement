@@ -255,11 +255,11 @@
             <button
               class="btn btn-glass btn-sm"
               onclick={requestMarkAll}
-              title={$t('topbar.notifications_menu.mark_all_read') || 'Mark all read'}
+              title={$t('topbar.notifications_menu.mark_all_read')}
             >
               <Icon name="check-circle" size={14} />
               <span class="hide-xs"
-                >{$t('topbar.notifications_menu.mark_all_read') || 'Mark all read'}</span
+                >{$t('topbar.notifications_menu.mark_all_read')}</span
               >
             </button>
           {/if}
@@ -267,18 +267,18 @@
             <button
               class="btn btn-glass btn-sm"
               onclick={requestClearAll}
-              title={$t('topbar.notifications_menu.clear_all') || 'Clear all'}
+              title={$t('topbar.notifications_menu.clear_all')}
             >
               <Icon name="trash" size={14} />
               <span class="hide-xs"
-                >{$t('topbar.notifications_menu.clear_all') || 'Clear all'}</span
+                >{$t('topbar.notifications_menu.clear_all')}</span
               >
             </button>
           {/if}
           <button
             class="btn btn-glass btn-sm"
             onclick={openPreferences}
-            title={$t('topbar.notifications_menu.settings') || 'Settings'}
+            title={$t('topbar.notifications_menu.settings')}
           >
             <Icon name="settings" size={14} />
           </button>
@@ -286,8 +286,8 @@
             class="notif-modal-close"
             type="button"
             onclick={requestClose}
-            aria-label={$t('common.close') || 'Close'}
-            title={$t('common.close') || 'Close'}
+            aria-label={$t('common.close')}
+            title={$t('common.close')}
           >
             <Icon name="x" size={18} />
           </button>
@@ -299,14 +299,14 @@
           <Icon name="search" size={16} />
           <input
             type="text"
-            placeholder={$t('notifications_page.search_placeholder') || 'Search notifications...'}
+            placeholder={$t('notifications_page.search_placeholder')}
             bind:value={searchQuery}
           />
           {#if searchQuery}
             <button
               class="clear"
               onclick={() => (searchQuery = '')}
-              aria-label={$t('common.clear') || 'Clear'}
+              aria-label={$t('common.clear')}
             >
               <Icon name="x" size={12} />
             </button>
@@ -327,7 +327,7 @@
         {#if $loading && $notifications.length === 0}
           <div class="notif-center">
             <div class="spinner"></div>
-            <p class="muted">{$t('notifications_page.loading') || 'Loading...'}</p>
+            <p class="muted">{$t('notifications_page.loading')}</p>
           </div>
         {:else if filteredNotifications.length === 0}
           <div class="notif-empty">
@@ -336,7 +336,7 @@
             </div>
             <h3>{$t('notifications_page.empty.title') || "You're all caught up"}</h3>
             <p class="muted">
-              {$t('notifications_page.empty.subtitle') || 'No notifications to show.'}
+              {$t('notifications_page.empty.subtitle')}
             </p>
           </div>
         {:else}
@@ -363,7 +363,7 @@
                   {#if !n.is_read}
                     <button
                       class="icon-btn"
-                      title={$t('notifications_page.mark_as_read') || 'Mark as read'}
+                      title={$t('notifications_page.mark_as_read')}
                       onclick={() => markAsRead(n.id)}
                     >
                       <Icon name="check" size={14} />
@@ -371,7 +371,7 @@
                   {/if}
                   <button
                     class="icon-btn danger"
-                    title={$t('common.delete') || 'Delete'}
+                    title={$t('common.delete')}
                     onclick={() => requestDelete(n)}
                   >
                     <Icon name="trash" size={14} />
@@ -391,7 +391,7 @@
         {#if !$loading && hasMore}
           <div class="notif-load-more">
             <button class="btn btn-glass btn-sm" onclick={loadMore}>
-              {$t('common.load_more') || 'Load more'}
+              {$t('common.load_more')}
             </button>
           </div>
         {/if}
@@ -402,9 +402,9 @@
 
 <ConfirmDialog
   open={showDeleteModal}
-  title={$t('notifications_page.delete_confirm.title') || 'Delete notification'}
-  message={$t('notifications_page.delete_confirm.message') || 'Are you sure you want to delete this notification?'}
-  confirmText={$t('common.delete') || 'Delete'}
+  title={$t('notifications_page.delete_confirm.title')}
+  message={$t('notifications_page.delete_confirm.message')}
+  confirmText={$t('common.delete')}
   variant="danger"
   loading={deleting}
   on:confirm={confirmDelete}
@@ -416,9 +416,9 @@
 
 <ConfirmDialog
   open={showMarkAllModal}
-  title={$t('notifications_page.mark_all_confirm.title') || 'Mark all as read'}
-  message={$t('notifications_page.mark_all_confirm.message') || 'Mark all notifications as read?'}
-  confirmText={$t('topbar.notifications_menu.mark_all_read') || 'Mark all read'}
+  title={$t('notifications_page.mark_all_confirm.title')}
+  message={$t('notifications_page.mark_all_confirm.message')}
+  confirmText={$t('topbar.notifications_menu.mark_all_read')}
   loading={markingAll}
   on:confirm={confirmMarkAll}
   on:cancel={() => (showMarkAllModal = false)}
@@ -426,9 +426,9 @@
 
 <ConfirmDialog
   open={showClearAllModal}
-  title={$t('notifications_page.confirm_clear_all.title') || 'Clear all notifications'}
-  message={$t('notifications_page.confirm_clear_all.message') || 'This will permanently delete all your notifications. This action cannot be undone.'}
-  confirmText={$t('topbar.notifications_menu.clear_all') || 'Clear all'}
+  title={$t('notifications_page.confirm_clear_all.title')}
+  message={$t('notifications_page.confirm_clear_all.message')}
+  confirmText={$t('topbar.notifications_menu.clear_all')}
   variant="danger"
   loading={clearingAll}
   on:confirm={confirmClearAll}

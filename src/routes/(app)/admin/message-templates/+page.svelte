@@ -207,51 +207,51 @@
 <div class="page-content">
   <header class="page-header">
     <div>
-      <h1>{$t('topbar.titles.message_templates') || 'Message Templates'}</h1>
-      <p class="subtitle">{$t('admin.message_templates.subtitle_desc') || 'Template pesan untuk WhatsApp dan email.'}</p>
+      <h1>{$t('topbar.titles.message_templates')}</h1>
+      <p class="subtitle">{$t('admin.message_templates.subtitle_desc')}</p>
     </div>
     {#if canManageTemplates}
       <button class="btn btn-primary" onclick={openCreate}>
         <Icon name="plus" size={16} />
-        {$t('admin.message_templates.actions.new') || 'New Template'}
+        {$t('admin.message_templates.actions.new')}
       </button>
     {/if}
   </header>
 
   <section class="toolbar">
-    <input class="input" placeholder={$t('admin.message_templates.search') || 'Search templates...'} bind:value={q} onkeydown={(e) => e.key === 'Enter' && loadTemplates()} />
+    <input class="input" placeholder={$t('admin.message_templates.search')} bind:value={q} onkeydown={(e) => e.key === 'Enter' && loadTemplates()} />
     <select class="input" bind:value={useCase} onchange={loadTemplates}>
-      <option value="all">{$t('admin.message_templates.filters.all_use_cases') || 'All use cases'}</option>
-      <option value="billing">{$t('admin.message_templates.use_cases.billing') || 'Billing'}</option>
-      <option value="installation">{$t('admin.message_templates.use_cases.installation') || 'Installation'}</option>
-      <option value="support">{$t('admin.message_templates.use_cases.support') || 'Support'}</option>
-      <option value="outage">{$t('admin.message_templates.use_cases.outage') || 'Outage'}</option>
-      <option value="lifecycle">{$t('admin.message_templates.use_cases.lifecycle') || 'Lifecycle'}</option>
-      <option value="custom">{$t('admin.message_templates.use_cases.custom') || 'Custom'}</option>
+      <option value="all">{$t('admin.message_templates.filters.all_use_cases')}</option>
+      <option value="billing">{$t('admin.message_templates.use_cases.billing')}</option>
+      <option value="installation">{$t('admin.message_templates.use_cases.installation')}</option>
+      <option value="support">{$t('admin.message_templates.use_cases.support')}</option>
+      <option value="outage">{$t('admin.message_templates.use_cases.outage')}</option>
+      <option value="lifecycle">{$t('admin.message_templates.use_cases.lifecycle')}</option>
+      <option value="custom">{$t('admin.message_templates.use_cases.custom')}</option>
     </select>
     <select class="input" bind:value={channel} onchange={loadTemplates}>
-      <option value="all">{$t('admin.message_templates.filters.all_channels') || 'All channels'}</option>
-      <option value="whatsapp">{$t('admin.message_templates.channels.whatsapp') || 'WhatsApp'}</option>
-      <option value="email">{$t('admin.message_templates.channels.email') || 'Email'}</option>
-      <option value="both">{$t('admin.message_templates.channels.both') || 'Both'}</option>
+      <option value="all">{$t('admin.message_templates.filters.all_channels')}</option>
+      <option value="whatsapp">{$t('admin.message_templates.channels.whatsapp')}</option>
+      <option value="email">{$t('admin.message_templates.channels.email')}</option>
+      <option value="both">{$t('admin.message_templates.channels.both')}</option>
     </select>
     <select class="input" bind:value={status} onchange={loadTemplates}>
-      <option value="all">{$t('admin.message_templates.filters.all_statuses') || 'All statuses'}</option>
-      <option value="draft">{$t('admin.message_templates.statuses.draft') || 'Draft'}</option>
-      <option value="active">{$t('admin.message_templates.statuses.active') || 'Active'}</option>
-      <option value="archived">{$t('admin.message_templates.statuses.archived') || 'Archived'}</option>
+      <option value="all">{$t('admin.message_templates.filters.all_statuses')}</option>
+      <option value="draft">{$t('admin.message_templates.statuses.draft')}</option>
+      <option value="active">{$t('admin.message_templates.statuses.active')}</option>
+      <option value="archived">{$t('admin.message_templates.statuses.archived')}</option>
     </select>
     <button class="btn btn-secondary" onclick={loadTemplates} disabled={loading}>
       <Icon name="refresh-cw" size={16} />
-      {$t('admin.message_templates.actions.refresh') || 'Refresh'}
+      {$t('admin.message_templates.actions.refresh')}
     </button>
   </section>
 
   <section class="template-list">
     {#if loading}
-      <div class="empty">{$t('admin.message_templates.loading') || 'Loading templates...'}</div>
+      <div class="empty">{$t('admin.message_templates.loading')}</div>
     {:else if templates.length === 0}
-      <div class="empty">{$t('admin.message_templates.empty') || 'No message templates yet.'}</div>
+      <div class="empty">{$t('admin.message_templates.empty')}</div>
     {:else}
       {#each templates as template}
         <article class="template-card">
@@ -269,11 +269,11 @@
             </div>
           </div>
           <div class="actions">
-            <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEdit(template)}>
+            <button class="btn-icon" title={$t('common.edit')} onclick={() => openEdit(template)}>
               <Icon name="pencil" size={16} />
             </button>
             {#if canManageTemplates}
-              <button class="btn-icon danger" title={$t('common.delete') || 'Delete'} onclick={() => confirmDeleteTemplate(template)}>
+              <button class="btn-icon danger" title={$t('common.delete')} onclick={() => confirmDeleteTemplate(template)}>
                 <Icon name="trash-2" size={16} />
               </button>
             {/if}
@@ -293,8 +293,8 @@
   <div class="editor-shell">
     <div class="editor-intro">
       <div>
-        <strong>{$t('admin.message_templates.editor.content_title') || 'Template content'}</strong>
-        <p>{$t('admin.message_templates.variable_hint') || 'Gunakan variabel untuk personalisasi pesan.'}</p>
+        <strong>{$t('admin.message_templates.editor.content_title')}</strong>
+        <p>{$t('admin.message_templates.variable_hint')}</p>
       </div>
       <span class="editor-badge">{editing ? `v${editing.version}` : $t('admin.message_templates.editor.draft_badge') || 'Draft'}</span>
     </div>
@@ -302,58 +302,58 @@
     <div class="editor-grid">
       <div class="form">
       <div class="grid2">
-        <label><span>{$t('admin.message_templates.fields.key') || 'Key'}</span><input class="input" bind:value={form.key} placeholder="invoice_due_reminder" /></label>
-        <label><span>{$t('admin.message_templates.fields.name') || 'Name'}</span><input class="input" bind:value={form.name} placeholder="Invoice due reminder" /></label>
+        <label><span>{$t('admin.message_templates.fields.key')}</span><input class="input" bind:value={form.key} placeholder="invoice_due_reminder" /></label>
+        <label><span>{$t('admin.message_templates.fields.name')}</span><input class="input" bind:value={form.name} placeholder="Invoice due reminder" /></label>
       </div>
-      <label><span>{$t('admin.message_templates.fields.description') || 'Description'}</span><input class="input" bind:value={form.description} /></label>
+      <label><span>{$t('admin.message_templates.fields.description')}</span><input class="input" bind:value={form.description} /></label>
       <div class="grid3">
         <label>
-          <span>{$t('admin.message_templates.fields.use_case') || 'Use Case'}</span>
+          <span>{$t('admin.message_templates.fields.use_case')}</span>
           <select class="input" bind:value={form.useCase}>
-            <option value="billing">{$t('admin.message_templates.use_cases.billing') || 'Billing'}</option>
-            <option value="installation">{$t('admin.message_templates.use_cases.installation') || 'Installation'}</option>
-            <option value="support">{$t('admin.message_templates.use_cases.support') || 'Support'}</option>
-            <option value="outage">{$t('admin.message_templates.use_cases.outage') || 'Outage'}</option>
-            <option value="lifecycle">{$t('admin.message_templates.use_cases.lifecycle') || 'Lifecycle'}</option>
-            <option value="custom">{$t('admin.message_templates.use_cases.custom') || 'Custom'}</option>
+            <option value="billing">{$t('admin.message_templates.use_cases.billing')}</option>
+            <option value="installation">{$t('admin.message_templates.use_cases.installation')}</option>
+            <option value="support">{$t('admin.message_templates.use_cases.support')}</option>
+            <option value="outage">{$t('admin.message_templates.use_cases.outage')}</option>
+            <option value="lifecycle">{$t('admin.message_templates.use_cases.lifecycle')}</option>
+            <option value="custom">{$t('admin.message_templates.use_cases.custom')}</option>
           </select>
         </label>
         <label>
-          <span>{$t('admin.message_templates.fields.channel') || 'Channel'}</span>
+          <span>{$t('admin.message_templates.fields.channel')}</span>
           <select class="input" bind:value={form.channel}>
             <option value="whatsapp">{$t('admin.message_templates.channels.whatsapp')}</option>
             <option value="email">{$t('admin.message_templates.channels.email')}</option>
-            <option value="both">{$t('admin.message_templates.channels.both') || 'Both'}</option>
+            <option value="both">{$t('admin.message_templates.channels.both')}</option>
           </select>
         </label>
         <label>
-          <span>{$t('admin.message_templates.fields.status') || 'Status'}</span>
+          <span>{$t('admin.message_templates.fields.status')}</span>
           <select class="input" bind:value={form.status}>
-            <option value="draft">{$t('admin.message_templates.statuses.draft') || 'Draft'}</option>
-            <option value="active">{$t('admin.message_templates.statuses.active') || 'Active'}</option>
-            <option value="archived">{$t('admin.message_templates.statuses.archived') || 'Archived'}</option>
+            <option value="draft">{$t('admin.message_templates.statuses.draft')}</option>
+            <option value="active">{$t('admin.message_templates.statuses.active')}</option>
+            <option value="archived">{$t('admin.message_templates.statuses.archived')}</option>
           </select>
         </label>
       </div>
       <div class="grid2">
         <label>
-          <span>{$t('admin.message_templates.fields.trigger') || 'Trigger'}</span>
+          <span>{$t('admin.message_templates.fields.trigger')}</span>
           <select class="input" bind:value={form.triggerMode}>
-            <option value="manual">{$t('admin.message_templates.triggers.manual') || 'Manual'}</option>
-            <option value="automatic">{$t('admin.message_templates.triggers.automatic') || 'Automatic'}</option>
-            <option value="both">{$t('admin.message_templates.triggers.both') || 'Both'}</option>
+            <option value="manual">{$t('admin.message_templates.triggers.manual')}</option>
+            <option value="automatic">{$t('admin.message_templates.triggers.automatic')}</option>
+            <option value="both">{$t('admin.message_templates.triggers.both')}</option>
           </select>
         </label>
-        <label><span>{$t('admin.message_templates.fields.event_key') || 'Event Key'}</span><input class="input" bind:value={form.eventKey} placeholder="invoice.due_reminder" /></label>
+        <label><span>{$t('admin.message_templates.fields.event_key')}</span><input class="input" bind:value={form.eventKey} placeholder="invoice.due_reminder" /></label>
       </div>
-      <label><span>{$t('admin.message_templates.fields.whatsapp_body') || 'WhatsApp Body'}</span><textarea class="input message-area" rows="6" bind:value={form.whatsappBody}></textarea></label>
-      <label><span>{$t('admin.message_templates.fields.email_subject') || 'Email Subject'}</span><input class="input" bind:value={form.emailSubject} /></label>
-      <label><span>{$t('admin.message_templates.fields.email_body') || 'Email Body'}</span><textarea class="input message-area email-area" rows="8" bind:value={form.emailBody}></textarea></label>
+      <label><span>{$t('admin.message_templates.fields.whatsapp_body')}</span><textarea class="input message-area" rows="6" bind:value={form.whatsappBody}></textarea></label>
+      <label><span>{$t('admin.message_templates.fields.email_subject')}</span><input class="input" bind:value={form.emailSubject} /></label>
+      <label><span>{$t('admin.message_templates.fields.email_body')}</span><textarea class="input message-area email-area" rows="8" bind:value={form.emailBody}></textarea></label>
       </div>
 
       <aside class="side-panel">
-        <strong>{$t('admin.message_templates.variables.title') || 'Variable Picker'}</strong>
-        <p>{$t('admin.message_templates.variable_insert_hint') || 'Klik token untuk menyisipkan variabel.'}</p>
+        <strong>{$t('admin.message_templates.variables.title')}</strong>
+        <p>{$t('admin.message_templates.variable_insert_hint')}</p>
       {#each variableGroups as group}
         <div class="variable-group">
           <span>{$t(group.labelKey)}</span>
@@ -370,18 +370,18 @@
       </button>
       {#if preview}
         <div class="preview">
-          <strong>{$t('admin.message_templates.preview.title') || 'Preview'}</strong>
+          <strong>{$t('admin.message_templates.preview.title')}</strong>
           {#if preview.whatsappBody}<p>{preview.whatsappBody}</p>{/if}
           {#if preview.emailSubject}<p><b>{preview.emailSubject}</b></p>{/if}
           {#if preview.emailBody}<p>{preview.emailBody}</p>{/if}
-          <small>{$t('admin.message_templates.preview.variables') || 'Variables'}: {preview.variables.join(', ') || '-'}</small>
+          <small>{$t('admin.message_templates.preview.variables')}: {preview.variables.join(', ') || '-'}</small>
         </div>
       {/if}
       </aside>
     </div>
   </div>
   <div class="modal-actions">
-    <button class="btn btn-secondary" onclick={() => (showEditor = false)}>{$t('admin.message_templates.actions.cancel') || 'Cancel'}</button>
+    <button class="btn btn-secondary" onclick={() => (showEditor = false)}>{$t('admin.message_templates.actions.cancel')}</button>
     <button class="btn btn-primary" onclick={saveTemplate} disabled={!canManageTemplates || saving}>
       <Icon name="save" size={16} />
       {saving ? ($t('admin.message_templates.actions.saving') || 'Saving...') : ($t('admin.message_templates.actions.save') || 'Save')}
@@ -391,10 +391,10 @@
 
 <ConfirmDialog
   bind:show={showDeleteConfirm}
-  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
-  message={$t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  title={$t('common.confirm_delete_title')}
+  message={$t('common.confirm_delete')}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   type="danger"
   onconfirm={handleConfirmDelete}
   oncancel={() => { deleteTargetId = null; }}

@@ -33,13 +33,13 @@
 
 <div class="row-actions" class:full-width={fullWidth}>
   {#if showOpen}
-    <button class="row-action-btn" type="button" onclick={() => void onOpen?.()} title={$t('common.open') || 'Open'}>
+    <button class="row-action-btn" type="button" onclick={() => void onOpen?.()} title={$t('common.open')}>
       <Icon name="arrow-right" size={16} />
     </button>
   {/if}
 
   {#if showDetail}
-    <button class="row-action-btn" type="button" onclick={() => void onDetail?.()} title={$t('common.details') || 'Details'}>
+    <button class="row-action-btn" type="button" onclick={() => void onDetail?.()} title={$t('common.details')}>
       <Icon name="file-text" size={16} />
     </button>
   {/if}
@@ -49,7 +49,7 @@
       class="row-action-btn"
       type="button"
       onclick={() => void onSnooze?.()}
-      title={$t('admin.network.alerts.actions.snooze_30m') || 'Snooze 30m'}
+      title={$t('admin.network.alerts.actions.snooze_30m')}
     >
       <Icon name="clock" size={16} />
     </button>
@@ -60,7 +60,7 @@
       class="row-action-btn"
       type="button"
       onclick={() => void onAcknowledge?.()}
-      title={$t('admin.network.alerts.actions.ack') || 'Acknowledge'}
+      title={$t('admin.network.alerts.actions.ack')}
     >
       <Icon name="check" size={16} />
     </button>
@@ -71,7 +71,7 @@
       class="row-action-btn"
       type="button"
       onclick={() => void onResolve?.()}
-      title={$t('admin.network.alerts.actions.resolve') || 'Resolve'}
+      title={$t('admin.network.alerts.actions.resolve')}
     >
       <Icon name="check-circle" size={16} />
     </button>

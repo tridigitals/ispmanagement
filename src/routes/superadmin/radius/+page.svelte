@@ -798,10 +798,9 @@
 <div class="page-shell">
   <div class="hero">
     <div>
-      <h1>{$t('superadmin.radius.title') || 'Managed RADIUS'}</h1>
+      <h1>{$t('superadmin.radius.title')}</h1>
       <p>
-        {$t('superadmin.radius.subtitle') ||
-          'Manage the native RADIUS runtime, tenant assignments, and NAS mappings for MikroTik PPPoE.'}
+        {$t('superadmin.radius.subtitle')}
       </p>
       {#if runtimeStatus}
         <div class="runtime-banner">
@@ -809,11 +808,11 @@
             {runtimeStatusLabel}
           </span>
           <span class="runtime-meta">
-            {$t('superadmin.radius.runtime.endpoint') || 'Endpoint'}:
+            {$t('superadmin.radius.runtime.endpoint')}:
             <strong>{runtimeStatus.advertised_host}:{runtimeStatus.auth_port}/{runtimeStatus.acct_port}</strong>
           </span>
           <span class="runtime-meta">
-            {$t('superadmin.radius.runtime.authenticator') || 'Message-Authenticator'}:
+            {$t('superadmin.radius.runtime.authenticator')}:
             <strong>
               {runtimeStatus.require_message_authenticator
                 ? $t('superadmin.radius.runtime.required') || 'Required'
@@ -835,16 +834,16 @@
   </div>
 
   {#if loading}
-    <div class="state-card">{$t('superadmin.radius.loading') || 'Loading managed RADIUS observability...'}</div>
+    <div class="state-card">{$t('superadmin.radius.loading')}</div>
   {:else if error}
     <div class="state-card error">{error}</div>
   {:else}
     <div class="stats-grid">
-      <StatsCard title={$t('superadmin.radius.stats.assignments') || 'Assignments'} value={stats.assignments} icon="layers" color="info" />
-      <StatsCard title={$t('superadmin.radius.stats.mappings') || 'NAS Mappings'} value={stats.mappings} icon="network" color="success" />
-      <StatsCard title={$t('superadmin.radius.stats.users') || 'Users'} value={stats.users} icon="users" />
-      <StatsCard title={$t('superadmin.radius.stats.sessions') || 'Sessions'} value={stats.sessions} icon="activity" color="info" />
-      <StatsCard title={$t('superadmin.radius.stats.out_of_sync') || 'Needs Attention'} value={stats.outOfSync} icon="activity" color="warning" />
+      <StatsCard title={$t('superadmin.radius.stats.assignments')} value={stats.assignments} icon="layers" color="info" />
+      <StatsCard title={$t('superadmin.radius.stats.mappings')} value={stats.mappings} icon="network" color="success" />
+      <StatsCard title={$t('superadmin.radius.stats.users')} value={stats.users} icon="users" />
+      <StatsCard title={$t('superadmin.radius.stats.sessions')} value={stats.sessions} icon="activity" color="info" />
+      <StatsCard title={$t('superadmin.radius.stats.out_of_sync')} value={stats.outOfSync} icon="activity" color="warning" />
     </div>
 
     <section class="panel">
@@ -853,18 +852,18 @@
         bind:activeId={activeTab}
         {isMobile}
         priorityCount={3}
-        ariaLabel={$t('superadmin.radius.title') || 'Managed RADIUS tabs'}
+        ariaLabel={$t('superadmin.radius.title')}
       />
 
       {#if activeTab === 'assignments'}
         <ManagedRadiusFilterToolbar
-          title={$t('superadmin.radius.sections.assignments') || 'Tenant Assignments'}
+          title={$t('superadmin.radius.sections.assignments')}
           countLabel={`${filteredAssignments.length} / ${assignments.length}`}
           bind:searchQuery={assignmentSearch}
-          searchPlaceholder={$t('superadmin.radius.filters.search_assignments') || 'Search assignments...'}
+          searchPlaceholder={$t('superadmin.radius.filters.search_assignments')}
           bind:primaryFilterValue={assignmentTenantFilter}
           primaryFilterOptions={assignmentPrimaryFilterOptions}
-          primaryFilterAriaLabel={$t('superadmin.radius.filters.all_tenants') || 'All tenants'}
+          primaryFilterAriaLabel={$t('superadmin.radius.filters.all_tenants')}
           bind:filterPanelOpen={assignmentFiltersOpen}
           activeFilterCount={assignmentAdvancedFilterCount}
           onReset={resetAssignmentFilters}
@@ -873,17 +872,17 @@
             <div class="advanced-grid">
               <div class="advanced-field">
                 <label for="assignment-status-filter"
-                  >{$t('superadmin.radius.filters.all_statuses') || 'All statuses'}</label
+                  >{$t('superadmin.radius.filters.all_statuses')}</label
                 >
                 <select id="assignment-status-filter" bind:value={assignmentStatusFilter}>
                   <option value="all">
-                    {$t('superadmin.radius.filters.all_statuses') || 'All statuses'}
+                    {$t('superadmin.radius.filters.all_statuses')}
                   </option>
                   <option value="active">
-                    {$t('superadmin.radius.filters.active') || 'Active'}
+                    {$t('superadmin.radius.filters.active')}
                   </option>
                   <option value="inactive">
-                    {$t('superadmin.radius.filters.inactive') || 'Inactive'}
+                    {$t('superadmin.radius.filters.inactive')}
                   </option>
                 </select>
               </div>
@@ -893,8 +892,8 @@
 
         {#if filteredAssignments.length === 0}
           <div class="empty-state">
-            <strong>{$t('superadmin.radius.empty.assignments_title') || 'No tenant assignments yet'}</strong>
-            <span>{$t('superadmin.radius.empty.assignments_subtitle') || 'Assign one active native RADIUS endpoint per tenant before creating NAS mappings.'}</span>
+            <strong>{$t('superadmin.radius.empty.assignments_title')}</strong>
+            <span>{$t('superadmin.radius.empty.assignments_subtitle')}</span>
           </div>
         {:else}
           <div class="table-wrap">
@@ -918,7 +917,7 @@
                 {:else if key === 'actions'}
                   <div class="row-actions">
                     <button class="btn-link" type="button" onclick={() => openEditAssignmentModal(item)}>
-                      {$t('superadmin.radius.actions.edit') || 'Edit'}
+                      {$t('superadmin.radius.actions.edit')}
                     </button>
                     <button class="btn-link" type="button" onclick={() => toggleAssignmentActive(item)}>
                       {item.is_active
@@ -933,13 +932,13 @@
         {/if}
       {:else if activeTab === 'mappings'}
         <ManagedRadiusFilterToolbar
-          title={$t('superadmin.radius.sections.mappings') || 'NAS Mappings'}
+          title={$t('superadmin.radius.sections.mappings')}
           countLabel={`${filteredMappings.length} / ${mappings.length}`}
           bind:searchQuery={mappingSearch}
-          searchPlaceholder={$t('superadmin.radius.filters.search_mappings') || 'Search mappings...'}
+          searchPlaceholder={$t('superadmin.radius.filters.search_mappings')}
           bind:primaryFilterValue={mappingTenantFilter}
           primaryFilterOptions={mappingPrimaryFilterOptions}
-          primaryFilterAriaLabel={$t('superadmin.radius.filters.all_tenants') || 'All tenants'}
+          primaryFilterAriaLabel={$t('superadmin.radius.filters.all_tenants')}
           bind:filterPanelOpen={mappingFiltersOpen}
           activeFilterCount={mappingAdvancedFilterCount}
           onReset={resetMappingFilters}
@@ -948,11 +947,11 @@
             <div class="advanced-grid advanced-grid-wide">
               <div class="advanced-field">
                 <label for="mapping-server-filter"
-                  >{$t('superadmin.radius.filters.all_servers') || 'All servers'}</label
+                  >{$t('superadmin.radius.filters.all_servers')}</label
                 >
                 <select id="mapping-server-filter" bind:value={mappingServerFilter}>
                   <option value="all">
-                    {$t('superadmin.radius.filters.all_servers') || 'All servers'}
+                    {$t('superadmin.radius.filters.all_servers')}
                   </option>
                   {#each mappingServerOptions as server}
                     <option value={server.id}>{server.name}</option>
@@ -962,17 +961,17 @@
 
               <div class="advanced-field">
                 <label for="mapping-status-filter"
-                  >{$t('superadmin.radius.filters.all_statuses') || 'All statuses'}</label
+                  >{$t('superadmin.radius.filters.all_statuses')}</label
                 >
                 <select id="mapping-status-filter" bind:value={mappingStatusFilter}>
                   <option value="all">
-                    {$t('superadmin.radius.filters.all_statuses') || 'All statuses'}
+                    {$t('superadmin.radius.filters.all_statuses')}
                   </option>
                   <option value="active">
-                    {$t('superadmin.radius.filters.active') || 'Active'}
+                    {$t('superadmin.radius.filters.active')}
                   </option>
                   <option value="inactive">
-                    {$t('superadmin.radius.filters.inactive') || 'Inactive'}
+                    {$t('superadmin.radius.filters.inactive')}
                   </option>
                 </select>
               </div>
@@ -982,8 +981,8 @@
 
         {#if filteredMappings.length === 0}
           <div class="empty-state">
-            <strong>{$t('superadmin.radius.empty.mappings_title') || 'No NAS mappings yet'}</strong>
-            <span>{$t('superadmin.radius.empty.mappings_subtitle') || 'Create a tenant assignment first, then map a router so MikroTik can authenticate PPPoE against the native RADIUS runtime.'}</span>
+            <strong>{$t('superadmin.radius.empty.mappings_title')}</strong>
+            <span>{$t('superadmin.radius.empty.mappings_subtitle')}</span>
           </div>
         {:else}
           <div class="table-wrap">
@@ -1015,16 +1014,16 @@
                 {:else if key === 'actions'}
                   <div class="row-actions wrap">
                     <button class="btn-link" type="button" onclick={() => openEditMappingModal(item)}>
-                      {$t('superadmin.radius.actions.edit') || 'Edit'}
+                      {$t('superadmin.radius.actions.edit')}
                     </button>
                     <button class="btn-link" type="button" onclick={() => openSecretDialog(item, 'reveal')}>
-                      {$t('superadmin.radius.actions.reveal_secret') || 'Reveal secret'}
+                      {$t('superadmin.radius.actions.reveal_secret')}
                     </button>
                     <button class="btn-link" type="button" onclick={() => openSecretDialog(item, 'rotate')}>
-                      {$t('superadmin.radius.actions.rotate_secret') || 'Rotate secret'}
+                      {$t('superadmin.radius.actions.rotate_secret')}
                     </button>
                     <button class="btn-link" type="button" onclick={() => copyMappingCli(item)}>
-                      {$t('superadmin.radius.actions.copy_cli') || 'Copy CLI'}
+                      {$t('superadmin.radius.actions.copy_cli')}
                     </button>
                     <button class="btn-link" type="button" onclick={() => toggleMappingActive(item)}>
                       {item.is_active
@@ -1039,13 +1038,13 @@
         {/if}
         {:else if activeTab === 'users'}
         <ManagedRadiusFilterToolbar
-          title={$t('superadmin.radius.sections.users') || 'Users'}
+          title={$t('superadmin.radius.sections.users')}
           countLabel={`${filteredUsers.length} / ${users.length}`}
           bind:searchQuery={userSearch}
-          searchPlaceholder={$t('superadmin.radius.filters.search_users') || 'Search users...'}
+          searchPlaceholder={$t('superadmin.radius.filters.search_users')}
           bind:primaryFilterValue={tenantFilter}
           primaryFilterOptions={userPrimaryFilterOptions}
-          primaryFilterAriaLabel={$t('superadmin.radius.filters.all_tenants') || 'All tenants'}
+          primaryFilterAriaLabel={$t('superadmin.radius.filters.all_tenants')}
           bind:filterPanelOpen={userFiltersOpen}
           activeFilterCount={userAdvancedFilterCount}
           onReset={resetUserFilters}
@@ -1054,11 +1053,11 @@
             <div class="advanced-grid advanced-grid-wide">
               <div class="advanced-field">
                 <label for="user-router-filter"
-                  >{$t('superadmin.radius.filters.all_routers') || 'All routers'}</label
+                  >{$t('superadmin.radius.filters.all_routers')}</label
                 >
                 <select id="user-router-filter" bind:value={routerFilter}>
                   <option value="all">
-                    {$t('superadmin.radius.filters.all_routers') || 'All routers'}
+                    {$t('superadmin.radius.filters.all_routers')}
                   </option>
                   {#each routerOptions as routerName}
                     <option value={routerName}>{routerName}</option>
@@ -1068,17 +1067,17 @@
 
               <div class="advanced-field">
                 <label for="user-status-filter"
-                  >{$t('superadmin.radius.filters.all_users') || 'All users'}</label
+                  >{$t('superadmin.radius.filters.all_users')}</label
                 >
                 <select id="user-status-filter" bind:value={userStatusFilter}>
                   <option value="all">
-                    {$t('superadmin.radius.filters.all_users') || 'All users'}
+                    {$t('superadmin.radius.filters.all_users')}
                   </option>
                   <option value="provisioned">
-                    {$t('superadmin.radius.filters.provisioned') || 'Provisioned'}
+                    {$t('superadmin.radius.filters.provisioned')}
                   </option>
                   <option value="not_provisioned">
-                    {$t('superadmin.radius.filters.not_provisioned') || 'Not provisioned'}
+                    {$t('superadmin.radius.filters.not_provisioned')}
                   </option>
                 </select>
               </div>
@@ -1088,8 +1087,8 @@
 
         {#if filteredUsers.length === 0}
           <div class="empty-state">
-            <strong>{$t('superadmin.radius.empty.users_title') || 'No managed RADIUS users yet'}</strong>
-            <span>{$t('superadmin.radius.empty.users_subtitle') || 'PPPoE users backed by the native RADIUS runtime will appear here after tenant admins apply them.'}</span>
+            <strong>{$t('superadmin.radius.empty.users_title')}</strong>
+            <span>{$t('superadmin.radius.empty.users_subtitle')}</span>
           </div>
         {:else}
           <div class="table-wrap">
@@ -1108,11 +1107,11 @@
                 {:else if key === 'status'}
                   <span class="badge" class:good={userBadgeTone(item) === 'good'} class:warn={userBadgeTone(item) === 'warn'} class:danger={userBadgeTone(item) === 'danger'}>
                     {#if item.is_provisioned}
-                      {$t('superadmin.radius.status.provisioned') || 'Provisioned'}
+                      {$t('superadmin.radius.status.provisioned')}
                     {:else if item.provisioning_error}
-                      {$t('superadmin.radius.status.needs_attention') || 'Needs attention'}
+                      {$t('superadmin.radius.status.needs_attention')}
                     {:else}
-                      {$t('superadmin.radius.status.not_provisioned') || 'Not provisioned'}
+                      {$t('superadmin.radius.status.not_provisioned')}
                     {/if}
                   </span>
                 {:else if key === 'last_sync'}
@@ -1128,13 +1127,13 @@
         {/if}
       {:else}
         <ManagedRadiusFilterToolbar
-          title={$t('superadmin.radius.sections.sessions') || 'Sessions'}
+          title={$t('superadmin.radius.sections.sessions')}
           countLabel={`${filteredSessions.length} / ${sessions.length}`}
           bind:searchQuery={sessionSearch}
-          searchPlaceholder={$t('superadmin.radius.filters.search_sessions') || 'Search sessions...'}
+          searchPlaceholder={$t('superadmin.radius.filters.search_sessions')}
           bind:primaryFilterValue={sessionTenantFilter}
           primaryFilterOptions={sessionPrimaryFilterOptions}
-          primaryFilterAriaLabel={$t('superadmin.radius.filters.all_tenants') || 'All tenants'}
+          primaryFilterAriaLabel={$t('superadmin.radius.filters.all_tenants')}
           bind:filterPanelOpen={sessionFiltersOpen}
           activeFilterCount={sessionAdvancedFilterCount}
           onReset={resetSessionFilters}
@@ -1143,11 +1142,11 @@
             <div class="advanced-grid">
               <div class="advanced-field">
                 <label for="session-router-filter"
-                  >{$t('superadmin.radius.filters.all_routers') || 'All routers'}</label
+                  >{$t('superadmin.radius.filters.all_routers')}</label
                 >
                 <select id="session-router-filter" bind:value={sessionRouterFilter}>
                   <option value="all">
-                    {$t('superadmin.radius.filters.all_routers') || 'All routers'}
+                    {$t('superadmin.radius.filters.all_routers')}
                   </option>
                   {#each routerOptions as routerName}
                     <option value={routerName}>{routerName}</option>
@@ -1160,8 +1159,8 @@
 
         {#if filteredSessions.length === 0}
           <div class="empty-state">
-            <strong>{$t('superadmin.radius.empty.sessions_title') || 'No accounting sessions yet'}</strong>
-            <span>{$t('superadmin.radius.empty.sessions_subtitle') || 'Accounting start, interim, and stop packets from the native RADIUS runtime will appear here.'}</span>
+            <strong>{$t('superadmin.radius.empty.sessions_title')}</strong>
+            <span>{$t('superadmin.radius.empty.sessions_subtitle')}</span>
           </div>
         {:else}
           <div class="table-wrap">

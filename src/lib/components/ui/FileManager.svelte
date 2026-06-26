@@ -446,7 +446,7 @@
           <button class="btn btn-primary" onclick={() => fileInput?.click()}>
             <Icon name="plus" size={18} />
             <span>
-              {$t('components.file_manager.upload') || 'Upload'}
+              {$t('components.file_manager.upload')}
             </span>
           </button>
         {/if}
@@ -455,14 +455,14 @@
           <Icon name="hard-drive" size={16} />
           <span>
             {total}
-            {$t('components.file_manager.files') || 'Files'}
+            {$t('components.file_manager.files')}
           </span>
         </div>
         <button
           class="btn-refresh"
           onclick={() => loadFiles(true)}
-          title={$t('common.refresh') || 'Refresh'}
-          aria-label={$t('common.refresh') || 'Refresh'}
+          title={$t('common.refresh')}
+          aria-label={$t('common.refresh')}
         >
           <Icon name="refresh-cw" size={18} class={loading ? 'spin' : ''} />
         </button>
@@ -472,7 +472,7 @@
 
   <div
     class="filter-cards"
-    aria-label={$t('components.file_manager.filters.aria_group') || 'File type filters'}
+    aria-label={$t('components.file_manager.filters.aria_group')}
   >
     {#each filterCards as c}
       <button
@@ -508,18 +508,18 @@
             <div class="selection-count">
               <span class="count-pill">{selectedFileIds.length}</span>
               <span>
-                {$t('components.file_manager.selected') || 'Selected'}
+                {$t('components.file_manager.selected')}
               </span>
               <span class="sep">•</span>
               <span class="meta">{formatSize(selectedTotalSize)}</span>
             </div>
             <div class="action-buttons">
               <button class="btn-ghost" onclick={deselectAll}
-                >{$t('common.cancel') || 'Cancel'}</button
+                >{$t('common.cancel')}</button
               >
               <button class="btn-danger-sm" onclick={handleBatchDelete}>
                 <Icon name="trash-2" size={16} />
-                {$t('components.file_manager.delete_selected') || 'Delete Selected'}
+                {$t('components.file_manager.delete_selected')}
               </button>
             </div>
           </div>
@@ -528,8 +528,7 @@
             <Icon name="search" size={18} class="search-icon" />
             <input
               type="text"
-              placeholder={$t('components.file_manager.search_placeholder') ||
-                'Search files by name...'}
+              placeholder={$t('components.file_manager.search_placeholder')}
               bind:value={searchQuery}
               oninput={handleSearch}
             />
@@ -539,16 +538,16 @@
             <button
               class="toggle-btn {viewMode === 'grid' ? 'active' : ''}"
               onclick={() => (viewMode = 'grid')}
-              title={$t('components.file_manager.view.grid') || 'Grid View'}
-              aria-label={$t('components.file_manager.view.grid') || 'Grid View'}
+              title={$t('components.file_manager.view.grid')}
+              aria-label={$t('components.file_manager.view.grid')}
             >
               <Icon name="grid" size={18} />
             </button>
             <button
               class="toggle-btn {viewMode === 'list' ? 'active' : ''}"
               onclick={() => (viewMode = 'list')}
-              title={$t('components.file_manager.view.list') || 'List View'}
-              aria-label={$t('components.file_manager.view.list') || 'List View'}
+              title={$t('components.file_manager.view.list')}
+              aria-label={$t('components.file_manager.view.list')}
             >
               <Icon name="list" size={18} />
             </button>
@@ -566,7 +565,7 @@
               <button class="btn btn-primary" onclick={() => fileInput?.click()}>
                 <Icon name="plus" size={18} />
                 <span>
-                  {$t('components.file_manager.upload') || 'Upload'}
+                  {$t('components.file_manager.upload')}
                 </span>
               </button>
             {/if}
@@ -575,14 +574,14 @@
               <Icon name="hard-drive" size={16} />
               <span>
                 {total}
-                {$t('components.file_manager.files') || 'Files'}
+                {$t('components.file_manager.files')}
               </span>
             </div>
             <button
               class="btn-refresh"
               onclick={() => loadFiles(true)}
-              title={$t('common.refresh') || 'Refresh'}
-              aria-label={$t('common.refresh') || 'Refresh'}
+              title={$t('common.refresh')}
+              aria-label={$t('common.refresh')}
             >
               <Icon name="refresh-cw" size={18} class={loading ? 'spin' : ''} />
             </button>
@@ -596,7 +595,7 @@
           <div class="loading-state">
             <div class="spinner"></div>
             <p>
-              {$t('components.file_manager.loading') || 'Loading files...'}
+              {$t('components.file_manager.loading')}
             </p>
           </div>
         {:else if files.length === 0}
@@ -605,10 +604,10 @@
               <Icon name="folder" size={48} />
             </div>
             <h3>
-              {$t('components.file_manager.empty.title') || 'No Files Found'}
+              {$t('components.file_manager.empty.title')}
             </h3>
             <p>
-              {$t('components.file_manager.empty.subtitle') || 'Try adjusting your search terms.'}
+              {$t('components.file_manager.empty.subtitle')}
             </p>
           </div>
         {:else if viewMode === 'grid'}
@@ -687,7 +686,7 @@
                         e.stopPropagation();
                         confirmDelete(file);
                       }}
-                      title={$t('common.delete') || 'Delete'}
+                      title={$t('common.delete')}
                     >
                       <Icon name="trash-2" size={14} />
                     </button>
@@ -715,19 +714,19 @@
                     {/if}
                   </th>
                   <th>
-                    {$t('components.file_manager.columns.name') || 'Name'}
+                    {$t('components.file_manager.columns.name')}
                   </th>
                   <th>
-                    {$t('components.file_manager.columns.size') || 'Size'}
+                    {$t('components.file_manager.columns.size')}
                   </th>
                   <th>
-                    {$t('components.file_manager.columns.type') || 'Type'}
+                    {$t('components.file_manager.columns.type')}
                   </th>
                   <th>
-                    {$t('components.file_manager.columns.uploaded') || 'Uploaded'}
+                    {$t('components.file_manager.columns.uploaded')}
                   </th>
                   <th class="text-right">
-                    {$t('components.file_manager.columns.action') || 'Action'}
+                    {$t('components.file_manager.columns.action')}
                   </th>
                 </tr>
               </thead>
@@ -794,7 +793,7 @@
                             confirmDelete(file);
                           }}
                         >
-                          {$t('common.delete') || 'Delete'}
+                          {$t('common.delete')}
                         </button>
                       {/if}
                     </td>
@@ -820,10 +819,10 @@
           >
             {#if loading}
               <Icon name="loader" size={18} class="spin" />
-              <span>{$t('common.loading') || 'Loading...'}</span>
+              <span>{$t('common.loading')}</span>
             {:else}
               <Icon name="arrow-down-circle" size={18} />
-              <span>{$t('components.file_manager.load_more') || 'Load More'}</span>
+              <span>{$t('components.file_manager.load_more')}</span>
             {/if}
           </button>
           <div class="progress-info">

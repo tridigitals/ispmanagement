@@ -42,15 +42,15 @@
       <div class="profile-modal-topbar">
         <div class="profile-modal-copy">
           <div class="profile-modal-kicker">{$user?.role || $t('profile.fallback.member') || 'Member'}</div>
-          <h2 id="profile-modal-title">{$t('profile.title') || 'Settings'}</h2>
+          <h2 id="profile-modal-title">{$t('profile.title')}</h2>
         </div>
         <button
           class="profile-modal-close"
           type="button"
           onclick={requestClose}
           disabled={$profileModal.locked}
-          aria-label={$t('common.close') || 'Close'}
-          title={$t('common.close') || 'Close'}
+          aria-label={$t('common.close')}
+          title={$t('common.close')}
         >
           <Icon name="x" size={18} />
         </button>

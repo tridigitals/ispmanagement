@@ -44,12 +44,12 @@
 </script>
 
 {#if open}
-  <button class="drawer-backdrop" type="button" onclick={onClose} aria-label={$t('common.close') || 'Close'}></button>
-  <aside class="drawer simulate-drawer" aria-label={$t('admin.network.incidents.actions.simulate') || 'Simulate'}>
+  <button class="drawer-backdrop" type="button" onclick={onClose} aria-label={$t('common.close')}></button>
+  <aside class="drawer simulate-drawer" aria-label={$t('admin.network.incidents.actions.simulate')}>
     <div class="drawer-head">
       <div>
-        <div class="drawer-title">{$t('admin.network.incidents.actions.simulate') || 'Simulate'}</div>
-        <div class="drawer-sub">{$t('admin.network.incidents.simulate.subtitle') || 'Create test incident manually'}</div>
+        <div class="drawer-title">{$t('admin.network.incidents.actions.simulate')}</div>
+        <div class="drawer-sub">{$t('admin.network.incidents.simulate.subtitle')}</div>
       </div>
       <button class="icon-btn" type="button" onclick={onClose} disabled={busy}>
         <Icon name="x" size={16} />
@@ -57,7 +57,7 @@
     </div>
     <div class="drawer-body">
       <div class="field">
-        <label for="sim-router">{$t('admin.network.incidents.simulate.router') || 'Router'}</label>
+        <label for="sim-router">{$t('admin.network.incidents.simulate.router')}</label>
         <select
           id="sim-router"
           class="input"
@@ -71,7 +71,7 @@
         </select>
       </div>
       <div class="field">
-        <label for="sim-type">{$t('admin.network.incidents.simulate.type') || 'Incident type'}</label>
+        <label for="sim-type">{$t('admin.network.incidents.simulate.type')}</label>
         <select
           id="sim-type"
           class="input"
@@ -86,7 +86,7 @@
         </select>
       </div>
       <div class="field">
-        <label for="sim-sev">{$t('admin.network.incidents.simulate.severity') || 'Severity'}</label>
+        <label for="sim-sev">{$t('admin.network.incidents.simulate.severity')}</label>
         <select
           id="sim-sev"
           class="input"
@@ -100,7 +100,7 @@
         </select>
       </div>
       <div class="field">
-        <label for="sim-iface">{$t('admin.network.incidents.simulate.interface') || 'Interface (optional)'}</label>
+        <label for="sim-iface">{$t('admin.network.incidents.simulate.interface')}</label>
         <input
           id="sim-iface"
           class="input"
@@ -112,21 +112,21 @@
         />
       </div>
       <div class="field">
-        <label for="sim-msg">{$t('admin.network.incidents.simulate.message') || 'Message (optional)'}</label>
+        <label for="sim-msg">{$t('admin.network.incidents.simulate.message')}</label>
         <textarea
           id="sim-msg"
           class="textarea"
           rows="4"
           value={message}
           oninput={(e) => onMessageChange((e.currentTarget as HTMLTextAreaElement).value)}
-          placeholder={$t('admin.network.incidents.simulate.message_placeholder') || 'Optional simulation message'}
+          placeholder={$t('admin.network.incidents.simulate.message_placeholder')}
           disabled={busy}
         ></textarea>
       </div>
     </div>
     <div class="drawer-actions">
       <button class="btn ghost" type="button" onclick={onClose} disabled={busy}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button class="btn ghost" type="button" onclick={() => void onSubmit()} disabled={busy || !routerId}>
         <Icon name="activity" size={16} />

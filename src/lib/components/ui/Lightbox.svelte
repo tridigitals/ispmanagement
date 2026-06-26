@@ -151,7 +151,7 @@
     <div class="actions">
       <button
         class="action-btn"
-        title={$t('common.download') || 'Download'}
+        title={$t('common.download')}
         onclick={(e) => {
           e.stopPropagation();
           downloadFile(downloadUrl, currentFile.original_name);
@@ -166,11 +166,11 @@
   </div>
 
   <!-- Navigation Buttons -->
-  <button class="nav-btn prev" onclick={prev} title={$t('common.previous') || 'Previous'}>
+  <button class="nav-btn prev" onclick={prev} title={$t('common.previous')}>
     <Icon name="chevron-left" size={32} />
   </button>
 
-  <button class="nav-btn next" onclick={next} title={$t('common.next') || 'Next'}>
+  <button class="nav-btn next" onclick={next} title={$t('common.next')}>
     <Icon name="chevron-right" size={32} />
   </button>
 
@@ -235,7 +235,7 @@
           <div class="generic-file">
             <Icon name="file-text" size={64} class="mb-4 text-gray-400" />
             <h3>
-              {$t('components.lightbox.preview_unavailable') || 'Preview not available'}
+              {$t('components.lightbox.preview_unavailable')}
             </h3>
             <p>{currentFile.original_name}</p>
             <p class="text-sm text-gray-500 mb-6">
@@ -246,7 +246,7 @@
               onclick={() => downloadFile(downloadUrl, currentFile.original_name)}
             >
               <Icon name="download" size={18} />
-              {$t('components.lightbox.download_file') || 'Download File'}
+              {$t('components.lightbox.download_file')}
             </button>
           </div>
         {/if}

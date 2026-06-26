@@ -74,7 +74,7 @@
         </section>
 
         <section class="section">
-          <h3>{$t('mixradius.import_wizard.batch_report.billing') || 'Billing lifecycle'}</h3>
+          <h3>{$t('mixradius.import_wizard.batch_report.billing')}</h3>
           <div class="source-grid">
             <article class="metric-card">
               <span>{$t('mixradius.import_wizard.execution.legacy_transactions')}</span>
@@ -89,7 +89,7 @@
 
         {#if report.errors.length}
           <section class="section">
-            <h3>{$t('mixradius.import_wizard.batch_report.errors') || 'Errors'}</h3>
+            <h3>{$t('mixradius.import_wizard.batch_report.errors')}</h3>
             <div class="error-list">
               {#each report.errors as item}
                 <article class="error-card">

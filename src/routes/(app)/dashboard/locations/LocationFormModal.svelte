@@ -248,8 +248,8 @@
       <label>
         <span>{$t('dashboard.locations.form.country')}</span>
         <select class="input" bind:value={fCountry}>
-          <option value="ID">{$t('profile.addresses.fields.country_id') || 'ID (Indonesia)'}</option>
-          <option value="US">{$t('profile.addresses.fields.country_us') || 'US (United States)'}</option>
+          <option value="ID">{$t('profile.addresses.fields.country_id')}</option>
+          <option value="US">{$t('profile.addresses.fields.country_us')}</option>
         </select>
       </label>
     </div>
@@ -302,18 +302,18 @@
 
     <div class="grid2">
       <label>
-        <span>{$t('common.latitude') || 'Latitude'}</span>
+        <span>{$t('common.latitude')}</span>
         <input class="input mono" bind:value={fLatitude} readonly />
       </label>
       <label>
-        <span>{$t('common.longitude') || 'Longitude'}</span>
+        <span>{$t('common.longitude')}</span>
         <input class="input mono" bind:value={fLongitude} readonly />
       </label>
     </div>
 
     <div class="modal-actions">
       <button class="btn-secondary" type="button" onclick={() => (show = false)}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button
         class="btn-primary"
@@ -321,7 +321,7 @@
         onclick={onSave}
         disabled={savingLocation || !fLabel.trim() || !fLatitude.trim() || !fLongitude.trim()}
       >
-        {$t('common.save') || 'Save'}
+        {$t('common.save')}
       </button>
     </div>
   </div>

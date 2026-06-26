@@ -49,7 +49,7 @@
     <div class="line"></div>
   </div>
 {:else if banners.length}
-  <div class="wrap" role="region" aria-label={$t('announcements.banner_aria') || 'Announcements'}>
+  <div class="wrap" role="region" aria-label={$t('announcements.banner_aria')}>
     {#each banners.slice(0, maxVisible) as a (a.id)}
       <div class="banner {a.severity}">
         <div class="icon">
@@ -62,7 +62,7 @@
         <button
           class="read"
           type="button"
-          title={$t('announcements.actions.read') || 'Read'}
+          title={$t('announcements.actions.read')}
           onclick={() =>
             goto(
               getAnnouncementDetailPath(a.id, {
@@ -76,7 +76,7 @@
         <button
           class="close"
           type="button"
-          title={$t('common.close') || 'Close'}
+          title={$t('common.close')}
           onclick={() => dismissAnnouncement(a.id)}
         >
           <Icon name="x" size={18} />

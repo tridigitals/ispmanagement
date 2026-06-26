@@ -70,13 +70,13 @@
 
 <Modal
   show={showEditPppoe}
-  title={$t('admin.customers.pppoe.edit.title') || 'Edit PPPoE account'}
+  title={$t('admin.customers.pppoe.edit.title')}
   onclose={() => (showEditPppoe = false)}
 >
   <div class="form">
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.pppoe.fields.router') || 'Router'}</span>
+        <span>{$t('admin.customers.pppoe.fields.router')}</span>
         <Select2
           bind:value={pppoeRouterId}
           options={pppoeRouters.map((r: any) => ({ label: r.name, value: r.id }))}
@@ -84,8 +84,8 @@
           width="100%"
           disabled={loadingPppoeRouters}
           maxItems={5000}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
+          searchPlaceholder={$t('common.search')}
+          noResultsText={$t('common.no_results')}
           onchange={onPppoeRouterChange}
         />
       </label>
@@ -93,7 +93,7 @@
     </div>
 
     <label>
-      <span>{$t('admin.customers.pppoe.fields.package') || 'Package'}</span>
+      <span>{$t('admin.customers.pppoe.fields.package')}</span>
       <Select2
         bind:value={pppoePackageId}
         options={pppoePackageOptions}
@@ -101,58 +101,55 @@
         width="100%"
         disabled={!pppoeRouterId || pppoePackageOptions.length === 0}
         maxItems={5000}
-        searchPlaceholder={$t('common.search') || 'Search'}
-        noResultsText={$t('common.no_results') || 'No results'}
+        searchPlaceholder={$t('common.search')}
+        noResultsText={$t('common.no_results')}
         onchange={onPppoePackageChange}
       />
       <div class="field-hint">
-        {$t('admin.network.pppoe.form.package_hint') ||
-          'Choose a package to control PPP profile and addressing for the selected router.'}
+        {$t('admin.network.pppoe.form.package_hint')}
       </div>
     </label>
 
     {#if pppoePackageSelectionHasMissingMapping}
       <div class="field-hint warning">
-        {$t('admin.network.pppoe.form.package_mapping_missing') ||
-          'This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.'}
+        {$t('admin.network.pppoe.form.package_mapping_missing')}
       </div>
     {/if}
 
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.pppoe.fields.username') || 'Username'}</span>
+        <span>{$t('admin.customers.pppoe.fields.username')}</span>
         <input class="input" bind:value={pppoeUsername} />
       </label>
       <label>
-        <span>{$t('admin.customers.pppoe.fields.password') || 'Password'}</span>
+        <span>{$t('admin.customers.pppoe.fields.password')}</span>
         <input
           class="input"
           type="password"
           bind:value={pppoePassword}
-          placeholder={$t('admin.customers.pppoe.edit.password_hint') || 'Leave blank to keep'}
+          placeholder={$t('admin.customers.pppoe.edit.password_hint')}
         />
       </label>
     </div>
 
     <label>
-      <span>{$t('admin.customers.pppoe.fields.comment') || 'Comment'}</span>
+      <span>{$t('admin.customers.pppoe.fields.comment')}</span>
       <input class="input" bind:value={pppoeComment} />
     </label>
 
     <div class="toggle-row">
       <div class="toggle-text">
-        <div class="toggle-title">{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</div>
+        <div class="toggle-title">{$t('admin.customers.pppoe.fields.disabled')}</div>
         <div class="toggle-sub">
-          {$t('admin.network.pppoe.form.disabled_hint') ||
-            'Disable this PPPoE account (will be applied to router when you click Apply).'}
+          {$t('admin.network.pppoe.form.disabled_hint')}
         </div>
       </div>
-      <Toggle bind:checked={pppoeDisabled} ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'} />
+      <Toggle bind:checked={pppoeDisabled} ariaLabel={$t('admin.customers.pppoe.fields.disabled')} />
     </div>
 
     <div class="actions">
       <button class="btn btn-secondary" onclick={() => (showEditPppoe = false)}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button
         class="btn btn-primary"
@@ -160,7 +157,7 @@
         disabled={savingPppoe || pppoePackageSelectionHasMissingMapping || !pppoeUsername.trim()}
       >
         <Icon name="check-circle" size={16} />
-        {$t('common.save') || 'Save'}
+        {$t('common.save')}
       </button>
     </div>
   </div>
@@ -168,13 +165,13 @@
 
 <Modal
   show={showAddSubscription}
-  title={$t('admin.customers.subscriptions.new.title') || 'Add subscription'}
+  title={$t('admin.customers.subscriptions.new.title')}
   onclose={() => (showAddSubscription = false)}
 >
   <div class="form">
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.location') || 'Location'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.location')}</span>
         <Select2
           bind:value={subLocationId}
           options={subscriptionLocationOptions}
@@ -183,7 +180,7 @@
         />
       </label>
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.package') || 'Package'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.package')}</span>
         <Select2
           bind:value={subPackageId}
           options={subscriptionPackageOptions}
@@ -194,7 +191,7 @@
     </div>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.router') || 'Router (optional)'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.router')}</span>
         <Select2
           bind:value={subRouterId}
           options={subscriptionRouterOptions}
@@ -203,44 +200,44 @@
         />
       </label>
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.billing_cycle') || 'Billing cycle'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.billing_cycle')}</span>
         <Select2 bind:value={subBillingCycle} options={billingCycleOptions} width="100%" />
       </label>
     </div>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.price') || 'Price'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.price')}</span>
         <input class="input" type="number" min="0" step="0.01" bind:value={subPrice} />
       </label>
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.currency') || 'Currency'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.currency')}</span>
         <input class="input" bind:value={subCurrency} placeholder="IDR" />
       </label>
     </div>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.status') || 'Status'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.status')}</span>
         <Select2 bind:value={subStatus} options={subscriptionStatusOptions} width="100%" />
       </label>
       <div></div>
     </div>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.starts_at') || 'Starts at'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.starts_at')}</span>
         <input class="input" type="date" bind:value={subStartsAt} />
       </label>
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.ends_at') || 'Ends at'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.ends_at')}</span>
         <input class="input" type="date" bind:value={subEndsAt} />
       </label>
     </div>
     <label>
-      <span>{$t('admin.customers.subscriptions.fields.notes') || 'Notes'}</span>
+      <span>{$t('admin.customers.subscriptions.fields.notes')}</span>
       <textarea class="input" rows="3" bind:value={subNotes}></textarea>
     </label>
     <div class="actions">
       <button class="btn btn-secondary" onclick={() => (showAddSubscription = false)}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button
         class="btn btn-primary"
@@ -248,7 +245,7 @@
         disabled={savingSubscription || !subLocationId || !subPackageId || !subPrice}
       >
         <Icon name="plus" size={16} />
-        {$t('common.create') || 'Create'}
+        {$t('common.create')}
       </button>
     </div>
   </div>
@@ -256,13 +253,13 @@
 
 <Modal
   show={showEditSubscription}
-  title={$t('admin.customers.subscriptions.edit.title') || 'Edit subscription'}
+  title={$t('admin.customers.subscriptions.edit.title')}
   onclose={onCloseEditSubscription}
 >
   <div class="form">
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.location') || 'Location'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.location')}</span>
         <Select2
           bind:value={subLocationId}
           options={subscriptionLocationOptions}
@@ -271,7 +268,7 @@
         />
       </label>
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.package') || 'Package'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.package')}</span>
         <Select2
           bind:value={subPackageId}
           options={subscriptionPackageOptions}
@@ -282,7 +279,7 @@
     </div>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.router') || 'Router (optional)'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.router')}</span>
         <Select2
           bind:value={subRouterId}
           options={subscriptionRouterOptions}
@@ -291,44 +288,44 @@
         />
       </label>
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.billing_cycle') || 'Billing cycle'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.billing_cycle')}</span>
         <Select2 bind:value={subBillingCycle} options={billingCycleOptions} width="100%" />
       </label>
     </div>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.price') || 'Price'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.price')}</span>
         <input class="input" type="number" min="0" step="0.01" bind:value={subPrice} />
       </label>
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.currency') || 'Currency'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.currency')}</span>
         <input class="input" bind:value={subCurrency} placeholder="IDR" />
       </label>
     </div>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.status') || 'Status'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.status')}</span>
         <Select2 bind:value={subStatus} options={subscriptionStatusOptions} width="100%" />
       </label>
       <div></div>
     </div>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.starts_at') || 'Starts at'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.starts_at')}</span>
         <input class="input" type="date" bind:value={subStartsAt} />
       </label>
       <label>
-        <span>{$t('admin.customers.subscriptions.fields.ends_at') || 'Ends at'}</span>
+        <span>{$t('admin.customers.subscriptions.fields.ends_at')}</span>
         <input class="input" type="date" bind:value={subEndsAt} />
       </label>
     </div>
     <label>
-      <span>{$t('admin.customers.subscriptions.fields.notes') || 'Notes'}</span>
+      <span>{$t('admin.customers.subscriptions.fields.notes')}</span>
       <textarea class="input" rows="3" bind:value={subNotes}></textarea>
     </label>
     <div class="actions">
       <button class="btn btn-secondary" onclick={onCloseEditSubscription}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button
         class="btn btn-primary"
@@ -336,7 +333,7 @@
         disabled={savingSubscription || !subLocationId || !subPackageId || !subPrice}
       >
         <Icon name="check-circle" size={16} />
-        {$t('common.save') || 'Save'}
+        {$t('common.save')}
       </button>
     </div>
   </div>
@@ -344,63 +341,63 @@
 
 <Modal
   show={showAddLocation}
-  title={$t('admin.customers.locations.new.title') || 'Add location'}
+  title={$t('admin.customers.locations.new.title')}
   onclose={() => (showAddLocation = false)}
 >
   <div class="form">
     <label>
-      <span>{$t('admin.customers.locations.fields.label') || 'Label'}</span>
+      <span>{$t('admin.customers.locations.fields.label')}</span>
       <input class="input" bind:value={locLabel} placeholder="Site A / Rumah / Kantor" />
     </label>
     <label>
-      <span>{$t('admin.customers.locations.fields.address1') || 'Address line 1'}</span>
+      <span>{$t('admin.customers.locations.fields.address1')}</span>
       <input class="input" bind:value={locAddress1} />
     </label>
     <label>
-      <span>{$t('admin.customers.locations.fields.address2') || 'Address line 2'}</span>
+      <span>{$t('admin.customers.locations.fields.address2')}</span>
       <input class="input" bind:value={locAddress2} />
     </label>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.locations.fields.city') || 'City'}</span>
+        <span>{$t('admin.customers.locations.fields.city')}</span>
         <input class="input" bind:value={locCity} />
       </label>
       <label>
-        <span>{$t('admin.customers.locations.fields.state') || 'State'}</span>
+        <span>{$t('admin.customers.locations.fields.state')}</span>
         <input class="input" bind:value={locState} />
       </label>
     </div>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.locations.fields.postal') || 'Postal code'}</span>
+        <span>{$t('admin.customers.locations.fields.postal')}</span>
         <input class="input" bind:value={locPostal} />
       </label>
       <label>
-        <span>{$t('admin.customers.locations.fields.country') || 'Country'}</span>
+        <span>{$t('admin.customers.locations.fields.country')}</span>
         <input class="input" bind:value={locCountry} />
       </label>
     </div>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.locations.fields.latitude') || 'Latitude'}</span>
+        <span>{$t('admin.customers.locations.fields.latitude')}</span>
         <input class="input mono" bind:value={locLatitude} placeholder="-7.275233" />
       </label>
       <label>
-        <span>{$t('admin.customers.locations.fields.longitude') || 'Longitude'}</span>
+        <span>{$t('admin.customers.locations.fields.longitude')}</span>
         <input class="input mono" bind:value={locLongitude} placeholder="110.355211" />
       </label>
     </div>
     <label>
-      <span>{$t('admin.customers.locations.fields.notes') || 'Notes'}</span>
+      <span>{$t('admin.customers.locations.fields.notes')}</span>
       <textarea class="input" rows="3" bind:value={locNotes}></textarea>
     </label>
     <div class="actions">
       <button class="btn btn-secondary" onclick={() => (showAddLocation = false)}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button class="btn btn-primary" onclick={onAddLocation} disabled={creatingLocation || !locLabel.trim()}>
         <Icon name="plus" size={16} />
-        {$t('common.add') || 'Add'}
+        {$t('common.add')}
       </button>
     </div>
   </div>
@@ -408,59 +405,59 @@
 
 <Modal
   show={showEditLocation}
-  title={$t('admin.customers.locations.edit.title') || 'Edit location'}
+  title={$t('admin.customers.locations.edit.title')}
   onclose={() => (showEditLocation = false)}
 >
   <div class="form">
     <label>
-      <span>{$t('admin.customers.locations.fields.label') || 'Label'}</span>
+      <span>{$t('admin.customers.locations.fields.label')}</span>
       <input class="input" bind:value={locLabel} placeholder="Site A / Rumah / Kantor" />
     </label>
     <label>
-      <span>{$t('admin.customers.locations.fields.address1') || 'Address line 1'}</span>
+      <span>{$t('admin.customers.locations.fields.address1')}</span>
       <input class="input" bind:value={locAddress1} />
     </label>
     <label>
-      <span>{$t('admin.customers.locations.fields.address2') || 'Address line 2'}</span>
+      <span>{$t('admin.customers.locations.fields.address2')}</span>
       <input class="input" bind:value={locAddress2} />
     </label>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.locations.fields.city') || 'City'}</span>
+        <span>{$t('admin.customers.locations.fields.city')}</span>
         <input class="input" bind:value={locCity} />
       </label>
       <label>
-        <span>{$t('admin.customers.locations.fields.state') || 'State'}</span>
+        <span>{$t('admin.customers.locations.fields.state')}</span>
         <input class="input" bind:value={locState} />
       </label>
     </div>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.locations.fields.postal') || 'Postal code'}</span>
+        <span>{$t('admin.customers.locations.fields.postal')}</span>
         <input class="input" bind:value={locPostal} />
       </label>
       <label>
-        <span>{$t('admin.customers.locations.fields.country') || 'Country'}</span>
+        <span>{$t('admin.customers.locations.fields.country')}</span>
         <input class="input" bind:value={locCountry} />
       </label>
     </div>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.locations.fields.latitude') || 'Latitude'}</span>
+        <span>{$t('admin.customers.locations.fields.latitude')}</span>
         <input class="input mono" bind:value={locLatitude} placeholder="-7.275233" />
       </label>
       <label>
-        <span>{$t('admin.customers.locations.fields.longitude') || 'Longitude'}</span>
+        <span>{$t('admin.customers.locations.fields.longitude')}</span>
         <input class="input mono" bind:value={locLongitude} placeholder="110.355211" />
       </label>
     </div>
     <label>
-      <span>{$t('admin.customers.locations.fields.notes') || 'Notes'}</span>
+      <span>{$t('admin.customers.locations.fields.notes')}</span>
       <textarea class="input" rows="3" bind:value={locNotes}></textarea>
     </label>
     <div class="actions">
       <button class="btn btn-secondary" onclick={() => (showEditLocation = false)}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button
         class="btn btn-primary"
@@ -468,7 +465,7 @@
         disabled={updatingLocation || !locLabel.trim()}
       >
         <Icon name="check-circle" size={16} />
-        {$t('common.save') || 'Save'}
+        {$t('common.save')}
       </button>
     </div>
   </div>
@@ -476,10 +473,10 @@
 
 <ConfirmDialog
   show={showDeleteCustomer}
-  title={$t('admin.customers.delete.title') || 'Delete customer'}
-  message={$t('admin.customers.delete.message') || 'This will remove the customer and all related data.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  title={$t('admin.customers.delete.title')}
+  message={$t('admin.customers.delete.message')}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   loading={deletingCustomer}
   onconfirm={onDeleteCustomer}
   oncancel={() => (showDeleteCustomer = false)}
@@ -487,10 +484,10 @@
 
 <ConfirmDialog
   show={showDeleteLocation}
-  title={$t('admin.customers.locations.delete.title') || 'Delete location'}
-  message={$t('admin.customers.locations.delete.message') || 'This location will be removed.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  title={$t('admin.customers.locations.delete.title')}
+  message={$t('admin.customers.locations.delete.message')}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   loading={deletingLocation}
   onconfirm={onDeleteLocation}
   oncancel={() => (showDeleteLocation = false)}

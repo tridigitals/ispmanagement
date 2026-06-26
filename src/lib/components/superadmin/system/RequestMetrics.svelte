@@ -11,7 +11,7 @@
   <div class="section-header-inline">
     <Icon name="bar-chart-2" size={18} />
     <h3>
-      {$t('superadmin.system.request_metrics.title') || 'Request Metrics'}
+      {$t('superadmin.system.request_metrics.title')}
     </h3>
   </div>
   <div class="metrics-grid">
@@ -23,7 +23,7 @@
         <span class="metric-value">
           {health.request_metrics.requests_last_minute}
         </span>
-        <span class="metric-label">{$t('superadmin.system.requests_per_min') || 'Requests/min'}</span>
+        <span class="metric-label">{$t('superadmin.system.requests_per_min')}</span>
       </div>
     </div>
     <div class="metric-card">
@@ -34,7 +34,7 @@
         <span class="metric-value">
           {health.request_metrics.avg_response_time_ms.toFixed(1)}ms
         </span>
-        <span class="metric-label">{$t('superadmin.system.avg_response') || 'Avg Response'}</span>
+        <span class="metric-label">{$t('superadmin.system.avg_response')}</span>
       </div>
     </div>
     <div class="metric-card">
@@ -45,7 +45,7 @@
         <span class="metric-value">
           {health.request_metrics.p95_response_time_ms.toFixed(1)}ms
         </span>
-        <span class="metric-label">{$t('superadmin.system.p95_latency') || 'P95 Latency'}</span>
+        <span class="metric-label">{$t('superadmin.system.p95_latency')}</span>
       </div>
     </div>
     <div class="metric-card">
@@ -56,7 +56,7 @@
         <span class="metric-value">
           {health.request_metrics.total_requests.toLocaleString()}
         </span>
-        <span class="metric-label">{$t('superadmin.system.total_requests') || 'Total Requests'}</span>
+        <span class="metric-label">{$t('superadmin.system.total_requests')}</span>
       </div>
     </div>
     <div class="metric-card">
@@ -67,7 +67,7 @@
         <span class="metric-value">
           {health.request_metrics.error_count}
         </span>
-        <span class="metric-label">{$t('superadmin.system.errors') || 'Errors'}</span>
+        <span class="metric-label">{$t('superadmin.system.errors')}</span>
       </div>
     </div>
     <div class="metric-card">
@@ -78,7 +78,7 @@
         <span class="metric-value">
           {health.request_metrics.rate_limited_count}
         </span>
-        <span class="metric-label">{$t('superadmin.system.rate_limited') || 'Rate Limited'}</span>
+        <span class="metric-label">{$t('superadmin.system.rate_limited')}</span>
       </div>
     </div>
   </div>

@@ -8,26 +8,24 @@
 <div class="billing-plan-hero">
   <div>
     <span class="section-label">
-      {$t('admin.settings.billing_plan.eyebrow') || 'Tenant billing'}
+      {$t('admin.settings.billing_plan.eyebrow')}
     </span>
     <h3>
-      {$t('admin.settings.billing_plan.title') ||
-        'Manage your workspace plan and platform subscription'}
+      {$t('admin.settings.billing_plan.title')}
     </h3>
     <p class="muted">
-      {$t('admin.settings.billing_plan.description') ||
-        'Use this area to review your current ISP Management package, upgrade entitlements, and access the detailed tenant subscription page without mixing it into daily customer billing.'}
+      {$t('admin.settings.billing_plan.description')}
     </p>
   </div>
 
   <div class="billing-plan-actions">
     <button class="btn btn-primary btn-sm" type="button" onclick={openSubscription}>
       <Icon name="credit-card" size={16} />
-      {$t('admin.settings.billing_plan.primary_cta') || 'Open tenant billing details'}
+      {$t('admin.settings.billing_plan.primary_cta')}
     </button>
     <button class="btn btn-secondary btn-sm" type="button" onclick={openSubscription}>
       <Icon name="arrow-right" size={16} />
-      {$t('admin.settings.billing_plan.secondary_cta') || 'View current subscription page'}
+      {$t('admin.settings.billing_plan.secondary_cta')}
     </button>
   </div>
 </div>
@@ -39,11 +37,10 @@
     </div>
     <div>
       <h4>
-        {$t('admin.settings.billing_plan.cards.plan.title') || 'Plan & entitlements'}
+        {$t('admin.settings.billing_plan.cards.plan.title')}
       </h4>
       <p>
-        {$t('admin.settings.billing_plan.cards.plan.desc') ||
-          'Check which workspace package is active, including features like custom domain and platform limits.'}
+        {$t('admin.settings.billing_plan.cards.plan.desc')}
       </p>
     </div>
   </article>
@@ -54,7 +51,7 @@
     </div>
     <div>
       <h4>
-        {$t('admin.settings.billing_plan.cards.payments.title') || 'Platform payments'}
+        {$t('admin.settings.billing_plan.cards.payments.title')}
       </h4>
       <p>
         {$t('admin.settings.billing_plan.cards.payments.desc') ||
@@ -69,12 +66,10 @@
     </div>
     <div>
       <h4>
-        {$t('admin.settings.billing_plan.cards.operations.title') ||
-          'Separated from customer billing'}
+        {$t('admin.settings.billing_plan.cards.operations.title')}
       </h4>
       <p>
-        {$t('admin.settings.billing_plan.cards.operations.desc') ||
-          'Customer invoices and collections stay in Billing so the operations team can focus on daily ISP work.'}
+        {$t('admin.settings.billing_plan.cards.operations.desc')}
       </p>
     </div>
   </article>

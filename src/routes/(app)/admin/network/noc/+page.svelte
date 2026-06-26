@@ -276,8 +276,8 @@
 
 <div class="page-content fade-in">
   <NetworkPageHeader
-    title={$t('admin.network.noc.title') || 'Network NOC'}
-    subtitle={$t('network.noc.title') || 'Ringkasan operasional seluruh router.'}
+    title={$t('admin.network.noc.title')}
+    subtitle={$t('network.noc.title')}
   >
     {#snippet actions()}
       <AlertsIncidentsSwitch
@@ -290,10 +290,10 @@
         class="btn ghost"
         type="button"
         onclick={() => goto(`${tenantPrefix}/admin/network/noc/wallboard`)}
-        title={$t('sidebar.wallboard') || 'Wallboard'}
+        title={$t('sidebar.wallboard')}
       >
         <Icon name="monitor" size={16} />
-        {$t('sidebar.wallboard') || 'Wallboard'}
+        {$t('sidebar.wallboard')}
       </button>
     {/snippet}
   </NetworkPageHeader>
@@ -301,28 +301,28 @@
   <div class="stats">
     <div class="stat-card">
       <div class="stat-top">
-        <span>{$t('admin.network.noc.stats.total') || 'Total'}</span>
+        <span>{$t('admin.network.noc.stats.total')}</span>
         <Icon name="router" size={16} />
       </div>
       <div class="stat-value">{stats.total}</div>
     </div>
     <div class="stat-card tone-ok">
       <div class="stat-top">
-        <span>{$t('admin.network.noc.stats.online') || 'Online'}</span>
+        <span>{$t('admin.network.noc.stats.online')}</span>
         <Icon name="check-circle" size={16} />
       </div>
       <div class="stat-value">{stats.online}</div>
     </div>
     <div class="stat-card tone-bad">
       <div class="stat-top">
-        <span>{$t('admin.network.noc.stats.offline') || 'Offline'}</span>
+        <span>{$t('admin.network.noc.stats.offline')}</span>
         <Icon name="alert-triangle" size={16} />
       </div>
       <div class="stat-value">{stats.offline}</div>
     </div>
     <div class="stat-card tone-warn">
       <div class="stat-top">
-        <span>{$t('admin.network.noc.stats.hot') || 'Hot'}</span>
+        <span>{$t('admin.network.noc.stats.hot')}</span>
         <Icon name="activity" size={16} />
       </div>
       <div class="stat-value">{stats.hot}</div>
@@ -332,33 +332,33 @@
   <div class="filters-wrap">
     <NetworkFilterPanel>
       <div class="control">
-        <label for="noc-filter-status">{$t('admin.network.noc.filters.status') || 'Status'}</label>
+        <label for="noc-filter-status">{$t('admin.network.noc.filters.status')}</label>
         <select id="noc-filter-status" class="input" bind:value={statusFilter}>
-          <option value="all">{$t('common.all') || 'All'}</option>
-          <option value="online">{$t('admin.network.noc.filters.online') || 'Online'}</option>
-          <option value="offline">{$t('admin.network.noc.filters.offline') || 'Offline'}</option>
+          <option value="all">{$t('common.all')}</option>
+          <option value="online">{$t('admin.network.noc.filters.online')}</option>
+          <option value="offline">{$t('admin.network.noc.filters.offline')}</option>
         </select>
       </div>
 
       <div class="control">
-        <label for="noc-filter-risk">{$t('admin.network.noc.filters.risk') || 'Risk'}</label>
+        <label for="noc-filter-risk">{$t('admin.network.noc.filters.risk')}</label>
         <select id="noc-filter-risk" class="input" bind:value={riskFilter}>
-          <option value="all">{$t('admin.network.noc.filters.any') || 'Any'}</option>
-          <option value="hot">{$t('admin.network.noc.filters.hot') || 'Hot'}</option>
-          <option value="latency">{$t('admin.network.noc.filters.latency') || 'Latency'}</option>
-          <option value="cpu">{$t('admin.network.noc.filters.cpu') || 'CPU'}</option>
+          <option value="all">{$t('admin.network.noc.filters.any')}</option>
+          <option value="hot">{$t('admin.network.noc.filters.hot')}</option>
+          <option value="latency">{$t('admin.network.noc.filters.latency')}</option>
+          <option value="cpu">{$t('admin.network.noc.filters.cpu')}</option>
         </select>
       </div>
 
       <div class="control">
-        <label for="noc-filter-sort">{$t('admin.network.noc.filters.sort') || 'Sort'}</label>
+        <label for="noc-filter-sort">{$t('admin.network.noc.filters.sort')}</label>
         <select id="noc-filter-sort" class="input" bind:value={sortFilter}>
-          <option value="health_desc">{$t('admin.network.noc.filters.sort_health_desc') || 'Health risk (highest)'}</option>
+          <option value="health_desc">{$t('admin.network.noc.filters.sort_health_desc')}</option>
           <option value="last_seen_desc">
-            {$t('admin.network.noc.filters.sort_last_seen_desc') || 'Last seen (newest)'}
+            {$t('admin.network.noc.filters.sort_last_seen_desc')}
           </option>
-          <option value="latency_desc">{$t('admin.network.noc.filters.sort_latency_desc') || 'Latency (highest)'}</option>
-          <option value="cpu_desc">{$t('admin.network.noc.filters.sort_cpu_desc') || 'CPU (highest)'}</option>
+          <option value="latency_desc">{$t('admin.network.noc.filters.sort_latency_desc')}</option>
+          <option value="cpu_desc">{$t('admin.network.noc.filters.sort_cpu_desc')}</option>
         </select>
       </div>
 
@@ -366,7 +366,7 @@
         <div class="control-spacer" aria-hidden="true"></div>
         <button class="btn ghost" type="button" onclick={resetFilters}>
           <Icon name="x-circle" size={14} />
-          {$t('admin.network.noc.filters.reset') || 'Reset'}
+          {$t('admin.network.noc.filters.reset')}
         </button>
       </div>
     </NetworkFilterPanel>
@@ -381,9 +381,9 @@
       pagination={true}
       pageSize={10}
       searchable={true}
-      searchPlaceholder={$t('admin.network.noc.search') || 'Search routers...'}
+      searchPlaceholder={$t('admin.network.noc.search')}
       mobileView={isMobile ? 'card' : 'scroll'}
-      emptyText={$t('admin.network.noc.empty') || 'No routers'}
+      emptyText={$t('admin.network.noc.empty')}
     >
       {#snippet cell({ item, key }: any)}
         {#if key === 'router'}
@@ -398,7 +398,7 @@
               {/if}
               {#if item.maintenance_until && new Date(item.maintenance_until).getTime() > Date.now()}
                 <span class="chip warn" title={item.maintenance_reason || ''}>
-                  {$t('admin.network.routers.badges.maintenance') || 'Maintenance'}
+                  {$t('admin.network.routers.badges.maintenance')}
                 </span>
               {/if}
             </div>
@@ -423,7 +423,7 @@
             <span class="muted">MEM</span>
             <span class="sep">·</span>
             <span class:bad={disk != null && disk >= 90} class="mono">{disk == null ? '—' : `${disk}%`}</span>
-            <span class="muted">{$t('network.noc.disk') || 'DISK'}</span>
+            <span class="muted">{$t('network.noc.disk')}</span>
           </div>
         {:else if key === 'traffic'}
           <div class="mini">
@@ -450,7 +450,7 @@
             <span class="muted">—</span>
           {/if}
         {:else if key === 'actions'}
-          <button class="icon-btn" type="button" onclick={() => openRouter(item.id)} title={$t('common.open') || 'Open'}>
+          <button class="icon-btn" type="button" onclick={() => openRouter(item.id)} title={$t('common.open')}>
             <Icon name="arrow-right" size={16} />
           </button>
         {:else}

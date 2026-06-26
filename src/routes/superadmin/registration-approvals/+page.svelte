@@ -195,18 +195,17 @@
 <div class="superadmin-content fade-in">
   <div class="page-header">
     <div class="header-content">
-      <h1>{$t('superadmin.pending_approvals.title') || 'Pending Registrations'}</h1>
+      <h1>{$t('superadmin.pending_approvals.title')}</h1>
       <p class="subtitle">
-        {$t('superadmin.pending_approvals.subtitle') ||
-          'Review and approve new user registrations'}
+        {$t('superadmin.pending_approvals.subtitle')}
       </p>
     </div>
     <button
       class="btn-refresh"
       onclick={loadPendingUsers}
       disabled={loading}
-      title={$t('common.refresh') || 'Refresh'}
-      aria-label={$t('common.refresh') || 'Refresh'}
+      title={$t('common.refresh')}
+      aria-label={$t('common.refresh')}
     >
       <Icon name="refresh-cw" size={18} />
     </button>
@@ -215,16 +214,15 @@
   <div class="glass-card" in:fly={{ y: 20, delay: 60 }}>
     <div class="card-header">
       <div>
-        <h3>{$t('superadmin.pending_approvals.queue_title') || 'Registration Queue'}</h3>
+        <h3>{$t('superadmin.pending_approvals.queue_title')}</h3>
         <span class="muted">
-          {$t('superadmin.pending_approvals.queue_subtitle') ||
-            'Pending users awaiting review'}
+          {$t('superadmin.pending_approvals.queue_subtitle')}
         </span>
       </div>
       {#if !loading && pendingUsers.length > 0}
         <span class="count-badge">
           {pendingUsers.length}
-          {$t('superadmin.pending_approvals.count_badge') || 'pending'}
+          {$t('superadmin.pending_approvals.count_badge')}
         </span>
       {/if}
     </div>
@@ -234,23 +232,22 @@
         <Icon name="alert-circle" size={28} />
         <p>{error}</p>
         <button class="btn btn-primary" onclick={loadPendingUsers}>
-          {$t('common.retry') || 'Retry'}
+          {$t('common.retry')}
         </button>
       </div>
     {:else if loading}
       <div class="state loading-state">
         <div class="spinner"></div>
-        <p>{$t('superadmin.pending_approvals.loading') || 'Loading registrations...'}</p>
+        <p>{$t('superadmin.pending_approvals.loading')}</p>
       </div>
     {:else if pendingUsers.length === 0}
       <div class="state empty-state">
         <Icon name="check-circle" size={42} strokeWidth={1.5} />
         <p class="empty-title">
-          {$t('superadmin.pending_approvals.empty') || 'No pending registrations'}
+          {$t('superadmin.pending_approvals.empty')}
         </p>
         <p class="empty-hint">
-          {$t('superadmin.pending_approvals.empty_hint') ||
-            'All registrations have been reviewed.'}
+          {$t('superadmin.pending_approvals.empty_hint')}
         </p>
       </div>
     {:else if isMobile}
@@ -266,18 +263,18 @@
             </div>
             <dl class="user-card-meta">
               <div>
-                <dt>{$t('superadmin.pending_approvals.col_registered') || 'Registered'}</dt>
+                <dt>{$t('superadmin.pending_approvals.col_registered')}</dt>
                 <dd>{formatRegistered(user.created_at)}</dd>
               </div>
             </dl>
             <div class="user-card-actions">
               <button class="btn btn-primary" onclick={() => openApproveDialog(user)}>
                 <Icon name="check-circle" size={16} />
-                {$t('superadmin.pending_approvals.approve') || 'Approve'}
+                {$t('superadmin.pending_approvals.approve')}
               </button>
               <button class="btn btn-danger-outline" onclick={() => openRejectDialog(user)}>
                 <Icon name="x" size={16} />
-                {$t('superadmin.pending_approvals.reject') || 'Reject'}
+                {$t('superadmin.pending_approvals.reject')}
               </button>
             </div>
           </li>
@@ -288,10 +285,10 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>{$t('superadmin.pending_approvals.col_name') || 'Name'}</th>
-              <th>{$t('superadmin.pending_approvals.col_email') || 'Email'}</th>
-              <th>{$t('superadmin.pending_approvals.col_registered') || 'Registered'}</th>
-              <th class="col-actions">{$t('common.actions') || 'Actions'}</th>
+              <th>{$t('superadmin.pending_approvals.col_name')}</th>
+              <th>{$t('superadmin.pending_approvals.col_email')}</th>
+              <th>{$t('superadmin.pending_approvals.col_registered')}</th>
+              <th class="col-actions">{$t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -309,14 +306,14 @@
                   <div class="row-actions">
                     <button class="btn btn-primary btn-sm" onclick={() => openApproveDialog(user)}>
                       <Icon name="check-circle" size={14} />
-                      {$t('superadmin.pending_approvals.approve') || 'Approve'}
+                      {$t('superadmin.pending_approvals.approve')}
                     </button>
                     <button
                       class="btn btn-danger-outline btn-sm"
                       onclick={() => openRejectDialog(user)}
                     >
                       <Icon name="x" size={14} />
-                      {$t('superadmin.pending_approvals.reject') || 'Reject'}
+                      {$t('superadmin.pending_approvals.reject')}
                     </button>
                   </div>
                 </td>
@@ -332,7 +329,7 @@
 <!-- Approve Dialog -->
 <Modal
   bind:show={showApproveDialog}
-  title={`${$t('superadmin.pending_approvals.approve_dialog_title') || 'Approve User'}${approveTarget ? `: ${approveTarget.name}` : ''}`}
+  title={`${$t('superadmin.pending_approvals.approve_dialog_title')}${approveTarget ? `: ${approveTarget.name}` : ''}`}
   width="480px"
   bodyOverflow="visible"
   onclose={closeApproveDialog}
@@ -350,18 +347,17 @@
 
     <div class="form-field">
       <span class="field-label">
-        {$t('superadmin.pending_approvals.select_tenant') || 'Assign to Tenant'}
+        {$t('superadmin.pending_approvals.select_tenant')}
       </span>
       {#if tenantOptions.length === 0}
         <p class="field-empty">
-          {$t('superadmin.pending_approvals.no_tenants') || 'No tenants available'}
+          {$t('superadmin.pending_approvals.no_tenants')}
         </p>
       {:else}
         <Select
           bind:value={approveTenantId}
           options={tenantOptions}
-          placeholder={$t('superadmin.pending_approvals.select_tenant_placeholder') ||
-            'Select tenant'}
+          placeholder={$t('superadmin.pending_approvals.select_tenant_placeholder')}
           width="100%"
         />
       {/if}
@@ -369,18 +365,17 @@
 
     <div class="form-field">
       <span class="field-label">
-        {$t('superadmin.pending_approvals.select_role') || 'Assign Role'}
+        {$t('superadmin.pending_approvals.select_role')}
       </span>
       {#if roleOptions.length === 0}
         <p class="field-empty">
-          {$t('superadmin.pending_approvals.no_roles') || 'No roles available'}
+          {$t('superadmin.pending_approvals.no_roles')}
         </p>
       {:else}
         <Select
           bind:value={approveRoleId}
           options={roleOptions}
-          placeholder={$t('superadmin.pending_approvals.select_role_placeholder') ||
-            'Select role'}
+          placeholder={$t('superadmin.pending_approvals.select_role_placeholder')}
           width="100%"
         />
       {/if}
@@ -389,7 +384,7 @@
 
   {#snippet footer()}
     <button class="btn btn-secondary" onclick={closeApproveDialog} disabled={approving}>
-      {$t('common.cancel') || 'Cancel'}
+      {$t('common.cancel')}
     </button>
     <button
       class="btn btn-primary"
@@ -398,9 +393,9 @@
     >
       {#if approving}
         <span class="spinner spinner-sm"></span>
-        {$t('common.processing') || 'Processing...'}
+        {$t('common.processing')}
       {:else}
-        {$t('superadmin.pending_approvals.confirm_approve') || 'Confirm Approval'}
+        {$t('superadmin.pending_approvals.confirm_approve')}
       {/if}
     </button>
   {/snippet}
@@ -409,7 +404,7 @@
 <!-- Reject Dialog -->
 <Modal
   bind:show={showRejectDialog}
-  title={`${$t('superadmin.pending_approvals.reject_dialog_title') || 'Reject User'}${rejectTarget ? `: ${rejectTarget.name}` : ''}`}
+  title={`${$t('superadmin.pending_approvals.reject_dialog_title')}${rejectTarget ? `: ${rejectTarget.name}` : ''}`}
   width="480px"
   onclose={closeRejectDialog}
 >
@@ -428,22 +423,21 @@
 
     <div class="form-field">
       <label class="field-label" for="reject-reason">
-        {$t('superadmin.pending_approvals.reject_reason') || 'Reason for Rejection'}
+        {$t('superadmin.pending_approvals.reject_reason')}
       </label>
       <textarea
         id="reject-reason"
         class="textarea"
         rows="4"
         bind:value={rejectReason}
-        placeholder={$t('superadmin.pending_approvals.reject_reason_placeholder') ||
-          'Write the reason for rejection...'}
+        placeholder={$t('superadmin.pending_approvals.reject_reason_placeholder')}
       ></textarea>
     </div>
   {/snippet}
 
   {#snippet footer()}
     <button class="btn btn-secondary" onclick={closeRejectDialog} disabled={rejecting}>
-      {$t('common.cancel') || 'Cancel'}
+      {$t('common.cancel')}
     </button>
     <button
       class="btn btn-danger"
@@ -452,9 +446,9 @@
     >
       {#if rejecting}
         <span class="spinner spinner-sm"></span>
-        {$t('common.processing') || 'Processing...'}
+        {$t('common.processing')}
       {:else}
-        {$t('superadmin.pending_approvals.confirm_reject') || 'Confirm Rejection'}
+        {$t('superadmin.pending_approvals.confirm_reject')}
       {/if}
     </button>
   {/snippet}

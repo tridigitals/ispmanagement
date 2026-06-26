@@ -25,36 +25,36 @@
 <section class="card section asset-panel">
   <div class="asset-panel__head">
     <div>
-      <h3>{$t('admin.customers.tabs.assets') || 'FTTH Assets'}</h3>
+      <h3>{$t('admin.customers.tabs.assets')}</h3>
       <p class="muted subtitle">
-        {$t('admin.customers.assets.subtitle') || 'Perangkat FTTH yang terhubung ke pelanggan ini.'}
+        {$t('admin.customers.assets.subtitle')}
       </p>
     </div>
 
     <button class="btn btn-secondary" type="button" onclick={openAssetsPage}>
       <Icon name="package" size={16} />
-      {$t('admin.customers.assets.open_registry') || 'Open registry'}
+      {$t('admin.customers.assets.open_registry')}
     </button>
   </div>
 
   {#if loading}
-    <div class="empty">{$t('common.loading') || 'Loading...'}</div>
+    <div class="empty">{$t('common.loading')}</div>
   {:else if assets.length === 0}
     <div class="empty">
-      {$t('admin.customers.assets.empty') || 'Belum ada asset FTTH yang ditautkan ke pelanggan ini.'}
+      {$t('admin.customers.assets.empty')}
     </div>
   {:else}
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>{$t('admin.customers.assets.columns.name') || 'Asset'}</th>
-            <th>{$t('admin.customers.assets.columns.type') || 'Type'}</th>
-            <th>{$t('admin.customers.assets.columns.serial') || 'Serial'}</th>
-            <th>{$t('admin.customers.assets.columns.status') || 'Status'}</th>
-            <th>{$t('admin.customers.assets.columns.location') || 'Location'}</th>
-            <th>{$t('admin.customers.assets.columns.parent') || 'Parent'}</th>
-            <th>{$t('admin.customers.assets.columns.updated') || 'Updated'}</th>
+            <th>{$t('admin.customers.assets.columns.name')}</th>
+            <th>{$t('admin.customers.assets.columns.type')}</th>
+            <th>{$t('admin.customers.assets.columns.serial')}</th>
+            <th>{$t('admin.customers.assets.columns.status')}</th>
+            <th>{$t('admin.customers.assets.columns.location')}</th>
+            <th>{$t('admin.customers.assets.columns.parent')}</th>
+            <th>{$t('admin.customers.assets.columns.updated')}</th>
           </tr>
         </thead>
         <tbody>

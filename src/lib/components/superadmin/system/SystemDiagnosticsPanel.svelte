@@ -35,7 +35,7 @@
   <div class="diag-grid">
     <section class="card">
       <div class="card-head">
-        <h2>{$t('superadmin.system.diagnostics.database') || 'Database'}</h2>
+        <h2>{$t('superadmin.system.diagnostics.database')}</h2>
         <span
           class:ok={diagnostics.database?.is_connected}
           class:bad={!diagnostics.database?.is_connected}
@@ -88,14 +88,14 @@
 
     <section class="card">
       <div class="card-head">
-        <h2>{$t('superadmin.system.diagnostics.migrations') || 'Migrations'}</h2>
+        <h2>{$t('superadmin.system.diagnostics.migrations')}</h2>
         <div class="pill-group">
           <span class="pill">
-            {$t('superadmin.system.diagnostics.applied') || 'Applied'}:
+            {$t('superadmin.system.diagnostics.applied')}:
             <span class="mono">{diagnostics.migrations?.applied_count ?? 0}</span>
           </span>
           <span class="pill">
-            {$t('superadmin.system.diagnostics.resolved') || 'Resolved'}:
+            {$t('superadmin.system.diagnostics.resolved')}:
             <span class="mono">{diagnostics.migrations?.resolved_count ?? 0}</span>
           </span>
         </div>
@@ -136,7 +136,7 @@
 
       <details class="details">
         <summary
-          >{$t('superadmin.system.diagnostics.show_applied') || 'Show applied migrations'}</summary
+          >{$t('superadmin.system.diagnostics.show_applied')}</summary
         >
         <div class="table-wrap">
           <table>
@@ -173,7 +173,7 @@
 
     <section class="card">
       <div class="card-head">
-        <h2>{$t('superadmin.system.diagnostics.platform') || 'Platform Settings'}</h2>
+        <h2>{$t('superadmin.system.diagnostics.platform')}</h2>
       </div>
       <div class="kv">
         <div class="row">
@@ -216,7 +216,7 @@
 
     <section class="card">
       <div class="card-head">
-        <h2>{$t('superadmin.system.diagnostics.backups') || 'Backups'}</h2>
+        <h2>{$t('superadmin.system.diagnostics.backups')}</h2>
       </div>
       <div class="kv">
         <div class="row">
@@ -292,7 +292,7 @@
 
   <div class="foot">
     <Icon name="clock" size={14} />
-    {$t('superadmin.system.diagnostics.collected_at') || 'Collected at:'}
+    {$t('superadmin.system.diagnostics.collected_at')}
     <span class="mono">
       {formatDateTime(diagnostics.collected_at, { timeZone: $appSettings.app_timezone })}
     </span>

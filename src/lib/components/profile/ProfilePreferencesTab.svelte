@@ -14,13 +14,12 @@
 
   <div class="setting-item">
     <div class="setting-info">
-      <h3>{$t('profile.preferences.dark_mode') || 'Dark interface'}</h3>
+      <h3>{$t('profile.preferences.dark_mode')}</h3>
       <p>
-        {$t('profile.preferences.dark_mode_desc') ||
-          'The workspace uses a focused dark interface across all pages.'}
+        {$t('profile.preferences.dark_mode_desc')}
       </p>
     </div>
-    <span class="mode-badge">{$t('profile.preferences.dark') || 'Dark'}</span>
+    <span class="mode-badge">{$t('profile.preferences.dark')}</span>
   </div>
 </div>
 

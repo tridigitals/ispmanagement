@@ -619,8 +619,8 @@
     type="button"
     class="sidebar-overlay"
     onclick={() => (isMobileOpen = false)}
-    aria-label={$t('sidebar.close_menu') || 'Close menu'}
-    title={$t('sidebar.close_menu') || 'Close menu'}
+    aria-label={$t('sidebar.close_menu')}
+    title={$t('sidebar.close_menu')}
   ></button>
 {/if}
 
@@ -629,7 +629,7 @@
   <div class="sidebar-header">
     <div class="logo-wrapper">
       {#if $appLogo}
-        <img src={$appLogo} alt={$t('common.logo') || 'Logo'} class="app-logo" />
+        <img src={$appLogo} alt={$t('common.logo')} class="app-logo" />
       {:else}
         <div class="logo-placeholder">
           <Icon name="app" size={20} />
@@ -699,11 +699,11 @@
       <button
         class="context-btn"
         onclick={() => goto('/superadmin')}
-        aria-label={$t('sidebar.super_admin') || 'Super Admin'}
-        data-tooltip={$t('sidebar.super_admin') || 'Super Admin'}
+        aria-label={$t('sidebar.super_admin')}
+        data-tooltip={$t('sidebar.super_admin')}
       >
         <Icon name="server" size={16} />
-        <span class="label">{$t('sidebar.super_admin') || 'Super Admin'}</span>
+        <span class="label">{$t('sidebar.super_admin')}</span>
       </button>
     {/if}
 
@@ -712,22 +712,22 @@
         <button
           class="context-btn"
           onclick={() => goto(adminPanelHref)}
-          aria-label={$t('sidebar.admin_panel') || 'Admin Panel'}
-          data-tooltip={$t('sidebar.admin_panel') || 'Admin Panel'}
+          aria-label={$t('sidebar.admin_panel')}
+          data-tooltip={$t('sidebar.admin_panel')}
         >
           <Icon name="shield" size={16} />
-          <span class="label">{$t('sidebar.admin_panel') || 'Admin Panel'}</span>
+          <span class="label">{$t('sidebar.admin_panel')}</span>
         </button>
       {/if}
 
       <button
         class="context-btn"
         onclick={() => goto(tenantPrefix ? `${tenantPrefix}/dashboard` : '/dashboard')}
-        aria-label={$t('sidebar.exit') || 'Exit'}
-        data-tooltip={$t('sidebar.exit') || 'Exit'}
+        aria-label={$t('sidebar.exit')}
+        data-tooltip={$t('sidebar.exit')}
       >
         <Icon name="arrow-left" size={16} />
-        <span class="label">{$t('sidebar.exit') || 'Exit'}</span>
+        <span class="label">{$t('sidebar.exit')}</span>
       </button>
     {/if}
 

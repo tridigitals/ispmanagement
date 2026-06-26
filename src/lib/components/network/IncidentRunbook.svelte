@@ -23,10 +23,10 @@
 
 <div class="runbook">
   <div class="runbook-title">
-    {$t('admin.network.incidents.runbook.title') || 'What to do next'}
+    {$t('admin.network.incidents.runbook.title')}
   </div>
   <div class="runbook-sub">
-    {$t('admin.network.incidents.runbook.subtitle') || 'Operator checklist based on incident type.'}
+    {$t('admin.network.incidents.runbook.subtitle')}
   </div>
   <div class="runbook-list">
     {#each steps as step}

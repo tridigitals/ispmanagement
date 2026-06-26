@@ -22,11 +22,10 @@
   <div class="header-section">
     <div class="header-title">
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">
-        {$t('sidebar.backups') || 'Backups'}
+        {$t('sidebar.backups')}
       </h1>
       <p class="text-sm text-gray-600 dark:text-gray-400">
-        {$t('admin.backups.disabled_desc') ||
-          'Backups are managed by Super Admin. Contact support if you need a restore.'}
+        {$t('admin.backups.disabled_desc')}
       </p>
     </div>
   </div>
@@ -36,10 +35,9 @@
       <Icon name="shield" size={22} />
     </div>
     <div class="empty-text">
-      <h4>{$t('admin.backups.disabled_title') || 'Disabled for Tenants'}</h4>
+      <h4>{$t('admin.backups.disabled_title')}</h4>
       <p>
-        {$t('admin.backups.disabled_body') ||
-          'Tenant backup/restore is disabled to reduce security risk. Your data is covered by global backups.'}
+        {$t('admin.backups.disabled_body')}
       </p>
     </div>
   </div>

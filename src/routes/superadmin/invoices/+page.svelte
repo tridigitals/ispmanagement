@@ -179,19 +179,18 @@
 <div class="page-container fade-in">
   <div class="page-header">
     <div class="header-content">
-      <h1>{$t('superadmin.invoices.list.title') || 'All Invoices'}</h1>
+      <h1>{$t('superadmin.invoices.list.title')}</h1>
       <p class="subtitle">
-        {$t('superadmin.invoices.list.subtitle') ||
-          'Monitor all payments and transactions across the platform'}
+        {$t('superadmin.invoices.list.subtitle')}
       </p>
     </div>
     <button class="btn btn-secondary" onclick={loadInvoices}>
       <Icon name="refresh-cw" size={18} />
-      <span>{$t('common.refresh') || 'Refresh'}</span>
+      <span>{$t('common.refresh')}</span>
     </button>
   </div>
 
-  <div class="stats-row" aria-label={$t('superadmin.invoices.aria.stats') || 'Invoice stats'}>
+  <div class="stats-row" aria-label={$t('superadmin.invoices.aria.stats')}>
     <button
       class="stat-btn"
       class:active={statusFilter === 'all'}
@@ -199,7 +198,7 @@
       onclick={() => (statusFilter = 'all')}
     >
       <div class="stat-title">
-        {$t('superadmin.invoices.list.filters.all') || 'All'}
+        {$t('superadmin.invoices.list.filters.all')}
       </div>
       <div class="stat-value">{stats.total}</div>
     </button>
@@ -210,7 +209,7 @@
       onclick={() => (statusFilter = 'pending')}
     >
       <div class="stat-title">
-        {$t('superadmin.invoices.list.filters.pending') || 'Pending'}
+        {$t('superadmin.invoices.list.filters.pending')}
       </div>
       <div class="stat-value">{stats.pending}</div>
     </button>
@@ -221,7 +220,7 @@
       onclick={() => (statusFilter = 'paid')}
     >
       <div class="stat-title">
-        {$t('superadmin.invoices.list.filters.paid') || 'Paid'}
+        {$t('superadmin.invoices.list.filters.paid')}
       </div>
       <div class="stat-value">{stats.paid}</div>
     </button>
@@ -232,7 +231,7 @@
       onclick={() => (statusFilter = 'failed')}
     >
       <div class="stat-title">
-        {$t('superadmin.invoices.list.filters.failed') || 'Failed'}
+        {$t('superadmin.invoices.list.filters.failed')}
       </div>
       <div class="stat-value">{stats.failed}</div>
     </button>
@@ -246,7 +245,7 @@
     <div class="toolbar-wrapper">
       <CompactFilterToolbar
         bind:searchQuery={search}
-        placeholder={$t('superadmin.invoices.list.search') || 'Search invoices...'}
+        placeholder={$t('superadmin.invoices.list.search')}
         bind:filterPanelOpen={filtersOpen}
         activeFilterCount={statusFilter === 'all' ? 0 : 1}
         onReset={resetFilters}
@@ -256,13 +255,13 @@
         {#snippet advancedFilters()}
           <div class="toolbar-field">
             <label for="invoice-status-filter">
-              {$t('superadmin.invoices.list.filters.status') || 'Status'}
+              {$t('superadmin.invoices.list.filters.status')}
             </label>
             <select id="invoice-status-filter" bind:value={statusFilter}>
               <option value="all">{$t('superadmin.invoices.list.filters.all') || $t('common.all') || 'All'}</option>
-              <option value="pending">{$t('superadmin.invoices.list.filters.pending') || 'Pending'}</option>
-              <option value="paid">{$t('superadmin.invoices.list.filters.paid') || 'Paid'}</option>
-              <option value="failed">{$t('superadmin.invoices.list.filters.failed') || 'Failed'}</option>
+              <option value="pending">{$t('superadmin.invoices.list.filters.pending')}</option>
+              <option value="paid">{$t('superadmin.invoices.list.filters.paid')}</option>
+              <option value="failed">{$t('superadmin.invoices.list.filters.failed')}</option>
             </select>
           </div>
         {/snippet}
@@ -273,7 +272,7 @@
       <div class="loading-state">
         <div class="spinner"></div>
         <p>
-          {$t('superadmin.invoices.list.loading') || 'Loading invoices...'}
+          {$t('superadmin.invoices.list.loading')}
         </p>
       </div>
     {:else if filteredInvoices.length === 0}
@@ -282,17 +281,17 @@
           <Icon name="file-text" size={56} />
         </div>
         <h4>
-          {$t('superadmin.invoices.list.empty') || 'No invoices found'}
+          {$t('superadmin.invoices.list.empty')}
         </h4>
         <p>
-          {$t('superadmin.invoices.list.empty_hint') || 'Try adjusting your search or filters.'}
+          {$t('superadmin.invoices.list.empty_hint')}
         </p>
       </div>
     {:else}
       {#if viewMode === 'cards' || isMobile}
         <div
           class="invoices-grid"
-          aria-label={$t('superadmin.invoices.aria.cards') || 'Invoice cards'}
+          aria-label={$t('superadmin.invoices.aria.cards')}
         >
           {#each filteredInvoices as inv (inv.id)}
             <div class="invoice-card">
@@ -324,7 +323,7 @@
               <div class="invoice-meta">
                 <div class="meta-item">
                   <span class="meta-label">
-                    {$t('superadmin.invoices.cards.amount') || 'Amount'}
+                    {$t('superadmin.invoices.cards.amount')}
                   </span>
                   <span class="meta-value">
                     {formatCurrency(inv.amount, inv.currency_code)}
@@ -332,7 +331,7 @@
                 </div>
                 <div class="meta-item">
                   <span class="meta-label">
-                    {$t('superadmin.invoices.cards.due') || 'Due'}
+                    {$t('superadmin.invoices.cards.due')}
                   </span>
                   <span class="meta-value">
                     {formatDate(inv.due_date, { timeZone: $appSettings.app_timezone })}
@@ -344,7 +343,7 @@
                 <button
                   class="btn-icon"
                   type="button"
-                  title={$t('superadmin.invoices.actions.check_status') || 'Check Status'}
+                  title={$t('superadmin.invoices.actions.check_status')}
                   onclick={() => checkStatus(inv.id)}
                 >
                   <Icon name="refresh-cw" size={18} />
@@ -352,7 +351,7 @@
                 <button
                   class="btn-icon"
                   type="button"
-                  title={$t('superadmin.invoices.actions.view_details') || 'View Details'}
+                  title={$t('superadmin.invoices.actions.view_details')}
                   onclick={() => goto(`/superadmin/invoices/${inv.id}`)}
                 >
                   <Icon name="eye" size={18} />
@@ -366,7 +365,7 @@
       {#if viewMode === 'table' && !isMobile}
         <div
           class="table-wrapper"
-          aria-label={$t('superadmin.invoices.aria.table') || 'Invoices table'}
+          aria-label={$t('superadmin.invoices.aria.table')}
         >
           <Table
             data={filteredInvoices}
@@ -405,7 +404,7 @@
                 <div class="actions">
                   <button
                     class="action-btn"
-                    title={$t('superadmin.invoices.actions.check_status') || 'Check Status'}
+                    title={$t('superadmin.invoices.actions.check_status')}
                     type="button"
                     onclick={() => checkStatus(item.id)}
                   >
@@ -414,7 +413,7 @@
                   <button
                     type="button"
                     class="action-btn"
-                    title={$t('superadmin.invoices.actions.view_details') || 'View Details'}
+                    title={$t('superadmin.invoices.actions.view_details')}
                     onclick={() => goto(`/superadmin/invoices/${item.id}`)}
                   >
                     <Icon name="eye" size={18} />

@@ -157,10 +157,9 @@
 <div class="superadmin-content fade-in">
   <div class="header-section">
     <div>
-      <h1 class="page-title">{$t('superadmin.backups.title') || 'System Backups'}</h1>
+      <h1 class="page-title">{$t('superadmin.backups.title')}</h1>
       <p class="muted">
-        {$t('superadmin.backups.subtitle') ||
-          'Manage global database backups and tenant data exports.'}
+        {$t('superadmin.backups.subtitle')}
       </p>
     </div>
     <div class="header-buttons">
@@ -183,10 +182,10 @@
       >
         {#if restoring}
           <span class="spinner-xs"></span>
-          <span>{$t('superadmin.backups.restoring') || 'Restoring...'}</span>
+          <span>{$t('superadmin.backups.restoring')}</span>
         {:else}
           <Icon name="refresh-cw" size={18} />
-          <span>{$t('superadmin.backups.restore_from_file') || 'Restore from File'}</span>
+          <span>{$t('superadmin.backups.restore_from_file')}</span>
         {/if}
       </button>
       <button class="btn btn-primary" disabled={creating} onclick={createBackup}>
@@ -195,7 +194,7 @@
         {:else}
           <Icon name="plus" size={18} />
         {/if}
-        <span>{$t('superadmin.backups.create_global') || 'Create Global Backup'}</span>
+        <span>{$t('superadmin.backups.create_global')}</span>
       </button>
     </div>
   </div>
@@ -203,15 +202,15 @@
   <div class="glass-card" in:fly={{ y: 20, delay: 80 }}>
     <div class="card-header glass">
       <div>
-        <h3>{$t('superadmin.backups.available_title') || 'Available Backups'}</h3>
+        <h3>{$t('superadmin.backups.available_title')}</h3>
         <span class="muted">
-          {$t('superadmin.backups.available_desc') || 'History of generated backup files'}
+          {$t('superadmin.backups.available_desc')}
         </span>
       </div>
       <div class="header-actions">
         <span class="count-badge">
           {backups.length}
-          {$t('superadmin.backups.files_count') || 'files'}
+          {$t('superadmin.backups.files_count')}
         </span>
       </div>
     </div>
@@ -220,7 +219,7 @@
       {#if loading && backups.length === 0}
         <div class="empty-state">
           <span class="spinner"></span>
-          <p>{$t('superadmin.backups.loading') || 'Loading backups...'}</p>
+          <p>{$t('superadmin.backups.loading')}</p>
         </div>
       {:else if backups.length === 0}
         <div class="empty-state fancy">
@@ -228,16 +227,15 @@
             <Icon name="archive" size={28} />
           </div>
           <div class="empty-text">
-            <h4>{$t('superadmin.backups.empty_title') || 'No backups yet'}</h4>
+            <h4>{$t('superadmin.backups.empty_title')}</h4>
             <p>
-              {$t('superadmin.backups.empty_desc') ||
-                'Create a global backup to protect system data.'}
+              {$t('superadmin.backups.empty_desc')}
             </p>
           </div>
           <div class="empty-actions">
             <button class="btn btn-primary" disabled={creating || restoring} onclick={createBackup}>
               <Icon name="plus" size={16} />
-              <span>{$t('superadmin.backups.create_global') || 'Create Global Backup'}</span>
+              <span>{$t('superadmin.backups.create_global')}</span>
             </button>
           </div>
         </div>
@@ -245,11 +243,11 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>{$t('superadmin.backups.col_filename') || 'Filename'}</th>
-              <th>{$t('superadmin.backups.col_type') || 'Type'}</th>
-              <th>{$t('superadmin.backups.col_size') || 'Size'}</th>
-              <th class="nowrap">{$t('superadmin.backups.col_created_at') || 'Created At'}</th>
-              <th class="text-right">{$t('common.actions') || 'Actions'}</th>
+              <th>{$t('superadmin.backups.col_filename')}</th>
+              <th>{$t('superadmin.backups.col_type')}</th>
+              <th>{$t('superadmin.backups.col_size')}</th>
+              <th class="nowrap">{$t('superadmin.backups.col_created_at')}</th>
+              <th class="text-right">{$t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -274,7 +272,7 @@
                     <button
                       class="btn-icon btn-primary-text"
                       onclick={() => downloadBackup(backup.name)}
-                      title={$t('superadmin.backups.tooltip_download') || 'Download Backup'}
+                      title={$t('superadmin.backups.tooltip_download')}
                     >
                       <Icon name="download" size={16} />
                     </button>
@@ -282,14 +280,14 @@
                       class="btn-icon btn-warning-text"
                       disabled={restoring}
                       onclick={() => requestRestoreLocal(backup.name)}
-                      title={$t('superadmin.backups.tooltip_restore') || 'Restore from this file'}
+                      title={$t('superadmin.backups.tooltip_restore')}
                     >
                       <Icon name="refresh-cw" size={16} />
                     </button>
                     <button
                       class="btn-icon btn-danger-text"
                       onclick={() => requestDelete(backup.name)}
-                      title={$t('superadmin.backups.tooltip_delete') || 'Delete Backup'}
+                      title={$t('superadmin.backups.tooltip_delete')}
                     >
                       <Icon name="trash" size={16} />
                     </button>
@@ -306,12 +304,12 @@
 
 <ConfirmDialog
   bind:show={showDeleteModal}
-  title={$t('superadmin.backups.delete_title') || 'Delete Backup'}
+  title={$t('superadmin.backups.delete_title')}
   message={($t('superadmin.backups.delete_message') || 'Are you sure you want to delete {name}?').replace(
     '{name}',
     deleteTarget || $t('superadmin.backups.delete_message_fallback') || 'this backup',
   )}
-  confirmText={$t('common.delete') || 'Delete'}
+  confirmText={$t('common.delete')}
   type="danger"
   loading={isDeleting}
   onconfirm={confirmDelete}
@@ -323,7 +321,7 @@
 
 <ConfirmDialog
   bind:show={showRestoreModal}
-  title={$t('superadmin.backups.restore_title') || 'Restore Backup'}
+  title={$t('superadmin.backups.restore_title')}
   message={($t('superadmin.backups.restore_message') ||
     'Restore from {name}? This will OVERWRITE existing system data!').replace(
     '{name}',
@@ -332,7 +330,7 @@
         ? $t('superadmin.backups.restore_message_upload_fallback') || 'selected file'
         : $t('superadmin.backups.restore_message_local_fallback') || 'this backup'),
   )}
-  confirmText={$t('superadmin.backups.restore_title') || 'Restore'}
+  confirmText={$t('superadmin.backups.restore_title')}
   type="warning"
   loading={restoring}
   onconfirm={confirmRestore}

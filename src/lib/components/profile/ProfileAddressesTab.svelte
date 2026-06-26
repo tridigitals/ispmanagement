@@ -139,16 +139,16 @@
 <div class="card section fade-in-up">
   <div class="card-header">
     <div>
-      <h2 class="card-title">{$t('profile.addresses.title') || 'Addresses'}</h2>
+      <h2 class="card-title">{$t('profile.addresses.title')}</h2>
       <p class="card-subtitle">
-        {$t('profile.addresses.subtitle') || 'Manage multiple addresses for future billing/shipping.'}
+        {$t('profile.addresses.subtitle')}
       </p>
     </div>
 
     <div class="header-actions">
       <button class="btn btn-primary" type="button" onclick={openCreate} disabled={isLoading || loading}>
         <Icon name="plus" size={18} />
-        {$t('profile.addresses.add') || 'Add Address'}
+        {$t('profile.addresses.add')}
       </button>
     </div>
   </div>
@@ -163,7 +163,7 @@
   {#if isLoading}
     <div class="loading-row">
       <span class="spinner"></span>
-      <span>{$t('common.loading') || 'Loading…'}</span>
+      <span>{$t('common.loading')}</span>
     </div>
   {:else if addresses.length === 0}
     <div class="empty-state">
@@ -171,14 +171,14 @@
         <Icon name="map-pin" size={22} />
       </div>
       <div class="empty-text">
-        <div class="empty-title">{$t('profile.addresses.empty_title') || 'No addresses yet'}</div>
+        <div class="empty-title">{$t('profile.addresses.empty_title')}</div>
         <div class="empty-subtitle">
-          {$t('profile.addresses.empty_subtitle') || 'Add one so you can reuse it for shipping and billing.'}
+          {$t('profile.addresses.empty_subtitle')}
         </div>
       </div>
       <button class="btn btn-primary" type="button" onclick={openCreate}>
         <Icon name="plus" size={18} />
-        {$t('profile.addresses.add') || 'Add Address'}
+        {$t('profile.addresses.add')}
       </button>
     </div>
   {:else}
@@ -193,12 +193,12 @@
                 <div class="meta">
                   {#if addr.is_default_shipping}
                     <span class="badge badge-blue">
-                      {$t('profile.addresses.default_shipping') || 'Default Shipping'}
+                      {$t('profile.addresses.default_shipping')}
                     </span>
                   {/if}
                   {#if addr.is_default_billing}
                     <span class="badge badge-purple">
-                      {$t('profile.addresses.default_billing') || 'Default Billing'}
+                      {$t('profile.addresses.default_billing')}
                     </span>
                   {/if}
                 </div>
@@ -206,10 +206,10 @@
             </div>
 
             <div class="address-actions">
-              <button class="icon-btn" type="button" onclick={() => openEdit(addr)} title={$t('common.edit') || 'Edit'}>
+              <button class="icon-btn" type="button" onclick={() => openEdit(addr)} title={$t('common.edit')}>
                 <Icon name="edit" size={16} />
               </button>
-              <button class="icon-btn danger" type="button" onclick={() => askDelete(addr.id)} title={$t('common.delete') || 'Delete'}>
+              <button class="icon-btn danger" type="button" onclick={() => askDelete(addr.id)} title={$t('common.delete')}>
                 <Icon name="trash" size={16} />
               </button>
             </div>
@@ -218,7 +218,7 @@
           <div class="address-body">
             {#if addr.recipient_name || addr.phone}
               <div class="row">
-                <span class="dim">{$t('profile.addresses.recipient') || 'Recipient'}</span>
+                <span class="dim">{$t('profile.addresses.recipient')}</span>
                 <span class="strong">
                   {addr.recipient_name || '-'}
                   {#if addr.phone}
@@ -262,50 +262,50 @@
   >
     <div class="form-grid">
       <div class="form-group">
-        <label class="form-label" for="label">{$t('profile.addresses.fields.label') || 'Label'}</label>
-        <input id="label" class="form-input" type="text" bind:value={form.label} placeholder={$t('profile.addresses.fields.label_placeholder') || 'Home, Office, etc'} />
+        <label class="form-label" for="label">{$t('profile.addresses.fields.label')}</label>
+        <input id="label" class="form-input" type="text" bind:value={form.label} placeholder={$t('profile.addresses.fields.label_placeholder')} />
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="recipientName">{$t('profile.addresses.fields.recipient_name') || 'Recipient name'}</label>
+        <label class="form-label" for="recipientName">{$t('profile.addresses.fields.recipient_name')}</label>
         <input id="recipientName" class="form-input" type="text" bind:value={form.recipientName} />
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="phone">{$t('profile.addresses.fields.phone') || 'Phone'}</label>
+        <label class="form-label" for="phone">{$t('profile.addresses.fields.phone')}</label>
         <input id="phone" class="form-input" type="text" bind:value={form.phone} />
       </div>
 
       <div class="form-group span-2">
-        <label class="form-label" for="line1">{$t('profile.addresses.fields.line1') || 'Address line 1'}</label>
+        <label class="form-label" for="line1">{$t('profile.addresses.fields.line1')}</label>
         <input id="line1" class="form-input" type="text" bind:value={form.line1} required />
       </div>
 
       <div class="form-group span-2">
-        <label class="form-label" for="line2">{$t('profile.addresses.fields.line2') || 'Address line 2'}</label>
+        <label class="form-label" for="line2">{$t('profile.addresses.fields.line2')}</label>
         <input id="line2" class="form-input" type="text" bind:value={form.line2} />
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="city">{$t('profile.addresses.fields.city') || 'City'}</label>
+        <label class="form-label" for="city">{$t('profile.addresses.fields.city')}</label>
         <input id="city" class="form-input" type="text" bind:value={form.city} />
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="state">{$t('profile.addresses.fields.state') || 'State/Province'}</label>
+        <label class="form-label" for="state">{$t('profile.addresses.fields.state')}</label>
         <input id="state" class="form-input" type="text" bind:value={form.state} />
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="postalCode">{$t('profile.addresses.fields.postal_code') || 'Postal code'}</label>
+        <label class="form-label" for="postalCode">{$t('profile.addresses.fields.postal_code')}</label>
         <input id="postalCode" class="form-input" type="text" bind:value={form.postalCode} />
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="countryCode">{$t('profile.addresses.fields.country_code') || 'Country code'}</label>
+        <label class="form-label" for="countryCode">{$t('profile.addresses.fields.country_code')}</label>
         <select id="countryCode" class="form-input" bind:value={form.countryCode}>
-          <option value="ID">{$t('profile.addresses.fields.country_id') || 'ID (Indonesia)'}</option>
-          <option value="US">{$t('profile.addresses.fields.country_us') || 'US (United States)'}</option>
+          <option value="ID">{$t('profile.addresses.fields.country_id')}</option>
+          <option value="US">{$t('profile.addresses.fields.country_us')}</option>
         </select>
       </div>
     </div>
@@ -313,25 +313,25 @@
     <div class="toggle-row">
       <label class="toggle">
         <input type="checkbox" bind:checked={form.isDefaultShipping} />
-        <span>{$t('profile.addresses.fields.default_shipping') || 'Default shipping'}</span>
+        <span>{$t('profile.addresses.fields.default_shipping')}</span>
       </label>
       <label class="toggle">
         <input type="checkbox" bind:checked={form.isDefaultBilling} />
-        <span>{$t('profile.addresses.fields.default_billing') || 'Default billing'}</span>
+        <span>{$t('profile.addresses.fields.default_billing')}</span>
       </label>
     </div>
 
     <div class="form-actions">
       <button class="btn btn-secondary" type="button" onclick={() => (showModal = false)} disabled={isLoading}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button class="btn btn-primary" type="submit" disabled={isLoading}>
         {#if isLoading}
           <span class="spinner"></span>
-          {$t('common.saving') || 'Saving…'}
+          {$t('common.saving')}
         {:else}
           <Icon name="save" size={18} />
-          {$t('common.save') || 'Save'}
+          {$t('common.save')}
         {/if}
       </button>
     </div>
@@ -340,9 +340,9 @@
 
 <ConfirmDialog
   bind:show={confirmOpen}
-  title={$t('profile.addresses.delete_title') || 'Delete address?'}
-  message={$t('profile.addresses.delete_message') || 'This address will be removed permanently.'}
-  confirmText={$t('common.delete') || 'Delete'}
+  title={$t('profile.addresses.delete_title')}
+  message={$t('profile.addresses.delete_message')}
+  confirmText={$t('common.delete')}
   onconfirm={confirmDelete}
 />
 

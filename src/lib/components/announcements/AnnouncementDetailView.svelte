@@ -60,7 +60,7 @@
       {backLabel || $t('common.back') || 'Back'}
     </button>
     <div class="crumb">
-      <span class="muted">{$t('announcements.title') || 'Announcements'}</span>
+      <span class="muted">{$t('announcements.title')}</span>
       <span class="sep"></span>
       <span class="muted">{announcement?.title || ''}</span>
     </div>
@@ -69,12 +69,12 @@
   {#if loading}
     <div class="loading">
       <div class="spinner"></div>
-      <div>{$t('common.loading') || 'Loading...'}</div>
+      <div>{$t('common.loading')}</div>
     </div>
   {:else if !announcement}
     <div class="empty">
       <Icon name="info" size={18} />
-      <span>{$t('announcements.not_found') || 'Announcement not found.'}</span>
+      <span>{$t('announcements.not_found')}</span>
     </div>
   {:else}
     <section class="hero {announcement.severity}">
@@ -101,13 +101,12 @@
           </span>
           {#if announcement.mode === 'banner'}
             <span class="dot"></span>
-            <span class="mode">{$t('announcements.modes.banner') || 'Banner'}</span>
+            <span class="mode">{$t('announcements.modes.banner')}</span>
           {/if}
         </div>
         <h1 class="title">{announcement.title}</h1>
         <div class="subtitle">
-          {$t('announcements.feed_subtitle') ||
-            'Product updates, maintenance windows, and important notices.'}
+          {$t('announcements.feed_subtitle')}
         </div>
       </div>
     </section>
@@ -127,9 +126,9 @@
 
       <aside class="rail">
         <div class="card">
-          <div class="card-title">{$t('common.details') || 'Details'}</div>
+          <div class="card-title">{$t('common.details')}</div>
           <div class="row">
-            <span class="k">{$t('announcements.fields.starts_at') || 'Starts at'}</span>
+            <span class="k">{$t('announcements.fields.starts_at')}</span>
             <span class="v"
               >{formatDateTime(announcement.starts_at, {
                 timeZone: $appSettings.app_timezone,
@@ -137,7 +136,7 @@
             >
           </div>
           <div class="row">
-            <span class="k">{$t('announcements.fields.ends_at') || 'Ends at'}</span>
+            <span class="k">{$t('announcements.fields.ends_at')}</span>
             <span class="v">
               {announcement.ends_at
                 ? formatDateTime(announcement.ends_at, { timeZone: $appSettings.app_timezone })
@@ -145,7 +144,7 @@
             </span>
           </div>
           <div class="row">
-            <span class="k">{$t('announcements.fields.severity') || 'Severity'}</span>
+            <span class="k">{$t('announcements.fields.severity')}</span>
             <span class="v sev {announcement.severity}">{sevLabel(announcement.severity)}</span>
           </div>
         </div>

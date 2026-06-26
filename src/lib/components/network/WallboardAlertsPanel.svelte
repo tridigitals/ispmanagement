@@ -24,7 +24,7 @@
 <div class="alert-strip-head">
   <Icon name="alert-triangle" size={15} />
   <span class="alert-strip-title">
-    {$t('admin.network.wallboard.alerts_open') || 'Open alerts'}
+    {$t('admin.network.wallboard.alerts_open')}
   </span>
   <span class="alert-strip-count">{visibleAlerts.length}</span>
 </div>
@@ -32,7 +32,7 @@
   <div class="alert-strip-actions">
     <button class="awp-btn awp-btn-ghost" type="button" onclick={() => void onAckVisible?.()}>
       <Icon name="check" size={14} />
-      {$t('admin.network.wallboard.alerts_ack_visible') || 'Ack visible'}
+      {$t('admin.network.wallboard.alerts_ack_visible')}
     </button>
   </div>
 {/if}
@@ -42,21 +42,21 @@
     type="button"
     onclick={() => (alertSeverityFilter = 'all')}
   >
-    {$t('admin.network.wallboard.filters.all') || 'All'} ({alertStats.total})
+    {$t('admin.network.wallboard.filters.all')} ({alertStats.total})
   </button>
   <button
     class:active={alertSeverityFilter === 'critical'}
     type="button"
     onclick={() => (alertSeverityFilter = 'critical')}
   >
-    {$t('admin.network.alerts.severity.critical') || 'Critical'} ({alertStats.critical})
+    {$t('admin.network.alerts.severity.critical')} ({alertStats.critical})
   </button>
   <button
     class:active={alertSeverityFilter === 'warning'}
     type="button"
     onclick={() => (alertSeverityFilter = 'warning')}
   >
-    {$t('admin.network.alerts.severity.warning') || 'Warning'} ({alertStats.warning})
+    {$t('admin.network.alerts.severity.warning')} ({alertStats.warning})
   </button>
 </div>
 <div class="alert-strip-list">

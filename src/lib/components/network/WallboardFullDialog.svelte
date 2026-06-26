@@ -131,12 +131,12 @@
 </script>
 
 <div class="full-overlay" role="dialog" aria-modal="true">
-  <button class="full-backdrop" type="button" onclick={onClose} aria-label={$t('common.close') || 'Close'}></button>
+  <button class="full-backdrop" type="button" onclick={onClose} aria-label={$t('common.close')}></button>
   <div class="full">
     <div class="full-head">
       <div class="full-titles">
         <div class="full-kicker">
-          {$t('admin.network.wallboard.full_kicker') || 'INTERFACE VIEW'}
+          {$t('admin.network.wallboard.full_kicker')}
         </div>
         <div class="full-title">
           <span class="mono">{iface}</span>
@@ -150,9 +150,9 @@
           onOpenThreshold();
         }}>
           <Icon name="edit" size={16} />
-          {$t('common.edit') || 'Edit'}
+          {$t('common.edit')}
         </button>
-        <button class="icon-x" type="button" onclick={onClose} title={$t('common.close') || 'Close'}>
+        <button class="icon-x" type="button" onclick={onClose} title={$t('common.close')}>
           <Icon name="x" size={18} />
         </button>
       </div>
@@ -162,25 +162,25 @@
       <div class="full-summary-sticky">
         <div class="full-summary-grid">
           <div class="full-summary-item">
-            <span class="k">{$t('admin.network.wallboard.summary.status') || 'Status'}</span>
+            <span class="k">{$t('admin.network.wallboard.summary.status')}</span>
             <span class="v mono">{routerOnline
               ? $t('admin.network.wallboard.summary.online') || 'ONLINE'
               : $t('admin.network.wallboard.summary.offline') || 'OFFLINE'}</span>
           </div>
           <div class="full-summary-item">
-            <span class="k">{$t('admin.network.wallboard.summary.rx_now') || 'RX Now'}</span>
+            <span class="k">{$t('admin.network.wallboard.summary.rx_now')}</span>
             <span class="v mono" class:warn={warnRx}>{formatBps(rxNow)}</span>
           </div>
           <div class="full-summary-item">
-            <span class="k">{$t('admin.network.wallboard.summary.tx_now') || 'TX Now'}</span>
+            <span class="k">{$t('admin.network.wallboard.summary.tx_now')}</span>
             <span class="v mono" class:warn={warnTx}>{formatBps(txNow)}</span>
           </div>
           <div class="full-summary-item">
-            <span class="k">{$t('admin.network.wallboard.chart.peak') || 'RX Peak'}</span>
+            <span class="k">{$t('admin.network.wallboard.chart.peak')}</span>
             <span class="v mono">{formatBps(fullTab === 'metrics' ? histRxPeak : rxPeak)}</span>
           </div>
           <div class="full-summary-item">
-            <span class="k">{$t('admin.network.wallboard.chart.peak_tx') || 'TX Peak'}</span>
+            <span class="k">{$t('admin.network.wallboard.chart.peak_tx')}</span>
             <span class="v mono">{formatBps(fullTab === 'metrics' ? histTxPeak : txPeak)}</span>
           </div>
           <div class="full-summary-item">
@@ -194,10 +194,10 @@
 
       <div class="full-tabs">
         <button class="full-tab {fullTab === 'live' ? 'active' : ''}" type="button" onclick={() => onOpenFullTab('live')}>
-          {$t('admin.network.wallboard.tabs.live') || 'Live'}
+          {$t('admin.network.wallboard.tabs.live')}
         </button>
         <button class="full-tab {fullTab === 'metrics' ? 'active' : ''}" type="button" onclick={() => onOpenFullTab('metrics')}>
-          {$t('admin.network.wallboard.tabs.metrics') || 'Metrics'}
+          {$t('admin.network.wallboard.tabs.metrics')}
         </button>
       </div>
 
@@ -233,41 +233,41 @@
         <div class="metrics-filters">
           <div class="metrics-toolbar">
             <div class="metrics-range-select">
-              <label for="metrics-range" class="muted">{$t('admin.network.wallboard.metrics.range') || 'Range'}</label>
+              <label for="metrics-range" class="muted">{$t('admin.network.wallboard.metrics.range')}</label>
               <select
                 id="metrics-range"
                 value={metricsRange}
                 onchange={(e) => onSetMetricsRange((e.currentTarget as HTMLSelectElement).value as MetricsRange)}
               >
-                <option value="24h">{$t('admin.network.wallboard.metrics.range_24h') || 'Last 24 Hours'}</option>
-                <option value="7d">{$t('admin.network.wallboard.metrics.range_7d') || 'Last 7 Days'}</option>
-                <option value="30d">{$t('admin.network.wallboard.metrics.range_30d') || 'Last 30 Days'}</option>
-                <option value="month">{$t('admin.network.wallboard.metrics.range_month') || 'This Month'}</option>
-                <option value="custom">{$t('admin.network.wallboard.metrics.range_custom') || 'Custom'}</option>
+                <option value="24h">{$t('admin.network.wallboard.metrics.range_24h')}</option>
+                <option value="7d">{$t('admin.network.wallboard.metrics.range_7d')}</option>
+                <option value="30d">{$t('admin.network.wallboard.metrics.range_30d')}</option>
+                <option value="month">{$t('admin.network.wallboard.metrics.range_month')}</option>
+                <option value="custom">{$t('admin.network.wallboard.metrics.range_custom')}</option>
               </select>
             </div>
             <div
               class="metrics-bucket-chip"
-              title={$t('admin.network.wallboard.metrics_agg_title') || 'Aggregation level used for this range'}
+              title={$t('admin.network.wallboard.metrics_agg_title')}
             >
-              <span class="k">{$t('admin.network.wallboard.metrics_agg_label') || 'Aggregation'}</span>
+              <span class="k">{$t('admin.network.wallboard.metrics_agg_label')}</span>
               <span class="v mono">{bucketLabel(metricsBucket)} ({bucketHint(metricsBucket)})</span>
             </div>
             <button class="btn-mini" type="button" onclick={onExportMetricsCsv}>
               <Icon name="download" size={16} />
-              {$t('admin.network.wallboard.metrics.export_csv') || 'Export CSV'}
+              {$t('admin.network.wallboard.metrics.export_csv')}
             </button>
             {#if hasMetricsZoom}
               <button class="btn-mini" type="button" onclick={onClearMetricsZoom}>
                 <Icon name="refresh-cw" size={16} />
-                {$t('admin.network.wallboard.metrics.reset_zoom') || 'Reset Zoom'}
+                {$t('admin.network.wallboard.metrics.reset_zoom')}
               </button>
             {/if}
           </div>
           {#if metricsRange === 'custom'}
             <div class="metrics-dates">
               <label>
-                <span class="muted">{$t('common.from') || 'From'}</span>
+                <span class="muted">{$t('common.from')}</span>
                 <input
                   type="datetime-local"
                   value={metricsFromLocal}
@@ -275,7 +275,7 @@
                 />
               </label>
               <label>
-                <span class="muted">{$t('common.to') || 'To'}</span>
+                <span class="muted">{$t('common.to')}</span>
                 <input
                   type="datetime-local"
                   value={metricsToLocal}
@@ -288,26 +288,26 @@
 
         <div class="full-historical">
           <div class="full-historical-head">
-            <div class="full-kicker">{$t('admin.network.wallboard.metrics.historical') || 'Historical Metrics'}</div>
+            <div class="full-kicker">{$t('admin.network.wallboard.metrics.historical')}</div>
             <span class="muted mono">
-              {zoomedHistRows.length} {$t('admin.network.wallboard.metrics_points') || 'points'} ({bucketLabel(metricsBucket)})
+              {zoomedHistRows.length} {$t('admin.network.wallboard.metrics_points')} ({bucketLabel(metricsBucket)})
               {#if hasMetricsZoom}
-                · {$t('admin.network.wallboard.metrics.zoomed') || 'Zoomed'}
+                · {$t('admin.network.wallboard.metrics.zoomed')}
               {/if}
             </span>
           </div>
 
           {#if fullMetricsLoading}
-            <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+            <div class="muted">{$t('common.loading')}</div>
           {:else if fullMetricsError}
             <div class="muted">{fullMetricsError}</div>
           {:else if chartRx.length === 0 && chartTx.length === 0}
-            <div class="muted">{$t('admin.network.wallboard.metrics.empty_range') || 'No historical metrics yet for selected date range.'}</div>
+            <div class="muted">{$t('admin.network.wallboard.metrics.empty_range')}</div>
           {:else}
             <div
               class="spark huge historical"
               role="application"
-              aria-label={$t('admin.network.wallboard.metrics.zoom_area') || 'Metrics chart zoom area'}
+              aria-label={$t('admin.network.wallboard.metrics.zoom_area')}
               onpointerdown={onBeginMetricsSelection}
               onpointermove={onMoveMetricsSelection}
               onpointerup={(e) => onEndMetricsSelection(e, chartRows)}

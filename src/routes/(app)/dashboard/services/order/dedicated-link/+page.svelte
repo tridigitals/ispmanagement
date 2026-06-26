@@ -10,7 +10,7 @@
 </script>
 
 <ServiceComingSoonPage
-  title={$t('dashboard.services.order.dedicated_link') || 'Dedicated Link Service'}
+  title={$t('dashboard.services.order.dedicated_link')}
   description="Dedicated enterprise link order flow is reserved and will be enabled with SLA provisioning support."
   statusLabel="Coming Soon"
   icon="router"

@@ -332,38 +332,38 @@
 </script>
 
 <div class="page-container fade-in">
-  <nav class="breadcrumb" aria-label={$t('common.breadcrumb') || 'Breadcrumb'}>
+  <nav class="breadcrumb" aria-label={$t('common.breadcrumb')}>
     <button class="crumb-link" type="button" onclick={() => goto(backPath)}>
-      {$t('sidebar.invoices') || 'Invoices'}
+      {$t('sidebar.invoices')}
     </button>
     <span class="crumb-sep">/</span>
-    <span class="crumb-current">{$t('common.details') || 'Details'}</span>
+    <span class="crumb-current">{$t('common.details')}</span>
     <span class="crumb-sep">/</span>
     <button class="crumb-link" type="button" onclick={() => goto(billingLogsPath)}>
-      {$t('admin.package_invoices.list.actions.billing_logs') || 'Billing Logs'}
+      {$t('admin.package_invoices.list.actions.billing_logs')}
     </button>
   </nav>
 
   <div class="page-header">
     <button class="back-btn" onclick={() => goto(backPath)}>
       <Icon name="arrow-left" size={18} />
-      <span>{$t('admin.package_invoices.detail.back') || 'Back to Invoices'}</span>
+      <span>{$t('admin.package_invoices.detail.back')}</span>
     </button>
     <div class="header-right">
       {#if relatedCustomerId}
         <button class="btn btn-secondary" onclick={openCustomerDetail}>
           <Icon name="users" size={16} />
-          <span>{$t('admin.package_invoices.detail.actions.open_customer') || 'Open Customer'}</span
+          <span>{$t('admin.package_invoices.detail.actions.open_customer')}</span
           >
         </button>
       {/if}
       <button class="btn btn-secondary" onclick={() => goto(billingLogsPath)}>
         <Icon name="activity" size={16} />
-        <span>{$t('admin.package_invoices.list.actions.billing_logs') || 'Billing Logs'}</span>
+        <span>{$t('admin.package_invoices.list.actions.billing_logs')}</span>
       </button>
       <button class="btn btn-secondary" onclick={loadInvoice} disabled={loading}>
         <Icon name="refresh-cw" size={16} />
-        <span>{$t('common.refresh') || 'Refresh'}</span>
+        <span>{$t('common.refresh')}</span>
       </button>
       <button
         class="btn btn-secondary"
@@ -380,7 +380,7 @@
       {#if invoice && invoice.status === 'pending'}
         <button class="btn btn-primary" onclick={() => goto(`/pay/${invoice?.id}`)}>
           <Icon name="credit-card" size={16} />
-          <span>{$t('admin.package_invoices.detail.actions.pay_now') || 'Pay Now'}</span>
+          <span>{$t('admin.package_invoices.detail.actions.pay_now')}</span>
         </button>
       {/if}
     </div>
@@ -388,7 +388,7 @@
 
   {#if loading}
     <div class="state-card">
-      {$t('admin.package_invoices.detail.loading') || 'Loading invoice...'}
+      {$t('admin.package_invoices.detail.loading')}
     </div>
   {:else if error}
     <div class="state-card error">{error}</div>
@@ -397,8 +397,7 @@
       <div class="invoice-head">
         <div>
           <h1>
-            {$t('admin.package_invoices.detail.invoice_prefix') ||
-              'Invoice #'}{invoice.invoice_number}
+            {$t('admin.package_invoices.detail.invoice_prefix')}{invoice.invoice_number}
           </h1>
           <p>{invoice.description || '-'}</p>
         </div>
@@ -407,17 +406,17 @@
 
       <div class="grid">
         <div class="field">
-          <span>{$t('admin.package_invoices.detail.labels.amount') || 'Amount'}</span>
+          <span>{$t('admin.package_invoices.detail.labels.amount')}</span>
           <strong>{formatCurrency(invoice.amount, invoice.currency_code)}</strong>
         </div>
         <div class="field">
-          <span>{$t('admin.package_invoices.detail.labels.due_date') || 'Due Date'}</span>
+          <span>{$t('admin.package_invoices.detail.labels.due_date')}</span>
           <strong
             >{formatDateTime(invoice.due_date, { timeZone: $appSettings.app_timezone })}</strong
           >
         </div>
         <div class="field">
-          <span>{$t('admin.package_invoices.detail.labels.created') || 'Created'}</span>
+          <span>{$t('admin.package_invoices.detail.labels.created')}</span>
           <strong
             >{invoice.created_at
               ? formatDateTime(invoice.created_at, { timeZone: $appSettings.app_timezone })
@@ -425,7 +424,7 @@
           >
         </div>
         <div class="field">
-          <span>{$t('admin.package_invoices.detail.labels.updated') || 'Updated'}</span>
+          <span>{$t('admin.package_invoices.detail.labels.updated')}</span>
           <strong
             >{invoice.updated_at
               ? formatDateTime(invoice.updated_at, { timeZone: $appSettings.app_timezone })
@@ -434,26 +433,24 @@
         </div>
         <div class="field">
           <span
-            >{$t('admin.package_invoices.detail.labels.payment_method') || 'Payment Method'}</span
+            >{$t('admin.package_invoices.detail.labels.payment_method')}</span
           >
           <strong>{paymentMethodLabel(invoice)}</strong>
         </div>
         {#if relatedCustomerId}
           <div class="field">
             <span
-              >{$t('admin.package_invoices.detail.labels.related_customer') ||
-                'Related Customer'}</span
+              >{$t('admin.package_invoices.detail.labels.related_customer')}</span
             >
             <button type="button" class="inline-link-btn" onclick={openCustomerDetail}>
-              {$t('admin.package_invoices.detail.actions.open_customer') || 'Open Customer'}
+              {$t('admin.package_invoices.detail.actions.open_customer')}
             </button>
           </div>
         {/if}
         {#if invoice.status === 'failed' && invoice.rejection_reason}
           <div class="field field-wide">
             <span
-              >{$t('admin.package_invoices.detail.labels.rejection_reason') ||
-                'Rejection Reason'}</span
+              >{$t('admin.package_invoices.detail.labels.rejection_reason')}</span
             >
             <strong>{invoice.rejection_reason}</strong>
           </div>
@@ -463,16 +460,15 @@
       {#if invoice.proof_attachment}
         <div class="proof-section">
           <div class="proof-head">
-            <h2>{$t('admin.package_invoices.detail.payment_proof.title') || 'Payment Proof'}</h2>
+            <h2>{$t('admin.package_invoices.detail.payment_proof.title')}</h2>
             <span class="proof-hint"
-              >{$t('admin.package_invoices.detail.payment_proof.hint') ||
-                'Click image to enlarge'}</span
+              >{$t('admin.package_invoices.detail.payment_proof.hint')}</span
             >
           </div>
           <button class="proof-image-button" type="button" onclick={openProofLightbox}>
             <img
               src={getProofUrl(invoice.proof_attachment)}
-              alt={$t('admin.package_invoices.detail.payment_proof.title') || 'Payment Proof'}
+              alt={$t('admin.package_invoices.detail.payment_proof.title')}
               class="proof-image"
             />
           </button>
@@ -546,10 +542,9 @@
 {#if showRejectModal}
   <div class="reject-modal-backdrop">
     <div class="reject-modal">
-      <h3>{$t('admin.package_invoices.detail.reject.title') || 'Mark Invoice as Failed'}</h3>
+      <h3>{$t('admin.package_invoices.detail.reject.title')}</h3>
       <p>
-        {$t('admin.package_invoices.detail.reject.description') ||
-          'Provide a clear reason so customer can fix and re-upload payment proof.'}
+        {$t('admin.package_invoices.detail.reject.description')}
       </p>
       <div class="reject-presets">
         {#each rejectReasonOptions as opt}
@@ -561,12 +556,11 @@
       <textarea
         class="reject-reason-input"
         bind:value={rejectReason}
-        placeholder={$t('admin.package_invoices.detail.reject.placeholder') ||
-          'Write rejection reason...'}
+        placeholder={$t('admin.package_invoices.detail.reject.placeholder')}
       ></textarea>
       <div class="reject-actions">
         <button class="btn btn-secondary" type="button" onclick={() => (showRejectModal = false)}>
-          {$t('common.cancel') || 'Cancel'}
+          {$t('common.cancel')}
         </button>
         <button
           class="btn btn-danger"
@@ -575,9 +569,9 @@
           disabled={processing}
         >
           {#if processing}
-            {$t('admin.package_invoices.detail.actions.processing') || 'Processing...'}
+            {$t('admin.package_invoices.detail.actions.processing')}
           {:else}
-            {$t('admin.package_invoices.detail.actions.mark_failed') || 'Mark Failed'}
+            {$t('admin.package_invoices.detail.actions.mark_failed')}
           {/if}
         </button>
       </div>

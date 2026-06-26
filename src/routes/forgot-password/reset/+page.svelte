@@ -54,9 +54,9 @@
 <div class="auth-page">
   <div class="auth-card">
     <div class="auth-header">
-      <h1>{$t('auth.reset_password.title') || 'Reset Password'}</h1>
+      <h1>{$t('auth.reset_password.title')}</h1>
       <p>
-        {$t('auth.reset_password.subtitle') || 'Enter your new password below'}
+        {$t('auth.reset_password.subtitle')}
       </p>
     </div>
 
@@ -68,14 +68,14 @@
 
     {#if success}
       <div class="alert alert-success">
-        {$t('auth.reset_password.success') || 'Password reset successfully!'}
-        {$t('auth.reset_password.redirecting') || 'Redirecting to login...'}
+        {$t('auth.reset_password.success')}
+        {$t('auth.reset_password.redirecting')}
       </div>
     {:else}
       <form on:submit|preventDefault={handleSubmit}>
         <div class="form-group">
           <label class="form-label" for="password"
-            >{$t('auth.reset_password.new_password') || 'New Password'}</label
+            >{$t('auth.reset_password.new_password')}</label
           >
           <div class="input-wrapper">
             <input
@@ -100,7 +100,7 @@
 
         <div class="form-group">
           <label class="form-label" for="confirmPassword"
-            >{$t('auth.reset_password.confirm_password') || 'Confirm Password'}</label
+            >{$t('auth.reset_password.confirm_password')}</label
           >
           <div class="input-wrapper">
             <input
@@ -124,9 +124,9 @@
 
         <button type="submit" class="btn btn-primary w-full" disabled={loading || !token}>
           {#if loading}
-            {$t('auth.reset_password.resetting') || 'Resetting...'}
+            {$t('auth.reset_password.resetting')}
           {:else}
-            {$t('auth.reset_password.submit') || 'Reset Password'}
+            {$t('auth.reset_password.submit')}
           {/if}
         </button>
       </form>

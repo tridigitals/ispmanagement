@@ -61,7 +61,7 @@
 
   const modalTitle = $derived(
     editing
-      ? `${$t('admin.network.routers.actions.edit') || 'Edit'}: ${editing.name}`
+      ? `${$t('admin.network.routers.actions.edit')}: ${editing.name}`
       : $t('admin.network.routers.actions.add') || 'Add Router',
   );
 
@@ -248,17 +248,17 @@
     }}
   >
     <label>
-      <span>{$t('admin.network.routers.form.name') || 'Name'}</span>
+      <span>{$t('admin.network.routers.form.name')}</span>
       <input bind:value={formName} placeholder="e.g. POP Router 1" />
     </label>
     <label>
-      <span>{$t('admin.network.routers.form.host') || 'Host'}</span>
+      <span>{$t('admin.network.routers.form.host')}</span>
       <input bind:value={formHost} placeholder="192.168.88.1" />
     </label>
 
     <div class="grid2">
       <label>
-        <span>{$t('network.map.latitude') || 'Latitude'}</span>
+        <span>{$t('network.map.latitude')}</span>
         <input
           type="number"
           bind:value={formLatitude}
@@ -269,7 +269,7 @@
         />
       </label>
       <label>
-        <span>{$t('network.map.longitude') || 'Longitude'}</span>
+        <span>{$t('network.map.longitude')}</span>
         <input
           type="number"
           bind:value={formLongitude}
@@ -284,23 +284,23 @@
     <div class="coord-actions">
       <button class="btn ghost" type="button" onclick={openMapPicker}>
         <Icon name="map-pin" size={16} />
-        {$t('network.router.pick_location') || 'Pick on map'}
+        {$t('network.router.pick_location')}
       </button>
     </div>
 
     <div class="grid2">
       <label>
-        <span>{$t('admin.network.routers.form.port') || 'Port'}</span>
+        <span>{$t('admin.network.routers.form.port')}</span>
         <input type="number" bind:value={formPort} min="1" max="65535" />
       </label>
       <label>
-        <span>{$t('admin.network.routers.form.username') || 'Username'}</span>
+        <span>{$t('admin.network.routers.form.username')}</span>
         <input bind:value={formUsername} placeholder="admin" />
       </label>
     </div>
 
     <label>
-      <span>{$t('admin.network.routers.form.password') || 'Password'}</span>
+      <span>{$t('admin.network.routers.form.password')}</span>
       <input
         type="password"
         bind:value={formPassword}
@@ -310,43 +310,43 @@
 
     <label class="check">
       <input type="checkbox" bind:checked={formEnabled} />
-      <span>{$t('admin.network.routers.form.enabled') || 'Enabled'}</span>
+      <span>{$t('admin.network.routers.form.enabled')}</span>
     </label>
 
     <div class="divider"></div>
 
     <label class="check">
       <input type="checkbox" bind:checked={formMaintenanceEnabled} />
-      <span>{$t('admin.network.routers.form.maintenance') || 'Maintenance (mute alerts)'}</span>
+      <span>{$t('admin.network.routers.form.maintenance')}</span>
     </label>
 
     {#if formMaintenanceEnabled}
       <DateTimeLocalInput
-        label={$t('admin.network.routers.form.maintenance_until') || 'Maintenance until'}
+        label={$t('admin.network.routers.form.maintenance_until')}
         bind:value={formMaintenanceUntilLocal}
         placeholder="YYYY-MM-DD HH:mm"
       />
       <label>
-        <span>{$t('admin.network.routers.form.maintenance_reason') || 'Reason (optional)'}</span>
+        <span>{$t('admin.network.routers.form.maintenance_reason')}</span>
         <input bind:value={formMaintenanceReason} placeholder="e.g. Upgrade firmware" />
       </label>
     {/if}
 
     <div class="modal-actions">
       <button class="btn ghost" type="button" onclick={() => (show = false)}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button class="btn" type="submit">
         <Icon name="save" size={16} />
-        {$t('common.save') || 'Save'}
+        {$t('common.save')}
       </button>
     </div>
   </form>
 </Modal>
 
-<Modal show={showMapPicker} title={$t('network.router.pick_location') || 'Pick Router Location'} width="860px" onclose={closeMapPicker}>
+<Modal show={showMapPicker} title={$t('network.router.pick_location')} width="860px" onclose={closeMapPicker}>
   <div class="map-picker-shell">
-    <div class="map-picker-help">{$t('network.router.click_map_to_select') || 'Klik peta untuk pilih titik, lalu drag marker jika perlu presisi.'}</div>
+    <div class="map-picker-help">{$t('network.router.click_map_to_select')}</div>
     <div class="map-picker-cords">
       {#if pickerLat != null && pickerLng != null}
         <span class="mono">{pickerLat.toFixed(7)}, {pickerLng.toFixed(7)}</span>
@@ -359,15 +359,15 @@
       loading={pickerMapLoading}
       mapUnavailable={pickerMapUnavailable}
       mapErrorMessage={pickerMapErrorMessage}
-      mapUnavailableTitle={$t('network.map.map_unavailable_title') || 'Map unavailable'}
-      mapUnavailableSubtitle={$t('network.map.map_unavailable_subtitle') || 'Unable to initialize WebGL map on this browser/device.'}
+      mapUnavailableTitle={$t('network.map.map_unavailable_title')}
+      mapUnavailableSubtitle={$t('network.map.map_unavailable_subtitle')}
       height="min(58vh, 520px)"
     />
     <div class="modal-actions">
-      <button class="btn ghost" type="button" onclick={closeMapPicker}>{$t('common.cancel') || 'Cancel'}</button>
+      <button class="btn ghost" type="button" onclick={closeMapPicker}>{$t('common.cancel')}</button>
       <button class="btn" type="button" onclick={applyPickedCoordinates}>
         <Icon name="check" size={16} />
-        {$t('network.router.use_this_point') || 'Use this point'}
+        {$t('network.router.use_this_point')}
       </button>
     </div>
   </div>

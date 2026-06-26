@@ -22,7 +22,7 @@
 <div class="card section fade-in">
   <div class="card-header">
     <h3>
-      {$t('superadmin.settings.sections.storage') || 'Storage Configuration'}
+      {$t('superadmin.settings.sections.storage')}
     </h3>
   </div>
   <div class="card-body">
@@ -30,7 +30,7 @@
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="storage-driver">
-          {$t('superadmin.settings.storage.driver.label') || 'Storage Driver'}
+          {$t('superadmin.settings.storage.driver.label')}
         </label>
         <p class="setting-description">
           {$t('superadmin.settings.storage.driver.desc') ||
@@ -45,13 +45,13 @@
         class="form-input native-select"
       >
         <option value="local">
-          {$t('superadmin.settings.storage.driver.options.local') || 'Local Disk'}
+          {$t('superadmin.settings.storage.driver.options.local')}
         </option>
         <option value="s3">
-          {$t('superadmin.settings.storage.driver.options.s3') || 'AWS S3 / MinIO'}
+          {$t('superadmin.settings.storage.driver.options.s3')}
         </option>
         <option value="r2">
-          {$t('superadmin.settings.storage.driver.options.r2') || 'Cloudflare R2'}
+          {$t('superadmin.settings.storage.driver.options.r2')}
         </option>
       </select>
     </div>
@@ -61,7 +61,7 @@
         <div class="setting-row">
           <div class="setting-info">
             <label class="setting-label" for="bucket-name">
-              {$t('superadmin.settings.storage.s3.bucket_name') || 'Bucket Name'}
+              {$t('superadmin.settings.storage.s3.bucket_name')}
             </label>
           </div>
           <input
@@ -70,13 +70,13 @@
             bind:value={storageS3Bucket}
             on:input={handleChange}
             class="form-input"
-            placeholder={$t('superadmin.settings.placeholders.s3_bucket') || 'e.g. my-app-uploads'}
+            placeholder={$t('superadmin.settings.placeholders.s3_bucket')}
           />
         </div>
         <div class="setting-row">
           <div class="setting-info">
             <label class="setting-label" for="bucket-region">
-              {$t('superadmin.settings.storage.s3.region') || 'Region'}
+              {$t('superadmin.settings.storage.s3.region')}
             </label>
             <p class="setting-description">
               {$t('superadmin.settings.storage.s3.region_hint') || "Use 'auto' for R2."}
@@ -88,17 +88,16 @@
             bind:value={storageS3Region}
             on:input={handleChange}
             class="form-input"
-            placeholder={$t('superadmin.settings.placeholders.s3_region') || 'us-east-1'}
+            placeholder={$t('superadmin.settings.placeholders.s3_region')}
           />
         </div>
         <div class="setting-row">
           <div class="setting-info">
             <label class="setting-label" for="bucket-endpoint">
-              {$t('superadmin.settings.storage.s3.endpoint_url') || 'Endpoint URL'}
+              {$t('superadmin.settings.storage.s3.endpoint_url')}
             </label>
             <p class="setting-description">
-              {$t('superadmin.settings.storage.s3.endpoint_hint') ||
-                'Required for R2 (https://ID.r2.cloudflarestorage.com) or MinIO.'}
+              {$t('superadmin.settings.storage.s3.endpoint_hint')}
             </p>
           </div>
           <input
@@ -107,13 +106,13 @@
             bind:value={storageS3Endpoint}
             on:input={handleChange}
             class="form-input"
-            placeholder={$t('superadmin.settings.placeholders.url') || 'https://...'}
+            placeholder={$t('superadmin.settings.placeholders.url')}
           />
         </div>
         <div class="setting-row">
           <div class="setting-info">
             <label class="setting-label" for="access-key">
-              {$t('superadmin.settings.storage.s3.access_key_id') || 'Access Key ID'}
+              {$t('superadmin.settings.storage.s3.access_key_id')}
             </label>
           </div>
           <input
@@ -127,7 +126,7 @@
         <div class="setting-row">
           <div class="setting-info">
             <label class="setting-label" for="access-secret-key">
-              {$t('superadmin.settings.storage.s3.secret_access_key') || 'Secret Access Key'}
+              {$t('superadmin.settings.storage.s3.secret_access_key')}
             </label>
           </div>
           <input
@@ -141,12 +140,10 @@
         <div class="setting-row">
           <div class="setting-info">
             <label class="setting-label" for="public-access-url">
-              {$t('superadmin.settings.storage.s3.public_url_optional') ||
-                'Public Access URL (Optional)'}
+              {$t('superadmin.settings.storage.s3.public_url_optional')}
             </label>
             <p class="setting-description">
-              {$t('superadmin.settings.storage.s3.public_url_hint') ||
-                'CDN URL if serving files publicly.'}
+              {$t('superadmin.settings.storage.s3.public_url_hint')}
             </p>
           </div>
           <input
@@ -155,8 +152,7 @@
             bind:value={storageS3PublicUrl}
             on:input={handleChange}
             class="form-input"
-            placeholder={$t('superadmin.settings.placeholders.public_url') ||
-              'https://cdn.example.com'}
+            placeholder={$t('superadmin.settings.placeholders.public_url')}
           />
         </div>
       </div>
@@ -165,11 +161,10 @@
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="max-file-size">
-          {$t('superadmin.settings.storage.max_file_size_mb') || 'Max File Size (MB)'}
+          {$t('superadmin.settings.storage.max_file_size_mb')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.storage.max_file_size_mb_desc') ||
-            'Maximum allowed size for a single file upload.'}
+          {$t('superadmin.settings.storage.max_file_size_mb_desc')}
         </p>
       </div>
       <div class="input-group">
@@ -181,18 +176,17 @@
           min="1"
           class="form-input"
         />
-        <span class="input-suffix">{$t('common.units.mb') || 'MB'}</span>
+        <span class="input-suffix">{$t('common.units.mb')}</span>
       </div>
     </div>
 
     <div class="setting-row">
       <div class="setting-info full-width">
         <label class="setting-label" for="allowed-extensions">
-          {$t('superadmin.settings.storage.allowed_extensions') || 'Allowed Extensions'}
+          {$t('superadmin.settings.storage.allowed_extensions')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.storage.allowed_extensions_desc') ||
-            'Comma-separated list of allowed file extensions (e.g., jpg, png, pdf). Use * for all.'}
+          {$t('superadmin.settings.storage.allowed_extensions_desc')}
         </p>
         <input
           type="text"

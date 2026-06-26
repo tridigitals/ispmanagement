@@ -92,51 +92,51 @@
             "Let's get your application set up. We'll start by configuring the basics."}
         </p>
         <button class="btn-primary" on:click={() => (step = 2)}>
-          {$t('install.welcome.cta') || 'Get Started'}
+          {$t('install.welcome.cta')}
         </button>
       </div>
     {:else if step === 2}
       <div class="step-content">
         <h2>
-          {$t('install.general.title') || 'General Settings'}
+          {$t('install.general.title')}
         </h2>
         <p class="subtitle">
-          {$t('install.general.subtitle') || 'Configure your application details.'}
+          {$t('install.general.subtitle')}
         </p>
 
         <form on:submit|preventDefault={() => (step = 3)}>
           <div class="form-group">
             <label for="appName">
-              {$t('install.general.app_name') || 'Application Name'}
+              {$t('install.general.app_name')}
             </label>
             <input
               type="text"
               id="appName"
               bind:value={appName}
-              placeholder={$t('install.general.app_name_placeholder') || 'My SaaS App'}
+              placeholder={$t('install.general.app_name_placeholder')}
               required
             />
           </div>
 
           <div class="form-group">
             <label for="appUrl">
-              {$t('install.general.app_url') || 'Application URL'}
+              {$t('install.general.app_url')}
             </label>
             <input
               type="text"
               id="appUrl"
               bind:value={appUrl}
-              placeholder={$t('install.general.app_url_placeholder') || 'http://localhost:3000'}
+              placeholder={$t('install.general.app_url_placeholder')}
               required
             />
           </div>
 
           <div class="actions">
             <button type="button" class="btn-secondary" on:click={() => (step = 1)}
-              >{$t('common.back') || 'Back'}</button
+              >{$t('common.back')}</button
             >
             <button type="submit" class="btn-primary">
-              {$t('install.common.next') || 'Next'}
+              {$t('install.common.next')}
             </button>
           </div>
         </form>
@@ -144,10 +144,10 @@
     {:else if step === 3}
       <div class="step-content">
         <h2>
-          {$t('install.admin.title') || 'Create Admin Account'}
+          {$t('install.admin.title')}
         </h2>
         <p class="subtitle">
-          {$t('install.admin.subtitle') || 'This account will have full access to the system.'}
+          {$t('install.admin.subtitle')}
         </p>
 
         {#if error}
@@ -159,33 +159,33 @@
         <form on:submit|preventDefault={handleSubmit}>
           <div class="form-group">
             <label for="name">
-              {$t('install.admin.full_name') || 'Full Name'}
+              {$t('install.admin.full_name')}
             </label>
             <input
               type="text"
               id="name"
               bind:value={name}
-              placeholder={$t('install.admin.full_name_placeholder') || 'John Doe'}
+              placeholder={$t('install.admin.full_name_placeholder')}
               disabled={loading}
             />
           </div>
 
           <div class="form-group">
             <label for="email">
-              {$t('install.admin.email') || 'Email Address'}
+              {$t('install.admin.email')}
             </label>
             <input
               type="email"
               id="email"
               bind:value={email}
-              placeholder={$t('install.admin.email_placeholder') || 'john@example.com'}
+              placeholder={$t('install.admin.email_placeholder')}
               disabled={loading}
             />
           </div>
 
           <div class="form-group">
             <label for="password">
-              {$t('install.admin.password') || 'Password'}
+              {$t('install.admin.password')}
             </label>
             <div class="password-wrapper">
               <input
@@ -208,7 +208,7 @@
 
           <div class="form-group">
             <label for="confirmPassword">
-              {$t('install.admin.confirm_password') || 'Confirm Password'}
+              {$t('install.admin.confirm_password')}
             </label>
             <div class="password-wrapper">
               <input
@@ -234,13 +234,13 @@
               type="button"
               class="btn-secondary"
               on:click={() => (step = 2)}
-              disabled={loading}>{$t('common.back') || 'Back'}</button
+              disabled={loading}>{$t('common.back')}</button
             >
             <button type="submit" class="btn-primary" disabled={loading}>
               {#if loading}
-                {$t('install.admin.installing') || 'Installing...'}
+                {$t('install.admin.installing')}
               {:else}
-                {$t('install.admin.complete') || 'Complete Setup'}
+                {$t('install.admin.complete')}
               {/if}
             </button>
           </div>
@@ -252,10 +252,10 @@
           <Icon name="check-circle" size={44} />
         </div>
         <h2>
-          {$t('install.success.title') || 'Installation Complete!'}
+          {$t('install.success.title')}
         </h2>
         <p>
-          {$t('install.success.redirecting') || 'Redirecting you to login...'}
+          {$t('install.success.redirecting')}
         </p>
       </div>
     {/if}

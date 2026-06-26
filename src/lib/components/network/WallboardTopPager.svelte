@@ -6,13 +6,13 @@
 </script>
 
 {#if pageCount > 1}
-  <div class="top-pager" aria-label={$t('admin.network.wallboard.pager.aria') || 'Pages'}>
+  <div class="top-pager" aria-label={$t('admin.network.wallboard.pager.aria')}>
     <button
       class="top-pager-btn"
       type="button"
       onclick={() => (page = Math.max(0, page - 1))}
       disabled={page === 0}
-      aria-label={$t('admin.network.wallboard.pager.prev') || 'Previous page'}
+      aria-label={$t('admin.network.wallboard.pager.prev')}
     >
       <Icon name="chevron-left" size={15} />
     </button>
@@ -24,7 +24,7 @@
       type="button"
       onclick={() => (page = Math.min(pageCount - 1, page + 1))}
       disabled={page >= pageCount - 1}
-      aria-label={$t('admin.network.wallboard.pager.next') || 'Next page'}
+      aria-label={$t('admin.network.wallboard.pager.next')}
     >
       <Icon name="chevron-right" size={15} />
     </button>

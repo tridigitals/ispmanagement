@@ -51,29 +51,29 @@
   <div class="modal-form">
     <div class="grid two">
       <Select
-        label={$t('superadmin.radius.form.tenant') || 'Tenant'}
+        label={$t('superadmin.radius.form.tenant')}
         options={tenantOptions}
         bind:value={assignment.tenant_id}
-        placeholder={$t('superadmin.radius.form.select_tenant') || 'Select a tenant'}
+        placeholder={$t('superadmin.radius.form.select_tenant')}
         disabled={loading || isEditing}
       />
       <Select
-        label={$t('superadmin.radius.form.server') || 'Endpoint'}
+        label={$t('superadmin.radius.form.server')}
         options={serverOptions}
         bind:value={assignment.radius_endpoint_id}
-        placeholder={$t('superadmin.radius.form.select_server') || 'Select an endpoint'}
+        placeholder={$t('superadmin.radius.form.select_server')}
         disabled={loading}
       />
     </div>
 
     <label class="toggle-row">
       <input type="checkbox" bind:checked={assignment.is_active} disabled={loading} />
-      <span>{$t('superadmin.radius.form.active_assignment_hint') || 'Keep this assignment active for the tenant'}</span>
+      <span>{$t('superadmin.radius.form.active_assignment_hint')}</span>
     </label>
 
     <div class="modal-actions">
       <button class="btn btn-secondary" type="button" onclick={() => (show = false)} disabled={loading}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button class="btn btn-primary" type="button" onclick={onSubmit} disabled={loading}>
         {#if loading}<span class="spinner-sm"></span>{/if}

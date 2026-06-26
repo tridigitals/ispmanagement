@@ -62,11 +62,11 @@
   >
     <div class="grid two">
       <label>
-        <span>{$t('admin.network.routers.ip_pools.columns.name') || 'Name'}</span>
+        <span>{$t('admin.network.routers.ip_pools.columns.name')}</span>
         <input bind:value={pool.name} disabled={loading || isEditing} required />
       </label>
       <label>
-        <span>{$t('admin.network.routers.ip_pools.columns.next') || 'Next pool'}</span>
+        <span>{$t('admin.network.routers.ip_pools.columns.next')}</span>
         <select bind:value={nextPoolState.selectedValue} disabled={loading || nextPoolState.mode === 'manual'}>
           <option value="">{($t('admin.network.routers.ip_pools.form.no_next_pool') as string) || 'No next pool'}</option>
           {#each nextPoolOptions as option}
@@ -85,12 +85,12 @@
           nextPoolState.mode = event.currentTarget.checked ? 'manual' : 'select';
         }}
       />
-      <span>{$t('admin.network.routers.ip_pools.form.next_pool_manual') || 'Enter next pool manually'}</span>
+      <span>{$t('admin.network.routers.ip_pools.form.next_pool_manual')}</span>
     </label>
 
     {#if nextPoolState.mode === 'manual'}
       <label>
-        <span>{$t('admin.network.routers.ip_pools.form.next_pool_manual_label') || 'Manual next pool'}</span>
+        <span>{$t('admin.network.routers.ip_pools.form.next_pool_manual_label')}</span>
         <input
           bind:value={nextPoolState.manualValue}
           disabled={loading}
@@ -100,26 +100,25 @@
     {/if}
 
     <label>
-      <span>{$t('admin.network.routers.ip_pools.columns.ranges') || 'Ranges'}</span>
+      <span>{$t('admin.network.routers.ip_pools.columns.ranges')}</span>
       <input bind:value={pool.ranges} disabled={loading} placeholder="10.10.10.10-10.10.10.200" />
     </label>
 
     <label>
-      <span>{$t('admin.network.routers.ip_pools.form.comment') || 'Comment'}</span>
+      <span>{$t('admin.network.routers.ip_pools.form.comment')}</span>
       <textarea bind:value={pool.comment} disabled={loading} rows="3"></textarea>
     </label>
 
     <p class="router-note">
-      {$t('admin.network.routers.ip_pools.form.router_note') ||
-        'Changes are applied directly to the selected router before the local mirror is refreshed.'}
+      {$t('admin.network.routers.ip_pools.form.router_note')}
     </p>
 
     <div class="modal-actions">
       <button class="btn ghost" type="button" onclick={() => (show = false)} disabled={loading}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button class="btn primary" type="submit" disabled={loading}>
-        {$t('common.save') || 'Save'}
+        {$t('common.save')}
       </button>
     </div>
   </form>

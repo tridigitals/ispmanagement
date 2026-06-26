@@ -75,7 +75,7 @@
   }
 </script>
 
-<aside class={`smart-inspector ${collapsed ? 'collapsed' : ''}`} aria-label={$t('network.map.smart_inspector') || 'Smart inspector'}>
+<aside class={`smart-inspector ${collapsed ? 'collapsed' : ''}`} aria-label={$t('network.map.smart_inspector')}>
   <div class="inspector-head">
     <div class="inspector-heading">
       <div class="inspector-kicker">{activeKicker}</div>

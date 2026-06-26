@@ -267,7 +267,7 @@
           bind:this={inputEl}
           type="text"
           value={$globalSearch.query}
-          placeholder={$t('topbar.search_placeholder') || 'Search customers, routers, invoices, or tickets'}
+          placeholder={$t('topbar.search_placeholder')}
           oninput={handleTopbarSearchInput}
           onfocus={handleTopbarSearchFocus}
           onblur={handleTopbarSearchBlur}
@@ -291,7 +291,7 @@
     <!-- Mobile search icon (replaces full search bar) -->
     <button
       class="icon-btn mobile-search-btn"
-      aria-label={$t('topbar.search_placeholder') || 'Search'}
+      aria-label={$t('topbar.search_placeholder')}
       onclick={handleMobileSearchToggle}
     >
       <Icon name="search" size={18} />

@@ -308,18 +308,18 @@
 <div class="page-content fade-in">
   <div class="head">
     <div>
-      <h1 class="title">{$t('admin.email_outbox.title') || 'Email Outbox'}</h1>
-      <p class="sub">{$t('admin.email_outbox.subtitle') || 'Queue, retry, and review email delivery.'}</p>
+      <h1 class="title">{$t('admin.email_outbox.title')}</h1>
+      <p class="sub">{$t('admin.email_outbox.subtitle')}</p>
     </div>
 
     <button
       class="btn"
       type="button"
       onclick={() => (refreshStats(), load(true))}
-      title={$t('common.refresh') || 'Refresh'}
+      title={$t('common.refresh')}
     >
       <Icon name="refresh-cw" size={16} />
-      {$t('common.refresh') || 'Refresh'}
+      {$t('common.refresh')}
     </button>
   </div>
 
@@ -331,7 +331,7 @@
       onclick={() => setStatusFilter('all')}
     >
       <div class="stat-top">
-        <span class="stat-label">{$t('common.all') || 'All'}</span>
+        <span class="stat-label">{$t('common.all')}</span>
         <Icon name="list" size={14} />
       </div>
       <div class="stat-value">{stats.all}</div>
@@ -343,7 +343,7 @@
       onclick={() => setStatusFilter('queued')}
     >
       <div class="stat-top">
-        <span class="stat-label">{$t('admin.email_outbox.status.queued') || 'Queued'}</span>
+        <span class="stat-label">{$t('admin.email_outbox.status.queued')}</span>
         <Icon name="calendar" size={14} />
       </div>
       <div class="stat-value">{stats.queued}</div>
@@ -355,7 +355,7 @@
       onclick={() => setStatusFilter('sending')}
     >
       <div class="stat-top">
-        <span class="stat-label">{$t('admin.email_outbox.status.sending') || 'Sending'}</span>
+        <span class="stat-label">{$t('admin.email_outbox.status.sending')}</span>
         <Icon name="send" size={14} />
       </div>
       <div class="stat-value">{stats.sending}</div>
@@ -367,7 +367,7 @@
       onclick={() => setStatusFilter('sent')}
     >
       <div class="stat-top">
-        <span class="stat-label">{$t('admin.email_outbox.status.sent') || 'Sent'}</span>
+        <span class="stat-label">{$t('admin.email_outbox.status.sent')}</span>
         <Icon name="check-circle" size={14} />
       </div>
       <div class="stat-value">{stats.sent}</div>
@@ -379,7 +379,7 @@
       onclick={() => setStatusFilter('failed')}
     >
       <div class="stat-top">
-        <span class="stat-label">{$t('admin.email_outbox.status.failed') || 'Failed'}</span>
+        <span class="stat-label">{$t('admin.email_outbox.status.failed')}</span>
         <Icon name="alert-triangle" size={14} />
       </div>
       <div class="stat-value">{stats.failed}</div>
@@ -390,13 +390,13 @@
     {#if $user?.is_super_admin}
       <div class="scope">
         <button class:active={scope === 'tenant'} type="button" onclick={() => setScope('tenant')}>
-          {$t('admin.email_outbox.scope.tenant') || 'Tenant'}
+          {$t('admin.email_outbox.scope.tenant')}
         </button>
         <button class:active={scope === 'global'} type="button" onclick={() => setScope('global')}>
-          {$t('admin.email_outbox.scope.global') || 'Global'}
+          {$t('admin.email_outbox.scope.global')}
         </button>
         <button class:active={scope === 'all'} type="button" onclick={() => setScope('all')}>
-          {$t('admin.email_outbox.scope.all') || 'All'}
+          {$t('admin.email_outbox.scope.all')}
         </button>
       </div>
     {/if}
@@ -405,7 +405,7 @@
       <input
         class="search-input"
         bind:value={searchQuery}
-        placeholder={$t('admin.email_outbox.search') || 'Search by recipient or subject...'}
+        placeholder={$t('admin.email_outbox.search')}
       />
       {#if searchQuery}
         <button class="clear" type="button" onclick={() => (searchQuery = '')}>
@@ -419,11 +419,11 @@
     <div class="toolbar-left">
       <button class="btn btn-secondary" type="button" onclick={selectVisible}>
         <Icon name="check" size={16} />
-        {$t('admin.email_outbox.actions.select_visible') || 'Select visible'}
+        {$t('admin.email_outbox.actions.select_visible')}
       </button>
       <button class="btn btn-secondary" type="button" onclick={exportCsv}>
         <Icon name="download" size={16} />
-        {$t('admin.email_outbox.actions.export_csv') || 'Export CSV'}
+        {$t('admin.email_outbox.actions.export_csv')}
       </button>
     </div>
 
@@ -431,10 +431,10 @@
       <div class="bulkbar">
         <div class="bulk-left">
           <span class="pill tone-queued">
-            {$t('admin.email_outbox.selected') || 'Selected'}: {selectedCount}
+            {$t('admin.email_outbox.selected')}: {selectedCount}
           </span>
           <button class="text-btn" type="button" onclick={clearSelection}>
-            {$t('common.clear') || 'Clear'}
+            {$t('common.clear')}
           </button>
         </div>
         <div class="bulk-actions">
@@ -445,7 +445,7 @@
             disabled={!$can('retry', 'email_outbox')}
           >
             <Icon name="refresh-cw" size={16} />
-            {$t('admin.email_outbox.actions.retry_selected') || 'Retry selected'}
+            {$t('admin.email_outbox.actions.retry_selected')}
           </button>
           <button
             class="btn btn-secondary danger-btn"
@@ -454,7 +454,7 @@
             disabled={!$can('delete', 'email_outbox')}
           >
             <Icon name="trash-2" size={16} />
-            {$t('admin.email_outbox.actions.delete_selected') || 'Delete selected'}
+            {$t('admin.email_outbox.actions.delete_selected')}
           </button>
         </div>
       </div>
@@ -465,7 +465,7 @@
     {columns}
     data={items}
     {loading}
-    emptyText={$t('admin.email_outbox.empty') || 'No outbox items'}
+    emptyText={$t('admin.email_outbox.empty')}
   >
     {#snippet cell({ item, key }: { item: EmailOutboxItem; key: string })}
       {#if key === 'sel'}
@@ -474,7 +474,7 @@
             type="checkbox"
             checked={isSelected(item.id)}
             onchange={() => toggleSelected(item.id)}
-            aria-label={$t('admin.email_outbox.actions.select') || 'Select'}
+            aria-label={$t('admin.email_outbox.actions.select')}
           />
         </div>
       {:else if key === 'to'}
@@ -505,14 +505,14 @@
         <div class="actions">
           <button
             class="icon-btn"
-            title={$t('admin.email_outbox.actions.view') || 'View'}
+            title={$t('admin.email_outbox.actions.view')}
             onclick={() => openDetails(item.id)}
           >
             <Icon name="eye" size={16} />
           </button>
           <button
             class="icon-btn"
-            title={$t('admin.email_outbox.actions.retry') || 'Retry'}
+            title={$t('admin.email_outbox.actions.retry')}
             disabled={!canRetry || disabled}
             onclick={() => retry(item.id)}
           >
@@ -520,7 +520,7 @@
           </button>
           <button
             class="icon-btn danger"
-            title={$t('common.delete') || 'Delete'}
+            title={$t('common.delete')}
             {disabled}
             onclick={() => confirmRemove(item.id)}
           >
@@ -544,7 +544,7 @@
 
 <Modal
   bind:show={detailOpen}
-  title={$t('admin.email_outbox.details.title') || 'Email details'}
+  title={$t('admin.email_outbox.details.title')}
   width="920px"
   onclose={() => {
     detailItem = null;
@@ -555,17 +555,17 @@
     {#if detailLoading}
       <div class="detail-loading">
         <div class="spinner"></div>
-        <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+        <div class="muted">{$t('common.loading')}</div>
       </div>
     {:else if detailItem}
       <div class="detail">
         <div class="meta">
           <div class="kv">
-            <div class="k">{$t('admin.email_outbox.details.to') || 'To'}</div>
+            <div class="k">{$t('admin.email_outbox.details.to')}</div>
             <div class="v mono">{detailItem.to_email}</div>
           </div>
           <div class="kv">
-            <div class="k">{$t('admin.email_outbox.details.status') || 'Status'}</div>
+            <div class="k">{$t('admin.email_outbox.details.status')}</div>
             <div class="v">
               <span class="pill {tone(detailItem.status)}"
                 >{(detailItem.status || 'queued').toUpperCase()}</span
@@ -573,24 +573,24 @@
             </div>
           </div>
           <div class="kv">
-            <div class="k">{$t('admin.email_outbox.details.attempts') || 'Attempts'}</div>
+            <div class="k">{$t('admin.email_outbox.details.attempts')}</div>
             <div class="v mono">{detailItem.attempts}/{detailItem.max_attempts}</div>
           </div>
           <div class="kv">
-            <div class="k">{$t('admin.email_outbox.details.scheduled') || 'Scheduled'}</div>
+            <div class="k">{$t('admin.email_outbox.details.scheduled')}</div>
             <div class="v">{formatDateTime(detailItem.scheduled_at)}</div>
           </div>
           <div class="kv">
-            <div class="k">{$t('admin.email_outbox.details.sent') || 'Sent'}</div>
+            <div class="k">{$t('admin.email_outbox.details.sent')}</div>
             <div class="v">{detailItem.sent_at ? formatDateTime(detailItem.sent_at) : '-'}</div>
           </div>
           <div class="kv full">
-            <div class="k">{$t('admin.email_outbox.details.subject') || 'Subject'}</div>
+            <div class="k">{$t('admin.email_outbox.details.subject')}</div>
             <div class="v">{detailItem.subject}</div>
           </div>
           {#if detailItem.last_error}
             <div class="kv full">
-              <div class="k">{$t('admin.email_outbox.details.last_error') || 'Last error'}</div>
+              <div class="k">{$t('admin.email_outbox.details.last_error')}</div>
               <div class="v mono err">{detailItem.last_error}</div>
             </div>
           {/if}
@@ -601,16 +601,16 @@
           bind:activeId={detailTab}
           {isMobile}
           priorityCount={2}
-          ariaLabel={$t('admin.email_outbox.details.subject') || 'Email content tabs'}
+          ariaLabel={$t('admin.email_outbox.details.subject')}
         />
 
         {#if detailTab === 'html' && detailItem.body_html}
           <div class="viewer">
-            <iframe class="iframe" sandbox="" srcdoc={detailItem.body_html} title={$t('admin.email_outbox.html_preview') || 'HTML preview'}
+            <iframe class="iframe" sandbox="" srcdoc={detailItem.body_html} title={$t('admin.email_outbox.html_preview')}
             ></iframe>
           </div>
           <details class="source">
-            <summary>{$t('admin.email_outbox.details.view_source') || 'View source'}</summary>
+            <summary>{$t('admin.email_outbox.details.view_source')}</summary>
             <pre class="mono pre">{detailItem.body_html}</pre>
           </details>
         {:else}
@@ -618,17 +618,17 @@
         {/if}
       </div>
     {:else}
-      <div class="muted">{$t('admin.email_outbox.details.not_found') || 'Not found.'}</div>
+      <div class="muted">{$t('admin.email_outbox.details.not_found')}</div>
     {/if}
   {/snippet}
 </Modal>
 
 <ConfirmDialog
   bind:show={showDeleteConfirm}
-  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
-  message={$t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  title={$t('common.confirm_delete_title')}
+  message={$t('common.confirm_delete')}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   type="danger"
   onconfirm={handleConfirmDelete}
   oncancel={() => { deleteTargetId = null; }}

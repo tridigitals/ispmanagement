@@ -948,8 +948,8 @@
 
 <div class="page-content fade-in">
   <NetworkPageHeader
-    title={$t('admin.network.incidents.title') || 'Network Incidents'}
-    subtitle={$t('network.incident.title') || 'Insiden operasional dari alert.'}
+    title={$t('admin.network.incidents.title')}
+    subtitle={$t('network.incident.title')}
   >
     {#snippet actions()}
       <AlertsIncidentsSwitch
@@ -966,7 +966,7 @@
           activeOnly = !activeOnly;
           void load();
         }}
-        title={$t('admin.network.incidents.actions.toggle') || 'Toggle active/resolved'}
+        title={$t('admin.network.incidents.actions.toggle')}
       >
         <Icon name={activeOnly ? 'filter' : 'archive'} size={16} />
         {activeOnly
@@ -974,9 +974,9 @@
           : $t('admin.network.incidents.actions.all') || 'All'}
       </button>
 
-      <button class="btn ghost" type="button" onclick={load} title={$t('common.refresh') || 'Refresh'}>
+      <button class="btn ghost" type="button" onclick={load} title={$t('common.refresh')}>
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
+        {$t('common.refresh')}
       </button>
       {#if $can('manage', 'network_incidents')}
         <button class="btn ghost" type="button" onclick={runAutoEscalationNow} disabled={escalationRunBusy}>
@@ -989,7 +989,7 @@
       <div class="export-wrap">
         <button class="btn ghost" type="button" onclick={toggleExportMenu}>
           <Icon name="download" size={16} />
-          {$t('admin.network.incidents.export.title') || 'Export'}
+          {$t('admin.network.incidents.export.title')}
           <Icon name="chevron-down" size={14} />
         </button>
         {#if exportMenuOpen}
@@ -999,7 +999,7 @@
             onclick={() => {
               exportMenuOpen = false;
             }}
-            aria-label={$t('common.close') || 'Close'}
+            aria-label={$t('common.close')}
           ></button>
           <div class="export-menu">
             <button
@@ -1010,7 +1010,7 @@
                 exportCsv();
               }}
             >
-              {$t('admin.network.incidents.export.csv') || 'Export CSV'}
+              {$t('admin.network.incidents.export.csv')}
             </button>
             <button
               class="export-item"
@@ -1020,7 +1020,7 @@
                 exportExcel();
               }}
             >
-              {$t('admin.network.incidents.export.excel') || 'Export Excel'}
+              {$t('admin.network.incidents.export.excel')}
             </button>
           </div>
         {/if}
@@ -1028,7 +1028,7 @@
       {#if $can('manage', 'network_incidents')}
         <button class="btn ghost" type="button" onclick={openSimulateDialog}>
           <Icon name="activity" size={16} />
-          {$t('admin.network.incidents.actions.simulate') || 'Simulate'}
+          {$t('admin.network.incidents.actions.simulate')}
         </button>
       {/if}
     {/snippet}
@@ -1037,42 +1037,42 @@
   <div class="table-wrap">
     <div class="analytics">
       <button class="analytic-card" type="button" onclick={() => void focusStatus('open')}>
-        <div class="label">{$t('admin.network.incidents.analytics.open') || 'Open'}</div>
+        <div class="label">{$t('admin.network.incidents.analytics.open')}</div>
         <div class="value">{analytics.open}</div>
       </button>
       <button class="analytic-card" type="button" onclick={() => void focusStatus('ack')}>
-        <div class="label">{$t('admin.network.incidents.analytics.ack') || 'Ack'}</div>
+        <div class="label">{$t('admin.network.incidents.analytics.ack')}</div>
         <div class="value">{analytics.ack}</div>
       </button>
       <button class="analytic-card" type="button" onclick={() => void focusStatus('in_progress')}>
-        <div class="label">{$t('admin.network.incidents.analytics.in_progress') || 'In Progress'}</div>
+        <div class="label">{$t('admin.network.incidents.analytics.in_progress')}</div>
         <div class="value">{analytics.inProgress}</div>
       </button>
       <button class="analytic-card" type="button" onclick={() => void focusStatus('resolved')}>
-        <div class="label">{$t('admin.network.incidents.analytics.resolved') || 'Resolved'}</div>
+        <div class="label">{$t('admin.network.incidents.analytics.resolved')}</div>
         <div class="value">{analytics.resolved}</div>
       </button>
       <div class="analytic-card">
-        <div class="label">{$t('admin.network.incidents.analytics.mtta') || 'MTTA'}</div>
+        <div class="label">{$t('admin.network.incidents.analytics.mtta')}</div>
         <div class="value">{formatDurationCompact(analytics.mtta)}</div>
       </div>
       <div class="analytic-card">
-        <div class="label">{$t('admin.network.incidents.analytics.mttr') || 'MTTR'}</div>
+        <div class="label">{$t('admin.network.incidents.analytics.mttr')}</div>
         <div class="value">{formatDurationCompact(analytics.mttr)}</div>
       </div>
       <button class="analytic-card" type="button" onclick={focusTopType} disabled={!analytics.topType}>
-        <div class="label">{$t('admin.network.incidents.analytics.top_type_24h') || 'Top Type (24h)'}</div>
+        <div class="label">{$t('admin.network.incidents.analytics.top_type_24h')}</div>
         <div class="value">{analytics.topType ? `${typeLabel(analytics.topType)} (${analytics.topTypeCount})` : '—'}</div>
       </button>
     </div>
 
     <NetworkFilterPanel>
       <div class="control">
-        <label for="inc-filter-assignee">{$t('admin.network.incidents.filters.assignee') || 'Assignee'}</label>
+        <label for="inc-filter-assignee">{$t('admin.network.incidents.filters.assignee')}</label>
         <select id="inc-filter-assignee" class="input" bind:value={filterAssignee}>
-          <option value="all">{$t('admin.network.incidents.filters.all_assignees') || 'All assignees'}</option>
+          <option value="all">{$t('admin.network.incidents.filters.all_assignees')}</option>
           <option value="unassigned">
-            {$t('admin.network.incidents.filters.unassigned') || 'Unassigned'}
+            {$t('admin.network.incidents.filters.unassigned')}
           </option>
           {#each teamMembers as member}
             <option value={member.user_id}>{member.name}</option>
@@ -1081,9 +1081,9 @@
       </div>
 
       <div class="control">
-        <label for="inc-filter-status">{$t('admin.network.incidents.columns.status') || 'Status'}</label>
+        <label for="inc-filter-status">{$t('admin.network.incidents.columns.status')}</label>
         <select id="inc-filter-status" class="input" bind:value={filterStatus}>
-          <option value="all">{$t('admin.network.incidents.filters.all_status') || 'All status'}</option>
+          <option value="all">{$t('admin.network.incidents.filters.all_status')}</option>
           <option value="open">open</option>
           <option value="in_progress">in_progress</option>
           <option value="ack">ack</option>
@@ -1092,9 +1092,9 @@
       </div>
 
       <div class="control">
-        <label for="inc-filter-severity">{$t('admin.network.incidents.columns.severity') || 'Severity'}</label>
+        <label for="inc-filter-severity">{$t('admin.network.incidents.columns.severity')}</label>
         <select id="inc-filter-severity" class="input" bind:value={filterSeverity}>
-          <option value="all">{$t('admin.network.incidents.filters.all_severity') || 'All severity'}</option>
+          <option value="all">{$t('admin.network.incidents.filters.all_severity')}</option>
           <option value="info">{severityLabel('info')}</option>
           <option value="warning">{severityLabel('warning')}</option>
           <option value="critical">{severityLabel('critical')}</option>
@@ -1102,9 +1102,9 @@
       </div>
 
       <div class="control">
-        <label for="inc-filter-type">{$t('admin.network.incidents.columns.type') || 'Type'}</label>
+        <label for="inc-filter-type">{$t('admin.network.incidents.columns.type')}</label>
         <select id="inc-filter-type" class="input" bind:value={filterType}>
-          <option value="all">{$t('admin.network.incidents.filters.all_types') || 'All types'}</option>
+          <option value="all">{$t('admin.network.incidents.filters.all_types')}</option>
           {#each incidentTypeOptions as typeOption}
             <option value={typeOption}>{typeLabel(typeOption)}</option>
           {/each}
@@ -1112,30 +1112,30 @@
       </div>
 
       <div class="control">
-        <label for="inc-filter-sort">{$t('admin.network.incidents.filters.sort') || 'Sort'}</label>
+        <label for="inc-filter-sort">{$t('admin.network.incidents.filters.sort')}</label>
         <select id="inc-filter-sort" class="input" bind:value={filterSort}>
           <option value="last_seen_desc">
-            {$t('admin.network.incidents.filters.sort_last_seen_desc') || 'Last seen (newest)'}
+            {$t('admin.network.incidents.filters.sort_last_seen_desc')}
           </option>
           <option value="last_seen_asc">
-            {$t('admin.network.incidents.filters.sort_last_seen_asc') || 'Last seen (oldest)'}
+            {$t('admin.network.incidents.filters.sort_last_seen_asc')}
           </option>
           <option value="severity_desc">
-            {$t('admin.network.incidents.filters.sort_severity_desc') || 'Severity (highest)'}
+            {$t('admin.network.incidents.filters.sort_severity_desc')}
           </option>
           <option value="open_duration_desc">
-            {$t('admin.network.incidents.filters.sort_open_duration_desc') || 'Open duration (longest)'}
+            {$t('admin.network.incidents.filters.sort_open_duration_desc')}
           </option>
         </select>
       </div>
 
       <div class="control">
-        <label for="inc-filter-from">{$t('admin.network.incidents.filters.from') || 'From'}</label>
+        <label for="inc-filter-from">{$t('admin.network.incidents.filters.from')}</label>
         <input id="inc-filter-from" class="input" type="date" bind:value={filterFrom} />
       </div>
 
       <div class="control">
-        <label for="inc-filter-to">{$t('admin.network.incidents.filters.to') || 'To'}</label>
+        <label for="inc-filter-to">{$t('admin.network.incidents.filters.to')}</label>
         <input id="inc-filter-to" class="input" type="date" bind:value={filterTo} />
       </div>
 
@@ -1143,7 +1143,7 @@
         <div class="control-spacer" aria-hidden="true"></div>
         <button class="btn ghost" type="button" onclick={resetFilters}>
           <Icon name="x-circle" size={14} />
-          {$t('admin.network.incidents.filters.reset') || 'Reset'}
+          {$t('admin.network.incidents.filters.reset')}
         </button>
       </div>
     </NetworkFilterPanel>
@@ -1152,7 +1152,7 @@
       <div class="bulk-bar">
         <label class="bulk-select-all">
           <input type="checkbox" checked={allFilteredSelected} onchange={toggleSelectAllFiltered} />
-          <span>{$t('admin.network.incidents.bulk.select_filtered') || 'Select filtered'}</span>
+          <span>{$t('admin.network.incidents.bulk.select_filtered')}</span>
         </label>
 
         <span class="bulk-count">
@@ -1163,7 +1163,7 @@
         <div class="bulk-actions">
           <button class="btn ghost" type="button" disabled={bulkBusy || canBulkAckCount === 0} onclick={bulkAck}>
             <Icon name="check" size={14} />
-            {$t('admin.network.incidents.bulk.ack') || 'Bulk Ack'}
+            {$t('admin.network.incidents.bulk.ack')}
           </button>
           <button
             class="btn ghost"
@@ -1172,7 +1172,7 @@
             onclick={bulkResolve}
           >
             <Icon name="check-circle" size={14} />
-            {$t('admin.network.incidents.bulk.resolve') || 'Bulk Resolve'}
+            {$t('admin.network.incidents.bulk.resolve')}
           </button>
           <select class="input bulk-assign" bind:value={bulkAssigneeId} disabled={bulkBusy || selectedCount === 0}>
             <option value="">{($t('admin.network.incidents.bulk.assign_placeholder') || 'Assign to...')}</option>
@@ -1187,11 +1187,11 @@
             onclick={bulkAssign}
           >
             <Icon name="users" size={14} />
-            {$t('admin.network.incidents.bulk.assign') || 'Bulk Assign'}
+            {$t('admin.network.incidents.bulk.assign')}
           </button>
           <button class="btn ghost" type="button" disabled={bulkBusy || selectedCount === 0} onclick={clearSelection}>
             <Icon name="x-circle" size={14} />
-            {$t('admin.network.incidents.bulk.clear') || 'Clear'}
+            {$t('admin.network.incidents.bulk.clear')}
           </button>
         </div>
       </div>
@@ -1205,9 +1205,9 @@
       pagination={true}
       pageSize={10}
       searchable={true}
-      searchPlaceholder={$t('admin.network.incidents.search') || 'Search incidents...'}
+      searchPlaceholder={$t('admin.network.incidents.search')}
       mobileView={isMobile ? 'card' : 'scroll'}
-      emptyText={$t('admin.network.incidents.empty') || 'No incidents'}
+      emptyText={$t('admin.network.incidents.empty')}
     >
       {#snippet cell({ item, key }: any)}
         {#if key === 'select'}
@@ -1235,7 +1235,7 @@
               {severityLabel(item.severity)}
             </span>
             {#if item.is_auto_escalated}
-              <span class="pill auto-escalated">{$t('admin.network.incidents.labels.auto_escalated') || 'Auto Escalated'}</span>
+              <span class="pill auto-escalated">{$t('admin.network.incidents.labels.auto_escalated')}</span>
             {/if}
           </div>
         {:else if key === 'status'}
@@ -1244,7 +1244,7 @@
               {item.status}
             </span>
             <span class="sla-badge" class:warn={slaLevel(item) === 'warn'} class:breach={slaLevel(item) === 'breach'}>
-              {$t('admin.network.incidents.sla.open_for') || 'Open for'} {formatOpenDuration(incidentOpenMs(item))}
+              {$t('admin.network.incidents.sla.open_for')} {formatOpenDuration(incidentOpenMs(item))}
             </span>
           </div>
         {:else if key === 'seen'}

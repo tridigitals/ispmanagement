@@ -29,7 +29,7 @@
 </script>
 
 {#if viewMode === 'cards' || isMobile}
-  <div class="tenants-grid" aria-label={$t('superadmin.tenants.aria.cards') || 'Tenant cards'}>
+  <div class="tenants-grid" aria-label={$t('superadmin.tenants.aria.cards')}>
     {#each tenants as tenant (tenant.id)}
       <div class="tenant-card" in:fly={{ y: 6, duration: 150 }}>
         <div class="tenant-top">
@@ -59,7 +59,7 @@
 
         <div class="tenant-meta">
           <span class="meta-label">
-            {$t('superadmin.tenants.meta.created') || 'Created'}
+            {$t('superadmin.tenants.meta.created')}
           </span>
           <span class="meta-value">
             {tenant.created_at
@@ -81,7 +81,7 @@
           </button>
           <button
             class="btn-icon"
-            title={$t('common.edit') || 'Edit'}
+            title={$t('common.edit')}
             type="button"
             onclick={() => onEdit(tenant)}
           >
@@ -89,7 +89,7 @@
           </button>
           <button
             class="btn-icon danger"
-            title={$t('common.delete') || 'Delete'}
+            title={$t('common.delete')}
             type="button"
             onclick={() => onDelete(tenant.id)}
           >
@@ -105,10 +105,10 @@
           <Icon name="database" size={64} />
         </div>
         <h3>
-          {$t('superadmin.tenants.empty.title') || 'No tenants found'}
+          {$t('superadmin.tenants.empty.title')}
         </h3>
         <p>
-          {$t('superadmin.tenants.empty.hint') || 'Try adjusting your search or filters.'}
+          {$t('superadmin.tenants.empty.hint')}
         </p>
       </div>
     {/if}
@@ -120,7 +120,7 @@
       {loading}
       data={tenants}
       {columns}
-      emptyText={$t('superadmin.tenants.empty.title') || 'No tenants found'}
+      emptyText={$t('superadmin.tenants.empty.title')}
       mobileView="scroll"
     >
       {#snippet empty()}
@@ -129,10 +129,10 @@
             <Icon name="database" size={64} />
           </div>
           <h3>
-            {$t('superadmin.tenants.empty.title') || 'No tenants found'}
+            {$t('superadmin.tenants.empty.title')}
           </h3>
           <p>
-            {$t('superadmin.tenants.empty.hint') || 'Try adjusting your search or filters.'}
+            {$t('superadmin.tenants.empty.hint')}
           </p>
         </div>
       {/snippet}
@@ -171,7 +171,7 @@
             </button>
             <button
               class="btn-icon"
-              title={$t('common.edit') || 'Edit'}
+              title={$t('common.edit')}
               type="button"
               onclick={() => onEdit(item)}
             >
@@ -179,7 +179,7 @@
             </button>
             <button
               class="btn-icon danger"
-              title={$t('common.delete') || 'Delete'}
+              title={$t('common.delete')}
               type="button"
               onclick={() => onDelete(item.id)}
             >

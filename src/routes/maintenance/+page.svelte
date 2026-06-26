@@ -53,14 +53,14 @@
       <Icon name="settings" size={34} />
     </div>
 
-    <h1>{$t('pages.maintenance.title') || 'Under Maintenance'}</h1>
+    <h1>{$t('pages.maintenance.title')}</h1>
     <p class="message">{message}</p>
 
     <div class="progress-container">
       <div class="progress-bar">
         <div class="progress-fill"></div>
       </div>
-      <span class="progress-text">{$t('pages.maintenance.working') || 'Working on it'}{dots}</span>
+      <span class="progress-text">{$t('pages.maintenance.working')}{dots}</span>
     </div>
 
     <p class="footer-text">

@@ -11,7 +11,7 @@
   <div class="card-header">
     <Icon name="database" size={20} />
     <h3>
-      {$t('superadmin.system.database_tables') || 'Database Tables'}
+      {$t('superadmin.system.database_tables')}
     </h3>
   </div>
   <div class="card-body">
@@ -19,10 +19,10 @@
       <thead>
         <tr>
           <th>
-            {$t('superadmin.system.table_headers.table') || 'Table'}
+            {$t('superadmin.system.table_headers.table')}
           </th>
           <th class="text-right">
-            {$t('superadmin.system.table_headers.rows') || 'Rows'}
+            {$t('superadmin.system.table_headers.rows')}
           </th>
         </tr>
       </thead>

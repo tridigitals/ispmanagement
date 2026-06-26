@@ -92,7 +92,7 @@
     if (occupancy.length > 0) return occupancy;
     const detailSummary = getNetworkAssetDetailSummary(item);
     const coordinateSummary = formatNetworkAssetCoordinates(item.latitude, item.longitude);
-    return coordinateSummary ? [...detailSummary, `${$t('network.asset.map_prefix') || 'Map:'} ${coordinateSummary}`] : detailSummary;
+    return coordinateSummary ? [...detailSummary, `${$t('network.asset.map_prefix')} ${coordinateSummary}`] : detailSummary;
   }
   const columns = $derived.by(() => [
     { key: 'name', label: $t('admin.ftth_assets.table.asset') || 'Asset' },
@@ -272,42 +272,41 @@
 <div class="page-content fade-in">
   <div class="head">
     <div>
-      <h1>{$t('sidebar.ftth_assets') || 'FTTH Assets'}</h1>
+      <h1>{$t('sidebar.ftth_assets')}</h1>
       <p class="sub">
-        {$t('admin.ftth_assets.page.subtitle') ||
-          'Manage tenant FTTH assets such as OLT, ODP, splitter, ONT, and related devices.'}
+        {$t('admin.ftth_assets.page.subtitle')}
       </p>
     </div>
     <div class="head-actions">
       <button class="btn ghost" type="button" onclick={load}>
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
+        {$t('common.refresh')}
       </button>
       {#if $can('manage', 'ftth_assets')}
         <button class="btn" type="button" onclick={openCreate}>
           <Icon name="plus" size={16} />
-          {$t('admin.ftth_assets.actions.new_asset') || 'New asset'}
+          {$t('admin.ftth_assets.actions.new_asset')}
         </button>
       {/if}
     </div>
   </div>
 
   <div class="stats">
-    <StatsCard title={$t('admin.ftth_assets.stats.total') || 'Total'} value={stats.total} icon="box" color="primary" />
+    <StatsCard title={$t('admin.ftth_assets.stats.total')} value={stats.total} icon="box" color="primary" />
     <StatsCard
-      title={$t('admin.ftth_assets.stats.installed') || 'Installed'}
+      title={$t('admin.ftth_assets.stats.installed')}
       value={stats.installed}
       icon="plug"
       color="success"
     />
     <StatsCard
-      title={$t('admin.ftth_assets.stats.available') || 'Available'}
+      title={$t('admin.ftth_assets.stats.available')}
       value={stats.available}
       icon="check-circle"
       color="primary"
     />
     <StatsCard
-      title={$t('admin.ftth_assets.stats.faulty') || 'Faulty'}
+      title={$t('admin.ftth_assets.stats.faulty')}
       value={stats.faulty}
       icon="alert-triangle"
       color="danger"
@@ -318,8 +317,8 @@
     <div class="filter-shell">
       <div class="filter-shell__head">
         <div>
-          <span class="filter-kicker">{$t('admin.ftth_assets.filters.title') || 'Filter Registry'}</span>
-          <strong>{$t('admin.ftth_assets.filters.subtitle') || 'Find and narrow FTTH assets quickly'}</strong>
+          <span class="filter-kicker">{$t('admin.ftth_assets.filters.title')}</span>
+          <strong>{$t('admin.ftth_assets.filters.subtitle')}</strong>
         </div>
         <span class="filter-count">{filteredRows.length} {$t('admin.ftth_assets.filters.asset_count', { values: { count: filteredRows.length } }) || `asset${filteredRows.length === 1 ? '' : 's'}`}</span>
       </div>
@@ -328,11 +327,10 @@
         <input
           class="input"
           bind:value={q}
-          placeholder={$t('admin.ftth_assets.filters.search_placeholder') ||
-            'Search asset, code, or serial...'}
+          placeholder={$t('admin.ftth_assets.filters.search_placeholder')}
         />
         <select class="input" bind:value={assetType}>
-          <option value="all">{$t('admin.ftth_assets.filters.all_types') || 'All types'}</option>
+          <option value="all">{$t('admin.ftth_assets.filters.all_types')}</option>
           {#each NETWORK_ASSET_TYPE_GROUPS as group}
             <optgroup label={group.label}>
               {#each group.types as type}
@@ -342,12 +340,12 @@
           {/each}
         </select>
         <select class="input" bind:value={status}>
-          <option value="all">{$t('admin.ftth_assets.filters.all_statuses') || 'All statuses'}</option>
-          <option value="available">{$t('admin.ftth_assets.status.available') || 'Available'}</option>
-          <option value="reserved">{$t('admin.ftth_assets.status.reserved') || 'Reserved'}</option>
-          <option value="installed">{$t('admin.ftth_assets.status.installed') || 'Installed'}</option>
-          <option value="faulty">{$t('admin.ftth_assets.status.faulty') || 'Faulty'}</option>
-          <option value="retired">{$t('admin.ftth_assets.status.retired') || 'Retired'}</option>
+          <option value="all">{$t('admin.ftth_assets.filters.all_statuses')}</option>
+          <option value="available">{$t('admin.ftth_assets.status.available')}</option>
+          <option value="reserved">{$t('admin.ftth_assets.status.reserved')}</option>
+          <option value="installed">{$t('admin.ftth_assets.status.installed')}</option>
+          <option value="faulty">{$t('admin.ftth_assets.status.faulty')}</option>
+          <option value="retired">{$t('admin.ftth_assets.status.retired')}</option>
         </select>
       </div>
     </div>
@@ -357,7 +355,7 @@
         {columns}
         data={filteredRows}
         {loading}
-        emptyText={$t('admin.ftth_assets.table.empty') || 'No FTTH assets yet.'}
+        emptyText={$t('admin.ftth_assets.table.empty')}
         pagination={false}
       >
         {#snippet cell({ item, key }: any)}
@@ -394,16 +392,16 @@
                 <button
                   class="btn-icon"
                   type="button"
-                  title={$t('network.asset.open_on_map') || 'Open on map'}
+                  title={$t('network.asset.open_on_map')}
                   onclick={() => openOnMap(item)}
                   disabled={item.latitude == null || item.longitude == null}
                 >
                   <Icon name="map-pin" size={15} />
                 </button>
-                <button class="btn-icon" type="button" title={$t('common.edit') || 'Edit'} onclick={() => openEdit(item)}>
+                <button class="btn-icon" type="button" title={$t('common.edit')} onclick={() => openEdit(item)}>
                   <Icon name="pencil" size={15} />
                 </button>
-                <button class="btn-icon danger" type="button" title={$t('common.delete') || 'Delete'} onclick={() => remove(item)}>
+                <button class="btn-icon danger" type="button" title={$t('common.delete')} onclick={() => remove(item)}>
                   <Icon name="trash-2" size={15} />
                 </button>
               {/if}
@@ -431,10 +429,10 @@
 
 <ConfirmDialog
   bind:show={showDeleteConfirm}
-  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
+  title={$t('common.confirm_delete_title')}
   message={(deleteTarget ? ($t('admin.ftth_assets.confirm_delete', { values: { name: deleteTarget.name } }) || `Delete asset "${deleteTarget.name}"?`) : '') || $t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   type="danger"
   onconfirm={handleConfirmDelete}
   oncancel={() => { deleteTarget = null; }}

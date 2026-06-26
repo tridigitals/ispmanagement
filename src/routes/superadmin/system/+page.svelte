@@ -156,27 +156,27 @@
 <div class="page-container fade-in">
   <div class="page-header">
     <div class="header-content">
-      <h1>{$t('superadmin.system.title') || 'System Health'}</h1>
+      <h1>{$t('superadmin.system.title')}</h1>
       <p class="subtitle">
-        {$t('superadmin.system.subtitle') || 'Monitor platform status and metrics'}
+        {$t('superadmin.system.subtitle')}
       </p>
-      <div class="view-toggle" role="group" aria-label={$t('superadmin.system.views') || 'System views'}>
+      <div class="view-toggle" role="group" aria-label={$t('superadmin.system.views')}>
         <button class:active={activeView === 'health'} onclick={() => switchView('health')}>
-          {$t('superadmin.system.tabs.health') || 'Health'}
+          {$t('superadmin.system.tabs.health')}
         </button>
         <button
           class:active={activeView === 'diagnostics'}
           onclick={() => switchView('diagnostics')}
         >
-          {$t('superadmin.system.tabs.diagnostics') || 'Diagnostics'}
+          {$t('superadmin.system.tabs.diagnostics')}
         </button>
       </div>
     </div>
     <button
       class="btn-refresh"
       onclick={refreshCurrent}
-      title={$t('common.refresh') || 'Refresh'}
-      aria-label={$t('common.refresh') || 'Refresh'}
+      title={$t('common.refresh')}
+      aria-label={$t('common.refresh')}
     >
       <Icon name="refresh-cw" size={18} />
     </button>
@@ -187,7 +187,7 @@
       <div class="loading-state">
         <div class="spinner"></div>
         <p>
-          {$t('superadmin.system.loading') || 'Loading system health...'}
+          {$t('superadmin.system.loading')}
         </p>
       </div>
     {:else if error}
@@ -195,7 +195,7 @@
         <Icon name="alert-circle" size={24} />
         <p>{error}</p>
         <button class="btn btn-primary" onclick={loadHealth}>
-          {$t('superadmin.system.retry') || 'Retry'}
+          {$t('superadmin.system.retry')}
         </button>
       </div>
     {:else if health}
@@ -220,14 +220,14 @@
         <div class="loading-state">
           <div class="spinner"></div>
           <p>
-            {$t('superadmin.system.loading') || 'Loading system health...'}
+            {$t('superadmin.system.loading')}
           </p>
         </div>
       {/if}
 
       <div class="last-updated">
         <Icon name="clock" size={14} />
-        {$t('superadmin.system.last_updated') || 'Last updated:'}
+        {$t('superadmin.system.last_updated')}
         {formatDateTime(health.collected_at, { timeZone: $appSettings.app_timezone })}
       </div>
     {/if}
@@ -235,7 +235,7 @@
     <div class="loading-state">
       <div class="spinner"></div>
       <p>
-        {$t('superadmin.system.diagnostics.loading') || 'Loading diagnostics...'}
+        {$t('superadmin.system.diagnostics.loading')}
       </p>
     </div>
   {:else if diagError}
@@ -243,7 +243,7 @@
       <Icon name="alert-circle" size={24} />
       <p>{diagError}</p>
       <button class="btn btn-primary" onclick={loadDiagnostics}>
-        {$t('superadmin.system.retry') || 'Retry'}
+        {$t('superadmin.system.retry')}
       </button>
     </div>
   {:else if diagnostics}
@@ -253,7 +253,7 @@
       <div class="loading-state">
         <div class="spinner"></div>
         <p>
-          {$t('superadmin.system.diagnostics.loading') || 'Loading diagnostics...'}
+          {$t('superadmin.system.diagnostics.loading')}
         </p>
       </div>
     {/if}

@@ -19,19 +19,17 @@
 <div class="card section fade-in">
   <div class="card-header">
     <h3>
-      {$t('superadmin.settings.sections.auth') || 'Authentication Settings'}
+      {$t('superadmin.settings.sections.auth')}
     </h3>
   </div>
   <div class="card-body">
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="allow-registration">
-          {$t('superadmin.settings.auth.allow_public_registration.label') ||
-            'Allow Public Registration'}
+          {$t('superadmin.settings.auth.allow_public_registration.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.auth.allow_public_registration.desc') ||
-            'Allow new users to sign up freely.'}
+          {$t('superadmin.settings.auth.allow_public_registration.desc')}
         </p>
       </div>
       <label class="toggle">
@@ -48,12 +46,10 @@
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="require-email-verify">
-          {$t('superadmin.settings.auth.require_email_verification.label') ||
-            'Require Email Verification'}
+          {$t('superadmin.settings.auth.require_email_verification.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.auth.require_email_verification.desc') ||
-            'Users must verify email before logging in.'}
+          {$t('superadmin.settings.auth.require_email_verification.desc')}
         </p>
       </div>
       <label class="toggle">
@@ -78,11 +74,10 @@
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="jwt-expiry">
-          {$t('superadmin.settings.auth.jwt_expiry.label') || 'JWT Expiry (Hours)'}
+          {$t('superadmin.settings.auth.jwt_expiry.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.auth.jwt_expiry.desc') ||
-            'How long an auth token remains valid.'}
+          {$t('superadmin.settings.auth.jwt_expiry.desc')}
         </p>
       </div>
       <div class="input-group">
@@ -94,17 +89,17 @@
           min="1"
           class="form-input"
         />
-        <span class="input-suffix">{$t('common.units.hours') || 'hours'}</span>
+        <span class="input-suffix">{$t('common.units.hours')}</span>
       </div>
     </div>
 
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="session-timeout">
-          {$t('superadmin.settings.auth.session_timeout.label') || 'Session Timeout (Minutes)'}
+          {$t('superadmin.settings.auth.session_timeout.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.auth.session_timeout.desc') || 'Auto-logout after inactivity.'}
+          {$t('superadmin.settings.auth.session_timeout.desc')}
         </p>
       </div>
       <div class="input-group">
@@ -116,7 +111,7 @@
           min="5"
           class="form-input"
         />
-        <span class="input-suffix">{$t('common.units.min') || 'min'}</span>
+        <span class="input-suffix">{$t('common.units.min')}</span>
       </div>
     </div>
   </div>

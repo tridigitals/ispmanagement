@@ -18,7 +18,7 @@
   }
 </script>
 
-<section class="insight-strip" aria-label={$t('network.map.insight_strip') || 'Operational insight strip'}>
+<section class="insight-strip" aria-label={$t('network.map.insight_strip')}>
   {#if cards.length}
     {#each cards as card (card.key)}
       <article class={`insight-card ${toneClass(card.tone)}`}>

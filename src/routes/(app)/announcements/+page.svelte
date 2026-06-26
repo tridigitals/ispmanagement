@@ -162,12 +162,11 @@
       <div class="hgroup">
         <div class="kicker">
           <span class="dot"></span>
-          {$t('announcements.title') || 'Announcements'}
+          {$t('announcements.title')}
         </div>
-        <h1 class="h1">{$t('announcements.title') || 'Announcements'}</h1>
+        <h1 class="h1">{$t('announcements.title')}</h1>
         <div class="sub">
-          {$t('announcements.feed_subtitle') ||
-            'Product updates, maintenance windows, and important notices.'}
+          {$t('announcements.feed_subtitle')}
         </div>
       </div>
 
@@ -187,10 +186,10 @@
           class="btn"
           type="button"
           onclick={() => load(true)}
-          title={$t('common.refresh') || 'Refresh'}
+          title={$t('common.refresh')}
         >
           <Icon name="refresh-cw" size={16} />
-          {$t('common.refresh') || 'Refresh'}
+          {$t('common.refresh')}
         </button>
       </div>
     </div>
@@ -218,7 +217,7 @@
       {#if q.trim() || sev !== 'all' || mode !== 'all'}
         <button class="filter-clear" type="button" onclick={clearFilters}>
           <Icon name="x" size={16} />
-          {$t('common.clear') || 'Clear'}
+          {$t('common.clear')}
         </button>
       {/if}
     </div>
@@ -227,21 +226,21 @@
   {#if loading && rows.length === 0}
     <div class="loading">
       <div class="spinner"></div>
-      <div>{$t('common.loading') || 'Loading...'}</div>
+      <div>{$t('common.loading')}</div>
     </div>
   {:else if rows.length === 0}
     <div class="empty">
       <Icon name="info" size={18} />
-      <span>{$t('announcements.empty_feed') || 'No announcements yet.'}</span>
+      <span>{$t('announcements.empty_feed')}</span>
     </div>
   {:else}
     <div class="summary">
       <div class="count">
         <span class="num">{rows.length}</span>
-        <span class="txt">{$t('announcements.list.title') || 'Posts'}</span>
+        <span class="txt">{$t('announcements.list.title')}</span>
       </div>
       <div class="hint">
-        {$t('common.updated') || 'Updated'}:
+        {$t('common.updated')}:
         {formatDateTime(new Date().toISOString(), { timeZone: $appSettings.app_timezone })}
       </div>
     </div>
@@ -282,13 +281,13 @@
             </span>
             {#if a.mode === 'banner'}
               <span class="dot"></span>
-              <span class="mode">{$t('announcements.modes.banner') || 'Banner'}</span>
+              <span class="mode">{$t('announcements.modes.banner')}</span>
             {/if}
           </div>
           <div class="title">{a.title}</div>
           <div class="body">{snippet(a.body)}</div>
           <div class="more">
-            {$t('announcements.actions.read') || 'Read'}
+            {$t('announcements.actions.read')}
             <Icon name="arrow-right" size={16} />
           </div>
         </button>

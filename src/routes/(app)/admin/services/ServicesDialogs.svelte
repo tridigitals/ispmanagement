@@ -86,12 +86,12 @@
 
 <Modal
   show={showServiceTypePicker}
-  title={$t('admin.services.type_picker.title') || 'Choose Service Type'}
+  title={$t('admin.services.type_picker.title')}
   width="860px"
   onclose={() => (showServiceTypePicker = false)}
 >
   <div class="type-picker-wrap">
-    <p class="type-picker-subtitle">{$t('admin.services.category_hint') || 'Pilih kategori layanan.'}</p>
+    <p class="type-picker-subtitle">{$t('admin.services.category_hint')}</p>
     <div class="type-card-grid">
       {#each serviceTypeCards as card}
         <button type="button" class="type-card" onclick={() => startCreateWithType(card.value)}>
@@ -108,7 +108,7 @@
             {/each}
           </div>
           <span class="type-card-cta">
-            {$t('admin.services.type_picker.continue') || 'Continue'}
+            {$t('admin.services.type_picker.continue')}
             <Icon name="arrow-right" size={14} />
           </span>
         </button>
@@ -140,7 +140,7 @@
       <div class="selected-type-banner">
         <div class="selected-type-main">
           <span class="selected-type-label"
-            >{$t('admin.services.fields.service_type') || 'Service type'}</span
+            >{$t('admin.services.fields.service_type')}</span
           >
           <span class="badge neutral">{serviceTypeLabel(pkgServiceType, pkgProvisioningType)}</span>
         </div>
@@ -154,7 +154,7 @@
             }}
           >
             <Icon name="refresh-cw" size={14} />
-            {$t('admin.services.type_picker.change') || 'Change type'}
+            {$t('admin.services.type_picker.change')}
           </button>
         {/if}
       </div>
@@ -165,7 +165,7 @@
             type="button"
             class="hint-chip"
             onclick={() => addFeatureIfMissing(suggestion)}
-            title={$t('admin.services.type_picker.add_as_feature') || 'Add as feature'}
+            title={$t('admin.services.type_picker.add_as_feature')}
           >
             <Icon name="plus" size={12} />
             {suggestion}
@@ -174,32 +174,31 @@
       </div>
 
       <label>
-        <span>{$t('admin.network.packages.fields.name') || 'Name'}</span>
+        <span>{$t('admin.network.packages.fields.name')}</span>
         <input class="input" bind:value={pkgName} />
       </label>
 
       <label>
-        <span>{$t('admin.network.packages.fields.description') || 'Description'}</span>
+        <span>{$t('admin.network.packages.fields.description')}</span>
         <input class="input" bind:value={pkgDesc} />
       </label>
 
       {#if isInternetType(pkgServiceType)}
         <label>
-          <span>{$t('admin.services.fields.provisioning_type') || 'Provisioning type'}</span>
+          <span>{$t('admin.services.fields.provisioning_type')}</span>
           <select class="input" bind:value={pkgProvisioningType}>
             <option value="pppoe">{provisioningTypeLabel('pppoe')}</option>
             <option value="dhcp_static">{provisioningTypeLabel('dhcp_static')}</option>
           </select>
           <div class="field-hint">
-            {$t('admin.services.fields.provisioning_type_hint') ||
-              'Choose how this internet package will be activated during installation.'}
+            {$t('admin.services.fields.provisioning_type_hint')}
           </div>
         </label>
       {/if}
 
       <label>
         <span
-          >{$t('admin.network.packages.fields.price_monthly') || 'Monthly price'} ({tenantCurrencyCode})</span
+          >{$t('admin.network.packages.fields.price_monthly')} ({tenantCurrencyCode})</span
         >
         <div class="price-input-wrap">
           <input
@@ -217,23 +216,22 @@
       <div class="toggle-row">
         <div class="toggle-text">
           <div class="toggle-title">
-            {$t('admin.network.packages.fields.enable_yearly') || 'Enable yearly price'}
+            {$t('admin.network.packages.fields.enable_yearly')}
           </div>
           <div class="toggle-sub">
-            {$t('admin.network.packages.fields.enable_yearly_hint') ||
-              'Turn on if this package has yearly billing.'}
+            {$t('admin.network.packages.fields.enable_yearly_hint')}
           </div>
         </div>
         <Toggle
           bind:checked={pkgYearlyEnabled}
-          ariaLabel={$t('admin.network.packages.fields.enable_yearly') || 'Enable yearly price'}
+          ariaLabel={$t('admin.network.packages.fields.enable_yearly')}
         />
       </div>
 
       {#if pkgYearlyEnabled}
         <label>
           <span
-            >{$t('admin.network.packages.fields.price_yearly') || 'Yearly price'} ({tenantCurrencyCode})</span
+            >{$t('admin.network.packages.fields.price_yearly')} ({tenantCurrencyCode})</span
           >
           <div class="price-input-wrap">
             <input
@@ -246,16 +244,15 @@
             <span class="currency-addon">{tenantCurrencyCode}</span>
           </div>
           <div class="field-hint">
-            {$t('admin.network.packages.fields.currency_active') || 'Active currency'}:
+            {$t('admin.network.packages.fields.currency_active')}:
             <strong>{tenantCurrencyCode}</strong>
             {#if tenantCurrencyCode !== baseCurrencyCode}
-              · {$t('admin.network.packages.fields.currency_base') || 'Base currency'}:
+              · {$t('admin.network.packages.fields.currency_base')}:
               <strong>{baseCurrencyCode}</strong>
             {/if}
           </div>
           <div class="field-hint">
-            {$t('admin.network.packages.fields.price_hint') ||
-              'Stored in base currency; displayed in your tenant currency when possible.'}
+            {$t('admin.network.packages.fields.price_hint')}
             {#if tenantCurrencyCode !== baseCurrencyCode}
               <span class="hint-inline">
                 Preview: {formatDisplayPrice(Number(pkgPriceMonthly || 0))}/mo, {formatDisplayPrice(
@@ -269,15 +266,14 @@
 
       <div class="toggle-row">
         <div class="toggle-text">
-          <div class="toggle-title">{$t('admin.network.packages.fields.active') || 'Active'}</div>
+          <div class="toggle-title">{$t('admin.network.packages.fields.active')}</div>
           <div class="toggle-sub">
-            {$t('admin.network.packages.fields.active_hint') ||
-              'Inactive packages will be hidden from selection.'}
+            {$t('admin.network.packages.fields.active_hint')}
           </div>
         </div>
         <Toggle
           bind:checked={pkgActive}
-          ariaLabel={$t('admin.network.packages.fields.active') || 'Active'}
+          ariaLabel={$t('admin.network.packages.fields.active')}
         />
       </div>
 
@@ -285,41 +281,39 @@
         <div class="toggle-row">
           <div class="toggle-text">
             <div class="toggle-title">
-              {$t('admin.network.packages.mapping.inline_title') || 'Map to router now'}
+              {$t('admin.network.packages.mapping.inline_title')}
             </div>
             <div class="toggle-sub">
-              {$t('admin.network.packages.mapping.inline_hint') || 'Optional, per router.'}
+              {$t('admin.network.packages.mapping.inline_hint')}
             </div>
           </div>
           <Toggle
             bind:checked={pkgMapEnabled}
-            ariaLabel={$t('admin.network.packages.mapping.inline_title') || 'Map to router now'}
+            ariaLabel={$t('admin.network.packages.mapping.inline_title')}
           />
         </div>
       {:else if !isInternetType(pkgServiceType)}
         <div class="field-hint">
-          {$t('admin.services.mapping.not_required') ||
-            'Router PPP profile mapping is not required for this service type.'}
+          {$t('admin.services.mapping.not_required')}
         </div>
       {:else}
         <div class="field-hint">
-          {$t('admin.services.mapping.not_required_dhcp') ||
-            'PPP profile mapping is skipped for DHCP static provisioning.'}
+          {$t('admin.services.mapping.not_required_dhcp')}
         </div>
       {/if}
 
       {#if isInternetType(pkgServiceType) && isPppoeProvisioning(pkgProvisioningType) && pkgMapEnabled}
         <div class="grid2">
           <label>
-            <span>{$t('admin.network.packages.mapping.router') || 'Router'}</span>
+            <span>{$t('admin.network.packages.mapping.router')}</span>
             <Select2
               bind:value={pkgMapRouterId}
               options={routerOptions}
               placeholder={($t('common.select') || 'Select') + '...'}
               width="100%"
               maxItems={5000}
-              searchPlaceholder={$t('common.search') || 'Search'}
-              noResultsText={$t('common.no_results') || 'No results'}
+              searchPlaceholder={$t('common.search')}
+              noResultsText={$t('common.no_results')}
               onchange={() => {
                 pkgMapProfile = '';
                 pkgMapPool = '';
@@ -329,7 +323,7 @@
             />
           </label>
           <label>
-            <span>{$t('admin.network.packages.mapping.profile') || 'PPP Profile'}</span>
+            <span>{$t('admin.network.packages.mapping.profile')}</span>
             <Select2
               bind:value={pkgMapProfile}
               options={pkgProfileOptions}
@@ -337,15 +331,15 @@
               width="100%"
               disabled={!pkgMapRouterId || pkgProfileOptions.length === 0}
               maxItems={5000}
-              searchPlaceholder={$t('common.search') || 'Search'}
-              noResultsText={$t('common.no_results') || 'No results'}
+              searchPlaceholder={$t('common.search')}
+              noResultsText={$t('common.no_results')}
             />
           </label>
         </div>
 
         <div class="grid2">
           <label>
-            <span>{$t('admin.network.packages.mapping.pool') || 'Address Pool'}</span>
+            <span>{$t('admin.network.packages.mapping.pool')}</span>
             <Select2
               bind:value={pkgMapPool}
               options={pkgPoolOptions}
@@ -353,14 +347,13 @@
               width="100%"
               disabled={!pkgMapRouterId || pkgPoolOptions.length === 0}
               maxItems={5000}
-              searchPlaceholder={$t('common.search') || 'Search'}
-              noResultsText={$t('common.no_results') || 'No results'}
+              searchPlaceholder={$t('common.search')}
+              noResultsText={$t('common.no_results')}
             />
           </label>
           <label>
             <span
-              >{$t('admin.services.mapping.isolation_pool') ||
-                'Isolation Pool'}</span
+              >{$t('admin.services.mapping.isolation_pool')}</span
             >
             <Select2
               bind:value={pkgMapIsolationPool}
@@ -369,40 +362,39 @@
               width="100%"
               disabled={!pkgMapRouterId || pkgPoolOptions.length === 0}
               maxItems={5000}
-              searchPlaceholder={$t('common.search') || 'Search'}
-              noResultsText={$t('common.no_results') || 'No results'}
+              searchPlaceholder={$t('common.search')}
+              noResultsText={$t('common.no_results')}
             />
           </label>
         </div>
 
         {#if pkgMapRouterId && !pkgLoadingMeta && pkgProfileOptions.length === 0}
           <div class="field-hint">
-            {$t('admin.network.packages.mapping.profile_empty') || 'PPP profile belum tersedia.'}
+            {$t('admin.network.packages.mapping.profile_empty')}
           </div>
         {/if}
 
         {#if pkgMapRouterId && !pkgLoadingMeta && pkgPoolOptions.length === 0}
           <div class="field-hint">
-            {$t('admin.network.packages.mapping.pool_empty') || 'IP pool belum tersedia.'}
+            {$t('admin.network.packages.mapping.pool_empty')}
           </div>
         {/if}
 
         {#if pkgLoadingMeta}
           <div class="hint">
             <span class="spin"><Icon name="refresh-cw" size={14} /></span>
-            <span>{$t('common.loading') || 'Loading...'} suggestions…</span>
+            <span>{$t('common.loading')} suggestions…</span>
           </div>
         {/if}
       {/if}
     {:else}
       <label>
-        <span>{$t('admin.network.packages.fields.features') || 'Features'}</span>
+        <span>{$t('admin.network.packages.fields.features')}</span>
         <div class="feature-input-row">
           <input
             class="input"
             bind:value={pkgFeatureInput}
-            placeholder={$t('admin.network.packages.fields.feature_placeholder') ||
-              'Add feature and press Enter'}
+            placeholder={$t('admin.network.packages.fields.feature_placeholder')}
             onkeydown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
@@ -412,7 +404,7 @@
           />
           <button class="btn ghost" type="button" onclick={addFeature}>
             <Icon name="plus" size={14} />
-            {$t('admin.network.packages.actions.add_feature') || 'Add feature'}
+            {$t('admin.network.packages.actions.add_feature')}
           </button>
         </div>
         {#if pkgFeatures.length > 0}
@@ -433,7 +425,7 @@
           </div>
         {:else}
           <div class="field-hint">
-            {$t('admin.network.packages.fields.features_empty') || 'No features yet.'}
+            {$t('admin.network.packages.fields.features_empty')}
           </div>
         {/if}
       </label>
@@ -446,7 +438,7 @@
         onclick={() => (showPkgModal = false)}
         disabled={saving}
       >
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button
         class="btn"
@@ -461,7 +453,7 @@
             (!pkgMapRouterId || !pkgMapProfile.trim()))}
       >
         <Icon name="save" size={16} />
-        {$t('common.save') || 'Save'}
+        {$t('common.save')}
       </button>
     </div>
   </div>
@@ -469,26 +461,26 @@
 
 <Modal
   show={showMapModal}
-  title={$t('admin.network.packages.mapping.title') || 'Router Mapping'}
+  title={$t('admin.network.packages.mapping.title')}
   width="760px"
   onclose={() => (showMapModal = false)}
 >
   <div class="form">
     <div class="grid2">
       <label>
-        <span>{$t('admin.network.packages.mapping.package') || 'Package'}</span>
+        <span>{$t('admin.network.packages.mapping.package')}</span>
         <input class="input" value={mapPkg?.name || ''} disabled />
       </label>
       <label>
-        <span>{$t('admin.network.packages.mapping.router') || 'Router'}</span>
+        <span>{$t('admin.network.packages.mapping.router')}</span>
         <Select2
           bind:value={mapRouterId}
           options={routerOptions}
           placeholder={($t('common.select') || 'Select') + '...'}
           width="100%"
           maxItems={5000}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
+          searchPlaceholder={$t('common.search')}
+          noResultsText={$t('common.no_results')}
           onchange={() => void loadRouterMeta(mapRouterId)}
         />
       </label>
@@ -496,7 +488,7 @@
 
     <div class="grid2">
       <label>
-        <span>{$t('admin.network.packages.mapping.profile') || 'PPP Profile'}</span>
+        <span>{$t('admin.network.packages.mapping.profile')}</span>
         <Select2
           bind:value={mapProfile}
           options={mapProfileOptions}
@@ -504,12 +496,12 @@
           width="100%"
           disabled={!mapRouterId || mapProfileOptions.length === 0}
           maxItems={5000}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
+          searchPlaceholder={$t('common.search')}
+          noResultsText={$t('common.no_results')}
         />
       </label>
       <label>
-        <span>{$t('admin.network.packages.mapping.pool') || 'Address Pool'}</span>
+        <span>{$t('admin.network.packages.mapping.pool')}</span>
         <Select2
           bind:value={mapPool}
           options={mapPoolOptions}
@@ -517,14 +509,13 @@
           width="100%"
           disabled={!mapRouterId || mapPoolOptions.length === 0}
           maxItems={5000}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
+          searchPlaceholder={$t('common.search')}
+          noResultsText={$t('common.no_results')}
         />
       </label>
       <label>
         <span
-          >{$t('admin.services.mapping.isolation_pool') ||
-            'Isolation Pool'}</span
+          >{$t('admin.services.mapping.isolation_pool')}</span
         >
         <Select2
           bind:value={mapIsolationPool}
@@ -533,28 +524,28 @@
           width="100%"
           disabled={!mapRouterId || mapPoolOptions.length === 0}
           maxItems={5000}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
+          searchPlaceholder={$t('common.search')}
+          noResultsText={$t('common.no_results')}
         />
       </label>
     </div>
 
     {#if mapRouterId && !loadingMeta && mapProfileOptions.length === 0}
       <div class="field-hint">
-        {$t('admin.network.packages.mapping.profile_empty') || 'PPP profile belum tersedia.'}
+        {$t('admin.network.packages.mapping.profile_empty')}
       </div>
     {/if}
 
     {#if mapRouterId && !loadingMeta && mapPoolOptions.length === 0}
       <div class="field-hint">
-        {$t('admin.network.packages.mapping.pool_empty') || 'IP pool belum tersedia.'}
+        {$t('admin.network.packages.mapping.pool_empty')}
       </div>
     {/if}
 
     {#if loadingMeta}
       <div class="hint">
         <span class="spin"><Icon name="refresh-cw" size={14} /></span>
-        <span>{$t('common.loading') || 'Loading...'} suggestions…</span>
+        <span>{$t('common.loading')} suggestions…</span>
       </div>
     {/if}
 
@@ -565,7 +556,7 @@
         onclick={() => (showMapModal = false)}
         disabled={saving}
       >
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button
         class="btn"
@@ -574,7 +565,7 @@
         disabled={saving || !mapPkg || !mapRouterId || !mapProfile.trim()}
       >
         <Icon name="save" size={16} />
-        {$t('common.save') || 'Save'}
+        {$t('common.save')}
       </button>
     </div>
   </div>

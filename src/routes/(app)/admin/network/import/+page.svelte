@@ -19,36 +19,35 @@
 
 <div class="page-content fade-in">
   <NetworkPageHeader
-    title={$t('admin.network.import_center.title') || 'Network Imports'}
-    subtitle={$t('network.import.title') || 'Pusat import data jaringan.'}
+    title={$t('admin.network.import_center.title')}
+    subtitle={$t('network.import.title')}
   />
 
-  <section class="import-overview" aria-label={$t('network.import.overview') || 'Import center overview'}>
+  <section class="import-overview" aria-label={$t('network.import.overview')}>
     <div>
-      <h2>{$t('admin.network.import_center.panel_title') || 'Import aman untuk lifecycle ISP'}</h2>
+      <h2>{$t('admin.network.import_center.panel_title')}</h2>
       <p>
-        {$t('admin.network.import_center.panel_description') ||
-          'Import melewati staging, mapping, preview, lalu eksekusi.'}
+        {$t('admin.network.import_center.panel_description')}
       </p>
     </div>
     <div class="overview-metrics">
       <div>
         <strong>{sources.length}</strong>
-        <span>{$t('admin.network.import_center.sources_count') || 'Source tersedia'}</span>
+        <span>{$t('admin.network.import_center.sources_count')}</span>
       </div>
       <div>
         <strong>4</strong>
-        <span>{$t('admin.network.import_center.lifecycle_count') || 'Lifecycle dijaga'}</span>
+        <span>{$t('admin.network.import_center.lifecycle_count')}</span>
       </div>
     </div>
   </section>
 
-  <section class="source-section" aria-label={$t('network.import.sources') || 'Import sources'}>
+  <section class="source-section" aria-label={$t('network.import.sources')}>
     <div class="section-head">
       <div>
-        <h2>{$t('admin.network.import_center.sources_title') || 'Pilih source import'}</h2>
+        <h2>{$t('admin.network.import_center.sources_title')}</h2>
         <p>
-          {$t('admin.network.import_center.sources_subtitle') || 'Pilih sumber import yang tersedia.'}
+          {$t('admin.network.import_center.sources_subtitle')}
         </p>
       </div>
     </div>
@@ -71,7 +70,7 @@
             <span class="source-description">{source.description}</span>
           </span>
           <span class="source-action">
-            {$t('admin.network.import_center.open_wizard') || 'Buka wizard'}
+            {$t('admin.network.import_center.open_wizard')}
             <Icon name="arrow-right" size={16} />
           </span>
         </button>

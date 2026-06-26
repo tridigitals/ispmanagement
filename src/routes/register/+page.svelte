@@ -213,7 +213,7 @@
       <div class="brand-content" in:fade={{ duration: 1000 }}>
         <div class="logo-area">
           {#if $appLogo}
-            <img src={$appLogo} alt={$t('common.app_logo') || 'App Logo'} class="app-logo" />
+            <img src={$appLogo} alt={$t('common.app_logo')} class="app-logo" />
           {:else}
             <Icon name="app" size={48} strokeWidth={1.5} />
           {/if}
@@ -239,7 +239,7 @@
       <div class="brand-content" in:fade={{ duration: 1000 }}>
         <div class="logo-area">
           {#if $appLogo}
-            <img src={$appLogo} alt={$t('common.app_logo') || 'App Logo'} class="app-logo" />
+            <img src={$appLogo} alt={$t('common.app_logo')} class="app-logo" />
           {:else}
             <Icon name="app" size={48} strokeWidth={1.5} />
           {/if}

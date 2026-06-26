@@ -84,18 +84,17 @@
 <div class="card section fade-in">
   <div class="card-header">
     <h3>
-      {$t('superadmin.settings.payment.midtrans.title') || 'Midtrans Gateway'}
+      {$t('superadmin.settings.payment.midtrans.title')}
     </h3>
   </div>
   <div class="card-body">
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="midtrans-toggle">
-          {$t('superadmin.settings.payment.midtrans.enable.label') || 'Enable Midtrans'}
+          {$t('superadmin.settings.payment.midtrans.enable.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.payment.midtrans.enable.desc') ||
-            'Use Midtrans for automated payment processing.'}
+          {$t('superadmin.settings.payment.midtrans.enable.desc')}
         </p>
       </div>
       <label class="toggle">
@@ -301,18 +300,17 @@
 <div class="card section fade-in" style="margin-top: 1.5rem;">
   <div class="card-header">
     <h3>
-      {$t('superadmin.settings.payment.manual.title') || 'Manual Bank Transfer'}
+      {$t('superadmin.settings.payment.manual.title')}
     </h3>
   </div>
   <div class="card-body">
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="manual-transfer-toggle">
-          {$t('superadmin.settings.payment.manual.enable.label') || 'Enable Manual Transfer'}
+          {$t('superadmin.settings.payment.manual.enable.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.payment.manual.enable.desc') ||
-            'Allow users to pay via bank transfer and upload proof.'}
+          {$t('superadmin.settings.payment.manual.enable.desc')}
         </p>
       </div>
       <label class="toggle">
@@ -331,12 +329,10 @@
         <div class="setting-row">
           <div class="setting-info full-width">
             <label class="setting-label" for="manual-instructions">
-              {$t('superadmin.settings.payment.manual.instructions_label') ||
-                'Payment Instructions'}
+              {$t('superadmin.settings.payment.manual.instructions_label')}
             </label>
             <p class="setting-description">
-              {$t('superadmin.settings.payment.manual.instructions_desc') ||
-                'Instructions shown to user when they select Manual Transfer.'}
+              {$t('superadmin.settings.payment.manual.instructions_desc')}
             </p>
             <textarea
               id="manual-instructions"
@@ -344,15 +340,14 @@
               on:input={handleChange}
               class="form-input"
               rows="3"
-              placeholder={$t('superadmin.settings.placeholders.manual_instructions') ||
-                'Please transfer to one of the bank accounts below and upload proof.'}
+              placeholder={$t('superadmin.settings.placeholders.manual_instructions')}
             ></textarea>
           </div>
         </div>
 
         <div class="bank-accounts-list">
           <h4 class="subsection-title">
-            {$t('superadmin.settings.payment.manual.bank_accounts_title') || 'Bank Accounts'}
+            {$t('superadmin.settings.payment.manual.bank_accounts_title')}
           </h4>
           {#if bankAccounts.length > 0}
             {#if isMobile}
@@ -371,7 +366,7 @@
                       <button
                         class="btn-icon danger"
                         type="button"
-                        title={$t('superadmin.settings.actions.remove') || 'Remove'}
+                        title={$t('superadmin.settings.actions.remove')}
                         on:click={() => deleteBank(bank.id)}
                       >
                         <Icon name="trash" size={16} />
@@ -387,10 +382,10 @@
               <table class="simple-table">
                 <thead>
                   <tr>
-                    <th>{$t('superadmin.settings.bank.table.bank') || 'Bank'}</th>
-                    <th>{$t('superadmin.settings.bank.table.number') || 'Number'}</th>
-                    <th>{$t('superadmin.settings.bank.table.holder') || 'Holder'}</th>
-                    <th>{$t('superadmin.settings.bank.table.action') || 'Action'}</th>
+                    <th>{$t('superadmin.settings.bank.table.bank')}</th>
+                    <th>{$t('superadmin.settings.bank.table.number')}</th>
+                    <th>{$t('superadmin.settings.bank.table.holder')}</th>
+                    <th>{$t('superadmin.settings.bank.table.action')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -415,40 +410,37 @@
             {/if}
           {:else}
             <p class="text-muted">
-              {$t('superadmin.settings.bank.empty') || 'No bank accounts added yet.'}
+              {$t('superadmin.settings.bank.empty')}
             </p>
           {/if}
         </div>
 
         <div class="add-bank-form">
           <h4>
-            {$t('superadmin.settings.bank.add_new_account') || 'Add New Account'}
+            {$t('superadmin.settings.bank.add_new_account')}
           </h4>
           <div class="form-row-inline">
             <input
               type="text"
               bind:value={newBankName}
-              placeholder={$t('superadmin.settings.placeholders.bank_name') ||
-                'Bank Name (e.g. BCA)'}
+              placeholder={$t('superadmin.settings.placeholders.bank_name')}
               class="form-input"
             />
             <input
               type="text"
               bind:value={newAccountNumber}
-              placeholder={$t('superadmin.settings.placeholders.bank_account_number') ||
-                'Account Number'}
+              placeholder={$t('superadmin.settings.placeholders.bank_account_number')}
               class="form-input"
             />
             <input
               type="text"
               bind:value={newAccountHolder}
-              placeholder={$t('superadmin.settings.placeholders.bank_account_holder') ||
-                'Account Holder'}
+              placeholder={$t('superadmin.settings.placeholders.bank_account_holder')}
               class="form-input"
             />
             <button class="btn btn-primary" on:click={addBank} disabled={addingBank}>
               <Icon name="plus" size={16} />
-              {$t('superadmin.settings.actions.add') || 'Add'}
+              {$t('superadmin.settings.actions.add')}
             </button>
           </div>
         </div>
@@ -459,18 +451,16 @@
 
 <div class="card section fade-in" style="margin-top: 1.5rem;">
   <div class="card-header">
-    <h3>{$t('superadmin.settings.payment.installation_sla.title') || 'Installation SLA Reminders'}</h3>
+    <h3>{$t('superadmin.settings.payment.installation_sla.title')}</h3>
   </div>
   <div class="card-body">
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="installation-sla-enabled">
-          {$t('superadmin.settings.payment.installation_sla.enable.label') ||
-            'Enable installation SLA reminders'}
+          {$t('superadmin.settings.payment.installation_sla.enable.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.payment.installation_sla.enable.desc') ||
-            'Send automatic notifications when installation work orders are overdue.'}
+          {$t('superadmin.settings.payment.installation_sla.enable.desc')}
         </p>
       </div>
       <label class="toggle">
@@ -488,12 +478,10 @@
       <div class="setting-row">
         <div class="setting-info">
           <label class="setting-label" for="installation-sla-overdue-minutes">
-            {$t('superadmin.settings.payment.installation_sla.overdue_minutes.label') ||
-              'Overdue threshold (minutes)'}
+            {$t('superadmin.settings.payment.installation_sla.overdue_minutes.label')}
           </label>
           <p class="setting-description">
-            {$t('superadmin.settings.payment.installation_sla.overdue_minutes.desc') ||
-              'A scheduled work order is considered overdue after this many minutes.'}
+            {$t('superadmin.settings.payment.installation_sla.overdue_minutes.desc')}
           </p>
         </div>
         <input
@@ -512,12 +500,10 @@
       <div class="setting-row">
         <div class="setting-info">
           <label class="setting-label" for="installation-sla-cooldown-minutes">
-            {$t('superadmin.settings.payment.installation_sla.cooldown_minutes.label') ||
-              'Reminder cooldown (minutes)'}
+            {$t('superadmin.settings.payment.installation_sla.cooldown_minutes.label')}
           </label>
           <p class="setting-description">
-            {$t('superadmin.settings.payment.installation_sla.cooldown_minutes.desc') ||
-              'Minimum delay before the same reminder is sent again for the same work order.'}
+            {$t('superadmin.settings.payment.installation_sla.cooldown_minutes.desc')}
           </p>
         </div>
         <input
@@ -536,12 +522,10 @@
       <div class="setting-row">
         <div class="setting-info">
           <label class="setting-label" for="installation-sla-interval-minutes">
-            {$t('superadmin.settings.payment.installation_sla.scheduler_interval_minutes.label') ||
-              'Scheduler interval (minutes)'}
+            {$t('superadmin.settings.payment.installation_sla.scheduler_interval_minutes.label')}
           </label>
           <p class="setting-description">
-            {$t('superadmin.settings.payment.installation_sla.scheduler_interval_minutes.desc') ||
-              'How often the backend checks all tenants for overdue installation work orders.'}
+            {$t('superadmin.settings.payment.installation_sla.scheduler_interval_minutes.desc')}
           </p>
         </div>
         <input

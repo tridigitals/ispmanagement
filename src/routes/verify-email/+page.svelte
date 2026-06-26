@@ -53,18 +53,18 @@
         <Icon name="x" size={28} />
       {/if}
     </div>
-    <h1>{$t('auth.verify_email.title') || 'Email Verification'}</h1>
+    <h1>{$t('auth.verify_email.title')}</h1>
     <p>{message}</p>
 
     {#if status === 'success'}
       <p class="redirect-text">
-        {$t('auth.verify_email.redirecting') || 'Redirecting to dashboard...'}
+        {$t('auth.verify_email.redirecting')}
       </p>
     {/if}
 
     {#if status === 'error'}
       <button class="btn btn-primary" on:click={() => goto('/login')}>
-        {$t('auth.verify_email.go_to_login') || 'Go to Login'}
+        {$t('auth.verify_email.go_to_login')}
       </button>
     {/if}
   </div>

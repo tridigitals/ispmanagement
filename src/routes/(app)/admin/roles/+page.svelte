@@ -201,22 +201,22 @@
   <div class="glass-card">
     <div class="card-header glass">
       <div>
-        <h3>{$t('admin.roles.title') || 'All Roles'}</h3>
-        <span class="muted">{$t('admin.roles.subtitle_desc') || 'Role dan izin akses.'}</span>
+        <h3>{$t('admin.roles.title')}</h3>
+        <span class="muted">{$t('admin.roles.subtitle_desc')}</span>
       </div>
       <span class="count-badge">
         {filteredRoles.length}
-        {$t('admin.roles.count') || 'roles'}
+        {$t('admin.roles.count')}
       </span>
     </div>
 
     <div class="toolbar-wrapper">
-      <TableToolbar bind:searchQuery placeholder={$t('admin.roles.search') || 'Search roles...'}>
+      <TableToolbar bind:searchQuery placeholder={$t('admin.roles.search')}>
         {#snippet actions()}
           {#if $can('create', 'roles')}
             <button class="btn btn-primary" onclick={openCreateModal}>
               <Icon name="plus" size={18} />
-              {$t('admin.roles.actions.create') || 'Create Role'}
+              {$t('admin.roles.actions.create')}
             </button>
           {/if}
         {/snippet}
@@ -229,7 +229,7 @@
         {columns}
         data={filteredRoles}
         {loading}
-        emptyText={$t('admin.roles.empty') || 'No roles found'}
+        emptyText={$t('admin.roles.empty')}
       >
         {#snippet cell({ item, key })}
           {#if key === 'name'}
@@ -242,47 +242,47 @@
           {:else if key === 'type'}
             {#if item.is_system}
               <span class="badge system">
-                {$t('admin.roles.badges.system') || 'System'}
+                {$t('admin.roles.badges.system')}
               </span>
             {:else}
               <span class="badge custom">
-                {$t('admin.roles.badges.custom') || 'Custom'}
+                {$t('admin.roles.badges.custom')}
               </span>
             {/if}
           {:else if key === 'level'}
             <span class="level-badge">
-              {$t('admin.roles.level_prefix') || 'Lvl'}
+              {$t('admin.roles.level_prefix')}
               {item.level}
             </span>
           {:else if key === 'permissions'}
             <span class="perm-count">
               <Icon name="lock" size={14} />
               {item.permissions?.length || 0}
-              {$t('admin.roles.permissions') || 'permissions'}
+              {$t('admin.roles.permissions')}
             </span>
           {:else if key === 'actions'}
             <div class="action-buttons-cell">
               {#if (!item.is_system || $isSuperAdmin) && $can('delete', 'roles')}
                 <button
                   class="btn-icon danger"
-                  title={$t('admin.roles.actions.delete') || 'Delete Role'}
+                  title={$t('admin.roles.actions.delete')}
                   onclick={() => confirmDelete(item)}
                 >
                   <Icon name="trash" size={18} />
                   <span class="btn-text">
-                    {$t('admin.roles.actions.delete_short') || 'Delete'}
+                    {$t('admin.roles.actions.delete_short')}
                   </span>
                 </button>
               {/if}
               {#if (!item.is_system || $isSuperAdmin) && $can('update', 'roles')}
                 <button
                   class="btn-icon primary"
-                  title={$t('admin.roles.actions.edit') || 'Edit Role'}
+                  title={$t('admin.roles.actions.edit')}
                   onclick={() => openEditModal(item)}
                 >
                   <Icon name="edit" size={18} />
                   <span class="btn-text">
-                    {$t('admin.roles.actions.edit') || 'Edit Role'}
+                    {$t('admin.roles.actions.edit')}
                   </span>
                 </button>
               {/if}
@@ -296,12 +296,12 @@
 
 <ConfirmDialog
   bind:show={showDeleteModal}
-  title={$t('admin.roles.delete.title') || 'Delete Role'}
+  title={$t('admin.roles.delete.title')}
   message={$t('admin.roles.delete.message', {
     values: { name: roleToDelete?.name || '' },
   }) ||
     `Are you sure you want to permanently delete the role \"${roleToDelete?.name}\"? All users assigned to this role might lose permissions.`}
-  confirmText={$t('admin.roles.delete.confirm') || 'Delete Role'}
+  confirmText={$t('admin.roles.delete.confirm')}
   type="danger"
   loading={isDeleting}
   onconfirm={handleConfirmDelete}
@@ -343,7 +343,7 @@
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="role-name">
-                {$t('admin.roles.form.name_label') || 'Role Name'}
+                {$t('admin.roles.form.name_label')}
               </label>
               <input
                 id="role-name"
@@ -351,29 +351,28 @@
                 bind:value={roleName}
                 required
                 disabled={editingRole?.is_system}
-                placeholder={$t('admin.roles.placeholders.name') || 'e.g. Editor'}
+                placeholder={$t('admin.roles.placeholders.name')}
               />
               {#if editingRole?.is_system}
                 <small class="text-muted"
-                  >{$t('admin.roles.form.system_name_locked') ||
-                    'System role names cannot be changed'}</small
+                  >{$t('admin.roles.form.system_name_locked')}</small
                 >
               {/if}
             </div>
             <div class="form-group flex-2">
               <label for="role-desc">
-                {$t('admin.roles.form.description_label') || 'Description'}
+                {$t('admin.roles.form.description_label')}
               </label>
               <input
                 id="role-desc"
                 type="text"
                 bind:value={roleDescription}
-                placeholder={$t('admin.roles.placeholders.description') || 'Role description'}
+                placeholder={$t('admin.roles.placeholders.description')}
               />
             </div>
             <div class="form-group" style="flex: 0 0 100px;">
               <label for="role-level">
-                {$t('admin.roles.form.level_label') || 'Level'}
+                {$t('admin.roles.form.level_label')}
               </label>
               <input id="role-level" type="number" min="0" max="100" bind:value={roleLevel} />
             </div>
@@ -381,7 +380,7 @@
 
           <div class="permissions-section">
             <h4>
-              {$t('admin.roles.permissions_settings') || 'Permissions Settings'}
+              {$t('admin.roles.permissions_settings')}
             </h4>
             <div class="permissions-toolbar">
               <button type="button" class="btn-text-action" onclick={toggleAllPermissions}>
@@ -411,7 +410,7 @@
                         onchange={() => toggleGroup(resource, groupPerms)}
                       />
                       <span class="select-all-text">
-                        {$t('common.select_all') || 'Select All'}
+                        {$t('common.select_all')}
                       </span>
                     </label>
                   </div>
@@ -441,14 +440,14 @@
 
       <div class="modal-actions">
         <button type="button" class="btn btn-glass" onclick={() => (showModal = false)}>
-          {$t('common.cancel') || 'Cancel'}
+          {$t('common.cancel')}
         </button>
         <button type="submit" form="roleForm" class="btn btn-primary" disabled={saving}>
           {#if saving}
             <div class="spinner-sm"></div>
-            {$t('common.saving') || 'Saving...'}
+            {$t('common.saving')}
           {:else}
-            {$t('admin.roles.actions.save') || 'Save Role'}
+            {$t('admin.roles.actions.save')}
           {/if}
         </button>
       </div>

@@ -45,22 +45,22 @@
   >
     <div class="grid two">
       <label>
-        <span>{$t('admin.network.routers.ppp_profiles.columns.name') || 'Name'}</span>
+        <span>{$t('admin.network.routers.ppp_profiles.columns.name')}</span>
         <input bind:value={profile.name} disabled={loading || isEditing} required />
       </label>
       <label>
-        <span>{$t('admin.network.routers.ppp_profiles.columns.rate') || 'Rate'}</span>
+        <span>{$t('admin.network.routers.ppp_profiles.columns.rate')}</span>
         <input bind:value={profile.rate_limit} disabled={loading} placeholder="10M/10M" />
       </label>
     </div>
 
     <div class="grid two">
       <label>
-        <span>{$t('admin.network.routers.ppp_profiles.columns.local') || 'Local'}</span>
+        <span>{$t('admin.network.routers.ppp_profiles.columns.local')}</span>
         <input bind:value={profile.local_address} disabled={loading} placeholder="10.10.10.1" />
       </label>
       <label>
-        <span>{$t('admin.network.routers.ppp_profiles.columns.remote') || 'Remote'}</span>
+        <span>{$t('admin.network.routers.ppp_profiles.columns.remote')}</span>
         <select bind:value={profile.remote_address} disabled={loading}>
           <option value="">{($t('admin.network.routers.ppp_profiles.form.no_remote_pool') as string) || 'No remote pool'}</option>
           {#each remotePoolOptions as option}
@@ -71,23 +71,23 @@
     </div>
 
     <label>
-      <span>{$t('admin.network.routers.ppp_profiles.columns.dns') || 'DNS'}</span>
+      <span>{$t('admin.network.routers.ppp_profiles.columns.dns')}</span>
       <input bind:value={profile.dns_server} disabled={loading} placeholder="1.1.1.1,8.8.8.8" />
     </label>
 
     <label>
-      <span>{$t('admin.network.routers.ppp_profiles.form.comment') || 'Comment'}</span>
+      <span>{$t('admin.network.routers.ppp_profiles.form.comment')}</span>
       <textarea bind:value={profile.comment} disabled={loading} rows="3"></textarea>
     </label>
 
     <label class="toggle-row">
       <input type="checkbox" bind:checked={profile.only_one} disabled={loading} />
-      <span>{$t('admin.network.routers.ppp_profiles.form.only_one') || 'Allow only one session'}</span>
+      <span>{$t('admin.network.routers.ppp_profiles.form.only_one')}</span>
     </label>
 
     <div class="modal-actions">
       <button class="btn ghost" type="button" onclick={() => (show = false)} disabled={loading}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button class="btn primary" type="submit" disabled={loading}>
         {isEditing

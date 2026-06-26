@@ -53,7 +53,7 @@
 </script>
 
 <div class="picker-overlay" role="dialog" aria-modal="true">
-  <button class="picker-backdrop" type="button" onclick={onClose} aria-label={$t('common.close') || 'Close'}></button>
+  <button class="picker-backdrop" type="button" onclick={onClose} aria-label={$t('common.close')}></button>
   <div class="picker">
     <div class="picker-head">
       <h3>
@@ -61,17 +61,17 @@
           ? ($t('admin.network.wallboard.edit_tile') || 'Edit interface tile')
           : ($t('admin.network.wallboard.pick_tile') || 'Add interface tile')}
       </h3>
-      <button class="icon-x" type="button" onclick={onClose} title={$t('common.close') || 'Close'}>
+      <button class="icon-x" type="button" onclick={onClose} title={$t('common.close')}>
         <Icon name="x" size={18} />
       </button>
     </div>
     <div class="picker-summary">
       <span class="picker-chip">
-        <span class="k">{$t('network.wallboard.router') || 'Router'}</span>
+        <span class="k">{$t('network.wallboard.router')}</span>
         <span class="v mono">{selectedRouterLabel || '—'}</span>
       </span>
       <span class="picker-chip">
-        <span class="k">{$t('network.wallboard.interface') || 'Interface'}</span>
+        <span class="k">{$t('network.wallboard.interface')}</span>
         <span class="v mono">{currentIface || '—'}</span>
       </span>
     </div>
@@ -79,7 +79,7 @@
     <div class="picker-body">
       <div class="picker-col">
         <div class="col-head">
-          <span class="col-title">{$t('admin.network.wallboard.pick_router') || 'Router'}</span>
+          <span class="col-title">{$t('admin.network.wallboard.pick_router')}</span>
           <span class="muted">{routerList.length}</span>
         </div>
         <div class="pill small">
@@ -87,14 +87,14 @@
           <input
             value={routerSearch}
             oninput={(e) => (routerSearch = (e.currentTarget as HTMLInputElement).value)}
-            placeholder={$t('admin.network.wallboard.pick_search') || 'Search routers...'}
+            placeholder={$t('admin.network.wallboard.pick_search')}
           />
         </div>
         <div class="picker-list">
           {#if routerList.length === 0}
             <div class="panel-empty muted">
               <Icon name="search" size={16} />
-              {$t('admin.network.wallboard.empty') || 'No routers match your filters.'}
+              {$t('admin.network.wallboard.empty')}
             </div>
           {:else}
             {#each routerList as r (r.id)}
@@ -120,7 +120,7 @@
 
       <div class="picker-col">
         <div class="col-head">
-          <span class="col-title">{$t('admin.network.wallboard.pick_interface') || 'Interface'}</span>
+          <span class="col-title">{$t('admin.network.wallboard.pick_interface')}</span>
           {#if selectedRouterId}
             <span class="muted">{interfacesTotal}</span>
           {/if}
@@ -129,7 +129,7 @@
         {#if !selectedRouterId}
           <div class="panel-empty muted">
             <Icon name="info" size={16} />
-            {$t('admin.network.wallboard.pick_interface_hint') || 'Select a router first.'}
+            {$t('admin.network.wallboard.pick_interface_hint')}
           </div>
         {:else}
           <div class="pill small">
@@ -137,21 +137,21 @@
             <input
               value={ifaceSearch}
               oninput={(e) => (ifaceSearch = (e.currentTarget as HTMLInputElement).value)}
-              placeholder={$t('admin.network.wallboard.pick_interface_search') || 'Search interfaces...'}
+              placeholder={$t('admin.network.wallboard.pick_interface_search')}
             />
           </div>
 
           {#if interfacesLoading}
             <div class="panel-empty muted">
               <Icon name="loader" size={16} />
-              {$t('admin.network.wallboard.watch_loading') || 'Loading interfaces...'}
+              {$t('admin.network.wallboard.watch_loading')}
             </div>
           {:else}
             <div class="picker-list">
               {#if interfaces.length === 0}
                 <div class="panel-empty muted">
                   <Icon name="search" size={16} />
-                  {$t('admin.network.wallboard.watch_none') || 'No interfaces.'}
+                  {$t('admin.network.wallboard.watch_none')}
                 </div>
               {:else}
                 {#each interfaces as it (it.name)}
@@ -160,11 +160,11 @@
                     <span class="muted">{it.interface_type || ''}</span>
                     <span class="spacer"></span>
                     {#if it.disabled}
-                      <span class="tag">{$t('admin.network.wallboard.interface_state.disabled') || 'disabled'}</span>
+                      <span class="tag">{$t('admin.network.wallboard.interface_state.disabled')}</span>
                     {:else if it.running}
-                      <span class="tag ok">{$t('admin.network.wallboard.interface_state.up') || 'up'}</span>
+                      <span class="tag ok">{$t('admin.network.wallboard.interface_state.up')}</span>
                     {:else}
-                      <span class="tag">{$t('admin.network.wallboard.interface_state.down') || 'down'}</span>
+                      <span class="tag">{$t('admin.network.wallboard.interface_state.down')}</span>
                     {/if}
                   </button>
                 {/each}

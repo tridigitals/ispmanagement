@@ -48,7 +48,7 @@
 
 <div class="details-block">
   <div class="details-title">
-    {$t('superadmin.audit_logs.labels.details') || 'Details'}
+    {$t('superadmin.audit_logs.labels.details')}
   </div>
 
   {#if parsed && typeof parsed === 'object'}

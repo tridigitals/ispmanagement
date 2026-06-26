@@ -31,10 +31,9 @@
 
 <ConfirmDialog
   bind:show={showResetConfirm}
-  title={$t('superadmin.users.reset2fa.title') || 'Reset Two-Factor Authentication'}
-  message={$t('superadmin.users.reset2fa.message') ||
-    'Reset 2FA for this user? They will be able to login without a secondary code.'}
-  confirmText={$t('superadmin.users.reset2fa.confirm') || 'Reset 2FA'}
+  title={$t('superadmin.users.reset2fa.title')}
+  message={$t('superadmin.users.reset2fa.message')}
+  confirmText={$t('superadmin.users.reset2fa.confirm')}
   confirmationKeyword="RESET"
   type="warning"
   loading={confirmLoading}

@@ -533,7 +533,7 @@
         <form on:submit|preventDefault={handle2FAVerify}>
           <div class="input-group" class:focus={activeField === '2fa'}>
             <label for="2fa-code">
-              {$t('auth.2fa.enter_code') || 'Enter Verification Code'}
+              {$t('auth.2fa.enter_code')}
             </label>
             <div class="field">
               <span class="icon"><Icon name="shield" size={18} /></span>
@@ -543,7 +543,7 @@
                 bind:value={twoFactorCode}
                 on:focus={() => (activeField = '2fa')}
                 on:blur={() => (activeField = '')}
-                placeholder={$t('common.otp_placeholder') || '000000'}
+                placeholder={$t('common.otp_placeholder')}
                 maxlength="6"
                 required
                 style="letter-spacing: 0.5em; text-align: center;"
@@ -555,7 +555,7 @@
             <label class="checkbox">
               <input type="checkbox" bind:checked={trustDevice} />
               <span class="checkmark"></span>
-              <span>{$t('auth.2fa.trust_device') || 'Trust this device for 30 days'}</span>
+              <span>{$t('auth.2fa.trust_device')}</span>
             </label>
           </div>
 
@@ -563,7 +563,7 @@
             {#if loading}
               <div class="spinner"></div>
             {:else}
-              {$t('auth.2fa.verify_and_login') || 'Verify & Login'}
+              {$t('auth.2fa.verify_and_login')}
             {/if}
           </button>
 
@@ -574,7 +574,7 @@
               on:click={() => (step = '2fa-select')}
               style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--text-secondary); cursor: pointer;"
             >
-              {$t('auth.2fa.try_another_method') || 'Try another method'}
+              {$t('auth.2fa.try_another_method')}
             </button>
           {/if}
 
@@ -584,7 +584,7 @@
             on:click={() => (step = 'login')}
             style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--text-secondary); cursor: pointer;"
           >
-            {$t('auth.2fa.back_to_login') || 'Back to Login'}
+            {$t('auth.2fa.back_to_login')}
           </button>
         </form>
       {:else if step === '2fa-email'}
@@ -597,14 +597,14 @@
             >
               <Icon name="check-circle" size={18} />
               <span>
-                {$t('auth.2fa.email_sent') || 'A verification code has been sent to your email'}
+                {$t('auth.2fa.email_sent')}
               </span>
             </div>
           {/if}
 
           <div class="input-group" class:focus={activeField === '2fa'}>
             <label for="email-otp-code">
-              {$t('auth.2fa.enter_email_code') || 'Enter Email Code'}
+              {$t('auth.2fa.enter_email_code')}
             </label>
             <div class="field">
               <span class="icon"><Icon name="mail" size={18} /></span>
@@ -614,7 +614,7 @@
                 bind:value={twoFactorCode}
                 on:focus={() => (activeField = '2fa')}
                 on:blur={() => (activeField = '')}
-                placeholder={$t('common.otp_placeholder') || '000000'}
+                placeholder={$t('common.otp_placeholder')}
                 maxlength="6"
                 required
                 style="letter-spacing: 0.5em; text-align: center;"
@@ -626,7 +626,7 @@
             <label class="checkbox">
               <input type="checkbox" bind:checked={trustDevice} />
               <span class="checkmark"></span>
-              <span>{$t('auth.2fa.trust_device') || 'Trust this device for 30 days'}</span>
+              <span>{$t('auth.2fa.trust_device')}</span>
             </label>
           </div>
 
@@ -634,7 +634,7 @@
             {#if loading}
               <div class="spinner"></div>
             {:else}
-              {$t('auth.2fa.verify_and_login') || 'Verify & Login'}
+              {$t('auth.2fa.verify_and_login')}
             {/if}
           </button>
 
@@ -648,9 +648,9 @@
             {#if emailOtpSending}
               Sending...
             {:else if resendCountdown > 0}
-              {$t('auth.2fa.resend_code') || 'Resend Code'} ({resendCountdown}s)
+              {$t('auth.2fa.resend_code')} ({resendCountdown}s)
             {:else}
-              {$t('auth.2fa.resend_code') || 'Resend Code'}
+              {$t('auth.2fa.resend_code')}
             {/if}
           </button>
 
@@ -661,7 +661,7 @@
               on:click={() => (step = '2fa-select')}
               style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--text-secondary); cursor: pointer;"
             >
-              {$t('auth.2fa.try_another_method') || 'Try another method'}
+              {$t('auth.2fa.try_another_method')}
             </button>
           {/if}
 
@@ -671,7 +671,7 @@
             on:click={() => (step = 'login')}
             style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--text-secondary); cursor: pointer;"
           >
-            {$t('auth.2fa.back_to_login') || 'Back to Login'}
+            {$t('auth.2fa.back_to_login')}
           </button>
         </form>
       {:else if step === '2fa-setup'}
@@ -680,7 +680,7 @@
           {#if setupLoading}
             <div style="text-align: center; padding: 2rem 0;">
               <div class="spinner" style="margin: 0 auto 1rem;"></div>
-              <span>{$t('auth.2fa.preparing') || 'Preparing setup...'}</span>
+              <span>{$t('auth.2fa.preparing')}</span>
             </div>
           {:else if setupMethod === 'totp'}
             <div class="method-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
@@ -702,7 +702,7 @@
             <div class="qr-section" style="text-align: center; margin-bottom: 1.5rem;">
               <span class="step-label" style="display: block; margin-bottom: 1rem;">1. Scan this QR code with your authenticator app</span>
               <div class="qr-wrapper" style="background: white; padding: 1rem; border-radius: 8px; display: inline-block;">
-                <img src="data:image/png;base64,{setupQr}" alt={$t('auth.2fa.qr_code') || 'QR Code'} style="width: 180px; height: 180px;" />
+                <img src="data:image/png;base64,{setupQr}" alt={$t('auth.2fa.qr_code')} style="width: 180px; height: 180px;" />
               </div>
               <p style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted); word-break: break-all;">
                 Key: {setupSecret}
@@ -755,7 +755,7 @@
             {#if setupEmailSent}
               <div style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-success); border-radius: 8px; color: var(--text-success);">
                 <Icon name="check-circle" size={18} />
-                <span>{$t('auth.2fa.code_sent') || 'A verification code has been sent to your email.'}</span>
+                <span>{$t('auth.2fa.code_sent')}</span>
               </div>
             {/if}
             <p style="margin-bottom: 1rem; color: var(--text-secondary);">
@@ -763,7 +763,7 @@
             </p>
             <form on:submit|preventDefault={handle2FASetupVerify}>
               <div class="input-group" class:focus={activeField === 'setup'}>
-                <label for="setup-email-code">{$t('auth.2fa.enter_code') || 'Enter verification code'}</label>
+                <label for="setup-email-code">{$t('auth.2fa.enter_code')}</label>
                 <div class="field">
                   <span class="icon"><Icon name="mail" size={18} /></span>
                   <input

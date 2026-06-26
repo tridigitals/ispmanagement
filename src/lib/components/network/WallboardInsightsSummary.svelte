@@ -56,38 +56,38 @@
 
 <div class="slo-strip">
   <div class="slo-card">
-    <span class="k">{$t('admin.network.wallboard.slo.availability') || 'Availability'}</span>
+    <span class="k">{$t('admin.network.wallboard.slo.availability')}</span>
     <span class="v mono">{globalSummary.availability.toFixed(1)}%</span>
   </div>
   <div class="slo-card">
-    <span class="k">{$t('admin.network.wallboard.slo.routers_online') || 'Routers Online'}</span>
+    <span class="k">{$t('admin.network.wallboard.slo.routers_online')}</span>
     <span class="v mono">{globalSummary.online}/{globalSummary.total}</span>
   </div>
   <div class="slo-card">
-    <span class="k">{$t('admin.network.wallboard.slo.critical') || 'Critical Alerts'}</span>
+    <span class="k">{$t('admin.network.wallboard.slo.critical')}</span>
     <span class="v mono">{globalSummary.critical}</span>
   </div>
   <div class="slo-card">
-    <span class="k">{$t('admin.network.wallboard.slo.warning') || 'Warning Alerts'}</span>
+    <span class="k">{$t('admin.network.wallboard.slo.warning')}</span>
     <span class="v mono">{globalSummary.warning}</span>
   </div>
   <div class="slo-card">
-    <span class="k">{$t('admin.network.wallboard.slo.avg_latency') || 'Avg Latency'}</span>
+    <span class="k">{$t('admin.network.wallboard.slo.avg_latency')}</span>
     <span class="v mono">{formatLatency(globalSummary.avgLatencyMs)}</span>
   </div>
 </div>
 
 <div class="top-issues-strip">
   <div class="top-issues-head">
-    <span class="title">{$t('admin.network.wallboard.top_issues.title') || 'Top Issues (1h)'}</span>
+    <span class="title">{$t('admin.network.wallboard.top_issues.title')}</span>
     <span class="muted">
-      {$t('admin.network.wallboard.top_issues.subtitle') || 'Most frequent unresolved issues'}
+      {$t('admin.network.wallboard.top_issues.subtitle')}
     </span>
   </div>
   <div class="top-issues-list">
     {#if topIssues.length === 0}
       <span class="top-issue-empty">
-        {$t('admin.network.wallboard.top_issues.empty') || 'No repeated issues in the last hour.'}
+        {$t('admin.network.wallboard.top_issues.empty')}
       </span>
     {:else}
       {#each topIssues as it (it.key)}
@@ -105,9 +105,9 @@
             <span class="issue-count mono">x{it.count}</span>
           </button>
           {#if maintLeft}
-            <span class="top-issue-maint" title={$t('admin.network.wallboard.maintenance') || 'Maintenance'}>
+            <span class="top-issue-maint" title={$t('admin.network.wallboard.maintenance')}>
               <Icon name="clock" size={13} />
-              {$t('admin.network.wallboard.maintenance') || 'Maintenance'} {maintLeft}
+              {$t('admin.network.wallboard.maintenance')} {maintLeft}
             </span>
           {/if}
           {#if canManage}
@@ -117,10 +117,10 @@
                   type="button"
                   class="btn-mini ghost"
                   onclick={() => void onUnmuteTopIssue(it.router_id)}
-                  title={$t('admin.network.wallboard.unmute') || 'Unmute'}
+                  title={$t('admin.network.wallboard.unmute')}
                 >
                   <Icon name="x-circle" size={14} />
-                  {$t('admin.network.wallboard.unmute') || 'Unmute'}
+                  {$t('admin.network.wallboard.unmute')}
                 </button>
               {/if}
               <select
@@ -129,7 +129,7 @@
                   const v = Number((e.currentTarget as HTMLSelectElement).value);
                   onSetTopIssueMuteMinutes(it.router_id, v);
                 }}
-                aria-label={$t('admin.network.wallboard.top_issues.mute_for') || 'Mute duration'}
+                aria-label={$t('admin.network.wallboard.top_issues.mute_for')}
               >
                 <option value="30">30m</option>
                 <option value="60">1h</option>
@@ -139,10 +139,10 @@
                 type="button"
                 class="btn-mini ghost"
                 onclick={() => void onMuteTopIssue(it.router_id, muteMins)}
-                title={$t('admin.network.wallboard.top_issues.apply_mute') || 'Apply mute'}
+                title={$t('admin.network.wallboard.top_issues.apply_mute')}
               >
                 <Icon name="clock" size={14} />
-                {$t('admin.network.wallboard.top_issues.apply_mute') || 'Mute'}
+                {$t('admin.network.wallboard.top_issues.apply_mute')}
               </button>
             </div>
           {/if}
@@ -154,15 +154,15 @@
 
 <div class="top-issues-strip">
   <div class="top-issues-head">
-    <span class="title">{$t('admin.network.wallboard.incidents.title') || 'Open Incidents'}</span>
+    <span class="title">{$t('admin.network.wallboard.incidents.title')}</span>
     <span class="muted">
-      {$t('admin.network.wallboard.incidents.subtitle') || 'Latest active incidents from monitoring engine'}
+      {$t('admin.network.wallboard.incidents.subtitle')}
     </span>
   </div>
   <div class="top-issues-list">
     {#if openIncidentItems.length === 0}
       <span class="top-issue-empty">
-        {$t('admin.network.wallboard.incidents.empty') || 'No active incidents.'}
+        {$t('admin.network.wallboard.incidents.empty')}
       </span>
     {:else}
       {#each openIncidentItems as it (it.id)}
@@ -184,19 +184,19 @@
                 type="button"
                 class="btn-mini ghost"
                 onclick={() => void onAckIncident(it.id)}
-                title={$t('admin.network.alerts.actions.ack') || 'Acknowledge'}
+                title={$t('admin.network.alerts.actions.ack')}
               >
                 <Icon name="check" size={14} />
-                {$t('admin.network.alerts.actions.ack') || 'Acknowledge'}
+                {$t('admin.network.alerts.actions.ack')}
               </button>
               <button
                 type="button"
                 class="btn-mini ghost danger"
                 onclick={() => void onResolveIncident(it.id)}
-                title={$t('admin.network.alerts.actions.resolve') || 'Resolve'}
+                title={$t('admin.network.alerts.actions.resolve')}
               >
                 <Icon name="check-circle" size={14} />
-                {$t('admin.network.alerts.actions.resolve') || 'Resolve'}
+                {$t('admin.network.alerts.actions.resolve')}
               </button>
             </div>
           {/if}
@@ -208,15 +208,15 @@
 
 <div class="timeline-strip">
   <div class="top-issues-head">
-    <span class="title">{$t('admin.network.wallboard.timeline.title') || 'Incident Timeline'}</span>
+    <span class="title">{$t('admin.network.wallboard.timeline.title')}</span>
     <span class="muted">
-      {$t('admin.network.wallboard.timeline.subtitle') || 'Latest 20 wallboard events'}
+      {$t('admin.network.wallboard.timeline.subtitle')}
     </span>
   </div>
   <div class="timeline-list">
     {#if incidentEvents.length === 0}
       <span class="top-issue-empty">
-        {$t('admin.network.wallboard.timeline.empty') || 'No recent events yet.'}
+        {$t('admin.network.wallboard.timeline.empty')}
       </span>
     {:else}
       {#each incidentEvents as ev (ev.id)}

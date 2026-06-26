@@ -202,25 +202,24 @@
   <div class="head">
     <button class="back" type="button" onclick={() => goto(`${tenantPrefix}/admin/network/pppoe`)}>
       <Icon name="arrow-left" size={16} />
-      {$t('common.back') || 'Back'}
+      {$t('common.back')}
     </button>
 
     <div class="title-wrap">
       <div class="kicker">
         <span class="dot"></span>
-        {$t('sidebar.sections.network') || 'Network'}
+        {$t('sidebar.sections.network')}
       </div>
-      <h1 class="title">{$t('admin.network.pppoe.import.title') || 'Import PPPoE from MikroTik'}</h1>
+      <h1 class="title">{$t('admin.network.pppoe.import.title')}</h1>
       <div class="sub">
-        {$t('admin.network.pppoe.import.subtitle') ||
-          'Scan /ppp/secret and import selected accounts into the database (per-router).'}
+        {$t('admin.network.pppoe.import.subtitle')}
       </div>
     </div>
 
     <div class="steps">
-      <div class="step" class:active={step === 1}>1. {$t('admin.network.pppoe.import.steps.select') || 'Select'}</div>
-      <div class="step" class:active={step === 2}>2. {$t('admin.network.pppoe.import.steps.preview') || 'Preview'}</div>
-      <div class="step" class:active={step === 3}>3. {$t('admin.network.pppoe.import.steps.import') || 'Import'}</div>
+      <div class="step" class:active={step === 1}>1. {$t('admin.network.pppoe.import.steps.select')}</div>
+      <div class="step" class:active={step === 2}>2. {$t('admin.network.pppoe.import.steps.preview')}</div>
+      <div class="step" class:active={step === 3}>3. {$t('admin.network.pppoe.import.steps.import')}</div>
     </div>
   </div>
 
@@ -228,7 +227,7 @@
     <div class="card">
       <div class="grid2">
         <label class="field">
-          <span class="label">{$t('admin.customers.pppoe.fields.router') || 'Router'}</span>
+          <span class="label">{$t('admin.customers.pppoe.fields.router')}</span>
           <select class="select" bind:value={routerId} disabled={loading}>
             <option value="">{($t('common.select') || 'Select') + '...'}</option>
             {#each routers as r}
@@ -238,12 +237,11 @@
         </label>
 
         <label class="field">
-          <span class="label">{$t('admin.network.pppoe.import.fields.include_disabled') || 'Include disabled'}</span>
+          <span class="label">{$t('admin.network.pppoe.import.fields.include_disabled')}</span>
           <label class="check">
             <input type="checkbox" bind:checked={includeDisabled} />
             <span class="muted">
-              {$t('admin.network.pppoe.import.fields.include_disabled_hint') ||
-                'Also scan secrets that are disabled on the router.'}
+              {$t('admin.network.pppoe.import.fields.include_disabled_hint')}
             </span>
           </label>
         </label>
@@ -253,14 +251,14 @@
 
       <div class="grid2">
         <label class="field">
-          <span class="label">{$t('admin.network.pppoe.import.fields.customer_optional') || 'Assign to customer (optional)'}</span>
+          <span class="label">{$t('admin.network.pppoe.import.fields.customer_optional')}</span>
           <select
             class="select"
             bind:value={customerId}
             disabled={loading}
             onchange={() => void loadLocationsForCustomer(customerId)}
           >
-            <option value="">{$t('admin.network.pppoe.import.fields.unassigned') || 'Unassigned'}</option>
+            <option value="">{$t('admin.network.pppoe.import.fields.unassigned')}</option>
             {#each customers as c}
               <option value={c.id}>{c.name}</option>
             {/each}
@@ -268,7 +266,7 @@
         </label>
 
         <label class="field">
-          <span class="label">{$t('admin.network.pppoe.import.fields.location_optional') || 'Location (optional)'}</span>
+          <span class="label">{$t('admin.network.pppoe.import.fields.location_optional')}</span>
           <select class="select" bind:value={locationId} disabled={loading || !customerId}>
             <option value="">{($t('common.select') || 'Select') + '...'}</option>
             {#each locations as l}
@@ -277,8 +275,7 @@
           </select>
           {#if customerId}
             <div class="muted small">
-              {$t('admin.network.pppoe.import.fields.location_hint') ||
-                'If you pick a customer, you must also pick a location.'}
+              {$t('admin.network.pppoe.import.fields.location_hint')}
             </div>
           {/if}
         </label>
@@ -287,11 +284,11 @@
       <div class="actions">
         <button class="btn ghost" type="button" onclick={resetPreview} disabled={loading}>
           <Icon name="eraser" size={16} />
-          {$t('common.clear') || 'Clear'}
+          {$t('common.clear')}
         </button>
         <button class="btn" type="button" onclick={scan} disabled={loading || !routerId}>
           <Icon name="search" size={16} />
-          {$t('admin.network.pppoe.import.actions.scan') || 'Scan secrets'}
+          {$t('admin.network.pppoe.import.actions.scan')}
         </button>
       </div>
     </div>
@@ -299,37 +296,37 @@
     <div class="card">
       <div class="preview-head">
           <div class="summary">
-            <div class="pill">{candidates.length} {$t('admin.network.pppoe.import.summary.items') || 'items'}</div>
+            <div class="pill">{candidates.length} {$t('admin.network.pppoe.import.summary.items')}</div>
             <div class="pill ok">
               {candidates.filter((c) => c.action === 'new').length}
-              {$t('admin.network.pppoe.import.labels.new') || 'New'}
+              {$t('admin.network.pppoe.import.labels.new')}
             </div>
             <div class="pill warn">
               {candidates.filter((c) => c.action === 'update').length}
-              {$t('admin.network.pppoe.import.labels.update') || 'Update'}
+              {$t('admin.network.pppoe.import.labels.update')}
             </div>
             <div class="pill off">
               {candidates.filter((c) => c.action === 'same').length}
-              {$t('admin.network.pppoe.import.labels.same') || 'Same'}
+              {$t('admin.network.pppoe.import.labels.same')}
             </div>
           </div>
           <div class="preview-actions">
             <button class="btn ghost" type="button" onclick={() => toggleAll('new_update')} disabled={loading}>
-              {$t('admin.network.pppoe.import.actions.select_new_update') || 'Select new+update'}
+              {$t('admin.network.pppoe.import.actions.select_new_update')}
             </button>
             <button class="btn ghost" type="button" onclick={() => toggleAll('all')} disabled={loading}>
-            {$t('common.select_all') || 'Select all'}
+            {$t('common.select_all')}
             </button>
             <button class="btn ghost" type="button" onclick={() => toggleAll('none')} disabled={loading}>
-              {$t('common.clear') || 'Clear'}
+              {$t('common.clear')}
             </button>
           <button class="btn ghost" type="button" onclick={scan} disabled={loading}>
             <Icon name="refresh-cw" size={16} />
-            {$t('common.refresh') || 'Refresh'}
+            {$t('common.refresh')}
           </button>
           <button class="btn" type="button" onclick={runImport} disabled={loading || selected.size === 0}>
             <Icon name="download" size={16} />
-            {$t('admin.network.pppoe.import.actions.import') || 'Import selected'}
+            {$t('admin.network.pppoe.import.actions.import')}
             <span class="count">{selected.size}</span>
           </button>
         </div>
@@ -343,7 +340,7 @@
           pagination={true}
           pageSize={12}
           searchable={true}
-          searchPlaceholder={$t('admin.network.pppoe.import.search') || 'Search username...'}
+          searchPlaceholder={$t('admin.network.pppoe.import.search')}
           mobileView="card"
         >
           {#snippet cell({ item, key }: any)}
@@ -361,23 +358,23 @@
               />
             {:else if key === 'disabled'}
               {#if item.disabled}
-                <span class="pill off">{$t('admin.network.pppoe.import.labels.disabled') || 'Disabled'}</span>
+                <span class="pill off">{$t('admin.network.pppoe.import.labels.disabled')}</span>
               {:else}
-                <span class="pill ok">{$t('admin.network.pppoe.import.labels.enabled') || 'Enabled'}</span>
+                <span class="pill ok">{$t('admin.network.pppoe.import.labels.enabled')}</span>
               {/if}
             {:else if key === 'action'}
               {#if item.action === 'new'}
-                <span class="pill ok">{$t('admin.network.pppoe.import.labels.new') || 'New'}</span>
+                <span class="pill ok">{$t('admin.network.pppoe.import.labels.new')}</span>
               {:else if item.action === 'update'}
-                <span class="pill warn">{$t('admin.network.pppoe.import.labels.update') || 'Update'}</span>
+                <span class="pill warn">{$t('admin.network.pppoe.import.labels.update')}</span>
               {:else}
-                <span class="pill">{$t('admin.network.pppoe.import.labels.same') || 'Same'}</span>
+                <span class="pill">{$t('admin.network.pppoe.import.labels.same')}</span>
               {/if}
             {:else if key === 'pw'}
               {#if item.pw}
-                <span class="pill ok">{$t('admin.network.pppoe.import.labels.ok') || 'OK'}</span>
+                <span class="pill ok">{$t('admin.network.pppoe.import.labels.ok')}</span>
               {:else}
-                <span class="pill warn">{$t('admin.network.pppoe.import.labels.missing_password') || 'Missing'}</span>
+                <span class="pill warn">{$t('admin.network.pppoe.import.labels.missing_password')}</span>
               {/if}
             {:else}
               {item[key] ?? ''}
@@ -389,7 +386,7 @@
       <div class="actions">
         <button class="btn ghost" type="button" onclick={() => (step = 1)} disabled={loading}>
           <Icon name="arrow-left" size={16} />
-          {$t('common.back') || 'Back'}
+          {$t('common.back')}
         </button>
       </div>
     </div>
@@ -398,24 +395,24 @@
       <div class="result">
         <div class="result-title">
           <Icon name="check-circle" size={18} />
-          {$t('admin.network.pppoe.import.done') || 'Import completed'}
+          {$t('admin.network.pppoe.import.done')}
         </div>
         <div class="result-grid">
           <div class="stat">
-            <div class="k">{$t('admin.network.pppoe.import.result.created') || 'Created'}</div>
+            <div class="k">{$t('admin.network.pppoe.import.result.created')}</div>
             <div class="v">{result?.created ?? 0}</div>
           </div>
           <div class="stat">
-            <div class="k">{$t('admin.network.pppoe.import.result.updated') || 'Updated'}</div>
+            <div class="k">{$t('admin.network.pppoe.import.result.updated')}</div>
             <div class="v">{result?.updated ?? 0}</div>
           </div>
           <div class="stat">
-            <div class="k">{$t('admin.network.pppoe.import.result.skipped') || 'Skipped'}</div>
+            <div class="k">{$t('admin.network.pppoe.import.result.skipped')}</div>
             <div class="v">{result?.skipped ?? 0}</div>
           </div>
           <div class="stat">
             <div class="k">
-              {$t('admin.network.pppoe.import.result.missing_password') || 'Missing password'}
+              {$t('admin.network.pppoe.import.result.missing_password')}
             </div>
             <div class="v">{result?.missing_password ?? 0}</div>
           </div>
@@ -423,7 +420,7 @@
 
         {#if result?.errors?.length}
           <div class="error-box">
-            <div class="k">{$t('admin.network.pppoe.import.result.errors') || 'Errors'}</div>
+            <div class="k">{$t('admin.network.pppoe.import.result.errors')}</div>
             <ul class="err-list">
               {#each result.errors as e}
                 <li><span class="mono">{e.username}</span>: {e.message}</li>
@@ -436,11 +433,11 @@
       <div class="actions">
         <button class="btn ghost" type="button" onclick={resetPreview}>
           <Icon name="refresh-cw" size={16} />
-          {$t('admin.network.pppoe.import.actions.import_more') || 'Import more'}
+          {$t('admin.network.pppoe.import.actions.import_more')}
         </button>
         <button class="btn" type="button" onclick={() => goto(`${tenantPrefix}/admin/network/pppoe`)}>
           <Icon name="arrow-right" size={16} />
-          {$t('admin.network.pppoe.import.actions.go_to_list') || 'Go to PPPoE list'}
+          {$t('admin.network.pppoe.import.actions.go_to_list')}
         </button>
       </div>
     </div>

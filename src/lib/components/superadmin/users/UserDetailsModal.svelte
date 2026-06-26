@@ -40,27 +40,27 @@
     <div class="details-grid">
       <div class="detail-card">
         <div class="detail-title">
-          {$t('superadmin.users.details.sections.account') || 'Account'}
+          {$t('superadmin.users.details.sections.account')}
         </div>
         <div class="detail-row">
           <span class="detail-key">
-            {$t('superadmin.users.details.labels.name') || 'Name'}
+            {$t('superadmin.users.details.labels.name')}
           </span>
           <span class="detail-val">{user.name}</span>
         </div>
         <div class="detail-row">
           <span class="detail-key">
-            {$t('superadmin.users.details.labels.email') || 'Email'}
+            {$t('superadmin.users.details.labels.email')}
           </span>
           <span class="detail-val">{user.email}</span>
         </div>
         <div class="detail-row">
           <span class="detail-key">
-            {$t('superadmin.users.details.labels.role') || 'Role'}
+            {$t('superadmin.users.details.labels.role')}
           </span>
           <span class="detail-val">
             {#if user.is_super_admin}
-              <span class="role-pill superadmin">{$t('sidebar.super_admin') || 'Super Admin'}</span>
+              <span class="role-pill superadmin">{$t('sidebar.super_admin')}</span>
             {:else}
               <span class="role-pill {user.role}">{user.role}</span>
             {/if}
@@ -68,31 +68,31 @@
         </div>
         <div class="detail-row">
           <span class="detail-key">
-            {$t('superadmin.users.details.labels.status') || 'Status'}
+            {$t('superadmin.users.details.labels.status')}
           </span>
           <span class="detail-val">
             {#if user.is_active}
               <span class="status-pill active">
                 <span class="dot"></span>
-                {$t('common.active') || 'Active'}
+                {$t('common.active')}
               </span>
             {:else}
               <span class="status-pill inactive">
                 <span class="dot"></span>
-                {$t('common.inactive') || 'Inactive'}
+                {$t('common.inactive')}
               </span>
             {/if}
           </span>
         </div>
         <div class="detail-row">
           <span class="detail-key">
-            {$t('superadmin.users.details.labels.created') || 'Created'}
+            {$t('superadmin.users.details.labels.created')}
           </span>
           <span class="detail-val">{formatDateMaybe(user.created_at)}</span>
         </div>
         <div class="detail-row">
           <span class="detail-key">
-            {$t('superadmin.users.details.labels.last_login') || 'Last Login'}
+            {$t('superadmin.users.details.labels.last_login')}
           </span>
           <span class="detail-val">
             {formatDateMaybe(
@@ -106,11 +106,11 @@
 
       <div class="detail-card">
         <div class="detail-title">
-          {$t('superadmin.users.details.sections.tenant') || 'Tenant'}
+          {$t('superadmin.users.details.sections.tenant')}
         </div>
         <div class="detail-row">
           <span class="detail-key">
-            {$t('superadmin.users.details.labels.tenant') || 'Tenant'}
+            {$t('superadmin.users.details.labels.tenant')}
           </span>
           <span class="detail-val">
             {#if getTenantName(user as any)}
@@ -122,7 +122,7 @@
         </div>
         <div class="detail-row">
           <span class="detail-key">
-            {$t('superadmin.users.details.labels.slug') || 'Slug'}
+            {$t('superadmin.users.details.labels.slug')}
           </span>
           <span class="detail-val text-mono">
             {(user as any).tenant_slug || '-'}
@@ -130,7 +130,7 @@
         </div>
         <div class="detail-row">
           <span class="detail-key">
-            {$t('superadmin.users.details.labels.tenant_role') || 'Tenant Role'}
+            {$t('superadmin.users.details.labels.tenant_role')}
           </span>
           <span class="detail-val">
             {(user as any).tenant_role || '-'}
@@ -140,11 +140,11 @@
 
       <div class="detail-card">
         <div class="detail-title">
-          {$t('superadmin.users.details.sections.security') || 'Security'}
+          {$t('superadmin.users.details.sections.security')}
         </div>
         <div class="detail-row">
           <span class="detail-key">
-            {$t('superadmin.users.details.labels.twofa_enabled') || '2FA Enabled'}
+            {$t('superadmin.users.details.labels.twofa_enabled')}
           </span>
           <span class="detail-val">
             {(user as any).two_factor_enabled ? $t('common.yes') || 'Yes' : $t('common.no') || 'No'}
@@ -152,7 +152,7 @@
         </div>
         <div class="detail-row">
           <span class="detail-key">
-            {$t('superadmin.users.details.labels.preferred_2fa') || 'Preferred 2FA'}
+            {$t('superadmin.users.details.labels.preferred_2fa')}
           </span>
           <span class="detail-val">
             {(user as any).preferred_2fa_method || '-'}

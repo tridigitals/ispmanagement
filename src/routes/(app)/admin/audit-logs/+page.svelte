@@ -131,8 +131,8 @@
           <Icon name="lock" size={22} />
         </div>
         <div class="empty-text">
-          <h4>{$t('common.forbidden') || 'Forbidden'}</h4>
-          <p>{$t('common.no_permission') || 'You do not have permission to view this page.'}</p>
+          <h4>{$t('common.forbidden')}</h4>
+          <p>{$t('common.no_permission')}</p>
         </div>
       </div>
     {:else}
@@ -154,12 +154,12 @@
           </div>
           <div class="error-text">
             <div class="error-title">
-              {$t('superadmin.audit_logs.title') || 'Audit Logs'}
+              {$t('superadmin.audit_logs.title')}
             </div>
             <div class="error-msg">{errorMessage}</div>
             {#if errorMessage.toLowerCase().includes('upgrade')}
               <button class="btn btn-primary" onclick={() => goto('../subscription')}>
-                {$t('admin.subscription.title') || 'Subscription'}
+                {$t('admin.subscription.title')}
               </button>
             {/if}
           </div>

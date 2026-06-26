@@ -42,7 +42,7 @@
     </h3>
     <p>
       {health.database.database_type} • {health.database.total_tables}
-      {$t('superadmin.system.tables') || 'tables'} • {formatBytes(
+      {$t('superadmin.system.tables')} • {formatBytes(
         health.database.database_size_bytes,
       )}
     </p>
@@ -51,7 +51,7 @@
     <span class="version-badge">v{health.app_version}</span>
     <span class="os-badge">{health.resources.os_name} {health.resources.os_version}</span>
     <span class="uptime"
-      >{$t('superadmin.system.uptime') || 'Uptime:'}
+      >{$t('superadmin.system.uptime')}
       {formatUptime(health.uptime_seconds)}</span
     >
   </div>

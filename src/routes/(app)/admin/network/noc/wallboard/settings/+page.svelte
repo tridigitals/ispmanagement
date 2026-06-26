@@ -166,9 +166,9 @@
 <div class="wall-settings-wrap">
   <div class="wall-settings-head">
     <div>
-      <div class="kicker">{$t('admin.network.wallboard.controls.title') || 'Wallboard'}</div>
-      <h1>{$t('admin.network.wallboard.title') || 'Network Wallboard'}</h1>
-      <p>{$t('network.noc.wallboard_settings') || 'Tampilan NOC live.'}</p>
+      <div class="kicker">{$t('admin.network.wallboard.controls.title')}</div>
+      <h1>{$t('admin.network.wallboard.title')}</h1>
+      <p>{$t('network.noc.wallboard_settings')}</p>
     </div>
     <div class="actions">
       <button class="btn primary" type="button" onclick={saveAndExit} disabled={saving}>
@@ -182,8 +182,8 @@
     <div class="field">
       <MiniSelect
         bind:value={layout}
-        label={$t('admin.network.wallboard.controls.layout') || 'Layout'}
-        ariaLabel={$t('admin.network.wallboard.controls.layout') || 'Layout'}
+        label={$t('admin.network.wallboard.controls.layout')}
+        ariaLabel={$t('admin.network.wallboard.controls.layout')}
         options={[
           ...WALLBOARD_LAYOUT_PRESETS.map((preset) => ({
             value: preset,
@@ -196,8 +196,8 @@
     <div class="field">
       <MiniSelect
         bind:value={statusFilter}
-        label={$t('admin.network.wallboard.controls.filter') || 'Filter'}
-        ariaLabel={$t('admin.network.wallboard.controls.filter') || 'Filter'}
+        label={$t('admin.network.wallboard.controls.filter')}
+        ariaLabel={$t('admin.network.wallboard.controls.filter')}
         options={[
           ...WALLBOARD_STATUS_FILTERS.map((value) => ({
             value,
@@ -210,8 +210,8 @@
     <div class="field">
       <MiniSelect
         bind:value={rotateMode}
-        label={$t('admin.network.wallboard.controls.pager') || 'Pager'}
-        ariaLabel={$t('admin.network.wallboard.controls.pager') || 'Pager'}
+        label={$t('admin.network.wallboard.controls.pager')}
+        ariaLabel={$t('admin.network.wallboard.controls.pager')}
         options={[
           ...WALLBOARD_ROTATE_MODES.map((value) => ({
             value,
@@ -227,8 +227,8 @@
     <div class="field">
       <MiniSelect
         bind:value={rotateMs}
-        label={$t('admin.network.wallboard.controls.rotate_every') || 'Rotate'}
-        ariaLabel={$t('admin.network.wallboard.controls.rotate_every') || 'Rotate'}
+        label={$t('admin.network.wallboard.controls.rotate_every')}
+        ariaLabel={$t('admin.network.wallboard.controls.rotate_every')}
         options={[
           ...WALLBOARD_ROTATE_MS_OPTIONS.map((value) => ({
             value,
@@ -241,8 +241,8 @@
     <div class="field">
       <MiniSelect
         bind:value={pollMs}
-        label={$t('admin.network.wallboard.poll') || 'Poll'}
-        ariaLabel={$t('admin.network.wallboard.poll') || 'Poll'}
+        label={$t('admin.network.wallboard.poll')}
+        ariaLabel={$t('admin.network.wallboard.poll')}
         options={[
           ...WALLBOARD_POLL_MS_OPTIONS.map((value) => ({
             value,
@@ -254,12 +254,12 @@
 
     <label class="toggle">
       <input type="checkbox" bind:checked={keepAwake} />
-      <span>{$t('admin.network.wallboard.keep_awake') || 'Keep awake'}</span>
+      <span>{$t('admin.network.wallboard.keep_awake')}</span>
     </label>
 
     <label class="toggle">
       <input type="checkbox" bind:checked={focusMode} />
-      <span>{$t('admin.network.wallboard.focus_mode') || 'Focus mode'}</span>
+      <span>{$t('admin.network.wallboard.focus_mode')}</span>
     </label>
   </div>
 </div>

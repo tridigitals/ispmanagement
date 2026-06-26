@@ -89,15 +89,15 @@
   <div class="form">
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.pppoe.fields.router') || 'Router'}</span>
+        <span>{$t('admin.customers.pppoe.fields.router')}</span>
         {#if isCreate}
           <Select2
             bind:value={formRouterId}
             options={routerOptions}
             placeholder={($t('common.select') || 'Select') + '...'}
             width="100%"
-            searchPlaceholder={$t('common.search') || 'Search'}
-            noResultsText={$t('common.no_results') || 'No results'}
+            searchPlaceholder={$t('common.search')}
+            noResultsText={$t('common.no_results')}
             onchange={onRouterChange}
           />
         {:else}
@@ -105,7 +105,7 @@
         {/if}
       </label>
       <label>
-        <span>{$t('admin.network.pppoe.fields.source') || 'Account source'}</span>
+        <span>{$t('admin.network.pppoe.fields.source')}</span>
         <select class="input" bind:value={formAccountSource}>
           <option value="router">{sourceLabel('router')}</option>
           <option value="managed_radius">{sourceLabel('managed_radius')}</option>
@@ -115,15 +115,15 @@
 
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.pppoe.fields.customer') || 'Customer'}</span>
+        <span>{$t('admin.customers.pppoe.fields.customer')}</span>
         <Select2
           bind:value={formCustomerId}
           options={customerOptions}
           placeholder={($t('common.select') || 'Select') + '...'}
           width="100%"
           maxItems={5000}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
+          searchPlaceholder={$t('common.search')}
+          noResultsText={$t('common.no_results')}
           onchange={onCustomerChange}
         />
       </label>
@@ -135,31 +135,29 @@
     {#if isCreate}
       <div class="field-hint">
         {#if formAccountSource === 'managed_radius'}
-          {$t('admin.network.pppoe.form.source_radius_hint') ||
-            'This account will be provisioned to managed RADIUS and expects a native RADIUS endpoint plus NAS mapping for the selected router.'}
+          {$t('admin.network.pppoe.form.source_radius_hint')}
         {:else}
-          {$t('admin.network.pppoe.form.source_router_hint') ||
-            'This account will be provisioned to the router-local PPP secret table.'}
+          {$t('admin.network.pppoe.form.source_router_hint')}
         {/if}
       </div>
     {/if}
 
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.pppoe.fields.location') || 'Location'}</span>
+        <span>{$t('admin.customers.pppoe.fields.location')}</span>
         <Select2
           bind:value={formLocationId}
           options={locationOptions}
           placeholder={($t('common.select') || 'Select') + '...'}
           width="100%"
           disabled={!formCustomerId}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
+          searchPlaceholder={$t('common.search')}
+          noResultsText={$t('common.no_results')}
         />
       </label>
       {#if isCreate}
         <label>
-          <span>{$t('admin.customers.pppoe.fields.username') || 'Username'}</span>
+          <span>{$t('admin.customers.pppoe.fields.username')}</span>
           <input class="input" bind:value={formUsername} />
         </label>
       {:else}
@@ -168,36 +166,35 @@
     </div>
 
     <label>
-      <span>{$t('admin.customers.pppoe.fields.package') || 'Package'}</span>
+      <span>{$t('admin.customers.pppoe.fields.package')}</span>
       <Select2
         bind:value={formPackageId}
         options={packageOptions}
         placeholder={($t('common.select') || 'Select') + '...'}
         width="100%"
         disabled={isCreate ? !formRouterId || packageOptions.length === 0 : packageOptions.length === 0}
-        searchPlaceholder={$t('common.search') || 'Search'}
-        noResultsText={$t('common.no_results') || 'No results'}
+        searchPlaceholder={$t('common.search')}
+        noResultsText={$t('common.no_results')}
         onchange={onPackageChange}
       />
       <div class="field-hint">
-        {$t('admin.network.pppoe.form.package_hint') ||
-          'Choose a package to control PPP profile and addressing for the selected router.'}
+        {$t('admin.network.pppoe.form.package_hint')}
       </div>
     </label>
 
     {#if !isCreate}
       <div class="grid2">
         <label>
-          <span>{$t('admin.customers.pppoe.fields.username') || 'Username'}</span>
+          <span>{$t('admin.customers.pppoe.fields.username')}</span>
           <input class="input" bind:value={formUsername} />
         </label>
         <label>
-          <span>{$t('admin.customers.pppoe.fields.password') || 'Password'}</span>
+          <span>{$t('admin.customers.pppoe.fields.password')}</span>
           <input
             class="input"
             type="password"
             bind:value={formPassword}
-            placeholder={$t('admin.customers.pppoe.edit.password_hint') || 'Leave blank to keep'}
+            placeholder={$t('admin.customers.pppoe.edit.password_hint')}
           />
         </label>
       </div>
@@ -205,50 +202,48 @@
 
     {#if isCreate}
       <label>
-        <span>{$t('admin.customers.pppoe.fields.password') || 'Password'}</span>
+        <span>{$t('admin.customers.pppoe.fields.password')}</span>
         <input class="input" type="password" bind:value={formPassword} />
       </label>
     {/if}
 
     {#if packageSelectionHasMissingMapping}
       <div class="field-hint warning">
-        {$t('admin.network.pppoe.form.package_mapping_missing') ||
-          'This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.'}
+        {$t('admin.network.pppoe.form.package_mapping_missing')}
       </div>
     {/if}
 
     <label>
-      <span>{$t('admin.customers.pppoe.fields.comment') || 'Comment'}</span>
+      <span>{$t('admin.customers.pppoe.fields.comment')}</span>
       <input class="input" bind:value={formComment} />
     </label>
 
     <div class="toggle-row">
       <div class="toggle-text">
-        <div class="toggle-title">{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</div>
+        <div class="toggle-title">{$t('admin.customers.pppoe.fields.disabled')}</div>
         <div class="toggle-sub">
           {sourceDisabledHintLabel(formAccountSource)}
           {#if isCreate && formAccountSource === 'managed_radius'}
-            {' '}{$t('admin.network.pppoe.form.disabled_hint_radius') ||
-              'For managed RADIUS, this disables centralized authentication for the account.'}
+            {' '}{$t('admin.network.pppoe.form.disabled_hint_radius')}
           {/if}
         </div>
       </div>
       <Toggle
         bind:checked={formDisabled}
-        ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}
+        ariaLabel={$t('admin.customers.pppoe.fields.disabled')}
       />
     </div>
 
     <div class="actions">
       <button class="btn ghost" onclick={() => (show = false)} disabled={saving}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button class="btn" onclick={onSubmit} disabled={submitDisabled}>
         <Icon name={isCreate ? 'plus' : 'check-circle'} size={16} />
         {#if isCreate}
           {sourceCreateActionLabel(formAccountSource)}
         {:else}
-          {$t('common.save') || 'Save'}
+          {$t('common.save')}
         {/if}
       </button>
     </div>

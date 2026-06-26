@@ -65,12 +65,12 @@
     class="insights-backdrop"
     type="button"
     onclick={() => (insightsOpen = false)}
-    aria-label={$t('common.close') || 'Close'}
+    aria-label={$t('common.close')}
   ></button>
-  <aside class="wall-insights" aria-label={$t('admin.network.wallboard.settings') || 'Settings'}>
+  <aside class="wall-insights" aria-label={$t('admin.network.wallboard.settings')}>
     <div class="insights-head">
-      <span class="title">{$t('admin.network.wallboard.settings') || 'Settings'}</span>
-      <button class="icon-x" type="button" onclick={() => (insightsOpen = false)} title={$t('common.close') || 'Close'}>
+      <span class="title">{$t('admin.network.wallboard.settings')}</span>
+      <button class="icon-x" type="button" onclick={() => (insightsOpen = false)} title={$t('common.close')}>
         <Icon name="x" size={16} />
       </button>
     </div>
@@ -136,8 +136,8 @@
     onclick={onToggleAlertsPanel}
     aria-expanded={alertsOpen}
     aria-controls="wallboard-alert-panel"
-    aria-label={$t('admin.network.wallboard.alerts_open') || 'Open alerts'}
-    title={$t('admin.network.wallboard.alerts_open') || 'Open alerts'}
+    aria-label={$t('admin.network.wallboard.alerts_open')}
+    title={$t('admin.network.wallboard.alerts_open')}
   >
     <Icon name="alert-triangle" size={17} />
     <span class="floating-alert-count">{sortedAlerts.length > 99 ? '99+' : sortedAlerts.length}</span>

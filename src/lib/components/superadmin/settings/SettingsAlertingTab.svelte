@@ -20,17 +20,16 @@
 
 <div class="card section fade-in">
   <div class="card-header">
-    <h3>{$t('superadmin.settings.alerting.title') || 'Error Alerting'}</h3>
+    <h3>{$t('superadmin.settings.alerting.title')}</h3>
   </div>
   <div class="card-body">
     <div class="setting-row">
       <div class="setting-info">
         <label class="setting-label" for="alerting-enabled">
-          {$t('superadmin.settings.alerting.enabled.label') || 'Enable Alerting'}
+          {$t('superadmin.settings.alerting.enabled.label')}
         </label>
         <p class="setting-description">
-          {$t('superadmin.settings.alerting.enabled.desc') ||
-            'Send email alerts when error thresholds are exceeded.'}
+          {$t('superadmin.settings.alerting.enabled.desc')}
         </p>
       </div>
       <label class="toggle">
@@ -48,10 +47,10 @@
       <div class="setting-row">
         <div class="setting-info full-width">
           <label class="setting-label" for="alerting-email">
-            {$t('superadmin.settings.alerting.email.label') || 'Alert Email'}
+            {$t('superadmin.settings.alerting.email.label')}
           </label>
           <p class="setting-description">
-            {$t('superadmin.settings.alerting.email.desc') || 'Email address to receive alerts.'}
+            {$t('superadmin.settings.alerting.email.desc')}
           </p>
           <input
             type="email"
@@ -67,11 +66,10 @@
       <div class="setting-row">
         <div class="setting-info">
           <label class="setting-label" for="alerting-error-threshold">
-            {$t('superadmin.settings.alerting.error_threshold.label') || 'Error Rate Threshold (%)'}
+            {$t('superadmin.settings.alerting.error_threshold.label')}
           </label>
           <p class="setting-description">
-            {$t('superadmin.settings.alerting.error_threshold.desc') ||
-              'Alert when error rate exceeds this percentage.'}
+            {$t('superadmin.settings.alerting.error_threshold.desc')}
           </p>
         </div>
         <input
@@ -89,12 +87,10 @@
       <div class="setting-row">
         <div class="setting-info">
           <label class="setting-label" for="alerting-rate-limit-threshold">
-            {$t('superadmin.settings.alerting.rate_limit_threshold.label') ||
-              'Rate Limit Threshold'}
+            {$t('superadmin.settings.alerting.rate_limit_threshold.label')}
           </label>
           <p class="setting-description">
-            {$t('superadmin.settings.alerting.rate_limit_threshold.desc') ||
-              'Alert when rate-limited requests exceed this count.'}
+            {$t('superadmin.settings.alerting.rate_limit_threshold.desc')}
           </p>
         </div>
         <input
@@ -110,12 +106,10 @@
       <div class="setting-row">
         <div class="setting-info">
           <label class="setting-label" for="alerting-response-time-threshold">
-            {$t('superadmin.settings.alerting.response_time_threshold.label') ||
-              'P95 Response Time Threshold (ms)'}
+            {$t('superadmin.settings.alerting.response_time_threshold.label')}
           </label>
           <p class="setting-description">
-            {$t('superadmin.settings.alerting.response_time_threshold.desc') ||
-              'Alert when P95 response time exceeds this value.'}
+            {$t('superadmin.settings.alerting.response_time_threshold.desc')}
           </p>
         </div>
         <input
@@ -131,11 +125,10 @@
       <div class="setting-row">
         <div class="setting-info">
           <label class="setting-label" for="alerting-cooldown">
-            {$t('superadmin.settings.alerting.cooldown.label') || 'Alert Cooldown (minutes)'}
+            {$t('superadmin.settings.alerting.cooldown.label')}
           </label>
           <p class="setting-description">
-            {$t('superadmin.settings.alerting.cooldown.desc') ||
-              'Minutes to wait before sending the same alert type again.'}
+            {$t('superadmin.settings.alerting.cooldown.desc')}
           </p>
         </div>
         <input

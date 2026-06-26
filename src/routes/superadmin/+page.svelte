@@ -49,13 +49,13 @@
     <div class="loading">
       <div class="spinner"></div>
       <p>
-        {$t('superadmin.dashboard.loading') || 'Loading system data...'}
+        {$t('superadmin.dashboard.loading')}
       </p>
     </div>
   {:else}
     <div
       class="stats-grid"
-      aria-label={$t('superadmin.dashboard.stats_aria') || 'Superadmin stats'}
+      aria-label={$t('superadmin.dashboard.stats_aria')}
     >
       <button class="stat-card cyan" onclick={() => goto('/superadmin/tenants')}>
         <div class="stat-icon">
@@ -64,7 +64,7 @@
         <div class="stat-content">
           <span class="stat-value">{tenantTotal}</span>
           <span class="stat-label">
-            {$t('superadmin.dashboard.stats.tenants') || 'Tenants'}
+            {$t('superadmin.dashboard.stats.tenants')}
           </span>
         </div>
       </button>
@@ -76,7 +76,7 @@
         <div class="stat-content">
           <span class="stat-value">{tenantActive}</span>
           <span class="stat-label">
-            {$t('superadmin.dashboard.stats.active_tenants') || 'Active Tenants'}
+            {$t('superadmin.dashboard.stats.active_tenants')}
           </span>
         </div>
       </button>
@@ -88,7 +88,7 @@
         <div class="stat-content">
           <span class="stat-value">{userTotal}</span>
           <span class="stat-label">
-            {$t('superadmin.dashboard.stats.users') || 'Users'}
+            {$t('superadmin.dashboard.stats.users')}
           </span>
         </div>
       </button>
@@ -100,15 +100,15 @@
         <div class="stat-content">
           <span class="stat-value">
             {#if healthStatus === 'ok'}
-              {$t('superadmin.dashboard.stats.health_ok') || 'OK'}
+              {$t('superadmin.dashboard.stats.health_ok')}
             {:else if healthStatus === 'down'}
-              {$t('superadmin.dashboard.stats.health_down') || 'DB Down'}
+              {$t('superadmin.dashboard.stats.health_down')}
             {:else}
-              {$t('common.loading') || '—'}
+              {$t('common.loading')}
             {/if}
           </span>
           <span class="stat-label">
-            {$t('superadmin.dashboard.stats.system_health') || 'System Health'}
+            {$t('superadmin.dashboard.stats.system_health')}
           </span>
         </div>
       </button>
@@ -116,7 +116,7 @@
 
     <div class="section-header">
       <h2>
-        {$t('superadmin.dashboard.quick_actions.title') || 'Quick Actions'}
+        {$t('superadmin.dashboard.quick_actions.title')}
       </h2>
     </div>
 
@@ -126,11 +126,10 @@
           <Icon name="database" size={18} />
         </div>
         <h3>
-          {$t('superadmin.dashboard.quick_actions.tenants.title') || 'Manage Tenants'}
+          {$t('superadmin.dashboard.quick_actions.tenants.title')}
         </h3>
         <p>
-          {$t('superadmin.dashboard.quick_actions.tenants.desc') ||
-            'Create, edit, and maintain organizations.'}
+          {$t('superadmin.dashboard.quick_actions.tenants.desc')}
         </p>
       </button>
 
@@ -139,11 +138,10 @@
           <Icon name="users" size={18} />
         </div>
         <h3>
-          {$t('superadmin.dashboard.quick_actions.users.title') || 'Manage Users'}
+          {$t('superadmin.dashboard.quick_actions.users.title')}
         </h3>
         <p>
-          {$t('superadmin.dashboard.quick_actions.users.desc') ||
-            'View global users, roles, and access.'}
+          {$t('superadmin.dashboard.quick_actions.users.desc')}
         </p>
       </button>
 
@@ -152,11 +150,10 @@
           <Icon name="server" size={18} />
         </div>
         <h3>
-          {$t('superadmin.radius.title') || 'Managed RADIUS'}
+          {$t('superadmin.radius.title')}
         </h3>
         <p>
-          {$t('superadmin.radius.subtitle') ||
-            'Observe global RADIUS infrastructure and provisioned PPPoE users across tenants.'}
+          {$t('superadmin.radius.subtitle')}
         </p>
       </button>
 
@@ -165,11 +162,10 @@
           <Icon name="activity" size={18} />
         </div>
         <h3>
-          {$t('superadmin.dashboard.quick_actions.audit.title') || 'Audit Logs'}
+          {$t('superadmin.dashboard.quick_actions.audit.title')}
         </h3>
         <p>
-          {$t('superadmin.dashboard.quick_actions.audit.desc') ||
-            'Track activity and security events.'}
+          {$t('superadmin.dashboard.quick_actions.audit.desc')}
         </p>
       </button>
 
@@ -178,11 +174,10 @@
           <Icon name="settings" size={18} />
         </div>
         <h3>
-          {$t('superadmin.dashboard.quick_actions.settings.title') || 'Platform Settings'}
+          {$t('superadmin.dashboard.quick_actions.settings.title')}
         </h3>
         <p>
-          {$t('superadmin.dashboard.quick_actions.settings.desc') ||
-            'Configure policies and system defaults.'}
+          {$t('superadmin.dashboard.quick_actions.settings.desc')}
         </p>
       </button>
     </div>

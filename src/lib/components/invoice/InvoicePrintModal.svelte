@@ -95,11 +95,11 @@
     onkeydown={(e) => e.key === 'Escape' && close()}
     role="presentation"
   >
-    <div class="invoice-modal" role="dialog" aria-modal="true" aria-label={$t('components.invoice_print.preview') || 'Invoice preview'}>
+    <div class="invoice-modal" role="dialog" aria-modal="true" aria-label={$t('components.invoice_print.preview')}>
       <header class="invoice-modal-toolbar">
         <div class="toolbar-title">
           <Icon name="file-text" size={18} />
-          <span>{$t('components.invoice_print.preview') || 'Invoice Preview'}</span>
+          <span>{$t('components.invoice_print.preview')}</span>
         </div>
         <div class="toolbar-actions">
           <button class="btn-tool" type="button" onclick={handleDownloadPdf} disabled={downloadingPdf}>
@@ -108,9 +108,9 @@
           </button>
           <button class="btn-tool btn-primary" type="button" onclick={handlePrint}>
             <Icon name="printer" size={16} />
-            <span>{$t('components.invoice_print.print') || 'Cetak'}</span>
+            <span>{$t('components.invoice_print.print')}</span>
           </button>
-          <button class="btn-tool" type="button" onclick={close} aria-label={$t('common.close') || 'Close'}>
+          <button class="btn-tool" type="button" onclick={close} aria-label={$t('common.close')}>
             <Icon name="x" size={16} />
           </button>
         </div>

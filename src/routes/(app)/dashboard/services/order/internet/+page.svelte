@@ -333,37 +333,36 @@
 <div class="internet-order-page fade-in">
   <section class="hero card">
     <div>
-      <h1>{$t('dashboard.internet_order.hero.title') || 'Pesan Layanan Internet'}</h1>
+      <h1>{$t('dashboard.internet_order.hero.title')}</h1>
       <p>
-        {$t('dashboard.internet_order.hero.subtitle') ||
-          'Alur: pilih alamat, pilih paket, tinjau pesanan, lalu kirim permintaan instalasi.'}
+        {$t('dashboard.internet_order.hero.subtitle')}
       </p>
     </div>
     <div class="hero-actions">
       <button class="btn btn-secondary" type="button" onclick={() => goto('/dashboard/services/order')}>
         <Icon name="arrow-left" size={15} />
-        {$t('dashboard.internet_order.actions.service_types') || 'Jenis Layanan'}
+        {$t('dashboard.internet_order.actions.service_types')}
       </button>
       <button class="btn btn-secondary" type="button" onclick={() => goto('/dashboard/invoices')}>
         <Icon name="file-text" size={15} />
-        {$t('dashboard.internet_order.actions.billing_invoices') || 'Tagihan & Invoice'}
+        {$t('dashboard.internet_order.actions.billing_invoices')}
       </button>
       <button class="btn btn-secondary" type="button" onclick={loadData} disabled={loading}>
         <Icon name="refresh-cw" size={15} />
-        {$t('dashboard.internet_order.actions.refresh') || 'Muat Ulang'}
+        {$t('dashboard.internet_order.actions.refresh')}
       </button>
     </div>
   </section>
 
   <section class="steps card">
     <button class={`step-pill ${step === 1 ? 'active' : ''}`} type="button" onclick={() => (step = 1)}>
-      1. {$t('dashboard.internet_order.steps.address') || 'Alamat'}
+      1. {$t('dashboard.internet_order.steps.address')}
     </button>
     <button class={`step-pill ${step === 2 ? 'active' : ''}`} type="button" onclick={() => step === 1 ? moveToPackageStep() : (step = 2)}>
-      2. {$t('dashboard.internet_order.steps.package') || 'Paket'}
+      2. {$t('dashboard.internet_order.steps.package')}
     </button>
     <button class={`step-pill ${step === 3 ? 'active' : ''}`} type="button" onclick={() => (step = 3)}>
-      3. {$t('dashboard.internet_order.steps.review') || 'Tinjau'}
+      3. {$t('dashboard.internet_order.steps.review')}
     </button>
   </section>
 
@@ -374,15 +373,14 @@
     <section class="card stage-card">
       <div class="stage-head">
         <div>
-          <h3>{$t('dashboard.internet_order.stage.address.title') || 'Pilih Alamat'}</h3>
+          <h3>{$t('dashboard.internet_order.stage.address.title')}</h3>
           <p>
-            {$t('dashboard.internet_order.stage.address.subtitle') ||
-              'Pilih alamat yang sudah ada atau tambahkan alamat baru terlebih dahulu.'}
+            {$t('dashboard.internet_order.stage.address.subtitle')}
           </p>
         </div>
         <button class="btn btn-secondary" type="button" onclick={openAddLocationModal}>
           <Icon name="map-pin" size={15} />
-          {$t('dashboard.internet_order.actions.add_location') || 'Tambah Lokasi'}
+          {$t('dashboard.internet_order.actions.add_location')}
         </button>
       </div>
 
@@ -390,16 +388,15 @@
         <div class="empty-state">
           <Icon name="map-pin" size={18} />
           <div>
-            <h4>{$t('dashboard.internet_order.empty.no_locations_title') || 'Belum ada lokasi'}</h4>
+            <h4>{$t('dashboard.internet_order.empty.no_locations_title')}</h4>
             <p>
-              {$t('dashboard.internet_order.empty.no_locations_subtitle') ||
-                'Tambahkan minimal satu lokasi untuk melanjutkan pemesanan internet.'}
+              {$t('dashboard.internet_order.empty.no_locations_subtitle')}
             </p>
           </div>
         </div>
       {:else}
         <div class="field">
-          <label for="draft-location">{$t('dashboard.internet_order.labels.location') || 'Lokasi'}</label>
+          <label for="draft-location">{$t('dashboard.internet_order.labels.location')}</label>
           <select id="draft-location" bind:value={draftLocationId} disabled={loading}>
             {#each locations as location (location.id)}
               <option value={location.id}>{location.label}</option>
@@ -410,7 +407,7 @@
         <div class="stage-actions">
           <button class="btn btn-primary" type="button" onclick={moveToPackageStep} disabled={!draftLocationId}>
             <Icon name="arrow-right" size={15} />
-            {$t('dashboard.internet_order.actions.next_choose_package') || 'Lanjut: Pilih Paket'}
+            {$t('dashboard.internet_order.actions.next_choose_package')}
           </button>
         </div>
       {/if}
@@ -421,27 +418,27 @@
     <section class="card stage-card">
       <div class="stage-head">
         <div>
-          <h3>{$t('dashboard.internet_order.stage.package.title') || 'Pilih Paket'}</h3>
+          <h3>{$t('dashboard.internet_order.stage.package.title')}</h3>
           <p>
-            {$t('dashboard.internet_order.labels.location') || 'Lokasi'}: <strong>{selectedLocation?.label || '-'}</strong>
+            {$t('dashboard.internet_order.labels.location')}: <strong>{selectedLocation?.label || '-'}</strong>
           </p>
         </div>
         <button class="btn btn-secondary" type="button" onclick={moveBackToAddressStep}>
           <Icon name="arrow-left" size={15} />
-          {$t('dashboard.internet_order.actions.back_to_address') || 'Kembali ke Alamat'}
+          {$t('dashboard.internet_order.actions.back_to_address')}
         </button>
       </div>
 
       <div class="package-toolbar">
         <div class="field">
-          <div class="field-label">{$t('dashboard.internet_order.labels.billing_cycle') || 'Siklus Tagihan'}</div>
+          <div class="field-label">{$t('dashboard.internet_order.labels.billing_cycle')}</div>
           <div class="cycle-pills">
             <button
               class={`cycle-pill ${draftBillingCycle === 'monthly' ? 'active' : ''}`}
               type="button"
               onclick={() => (draftBillingCycle = 'monthly')}
             >
-              {$t('dashboard.internet_order.cycles.monthly') || 'Bulanan'}
+              {$t('dashboard.internet_order.cycles.monthly')}
             </button>
             <button
               class={`cycle-pill ${draftBillingCycle === 'yearly' ? 'active' : ''}`}
@@ -449,24 +446,24 @@
               onclick={() => (draftBillingCycle = 'yearly')}
               disabled={!draftPackage || !hasYearlyPrice(draftPackage)}
             >
-              {$t('dashboard.internet_order.cycles.yearly') || 'Tahunan'}
+              {$t('dashboard.internet_order.cycles.yearly')}
             </button>
           </div>
         </div>
         <div class="mini-location">
-          <small>{$t('dashboard.internet_order.labels.selected_address') || 'Alamat Terpilih'}</small>
+          <small>{$t('dashboard.internet_order.labels.selected_address')}</small>
           <strong>{selectedLocation?.label || '-'}</strong>
         </div>
       </div>
 
       {#if loading}
-        <p class="status-note">{$t('dashboard.internet_order.status.loading_packages') || 'Memuat paket...'}</p>
+        <p class="status-note">{$t('dashboard.internet_order.status.loading_packages')}</p>
       {:else if packages.length === 0}
         <div class="empty-state">
           <Icon name="package" size={18} />
           <div>
-            <h4>{$t('dashboard.internet_order.empty.no_packages_title') || 'Belum ada paket internet yang tersedia'}</h4>
-            <p>{$t('dashboard.internet_order.empty.no_packages_subtitle') || 'Silakan hubungi admin untuk mengaktifkan katalog paket.'}</p>
+            <h4>{$t('dashboard.internet_order.empty.no_packages_title')}</h4>
+            <p>{$t('dashboard.internet_order.empty.no_packages_subtitle')}</p>
           </div>
         </div>
       {:else}
@@ -477,20 +474,20 @@
                 <div class="package-top">
                   <h4>{pkg.name}</h4>
                   {#if draftPackageId === pkg.id}
-                    <span class="badge">{$t('dashboard.internet_order.badges.selected') || 'Dipilih'}</span>
+                    <span class="badge">{$t('dashboard.internet_order.badges.selected')}</span>
                   {/if}
                 </div>
                 <div class="package-price">
                   <strong>{formatCurrency(Number(pkg.price_monthly || 0))}</strong>
-                  <span>{$t('dashboard.internet_order.labels.monthly_plan') || 'Paket bulanan'}</span>
+                  <span>{$t('dashboard.internet_order.labels.monthly_plan')}</span>
                 </div>
                 <div class="package-extra">
                   {#if hasYearlyPrice(pkg)}
                     <span>
-                      {formatCurrency(Number(pkg.price_yearly || 0))} {$t('dashboard.internet_order.labels.yearly_available') || 'opsi tahunan tersedia'}
+                      {formatCurrency(Number(pkg.price_yearly || 0))} {$t('dashboard.internet_order.labels.yearly_available')}
                     </span>
                   {:else}
-                    <span>{$t('dashboard.internet_order.labels.yearly_not_available') || 'Paket tahunan belum tersedia'}</span>
+                    <span>{$t('dashboard.internet_order.labels.yearly_not_available')}</span>
                   {/if}
                 </div>
                 <button class={`btn select-btn ${draftPackageId === pkg.id ? 'btn-primary' : 'btn-secondary'}`} type="button" onclick={() => (draftPackageId = pkg.id)}>
@@ -505,34 +502,33 @@
 
           <aside class="package-sidecard">
             <div class="sidecard-head">
-              <h4>{$t('dashboard.internet_order.sidecard.title') || 'Ringkasan Pilihan'}</h4>
-              <span class="sidecard-badge">{$t('dashboard.internet_order.sidecard.step_badge') || 'Langkah 2 / 3'}</span>
+              <h4>{$t('dashboard.internet_order.sidecard.title')}</h4>
+              <span class="sidecard-badge">{$t('dashboard.internet_order.sidecard.step_badge')}</span>
             </div>
             <dl class="sidecard-list">
               <div>
-                <dt>{$t('dashboard.internet_order.sidecard.address') || 'Alamat'}</dt>
+                <dt>{$t('dashboard.internet_order.sidecard.address')}</dt>
                 <dd>{selectedLocation?.label || '-'}</dd>
               </div>
               <div>
-                <dt>{$t('dashboard.internet_order.sidecard.package') || 'Paket'}</dt>
+                <dt>{$t('dashboard.internet_order.sidecard.package')}</dt>
                 <dd>{draftPackage?.name || '-'}</dd>
               </div>
               <div>
-                <dt>{$t('dashboard.internet_order.sidecard.billing') || 'Tagihan'}</dt>
+                <dt>{$t('dashboard.internet_order.sidecard.billing')}</dt>
                 <dd>{billingCycleLabel(draftBillingCycle)}</dd>
               </div>
             </dl>
             <div class="sidecard-total">
-              <small>{$t('dashboard.internet_order.labels.current_item_total') || 'Total Item Saat Ini'}</small>
+              <small>{$t('dashboard.internet_order.labels.current_item_total')}</small>
               <strong>{formatCurrency(draftAmount)}</strong>
             </div>
             <button class="btn btn-primary sidecard-cta" type="button" onclick={orderNowFromPackage}>
               <Icon name="shopping-cart" size={16} />
-              {$t('dashboard.internet_order.actions.order_now') || 'Pesan Sekarang'}
+              {$t('dashboard.internet_order.actions.order_now')}
             </button>
             <p class="sidecard-hint">
-              {$t('dashboard.internet_order.sidecard.hint') ||
-                'Anda bisa menambah layanan lain nanti pada langkah Tinjau.'}
+              {$t('dashboard.internet_order.sidecard.hint')}
             </p>
           </aside>
         </div>
@@ -544,10 +540,9 @@
     <section class="card stage-card">
       <div class="stage-head">
         <div>
-          <h3>{$t('dashboard.internet_order.stage.review.title') || 'Tinjau & Kirim'}</h3>
+          <h3>{$t('dashboard.internet_order.stage.review.title')}</h3>
           <p>
-            {$t('dashboard.internet_order.stage.review.subtitle') ||
-              'Semua item berikut akan dikirim sebagai permintaan instalasi.'}
+            {$t('dashboard.internet_order.stage.review.subtitle')}
           </p>
         </div>
       </div>
@@ -556,14 +551,14 @@
         <div class="empty-state">
           <Icon name="clipboard-list" size={18} />
           <div>
-            <h4>{$t('dashboard.internet_order.empty.no_order_items_title') || 'Belum ada item pesanan'}</h4>
-            <p>{$t('dashboard.internet_order.empty.no_order_items_subtitle') || 'Tambahkan minimal satu paket terlebih dahulu.'}</p>
+            <h4>{$t('dashboard.internet_order.empty.no_order_items_title')}</h4>
+            <p>{$t('dashboard.internet_order.empty.no_order_items_subtitle')}</p>
           </div>
         </div>
         <div class="stage-actions">
           <button class="btn btn-secondary" type="button" onclick={() => (step = 2)}>
             <Icon name="arrow-left" size={15} />
-            {$t('dashboard.internet_order.actions.back_to_package') || 'Kembali ke Paket'}
+            {$t('dashboard.internet_order.actions.back_to_package')}
           </button>
         </div>
       {:else}
@@ -586,13 +581,13 @@
 
         <div class="summary-row">
           <div>
-            <small>{$t('dashboard.internet_order.labels.total_order_amount') || 'Total Pesanan'}</small>
+            <small>{$t('dashboard.internet_order.labels.total_order_amount')}</small>
             <strong>{formatCurrency(orderTotalAmount)}</strong>
           </div>
           <div class="hero-actions">
             <button class="btn btn-secondary" type="button" onclick={addMoreFromStep3}>
               <Icon name="plus" size={15} />
-              {$t('dashboard.internet_order.actions.add_more') || 'Tambah Lagi'}
+              {$t('dashboard.internet_order.actions.add_more')}
             </button>
             <button
               class="btn btn-primary"
@@ -602,10 +597,10 @@
             >
               {#if submitLoading}
                 <Icon name="refresh-cw" size={16} />
-                {$t('dashboard.internet_order.status.processing') || 'Memproses...'}
+                {$t('dashboard.internet_order.status.processing')}
               {:else}
                 <Icon name="check-circle" size={16} />
-                {$t('dashboard.internet_order.actions.submit_installation_request') || 'Kirim Permintaan Instalasi'}
+                {$t('dashboard.internet_order.actions.submit_installation_request')}
               {/if}
             </button>
           </div>
@@ -617,49 +612,49 @@
 
 <Modal
   show={showAddLocationModal}
-  title={$t('dashboard.internet_order.modal.add_location_title') || 'Tambah Lokasi'}
+  title={$t('dashboard.internet_order.modal.add_location_title')}
   onclose={() => {
     if (!creatingLocation) showAddLocationModal = false;
   }}
 >
   <div class="location-form">
     <label class="form-field">
-      <span>{$t('dashboard.internet_order.modal.fields.label') || 'Label'}</span>
-      <input class="input" bind:value={newLocationLabel} placeholder={$t('dashboard.internet_order.modal.placeholders.label') || 'Rumah / Kantor'} />
+      <span>{$t('dashboard.internet_order.modal.fields.label')}</span>
+      <input class="input" bind:value={newLocationLabel} placeholder={$t('dashboard.internet_order.modal.placeholders.label')} />
     </label>
     <label class="form-field">
-      <span>{$t('dashboard.internet_order.modal.fields.address') || 'Alamat'}</span>
-      <input class="input" bind:value={newLocationAddress} placeholder={$t('dashboard.internet_order.modal.placeholders.address') || 'Alamat jalan'} />
+      <span>{$t('dashboard.internet_order.modal.fields.address')}</span>
+      <input class="input" bind:value={newLocationAddress} placeholder={$t('dashboard.internet_order.modal.placeholders.address')} />
     </label>
     <div class="location-grid-2">
       <label class="form-field">
-        <span>{$t('dashboard.internet_order.modal.fields.city') || 'Kota'}</span>
+        <span>{$t('dashboard.internet_order.modal.fields.city')}</span>
         <input class="input" bind:value={newLocationCity} />
       </label>
       <label class="form-field">
-        <span>{$t('dashboard.internet_order.modal.fields.state') || 'Provinsi'}</span>
+        <span>{$t('dashboard.internet_order.modal.fields.state')}</span>
         <input class="input" bind:value={newLocationState} />
       </label>
       <label class="form-field">
-        <span>{$t('dashboard.internet_order.modal.fields.postal_code') || 'Kode Pos'}</span>
+        <span>{$t('dashboard.internet_order.modal.fields.postal_code')}</span>
         <input class="input" bind:value={newLocationPostalCode} />
       </label>
       <label class="form-field">
-        <span>{$t('dashboard.internet_order.modal.fields.country') || 'Negara'}</span>
+        <span>{$t('dashboard.internet_order.modal.fields.country')}</span>
         <input class="input" bind:value={newLocationCountry} />
       </label>
     </div>
     <label class="form-field">
-      <span>{$t('dashboard.internet_order.modal.fields.notes') || 'Catatan'}</span>
+      <span>{$t('dashboard.internet_order.modal.fields.notes')}</span>
       <textarea class="input textarea" bind:value={newLocationNotes} rows="3"></textarea>
     </label>
     <div class="location-grid-2">
       <label class="form-field">
-        <span>{$t('dashboard.internet_order.modal.fields.latitude') || 'Latitude'}</span>
+        <span>{$t('dashboard.internet_order.modal.fields.latitude')}</span>
         <input class="input" bind:value={newLocationLatitude} placeholder="-6.200000" />
       </label>
       <label class="form-field">
-        <span>{$t('dashboard.internet_order.modal.fields.longitude') || 'Longitude'}</span>
+        <span>{$t('dashboard.internet_order.modal.fields.longitude')}</span>
         <input class="input" bind:value={newLocationLongitude} placeholder="106.816666" />
       </label>
     </div>
@@ -669,15 +664,15 @@
         onclick={() => (showAddLocationModal = false)}
         disabled={creatingLocation}
       >
-        {$t('dashboard.internet_order.actions.cancel') || 'Batal'}
+        {$t('dashboard.internet_order.actions.cancel')}
       </button>
       <button class="btn btn-primary" onclick={saveMyLocation} disabled={creatingLocation || !newLocationLabel.trim()}>
         {#if creatingLocation}
           <Icon name="refresh-cw" size={16} />
-          {$t('dashboard.internet_order.status.saving') || 'Menyimpan...'}
+          {$t('dashboard.internet_order.status.saving')}
         {:else}
           <Icon name="save" size={16} />
-          {$t('dashboard.internet_order.actions.save') || 'Simpan'}
+          {$t('dashboard.internet_order.actions.save')}
         {/if}
       </button>
     </div>

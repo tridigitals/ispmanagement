@@ -677,12 +677,12 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.services.title') || $t('admin.network.packages.title') || 'Services'}
-    subtitle={$t('admin.services.subtitle_desc') || 'Kelola layanan dan konfigurasinya.'}
+    subtitle={$t('admin.services.subtitle_desc')}
   >
     {#snippet actions()}
       <button class="btn ghost" type="button" onclick={() => void load()} disabled={loading}>
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
+        {$t('common.refresh')}
       </button>
       {#if $can('manage', 'isp_packages')}
         <button class="btn" type="button" onclick={() => void openCreate()}>
@@ -698,7 +698,7 @@
   <div class="filters-wrap">
     <NetworkFilterPanel>
       <div class="control control-wide">
-        <label for="packages-search">{$t('common.search') || 'Search'}</label>
+        <label for="packages-search">{$t('common.search')}</label>
         <label class="search-wrap" for="packages-search">
           <Icon name="search" size={14} />
           <input
@@ -725,7 +725,7 @@
                 packageTableVersion += 1;
                 void loadPackages();
               }}
-              aria-label={$t('common.clear') || 'Clear'}
+              aria-label={$t('common.clear')}
             >
               <Icon name="x" size={14} />
             </button>
@@ -738,7 +738,7 @@
   <div class="table-wrap">
     <div class="table-top">
       <span class="muted"
-        >{total >= 0 ? total : packages.length} {$t('common.results') || 'results'}</span
+        >{total >= 0 ? total : packages.length} {$t('common.results')}</span
       >
     </div>
 
@@ -811,9 +811,9 @@
             </div>
           {:else if key === 'status'}
             {#if row.is_active}
-              <span class="badge ok">{$t('common.active') || 'Active'}</span>
+              <span class="badge ok">{$t('common.active')}</span>
             {:else}
-              <span class="badge warn">{$t('common.disabled') || 'Disabled'}</span>
+              <span class="badge warn">{$t('common.disabled')}</span>
             {/if}
           {:else if key === 'mappings'}
             {#if isInternetType(row.service_type)}
@@ -827,7 +827,7 @@
                 {#if isInternetType(row.service_type)}
                   <button
                     class="btn-icon"
-                    title={$t('admin.network.packages.actions.map') || 'Map to router'}
+                    title={$t('admin.network.packages.actions.map')}
                     onclick={() => void openMapping(row)}
                   >
                     <Icon name="router" size={16} />
@@ -835,14 +835,14 @@
                 {/if}
                 <button
                   class="btn-icon"
-                  title={$t('common.edit') || 'Edit'}
+                  title={$t('common.edit')}
                   onclick={() => void openEdit(row)}
                 >
                   <Icon name="edit" size={16} />
                 </button>
                 <button
                   class="btn-icon danger"
-                  title={$t('common.delete') || 'Delete'}
+                  title={$t('common.delete')}
                   onclick={() => confirmDeletePackage(row)}
                 >
                   <Icon name="trash-2" size={16} />
@@ -914,17 +914,17 @@
     />
   {:else}
     <div class="modal-loading-shell" aria-busy={servicesDialogsLoading}>
-      {$t('common.loading') || 'Loading...'}
+      {$t('common.loading')}
     </div>
   {/if}
 {/if}
 
 <ConfirmDialog
   bind:show={showDeleteConfirm}
-  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
-  message={$t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  title={$t('common.confirm_delete_title')}
+  message={$t('common.confirm_delete')}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   type="danger"
   onconfirm={handleConfirmDelete}
   oncancel={() => { deleteTargetId = null; }}

@@ -59,9 +59,9 @@
     {#if confirmationKeyword}
       <div class="confirmation-input">
         <p class="instruction">
-          {$t('components.confirm_dialog.instruction_prefix') || 'Type'}
+          {$t('components.confirm_dialog.instruction_prefix')}
           <strong>{confirmationKeyword}</strong>
-          {$t('components.confirm_dialog.instruction_suffix') || 'to confirm.'}
+          {$t('components.confirm_dialog.instruction_suffix')}
         </p>
         <input
           type="text"

@@ -57,23 +57,23 @@
 >
   <div class="modal-form">
     <Input
-      label={$t('superadmin.tenants.modal.labels.name') || 'Tenant Name'}
+      label={$t('superadmin.tenants.modal.labels.name')}
       bind:value={newTenant.name}
       oninput={onGenerateSlug}
-      placeholder={$t('superadmin.tenants.modal.placeholders.name') || 'e.g. Acme Corp'}
+      placeholder={$t('superadmin.tenants.modal.placeholders.name')}
     />
 
     <Input
-      label={$t('superadmin.tenants.modal.labels.slug') || 'Slug (URL)'}
+      label={$t('superadmin.tenants.modal.labels.slug')}
       bind:value={newTenant.slug}
-      placeholder={$t('superadmin.tenants.modal.placeholders.slug') || 'e.g. acme-corp'}
+      placeholder={$t('superadmin.tenants.modal.placeholders.slug')}
       disabled={isEditing}
     />
 
     <Input
-      label={$t('superadmin.tenants.modal.labels.custom_domain') || 'Custom Domain (Optional)'}
+      label={$t('superadmin.tenants.modal.labels.custom_domain')}
       bind:value={newTenant.customDomain}
-      placeholder={$t('superadmin.tenants.modal.placeholders.custom_domain') || 'e.g. app.acme.com'}
+      placeholder={$t('superadmin.tenants.modal.placeholders.custom_domain')}
     />
 
     {#if isEditing}
@@ -132,37 +132,36 @@
     {#if !isEditing}
       <div class="divider">
         <span>
-          {$t('superadmin.tenants.modal.sections.initial_subscription') || 'Initial Subscription'}
+          {$t('superadmin.tenants.modal.sections.initial_subscription')}
         </span>
       </div>
 
       <Select
-        label={$t('superadmin.tenants.modal.labels.plan') || 'Subscription Plan'}
+        label={$t('superadmin.tenants.modal.labels.plan')}
         options={plans}
         bind:value={newTenant.planId}
-        placeholder={$t('superadmin.tenants.modal.placeholders.plan') || 'Select a plan'}
+        placeholder={$t('superadmin.tenants.modal.placeholders.plan')}
       />
 
       <div class="divider">
         <span>
-          {$t('superadmin.tenants.modal.sections.initial_admin') || 'Initial Admin User'}
+          {$t('superadmin.tenants.modal.sections.initial_admin')}
         </span>
       </div>
 
       <Input
-        label={$t('superadmin.tenants.modal.labels.owner_email') || 'Owner Email'}
+        label={$t('superadmin.tenants.modal.labels.owner_email')}
         type="email"
         bind:value={newTenant.ownerEmail}
-        placeholder={$t('superadmin.tenants.modal.placeholders.owner_email') || 'admin@acme.com'}
+        placeholder={$t('superadmin.tenants.modal.placeholders.owner_email')}
       />
 
       <div class="password-group">
         <Input
-          label={$t('superadmin.tenants.modal.labels.owner_password') || 'Owner Password'}
+          label={$t('superadmin.tenants.modal.labels.owner_password')}
           type={showPassword ? 'text' : 'password'}
           bind:value={newTenant.ownerPassword}
-          placeholder={$t('superadmin.tenants.modal.placeholders.owner_password') ||
-            'Strong password'}
+          placeholder={$t('superadmin.tenants.modal.placeholders.owner_password')}
         />
         <button
           class="toggle-password"
@@ -178,14 +177,14 @@
       <label>
         <input type="checkbox" bind:checked={newTenant.isActive} />
         <span class="toggle-label">
-          {$t('superadmin.tenants.modal.labels.active_status') || 'Active Status'}
+          {$t('superadmin.tenants.modal.labels.active_status')}
         </span>
       </label>
     </div>
 
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick={() => (show = false)} disabled={loading}>
-        {$t('common.cancel') || 'Cancel'}
+        {$t('common.cancel')}
       </button>
       <button class="btn btn-primary" onclick={onSubmit} disabled={loading}>
         {#if loading}

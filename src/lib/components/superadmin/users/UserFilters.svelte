@@ -34,7 +34,7 @@
 
 <CompactFilterToolbar
   bind:searchQuery
-  placeholder={$t('superadmin.users.search') || 'Search users...'}
+  placeholder={$t('superadmin.users.search')}
   bind:filterPanelOpen={filtersOpen}
   {activeFilterCount}
   onReset={resetFilters}
@@ -44,21 +44,21 @@
   {#snippet advancedFilters()}
     <div class="field-grid">
       <div class="field">
-        <label for="user-role-filter">{$t('common.role') || 'Role'}</label>
+        <label for="user-role-filter">{$t('common.role')}</label>
         <select id="user-role-filter" bind:value={roleFilter}>
-          <option value="all">{$t('superadmin.users.filters.all_roles') || 'All Roles'}</option>
-          <option value="admin">{$t('superadmin.users.filters.admin') || 'Admin'}</option>
-          <option value="user">{$t('superadmin.users.filters.user') || 'User'}</option>
-          <option value="superadmin">{$t('superadmin.users.filters.superadmin') || 'Super Admin'}</option>
+          <option value="all">{$t('superadmin.users.filters.all_roles')}</option>
+          <option value="admin">{$t('superadmin.users.filters.admin')}</option>
+          <option value="user">{$t('superadmin.users.filters.user')}</option>
+          <option value="superadmin">{$t('superadmin.users.filters.superadmin')}</option>
         </select>
       </div>
 
       <div class="field">
-        <label for="user-status-filter">{$t('common.status') || 'Status'}</label>
+        <label for="user-status-filter">{$t('common.status')}</label>
         <select id="user-status-filter" bind:value={statusFilter}>
-          <option value="all">{$t('common.all') || 'All'}</option>
-          <option value="active">{$t('superadmin.users.filters.active') || 'Active'}</option>
-          <option value="inactive">{$t('superadmin.users.filters.inactive') || 'Inactive'}</option>
+          <option value="all">{$t('common.all')}</option>
+          <option value="active">{$t('superadmin.users.filters.active')}</option>
+          <option value="inactive">{$t('superadmin.users.filters.inactive')}</option>
         </select>
       </div>
     </div>

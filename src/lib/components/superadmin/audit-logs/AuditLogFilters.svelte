@@ -62,7 +62,7 @@
         type="text"
         bind:value={searchQuery}
         oninput={onSearch}
-        placeholder={$t('superadmin.audit_logs.search') || 'Search logs...'}
+        placeholder={$t('superadmin.audit_logs.search')}
       />
       {#if searchQuery}
         <button class="clear-btn" type="button" onclick={clearSearch}>
@@ -71,7 +71,7 @@
       {/if}
     </div>
 
-    <div class="quick-row" aria-label={$t('superadmin.audit_logs.aria.quick_ranges') || 'Quick ranges'}>
+    <div class="quick-row" aria-label={$t('superadmin.audit_logs.aria.quick_ranges')}>
       <button type="button" class="chip" onclick={() => setQuickRange(1)}>24h</button>
       <button type="button" class="chip" onclick={() => setQuickRange(7)}>7d</button>
       <button type="button" class="chip" onclick={() => setQuickRange(30)}>30d</button>
@@ -90,14 +90,14 @@
     </button>
 
     {#if !isMobile}
-      <div class="view-toggle" aria-label={$t('superadmin.audit_logs.aria.view_mode') || 'View mode'}>
+      <div class="view-toggle" aria-label={$t('superadmin.audit_logs.aria.view_mode')}>
         <button
           type="button"
           class="view-btn"
           class:active={viewMode === 'table'}
           onclick={() => (viewMode = 'table')}
-          title={$t('superadmin.audit_logs.view.table') || 'Table view'}
-          aria-label={$t('superadmin.audit_logs.view.table') || 'Table view'}
+          title={$t('superadmin.audit_logs.view.table')}
+          aria-label={$t('superadmin.audit_logs.view.table')}
         >
           <Icon name="list" size={18} />
         </button>
@@ -106,8 +106,8 @@
           class="view-btn"
           class:active={viewMode === 'cards'}
           onclick={() => (viewMode = 'cards')}
-          title={$t('superadmin.audit_logs.view.cards') || 'Card view'}
-          aria-label={$t('superadmin.audit_logs.view.cards') || 'Card view'}
+          title={$t('superadmin.audit_logs.view.cards')}
+          aria-label={$t('superadmin.audit_logs.view.cards')}
         >
           <Icon name="grid" size={18} />
         </button>
@@ -120,22 +120,21 @@
       <div class="field-grid">
         <div class="field">
           <label class="field-label" for="filter-action"
-            >{$t('superadmin.audit_logs.filters.action') || 'Action (exact)'}</label
+            >{$t('superadmin.audit_logs.filters.action')}</label
           >
           <input
             id="filter-action"
             type="text"
             bind:value={actionFilter}
             oninput={onSearch}
-            placeholder={$t('superadmin.audit_logs.filters.action_placeholder') ||
-              'e.g. login, create_user'}
+            placeholder={$t('superadmin.audit_logs.filters.action_placeholder')}
             class="field-input"
           />
         </div>
 
         <div class="field">
           <label class="field-label" for="filter-date-from"
-            >{$t('superadmin.audit_logs.filters.from') || 'From'}</label
+            >{$t('superadmin.audit_logs.filters.from')}</label
           >
           <input
             id="filter-date-from"
@@ -148,7 +147,7 @@
 
         <div class="field">
           <label class="field-label" for="filter-date-to"
-            >{$t('superadmin.audit_logs.filters.to') || 'To'}</label
+            >{$t('superadmin.audit_logs.filters.to')}</label
           >
           <input
             id="filter-date-to"
@@ -162,7 +161,7 @@
 
       <div class="filter-footer">
         <button type="button" class="reset-link" onclick={onClear}>
-          {$t('common.clear') || 'Clear'}
+          {$t('common.clear')}
         </button>
       </div>
     </div>

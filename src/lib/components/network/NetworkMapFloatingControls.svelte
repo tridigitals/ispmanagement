@@ -77,16 +77,16 @@
   <button
     type="button"
     class="floating-controls-toggle"
-    aria-label={$t('network.map.show_controls') || 'Show map controls'}
+    aria-label={$t('network.map.show_controls')}
     data-network-map-controls-toggle
     onclick={onToggleHidden}
   >
-    <span>{$t('network.map.controls') || 'Controls'}</span>
+    <span>{$t('network.map.controls')}</span>
   </button>
 {:else}
   <aside
     class="floating-controls"
-    aria-label={$t('network.map.workspace_controls') || 'Map workspace controls'}
+    aria-label={$t('network.map.workspace_controls')}
     data-network-map-controls-root
     style={`--nm-controls-width:${layout.desktopWidth};--nm-controls-padding:${layout.desktopPadding};--nm-controls-radius:${layout.desktopRadius};--nm-controls-gap:${layout.desktopGap};--nm-controls-chip-min-height:${layout.chipMinHeight};--nm-controls-chip-padding-x:${layout.chipPaddingX};--nm-controls-chip-padding-y:${layout.chipPaddingY};--nm-controls-mobile-padding:${layout.mobilePadding};--nm-controls-mobile-radius:${layout.mobileRadius};`}
   >

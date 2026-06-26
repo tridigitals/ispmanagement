@@ -23,7 +23,7 @@
 <div class="card section">
   <div class="section-head">
     <div>
-      <h3>{$t('admin.customers.billing.title') || 'Billing'}</h3>
+      <h3>{$t('admin.customers.billing.title')}</h3>
       <p class="subtitle">{$t('admin.customers.billing.subtitle')}</p>
     </div>
   </div>
@@ -36,7 +36,7 @@
       aria-pressed={billingFilter === 'all'}
     >
       <div class="billing-stat">
-        <div class="billing-stat-label">{$t('admin.customers.billing.stats.total') || 'Total invoices'}</div>
+        <div class="billing-stat-label">{$t('admin.customers.billing.stats.total')}</div>
         <div class="billing-stat-value">{billingStats.total}</div>
       </div>
     </button>
@@ -47,7 +47,7 @@
       aria-pressed={billingFilter === 'unpaid'}
     >
       <div class="billing-stat">
-        <div class="billing-stat-label">{$t('admin.customers.billing.stats.unpaid') || 'Unpaid'}</div>
+        <div class="billing-stat-label">{$t('admin.customers.billing.stats.unpaid')}</div>
         <div class="billing-stat-value">{billingStats.unpaid}</div>
       </div>
     </button>
@@ -58,7 +58,7 @@
       aria-pressed={billingFilter === 'paid'}
     >
       <div class="billing-stat">
-        <div class="billing-stat-label">{$t('admin.customers.billing.stats.paid') || 'Paid'}</div>
+        <div class="billing-stat-label">{$t('admin.customers.billing.stats.paid')}</div>
         <div class="billing-stat-value">{billingStats.paid}</div>
       </div>
     </button>
@@ -69,7 +69,7 @@
       aria-pressed={billingFilter === 'overdue'}
     >
       <div class="billing-stat">
-        <div class="billing-stat-label">{$t('admin.customers.billing.stats.overdue') || 'Overdue'}</div>
+        <div class="billing-stat-label">{$t('admin.customers.billing.stats.overdue')}</div>
         <div class="billing-stat-value">{billingStats.overdue}</div>
       </div>
     </button>
@@ -79,7 +79,7 @@
     columns={billingColumns}
     data={billingRows}
     loading={loadingBilling}
-    emptyText={$t('admin.customers.billing.empty') || 'No invoices for this customer yet.'}
+    emptyText={$t('admin.customers.billing.empty')}
     pagination
   >
     {#snippet cell({ item, key })}
@@ -101,7 +101,7 @@
         <div class="sub mono">{new Date(row.due_date).toLocaleTimeString()}</div>
       {:else if key === 'actions'}
         <div class="row-actions">
-          <button class="btn-icon" title={$t('admin.package_invoices.list.actions.view_details') || 'View details'} onclick={() => onOpenInvoiceDetail(row.id)}>
+          <button class="btn-icon" title={$t('admin.package_invoices.list.actions.view_details')} onclick={() => onOpenInvoiceDetail(row.id)}>
             <Icon name="eye" size={16} />
           </button>
         </div>

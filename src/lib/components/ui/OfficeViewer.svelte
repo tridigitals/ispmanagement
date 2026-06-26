@@ -113,7 +113,7 @@
         onclick={() => downloadFile(downloadUrl, file.original_name)}
       >
         <Icon name="download" size={16} />
-        {$t('common.download') || 'Download'}
+        {$t('common.download')}
       </button>
     </div>
   </div>
@@ -121,13 +121,13 @@
   {#if loading}
     <div class="center">
       <div class="spinner"></div>
-      <div class="hint">{$t('common.loading') || 'Loading...'}</div>
+      <div class="hint">{$t('common.loading')}</div>
     </div>
   {:else if error}
     <div class="center">
       <Icon name="alert-circle" size={20} />
       <div class="hint">
-        {$t('components.lightbox.preview_unavailable') || 'Preview not available'}
+        {$t('components.lightbox.preview_unavailable')}
         <span class="muted">({error})</span>
       </div>
       <button
@@ -136,7 +136,7 @@
         onclick={() => downloadFile(downloadUrl, file.original_name)}
       >
         <Icon name="download" size={16} />
-        {$t('components.lightbox.download_file') || 'Download File'}
+        {$t('components.lightbox.download_file')}
       </button>
     </div>
   {:else}

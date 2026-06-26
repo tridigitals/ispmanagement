@@ -81,14 +81,14 @@
           <Icon name="users" size={64} />
         </div>
         <h3>
-          {$t('superadmin.users.empty.title') || 'No users found'}
+          {$t('superadmin.users.empty.title')}
         </h3>
         <p>
-          {$t('superadmin.users.empty.hint') || 'Try adjusting your search or filters.'}
+          {$t('superadmin.users.empty.hint')}
         </p>
       </div>
     {:else}
-      <div class="user-cards" aria-label={$t('superadmin.users.aria.list') || 'Users list'}>
+      <div class="user-cards" aria-label={$t('superadmin.users.aria.list')}>
         {#each pagedUsers as u (u.id)}
           <div class="user-card">
             <div class="card-top">
@@ -108,8 +108,8 @@
                 <button
                   class="btn-icon"
                   onclick={() => onOpenDetails(u)}
-                  title={$t('superadmin.users.actions.view_details') || 'View details'}
-                  aria-label={$t('superadmin.users.actions.view_details') || 'View details'}
+                  title={$t('superadmin.users.actions.view_details')}
+                  aria-label={$t('superadmin.users.actions.view_details')}
                   type="button"
                 >
                   <Icon name="eye" size={16} />
@@ -119,8 +119,8 @@
                   <button
                     class="btn-icon warning"
                     onclick={() => onReset2FA(u)}
-                    title={$t('superadmin.users.actions.reset_2fa') || 'Reset 2FA'}
-                    aria-label={$t('superadmin.users.actions.reset_2fa') || 'Reset 2FA'}
+                    title={$t('superadmin.users.actions.reset_2fa')}
+                    aria-label={$t('superadmin.users.actions.reset_2fa')}
                     type="button"
                   >
                     <Icon name="shield-off" size={16} />
@@ -147,11 +147,11 @@
             <div class="card-bottom">
               <div class="meta-grid">
                 <div class="meta-item">
-                  <span class="meta-label">{$t('superadmin.users.columns.role') || 'Role'}</span>
+                  <span class="meta-label">{$t('superadmin.users.columns.role')}</span>
                   <span class="meta-value">
                     {#if u.is_super_admin}
                       <span class="role-pill superadmin">
-                        {$t('sidebar.super_admin') || 'Super Admin'}
+                        {$t('sidebar.super_admin')}
                       </span>
                     {:else if (u as any).tenant_role}
                       <span class="role-pill {(u as any).tenant_role.toLowerCase()}"
@@ -164,7 +164,7 @@
                 </div>
 
                 <div class="meta-item">
-                  <span class="meta-label">{$t('superadmin.users.columns.tenant') || 'Tenant'}</span
+                  <span class="meta-label">{$t('superadmin.users.columns.tenant')}</span
                   >
                   <span class="meta-value">
                     {#if getTenantName(u as any)}
@@ -178,25 +178,25 @@
                 </div>
 
                 <div class="meta-item">
-                  <span class="meta-label">{$t('superadmin.users.columns.status') || 'Status'}</span
+                  <span class="meta-label">{$t('superadmin.users.columns.status')}</span
                   >
                   <span class="meta-value">
                     {#if u.is_active}
                       <span class="status-pill active">
                         <span class="dot"></span>
-                        {$t('common.active') || 'Active'}
+                        {$t('common.active')}
                       </span>
                     {:else}
                       <span class="status-pill inactive">
                         <span class="dot"></span>
-                        {$t('common.inactive') || 'Inactive'}
+                        {$t('common.inactive')}
                       </span>
                     {/if}
                   </span>
                 </div>
 
                 <div class="meta-item">
-                  <span class="meta-label">{$t('superadmin.users.columns.joined') || 'Joined'}</span
+                  <span class="meta-label">{$t('superadmin.users.columns.joined')}</span
                   >
                   <span class="meta-value text-muted">
                     {formatDate(u.created_at, { timeZone: $appSettings.app_timezone })}
@@ -226,7 +226,7 @@
       {columns}
       data={users}
       {loading}
-      emptyText={$t('superadmin.users.empty.title') || 'No users found'}
+      emptyText={$t('superadmin.users.empty.title')}
     >
       {#snippet empty()}
         <div class="empty-state-container">
@@ -234,10 +234,10 @@
             <Icon name="users" size={64} />
           </div>
           <h3>
-            {$t('superadmin.users.empty.title') || 'No users found'}
+            {$t('superadmin.users.empty.title')}
           </h3>
           <p>
-            {$t('superadmin.users.empty.subtitle') || 'Try adjusting your search or filters.'}
+            {$t('superadmin.users.empty.subtitle')}
           </p>
         </div>
       {/snippet}
@@ -257,7 +257,7 @@
         {:else if key === 'role'}
           {#if item.is_super_admin}
             <span class="role-pill superadmin">
-              {$t('sidebar.super_admin') || 'Super Admin'}
+              {$t('sidebar.super_admin')}
             </span>
           {:else if item.tenant_role}
             <span class="role-pill {item.tenant_role.toLowerCase()}">{item.tenant_role}</span>
@@ -292,12 +292,12 @@
           {#if item.is_active}
             <span class="status-pill active">
               <span class="dot"></span>
-              {$t('common.active') || 'Active'}
+              {$t('common.active')}
             </span>
           {:else}
             <span class="status-pill inactive">
               <span class="dot"></span>
-              {$t('common.inactive') || 'Inactive'}
+              {$t('common.inactive')}
             </span>
           {/if}
         {:else if key === 'joined'}
@@ -309,8 +309,8 @@
             <button
               class="btn-icon"
               onclick={() => onOpenDetails(item)}
-              title={$t('superadmin.users.actions.view_details') || 'View details'}
-              aria-label={$t('superadmin.users.actions.view_details') || 'View details'}
+              title={$t('superadmin.users.actions.view_details')}
+              aria-label={$t('superadmin.users.actions.view_details')}
               type="button"
             >
               <Icon name="eye" size={16} />
@@ -320,8 +320,8 @@
               <button
                 class="btn-icon warning"
                 onclick={() => onReset2FA(item)}
-                title={$t('superadmin.users.actions.reset_2fa') || 'Reset 2FA'}
-                aria-label={$t('superadmin.users.actions.reset_2fa') || 'Reset 2FA'}
+                title={$t('superadmin.users.actions.reset_2fa')}
+                aria-label={$t('superadmin.users.actions.reset_2fa')}
                 type="button"
               >
                 <Icon name="shield-off" size={16} />

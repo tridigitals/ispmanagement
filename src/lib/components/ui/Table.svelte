@@ -135,7 +135,7 @@
   {#if loading}
     <div class="loading-state">
       <div class="spinner"></div>
-      <p>{$t('common.loading') || 'Loading...'}</p>
+      <p>{$t('common.loading')}</p>
     </div>
   {:else if data.length === 0}
     <div class="empty-state">

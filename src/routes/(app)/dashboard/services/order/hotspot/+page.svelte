@@ -10,7 +10,7 @@
 </script>
 
 <ServiceComingSoonPage
-  title={$t('dashboard.services.order.hotspot') || 'Hotspot Service'}
+  title={$t('dashboard.services.order.hotspot')}
   description="This dedicated order flow is prepared. Service activation is still in roadmap stage."
   statusLabel="Coming Soon"
   icon="radio"

@@ -21,8 +21,8 @@
     </div>
     <div class="timeline-toolbar">
       <div class="timeline-filters">
-        <button class:active={timelineType === 'all'} onclick={() => (timelineType = 'all')}>{$t('common.all') || 'All'}</button>
-        <button class:active={timelineType === 'customer'} onclick={() => (timelineType = 'customer')}>{$t('common.profile') || 'Profile'}</button>
+        <button class:active={timelineType === 'all'} onclick={() => (timelineType = 'all')}>{$t('common.all')}</button>
+        <button class:active={timelineType === 'customer'} onclick={() => (timelineType = 'customer')}>{$t('common.profile')}</button>
         <button class:active={timelineType === 'location'} onclick={() => (timelineType = 'location')}>{$t('common.location')}</button>
         <button class:active={timelineType === 'subscription'} onclick={() => (timelineType = 'subscription')}>{$t('common.subscription')}</button>
       </div>
@@ -36,10 +36,10 @@
     columns={timelineColumns}
     data={timelineRows}
     loading={loadingTimeline}
-    emptyText={$t('admin.customers.timeline.empty') || 'No timeline yet.'}
+    emptyText={$t('admin.customers.timeline.empty')}
     pagination
     searchable
-    searchPlaceholder={$t('admin.customers.timeline.search') || 'Search timeline...'}
+    searchPlaceholder={$t('admin.customers.timeline.search')}
     mobileView="card"
   >
     {#snippet cell({ item, key })}

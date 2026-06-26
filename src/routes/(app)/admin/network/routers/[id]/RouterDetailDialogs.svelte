@@ -66,15 +66,14 @@
 
 <Modal
   bind:show={showManagedRadiusModal}
-  title={$t('admin.network.routers.managed_radius.title') || 'RADIUS Setup'}
+  title={$t('admin.network.routers.managed_radius.title')}
   width="820px"
   onclose={closeManagedRadiusModal}
 >
   <div class="managed-radius-modal-head">
     <div>
       <div class="muted">
-        {$t('admin.network.routers.managed_radius.subtitle') ||
-          'Copy MikroTik CLI for PPP authentication'}
+        {$t('admin.network.routers.managed_radius.subtitle')}
       </div>
     </div>
     <div class="setup-actions">
@@ -87,10 +86,9 @@
         >
           <Icon name="shield-check" size={14} />
           {#if assigningManagedRadiusDefault}
-            {$t('common.loading') || 'Loading...'}
+            {$t('common.loading')}
           {:else}
-            {$t('admin.network.routers.managed_radius.actions.assign_default') ||
-              'Assign Default Endpoint'}
+            {$t('admin.network.routers.managed_radius.actions.assign_default')}
           {/if}
         </button>
       {/if}
@@ -104,10 +102,9 @@
         >
           <Icon name="plus-circle" size={14} />
           {#if creatingManagedRadiusMapping}
-            {$t('common.loading') || 'Loading...'}
+            {$t('common.loading')}
           {:else}
-            {$t('admin.network.routers.managed_radius.actions.create_mapping') ||
-              'Create NAS Mapping'}
+            {$t('admin.network.routers.managed_radius.actions.create_mapping')}
           {/if}
         </button>
       {/if}
@@ -126,7 +123,7 @@
 
         <button class="btn ghost btn-sm" type="button" onclick={copyManagedRadiusSecret}>
           <Icon name="copy" size={14} />
-          {$t('admin.network.routers.managed_radius.actions.copy_secret') || 'Copy secret'}
+          {$t('admin.network.routers.managed_radius.actions.copy_secret')}
         </button>
       {/if}
 
@@ -134,59 +131,57 @@
         <button class="btn btn-sm" type="button" onclick={applyManagedRadius} disabled={applyingManagedRadius}>
           <Icon name="play" size={14} />
           {#if applyingManagedRadius}
-            {$t('common.loading') || 'Loading...'}
+            {$t('common.loading')}
           {:else}
-            {$t('admin.network.routers.managed_radius.actions.apply') || 'Apply to Router'}
+            {$t('admin.network.routers.managed_radius.actions.apply')}
           {/if}
         </button>
 
         <button class="btn ghost btn-sm" type="button" onclick={copyManagedRadiusScript}>
           <Icon name="copy" size={14} />
-          {$t('admin.network.routers.managed_radius.actions.copy_cli') || 'Copy CLI'}
+          {$t('admin.network.routers.managed_radius.actions.copy_cli')}
         </button>
       {/if}
     </div>
   </div>
 
   {#if managedRadiusSetupLoading && !managedRadiusSetup}
-    <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+    <div class="muted">{$t('common.loading')}</div>
   {:else if shouldShowManagedRadiusUpgrade(managedRadiusSetup)}
     <div class="setup-upgrade">
       <div class="setup-warning">
         <Icon name="alert-triangle" size={16} />
         <div>
           <div class="strong">
-            {$t('admin.network.routers.managed_radius.upgrade.title') ||
-              'Your plan does not include Managed RADIUS'}
+            {$t('admin.network.routers.managed_radius.upgrade.title')}
           </div>
           <div>
-            {$t('admin.network.routers.managed_radius.upgrade.body') ||
-              'Upgrade your subscription to unlock centralized RADIUS onboarding and MikroTik CLI setup for this router.'}
+            {$t('admin.network.routers.managed_radius.upgrade.body')}
           </div>
         </div>
       </div>
 
       <a class="btn btn-sm" href={managedRadiusSetup?.upgrade_path || '/admin/subscription'}>
-        {$t('admin.network.routers.managed_radius.upgrade.cta') || 'Upgrade plan'}
+        {$t('admin.network.routers.managed_radius.upgrade.cta')}
       </a>
     </div>
   {:else if managedRadiusSetup?.configured}
     <div class="setup-grid">
       <div class="row">
         <span class="muted">
-          {$t('admin.network.routers.managed_radius.labels.server') || 'Server'}
+          {$t('admin.network.routers.managed_radius.labels.server')}
         </span>
         <span class="mono">{managedRadiusSetup.endpoint_name || 'Managed RADIUS'}</span>
       </div>
       <div class="row">
         <span class="muted">
-          {$t('admin.network.routers.managed_radius.labels.host') || 'RADIUS host'}
+          {$t('admin.network.routers.managed_radius.labels.host')}
         </span>
         <span class="mono">{managedRadiusSetup.radius_host || '—'}</span>
       </div>
       <div class="row">
         <span class="muted">
-          {$t('admin.network.routers.managed_radius.labels.ports') || 'Ports'}
+          {$t('admin.network.routers.managed_radius.labels.ports')}
         </span>
         <span class="mono"
           >auth {managedRadiusSetup.auth_port} / acct {managedRadiusSetup.acct_port}</span
@@ -194,13 +189,13 @@
       </div>
       <div class="row">
         <span class="muted">
-          {$t('admin.network.routers.managed_radius.labels.nas_source') || 'NAS source'}
+          {$t('admin.network.routers.managed_radius.labels.nas_source')}
         </span>
         <span class="mono">{managedRadiusSetup.nas_ip_or_cidr || '—'}</span>
       </div>
       <div class="row">
         <span class="muted">
-          {$t('admin.network.routers.managed_radius.labels.shared_secret') || 'Shared secret'}
+          {$t('admin.network.routers.managed_radius.labels.shared_secret')}
         </span>
         <span class="mono"
           >{getManagedRadiusDisplayedSecret(managedRadiusSetup, showManagedRadiusSecret)}</span
@@ -226,50 +221,46 @@
     <div class="setup-upgrade">
       <div class="row">
         <span class="muted">
-          {$t('admin.network.routers.managed_radius.labels.server') || 'Server'}
+          {$t('admin.network.routers.managed_radius.labels.server')}
         </span>
         <span class="mono">{managedRadiusSetup.assignment_endpoint_name || 'Managed RADIUS'}</span>
       </div>
       <div class="muted">
-        {$t('admin.network.routers.managed_radius.assignment_only') ||
-          'Managed RADIUS assignment is active for this tenant, but this router still needs a NAS mapping before CLI setup can be generated.'}
+        {$t('admin.network.routers.managed_radius.assignment_only')}
       </div>
       <div class="muted">
-        {$t('admin.network.routers.managed_radius.assignment_only_hint') ||
-          'Use the button above to auto-create the NAS mapping from this router data.'}
+        {$t('admin.network.routers.managed_radius.assignment_only_hint')}
       </div>
     </div>
   {:else if managedRadiusSetup?.default_server_available}
     <div class="setup-upgrade">
       <div class="muted">
-        {$t('admin.network.routers.managed_radius.default_ready') ||
-          'A default native RADIUS endpoint is available. Assign it to this tenant to continue with router onboarding.'}
+        {$t('admin.network.routers.managed_radius.default_ready')}
       </div>
     </div>
   {:else}
     <div class="muted">
-      {$t('admin.network.routers.managed_radius.empty') ||
-        'Managed RADIUS is not configured for this router yet. The router can still use local MikroTik PPP secrets for now.'}
+      {$t('admin.network.routers.managed_radius.empty')}
     </div>
   {/if}
 </Modal>
 
 <Modal
   bind:show={showInterfaceTrafficModal}
-  title={$t('network.router.interface_traffic') || 'Interface Traffic'}
+  title={$t('network.router.interface_traffic')}
   width="980px"
   onclose={closeInterfaceTrafficModal}
 >
   {#if selectedInterface}
     <div class="traffic-modal-head">
-      <span class="muted">{$t('network.router.interface') || 'Interface'}</span>
+      <span class="muted">{$t('network.router.interface')}</span>
       <span class="mono">{selectedInterface}</span>
     </div>
 
     {#if ifaceHistoryLoading}
-      <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+      <div class="muted">{$t('common.loading')}</div>
     {:else if ifaceHistoryLength === 0}
-      <div class="muted">{$t('network.router.no_history_yet') || 'No history yet (wait for poller).'}</div>
+      <div class="muted">{$t('network.router.no_history_yet')}</div>
     {:else}
       <div class="traffic-grid">
         <div class="traffic-card">
@@ -279,7 +270,7 @@
           </div>
           <div class="spark small">
             {#if rxSeries.length === 0}
-              <div class="muted">{$t('network.router.no_rx_samples') || 'No RX samples.'}</div>
+              <div class="muted">{$t('network.router.no_rx_samples')}</div>
             {:else}
               {@const max = Math.max(...rxSeries, 1)}
               {#each rxSeries as v}
@@ -300,7 +291,7 @@
           </div>
           <div class="spark small">
             {#if txSeries.length === 0}
-              <div class="muted">{$t('network.router.no_tx_samples') || 'No TX samples.'}</div>
+              <div class="muted">{$t('network.router.no_tx_samples')}</div>
             {:else}
               {@const max = Math.max(...txSeries, 1)}
               {#each txSeries as v}

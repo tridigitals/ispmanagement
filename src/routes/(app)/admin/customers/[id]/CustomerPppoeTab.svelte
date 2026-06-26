@@ -28,19 +28,19 @@
 <div class="card section">
   <div class="section-head">
     <div>
-      <h3>{$t('admin.customers.pppoe.title') || 'PPPoE accounts'}</h3>
+      <h3>{$t('admin.customers.pppoe.title')}</h3>
       <p class="subtitle">{$t('admin.customers.pppoe.subtitle')}</p>
     </div>
     <div class="pppoe-toolbar">
       {#if pppoeToolbar.showSearch}
         <label class="pppoe-search" for="customer-pppoe-search">
           <Icon name="search" size={16} />
-          <span class="sr-only">{$t('common.search') || 'Search'}</span>
+          <span class="sr-only">{$t('common.search')}</span>
           <input
             id="customer-pppoe-search"
             class="pppoe-search-input"
             bind:value={pppoeQuery}
-            placeholder={$t('admin.customers.pppoe.search') || 'Search username...'}
+            placeholder={$t('admin.customers.pppoe.search')}
             oninput={() => void onRefresh()}
           />
         </label>
@@ -48,7 +48,7 @@
       {#if pppoeToolbar.showRefresh}
         <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingPppoe}>
           <Icon name="refresh-cw" size={16} />
-          {$t('common.refresh') || 'Refresh'}
+          {$t('common.refresh')}
         </button>
       {/if}
     </div>
@@ -58,7 +58,7 @@
     columns={pppoeColumns}
     data={pppoeAccounts}
     loading={loadingPppoe}
-    emptyText={$t('admin.customers.pppoe.empty') || 'No PPPoE accounts yet.'}
+    emptyText={$t('admin.customers.pppoe.empty')}
     pagination
   >
     {#snippet cell({ item, key })}
@@ -79,8 +79,8 @@
       {:else if key === 'assignment'}
         {@const accessState = getPppoeAccessState(row)}
         <div class="sub">
-          <span class="pill">{$t('admin.customers.pppoe.fields.profile') || 'Profile'}: {row.router_profile_name || '-'}</span>
-          <span class="pill">{$t('admin.customers.pppoe.fields.remote_address') || 'Remote'}: {row.remote_address || row.address_pool || '-'}</span>
+          <span class="pill">{$t('admin.customers.pppoe.fields.profile')}: {row.router_profile_name || '-'}</span>
+          <span class="pill">{$t('admin.customers.pppoe.fields.remote_address')}: {row.remote_address || row.address_pool || '-'}</span>
         </div>
         {#if accessState}
           <div class="sub access-state">
@@ -105,10 +105,10 @@
             <button class="btn-icon" title={$t('admin.customers.pppoe.actions.apply') || getPppoeApplyActionFallback(row.account_source)} onclick={() => onApplyPppoe(row)}>
               <Icon name="send" size={16} />
             </button>
-            <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => onEditPppoe(row)}>
+            <button class="btn-icon" title={$t('common.edit')} onclick={() => onEditPppoe(row)}>
               <Icon name="edit" size={16} />
             </button>
-            <button class="btn-icon danger" title={$t('common.delete') || 'Delete'} onclick={() => onDeletePppoe(row)}>
+            <button class="btn-icon danger" title={$t('common.delete')} onclick={() => onDeletePppoe(row)}>
               <Icon name="trash-2" size={16} />
             </button>
           {/if}

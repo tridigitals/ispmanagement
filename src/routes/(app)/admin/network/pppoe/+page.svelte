@@ -681,22 +681,22 @@
 
 <div class="page-content fade-in">
   <NetworkPageHeader
-    title={$t('admin.network.pppoe.title') || 'PPPoE'}
-    subtitle={$t('network.pppoe.title') || 'Kelola akun PPPoE.'}
+    title={$t('admin.network.pppoe.title')}
+    subtitle={$t('network.pppoe.title')}
   >
     {#snippet actions()}
       {#if $can('manage', 'pppoe') && autoApplyOnSave}
-        <span class="chip active">{$t('admin.network.pppoe.auto_apply_edits_on') || 'Auto-apply edits ON'}</span
+        <span class="chip active">{$t('admin.network.pppoe.auto_apply_edits_on')}</span
         >
       {/if}
       <button class="btn ghost" type="button" onclick={loadAccounts} disabled={refreshing}>
         <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
+        {$t('common.refresh')}
       </button>
       {#if $can('manage', 'pppoe')}
         <button class="btn" type="button" onclick={openCreate}>
           <Icon name="plus" size={16} />
-          {$t('admin.customers.pppoe.actions.add') || 'Add PPPoE'}
+          {$t('admin.customers.pppoe.actions.add')}
         </button>
       {/if}
       {#if $can('manage', 'pppoe')}
@@ -704,10 +704,10 @@
           class="btn ghost"
           type="button"
           onclick={() => goto(`${tenantPrefix}/admin/network/pppoe/import`)}
-          title={$t('admin.network.pppoe.import.title') || 'Import PPPoE from MikroTik'}
+          title={$t('admin.network.pppoe.import.title')}
         >
           <Icon name="download" size={16} />
-          {$t('admin.network.pppoe.import.cta') || 'Import'}
+          {$t('admin.network.pppoe.import.cta')}
         </button>
       {/if}
       {#if $can('manage', 'pppoe')}
@@ -716,10 +716,10 @@
           type="button"
           onclick={reconcileAll}
           disabled={refreshing || viewRows.length === 0}
-          title={$t('admin.network.pppoe.actions.reconcile') || 'Reconcile'}
+          title={$t('admin.network.pppoe.actions.reconcile')}
         >
           <Icon name="refresh-cw" size={16} />
-          {$t('admin.network.pppoe.actions.reconcile') || 'Reconcile'}
+          {$t('admin.network.pppoe.actions.reconcile')}
         </button>
       {/if}
       {#if $can('manage', 'pppoe')}
@@ -728,17 +728,17 @@
           type="button"
           onclick={retryApplyBatch}
           disabled={refreshing || retryCandidates.length === 0}
-          title={$t('admin.network.pppoe.actions.retry_apply_batch') || 'Retry apply'}
+          title={$t('admin.network.pppoe.actions.retry_apply_batch')}
         >
           <Icon name="rotate-cw" size={16} />
-          {$t('admin.network.pppoe.actions.retry_apply_batch') || 'Retry apply'}
+          {$t('admin.network.pppoe.actions.retry_apply_batch')}
           <span class="pill mono">{retryCandidates.length}</span>
         </button>
       {/if}
       {#if q.trim() || routerId || status !== 'any' || disabled !== 'any' || provisioning !== 'any'}
         <button class="btn ghost" type="button" onclick={clearFilters}>
           <Icon name="eraser" size={16} />
-          {$t('common.clear') || 'Clear'}
+          {$t('common.clear')}
         </button>
       {/if}
     {/snippet}
@@ -747,28 +747,28 @@
   <div class="stats">
     <div class="stat-card">
       <div class="stat-top">
-        <span>{$t('admin.network.pppoe.stats.total') || 'Total'}</span>
+        <span>{$t('admin.network.pppoe.stats.total')}</span>
         <Icon name="key" size={16} />
       </div>
       <div class="stat-value">{stats.total}</div>
     </div>
     <div class="stat-card tone-ok">
       <div class="stat-top">
-        <span>{$t('admin.network.pppoe.stats.present') || 'Provisioned'}</span>
+        <span>{$t('admin.network.pppoe.stats.present')}</span>
         <Icon name="check-circle" size={16} />
       </div>
       <div class="stat-value">{stats.present}</div>
     </div>
     <div class="stat-card tone-warn">
       <div class="stat-top">
-        <span>{$t('admin.network.pppoe.stats.missing') || 'Not provisioned'}</span>
+        <span>{$t('admin.network.pppoe.stats.missing')}</span>
         <Icon name="alert-triangle" size={16} />
       </div>
       <div class="stat-value">{stats.missing}</div>
     </div>
     <div class="stat-card tone-muted">
       <div class="stat-top">
-        <span>{$t('admin.network.pppoe.stats.disabled') || 'Disabled'}</span>
+        <span>{$t('admin.network.pppoe.stats.disabled')}</span>
         <Icon name="pause" size={16} />
       </div>
       <div class="stat-value">{stats.disabled}</div>
@@ -778,13 +778,13 @@
   <div class="filters-wrap">
     <NetworkFilterPanel>
       <div class="control control-wide">
-        <label for="pppoe-search">{$t('common.search') || 'Search'}</label>
+        <label for="pppoe-search">{$t('common.search')}</label>
         <label class="search-wrap" for="pppoe-search">
           <Icon name="search" size={14} />
           <input
             id="pppoe-search"
             type="text"
-            placeholder={$t('admin.network.pppoe.search') || 'Search PPPoE...'}
+            placeholder={$t('admin.network.pppoe.search')}
             value={q}
             oninput={(e) => {
               q = (e.currentTarget as HTMLInputElement).value;
@@ -799,7 +799,7 @@
                 q = '';
                 void loadAccounts();
               }}
-              aria-label={$t('common.clear') || 'Clear'}
+              aria-label={$t('common.clear')}
             >
               <Icon name="x" size={14} />
             </button>
@@ -808,57 +808,57 @@
       </div>
 
       <div class="control">
-        <label for="pppoe-filter-sync">{$t('admin.network.pppoe.filters.sync') || 'Sync'}</label>
+        <label for="pppoe-filter-sync">{$t('admin.network.pppoe.filters.sync')}</label>
         <select id="pppoe-filter-sync" class="input" bind:value={status}>
-          <option value="any">{$t('admin.network.pppoe.filters.any') || 'Any'}</option>
+          <option value="any">{$t('admin.network.pppoe.filters.any')}</option>
           <option value="present"
-            >{$t('admin.network.pppoe.filters.present') || 'Provisioned'}</option
+            >{$t('admin.network.pppoe.filters.present')}</option
           >
           <option value="missing"
-            >{$t('admin.network.pppoe.filters.missing') || 'Not provisioned'}</option
+            >{$t('admin.network.pppoe.filters.missing')}</option
           >
         </select>
       </div>
 
       <div class="control">
         <label for="pppoe-filter-state"
-          >{$t('admin.network.pppoe.filters.disabled') || 'State'}</label
+          >{$t('admin.network.pppoe.filters.disabled')}</label
         >
         <select id="pppoe-filter-state" class="input" bind:value={disabled}>
-          <option value="any">{$t('admin.network.pppoe.filters.any') || 'Any'}</option>
-          <option value="enabled">{$t('admin.network.pppoe.filters.enabled') || 'Enabled'}</option>
+          <option value="any">{$t('admin.network.pppoe.filters.any')}</option>
+          <option value="enabled">{$t('admin.network.pppoe.filters.enabled')}</option>
           <option value="disabled"
-            >{$t('admin.network.pppoe.filters.disabled_only') || 'Disabled'}</option
+            >{$t('admin.network.pppoe.filters.disabled_only')}</option
           >
         </select>
       </div>
 
       <div class="control">
         <label for="pppoe-filter-prov"
-          >{$t('admin.network.pppoe.filters.provisioning') || 'Provisioning'}</label
+          >{$t('admin.network.pppoe.filters.provisioning')}</label
         >
         <select id="pppoe-filter-prov" class="input" bind:value={provisioning}>
-          <option value="any">{$t('admin.network.pppoe.filters.any') || 'Any'}</option>
+          <option value="any">{$t('admin.network.pppoe.filters.any')}</option>
           <option value="applied"
-            >{$t('admin.network.pppoe.provisioning.applied') || 'Applied'}</option
+            >{$t('admin.network.pppoe.provisioning.applied')}</option
           >
-          <option value="draft">{$t('admin.network.pppoe.provisioning.draft') || 'Draft'}</option>
-          <option value="failed">{$t('admin.network.pppoe.provisioning.failed') || 'Failed'}</option
+          <option value="draft">{$t('admin.network.pppoe.provisioning.draft')}</option>
+          <option value="failed">{$t('admin.network.pppoe.provisioning.failed')}</option
           >
         </select>
       </div>
 
       <div class="control control-wide">
         <label for="pppoe-filter-router"
-          >{$t('admin.network.pppoe.filters.router') || 'Router'}</label
+          >{$t('admin.network.pppoe.filters.router')}</label
         >
         <Select2
           bind:value={routerId}
           options={routerOptions}
           placeholder={($t('admin.network.pppoe.filters.all') || 'All') + '...'}
           width="100%"
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
+          searchPlaceholder={$t('common.search')}
+          noResultsText={$t('common.no_results')}
           onchange={() => void loadAccounts()}
         />
       </div>
@@ -867,7 +867,7 @@
 
   <div class="table-wrap">
     <div class="table-top">
-      <span class="muted">{viewRows.length} {$t('common.results') || 'results'}</span>
+      <span class="muted">{viewRows.length} {$t('common.results')}</span>
     </div>
 
     {#if error}
@@ -881,7 +881,7 @@
       {columns}
       data={viewRows}
       {loading}
-      emptyText={$t('admin.network.pppoe.empty') || 'No PPPoE accounts.'}
+      emptyText={$t('admin.network.pppoe.empty')}
       pagination
     >
       {#snippet cell({ item, key })}
@@ -891,16 +891,16 @@
             <div class="name">{row.username}</div>
             <div class="meta">
               {#if row.disabled}
-                <span class="badge warn">{$t('common.disabled') || 'Disabled'}</span>
+                <span class="badge warn">{$t('common.disabled')}</span>
               {:else}
-                <span class="badge ok">{$t('common.active') || 'Active'}</span>
+                <span class="badge ok">{$t('common.active')}</span>
               {/if}
               <span class="pill">
-                {$t('admin.customers.pppoe.fields.profile') || 'Profile'}:
+                {$t('admin.customers.pppoe.fields.profile')}:
                 {row.router_profile_name || '-'}
               </span>
               <span class="pill">
-                {$t('admin.customers.pppoe.fields.remote_address') || 'Remote'}:
+                {$t('admin.customers.pppoe.fields.remote_address')}:
                 {row.remote_address || row.address_pool || '-'}
               </span>
             </div>
@@ -914,7 +914,7 @@
                 <span class="pill mono" title={row.customer_id}>{row.customer_id.slice(0, 8)}…</span
                 >
                 <span class="pill mono" title={row.location_id}>
-                  {$t('sidebar.locations') || 'Locations'}: {row.location_id.slice(0, 8)}…
+                  {$t('sidebar.locations')}: {row.location_id.slice(0, 8)}…
                 </span>
               </div>
             {/if}
@@ -978,7 +978,7 @@
             {#if !isPlaceholderCustomer}
               <button
                 class="btn-icon"
-                title={$t('admin.network.pppoe.actions.open_customer') || 'Open customer'}
+                title={$t('admin.network.pppoe.actions.open_customer')}
                 onclick={() =>
                   row.customer_id &&
                   goto(appendBackParam(`${tenantPrefix}/admin/customers/${row.customer_id}`, $page.url))}
@@ -987,8 +987,7 @@
               </button>
               <button
                 class="btn-icon"
-                title={$t('admin.network.pppoe.actions.open_customer_billing') ||
-                  'Open customer billing'}
+                title={$t('admin.network.pppoe.actions.open_customer_billing')}
                 onclick={() =>
                   row.customer_id &&
                   goto(
@@ -1011,14 +1010,14 @@
               </button>
               <button
                 class="btn-icon"
-                title={$t('common.edit') || 'Edit'}
+                title={$t('common.edit')}
                 onclick={() => openEdit(row)}
               >
                 <Icon name="edit" size={16} />
               </button>
               <button
                 class="btn-icon danger"
-                title={$t('common.delete') || 'Delete'}
+                title={$t('common.delete')}
                 onclick={() => deleteAccount(row)}
               >
                 <Icon name="trash-2" size={16} />
@@ -1105,10 +1104,10 @@
 
 <ConfirmDialog
   bind:show={showDeleteConfirm}
-  title={$t('common.confirm_delete_title') || 'Confirm Delete'}
-  message={$t('common.confirm_delete') || 'Are you sure you want to delete this item? This action cannot be undone.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  title={$t('common.confirm_delete_title')}
+  message={$t('common.confirm_delete')}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   type="danger"
   onconfirm={handleConfirmDelete}
   oncancel={() => { deleteTarget = null; }}

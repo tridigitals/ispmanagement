@@ -20,7 +20,7 @@
   <div class="card resource-card">
     <div class="card-header">
       <Icon name="cpu" size={20} />
-      <h3>{$t('superadmin.system.cpu_usage') || 'CPU Usage'}</h3>
+      <h3>{$t('superadmin.system.cpu_usage')}</h3>
     </div>
     <div class="card-body">
       <div class="resource-header">
@@ -34,7 +34,7 @@
   <div class="card resource-card">
     <div class="card-header">
       <Icon name="activity" size={20} />
-      <h3>{$t('superadmin.system.memory_usage') || 'Memory Usage'}</h3>
+      <h3>{$t('superadmin.system.memory_usage')}</h3>
     </div>
     <div class="card-body">
       <div class="resource-header">

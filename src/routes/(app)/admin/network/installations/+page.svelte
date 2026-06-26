@@ -2068,31 +2068,31 @@
       </div>
 
       <div class="control">
-        <label for="installations-assignment">{$t('network.installation.assignment') || 'Assignment'}</label>
+        <label for="installations-assignment">{$t('network.installation.assignment')}</label>
         <select id="installations-assignment" class="input" bind:value={assignmentFilter}>
-          <option value="all">{$t('network.installation.all_work_orders') || 'All work orders'}</option>
-          <option value="assigned">{$t('network.installation.assigned_only') || 'Assigned only'}</option>
-          <option value="unassigned">{$t('network.installation.unassigned_only') || 'Unassigned only'}</option>
+          <option value="all">{$t('network.installation.all_work_orders')}</option>
+          <option value="assigned">{$t('network.installation.assigned_only')}</option>
+          <option value="unassigned">{$t('network.installation.unassigned_only')}</option>
         </select>
       </div>
 
       <div class="control">
-        <label for="installations-assignee-user">{$t('network.installation.assignee') || 'Assignee'}</label>
+        <label for="installations-assignee-user">{$t('network.installation.assignee')}</label>
         <Select2
           id="installations-assignee-user"
           bind:value={assigneeFilterUserId}
           options={installationAssigneeFilterOptions}
-          placeholder={$t('network.installation.all_assignees') || 'All assignees'}
+          placeholder={$t('network.installation.all_assignees')}
           width="100%"
           disabled={installationAssigneeFilterOptions.length <= 1}
-          searchPlaceholder={$t('common.search') || 'Search...'}
-          noResultsText={$t('common.no_results') || 'No results'}
+          searchPlaceholder={$t('common.search')}
+          noResultsText={$t('common.no_results')}
           maxItems={500}
         />
       </div>
 
       <div class="control">
-        <label for="installations-sort">{$t('network.installation.sort_by') || 'Sort by'}</label>
+        <label for="installations-sort">{$t('network.installation.sort_by')}</label>
         <select
           id="installations-sort"
           class="input"
@@ -2103,14 +2103,14 @@
             sortDirection = nextDirection as 'asc' | 'desc';
           }}
         >
-          <option value="updated_at:desc">{$t('network.installation.latest_updated') || 'Latest updated'}</option>
-          <option value="updated_at:asc">{$t('network.installation.oldest_updated') || 'Oldest updated'}</option>
-          <option value="scheduled_at:asc">{$t('network.installation.scheduled_earliest') || 'Scheduled earliest'}</option>
-          <option value="scheduled_at:desc">{$t('network.installation.scheduled_latest') || 'Scheduled latest'}</option>
-          <option value="customer_name:asc">{$t('network.installation.customer_az') || 'Customer A-Z'}</option>
-          <option value="customer_name:desc">{$t('network.installation.customer_za') || 'Customer Z-A'}</option>
-          <option value="assigned_to_name:asc">{$t('network.installation.assignee_az') || 'Assignee A-Z'}</option>
-          <option value="assigned_to_name:desc">{$t('network.installation.assignee_za') || 'Assignee Z-A'}</option>
+          <option value="updated_at:desc">{$t('network.installation.latest_updated')}</option>
+          <option value="updated_at:asc">{$t('network.installation.oldest_updated')}</option>
+          <option value="scheduled_at:asc">{$t('network.installation.scheduled_earliest')}</option>
+          <option value="scheduled_at:desc">{$t('network.installation.scheduled_latest')}</option>
+          <option value="customer_name:asc">{$t('network.installation.customer_az')}</option>
+          <option value="customer_name:desc">{$t('network.installation.customer_za')}</option>
+          <option value="assigned_to_name:asc">{$t('network.installation.assignee_az')}</option>
+          <option value="assigned_to_name:desc">{$t('network.installation.assignee_za')}</option>
         </select>
       </div>
     </NetworkFilterPanel>

@@ -113,21 +113,21 @@
       <div class="loading-state">
         <div class="spinner"></div>
         <p>
-          {$t('superadmin.audit_logs.loading') || 'Loading logs...'}
+          {$t('superadmin.audit_logs.loading')}
         </p>
       </div>
     {:else if logs.length === 0}
       <div class="empty-state">
         <Icon name="activity" size={48} />
         <h4>
-          {$t('superadmin.audit_logs.empty.title') || 'No logs found'}
+          {$t('superadmin.audit_logs.empty.title')}
         </h4>
         <p>
-          {$t('superadmin.audit_logs.empty.subtitle') || 'Try adjusting your filters.'}
+          {$t('superadmin.audit_logs.empty.subtitle')}
         </p>
       </div>
     {:else}
-      <div class="log-cards" aria-label={$t('superadmin.audit_logs.aria.cards') || 'Audit logs'}>
+      <div class="log-cards" aria-label={$t('superadmin.audit_logs.aria.cards')}>
         {#each logs as l (l.id)}
           <div class="log-card">
             <div class="log-top">
@@ -156,7 +156,7 @@
 
             <div class="log-grid">
               <div class="kv">
-                <span class="k">{$t('superadmin.audit_logs.labels.user') || 'User'}</span>
+                <span class="k">{$t('superadmin.audit_logs.labels.user')}</span>
                 <span class="v">
                   {#if l.user_email}
                     {l.user_name ? `${l.user_name} — ${l.user_email}` : l.user_email}
@@ -169,20 +169,20 @@
               </div>
 
               <div class="kv">
-                <span class="k">{$t('superadmin.audit_logs.labels.tenant') || 'Tenant'}</span>
+                <span class="k">{$t('superadmin.audit_logs.labels.tenant')}</span>
                 <span class="v">
                   {#if l.tenant_name}
                     {l.tenant_name}
                   {:else if l.tenant_id}
                     <span class="text-mono">{l.tenant_id.substring(0, 8)}…</span>
                   {:else}
-                    <span class="badge-global">{$t('common.global') || 'Global'}</span>
+                    <span class="badge-global">{$t('common.global')}</span>
                   {/if}
                 </span>
               </div>
 
               <div class="kv">
-                <span class="k">{$t('superadmin.audit_logs.labels.resource') || 'Resource'}</span>
+                <span class="k">{$t('superadmin.audit_logs.labels.resource')}</span>
                 <span class="v">
                   {l.resource}
                   {#if l.resource_name}
@@ -194,7 +194,7 @@
               </div>
 
               <div class="kv">
-                <span class="k">{$t('superadmin.audit_logs.labels.ip') || 'IP'}</span>
+                <span class="k">{$t('superadmin.audit_logs.labels.ip')}</span>
                 <span class="v text-mono">{l.ip_address || $t('common.na') || '—'}</span>
               </div>
             </div>
@@ -251,7 +251,7 @@
               {#if item.tenant_name}
                 <span class="tenant-label">{item.tenant_name}</span>
               {:else}
-                <span class="badge-global">{$t('common.global') || 'Global'}</span>
+                <span class="badge-global">{$t('common.global')}</span>
               {/if}
             </div>
           </div>

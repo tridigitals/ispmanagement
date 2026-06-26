@@ -980,7 +980,7 @@
         <div class="loading-state">
           <div class="spinner"></div>
           <p>
-            {$t('superadmin.settings.loading') || 'Loading settings...'}
+            {$t('superadmin.settings.loading')}
           </p>
         </div>
       {:else}
@@ -1182,9 +1182,8 @@
               localSettings={whatsappSettings}
               handleChange={handleWhatsAppChange}
               eventScope="platform"
-              title={$t('superadmin.settings.whatsapp.title') || 'WhatsApp Gateway'}
-              description={$t('superadmin.settings.whatsapp.description') ||
-                'Configure the global WhatsApp gateway.'}
+              title={$t('superadmin.settings.whatsapp.title')}
+              description={$t('superadmin.settings.whatsapp.description')}
             />
           {:else}
             <div class="tab-loading card" aria-busy={activeTabLoading}>
@@ -1204,9 +1203,8 @@
               eventScope="platform"
               emailReady={emailVerificationReadiness.ready}
               emailReadinessReason={emailVerificationReadiness.reason}
-              title={$t('superadmin.settings.event_notifications.title') || 'Event Notifications'}
-              description={$t('superadmin.settings.event_notifications.description') ||
-                'Choose notification channels for each platform event.'}
+              title={$t('superadmin.settings.event_notifications.title')}
+              description={$t('superadmin.settings.event_notifications.description')}
             />
           {:else}
             <div class="tab-loading card" aria-busy={activeTabLoading}>
@@ -1223,15 +1221,15 @@
             disabled={!hasChanges || saving}
             onclick={discardChanges}
           >
-            {$t('superadmin.settings.actions.reset') || 'Reset'}
+            {$t('superadmin.settings.actions.reset')}
           </button>
           <button class="btn btn-primary" onclick={saveSettings} disabled={!hasChanges || saving}>
             {#if saving}
               <div class="spinner-sm"></div>
-              {$t('superadmin.settings.actions.saving') || 'Saving...'}
+              {$t('superadmin.settings.actions.saving')}
             {:else}
               <Icon name="save" size={18} />
-              {$t('superadmin.settings.actions.save') || 'Save Changes'}
+              {$t('superadmin.settings.actions.save')}
             {/if}
           </button>
         </div>
@@ -1242,10 +1240,10 @@
 
 <ConfirmDialog
   bind:show={showBankDeleteConfirm}
-  title={$t('superadmin.settings.confirm.are_you_sure') || 'Are you sure?'}
-  message={$t('superadmin.settings.confirm.bank_delete_message') || 'This will permanently remove the bank account.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
+  title={$t('superadmin.settings.confirm.are_you_sure')}
+  message={$t('superadmin.settings.confirm.bank_delete_message')}
+  confirmText={$t('common.delete')}
+  cancelText={$t('common.cancel')}
   type="warning"
   onconfirm={confirmDeleteBank}
   oncancel={() => { bankToDeleteId = null; }}
