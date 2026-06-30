@@ -1170,6 +1170,7 @@
     void persistRemoteNow();
     void applyWakeLock(false);
     if (typeof document !== 'undefined') document.body.classList.remove('kiosk-wallboard');
+    $isSidebarCollapsed = false;
     if (hideHandle) clearTimeout(hideHandle);
     void criticalBeepPlayer.close();
     try {
@@ -1285,7 +1286,7 @@
         <button
           class="icon-x"
           type="button"
-          onclick={() => goto(`${tenantPrefix}/admin/network/noc`)}
+          onclick={exitWallboard}
           title={$t('common.exit')}
         >
           <Icon name="arrow-left" size={16} />
