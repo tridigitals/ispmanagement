@@ -20,6 +20,8 @@
 
   let { children } = $props();
 
+  let guardPassed = $state(false);
+
   let tenantCtx = $derived.by(() =>
     resolveTenantContext({
       hostname: $page.url.hostname,
@@ -217,7 +219,10 @@
 
   // Reactive Auth Guard & Tenant Scoping
   $effect(() => {
-    if (!$isAuthenticated || !$user) return;
+    if (!$isAuthenticated || !$user) {
+      guardPassed = false;
+      return;
+    }
 
     const currentHost = $page.url.hostname;
     const pathname = $page.url.pathname || '/';
@@ -260,7 +265,7 @@
       !onPlatformDomain
     ) {
       debugLog('domain-mismatch-logout', {
-        currentHost,
+        host: currentHost,
         expectedDomain: userCustomDomain,
         isSuperAdmin: $isSuperAdmin,
       });
@@ -295,6 +300,7 @@
         });
         goto(`/${userSlug}${restPath}`);
       }
+      return;
     }
 
     // Global admin route guard:
@@ -320,6 +326,8 @@
       return;
     }
 
+    // Guard passed — allow rendering.
+    // 2FA modal is rendered inside the shell so we must allow it through.
     if ($is2FARequiredButDisabled) {
       debugLog('open-profile-modal-2fa-required', {
         tab: 'security',
@@ -327,12 +335,13 @@
       if (!$profileModal.open || $profileModal.tab !== 'security' || !$profileModal.locked) {
         openProfileModal({ tab: 'security', locked: true, reason: '2fa_required' });
       }
-      return;
     }
 
     if ($profileModal.locked) {
       setProfileModalLock(false);
     }
+
+    guardPassed = true;
   });
 
   // Force leaving protected app routes when session is gone/expired.
@@ -400,7 +409,12 @@
   });
 </script>
 
-{#if isCompactMapEmbed}
+{#if !guardPassed}
+  <!-- Loading state while auth guard evaluates — prevents flash of unauthorized content -->
+  <div class="guard-loading">
+    <div class="spinner"></div>
+  </div>
+{:else if isCompactMapEmbed}
   <div class="embed-shell">
     {@render children()}
   </div>
@@ -425,6 +439,25 @@
 {/if}
 
 <style>
+  .guard-loading {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-app);
+  }
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
   .embed-shell {
     width: 100%;
     height: 100%;

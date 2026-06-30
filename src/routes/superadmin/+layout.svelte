@@ -7,6 +7,7 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
+  import { getDefaultTenantLandingPath } from '$lib/utils/appLanding';
 
   let authorized = $state(false);
   let { children } = $props();
@@ -31,8 +32,8 @@
         return;
       }
 
-      // Logged in but not super admin
-      goto('/dashboard');
+      // Logged in but not super admin — send to their correct landing
+      goto(getDefaultTenantLandingPath(currentUser, ''));
     };
 
     void runGuard();
