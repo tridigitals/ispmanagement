@@ -7,7 +7,6 @@
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 
   let {
-    t,
     showEditPppoe = $bindable(),
     pppoeRouterId = $bindable(),
     pppoeRouters = [],

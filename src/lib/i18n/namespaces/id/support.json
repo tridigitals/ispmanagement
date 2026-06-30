@@ -5,9 +5,12 @@
   "loading": "Memuat tiket...",
   "loading_detail": "Memuat tiket...",
   "actions": {
-    "new": "Tiket Baru",
+    "claim": "Ambil Tiket",
+    "claiming": "Mengambil...",
+    "add_file": "Tambah File",
     "create": "Buat",
     "creating": "Membuat...",
+    "new": "Baru",
     "send": "Kirim",
     "sending": "Mengirim..."
   },
@@ -22,7 +25,8 @@
     "message_placeholder": "Jelaskan masalah atau permintaan Anda...",
     "attachments": "Lampiran",
     "reply": "Balas",
-    "reply_placeholder": "Tulis balasan Anda..."
+    "reply_placeholder": "Tulis balasan Anda...",
+    "file_count": "Jumlah File"
   },
   "filters": {
     "aria": "Filter tiket",
@@ -85,11 +89,10 @@
   "satisfaction": {
     "title": "Rating Kepuasan"
   },
-  "actions": {
-    "claim": "Ambil Tiket",
-    "claiming": "Mengambil..."
-  },
   "create": {
     "title": "Buat Tiket"
+  },
+  "quick": {
+    "label": "Label"
   }
 }

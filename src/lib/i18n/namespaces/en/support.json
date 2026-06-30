@@ -5,11 +5,14 @@
   "loading": "Loading tickets...",
   "loading_detail": "Loading ticket...",
   "actions": {
-    "new": "New Ticket",
+    "claim": "Claim Ticket",
+    "claiming": "Claiming...",
+    "add_file": "Add File",
     "create": "Create",
-    "creating": "Creating...",
+    "creating": "Creating",
+    "new": "New",
     "send": "Send",
-    "sending": "Sending..."
+    "sending": "Sending"
   },
   "fields": {
     "subject": "Subject",
@@ -22,7 +25,8 @@
     "message_placeholder": "Describe your issue or request...",
     "attachments": "Attachments",
     "reply": "Reply",
-    "reply_placeholder": "Write your reply..."
+    "reply_placeholder": "Write your reply...",
+    "file_count": "File Count"
   },
   "filters": {
     "aria": "Filter tickets",
@@ -85,11 +89,10 @@
   "satisfaction": {
     "title": "Satisfaction Rating"
   },
-  "actions": {
-    "claim": "Claim Ticket",
-    "claiming": "Claiming..."
-  },
   "create": {
     "title": "Create Ticket"
+  },
+  "quick": {
+    "label": "Label"
   }
 }

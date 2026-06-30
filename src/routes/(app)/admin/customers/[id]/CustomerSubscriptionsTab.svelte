@@ -5,7 +5,6 @@
   import type { CustomerSubscriptionView } from '$lib/api/client';
 
   let {
-    t,
     loadingSubscriptions,
     metricCount,
     subscriptionColumns,
@@ -149,7 +148,7 @@
             {#if row.status === 'active' && onChangePackage}
               <button
                 class="btn-icon"
-                title={$t('admin.customers.subscriptions.change_package')}
+                title={$t('admin.customers.subscriptions.change_package.title')}
                 onclick={() => onChangePackage(row)}
                 disabled={togglingSubscription === row.id || deletingSubscription === row.id}
               >

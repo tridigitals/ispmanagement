@@ -5,7 +5,6 @@
   import type { CustomerLocation, PppoeAccountPublic } from '$lib/api/client';
 
   let {
-    t,
     pppoeToolbar,
     pppoeQuery = $bindable(),
     onRefresh,

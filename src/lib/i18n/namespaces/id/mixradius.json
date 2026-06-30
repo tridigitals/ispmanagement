@@ -38,7 +38,9 @@
       "skip": "Lewati",
       "decision_info": "Tentukan cara menangani pelanggan yang sudah ada.",
       "nas_field": "Field NAS",
-      "router_field": "Field Router"
+      "router_field": "Field Router",
+      "auto_new_package": "Buat Paket Otomatis",
+      "location_strategy": "Strategi Lokasi"
     },
     "preview": {
       "title": "Preview hasil import",
@@ -66,7 +68,9 @@
       "unavailable": "Batch report belum tersedia.",
       "status": "Status",
       "source_summary": "Ringkasan sumber",
-      "phase_report": "Laporan fase"
+      "phase_report": "Laporan fase",
+      "billing": "Billing",
+      "errors": "Error"
     }
   }
 }

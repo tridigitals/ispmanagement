@@ -25,5 +25,14 @@
     "title": "Clear all notifications",
     "message": "This will permanently delete all your notifications. This action cannot be undone.",
     "confirm": "Clear all"
-  }
+  },
+  "delete_confirm": {
+    "message": "Message",
+    "title": "Title"
+  },
+  "mark_all_confirm": {
+    "message": "Message",
+    "title": "Title"
+  },
+  "mark_as_read": "Mark As Read"
 }

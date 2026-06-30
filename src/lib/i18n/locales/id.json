@@ -282,14 +282,20 @@
       },
       "subtitle_desc": "Template pesan untuk WhatsApp dan email.",
       "both": "Keduanya",
-      "variable_hint": "Klik token untuk menyisipkan variabel."
+      "variable_hint": "Klik token untuk menyisipkan variabel.",
+      "variable_insert_hint": "Klik variabel untuk menyisipkan ke template"
     },
     "customers": {
       "title": "Pelanggan",
       "subtitle": "Kelola data pelanggan dan lokasi layanan.",
       "read_only_hint": "Role ini bisa meninjau data pelanggan, tetapi aksi pengelolaan pelanggan dinonaktifkan.",
       "actions": {
-        "new": "Pelanggan baru"
+        "new": "Pelanggan baru",
+        "add_service": "Tambah Layanan",
+        "create_invoice": "Buat Invoice",
+        "create_order": "Buat Pesanan",
+        "invite_link": "Link Undangan",
+        "lifecycle_reconciliation": "Rekonsiliasi Siklus"
       },
       "communication": {
         "actions": {
@@ -333,7 +339,8 @@
       "stats": {
         "total": "Total",
         "active": "Aktif",
-        "inactive": "Nonaktif"
+        "inactive": "Nonaktif",
+        "pending_installation": "Instalasi Tertunda"
       },
       "reconciliation": {
         "title": "Rekonsiliasi Lifecycle",
@@ -390,7 +397,9 @@
         "customer": "Pelanggan",
         "contact": "Kontak",
         "status": "Status",
-        "updated": "Diperbarui"
+        "updated": "Diperbarui",
+        "health": "Kesehatan",
+        "service": "Layanan"
       },
       "fields": {
         "name": "Nama",
@@ -454,7 +463,8 @@
       },
       "overview": {
         "title": "Profil pelanggan",
-        "profile_quality": "Kualitas profil"
+        "profile_quality": "Kualitas profil",
+        "contact_accuracy_note": "Pastikan kontak selalu akurat untuk komunikasi yang lancar"
       },
       "locations": {
         "title": "Lokasi",
@@ -551,7 +561,35 @@
           "ends_at": "Berakhir",
           "notes": "Catatan"
         },
-        "change_package": "Ganti Paket",
+        "change_package": {
+          "cancel": "Batal",
+          "charge": "Biaya",
+          "close": "Tutup",
+          "credit": "Kredit",
+          "current_package": "Paket Saat Ini",
+          "net_amount": "Jumlah Bersih",
+          "new_package": "Paket Baru",
+          "new_package_label": "Pilih Paket Baru",
+          "new_price": "Harga Baru",
+          "old_package_label": "Paket Lama",
+          "old_price": "Harga Lama",
+          "pro_rata_estimate": "Estimasi Pro-Rata",
+          "pro_rata_note": "Biaya dihitung secara pro-rata berdasarkan sisa periode",
+          "processing": "Memproses...",
+          "select_placeholder": "Pilih paket...",
+          "submit": "Kirim",
+          "success_message": "Paket berhasil diubah",
+          "success_message_to": "berhasil diubah dari",
+          "success_title": "Ganti Paket Berhasil",
+          "title": "Judul",
+          "toasts": {
+            "error": "Error",
+            "success_no_charge": "Paket berhasil diubah tanpa biaya tambahan",
+            "success_with_charge": "Paket berhasil diubah dengan biaya tambahan"
+          },
+          "view_invoice": "Lihat Invoice",
+          "_self": "Ganti Paket"
+        },
         "total_services": "Total layanan",
         "grace_active": "Masa tenggang aktif",
         "wo_active": "WO berjalan",
@@ -744,9 +782,35 @@
       "timeline": {
         "subtitle": "Aktivitas pelanggan.",
         "empty": "Belum ada timeline.",
-        "search_placeholder": "Cari timeline..."
+        "search_placeholder": "Cari timeline...",
+        "search": "Cari"
       },
-      "search_placeholder": "Nama, email, telepon"
+      "search_placeholder": "Nama, email, telepon",
+      "filters": {
+        "active_service": "Layanan Aktif",
+        "all_customers": "Semua Pelanggan",
+        "all_installations": "Semua Instalasi",
+        "all_services": "Semua Layanan",
+        "aria_installation": "Filter Instalasi",
+        "aria_service": "Filter Layanan",
+        "aria_status": "Filter Status",
+        "inactive_service": "Layanan Nonaktif",
+        "installation": "Instalasi",
+        "no_service": "Tanpa Layanan",
+        "pending_installation": "Instalasi Tertunda",
+        "service": "Layanan",
+        "status": "Status"
+      },
+      "no_contact": "Tidak Ada Kontak",
+      "status": {
+        "healthy": "Sehat",
+        "inactive": "Nonaktif",
+        "no_service": "Tanpa Layanan",
+        "pending_install": "Instalasi Tertunda",
+        "pending_installation": "Instalasi Tertunda",
+        "service_inactive": "Layanan Nonaktif",
+        "total_services": "Total Layanan"
+      }
     },
     "ftth_assets": {
       "page": {
@@ -761,7 +825,9 @@
       "filters": {
         "search_placeholder": "Cari aset, kode, atau serial...",
         "all_types": "Semua tipe",
-        "all_statuses": "Semua status"
+        "all_statuses": "Semua status",
+        "subtitle": "Subjudul",
+        "title": "Judul"
       },
       "table": {
         "asset": "Aset",
@@ -817,7 +883,30 @@
       },
       "modal": {
         "title_create": "Aset FTTH Baru",
-        "title_edit": "Edit Aset FTTH"
+        "title_edit": "Edit Aset FTTH",
+        "asset_coordinates": "Koordinat Aset",
+        "asset_identity": "Identitas Aset",
+        "brand_model_serial": "Merek / Model / Serial",
+        "connected_to": "Terhubung Ke",
+        "connection_hint": "Pilih node untuk menghubungkan aset ini",
+        "coordinates_hint": "Masukkan koordinat geografis",
+        "core_asset_data": "Data Aset Inti",
+        "latitude": "Lintang",
+        "longitude": "Bujur",
+        "map_location": "Lokasi Peta",
+        "map_picker_help": "Klik pada peta untuk memilih lokasi",
+        "map_unavailable": "Peta Tidak Tersedia",
+        "map_unavailable_subtitle": "Gunakan input koordinat manual",
+        "notes_kicker": "Catatan",
+        "open_if_needed": "Buka area ini jika perlu",
+        "optional_hardware": "Hardware Opsional",
+        "optional_hardware_hint": "Tambahkan info hardware jika tersedia",
+        "pick_location": "Pilih Lokasi",
+        "pick_on_map": "Pilih di Peta",
+        "recommended": "Direkomendasikan",
+        "relation_summary": "Ringkasan Relasi",
+        "update_map_point": "Perbarui Titik Peta",
+        "use_this_point": "Gunakan Titik Ini"
       },
       "details": {
         "title": "Detail khusus asset",
@@ -832,6 +921,14 @@
         "installed": "Terpasang",
         "faulty": "Bermasalah",
         "retired": "Pensiun"
+      },
+      "toasts": {
+        "created": "Berhasil Dibuat",
+        "delete_failed": "Gagal Menghapus",
+        "deleted": "Berhasil Dihapus",
+        "load_failed": "Gagal Memuat",
+        "save_failed": "Gagal Menyimpan",
+        "updated": "Berhasil Diperbarui"
       }
     },
     "services": {
@@ -989,13 +1086,16 @@
             "update": "Perbarui",
             "same": "Sama",
             "enabled": "Aktif",
-            "disabled": "Nonaktif"
+            "disabled": "Nonaktif",
+            "missing_password": "Password Tidak Ada",
+            "ok": "OK"
           },
           "result": {
             "created": "Dibuat",
             "updated": "Diperbarui",
             "skipped": "Dilewati",
-            "missing_password": "Password tidak tersedia"
+            "missing_password": "Password tidak tersedia",
+            "errors": "Error"
           },
           "errors": {
             "select_router": "Pilih router",
@@ -2265,7 +2365,8 @@
         "actions": {
           "refresh": "Refresh",
           "sync_selected": "Sinkron router terpilih",
-          "sync_all": "Sinkron semua router"
+          "sync_all": "Sinkron semua router",
+          "clear": "Bersihkan"
         },
         "filters": {
           "router": "Router",
@@ -2283,7 +2384,23 @@
         },
         "toasts": {
           "sync_ok": "Sinkron log selesai",
-          "sync_failed": "Gagal sinkron log"
+          "sync_failed": "Gagal sinkron log",
+          "retention_updated": "Retensi Berhasil Diperbarui"
+        },
+        "clear": {
+          "clearing": "Membersihkan...",
+          "confirm": "Konfirmasi",
+          "select_router": "Pilih Router",
+          "title": "Judul"
+        },
+        "retention": {
+          "30_days": "30 Hari",
+          "360_days": "360 Hari",
+          "90_days": "90 Hari",
+          "applied_to": "Diterapkan ke",
+          "description_no_router": "Pilih periode retensi untuk log",
+          "description_with_router": "Pilih periode retensi untuk log router ini",
+          "no_router": "Tidak Ada Router"
         }
       }
     },
@@ -2337,7 +2454,11 @@
         "save_failed": "Gagal menyimpan peran",
         "delete_failed": "Gagal menghapus peran: "
       },
-      "subtitle_desc": "Role dan izin akses."
+      "subtitle_desc": "Role dan izin akses.",
+      "modal": {
+        "create_title": "Buat Peran",
+        "edit_title": "Edit Peran"
+      }
     },
     "support": {
       "title": "Tiket Dukungan",
@@ -2662,7 +2783,8 @@
           "action_needed": "Butuh aksi",
           "action_needed_desc": "Invoice pending dan menunggu verifikasi masih perlu tindak lanjut.",
           "overdue_now": "Overdue saat ini",
-          "overdue_now_desc": "Prioritaskan reminder collection dan aksi layanan untuk akun-akun ini lebih dulu."
+          "overdue_now_desc": "Prioritaskan reminder collection dan aksi layanan untuk akun-akun ini lebih dulu.",
+          "queue_title_desc": "Antrian paket invoice tertunda"
         },
         "sections": {
           "manual_title": "Aksi billing manual",
@@ -2735,7 +2857,10 @@
           "paid": "Lunas",
           "pending": "Menunggu",
           "overdue": "Terlambat"
-        }
+        },
+        "subtitle_filter": "Filter invoice",
+        "subtitle_manual": "Invoice manual",
+        "subtitle_summary": "Ringkasan invoice"
       },
       "detail": {
         "back": "Kembali ke Invoice",
@@ -2830,7 +2955,9 @@
         "custom_domain_help_prefix": "Arahkan record CNAME domain Anda ke",
         "custom_domain_help_suffix": "(atau alias yang dikonfigurasi).",
         "custom_domain_pro_title": "Custom Domain adalah fitur Pro",
-        "custom_domain_pro_desc": "Upgrade paket untuk menggunakan domain sendiri."
+        "custom_domain_pro_desc": "Upgrade paket untuk menggunakan domain sendiri.",
+        "domain_status": "Status Domain",
+        "not_configured": "Belum Dikonfigurasi"
       },
       "security": {
         "enforce_2fa_desc": "Wajibkan semua anggota organisasi ini mengaktifkan 2FA sebelum mengakses dashboard.",
@@ -3147,7 +3274,15 @@
         "no_results": "Anggota tidak ditemukan",
         "try_adjusting": "Coba ubah pencarian atau filter."
       },
-      "subtitle_desc": "Anggota tim dan akses."
+      "subtitle_desc": "Anggota tim dan akses.",
+      "deleted_at": "Dihapus Pada",
+      "deleted_empty": "Tidak ada anggota yang dihapus",
+      "deleted_tab": "Terhapus",
+      "hard_delete": {
+        "title": "Judul"
+      },
+      "permanent_delete": "Hapus Permanen",
+      "restore": "Pulihkan"
     },
     "billing": {
       "analytics": {
@@ -3484,7 +3619,23 @@
     "replace": "Ganti",
     "enabled": "Aktif",
     "enable": "Aktifkan",
-    "invoice": "Invoice"
+    "invoice": "Invoice",
+    "activate": "Aktifkan",
+    "deselect_all": "Hapus Semua",
+    "down": "Turun",
+    "dynamic": "Dinamis",
+    "exit": "Keluar",
+    "missing": "Tidak Ditemukan",
+    "no_detail": "Tidak Ada Detail",
+    "not_found": "Tidak Ditemukan",
+    "off": "Mati",
+    "on": "Hidup",
+    "profile": "Profil",
+    "running": "Berjalan",
+    "shown": "Ditampilkan",
+    "subscription": "Langganan",
+    "suspend": "Tunda",
+    "undo": "Batalkan"
   },
   "components": {
     "lightbox": {
@@ -4140,7 +4291,9 @@
         "skip": "Lewati",
         "decision_info": "Tentukan cara menangani pelanggan yang sudah ada.",
         "nas_field": "Field NAS",
-        "router_field": "Field Router"
+        "router_field": "Field Router",
+        "auto_new_package": "Buat Paket Otomatis",
+        "location_strategy": "Strategi Lokasi"
       },
       "preview": {
         "title": "Preview hasil import",
@@ -4168,7 +4321,9 @@
         "unavailable": "Batch report belum tersedia.",
         "status": "Status",
         "source_summary": "Ringkasan sumber",
-        "phase_report": "Laporan fase"
+        "phase_report": "Laporan fase",
+        "billing": "Billing",
+        "errors": "Error"
       }
     }
   },
@@ -4230,7 +4385,60 @@
       "map_unavailable_title": "Peta tidak tersedia",
       "map_unavailable_subtitle": "Tidak dapat menginisialisasi peta WebGL di browser/perangkat ini.",
       "latitude_range_error": "Latitude harus antara -90 dan 90",
-      "longitude_range_error": "Longitude harus antara -180 dan 180"
+      "longitude_range_error": "Longitude harus antara -180 dan 180",
+      "add_binding": "Tambah Binding",
+      "add_link": "Tambah Link",
+      "add_node": "Tambah Node",
+      "add_zone": "Tambah Zona",
+      "bindings": "Binding",
+      "connect": "Hubungkan",
+      "coordinates": "Koordinat",
+      "drag_marker_hint": "Geser marker untuk mengatur posisi",
+      "draw_on_map": "Gambar di Peta",
+      "draw_path": "Gambar Jalur",
+      "edit_link": "Edit Link",
+      "edit_node": "Edit Node",
+      "edit_node_hint": "Geser marker pada peta",
+      "edit_zone": "Edit Zona",
+      "endpoints": "Titik Akhir",
+      "from_node": "Dari Node",
+      "geometry": "Geometri",
+      "health": "Kesehatan",
+      "insight_strip": "Panel Insight",
+      "link_hint_choose": "Pilih asal & tujuan",
+      "link_hint_path": "Klik peta untuk menggambar jalur",
+      "link_hint_path_from": "Mulai dari node yang dipilih",
+      "link_hint_quick": "Hubungkan langsung dengan garis lurus",
+      "link_metrics": "Metrik Link",
+      "links_in_viewport": "Link Terlihat",
+      "manual": "Manual",
+      "name_placeholder": "Masukkan nama...",
+      "no_bindings": "Tidak Ada Binding",
+      "no_links": "Tidak Ada Link",
+      "no_nodes": "Tidak Ada Node",
+      "no_zones": "Tidak Ada Zona",
+      "nodes_in_viewport": "Node Terlihat",
+      "pick_endpoints": "Pilih Titik Akhir",
+      "pick_mode_active": "Mode Pilih Aktif",
+      "pick_mode_paused": "Mode Pilih Ditunda",
+      "picking": "Memilih...",
+      "primary": "Utama",
+      "quick": "Cepat",
+      "quick_modes_label": "Mode Cepat",
+      "save_node": "Simpan Node",
+      "select_node": "Pilih Node",
+      "select_zone": "Pilih Zona",
+      "snap": "Snap",
+      "then_click_destination": "Lalu klik tujuan",
+      "to_node": "Ke Node",
+      "update_node": "Perbarui Node",
+      "use_straight_line": "Gunakan Garis Lurus",
+      "view_mode_title": "Mode Lihat",
+      "weight": "Bobot",
+      "with_snap_enabled": "Dengan Snap Aktif",
+      "zone": "Zona",
+      "zone_bindings": "Binding Zona",
+      "zones_in_viewport": "Zona Terlihat"
     },
     "olt": {
       "title": "Monitoring OLT",
@@ -4387,7 +4595,11 @@
       "leave_blank_password": "Kosongkan untuk mempertahankan password lama",
       "name_placeholder": "contoh: Router POP 1",
       "host_placeholder": "192.168.88.1",
-      "upgrade_firmware_placeholder": "contoh: Upgrade firmware"
+      "upgrade_firmware_placeholder": "contoh: Upgrade firmware",
+      "double_click_open": "Klik Dua Kali untuk Membuka",
+      "health_not_supported": "Monitor Kesehatan Tidak Didukung",
+      "no_snapshot_yet": "Belum Ada Snapshot",
+      "samples": "Sampel"
     },
     "incident": {
       "title": "Insiden operasional dari alert.",
@@ -4429,7 +4641,23 @@
       "subtitle": "Temukan dan filter aset FTTH dengan cepat",
       "open_on_map": "Buka di peta",
       "edit": "Edit",
-      "delete": "Hapus"
+      "delete": "Hapus",
+      "connect_ftth": "Hubungkan FTTH",
+      "current_asset": "Aset Saat Ini",
+      "error_coordinates_invalid": "Format koordinat tidak valid",
+      "error_coordinates_pair": "Harus berupa pasangan koordinat",
+      "error_latitude_range": "Lintang harus antara -90 dan 90",
+      "error_longitude_range": "Bujur harus antara -180 dan 180",
+      "location_hint": "Pilih lokasi pada peta",
+      "map_prefix": "Map",
+      "no_coordinates": "Tidak Ada Koordinat",
+      "no_customer": "Tidak Ada Pelanggan",
+      "no_location": "Tidak Ada Lokasi",
+      "no_parent": "Tidak Ada Parent",
+      "parent_hint": "Pilih aset upstream",
+      "save_connection": "Simpan Koneksi",
+      "select_customer_first": "Pilih Pelanggan Terlebih Dahulu",
+      "upstream_parent": "Parent Upstream"
     },
     "import": {
       "title": "Pusat import data jaringan.",
@@ -4455,7 +4683,16 @@
       "customer_az": "Pelanggan A-Z",
       "customer_za": "Pelanggan Z-A",
       "assignee_az": "Penanggung Jawab A-Z",
-      "assignee_za": "Penanggung Jawab Z-A"
+      "assignee_za": "Penanggung Jawab Z-A",
+      "customer_focused": "Fokus Pelanggan",
+      "customer_ready": "Pelanggan Siap",
+      "draw_cable": "Gambar Kabel",
+      "drawing_active": "Mode Gambar Aktif",
+      "existing_cable_selected": "Kabel Dipilih",
+      "hint_drawing": "Klik peta untuk mulai menggambar kabel",
+      "hint_start": "Klik peta untuk memulai",
+      "save_link": "Simpen Link",
+      "target_selected": "Target Dipilih"
     },
     "wallboard": {
       "router": "Router",
@@ -4505,7 +4742,16 @@
       "title": "Hapus semua notifikasi",
       "message": "Ini akan menghapus semua notifikasi Anda secara permanen. Tindakan ini tidak dapat dibatalkan.",
       "confirm": "Hapus semua"
-    }
+    },
+    "delete_confirm": {
+      "message": "Message",
+      "title": "Judul"
+    },
+    "mark_all_confirm": {
+      "message": "Message",
+      "title": "Judul"
+    },
+    "mark_as_read": "Tandai Dibaca"
   },
   "pages": {
     "dashboard": {
@@ -5326,6 +5572,12 @@
           "pending": "Pending",
           "active": "Aktif",
           "failed": "Gagal"
+        },
+        "domain_status": {
+          "apply_button": "Terapkan",
+          "failure_reason_label": "Alasan Kegagalan",
+          "failure_reason_placeholder": "Masukkan alasan kegagalan...",
+          "unsaved_note": "Perubahan belum disimpan"
         }
       },
       "empty": {
@@ -5494,7 +5746,12 @@
       "tenant": "Tenant",
       "schedule": "Jadwal",
       "last_run_utc": "Terakhir Dijalankan (UTC)",
-      "retention": "Retensi"
+      "retention": "Retensi",
+      "app_name_label": "Nama Aplikasi",
+      "public_url_label": "URL Publik",
+      "requests_per_min": "Request per Menit",
+      "tenant_label": "Tenant",
+      "timezone_label": "Zona Waktu"
     },
     "settings": {
       "title": "Pengaturan Platform",
@@ -5514,7 +5771,8 @@
         "bank_removed": "Akun bank berhasil dihapus"
       },
       "confirm": {
-        "are_you_sure": "Yakin?"
+        "are_you_sure": "Yakin?",
+        "bank_delete_message": "Bank yang dipilih akan dihapus permanen"
       },
       "sections": {
         "general": "Pengaturan Umum",
@@ -5673,6 +5931,24 @@
             "label": "Interval scheduler (menit)",
             "desc": "Seberapa sering backend mengecek work order instalasi overdue di semua tenant."
           }
+        },
+        "duitku": {
+          "api_key": "API Key",
+          "enable": {
+            "desc": "Aktifkan pembayaran via Duitku",
+            "label": "Label"
+          },
+          "environment": "Environment",
+          "load_failed": "Gagal Memuat",
+          "load_methods": "Muat Metode",
+          "merchant_code": "Kode Merchant",
+          "methods_desc": "Metode pembayaran yang tersedia via Duitku",
+          "methods_title": "Metode Pembayaran Duitku",
+          "no_methods": "Tidak Ada Metode",
+          "production_mode": "Mode Production",
+          "sandbox_mode": "Mode Sandbox",
+          "saved_method": "Metode Tersimpan",
+          "title": "Judul"
         }
       },
       "fields": {
@@ -6076,7 +6352,13 @@
     "loading_detail": "Memuat tiket...",
     "actions": {
       "claim": "Ambil Tiket",
-      "claiming": "Mengambil..."
+      "claiming": "Mengambil...",
+      "add_file": "Tambah File",
+      "create": "Buat",
+      "creating": "Membuat...",
+      "new": "Baru",
+      "send": "Kirim",
+      "sending": "Mengirim..."
     },
     "fields": {
       "subject": "Subjek",
@@ -6089,7 +6371,8 @@
       "message_placeholder": "Jelaskan masalah atau permintaan Anda...",
       "attachments": "Lampiran",
       "reply": "Balas",
-      "reply_placeholder": "Tulis balasan Anda..."
+      "reply_placeholder": "Tulis balasan Anda...",
+      "file_count": "Jumlah File"
     },
     "filters": {
       "aria": "Filter tiket",
@@ -6154,6 +6437,9 @@
     },
     "create": {
       "title": "Buat Tiket"
+    },
+    "quick": {
+      "label": "Label"
     }
   },
   "topbar": {

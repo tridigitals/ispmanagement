@@ -6,7 +6,6 @@
   import type { CustomerBillingFilter } from './customerBillingState';
 
   let {
-    t,
     billingFilter = $bindable<CustomerBillingFilter>(),
     onSelectBillingFilter,
     loadingBilling,

@@ -25,5 +25,14 @@
     "title": "Hapus semua notifikasi",
     "message": "Ini akan menghapus semua notifikasi Anda secara permanen. Tindakan ini tidak dapat dibatalkan.",
     "confirm": "Hapus semua"
-  }
+  },
+  "delete_confirm": {
+    "message": "Message",
+    "title": "Judul"
+  },
+  "mark_all_confirm": {
+    "message": "Message",
+    "title": "Judul"
+  },
+  "mark_as_read": "Tandai Dibaca"
 }

@@ -282,7 +282,8 @@
       },
       "subtitle_desc": "Template messages for WhatsApp and email.",
       "both": "Both",
-      "variable_hint": "Click a token to insert a variable."
+      "variable_hint": "Click a token to insert a variable.",
+      "variable_insert_hint": "Variable Insert Hint"
     },
     "settings": {
       "title": "Global Settings",
@@ -309,7 +310,9 @@
         "custom_domain_help_prefix": "Point your domain's CNAME record to",
         "custom_domain_help_suffix": "(or configured alias).",
         "custom_domain_pro_title": "Custom Domain is a Pro Feature",
-        "custom_domain_pro_desc": "Upgrade your plan to use your own domain name."
+        "custom_domain_pro_desc": "Upgrade your plan to use your own domain name.",
+        "domain_status": "Domain Status",
+        "not_configured": "Not Configured"
       },
       "security": {
         "enforce_2fa_desc": "Require all members of this organization to enable 2FA before accessing the dashboard.",
@@ -561,7 +564,12 @@
       "subtitle": "Manage customer accounts and service locations.",
       "read_only_hint": "This role can review customer records, but customer management actions are disabled.",
       "actions": {
-        "new": "New customer"
+        "new": "New customer",
+        "add_service": "Add Service",
+        "create_invoice": "Create Invoice",
+        "create_order": "Create Order",
+        "invite_link": "Invite Link",
+        "lifecycle_reconciliation": "Lifecycle Reconciliation"
       },
       "communication": {
         "actions": {
@@ -605,7 +613,8 @@
       "stats": {
         "total": "Total",
         "active": "Active",
-        "inactive": "Inactive"
+        "inactive": "Inactive",
+        "pending_installation": "Pending Installation"
       },
       "reconciliation": {
         "title": "Lifecycle Reconciliation",
@@ -662,7 +671,9 @@
         "customer": "Customer",
         "contact": "Contact",
         "status": "Status",
-        "updated": "Updated"
+        "updated": "Updated",
+        "health": "Health",
+        "service": "Service"
       },
       "fields": {
         "name": "Name",
@@ -725,7 +736,8 @@
       },
       "overview": {
         "title": "Customer profile",
-        "profile_quality": "Profile quality"
+        "profile_quality": "Profile quality",
+        "contact_accuracy_note": "Contact Accuracy Note"
       },
       "locations": {
         "title": "Locations",
@@ -822,7 +834,35 @@
           "ends_at": "Ends at",
           "notes": "Notes"
         },
-        "change_package": "Change Package",
+        "change_package": {
+          "cancel": "Cancel",
+          "charge": "Charge",
+          "close": "Close",
+          "credit": "Credit",
+          "current_package": "Current Package",
+          "net_amount": "Net Amount",
+          "new_package": "New Package",
+          "new_package_label": "New Package Label",
+          "new_price": "New Price",
+          "old_package_label": "Old Package Label",
+          "old_price": "Old Price",
+          "pro_rata_estimate": "Pro Rata Estimate",
+          "pro_rata_note": "Pro Rata Note",
+          "processing": "Processing",
+          "select_placeholder": "Select Placeholder",
+          "submit": "Submit",
+          "success_message": "Success Message",
+          "success_message_to": "Success Message To",
+          "success_title": "Success Title",
+          "title": "Title",
+          "toasts": {
+            "error": "Error",
+            "success_no_charge": "Success No Charge",
+            "success_with_charge": "Success With Charge"
+          },
+          "view_invoice": "View Invoice",
+          "_self": "Change Package"
+        },
         "total_services": "Total services",
         "grace_active": "Grace period active",
         "wo_active": "Active work orders",
@@ -1015,9 +1055,35 @@
       "timeline": {
         "subtitle": "Customer activity.",
         "empty": "No timeline yet.",
-        "search_placeholder": "Search timeline..."
+        "search_placeholder": "Search timeline...",
+        "search": "Search"
       },
-      "search_placeholder": "Name, email, phone"
+      "search_placeholder": "Name, email, phone",
+      "filters": {
+        "active_service": "Active Service",
+        "all_customers": "All Customers",
+        "all_installations": "All Installations",
+        "all_services": "All Services",
+        "aria_installation": "Aria Installation",
+        "aria_service": "Aria Service",
+        "aria_status": "Aria Status",
+        "inactive_service": "Inactive Service",
+        "installation": "Installation",
+        "no_service": "No Service",
+        "pending_installation": "Pending Installation",
+        "service": "Service",
+        "status": "Status"
+      },
+      "no_contact": "No Contact",
+      "status": {
+        "healthy": "Healthy",
+        "inactive": "Inactive",
+        "no_service": "No Service",
+        "pending_install": "Pending Install",
+        "pending_installation": "Pending Installation",
+        "service_inactive": "Service Inactive",
+        "total_services": "Total Services"
+      }
     },
     "ftth_assets": {
       "page": {
@@ -1032,7 +1098,9 @@
       "filters": {
         "search_placeholder": "Search asset, code, or serial...",
         "all_types": "All types",
-        "all_statuses": "All statuses"
+        "all_statuses": "All statuses",
+        "subtitle": "Subtitle",
+        "title": "Title"
       },
       "table": {
         "asset": "Asset",
@@ -1088,7 +1156,30 @@
       },
       "modal": {
         "title_create": "New FTTH Asset",
-        "title_edit": "Edit FTTH Asset"
+        "title_edit": "Edit FTTH Asset",
+        "asset_coordinates": "Asset Coordinates",
+        "asset_identity": "Asset Identity",
+        "brand_model_serial": "Brand Model Serial",
+        "connected_to": "Connected To",
+        "connection_hint": "Connection Hint",
+        "coordinates_hint": "Coordinates Hint",
+        "core_asset_data": "Core Asset Data",
+        "latitude": "Latitude",
+        "longitude": "Longitude",
+        "map_location": "Map Location",
+        "map_picker_help": "Map Picker Help",
+        "map_unavailable": "Map Unavailable",
+        "map_unavailable_subtitle": "Map Unavailable Subtitle",
+        "notes_kicker": "Notes Kicker",
+        "open_if_needed": "Open If Needed",
+        "optional_hardware": "Optional Hardware",
+        "optional_hardware_hint": "Optional Hardware Hint",
+        "pick_location": "Pick Location",
+        "pick_on_map": "Pick On Map",
+        "recommended": "Recommended",
+        "relation_summary": "Relation Summary",
+        "update_map_point": "Update Map Point",
+        "use_this_point": "Use This Point"
       },
       "details": {
         "title": "Asset-specific details",
@@ -1103,6 +1194,14 @@
         "installed": "Installed",
         "faulty": "Faulty",
         "retired": "Retired"
+      },
+      "toasts": {
+        "created": "Created",
+        "delete_failed": "Delete Failed",
+        "deleted": "Deleted",
+        "load_failed": "Load Failed",
+        "save_failed": "Save Failed",
+        "updated": "Updated"
       }
     },
     "services": {
@@ -1260,13 +1359,16 @@
             "update": "Update",
             "same": "Same",
             "enabled": "Enabled",
-            "disabled": "Disabled"
+            "disabled": "Disabled",
+            "missing_password": "Missing Password",
+            "ok": "Ok"
           },
           "result": {
             "created": "Created",
             "updated": "Updated",
             "skipped": "Skipped",
-            "missing_password": "Missing password"
+            "missing_password": "Missing password",
+            "errors": "Errors"
           },
           "errors": {
             "select_router": "Select a router",
@@ -2536,7 +2638,8 @@
         "actions": {
           "refresh": "Refresh",
           "sync_selected": "Sync selected router",
-          "sync_all": "Sync all routers"
+          "sync_all": "Sync all routers",
+          "clear": "Clear"
         },
         "filters": {
           "router": "Router",
@@ -2554,7 +2657,23 @@
         },
         "toasts": {
           "sync_ok": "Log sync completed",
-          "sync_failed": "Failed to sync logs"
+          "sync_failed": "Failed to sync logs",
+          "retention_updated": "Retention Updated"
+        },
+        "clear": {
+          "clearing": "Clearing",
+          "confirm": "Confirm",
+          "select_router": "Select Router",
+          "title": "Title"
+        },
+        "retention": {
+          "30_days": "30 Days",
+          "360_days": "360 Days",
+          "90_days": "90 Days",
+          "applied_to": "Applied To",
+          "description_no_router": "Description No Router",
+          "description_with_router": "Description With Router",
+          "no_router": "No Router"
         }
       }
     },
@@ -2608,7 +2727,11 @@
         "save_failed": "Failed to save role",
         "delete_failed": "Failed to delete role: "
       },
-      "subtitle_desc": "Roles and access permissions."
+      "subtitle_desc": "Roles and access permissions.",
+      "modal": {
+        "create_title": "Create Title",
+        "edit_title": "Edit Title"
+      }
     },
     "support": {
       "title": "Support Tickets",
@@ -2933,7 +3056,8 @@
           "action_needed": "Need action",
           "action_needed_desc": "Pending and verification-pending invoices still need follow-up.",
           "overdue_now": "Overdue now",
-          "overdue_now_desc": "Focus collection reminders and service actions on these accounts first."
+          "overdue_now_desc": "Focus collection reminders and service actions on these accounts first.",
+          "queue_title_desc": "Queue Title Desc"
         },
         "sections": {
           "manual_title": "Manual billing action",
@@ -3006,7 +3130,10 @@
           "paid": "Paid",
           "pending": "Pending",
           "overdue": "Overdue"
-        }
+        },
+        "subtitle_filter": "Subtitle Filter",
+        "subtitle_manual": "Subtitle Manual",
+        "subtitle_summary": "Subtitle Summary"
       },
       "detail": {
         "back": "Back to Invoices",
@@ -3146,7 +3273,15 @@
         "no_results": "No members found",
         "try_adjusting": "Try adjusting your search or filters."
       },
-      "subtitle_desc": "Team members and access."
+      "subtitle_desc": "Team members and access.",
+      "deleted_at": "Deleted At",
+      "deleted_empty": "Deleted Empty",
+      "deleted_tab": "Deleted Tab",
+      "hard_delete": {
+        "title": "Title"
+      },
+      "permanent_delete": "Permanent Delete",
+      "restore": "Restore"
     },
     "billing": {
       "analytics": {
@@ -3483,7 +3618,23 @@
     "replace": "Replace",
     "enabled": "Enabled",
     "enable": "Enable",
-    "invoice": "Invoice"
+    "invoice": "Invoice",
+    "activate": "Activate",
+    "deselect_all": "Deselect All",
+    "down": "Down",
+    "dynamic": "Dynamic",
+    "exit": "Exit",
+    "missing": "Missing",
+    "no_detail": "No Detail",
+    "not_found": "Not Found",
+    "off": "Off",
+    "on": "On",
+    "profile": "Profile",
+    "running": "Running",
+    "shown": "Shown",
+    "subscription": "Subscription",
+    "suspend": "Suspend",
+    "undo": "Undo"
   },
   "components": {
     "lightbox": {
@@ -4140,7 +4291,9 @@
         "skip": "Skip",
         "decision_info": "Decide how to handle customers that already exist.",
         "nas_field": "NAS field",
-        "router_field": "Router field"
+        "router_field": "Router field",
+        "auto_new_package": "Auto New Package",
+        "location_strategy": "Location Strategy"
       },
       "preview": {
         "title": "Import preview results",
@@ -4168,7 +4321,9 @@
         "unavailable": "Batch report not yet available.",
         "status": "Status",
         "source_summary": "Source summary",
-        "phase_report": "Phase report"
+        "phase_report": "Phase report",
+        "billing": "Billing",
+        "errors": "Errors"
       }
     }
   },
@@ -4230,7 +4385,60 @@
       "map_unavailable_title": "Map unavailable",
       "map_unavailable_subtitle": "Unable to initialize WebGL map on this browser/device.",
       "latitude_range_error": "Latitude must be between -90 and 90",
-      "longitude_range_error": "Longitude must be between -180 and 180"
+      "longitude_range_error": "Longitude must be between -180 and 180",
+      "add_binding": "Add Binding",
+      "add_link": "Add Link",
+      "add_node": "Add Node",
+      "add_zone": "Add Zone",
+      "bindings": "Bindings",
+      "connect": "Connect",
+      "coordinates": "Coordinates",
+      "drag_marker_hint": "Drag Marker Hint",
+      "draw_on_map": "Draw On Map",
+      "draw_path": "Draw Path",
+      "edit_link": "Edit Link",
+      "edit_node": "Edit Node",
+      "edit_node_hint": "Edit Node Hint",
+      "edit_zone": "Edit Zone",
+      "endpoints": "Endpoints",
+      "from_node": "From Node",
+      "geometry": "Geometry",
+      "health": "Health",
+      "insight_strip": "Insight Strip",
+      "link_hint_choose": "Link Hint Choose",
+      "link_hint_path": "Link Hint Path",
+      "link_hint_path_from": "Link Hint Path From",
+      "link_hint_quick": "Link Hint Quick",
+      "link_metrics": "Link Metrics",
+      "links_in_viewport": "Links In Viewport",
+      "manual": "Manual",
+      "name_placeholder": "Name Placeholder",
+      "no_bindings": "No Bindings",
+      "no_links": "No Links",
+      "no_nodes": "No Nodes",
+      "no_zones": "No Zones",
+      "nodes_in_viewport": "Nodes In Viewport",
+      "pick_endpoints": "Pick Endpoints",
+      "pick_mode_active": "Pick Mode Active",
+      "pick_mode_paused": "Pick Mode Paused",
+      "picking": "Picking",
+      "primary": "Primary",
+      "quick": "Quick",
+      "quick_modes_label": "Quick Modes Label",
+      "save_node": "Save Node",
+      "select_node": "Select Node",
+      "select_zone": "Select Zone",
+      "snap": "Snap",
+      "then_click_destination": "Then Click Destination",
+      "to_node": "To Node",
+      "update_node": "Update Node",
+      "use_straight_line": "Use Straight Line",
+      "view_mode_title": "View Mode Title",
+      "weight": "Weight",
+      "with_snap_enabled": "With Snap Enabled",
+      "zone": "Zone",
+      "zone_bindings": "Zone Bindings",
+      "zones_in_viewport": "Zones In Viewport"
     },
     "olt": {
       "title": "OLT Monitoring",
@@ -4387,7 +4595,11 @@
       "leave_blank_password": "Leave blank to keep current password",
       "name_placeholder": "e.g. POP Router 1",
       "host_placeholder": "192.168.88.1",
-      "upgrade_firmware_placeholder": "e.g. Upgrade firmware"
+      "upgrade_firmware_placeholder": "e.g. Upgrade firmware",
+      "double_click_open": "Double Click Open",
+      "health_not_supported": "Health Not Supported",
+      "no_snapshot_yet": "No Snapshot Yet",
+      "samples": "Samples"
     },
     "incident": {
       "title": "Operational incidents from alerts.",
@@ -4429,7 +4641,23 @@
       "subtitle": "Find and narrow FTTH assets quickly",
       "open_on_map": "Open on map",
       "edit": "Edit",
-      "delete": "Delete"
+      "delete": "Delete",
+      "connect_ftth": "Connect Ftth",
+      "current_asset": "Current Asset",
+      "error_coordinates_invalid": "Error Coordinates Invalid",
+      "error_coordinates_pair": "Error Coordinates Pair",
+      "error_latitude_range": "Error Latitude Range",
+      "error_longitude_range": "Error Longitude Range",
+      "location_hint": "Location Hint",
+      "map_prefix": "Map Prefix",
+      "no_coordinates": "No Coordinates",
+      "no_customer": "No Customer",
+      "no_location": "No Location",
+      "no_parent": "No Parent",
+      "parent_hint": "Parent Hint",
+      "save_connection": "Save Connection",
+      "select_customer_first": "Select Customer First",
+      "upstream_parent": "Upstream Parent"
     },
     "import": {
       "title": "Network data import center.",
@@ -4455,7 +4683,16 @@
       "customer_az": "Customer A-Z",
       "customer_za": "Customer Z-A",
       "assignee_az": "Assignee A-Z",
-      "assignee_za": "Assignee Z-A"
+      "assignee_za": "Assignee Z-A",
+      "customer_focused": "Customer Focused",
+      "customer_ready": "Customer Ready",
+      "draw_cable": "Draw Cable",
+      "drawing_active": "Drawing Active",
+      "existing_cable_selected": "Existing Cable Selected",
+      "hint_drawing": "Hint Drawing",
+      "hint_start": "Hint Start",
+      "save_link": "Save Link",
+      "target_selected": "Target Selected"
     },
     "wallboard": {
       "router": "Router",
@@ -4505,7 +4742,16 @@
       "title": "Clear all notifications",
       "message": "This will permanently delete all your notifications. This action cannot be undone.",
       "confirm": "Clear all"
-    }
+    },
+    "delete_confirm": {
+      "message": "Message",
+      "title": "Title"
+    },
+    "mark_all_confirm": {
+      "message": "Message",
+      "title": "Title"
+    },
+    "mark_as_read": "Mark As Read"
   },
   "pages": {
     "dashboard": {
@@ -5326,6 +5572,12 @@
           "pending": "Pending",
           "active": "Active",
           "failed": "Failed"
+        },
+        "domain_status": {
+          "apply_button": "Apply Button",
+          "failure_reason_label": "Failure Reason Label",
+          "failure_reason_placeholder": "Failure Reason Placeholder",
+          "unsaved_note": "Unsaved Note"
         }
       },
       "empty": {
@@ -5494,7 +5746,12 @@
       "tenant": "Tenant",
       "schedule": "Schedule",
       "last_run_utc": "Last Run (UTC)",
-      "retention": "Retention"
+      "retention": "Retention",
+      "app_name_label": "App Name Label",
+      "public_url_label": "Public Url Label",
+      "requests_per_min": "Requests Per Min",
+      "tenant_label": "Tenant Label",
+      "timezone_label": "Timezone Label"
     },
     "settings": {
       "title": "Platform Settings",
@@ -5514,7 +5771,8 @@
         "bank_removed": "Bank account removed"
       },
       "confirm": {
-        "are_you_sure": "Are you sure?"
+        "are_you_sure": "Are you sure?",
+        "bank_delete_message": "Bank Delete Message"
       },
       "sections": {
         "general": "General Settings",
@@ -5675,6 +5933,24 @@
             "label": "Scheduler interval (minutes)",
             "desc": "How often the backend checks all tenants for overdue installation work orders."
           }
+        },
+        "duitku": {
+          "api_key": "Api Key",
+          "enable": {
+            "desc": "Desc",
+            "label": "Label"
+          },
+          "environment": "Environment",
+          "load_failed": "Load Failed",
+          "load_methods": "Load Methods",
+          "merchant_code": "Merchant Code",
+          "methods_desc": "Methods Desc",
+          "methods_title": "Methods Title",
+          "no_methods": "No Methods",
+          "production_mode": "Production Mode",
+          "sandbox_mode": "Sandbox Mode",
+          "saved_method": "Saved Method",
+          "title": "Title"
         }
       },
       "fields": {
@@ -6076,7 +6352,13 @@
     "loading_detail": "Loading ticket...",
     "actions": {
       "claim": "Claim Ticket",
-      "claiming": "Claiming..."
+      "claiming": "Claiming...",
+      "add_file": "Add File",
+      "create": "Create",
+      "creating": "Creating",
+      "new": "New",
+      "send": "Send",
+      "sending": "Sending"
     },
     "fields": {
       "subject": "Subject",
@@ -6089,7 +6371,8 @@
       "message_placeholder": "Describe your issue or request...",
       "attachments": "Attachments",
       "reply": "Reply",
-      "reply_placeholder": "Write your reply..."
+      "reply_placeholder": "Write your reply...",
+      "file_count": "File Count"
     },
     "filters": {
       "aria": "Filter tickets",
@@ -6154,6 +6437,9 @@
     },
     "create": {
       "title": "Create Ticket"
+    },
+    "quick": {
+      "label": "Label"
     }
   },
   "topbar": {

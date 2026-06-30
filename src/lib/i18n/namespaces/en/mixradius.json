@@ -38,7 +38,9 @@
       "skip": "Skip",
       "decision_info": "Decide how to handle customers that already exist.",
       "nas_field": "NAS field",
-      "router_field": "Router field"
+      "router_field": "Router field",
+      "auto_new_package": "Auto New Package",
+      "location_strategy": "Location Strategy"
     },
     "preview": {
       "title": "Import preview results",
@@ -66,7 +68,9 @@
       "unavailable": "Batch report not yet available.",
       "status": "Status",
       "source_summary": "Source summary",
-      "phase_report": "Phase report"
+      "phase_report": "Phase report",
+      "billing": "Billing",
+      "errors": "Errors"
     }
   }
 }

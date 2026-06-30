@@ -476,6 +476,12 @@
         "pending": "Pending",
         "active": "Aktif",
         "failed": "Gagal"
+      },
+      "domain_status": {
+        "apply_button": "Terapkan",
+        "failure_reason_label": "Alasan Kegagalan",
+        "failure_reason_placeholder": "Masukkan alasan kegagalan...",
+        "unsaved_note": "Perubahan belum disimpan"
       }
     },
     "empty": {
@@ -644,7 +650,12 @@
     "tenant": "Tenant",
     "schedule": "Jadwal",
     "last_run_utc": "Terakhir Dijalankan (UTC)",
-    "retention": "Retensi"
+    "retention": "Retensi",
+    "app_name_label": "Nama Aplikasi",
+    "public_url_label": "URL Publik",
+    "requests_per_min": "Request per Menit",
+    "tenant_label": "Tenant",
+    "timezone_label": "Zona Waktu"
   },
   "settings": {
     "title": "Pengaturan Platform",
@@ -664,7 +675,8 @@
       "bank_removed": "Akun bank berhasil dihapus"
     },
     "confirm": {
-      "are_you_sure": "Yakin?"
+      "are_you_sure": "Yakin?",
+      "bank_delete_message": "Bank yang dipilih akan dihapus permanen"
     },
     "sections": {
       "general": "Pengaturan Umum",
@@ -823,6 +835,24 @@
           "label": "Interval scheduler (menit)",
           "desc": "Seberapa sering backend mengecek work order instalasi overdue di semua tenant."
         }
+      },
+      "duitku": {
+        "api_key": "API Key",
+        "enable": {
+          "desc": "Aktifkan pembayaran via Duitku",
+          "label": "Label"
+        },
+        "environment": "Environment",
+        "load_failed": "Gagal Memuat",
+        "load_methods": "Muat Metode",
+        "merchant_code": "Kode Merchant",
+        "methods_desc": "Metode pembayaran yang tersedia via Duitku",
+        "methods_title": "Metode Pembayaran Duitku",
+        "no_methods": "Tidak Ada Metode",
+        "production_mode": "Mode Production",
+        "sandbox_mode": "Mode Sandbox",
+        "saved_method": "Metode Tersimpan",
+        "title": "Judul"
       }
     },
     "fields": {

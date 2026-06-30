@@ -476,6 +476,12 @@
         "pending": "Pending",
         "active": "Active",
         "failed": "Failed"
+      },
+      "domain_status": {
+        "apply_button": "Apply Button",
+        "failure_reason_label": "Failure Reason Label",
+        "failure_reason_placeholder": "Failure Reason Placeholder",
+        "unsaved_note": "Unsaved Note"
       }
     },
     "empty": {
@@ -644,7 +650,12 @@
     "tenant": "Tenant",
     "schedule": "Schedule",
     "last_run_utc": "Last Run (UTC)",
-    "retention": "Retention"
+    "retention": "Retention",
+    "app_name_label": "App Name Label",
+    "public_url_label": "Public Url Label",
+    "requests_per_min": "Requests Per Min",
+    "tenant_label": "Tenant Label",
+    "timezone_label": "Timezone Label"
   },
   "settings": {
     "title": "Platform Settings",
@@ -664,7 +675,8 @@
       "bank_removed": "Bank account removed"
     },
     "confirm": {
-      "are_you_sure": "Are you sure?"
+      "are_you_sure": "Are you sure?",
+      "bank_delete_message": "Bank Delete Message"
     },
     "sections": {
       "general": "General Settings",
@@ -825,6 +837,24 @@
           "label": "Scheduler interval (minutes)",
           "desc": "How often the backend checks all tenants for overdue installation work orders."
         }
+      },
+      "duitku": {
+        "api_key": "Api Key",
+        "enable": {
+          "desc": "Desc",
+          "label": "Label"
+        },
+        "environment": "Environment",
+        "load_failed": "Load Failed",
+        "load_methods": "Load Methods",
+        "merchant_code": "Merchant Code",
+        "methods_desc": "Methods Desc",
+        "methods_title": "Methods Title",
+        "no_methods": "No Methods",
+        "production_mode": "Production Mode",
+        "sandbox_mode": "Sandbox Mode",
+        "saved_method": "Saved Method",
+        "title": "Title"
       }
     },
     "fields": {

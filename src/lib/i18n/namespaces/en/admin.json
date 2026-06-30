@@ -281,7 +281,8 @@
     },
     "subtitle_desc": "Template messages for WhatsApp and email.",
     "both": "Both",
-    "variable_hint": "Click a token to insert a variable."
+    "variable_hint": "Click a token to insert a variable.",
+    "variable_insert_hint": "Variable Insert Hint"
   },
   "settings": {
     "title": "Global Settings",
@@ -308,7 +309,9 @@
       "custom_domain_help_prefix": "Point your domain's CNAME record to",
       "custom_domain_help_suffix": "(or configured alias).",
       "custom_domain_pro_title": "Custom Domain is a Pro Feature",
-      "custom_domain_pro_desc": "Upgrade your plan to use your own domain name."
+      "custom_domain_pro_desc": "Upgrade your plan to use your own domain name.",
+      "domain_status": "Domain Status",
+      "not_configured": "Not Configured"
     },
     "security": {
       "enforce_2fa_desc": "Require all members of this organization to enable 2FA before accessing the dashboard.",
@@ -560,7 +563,12 @@
     "subtitle": "Manage customer accounts and service locations.",
     "read_only_hint": "This role can review customer records, but customer management actions are disabled.",
     "actions": {
-      "new": "New customer"
+      "new": "New customer",
+      "add_service": "Add Service",
+      "create_invoice": "Create Invoice",
+      "create_order": "Create Order",
+      "invite_link": "Invite Link",
+      "lifecycle_reconciliation": "Lifecycle Reconciliation"
     },
     "communication": {
       "actions": {
@@ -604,7 +612,8 @@
     "stats": {
       "total": "Total",
       "active": "Active",
-      "inactive": "Inactive"
+      "inactive": "Inactive",
+      "pending_installation": "Pending Installation"
     },
     "reconciliation": {
       "title": "Lifecycle Reconciliation",
@@ -661,7 +670,9 @@
       "customer": "Customer",
       "contact": "Contact",
       "status": "Status",
-      "updated": "Updated"
+      "updated": "Updated",
+      "health": "Health",
+      "service": "Service"
     },
     "fields": {
       "name": "Name",
@@ -724,7 +735,8 @@
     },
     "overview": {
       "title": "Customer profile",
-      "profile_quality": "Profile quality"
+      "profile_quality": "Profile quality",
+      "contact_accuracy_note": "Contact Accuracy Note"
     },
     "locations": {
       "title": "Locations",
@@ -821,7 +833,35 @@
         "ends_at": "Ends at",
         "notes": "Notes"
       },
-      "change_package": "Change Package",
+      "change_package": {
+        "cancel": "Cancel",
+        "charge": "Charge",
+        "close": "Close",
+        "credit": "Credit",
+        "current_package": "Current Package",
+        "net_amount": "Net Amount",
+        "new_package": "New Package",
+        "new_package_label": "New Package Label",
+        "new_price": "New Price",
+        "old_package_label": "Old Package Label",
+        "old_price": "Old Price",
+        "pro_rata_estimate": "Pro Rata Estimate",
+        "pro_rata_note": "Pro Rata Note",
+        "processing": "Processing",
+        "select_placeholder": "Select Placeholder",
+        "submit": "Submit",
+        "success_message": "Success Message",
+        "success_message_to": "Success Message To",
+        "success_title": "Success Title",
+        "title": "Title",
+        "toasts": {
+          "error": "Error",
+          "success_no_charge": "Success No Charge",
+          "success_with_charge": "Success With Charge"
+        },
+        "view_invoice": "View Invoice",
+        "_self": "Change Package"
+      },
       "total_services": "Total services",
       "grace_active": "Grace period active",
       "wo_active": "Active work orders",
@@ -1014,9 +1054,35 @@
     "timeline": {
       "subtitle": "Customer activity.",
       "empty": "No timeline yet.",
-      "search_placeholder": "Search timeline..."
+      "search_placeholder": "Search timeline...",
+      "search": "Search"
     },
-    "search_placeholder": "Name, email, phone"
+    "search_placeholder": "Name, email, phone",
+    "filters": {
+      "active_service": "Active Service",
+      "all_customers": "All Customers",
+      "all_installations": "All Installations",
+      "all_services": "All Services",
+      "aria_installation": "Aria Installation",
+      "aria_service": "Aria Service",
+      "aria_status": "Aria Status",
+      "inactive_service": "Inactive Service",
+      "installation": "Installation",
+      "no_service": "No Service",
+      "pending_installation": "Pending Installation",
+      "service": "Service",
+      "status": "Status"
+    },
+    "no_contact": "No Contact",
+    "status": {
+      "healthy": "Healthy",
+      "inactive": "Inactive",
+      "no_service": "No Service",
+      "pending_install": "Pending Install",
+      "pending_installation": "Pending Installation",
+      "service_inactive": "Service Inactive",
+      "total_services": "Total Services"
+    }
   },
   "ftth_assets": {
     "page": {
@@ -1031,7 +1097,9 @@
     "filters": {
       "search_placeholder": "Search asset, code, or serial...",
       "all_types": "All types",
-      "all_statuses": "All statuses"
+      "all_statuses": "All statuses",
+      "subtitle": "Subtitle",
+      "title": "Title"
     },
     "table": {
       "asset": "Asset",
@@ -1087,7 +1155,30 @@
     },
     "modal": {
       "title_create": "New FTTH Asset",
-      "title_edit": "Edit FTTH Asset"
+      "title_edit": "Edit FTTH Asset",
+      "asset_coordinates": "Asset Coordinates",
+      "asset_identity": "Asset Identity",
+      "brand_model_serial": "Brand Model Serial",
+      "connected_to": "Connected To",
+      "connection_hint": "Connection Hint",
+      "coordinates_hint": "Coordinates Hint",
+      "core_asset_data": "Core Asset Data",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "map_location": "Map Location",
+      "map_picker_help": "Map Picker Help",
+      "map_unavailable": "Map Unavailable",
+      "map_unavailable_subtitle": "Map Unavailable Subtitle",
+      "notes_kicker": "Notes Kicker",
+      "open_if_needed": "Open If Needed",
+      "optional_hardware": "Optional Hardware",
+      "optional_hardware_hint": "Optional Hardware Hint",
+      "pick_location": "Pick Location",
+      "pick_on_map": "Pick On Map",
+      "recommended": "Recommended",
+      "relation_summary": "Relation Summary",
+      "update_map_point": "Update Map Point",
+      "use_this_point": "Use This Point"
     },
     "details": {
       "title": "Asset-specific details",
@@ -1102,6 +1193,14 @@
       "installed": "Installed",
       "faulty": "Faulty",
       "retired": "Retired"
+    },
+    "toasts": {
+      "created": "Created",
+      "delete_failed": "Delete Failed",
+      "deleted": "Deleted",
+      "load_failed": "Load Failed",
+      "save_failed": "Save Failed",
+      "updated": "Updated"
     }
   },
   "services": {
@@ -1259,13 +1358,16 @@
           "update": "Update",
           "same": "Same",
           "enabled": "Enabled",
-          "disabled": "Disabled"
+          "disabled": "Disabled",
+          "missing_password": "Missing Password",
+          "ok": "Ok"
         },
         "result": {
           "created": "Created",
           "updated": "Updated",
           "skipped": "Skipped",
-          "missing_password": "Missing password"
+          "missing_password": "Missing password",
+          "errors": "Errors"
         },
         "errors": {
           "select_router": "Select a router",
@@ -2535,7 +2637,8 @@
       "actions": {
         "refresh": "Refresh",
         "sync_selected": "Sync selected router",
-        "sync_all": "Sync all routers"
+        "sync_all": "Sync all routers",
+        "clear": "Clear"
       },
       "filters": {
         "router": "Router",
@@ -2553,7 +2656,23 @@
       },
       "toasts": {
         "sync_ok": "Log sync completed",
-        "sync_failed": "Failed to sync logs"
+        "sync_failed": "Failed to sync logs",
+        "retention_updated": "Retention Updated"
+      },
+      "clear": {
+        "clearing": "Clearing",
+        "confirm": "Confirm",
+        "select_router": "Select Router",
+        "title": "Title"
+      },
+      "retention": {
+        "30_days": "30 Days",
+        "360_days": "360 Days",
+        "90_days": "90 Days",
+        "applied_to": "Applied To",
+        "description_no_router": "Description No Router",
+        "description_with_router": "Description With Router",
+        "no_router": "No Router"
       }
     }
   },
@@ -2607,7 +2726,11 @@
       "save_failed": "Failed to save role",
       "delete_failed": "Failed to delete role: "
     },
-    "subtitle_desc": "Roles and access permissions."
+    "subtitle_desc": "Roles and access permissions.",
+    "modal": {
+      "create_title": "Create Title",
+      "edit_title": "Edit Title"
+    }
   },
   "support": {
     "title": "Support Tickets",
@@ -2932,7 +3055,8 @@
         "action_needed": "Need action",
         "action_needed_desc": "Pending and verification-pending invoices still need follow-up.",
         "overdue_now": "Overdue now",
-        "overdue_now_desc": "Focus collection reminders and service actions on these accounts first."
+        "overdue_now_desc": "Focus collection reminders and service actions on these accounts first.",
+        "queue_title_desc": "Queue Title Desc"
       },
       "sections": {
         "manual_title": "Manual billing action",
@@ -3005,7 +3129,10 @@
         "paid": "Paid",
         "pending": "Pending",
         "overdue": "Overdue"
-      }
+      },
+      "subtitle_filter": "Subtitle Filter",
+      "subtitle_manual": "Subtitle Manual",
+      "subtitle_summary": "Subtitle Summary"
     },
     "detail": {
       "back": "Back to Invoices",
@@ -3145,7 +3272,15 @@
       "no_results": "No members found",
       "try_adjusting": "Try adjusting your search or filters."
     },
-    "subtitle_desc": "Team members and access."
+    "subtitle_desc": "Team members and access.",
+    "deleted_at": "Deleted At",
+    "deleted_empty": "Deleted Empty",
+    "deleted_tab": "Deleted Tab",
+    "hard_delete": {
+      "title": "Title"
+    },
+    "permanent_delete": "Permanent Delete",
+    "restore": "Restore"
   },
   "billing": {
     "analytics": {

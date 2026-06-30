@@ -2018,7 +2018,6 @@
     {:else if activeTab === 'subscriptions'}
       {#if SubscriptionsTabComponent}
         <SubscriptionsTabComponent
-          t={t}
           loadingSubscriptions={loadingSubscriptions}
           metricCount={metricCount}
           subscriptionColumns={subscriptionColumns}
@@ -2048,7 +2047,6 @@
     {:else if activeTab === 'billing'}
       {#if BillingTabComponent}
         <BillingTabComponent
-          t={t}
           bind:billingFilter
           {onSelectBillingFilter}
           loadingBilling={loadingBilling}
@@ -2079,7 +2077,6 @@
     {:else if activeTab === 'pppoe'}
       {#if PppoeTabComponent && pppoeHelperModule}
         <PppoeTabComponent
-          t={t}
           pppoeToolbar={pppoeToolbar}
           bind:pppoeQuery
           onRefresh={() => loadPppoeAccounts({ force: true })}
@@ -2307,7 +2304,6 @@
 {#if CustomerDetailDialogsComponent}
   {@const CustomerDialogs = CustomerDetailDialogsComponent}
   <CustomerDialogs
-    {t}
     bind:showEditPppoe
     bind:pppoeRouterId
     {pppoeRouters}
