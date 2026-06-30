@@ -1285,7 +1285,7 @@
         <button
           class="icon-x"
           type="button"
-          onclick={() => goto(`${tenantPrefix}/admin/network`)}
+          onclick={() => goto(`${tenantPrefix}/admin/network/noc`)}
           title={$t('common.exit')}
         >
           <Icon name="arrow-left" size={16} />
