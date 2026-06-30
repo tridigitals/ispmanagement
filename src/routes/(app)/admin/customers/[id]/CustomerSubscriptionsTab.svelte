@@ -108,7 +108,7 @@
             <span class="policy-label">{$t('admin.customers.subscriptions.active_period')}</span>
             <div class="policy-value">
               {summary.activeUntilMissing
-                : $t('admin.customers.subscriptions.active_period') + ' —'
+                ? $t('admin.customers.subscriptions.active_period') + ' —'
                 : formatCustomerPolicyDate(summary.activeUntilIso)}
             </div>
           </div>
