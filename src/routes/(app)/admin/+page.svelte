@@ -143,10 +143,10 @@
       );
     }
 
-    if (requirements.subscription && currentUser?.tenant_id) {
+    if (requirements.subscription) {
       tasks.push(
         api.plans
-          .getSubscriptionDetails(currentUser.tenant_id)
+          .getSubscriptionDetails()
           .then((value) => {
             nextSummary.subscription = value;
           })
