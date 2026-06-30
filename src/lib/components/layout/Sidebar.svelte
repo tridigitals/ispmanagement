@@ -459,6 +459,7 @@
             label: $t('sidebar.billing') || 'Billing',
             icon: 'file-text',
             href: `${tenantPrefix}/admin/invoices`,
+            exact: true,
             show: $can('read', 'billing') || $can('manage', 'billing'),
           },
           {
@@ -598,7 +599,7 @@
     isMobileOpen = false; // Close mobile menu on navigate
   }
 
-  function isActive(item: { href: string }) {
+  function isActive(item: { href: string; exact?: boolean }) {
     const path = $page.url.pathname;
 
     if (isUrlSuperadmin) {
@@ -609,6 +610,7 @@
     if (item.href === `${tenantPrefix}/admin`) return path === item.href;
     if (item.href === `${tenantPrefix}/dashboard`) return path === item.href;
 
+    if (item.exact) return path === item.href;
     return path === item.href || path.startsWith(`${item.href}/`);
   }
 </script>
