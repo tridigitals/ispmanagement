@@ -493,6 +493,7 @@ impl RoleService {
                     "customer_locations:read",
                     "router_inventory:read",
                     "ftth_assets:read",
+                    "ftth_assets:manage",
                     "ppp_profiles:read",
                     "ip_pools:read",
                     "pppoe:read",
@@ -566,7 +567,7 @@ impl RoleService {
         let permissions = Self::get_default_permissions();
 
         for (resource, action, description) in permissions {
-            let id = Uuid::new_v4().to_string();
+            let id = format!("{}:{}", resource, action);
 
             #[cfg(feature = "postgres")]
             {

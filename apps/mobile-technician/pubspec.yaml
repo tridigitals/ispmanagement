@@ -61,6 +61,9 @@ dependencies:
   local_auth: ^2.3.0
   otp: ^3.2.0
 
+  # Barcode/QR scanner
+  mobile_scanner: ^6.0.2
+
   # Crash reporting
   sentry_flutter: ^8.5.0
 

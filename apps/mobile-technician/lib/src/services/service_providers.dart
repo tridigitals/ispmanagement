@@ -39,6 +39,10 @@ final workOrderServiceProvider = Provider<WorkOrderService>((ref) {
   return WorkOrderService(dio: ref.watch(dioProvider));
 });
 
+final networkAssetServiceProvider = Provider<NetworkAssetService>((ref) {
+  return NetworkAssetService(dio: ref.watch(dioProvider));
+});
+
 final realtimeClientProvider = Provider<RealtimeClient>((ref) {
   final cfg = ref.watch(appConfigProvider);
   return RealtimeClient(

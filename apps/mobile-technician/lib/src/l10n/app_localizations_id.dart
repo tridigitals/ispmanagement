@@ -760,6 +760,12 @@ class AppLocalizationsId extends AppLocalizations {
   String get workOrderNotesHint => 'Catatan instalasi, kendala, dll.';
 
   @override
+  String get workOrderSelectTerminalAsset => 'Pilih terminal asset yang terpasang:';
+
+  @override
+  String get workOrderNoAssetAvailable => 'Tidak ada terminal asset tersedia. Buat asset terlebih dahulu.';
+
+  @override
   String get workOrderStatusPending => 'Menunggu';
 
   @override

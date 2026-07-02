@@ -1577,6 +1577,18 @@ abstract class AppLocalizations {
   /// **'Installation notes, issues found, etc.'**
   String get workOrderNotesHint;
 
+  /// No description provided for @workOrderSelectTerminalAsset.
+  ///
+  /// In en, this message translates to:
+  /// **'Select terminal asset installed:'**
+  String get workOrderSelectTerminalAsset;
+
+  /// No description provided for @workOrderNoAssetAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No terminal assets available. Create one first.'**
+  String get workOrderNoAssetAvailable;
+
   /// No description provided for @workOrderStatusPending.
   ///
   /// In en, this message translates to:

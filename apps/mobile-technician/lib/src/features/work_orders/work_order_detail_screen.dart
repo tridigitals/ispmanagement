@@ -7,7 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../../services/service_providers.dart' show workOrderServiceProvider;
+import '../../services/service_providers.dart' show workOrderServiceProvider, networkAssetServiceProvider;
 
 class WorkOrderDetailScreen extends ConsumerStatefulWidget {
   const WorkOrderDetailScreen({super.key, required this.id});
@@ -23,6 +23,7 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
   bool _loading = true;
   Object? _error;
   bool _actionLoading = false;
+  bool _creatingAsset = false;
 
   @override
   void initState() {
@@ -89,34 +90,193 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
   Future<void> _completeWithNotes() async {
     final l10n = AppLocalizations.of(context);
     final notesCtrl = TextEditingController();
+    final nameCtrl = TextEditingController();
+    final serialCtrl = TextEditingController();
+
+    // Fetch terminal assets for this customer
+    List<NetworkAssetListItemModel> assets = [];
+    String? fetchError;
+    try {
+      final assetSvc = ref.read(networkAssetServiceProvider);
+      final result = await assetSvc.listByCustomer(_wo!.customerId);
+      assets = result.getOrThrow();
+    } catch (e) {
+      fetchError = e.toString();
+    }
+
+    if (!mounted) return;
+
+    if (fetchError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal memuat asset: $fetchError'),
+          backgroundColor: context.isp.danger,
+        ),
+      );
+      return;
+    }
+
+    NetworkAssetListItemModel? selectedAsset = assets.isNotEmpty ? assets.first : null;
+    bool showCreateForm = assets.isEmpty;
+
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.workOrderComplete),
-        content: TextField(
-          controller: notesCtrl,
-          decoration: InputDecoration(
-            hintText: l10n.workOrderNotesHint,
-            border: const OutlineInputBorder(),
-          ),
-          maxLines: 3,
-          minLines: 2,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.workOrderComplete),
-          ),
-        ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          Future<void> createAsset() async {
+            if (nameCtrl.text.trim().isEmpty) return;
+            setDialogState(() => _creatingAsset = true);
+            try {
+              final assetSvc = ref.read(networkAssetServiceProvider);
+              final result = await assetSvc.create(
+                assetType: 'ont',
+                name: nameCtrl.text.trim(),
+                customerId: _wo!.customerId,
+                serialNumber: serialCtrl.text.trim().isEmpty ? null : serialCtrl.text.trim(),
+              );
+              final created = result.getOrThrow();
+              assets.add(created);
+              selectedAsset = created;
+              showCreateForm = false;
+              nameCtrl.clear();
+              serialCtrl.clear();
+            } catch (e) {
+              if (ctx.mounted) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  SnackBar(content: Text('Gagal: $e'), backgroundColor: context.isp.danger),
+                );
+              }
+            } finally {
+              setDialogState(() => _creatingAsset = false);
+            }
+          }
+
+          return AlertDialog(
+            title: Text(l10n.workOrderComplete),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (assets.isNotEmpty) ...[
+                    Text(l10n.workOrderSelectTerminalAsset ?? 'Pilih terminal asset:', style: const TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: context.isp.border),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: DropdownButton<NetworkAssetListItemModel>(
+                              value: selectedAsset,
+                              isExpanded: true,
+                              underline: const SizedBox.shrink(),
+                              items: assets.map((a) => DropdownMenuItem(
+                                value: a,
+                                child: Text(a.displayLabel, style: const TextStyle(fontSize: 14)),
+                              )).toList(),
+                              onChanged: (v) => setDialogState(() => selectedAsset = v),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline),
+                          tooltip: 'Buat asset baru',
+                          onPressed: () => setDialogState(() => showCreateForm = !showCreateForm),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (showCreateForm) ...[
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    Text(assets.isEmpty ? 'Buat terminal asset baru:' : 'Atau buat baru:', style: const TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Nama ONT/ONU *',
+                        hintText: 'e.g. ONT-HG8245H',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: serialCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Serial Number',
+                        hintText: 'e.g. 485754431234ABCD',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.qr_code_scanner),
+                          tooltip: 'Scan Barcode',
+                          onPressed: () async {
+                            final scanned = await Navigator.push<String>(
+                              ctx,
+                              MaterialPageRoute(builder: (_) => const _BarcodeScanPage()),
+                            );
+                            if (scanned != null && scanned.isNotEmpty) {
+                              serialCtrl.text = scanned;
+                              setDialogState(() {});
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _creatingAsset ? null : createAsset,
+                        icon: _creatingAsset
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Icon(Icons.add),
+                        label: const Text('Simpan Asset'),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  Text(l10n.workOrderNotesHint ?? 'Catatan (opsional):', style: const TextStyle(fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: notesCtrl,
+                    decoration: InputDecoration(
+                      hintText: l10n.workOrderNotesHint,
+                      border: const OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                    minLines: 2,
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: selectedAsset == null ? null : () => Navigator.pop(ctx, true),
+                child: Text(l10n.workOrderComplete),
+              ),
+            ],
+          );
+        },
       ),
     );
-    if (ok == true && mounted) {
+    if (ok == true && mounted && selectedAsset != null) {
       await _performAction(
-        (svc) => svc.complete(widget.id, notes: notesCtrl.text),
+        (svc) => svc.complete(
+          widget.id,
+          notes: notesCtrl.text.isEmpty ? null : notesCtrl.text,
+          terminalAssetId: selectedAsset!.id,
+        ),
         l10n.workOrderConfirmed,
       );
     }

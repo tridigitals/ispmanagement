@@ -176,6 +176,13 @@ class ApiEndpoints {
   static String workOrderRescheduleReject(String id) =>
       '/api/admin/work-orders/$id/reschedule-request/reject';
 
+  // ── Network Assets (admin) ──
+  // Backend: /api/admin/network-assets (src-tauri/src/http/network_assets.rs)
+  static const String networkAssets = '/api/admin/network-assets';
+  static String networkAssetsByCustomer(String customerId) =>
+      '/api/admin/network-assets/customer/$customerId';
+
+
   /// Build URL with path parameter substitution.
   static String withParam(String endpoint, String name, String value) {
     return endpoint.replaceAll('{$name}', value);

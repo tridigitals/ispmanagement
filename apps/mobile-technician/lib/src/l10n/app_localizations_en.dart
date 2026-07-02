@@ -760,6 +760,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workOrderNotesHint => 'Installation notes, issues found, etc.';
 
   @override
+  String get workOrderSelectTerminalAsset => 'Select terminal asset installed:';
+
+  @override
+  String get workOrderNoAssetAvailable => 'No terminal assets available. Create one first.';
+
+  @override
   String get workOrderStatusPending => 'Pending';
 
   @override
