@@ -2,6 +2,7 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:ui_kit/ui_kit.dart';
@@ -911,6 +912,91 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               value!,
               style: TextStyle(fontSize: 13, color: isp.textPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Full-screen barcode scanner for ONT serial numbers.
+class _BarcodeScanPage extends StatefulWidget {
+  const _BarcodeScanPage();
+
+  @override
+  State<_BarcodeScanPage> createState() => _BarcodeScanPageState();
+}
+
+class _BarcodeScanPageState extends State<_BarcodeScanPage> {
+  final _controller = MobileScannerController(
+    detectionSpeed: DetectionSpeed.normal,
+    facing: CameraFacing.back,
+  );
+  bool _scanned = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Scan Serial Number'),
+        actions: [
+          IconButton(
+            icon: ValueListenableBuilder(
+              valueListenable: _controller,
+              builder: (_, state, __) => Icon(
+                state.torchState == TorchState.on ? Icons.flash_on : Icons.flash_off,
+              ),
+            ),
+            onPressed: () => _controller.toggleTorch(),
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          MobileScanner(
+            controller: _controller,
+            onDetect: (capture) {
+              if (_scanned) return;
+              final barcode = capture.barcodes.firstOrNull;
+              if (barcode?.rawValue != null && barcode!.rawValue!.isNotEmpty) {
+                _scanned = true;
+                Navigator.pop(context, barcode.rawValue);
+              }
+            },
+          ),
+          Center(
+            child: Container(
+              width: 280,
+              height: 140,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.greenAccent, width: 2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 48,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Arahkan kamera ke barcode ONT',
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ),
             ),
           ),
         ],
