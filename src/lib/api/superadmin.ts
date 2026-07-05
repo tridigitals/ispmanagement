@@ -252,6 +252,7 @@ export const superadmin = {
     slug: string,
     customDomain: string | null,
     isActive: boolean,
+    planId?: string,
   ): Promise<any> =>
     safeInvoke('update_tenant', {
       token: getTokenOrThrow(),
@@ -260,6 +261,7 @@ export const superadmin = {
       slug,
       customDomain,
       isActive,
+      planId: planId || undefined,
     }),
 
   updateTenantDomainStatus: (

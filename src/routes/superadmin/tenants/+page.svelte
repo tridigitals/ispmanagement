@@ -277,7 +277,7 @@
       ownerEmail: '---', // Email cannot be changed here easily in this view
       ownerPassword: '', // Password not needed for update
       isActive: tenant.is_active,
-      planId: '', // Plan cannot be changed here for now (use subscription page)
+      planId: tenant.plan_id || '', // Include planId from tenant record
     });
     showCreateModal = true;
   }
@@ -333,6 +333,7 @@
         newTenant.slug,
         newTenant.customDomain || null,
         newTenant.isActive,
+        newTenant.planId || undefined,
       );
       showCreateModal = false;
       toast.success(get(t)('superadmin.tenants.toasts.updated') || 'Tenant updated successfully');

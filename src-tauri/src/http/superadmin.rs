@@ -1392,6 +1392,8 @@ pub struct UpdateTenantRequest {
     pub slug: String,
     pub custom_domain: Option<String>,
     pub is_active: bool,
+    #[serde(default)]
+    pub plan_id: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -1491,6 +1493,25 @@ pub async fn update_tenant(
     .await?;
 
     tx.commit().await?;
+
+    if let Some(ref new_plan_id) = payload.plan_id {
+        // If plan is provided in the request, try to assign it to the tenant
+        if let Err(err) = state
+            .plan_service
+            .assign_plan_to_tenant(&id, new_plan_id)
+            .await
+        {
+            tracing::error!(
+                "Failed to assign plan {} to tenant {} during update: {}",
+                new_plan_id,
+                id,
+                err
+            );
+            return Err(crate::error::AppError::Internal(
+                "Failed to assign plan to tenant".to_string(),
+            ));
+        }
+    }
 
     // Audit
     let details = serde_json::json!({

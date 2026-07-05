@@ -929,39 +929,106 @@ class _BarcodeScanPage extends StatefulWidget {
 }
 
 class _BarcodeScanPageState extends State<_BarcodeScanPage> {
-  final _controller = MobileScannerController(
-    detectionSpeed: DetectionSpeed.normal,
-    facing: CameraFacing.back,
-  );
+  MobileScannerController? _controller;
   bool _scanned = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _initCamera();
+  }
+
+  Future<void> _initCamera() async {
+    try {
+      _controller = MobileScannerController(
+        detectionSpeed: DetectionSpeed.normal,
+        facing: CameraFacing.back,
+        autoStart: true,
+      );
+      await _controller!.start();
+      if (mounted) setState(() {});
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    }
+  }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Scan Serial Number')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.camera_alt, size: 64, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text('Tidak dapat mengakses kamera:\n$_error',
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() => _error = null);
+                    _initCamera();
+                  },
+                  child: const Text('Coba Lagi'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_controller == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Scan Serial Number')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Scan Serial Number'),
         actions: [
           IconButton(
             icon: ValueListenableBuilder(
-              valueListenable: _controller,
+              valueListenable: _controller!,
               builder: (_, state, __) => Icon(
                 state.torchState == TorchState.on ? Icons.flash_on : Icons.flash_off,
               ),
             ),
-            onPressed: () => _controller.toggleTorch(),
+            onPressed: () => _controller!.toggleTorch(),
           ),
         ],
       ),
       body: Stack(
         children: [
           MobileScanner(
-            controller: _controller,
+            controller: _controller!,
+            errorBuilder: (_, error, __) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error, size: 64, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text('Kamera error: ${error.errorDetails?.message ?? error.errorCode}',
+                        textAlign: TextAlign.center),
+                  ],
+                ),
+              ),
+            ),
             onDetect: (capture) {
               if (_scanned) return;
               final barcode = capture.barcodes.firstOrNull;

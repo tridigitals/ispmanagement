@@ -45,6 +45,8 @@ fi
 # the workspace and build with --no-pub so flutter doesn't re-run pub
 # get (which would delete the per-member config).
 echo "→ Generating per-member package_config.json (workspace workaround)"
+
+# Workaround untuk Flutter Workspace di Dart 3.5+:
 cp "$REPO_ROOT/pubspec.yaml" /tmp/pubspec.yaml.bak
 sed -i 's|^  - apps/mobile-technician$|  #- apps/mobile-technician|' "$REPO_ROOT/pubspec.yaml"
 
@@ -53,27 +55,31 @@ cleanup() {
 }
 trap cleanup EXIT
 
-(
-  cd "$REPO_ROOT"
-  flutter pub get > /dev/null 2>&1
-)
-
-# Inside technician dir: drop workspace resolution, run dart pub get,
-# then restore so the file is committed-friendly.
 sed -i 's|^resolution: workspace|#resolution: workspace|' pubspec.yaml
 (
   dart pub get > /dev/null 2>&1
 )
 sed -i 's|^#resolution: workspace|resolution: workspace|' pubspec.yaml
 
-# Restore workspace BEFORE flutter build apk (--no-pub skips its pub step).
 cleanup
 trap - EXIT
 
-# Copy .flutter-plugins from root — needed for Gradle to find plugin JARs
-# (dart pub get doesn't generate these, only flutter pub get does)
 cp "$REPO_ROOT/.flutter-plugins" .flutter-plugins
 cp "$REPO_ROOT/.flutter-plugins-dependencies" .flutter-plugins-dependencies
+if ! grep -q "mobile_scanner" .flutter-plugins; then
+  echo "mobile_scanner=/home/xtrabit/.pub-cache/hosted/pub.dev/mobile_scanner-6.0.11/" >> .flutter-plugins
+fi
+
+# Hardcode patch GeneratedPluginRegistrant to include mobile_scanner if missing
+REGISTRANT="android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java"
+if [ -f "$REGISTRANT" ] && ! grep -q "mobile_scanner" "$REGISTRANT"; then
+  sed -i '/public static void registerWith/a \
+    try {\
+      flutterEngine.getPlugins().add(new dev.steenbakker.mobile_scanner.MobileScannerPlugin());\
+    } catch (Exception e) {\
+      Log.e(TAG, "Error registering plugin mobile_scanner", e);\
+    }' "$REGISTRANT"
+fi
 
 flutter build apk --release \
   --target-platform android-arm64 \

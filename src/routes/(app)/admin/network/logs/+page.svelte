@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { get } from 'svelte/store';
   import { t } from 'svelte-i18n';
   import { appSettings } from '$lib/stores/settings';
   import { can } from '$lib/stores/auth';
@@ -38,8 +39,8 @@
   let routerId = $state('');
   let level = $state('');
   let topic = $state('');
-  let month = $state('');
-  let year = $state('');
+  let month = $state(String(new Date().getMonth() + 1));
+  let year = $state(String(new Date().getFullYear()));
   const FULL_SYNC_FETCH_LIMIT = 25000;
 
   let pageNum = $state(1); // 1-based for API
@@ -57,18 +58,18 @@
 
   const monthOptions = [
     { value: '', label: get(t)('common.all_months') || 'All months' },
-    { value: '1', label: get(t)('common.month.january') || 'January' },
-    { value: '2', label: get(t)('common.month.february') || 'February' },
-    { value: '3', label: get(t)('common.month.march') || 'March' },
+    { value: '1', label: get(t)('common.month.january') || 'Januari' },
+    { value: '2', label: get(t)('common.month.february') || 'Februari' },
+    { value: '3', label: get(t)('common.month.march') || 'Maret' },
     { value: '4', label: get(t)('common.month.april') || 'April' },
-    { value: '5', label: get(t)('common.month.may') || 'May' },
-    { value: '6', label: get(t)('common.month.june') || 'June' },
-    { value: '7', label: get(t)('common.month.july') || 'July' },
-    { value: '8', label: get(t)('common.month.august') || 'August' },
+    { value: '5', label: get(t)('common.month.may') || 'Mei' },
+    { value: '6', label: get(t)('common.month.june') || 'Juni' },
+    { value: '7', label: get(t)('common.month.july') || 'Juli' },
+    { value: '8', label: get(t)('common.month.august') || 'Agustus' },
     { value: '9', label: get(t)('common.month.september') || 'September' },
-    { value: '10', label: get(t)('common.month.october') || 'October' },
+    { value: '10', label: get(t)('common.month.october') || 'Oktober' },
     { value: '11', label: get(t)('common.month.november') || 'November' },
-    { value: '12', label: get(t)('common.month.december') || 'December' },
+    { value: '12', label: get(t)('common.month.december') || 'Desember' },
   ];
 
   const yearOptions = $derived.by(() => {

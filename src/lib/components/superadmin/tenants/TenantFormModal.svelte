@@ -129,20 +129,20 @@
       {/if}
     {/if}
 
+    <div class="divider">
+      <span>
+        {$t('superadmin.tenants.modal.sections.initial_subscription')}
+      </span>
+    </div>
+
+    <Select
+      label={$t('superadmin.tenants.modal.labels.plan')}
+      options={plans}
+      bind:value={newTenant.planId}
+      placeholder={$t('superadmin.tenants.modal.placeholders.plan')}
+    />
+
     {#if !isEditing}
-      <div class="divider">
-        <span>
-          {$t('superadmin.tenants.modal.sections.initial_subscription')}
-        </span>
-      </div>
-
-      <Select
-        label={$t('superadmin.tenants.modal.labels.plan')}
-        options={plans}
-        bind:value={newTenant.planId}
-        placeholder={$t('superadmin.tenants.modal.placeholders.plan')}
-      />
-
       <div class="divider">
         <span>
           {$t('superadmin.tenants.modal.sections.initial_admin')}
