@@ -474,6 +474,7 @@ pub fn run() {
                                     add_customer_portal_user,
                                     create_customer_portal_user,
                                     remove_customer_portal_user,
+                                    reset_customer_portal_user_password,
                                     list_my_customer_locations,
                                     create_my_customer_location,
                                     update_my_customer_location,

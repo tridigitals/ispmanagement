@@ -2423,6 +2423,91 @@ impl CustomerService {
         Ok(())
     }
 
+    pub async fn reset_portal_user_password(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        customer_user_id: &str,
+        new_password: Option<&str>,
+        ip_address: Option<&str>,
+    ) -> AppResult<ResetCustomerPortalPasswordResponse> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "customers", "manage")
+            .await?;
+
+        #[cfg(feature = "postgres")]
+        let row = sqlx::query_as::<_, (String, String)>(
+            "SELECT u.id, u.email FROM customer_users cu JOIN users u ON u.id = cu.user_id WHERE cu.tenant_id = $1 AND cu.id = $2",
+        )
+        .bind(tenant_id)
+        .bind(customer_user_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Portal user not found".to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let row = sqlx::query_as::<_, (String, String)>(
+            "SELECT u.id, u.email FROM customer_users cu JOIN users u ON u.id = cu.user_id WHERE cu.tenant_id = ? AND cu.id = ?",
+        )
+        .bind(tenant_id)
+        .bind(customer_user_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Portal user not found".to_string()))?;
+
+        let (user_id, email) = row;
+        let password = match new_password {
+            Some(p) if !p.trim().is_empty() => p.trim().to_string(),
+            _ => {
+                use rand::Rng;
+                let mut rng = rand::thread_rng();
+                (0..12).map(|_| rng.sample(rand::distributions::Alphanumeric) as char).collect()
+            }
+        };
+
+        if password.len() < 6 {
+            return Err(AppError::Validation(
+                "Password must be at least 6 characters".to_string(),
+            ));
+        }
+
+        let hash = AuthService::hash_password(&password)?;
+
+        #[cfg(feature = "postgres")]
+        sqlx::query("UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3")
+            .bind(&hash)
+            .bind(Utc::now())
+            .bind(&user_id)
+            .execute(&self.pool)
+            .await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?")
+            .bind(&hash)
+            .bind(Utc::now().to_rfc3339())
+            .bind(&user_id)
+            .execute(&self.pool)
+            .await?;
+
+        self.audit_service
+            .log(
+                Some(actor_id),
+                Some(tenant_id),
+                "CUSTOMER_PORTAL_PASSWORD_RESET",
+                "customer_users",
+                Some(customer_user_id),
+                Some("Admin reset portal user password"),
+                ip_address,
+            )
+            .await;
+
+        Ok(ResetCustomerPortalPasswordResponse {
+            customer_user_id: customer_user_id.to_string(),
+            email,
+            generated_password: if new_password.is_none() || new_password.unwrap_or("").trim().is_empty() { Some(password) } else { None },
+        })
+    }
+
     // =========================
     // Admin: Customer Subscriptions
     // =========================

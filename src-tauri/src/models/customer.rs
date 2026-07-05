@@ -237,6 +237,20 @@ pub struct CreateCustomerPortalUserRequest {
     pub password: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResetCustomerPortalPasswordRequest {
+    pub customer_user_id: String,
+    pub new_password: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResetCustomerPortalPasswordResponse {
+    pub customer_user_id: String,
+    pub email: String,
+    pub generated_password: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct CustomerPortalUser {
     pub customer_user_id: String,

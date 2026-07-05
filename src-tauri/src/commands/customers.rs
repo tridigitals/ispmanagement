@@ -9,7 +9,9 @@ use crate::models::{
     CustomerServiceLifecycleRepairResult, CustomerServiceLifecycleReport, CustomerSubscription,
     CustomerSubscriptionOption, CustomerSubscriptionView, CustomerSummary, InstallationWorkOrder,
     InstallationWorkOrderView, Invoice, IspPackage, PaginatedResponse,
-    PortalCheckoutSubscriptionRequest, RepairCustomerServiceLifecycleRequest, TeamMemberWithUser,
+    PortalCheckoutSubscriptionRequest, RepairCustomerServiceLifecycleRequest,
+    ResetCustomerPortalPasswordRequest, ResetCustomerPortalPasswordResponse,
+    TeamMemberWithUser,
     UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
     UpdateCustomerRequest, UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
 };
@@ -620,6 +622,35 @@ pub async fn remove_customer_portal_user(
             &claims.sub,
             &tenant_id,
             &customer_user_id,
+            Some("127.0.0.1"),
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn reset_customer_portal_user_password(
+    token: String,
+    dto: ResetCustomerPortalPasswordRequest,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<ResetCustomerPortalPasswordResponse, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "manage").await?;
+
+    customers
+        .reset_portal_user_password(
+            &claims.sub,
+            &tenant_id,
+            &dto.customer_user_id,
+            dto.new_password.as_deref(),
             Some("127.0.0.1"),
         )
         .await

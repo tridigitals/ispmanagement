@@ -145,6 +145,10 @@ const commandMap: Record<string, { method: string; path: string }> = {
     method: 'DELETE',
     path: '/customers/portal-users/:customerUserId',
   },
+  reset_customer_portal_user_password: {
+    method: 'POST',
+    path: '/customers/portal-users/:customerUserId/reset-password',
+  },
   list_customer_subscription_options: {
     method: 'GET',
     path: '/customers/subscriptions/options',

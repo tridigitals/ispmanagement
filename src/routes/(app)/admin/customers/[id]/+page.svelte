@@ -14,6 +14,7 @@
     api,
     type AuditLog,
     type Customer,
+    type CustomerPortalUser,
     type CustomerLifecycleObservability,
     type DhcpStaticServicePublic,
     type CustomerLocation,
@@ -248,6 +249,25 @@
   let showPppoeDeleteConfirm = $state(false);
   let pppoeToDeleteId = $state<string | null>(null);
   let deletingCustomer = $state(false);
+
+  // Portal Users
+  let portalUsers = $state<CustomerPortalUser[]>([]);
+  let loadingPortalUsers = $state(false);
+  let showCreatePortalUser = $state(false);
+  let portalUserEmail = $state('');
+  let portalUserName = $state('');
+  let portalUserPassword = $state('');
+  let creatingPortalUser = $state(false);
+
+  let showResetPasswordConfirm = $state(false);
+  let portalUserToReset = $state<CustomerPortalUser | null>(null);
+  let resettingPassword = $state(false);
+  let manualResetPassword = $state('');
+  let generatedPasswordResult = $state<string | null>(null);
+
+  let showRemovePortalUserConfirm = $state(false);
+  let portalUserToRemove = $state<CustomerPortalUser | null>(null);
+  let removingPortalUser = $state(false);
 
   const locationsResourceLoader = createCustomerDetailResourceLoader<CustomerLocation[]>();
   const subscriptionsResourceLoader = createCustomerDetailResourceLoader<{
@@ -498,6 +518,7 @@
       if (fromUrl) activeTab = fromUrl;
       await Promise.all([
         loadCustomer(),
+        loadPortalUsers(),
         canManageCustomers ? loadCommunicationReadiness() : Promise.resolve(),
         canManageCustomers ? loadCommunicationTemplates() : Promise.resolve(),
       ]);
@@ -747,6 +768,80 @@
     }
     if (pppoePackageMappings.length === 0) void loadPppoePackages(rid);
   });
+
+  async function loadPortalUsers() {
+    loadingPortalUsers = true;
+    try {
+      portalUsers = await api.customers.portalUsers.list(customerId);
+    } catch (e: any) {
+      toast.error(`Failed to load portal users: ${e?.message || e}`);
+    } finally {
+      loadingPortalUsers = false;
+    }
+  }
+
+  async function submitCreatePortalUser() {
+    if (!portalUserEmail.trim() || !portalUserName.trim()) return;
+    creatingPortalUser = true;
+    try {
+      await api.customers.portalUsers.createNew({
+        customer_id: customerId,
+        email: portalUserEmail.trim(),
+        name: portalUserName.trim(),
+        password: portalUserPassword.trim() || 'Password123!',
+      });
+      toast.success('Portal user created');
+      showCreatePortalUser = false;
+      portalUserEmail = '';
+      portalUserName = '';
+      portalUserPassword = '';
+      await loadPortalUsers();
+    } catch (e: any) {
+      toast.error(`Failed to create portal user: ${e?.message || e}`);
+    } finally {
+      creatingPortalUser = false;
+    }
+  }
+
+  async function confirmRemovePortalUser() {
+    if (!portalUserToRemove) return;
+    removingPortalUser = true;
+    try {
+      await api.customers.portalUsers.remove(portalUserToRemove.customer_user_id);
+      toast.success('Portal user removed');
+      showRemovePortalUserConfirm = false;
+      portalUserToRemove = null;
+      await loadPortalUsers();
+    } catch (e: any) {
+      toast.error(`Failed to remove portal user: ${e?.message || e}`);
+    } finally {
+      removingPortalUser = false;
+    }
+  }
+
+  async function confirmResetPassword() {
+    if (!portalUserToReset) return;
+    resettingPassword = true;
+    try {
+      const res = await api.customers.portalUsers.resetPassword(
+        portalUserToReset.customer_user_id,
+        manualResetPassword.trim() || undefined
+      );
+      if (res.generated_password) {
+        generatedPasswordResult = res.generated_password;
+        toast.success(`Password reset to: ${res.generated_password}`);
+      } else {
+        toast.success('Password updated successfully');
+        showResetPasswordConfirm = false;
+        portalUserToReset = null;
+        manualResetPassword = '';
+      }
+    } catch (e: any) {
+      toast.error(`Failed to reset password: ${e?.message || e}`);
+    } finally {
+      resettingPassword = false;
+    }
+  }
 
   async function loadCustomer() {
     loadingCustomer = true;
@@ -1236,6 +1331,7 @@
   async function refreshCurrent() {
     await Promise.all([
       loadCustomer(),
+      loadPortalUsers(),
       loadLocations({ force: true }),
       activeTab === 'subscriptions' ? loadSubscriptions({ force: true }) : Promise.resolve(),
       activeTab === 'billing' ? loadBillingInvoices({ force: true }) : Promise.resolve(),
@@ -1946,6 +2042,76 @@
           </aside>
         </div>
       </div>
+
+      <div class="card section" style="margin-top: 1.25rem;">
+        <div class="section-head">
+          <div>
+            <h3>Akun Portal Pelanggan</h3>
+            <p class="subtitle">Manajemen akses aplikasi mobile customer untuk pelanggan ini.</p>
+          </div>
+          {#if canManageCustomers}
+            <button class="btn btn-primary" onclick={() => { showCreatePortalUser = true; }}>
+              <Icon name="plus" size={16} />
+              Tambah Akun Portal
+            </button>
+          {/if}
+        </div>
+
+        {#if loadingPortalUsers}
+          <div style="padding: 2rem 0; text-align: center;">
+            <div class="spinner"></div>
+            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">Memuat akun portal...</p>
+          </div>
+        {:else if portalUsers.length === 0}
+          <div style="padding: 3rem 1.5rem; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius);">
+            <p style="font-weight: 500; margin-bottom: 0.25rem;">Belum ada akun portal</p>
+            <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">Pelanggan ini belum memiliki akun untuk login di aplikasi mobile customer.</p>
+          </div>
+        {:else}
+          <div class="table-responsive" style="margin-top: 0.5rem;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+                  <th style="padding: 0.75rem; font-weight: 600; color: var(--text-muted); font-size: 0.875rem;">Nama</th>
+                  <th style="padding: 0.75rem; font-weight: 600; color: var(--text-muted); font-size: 0.875rem;">Email</th>
+                  <th style="padding: 0.75rem; font-weight: 600; color: var(--text-muted); font-size: 0.875rem;">Terdaftar Pada</th>
+                  <th style="padding: 0.75rem; font-weight: 600; color: var(--text-muted); font-size: 0.875rem; text-align: right;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each portalUsers as user}
+                  <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem; font-size: 0.875rem; font-weight: 500;">{user.name}</td>
+                    <td style="padding: 0.75rem; font-size: 0.875rem; color: var(--text-muted);">{user.email}</td>
+                    <td style="padding: 0.75rem; font-size: 0.875rem; color: var(--text-muted);">{formatDate(user.created_at)}</td>
+                    <td style="padding: 0.75rem; text-align: right;">
+                      {#if canManageCustomers}
+                        <div style="display: inline-flex; gap: 0.5rem; justify-content: flex-end;">
+                          <button class="btn btn-secondary btn-sm" onclick={() => {
+                            portalUserToReset = user;
+                            generatedPasswordResult = null;
+                            manualResetPassword = '';
+                            showResetPasswordConfirm = true;
+                          }}>
+                            <Icon name="key" size={14} style="margin-right: 4px;" />
+                            Reset Password
+                          </button>
+                          <button class="btn btn-danger btn-sm" onclick={() => {
+                            portalUserToRemove = user;
+                            showRemovePortalUserConfirm = true;
+                          }}>
+                            <Icon name="trash" size={14} />
+                          </button>
+                        </div>
+                      {/if}
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+      </div>
     {:else if activeTab === 'locations' && canReadCustomerLocations}
       <div class="card section">
         <div class="section-head">
@@ -2499,6 +2665,71 @@
   type="danger"
   onconfirm={confirmDeletePppoe}
   oncancel={() => { pppoeToDeleteId = null; }}
+/>
+
+<Modal bind:show={showCreatePortalUser} title="Tambah Akun Portal">
+  <div class="form" style="padding: 1rem 0;">
+    <label>
+      <span style="font-weight: 500; font-size: 0.875rem; margin-bottom: 0.25rem; display: block;">Nama Lengkap</span>
+      <input class="input" bind:value={portalUserName} placeholder="Nama Pelanggan" />
+    </label>
+    <label style="margin-top: 1rem; display: block;">
+      <span style="font-weight: 500; font-size: 0.875rem; margin-bottom: 0.25rem; display: block;">Email Portal</span>
+      <input class="input" type="email" bind:value={portalUserEmail} placeholder="email@domain.com" />
+    </label>
+    <label style="margin-top: 1rem; display: block;">
+      <span style="font-weight: 500; font-size: 0.875rem; margin-bottom: 0.25rem; display: block;">Password</span>
+      <input class="input" type="password" bind:value={portalUserPassword} placeholder="Minimal 6 karakter" />
+    </label>
+  </div>
+  <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+    <button class="btn btn-secondary" onclick={() => { showCreatePortalUser = false; }}>Batal</button>
+    <button class="btn btn-primary" onclick={submitCreatePortalUser} disabled={creatingPortalUser || !portalUserName.trim() || !portalUserEmail.trim() || portalUserPassword.length < 6}>
+      {creatingPortalUser ? 'Menyimpan...' : 'Tambah Akun'}
+    </button>
+  </div>
+</Modal>
+
+<Modal bind:show={showResetPasswordConfirm} title="Reset Password Akun Portal">
+  {#if generatedPasswordResult}
+    <div style="padding: 1rem 0; text-align: center;">
+      <p style="font-weight: 500; margin-bottom: 0.5rem;">Password Berhasil Direset!</p>
+      <div style="background: var(--bg-muted); padding: 0.75rem 1.25rem; border-radius: var(--radius); font-family: monospace; font-size: 1.25rem; font-weight: 600; color: var(--color-primary); letter-spacing: 0.05em; margin-bottom: 1rem; display: inline-block; border: 1px solid var(--border);">
+        {generatedPasswordResult}
+      </div>
+      <p style="font-size: 0.875rem; color: var(--text-muted);">Silakan salin password di atas dan berikan ke pelanggan.</p>
+    </div>
+    <div style="display: flex; justify-content: flex-end; margin-top: 1.5rem;">
+      <button class="btn btn-primary" onclick={() => { showResetPasswordConfirm = false; generatedPasswordResult = null; portalUserToReset = null; }}>Tutup</button>
+    </div>
+  {:else}
+    <div class="form" style="padding: 1rem 0;">
+      <p style="font-size: 0.875rem; margin-bottom: 1.25rem; color: var(--text-muted);">
+        Reset password untuk akun <strong>{portalUserToReset?.email}</strong>.
+      </p>
+      <label>
+        <span style="font-weight: 500; font-size: 0.875rem; margin-bottom: 0.25rem; display: block;">Masukkan Password Baru (Opsional)</span>
+        <input class="input" type="text" bind:value={manualResetPassword} placeholder="Kosongkan untuk generate password otomatis" />
+      </label>
+    </div>
+    <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+      <button class="btn btn-secondary" onclick={() => { showResetPasswordConfirm = false; portalUserToReset = null; manualResetPassword = ''; }}>Batal</button>
+      <button class="btn btn-warning" onclick={confirmResetPassword} disabled={resettingPassword}>
+        {resettingPassword ? 'Memproses...' : 'Reset Password'}
+      </button>
+    </div>
+  {/if}
+</Modal>
+
+<ConfirmDialog
+  bind:show={showRemovePortalUserConfirm}
+  title="Hapus Akun Portal"
+  message="Apakah Anda yakin ingin menghapus akses akun portal pelanggan ini? Pelanggan tidak akan bisa login ke aplikasi mobile customer lagi."
+  confirmText="Hapus"
+  cancelText="Batal"
+  type="danger"
+  onconfirm={confirmRemovePortalUser}
+  oncancel={() => { portalUserToRemove = null; }}
 />
 
 <style>

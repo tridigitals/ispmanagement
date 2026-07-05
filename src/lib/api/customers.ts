@@ -281,6 +281,16 @@ export const customers = {
         customerUserId,
         customer_user_id: customerUserId,
       }),
+    resetPassword: (
+      customerUserId: string,
+      newPassword?: string,
+    ): Promise<{ customer_user_id: string; email: string; generated_password?: string }> =>
+      safeInvoke('reset_customer_portal_user_password', {
+        token: getTokenOrThrow(),
+        customerUserId,
+        customer_user_id: customerUserId,
+        new_password: newPassword || null,
+      }),
   },
 
   subscriptions: {

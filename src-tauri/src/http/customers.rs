@@ -14,6 +14,7 @@ use crate::models::{
     CustomerSubscriptionOption, CustomerSubscriptionView, CustomerSummary, InstallationWorkOrder,
     InstallationWorkOrderView, Invoice, IspPackage, PaginatedResponse,
     PortalCheckoutSubscriptionRequest, RepairCustomerServiceLifecycleRequest,
+    ResetCustomerPortalPasswordRequest, ResetCustomerPortalPasswordResponse,
     UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
     UpdateCustomerRequest, UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
 };
@@ -87,6 +88,10 @@ pub fn router() -> Router<AppState> {
         .route(
             "/portal-users/{customer_user_id}",
             delete(remove_portal_user),
+        )
+        .route(
+            "/portal-users/{customer_user_id}/reset-password",
+            post(reset_portal_user_password),
         )
         .route(
             "/subscriptions/{subscription_id}",
@@ -653,6 +658,30 @@ async fn remove_portal_user(
         .remove_portal_user(&claims.sub, &tenant_id, &customer_user_id, Some(&ip))
         .await?;
     Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+// POST /api/customers/portal-users/{customer_user_id}/reset-password
+async fn reset_portal_user_password(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(customer_user_id): Path<String>,
+    Json(body): Json<ResetCustomerPortalPasswordRequest>,
+) -> AppResult<Json<ResetCustomerPortalPasswordResponse>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "manage").await?;
+    let ip = extract_ip(&headers, addr);
+    let result = state
+        .customer_service
+        .reset_portal_user_password(
+            &claims.sub,
+            &tenant_id,
+            &customer_user_id,
+            body.new_password.as_deref(),
+            Some(&ip),
+        )
+        .await?;
+    Ok(Json(result))
 }
 
 // GET /api/customers/portal/my-locations
