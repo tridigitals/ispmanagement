@@ -350,6 +350,7 @@ pub async fn register_customer_by_domain(
             &registration.user.name,
             &registration.user.email,
             Some(&ip),
+            None,
         )
         .await?;
 

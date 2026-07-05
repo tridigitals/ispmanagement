@@ -1261,6 +1261,7 @@ impl CustomerService {
         customer_name: &str,
         customer_email: &str,
         ip_address: Option<&str>,
+        registration_invite_id: Option<&str>,
     ) -> AppResult<Customer> {
         let name = customer_name.trim().to_string();
         if name.len() < 2 {
@@ -1332,9 +1333,9 @@ impl CustomerService {
             sqlx::query(
                 r#"
                 INSERT INTO customers
-                    (id, tenant_id, name, email, phone, notes, is_active, created_at, updated_at)
+                    (id, tenant_id, name, email, phone, notes, is_active, registration_invite_id, created_at, updated_at)
                 VALUES
-                    ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+                    ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
                 "#,
             )
             .bind(&customer.id)
@@ -1344,6 +1345,7 @@ impl CustomerService {
             .bind(&customer.phone)
             .bind(&customer.notes)
             .bind(customer.is_active)
+            .bind(registration_invite_id)
             .bind(customer.created_at)
             .bind(customer.updated_at)
             .execute(&mut *tx)
@@ -1388,9 +1390,9 @@ impl CustomerService {
             sqlx::query(
                 r#"
                 INSERT INTO customers
-                    (id, tenant_id, name, email, phone, notes, is_active, created_at, updated_at)
+                    (id, tenant_id, name, email, phone, notes, is_active, registration_invite_id, created_at, updated_at)
                 VALUES
-                    (?,?,?,?,?,?,?,?,?)
+                    (?,?,?,?,?,?,?,?,?,?)
                 "#,
             )
             .bind(&customer.id)
@@ -1400,6 +1402,7 @@ impl CustomerService {
             .bind(&customer.phone)
             .bind(&customer.notes)
             .bind(customer.is_active)
+            .bind(registration_invite_id)
             .bind(customer.created_at.to_rfc3339())
             .bind(customer.updated_at.to_rfc3339())
             .execute(&mut *tx)
@@ -1529,20 +1532,22 @@ impl CustomerService {
         let token_hash = Self::hash_registration_invite_token(&invite_token);
         let token_enc = Self::encrypt_registration_invite_token(&invite_token)?;
         let invite_id = Uuid::new_v4().to_string();
+        let invite_url = Self::build_registration_invite_url(&domain, &invite_token);
 
         #[cfg(feature = "postgres")]
         sqlx::query(
             r#"
             INSERT INTO customer_registration_invites
-                (id, tenant_id, token_hash, token_enc, created_by, max_uses, used_count, expires_at, is_revoked, revoked_at, last_used_at, note, created_at)
+                (id, tenant_id, token_hash, token_enc, invite_url, created_by, max_uses, used_count, expires_at, is_revoked, revoked_at, last_used_at, note, created_at)
             VALUES
-                ($1,$2,$3,$4,$5,$6,0,$7,false,NULL,NULL,$8,$9)
+                ($1,$2,$3,$4,$5,$6,$7,0,$8,false,NULL,NULL,$9,$10)
             "#,
         )
         .bind(&invite_id)
         .bind(tenant_id)
         .bind(&token_hash)
         .bind(&token_enc)
+        .bind(&invite_url)
         .bind(actor_id)
         .bind(max_uses as i64)
         .bind(expires_at)
@@ -1555,15 +1560,16 @@ impl CustomerService {
         sqlx::query(
             r#"
             INSERT INTO customer_registration_invites
-                (id, tenant_id, token_hash, token_enc, created_by, max_uses, used_count, expires_at, is_revoked, revoked_at, last_used_at, note, created_at)
+                (id, tenant_id, token_hash, token_enc, invite_url, created_by, max_uses, used_count, expires_at, is_revoked, revoked_at, last_used_at, note, created_at)
             VALUES
-                (?,?,?,?,?,?,0,?,0,NULL,NULL,?,?)
+                (?,?,?,?,?,?,?,0,?,0,NULL,NULL,?,?)
             "#,
         )
         .bind(&invite_id)
         .bind(tenant_id)
         .bind(&token_hash)
         .bind(&token_enc)
+        .bind(&invite_url)
         .bind(actor_id)
         .bind(max_uses as i64)
         .bind(expires_at.to_rfc3339())
@@ -1584,9 +1590,8 @@ impl CustomerService {
             last_used_at: None,
             note,
             created_at: now,
-            invite_url: None,
+            invite_url: Some(invite_url.clone()),
         };
-        let invite_url = Self::build_registration_invite_url(&domain, &invite_token);
 
         self.audit_service
             .log(

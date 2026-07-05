@@ -15,16 +15,23 @@ struct CustomerRegistrationInviteListRow {
     created_at: DateTime<Utc>,
     token_enc: Option<String>,
     custom_domain: Option<String>,
+    invite_url: Option<String>,
 }
 
 impl CustomerService {
     fn map_registration_invite_row(
         row: CustomerRegistrationInviteListRow,
     ) -> AppResult<CustomerRegistrationInviteView> {
-        let invite_url = match (row.custom_domain.as_deref(), row.token_enc.as_deref()) {
-            (Some(domain), Some(token_enc)) => Self::decrypt_registration_invite_token(token_enc)?
-                .map(|token| Self::build_registration_invite_url(domain, &token)),
-            _ => None,
+        let invite_url = if let Some(url) = row.invite_url.filter(|u| !u.is_empty()) {
+            Some(url)
+        } else {
+            match (row.custom_domain.as_deref(), row.token_enc.as_deref()) {
+                (Some(domain), Some(token_enc)) => {
+                    Self::decrypt_registration_invite_token(token_enc)?
+                        .map(|token| Self::build_registration_invite_url(domain, &token))
+                }
+                _ => None,
+            }
         };
 
         Ok(CustomerRegistrationInviteView {
@@ -342,7 +349,8 @@ impl CustomerService {
                 cri.note,
                 cri.created_at,
                 cri.token_enc,
-                t.custom_domain
+                t.custom_domain,
+                cri.invite_url
             FROM customer_registration_invites cri
             JOIN tenants t ON t.id = cri.tenant_id
             WHERE cri.tenant_id = $1
@@ -377,7 +385,8 @@ impl CustomerService {
                 cri.note,
                 cri.created_at,
                 cri.token_enc,
-                t.custom_domain
+                t.custom_domain,
+                cri.invite_url
             FROM customer_registration_invites cri
             JOIN tenants t ON t.id = cri.tenant_id
             WHERE cri.tenant_id = ?
@@ -467,7 +476,7 @@ impl CustomerService {
         &self,
         tenant_id: &str,
         invite_token: &str,
-    ) -> AppResult<()> {
+    ) -> AppResult<Option<String>> {
         let token = invite_token.trim();
         if token.len() < 20 {
             return Err(AppError::Validation(
@@ -517,19 +526,23 @@ impl CustomerService {
         .rows_affected();
 
         #[cfg(feature = "postgres")]
-        if row.is_none() {
-            return Err(AppError::Validation(
-                "Invite link is invalid, expired, or already used".to_string(),
-            ));
+        {
+            if row.is_none() {
+                return Err(AppError::Validation(
+                    "Invite link is invalid, expired, or already used".to_string(),
+                ));
+            }
+            return Ok(row);
         }
 
         #[cfg(feature = "sqlite")]
-        if affected == 0 {
-            return Err(AppError::Validation(
-                "Invite link is invalid, expired, or already used".to_string(),
-            ));
+        {
+            if affected == 0 {
+                return Err(AppError::Validation(
+                    "Invite link is invalid, expired, or already used".to_string(),
+                ));
+            }
+            Ok(None)
         }
-
-        Ok(())
     }
 }

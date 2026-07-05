@@ -273,18 +273,19 @@ pub async fn register_customer_by_domain(
         .await?
         .ok_or_else(|| "No active tenant matched this custom domain".to_string())?;
 
-    if let Some(invite_token) = invite_token.as_deref() {
+    let invite_id = if let Some(invite_token) = invite_token.as_deref() {
         customers
             .consume_customer_registration_invite(&tenant.id, invite_token)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| e.to_string())?
     } else {
         let tenant_self_registration_enabled =
             get_tenant_self_registration_enabled(&settings, &tenant.id).await?;
         if !tenant_self_registration_enabled {
             return Err("Customer self registration is disabled for this tenant".to_string());
         }
-    }
+        None
+    };
 
     let require_email_verification = auth
         .get_effective_require_email_verification(Some(&tenant.id))
@@ -305,6 +306,7 @@ pub async fn register_customer_by_domain(
             &registration.user.name,
             &registration.user.email,
             Some("127.0.0.1"),
+            invite_id.as_deref(),
         )
         .await
         .map_err(|e| e.to_string())?;
