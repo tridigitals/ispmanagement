@@ -233,7 +233,8 @@ impl CustomerService {
                 revoked_at,
                 last_used_at,
                 note,
-                created_at
+                created_at,
+                invite_url
             FROM customer_registration_invites
             WHERE tenant_id = $1 AND token_hash = $2
             LIMIT 1
@@ -258,7 +259,8 @@ impl CustomerService {
                 revoked_at,
                 last_used_at,
                 note,
-                created_at
+                created_at,
+                invite_url
             FROM customer_registration_invites
             WHERE tenant_id = ? AND token_hash = ?
             LIMIT 1
