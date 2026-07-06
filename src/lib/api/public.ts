@@ -19,7 +19,7 @@ export const publicApi = {
     token: string,
   ): Promise<CustomerRegistrationInviteValidation> =>
     safeInvoke('validate_customer_registration_invite_by_domain', {
-      token,
+      invite_token: token,
       domain: currentDomain(),
     }),
   registerCustomerByDomain: (

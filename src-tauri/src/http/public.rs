@@ -61,6 +61,7 @@ pub struct CustomerRegistrationStatus {
 
 #[derive(serde::Deserialize)]
 pub struct ValidateInviteQuery {
+    #[serde(alias = "invite_token")]
     pub token: String,
     #[serde(default)]
     pub domain: Option<String>,
