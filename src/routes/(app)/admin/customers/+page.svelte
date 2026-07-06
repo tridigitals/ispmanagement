@@ -749,11 +749,13 @@
     } catch (e: any) {
       const msg = String(e?.message || '');
       if (msg.toLowerCase().includes('custom domain') && msg.toLowerCase().includes('required')) {
-        toast.error({
-          message: $t('admin.customers.invite.toasts.domain_required') || 'Custom domain belum diset — wajib sebelum generate invite link.',
-          action: { label: $t('common.settings') || 'Settings', onClick: () => goto('/admin/settings') },
-          duration: 10000,
-        } as any);
+        toast.error(
+          $t('admin.customers.invite.toasts.domain_required') || 'Custom domain belum diset — wajib sebelum generate invite link.',
+          {
+            action: { label: 'Settings', onClick: () => goto('/admin/settings') },
+            duration: 10000,
+          },
+        );
       } else {
         toast.error(msg || $t('admin.customers.invite.toasts.generate_failed') || 'Failed to generate invite link');
       }
