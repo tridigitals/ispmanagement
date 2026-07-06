@@ -3422,7 +3422,10 @@
       "error_wrong_tenant": "You do not have access to this workspace. Please login at your own workspace URL.",
       "error_pending_approval": "Your account is pending approval. Please wait for an administrator to review your registration.",
       "error_rejected": "Your registration has been rejected. Please contact support for assistance.",
-      "error_generic": "An unexpected error occurred. Please try again."
+      "error_generic": "An unexpected error occurred. Please try again.",
+      "identifier_label": "Email or Phone",
+      "identifier_placeholder": "name@email.com or 08xxx",
+      "identifier_hint": "Sign in with your email or phone number"
     },
     "register": {
       "title": "Create Account",

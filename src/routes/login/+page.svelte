@@ -17,7 +17,6 @@
 
   let identifier = '';
   let password = '';
-  let loginMethod: 'email' | 'phone' = 'email';
   let rememberMe = true;
   let error = '';
   let loading = false;
@@ -405,63 +404,25 @@
 
       {#if step === 'login'}
         <form on:submit={handleSubmit}>
-          <!-- Login Method Toggle -->
-          <div class="login-method-toggle">
-            <button
-              type="button"
-              class="toggle-btn"
-              class:active={loginMethod === 'email'}
-              on:click={() => { loginMethod = 'email'; identifier = ''; }}
-            >
-              <Icon name="mail" size={16} />
-              Email
-            </button>
-            <button
-              type="button"
-              class="toggle-btn"
-              class:active={loginMethod === 'phone'}
-              on:click={() => { loginMethod = 'phone'; identifier = ''; }}
-            >
-              <Icon name="smartphone" size={16} />
-              Phone
-            </button>
+          <!-- Identifier (email or phone) -->
+          <div class="input-group" class:focus={activeField === 'identifier'}>
+            <label for="identifier">{$t('auth.login.identifier_label') || 'Email atau Nomor HP'}</label>
+            <div class="field">
+              <span class="icon"><Icon name="user" size={18} /></span>
+              <input
+                type="text"
+                id="identifier"
+                bind:value={identifier}
+                on:focus={() => (activeField = 'identifier')}
+                on:blur={() => (activeField = '')}
+                placeholder={$t('auth.login.identifier_placeholder') || 'nama@email.com atau 08xxx'}
+                required
+              />
+            </div>
+            <span class="hint">{$t('auth.login.identifier_hint') || 'Login dengan email atau nomor HP Anda'}</span>
           </div>
 
-          {#if loginMethod === 'email'}
-            <div class="input-group" class:focus={activeField === 'identifier'}>
-              <label for="identifier">{$t('auth.login.email_label')}</label>
-              <div class="field">
-                <span class="icon"><Icon name="mail" size={18} /></span>
-                <input
-                  type="email"
-                  id="identifier"
-                  bind:value={identifier}
-                  on:focus={() => (activeField = 'identifier')}
-                  on:blur={() => (activeField = '')}
-                  placeholder={$t('auth.login.email_placeholder')}
-                  required
-                />
-              </div>
-            </div>
-          {:else}
-            <div class="input-group" class:focus={activeField === 'identifier'}>
-              <label for="identifier">Nomor HP</label>
-              <div class="field">
-                <span class="icon"><Icon name="smartphone" size={18} /></span>
-                <input
-                  type="tel"
-                  id="identifier"
-                  bind:value={identifier}
-                  on:focus={() => (activeField = 'identifier')}
-                  on:blur={() => (activeField = '')}
-                  placeholder="08xxxxxxxxxx"
-                  required
-                />
-              </div>
-            </div>
-          {/if}
-
-          <div class="input-group" class:focus={activeField === 'password'}>
+          <div class="input-group" class:focus={activeField === 'password'}>"
             <label for="password">{$t('auth.login.password_label')}</label>
             <div class="field">
               <span class="icon"><Icon name="lock" size={18} /></span>
@@ -1059,41 +1020,11 @@
     gap: 0.5rem;
   }
 
-  /* Login Method Toggle */
-  .login-method-toggle {
-    display: flex;
-    gap: 0;
-    margin-bottom: 1.25rem;
-    background: var(--bg-secondary, #f0f0f0);
-    border-radius: 8px;
-    padding: 4px;
-  }
-
-  .login-method-toggle .toggle-btn {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    padding: 0.5rem 1rem;
-    border: none;
-    background: transparent;
-    color: var(--text-secondary, #666);
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    border-radius: 6px;
-    transition: all 0.2s ease;
-  }
-
-  .login-method-toggle .toggle-btn:hover {
-    color: var(--text-primary, #333);
-  }
-
-  .login-method-toggle .toggle-btn.active {
-    background: var(--bg-primary, #fff);
-    color: var(--accent, #2563eb);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  .hint {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted, #999);
+    margin-top: 0.25rem;
   }
 
   @media (max-width: 480px) {

@@ -3423,7 +3423,10 @@
       "error_wrong_tenant": "Anda tidak memiliki akses ke ruang kerja ini. Silakan masuk melalui URL ruang kerja Anda sendiri.",
       "error_pending_approval": "Akun Anda sedang menunggu persetujuan. Silakan tunggu administrator meninjau pendaftaran Anda.",
       "error_rejected": "Pendaftaran Anda telah ditolak. Silakan hubungi dukungan untuk bantuan.",
-      "error_generic": "Terjadi kesalahan tak terduga. Silakan coba lagi."
+      "error_generic": "Terjadi kesalahan tak terduga. Silakan coba lagi.",
+      "identifier_label": "Email atau Nomor HP",
+      "identifier_placeholder": "nama@email.com atau 08xxx",
+      "identifier_hint": "Login dengan email atau nomor HP Anda"
     },
     "register": {
       "title": "Buat Akun",
