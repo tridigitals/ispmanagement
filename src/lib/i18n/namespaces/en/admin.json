@@ -786,6 +786,7 @@
         "add": "Add user"
       },
       "empty": "No portal users yet.",
+      "empty_hint": "This customer has no portal login account.",
       "columns": {
         "user": "User",
         "added": "Added"
@@ -803,12 +804,28 @@
         "title": "Remove portal user",
         "message": "This will unlink the user from the customer."
       },
+      "reset_password": {
+        "title": "Reset Portal Password",
+        "message": "Reset password for <strong>{email}</strong>",
+        "new_password_label": "New Password",
+        "confirm_password_label": "Confirm Password",
+        "placeholder": "Leave empty to auto-generate",
+        "confirm_placeholder": "Re-enter password",
+        "mismatch": "Passwords do not match",
+        "success_generated": "Password generated successfully",
+        "success_manual": "Password updated",
+        "generated_notice": "Copy this password and share it with the customer.",
+        "processing": "Processing...",
+        "reset": "Reset Password",
+        "done": "Done"
+      },
       "toasts": {
         "load_failed": "Failed to load portal users",
         "created": "Portal user added",
         "create_failed": "Failed to add portal user: {message}",
         "removed": "Portal user removed",
-        "remove_failed": "Failed to remove portal user: {message}"
+        "remove_failed": "Failed to remove portal user: {message}",
+        "reset_failed": "Failed to reset password: {message}"
       }
     },
     "subscriptions": {

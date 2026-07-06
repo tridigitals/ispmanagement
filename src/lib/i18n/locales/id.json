@@ -514,6 +514,7 @@
           "add": "Tambah user"
         },
         "empty": "Belum ada user portal.",
+        "empty_hint": "Pelanggan ini belum punya akun login portal.",
         "columns": {
           "user": "User",
           "added": "Ditambahkan"
@@ -531,12 +532,28 @@
           "title": "Hapus user portal",
           "message": "Ini hanya akan melepas tautan user dari pelanggan."
         },
+        "reset_password": {
+          "title": "Reset Password Portal",
+          "message": "Reset password untuk akun <strong>{email}</strong>",
+          "new_password_label": "Password Baru",
+          "confirm_password_label": "Konfirmasi Password",
+          "placeholder": "Kosongkan untuk generate otomatis",
+          "confirm_placeholder": "Ketik ulang password",
+          "mismatch": "Password tidak cocok",
+          "success_generated": "Password berhasil digenerate",
+          "success_manual": "Password berhasil diupdate",
+          "generated_notice": "Salin password di atas dan berikan ke pelanggan.",
+          "processing": "Memproses...",
+          "reset": "Reset Password",
+          "done": "Selesai"
+        },
         "toasts": {
           "load_failed": "Gagal memuat user portal",
           "created": "User portal ditambahkan",
           "create_failed": "Gagal menambahkan user portal: {message}",
           "removed": "User portal dihapus",
-          "remove_failed": "Gagal menghapus user portal: {message}"
+          "remove_failed": "Gagal menghapus user portal: {message}",
+          "reset_failed": "Gagal reset password: {message}"
         }
       },
       "subscriptions": {
@@ -3517,6 +3534,7 @@
     "retry": "Coba Lagi",
     "refresh": "Muat ulang",
     "remove": "Hapus",
+    "reset_password": "Reset Password",
     "reset": "Atur ulang",
     "upgrade_plan": "Upgrade Paket",
     "file_saved": "File berhasil disimpan",
