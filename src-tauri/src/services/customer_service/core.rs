@@ -951,6 +951,40 @@ impl CustomerService {
         customer.ok_or_else(|| AppError::NotFound("Customer not found".to_string()))
     }
 
+    pub async fn next_customer_number(&self, tenant_id: &str) -> AppResult<String> {
+        let now = chrono::Utc::now();
+        let prefix = format!("{}-", now.format("%y%m")); // "2607-"
+        let pattern = format!("{}%", prefix);
+
+        #[cfg(feature = "postgres")]
+        let max_num: Option<String> = sqlx::query_scalar(
+            "SELECT customer_number FROM customers WHERE tenant_id = $1 AND customer_number LIKE $2 ORDER BY customer_number DESC LIMIT 1"
+        )
+        .bind(tenant_id)
+        .bind(&pattern)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let max_num: Option<String> = sqlx::query_scalar(
+            "SELECT customer_number FROM customers WHERE tenant_id = ? AND customer_number LIKE ? ORDER BY customer_number DESC LIMIT 1"
+        )
+        .bind(tenant_id)
+        .bind(&pattern)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let next = match max_num {
+            Some(last) => {
+                let parts: Vec<&str> = last.splitn(2, '-').collect();
+                let n: i64 = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(0);
+                n + 1
+            }
+            None => 1,
+        };
+        Ok(format!("{}{:05}", prefix, next))
+    }
+
     pub async fn create_customer(
         &self,
         actor_id: &str,
@@ -962,6 +996,7 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "customers", "manage")
             .await?;
 
+        let customer_number = self.next_customer_number(tenant_id).await?;
         let customer = Customer::new(
             tenant_id.to_string(),
             dto.name,
@@ -969,15 +1004,16 @@ impl CustomerService {
             dto.phone,
             dto.notes,
             dto.is_active,
+            Some(customer_number),
         );
 
         #[cfg(feature = "postgres")]
         sqlx::query(
             r#"
             INSERT INTO customers
-                (id, tenant_id, name, email, phone, notes, is_active, created_at, updated_at)
+                (id, tenant_id, name, email, phone, notes, is_active, customer_number, created_at, updated_at)
             VALUES
-                ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+                ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
             "#,
         )
         .bind(&customer.id)
@@ -987,6 +1023,7 @@ impl CustomerService {
         .bind(&customer.phone)
         .bind(&customer.notes)
         .bind(customer.is_active)
+        .bind(&customer.customer_number)
         .bind(customer.created_at)
         .bind(customer.updated_at)
         .execute(&self.pool)
@@ -996,9 +1033,9 @@ impl CustomerService {
         sqlx::query(
             r#"
             INSERT INTO customers
-                (id, tenant_id, name, email, phone, notes, is_active, created_at, updated_at)
+                (id, tenant_id, name, email, phone, notes, is_active, customer_number, created_at, updated_at)
             VALUES
-                (?,?,?,?,?,?,?,?,?)
+                (?,?,?,?,?,?,?,?,?,?)
             "#,
         )
         .bind(&customer.id)
@@ -1008,6 +1045,7 @@ impl CustomerService {
         .bind(&customer.phone)
         .bind(&customer.notes)
         .bind(customer.is_active)
+        .bind(&customer.customer_number)
         .bind(customer.created_at.to_rfc3339())
         .bind(customer.updated_at.to_rfc3339())
         .execute(&self.pool)
@@ -1049,6 +1087,7 @@ impl CustomerService {
             ));
         }
 
+        let customer_number = self.next_customer_number(tenant_id).await?;
         let customer = Customer::new(
             tenant_id.to_string(),
             dto.name,
@@ -1056,6 +1095,7 @@ impl CustomerService {
             dto.phone,
             dto.notes,
             dto.is_active,
+            Some(customer_number),
         );
 
         let portal_user_name = dto
@@ -1094,9 +1134,9 @@ impl CustomerService {
             sqlx::query(
                 r#"
                 INSERT INTO customers
-                    (id, tenant_id, name, email, phone, notes, is_active, created_at, updated_at)
+                    (id, tenant_id, name, email, phone, notes, is_active, customer_number, created_at, updated_at)
                 VALUES
-                    ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+                    ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
                 "#,
             )
             .bind(&customer.id)
@@ -1106,6 +1146,7 @@ impl CustomerService {
             .bind(&customer.phone)
             .bind(&customer.notes)
             .bind(customer.is_active)
+            .bind(&customer.customer_number)
             .bind(customer.created_at)
             .bind(customer.updated_at)
             .execute(&mut *tx)
@@ -1167,9 +1208,9 @@ impl CustomerService {
             sqlx::query(
                 r#"
                 INSERT INTO customers
-                    (id, tenant_id, name, email, phone, notes, is_active, created_at, updated_at)
+                    (id, tenant_id, name, email, phone, notes, is_active, customer_number, created_at, updated_at)
                 VALUES
-                    (?,?,?,?,?,?,?,?,?)
+                    (?,?,?,?,?,?,?,?,?,?)
                 "#,
             )
             .bind(&customer.id)
@@ -1179,6 +1220,7 @@ impl CustomerService {
             .bind(&customer.phone)
             .bind(&customer.notes)
             .bind(customer.is_active)
+            .bind(&customer.customer_number)
             .bind(customer.created_at.to_rfc3339())
             .bind(customer.updated_at.to_rfc3339())
             .execute(&mut *tx)
@@ -1310,6 +1352,7 @@ impl CustomerService {
             return Ok(existing);
         }
 
+        let customer_number = self.next_customer_number(tenant_id).await?;
         let customer = Customer::new(
             tenant_id.to_string(),
             name,
@@ -1317,6 +1360,7 @@ impl CustomerService {
             None,
             None,
             Some(true),
+            Some(customer_number),
         );
         let customer_user_id = Uuid::new_v4().to_string();
         let tenant_member_id = Uuid::new_v4().to_string();
@@ -1333,9 +1377,9 @@ impl CustomerService {
             sqlx::query(
                 r#"
                 INSERT INTO customers
-                    (id, tenant_id, name, email, phone, notes, is_active, registration_invite_id, created_at, updated_at)
+                    (id, tenant_id, name, email, phone, notes, is_active, registration_invite_id, customer_number, created_at, updated_at)
                 VALUES
-                    ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                    ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
                 "#,
             )
             .bind(&customer.id)
@@ -1346,6 +1390,7 @@ impl CustomerService {
             .bind(&customer.notes)
             .bind(customer.is_active)
             .bind(registration_invite_id)
+            .bind(&customer.customer_number)
             .bind(customer.created_at)
             .bind(customer.updated_at)
             .execute(&mut *tx)
@@ -1390,9 +1435,9 @@ impl CustomerService {
             sqlx::query(
                 r#"
                 INSERT INTO customers
-                    (id, tenant_id, name, email, phone, notes, is_active, registration_invite_id, created_at, updated_at)
+                    (id, tenant_id, name, email, phone, notes, is_active, registration_invite_id, customer_number, created_at, updated_at)
                 VALUES
-                    (?,?,?,?,?,?,?,?,?,?)
+                    (?,?,?,?,?,?,?,?,?,?,?)
                 "#,
             )
             .bind(&customer.id)
@@ -1403,6 +1448,7 @@ impl CustomerService {
             .bind(&customer.notes)
             .bind(customer.is_active)
             .bind(registration_invite_id)
+            .bind(&customer.customer_number)
             .bind(customer.created_at.to_rfc3339())
             .bind(customer.updated_at.to_rfc3339())
             .execute(&mut *tx)

@@ -11,6 +11,7 @@ pub struct Customer {
     pub phone: Option<String>,
     pub notes: Option<String>,
     pub is_active: bool,
+    pub customer_number: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -24,6 +25,7 @@ pub struct CustomerListItem {
     pub phone: Option<String>,
     pub notes: Option<String>,
     pub is_active: bool,
+    pub customer_number: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub subscription_count: i64,
@@ -48,6 +50,7 @@ impl Customer {
         phone: Option<String>,
         notes: Option<String>,
         is_active: Option<bool>,
+        customer_number: Option<String>,
     ) -> Self {
         let now = Utc::now();
         Self {
@@ -58,6 +61,7 @@ impl Customer {
             phone,
             notes,
             is_active: is_active.unwrap_or(true),
+            customer_number,
             created_at: now,
             updated_at: now,
         }

@@ -842,6 +842,7 @@ impl CustomerService {
             phone,
             input.notes,
             input.is_active,
+            None,
         ))
     }
 
