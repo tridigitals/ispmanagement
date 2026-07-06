@@ -788,7 +788,8 @@
           "policy_updated": "Default undangan diperbarui",
           "policy_failed": "Gagal memperbarui default undangan",
           "load_failed": "Gagal memuat tautan undangan pelanggan",
-          "summary_failed": "Gagal memuat ringkasan undangan"
+          "summary_failed": "Gagal memuat ringkasan undangan",
+          "domain_required": "Custom domain belum diset — wajib sebelum generate invite link."
         },
         "used_up": "Habis",
         "expired": "Kedaluwarsa",

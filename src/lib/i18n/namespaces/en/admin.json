@@ -1060,7 +1060,8 @@
         "policy_updated": "Invite defaults updated",
         "policy_failed": "Failed to update invite defaults",
         "load_failed": "Failed to load customer invite links",
-        "summary_failed": "Failed to load invite summary"
+        "summary_failed": "Failed to load invite summary",
+        "domain_required": "Custom domain required before generating invite links — configure in Settings."
       },
       "used_up": "Used up",
       "expired": "Expired",
