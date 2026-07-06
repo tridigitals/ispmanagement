@@ -363,6 +363,7 @@ export interface Customer {
   name: string;
   email: string | null;
   phone: string | null;
+  customer_number: string | null;
   notes: string | null;
   is_active: boolean;
   created_at: string;

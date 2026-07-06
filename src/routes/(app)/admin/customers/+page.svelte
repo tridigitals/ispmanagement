@@ -29,6 +29,7 @@
   const IMPORT_PLACEHOLDER_CUSTOMER_NAME = 'Imported (Unassigned)';
 
   const columns = $derived.by(() => [
+    { key: 'customer_number', label: 'ID', width: '100px' },
     { key: 'name', label: $t('admin.customers.columns.customer') || 'Customer' },
     { key: 'contact', label: $t('admin.customers.columns.contact') || 'Contact' },
     { key: 'status', label: $t('admin.customers.columns.status') || 'Status' },
@@ -1085,7 +1086,9 @@
       >
         {#snippet cell({ item, key })}
           {@const c = item as CustomerListItem}
-          {#if key === 'name'}
+          {#if key === 'customer_number'}
+            <span class="mono muted">{c.customer_number || '—'}</span>
+          {:else if key === 'name'}
             {#if isSystemImportPlaceholder(c)}
               <div>
                 <div class="name">{c.name}</div>
