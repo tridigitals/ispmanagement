@@ -305,6 +305,7 @@ pub async fn register_customer_by_domain(
             &registration.user.id,
             &registration.user.name,
             &registration.user.email,
+            None,
             Some("127.0.0.1"),
             invite_id.as_deref(),
         )

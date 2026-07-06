@@ -193,9 +193,10 @@ export async function registerCustomerByDomain(
   password: string,
   name: string,
   inviteToken?: string | null,
+  phone?: string | null,
 ): Promise<AuthResponse> {
   const { publicApi } = await import('$lib/api/public');
-  const response = await publicApi.registerCustomerByDomain(email, password, name, inviteToken);
+  const response = await publicApi.registerCustomerByDomain(email, password, name, inviteToken, phone);
   if (response.token) {
     setAuthData(response.token, response.user, true, response.tenant);
   }

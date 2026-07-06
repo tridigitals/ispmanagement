@@ -79,6 +79,8 @@ pub struct PublicCustomerRegisterDto {
     pub password: String,
     #[validate(length(min = 2, max = 100, message = "Name must be 2-100 characters"))]
     pub name: String,
+    #[validate(length(max = 30, message = "Phone number too long"))]
+    pub phone: Option<String>,
     pub invite_token: Option<String>,
 }
 
@@ -356,6 +358,7 @@ pub async fn register_customer_by_domain(
             &registration.user.id,
             &registration.user.name,
             &registration.user.email,
+            payload.phone.as_deref(),
             Some(&ip),
             None,
         )

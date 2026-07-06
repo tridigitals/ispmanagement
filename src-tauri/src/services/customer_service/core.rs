@@ -1302,6 +1302,7 @@ impl CustomerService {
         user_id: &str,
         customer_name: &str,
         customer_email: &str,
+        phone: Option<&str>,
         ip_address: Option<&str>,
         registration_invite_id: Option<&str>,
     ) -> AppResult<Customer> {
@@ -1317,6 +1318,8 @@ impl CustomerService {
                 "Customer email is required".to_string(),
             ));
         }
+
+        let customer_number = self.next_customer_number(tenant_id).await?;
 
         #[cfg(feature = "postgres")]
         let existing_customer: Option<Customer> = sqlx::query_as(
@@ -1348,20 +1351,20 @@ impl CustomerService {
         .fetch_optional(&self.pool)
         .await?;
 
-        if let Some(existing) = existing_customer {
-            return Ok(existing);
+        if let Some(c) = existing_customer {
+            return Ok(c);
         }
 
-        let customer_number = self.next_customer_number(tenant_id).await?;
         let customer = Customer::new(
             tenant_id.to_string(),
             name,
             Some(email),
-            None,
+            phone.map(|p| p.trim().to_string()).filter(|p| !p.is_empty()),
             None,
             Some(true),
             Some(customer_number),
         );
+
         let customer_user_id = Uuid::new_v4().to_string();
         let tenant_member_id = Uuid::new_v4().to_string();
         let now = Utc::now();

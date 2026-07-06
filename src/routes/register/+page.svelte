@@ -18,6 +18,7 @@
 
   let name = '';
   let email = '';
+  let phone = '';
   let password = '';
   let confirmPassword = '';
   let error = '';
@@ -173,12 +174,13 @@
     loading = true;
 
     try {
-      const response = await registerCustomerByDomain(
-        email,
-        password,
-        name,
-        hasInviteToken ? inviteToken : null,
-      );
+    const response = await registerCustomerByDomain(
+      email,
+      password,
+      name,
+      hasInviteToken ? inviteToken : null,
+      phone || null,
+    );
       // Check for pending approval status first
       if (response.user?.registration_status === 'pending') {
         pendingApproval = true;
@@ -300,6 +302,23 @@
                 on:blur={() => (activeField = '')}
                 placeholder={$t('auth.register.email_placeholder')}
                 required
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          <!-- Phone (optional) -->
+          <div class="input-group" class:focus={activeField === 'phone'}>
+            <label for="phone">{$t('auth.register.phone_label') || 'Phone (optional)'}</label>
+            <div class="field">
+              <span class="icon"><Icon name="phone" size={18} /></span>
+              <input
+                type="tel"
+                id="phone"
+                bind:value={phone}
+                on:focus={() => (activeField = 'phone')}
+                on:blur={() => (activeField = '')}
+                placeholder={$t('auth.register.phone_placeholder') || '+62...'}
                 disabled={loading}
               />
             </div>

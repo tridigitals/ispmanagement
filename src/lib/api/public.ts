@@ -27,11 +27,13 @@ export const publicApi = {
     password: string,
     name: string,
     inviteToken?: string | null,
+    phone?: string | null,
   ): Promise<AuthResponse> =>
     safeInvoke('register_customer_by_domain', {
       email,
       password,
       name,
+      phone: phone ?? undefined,
       inviteToken: inviteToken ?? undefined,
       invite_token: inviteToken ?? undefined,
       domain: currentDomain(),
