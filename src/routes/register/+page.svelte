@@ -258,12 +258,6 @@
           <p>{$t('auth.register.subtitle')}</p>
         </div>
 
-        {#if hasInviteToken}
-          <div class="alert" style="margin-bottom: 1rem;">
-            Invite mode enabled. This registration link may expire after use.
-          </div>
-        {/if}
-
         {#if error}
           <div class="alert error" in:fly={{ y: -10 }}>
             {error}
