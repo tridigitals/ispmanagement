@@ -169,7 +169,7 @@
       return;
     }
 
-    if (!isTauri && !isLocalhost && activeCustomDomain && currentHost !== normalizeHost(activeCustomDomain)) {
+    if (!isTauri && !isLocalhost && !onPlatformHost && activeCustomDomain && currentHost !== normalizeHost(activeCustomDomain)) {
       redirectToHost(activeCustomDomain, getDefaultTenantLandingPath(u, ''));
       return;
     }
