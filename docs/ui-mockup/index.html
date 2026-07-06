@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISPMANAGEMENT — UI Revamp Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Consolidated — single source of truth */
+    --bg: #0A0A0F;
+    --surface: #141419;
+    --surface-elevated: #1C1C24;
+    --surface-tertiary: #22222E;
+    --surface-hover: #2A2A35;
+    --border: #2A2A35;
+    --border-subtle: #1F1F28;
+    --text-primary: #F0F0F5;
+    --text-secondary: #8888A0;
+    --text-muted: #55556A;
+    --accent: #6C5CE7;
+    --accent-light: #A29BFE;
+    --accent-surface: #2D2950;
+    --accent-text: #A29BFE;
+    --success: #00D2A0;
+    --success-surface: #0E2E2A;
+    --warning: #FFB347;
+    --warning-surface: #3A2B14;
+    --danger: #FF6B6B;
+    --danger-surface: #3A1E20;
+    --info: #4FC3F7;
+    --info-surface: #0F2A3A;
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-pill: 999px;
+
+    --font: 'Inter', 'Manrope', -apple-system, system-ui, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font);
+    background: #050507;
+    color: var(--text-primary);
+    display: flex;
+    gap: 32px;
+    padding: 40px;
+    overflow-x: auto;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  h1 { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 16px; }
+
+  .screen-group { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .label { font-size: 13px; font-weight: 600; color: var(--accent-light); margin-top: 8px; }
+
+  /* Phone frame */
+  .phone {
+    width: 375px;
+    height: 812px;
+    background: var(--bg);
+    border-radius: 44px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 2px #222, 0 0 0 12px #111;
+    font-family: var(--font);
+  }
+
+  .status-bar {
+    height: 44px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 24px 0 28px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .status-bar .time { letter-spacing: -0.5px; }
+  .status-icons { display: flex; gap: 5px; align-items: center; }
+  .status-icons svg { width: 16px; height: 16px; fill: var(--text-primary); }
+
+  .content {
+    height: calc(812px - 44px);
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .content::-webkit-scrollbar { display: none; }
+
+</style>
+<link rel="stylesheet" href="mockups/common.css">
+</head>
+<body>
+
+<!-- ──────────────── SCREEN 1: HOME ──────────────── -->
+<div class="screen-group">
+<h1>🏠 HOME</h1>
+<div class="phone" id="home"></div>
+</div>
+
+<!-- ──────────────── SCREEN 2: LOGIN ──────────────── -->
+<div class="screen-group">
+<h1>🔐 LOGIN</h1>
+<div class="phone" id="login"></div>
+</div>
+
+<!-- ──────────────── SCREEN 3: INVOICE DETAIL ──────────────── -->
+<div class="screen-group">
+<h1>🧾 INVOICE DETAIL</h1>
+<div class="phone" id="invoice"></div>
+</div>
+
+<!-- ──────────────── SCREEN 4: PROFILE ──────────────── -->
+<div class="screen-group">
+<h1>👤 PROFILE</h1>
+<div class="phone" id="profile"></div>
+</div>
+
+<script src="mockups/screens.js"></script>
+</body>
+</html>
