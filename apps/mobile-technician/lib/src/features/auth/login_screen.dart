@@ -25,7 +25,6 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _identifierCtrl = TextEditingController();
-  String _loginMethod = 'email';
   late final IspThemeColors isp;
 
   @override
@@ -375,50 +374,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: Text(l10n.back),
                     ),
                   ] else ...[
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: SegmentedButton<String>(
-                        segments: [
-                          ButtonSegment(
-                            value: 'email',
-                            label: Text(l10n.email),
-                            icon: const Icon(Icons.email_outlined),
-                          ),
-                          ButtonSegment(
-                            value: 'phone',
-                            label: Text(l10n.phone),
-                            icon: const Icon(Icons.phone),
-                          ),
-                        ],
-                        selected: {_loginMethod},
-                        onSelectionChanged: (sel) {
-                          setState(() {
-                            _loginMethod = sel.first;
-                            _identifierCtrl.clear();
-                          });
-                        },
-                      ),
-                    ),
+                    // Unified identifier field — accepts email or phone
                     TextFormField(
                       controller: _identifierCtrl,
-                      keyboardType: _loginMethod == 'phone'
-                          ? TextInputType.phone
-                          : TextInputType.emailAddress,
+                      keyboardType: TextInputType.text,
                       textInputAction: TextInputAction.next,
-                      decoration: InputDecoration(
-                        labelText: _loginMethod == 'phone'
-                            ? l10n.phone
-                            : l10n.email,
-                        prefixIcon: Icon(_loginMethod == 'phone'
-                            ? Icons.phone
-                            : Icons.alternate_email),
+                      decoration: const InputDecoration(
+                        labelText: 'Email atau Nomor HP',
+                        prefixIcon: Icon(Icons.person_outline),
+                        hintText: 'nama@email.com atau 08xxx',
                       ),
                       validator: (v) {
                         if (v == null || v.isEmpty) {
                           return 'This field is required';
-                        }
-                        if (_loginMethod == 'email' && !v.contains('@')) {
-                          return l10n.invalidEmail;
                         }
                         return null;
                       },
