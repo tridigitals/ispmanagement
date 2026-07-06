@@ -3433,6 +3433,8 @@
       "name_placeholder": "Budi Santoso",
       "email_label": "Email",
       "email_placeholder": "nama@perusahaan.com",
+      "phone_label": "Nomor Telepon",
+      "phone_placeholder": "+62...",
       "password_label": "Kata Sandi",
       "password_placeholder": "••••••••",
       "confirm_password_label": "Konfirmasi Kata Sandi",
