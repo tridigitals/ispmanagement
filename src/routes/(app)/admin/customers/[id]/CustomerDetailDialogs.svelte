@@ -60,6 +60,7 @@
     updatingLocation = false,
     onSubmitUpdateLocation,
     showDeleteCustomer = $bindable(),
+    customerName = '',
     deletingCustomer = false,
     onDeleteCustomer,
     showDeleteLocation = $bindable(),
@@ -478,6 +479,7 @@
   confirmText={$t('common.delete')}
   cancelText={$t('common.cancel')}
   loading={deletingCustomer}
+  confirmationKeyword={customerName || ''}
   onconfirm={onDeleteCustomer}
   oncancel={() => (showDeleteCustomer = false)}
 />

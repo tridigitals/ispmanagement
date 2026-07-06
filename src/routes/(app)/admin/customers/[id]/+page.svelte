@@ -2500,6 +2500,7 @@
     {updatingLocation}
     onSubmitUpdateLocation={submitUpdateLocation}
     bind:showDeleteCustomer
+    customerName={name}
     {deletingCustomer}
     onDeleteCustomer={doDeleteCustomer}
     bind:showDeleteLocation
@@ -2683,6 +2684,7 @@
   confirmText={$t('common.delete')}
   cancelText={$t('common.cancel')}
   type="danger"
+  confirmationKeyword="DELETE"
   onconfirm={confirmRemovePortalUser}
   oncancel={() => { portalUserToRemove = null; }}
 />
