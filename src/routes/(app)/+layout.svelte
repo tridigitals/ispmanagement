@@ -18,6 +18,10 @@
   import { onMount } from 'svelte';
   import { secureGetItem } from '$lib/utils/tauri-store';
 
+  function isTauriHost(host: string) {
+    return host === 'tauri.localhost';
+  }
+
   let { children } = $props();
 
   let guardPassed = $state(false);
@@ -262,7 +266,8 @@
       userCustomDomain &&
       currentHost !== userCustomDomain &&
       !$isSuperAdmin &&
-      !onPlatformDomain
+      !onPlatformDomain &&
+      !isTauriHost(currentHost)
     ) {
       debugLog('domain-mismatch-logout', {
         host: currentHost,
