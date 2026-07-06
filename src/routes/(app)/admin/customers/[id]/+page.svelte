@@ -781,12 +781,12 @@
     removingPortalUser = true;
     try {
       await api.customers.portalUsers.remove(portalUserToRemove.customer_user_id);
-      toast.success(get(t)('admin.customers.detail.portal.toasts.removed'));
+      toast.success(get(t)('admin.customers.portal.toasts.removed'));
       showRemovePortalUserConfirm = false;
       portalUserToRemove = null;
       await loadPortalUsers();
     } catch (e: any) {
-      toast.error(get(t)('admin.customers.detail.portal.toasts.remove_failed', { values: { message: e?.message || e } }) || `Failed: ${e?.message || e}`);
+      toast.error(get(t)('admin.customers.portal.toasts.remove_failed', { values: { message: e?.message || e } }) || `Failed: ${e?.message || e}`);
     } finally {
       removingPortalUser = false;
     }
@@ -802,16 +802,16 @@
       );
       if (res.generated_password) {
         generatedPasswordResult = res.generated_password;
-        toast.success(get(t)('admin.customers.detail.portal.reset_password.success_generated'));
+        toast.success(get(t)('admin.customers.portal.reset_password.success_generated'));
       } else {
-        toast.success(get(t)('admin.customers.detail.portal.reset_password.success_manual'));
+        toast.success(get(t)('admin.customers.portal.reset_password.success_manual'));
         showResetPasswordConfirm = false;
         portalUserToReset = null;
         manualResetPassword = '';
         manualResetPasswordConfirm = '';
       }
     } catch (e: any) {
-      toast.error(get(t)('admin.customers.detail.portal.toasts.reset_failed', { values: { message: e?.message || e } }) || `Failed: ${e?.message || e}`);
+      toast.error(get(t)('admin.customers.portal.toasts.reset_failed', { values: { message: e?.message || e } }) || `Failed: ${e?.message || e}`);
     } finally {
       resettingPassword = false;
     }
@@ -2020,8 +2020,8 @@
       <div class="card section" style="margin-top: 1.25rem;">
         <div class="section-head">
           <div>
-            <h3>{get(t)('admin.customers.detail.portal.title')}</h3>
-            <p class="subtitle">{get(t)('admin.customers.detail.portal.subtitle')}</p>
+            <h3>{get(t)('admin.customers.portal.title')}</h3>
+            <p class="subtitle">{get(t)('admin.customers.portal.subtitle')}</p>
           </div>
         </div>
 
@@ -2032,17 +2032,17 @@
           </div>
         {:else if portalUsers.length === 0}
           <div style="padding: 3rem 1.5rem; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius);">
-            <p style="font-weight: 500; margin-bottom: 0.25rem;">{get(t)('admin.customers.detail.portal.empty')}</p>
-            <p style="font-size: 0.875rem; color: var(--text-muted);">{$t('admin.customers.detail.portal.empty_hint') || 'This customer does not have a portal account yet.'}</p>
+            <p style="font-weight: 500; margin-bottom: 0.25rem;">{get(t)('admin.customers.portal.empty')}</p>
+            <p style="font-size: 0.875rem; color: var(--text-muted);">{$t('admin.customers.portal.empty_hint') || 'This customer does not have a portal account yet.'}</p>
           </div>
         {:else}
           <div class="table-responsive" style="margin-top: 0.5rem;">
             <table style="width: 100%; border-collapse: collapse;">
               <thead>
                 <tr style="border-bottom: 1px solid var(--border); text-align: left;">
-                  <th style="padding: 0.75rem; font-weight: 600; color: var(--text-muted); font-size: 0.875rem;">{get(t)('admin.customers.detail.portal.columns.user')}</th>
+                  <th style="padding: 0.75rem; font-weight: 600; color: var(--text-muted); font-size: 0.875rem;">{get(t)('admin.customers.portal.columns.user')}</th>
                   <th style="padding: 0.75rem; font-weight: 600; color: var(--text-muted); font-size: 0.875rem;">{$t('common.email')}</th>
-                  <th style="padding: 0.75rem; font-weight: 600; color: var(--text-muted); font-size: 0.875rem;">{get(t)('admin.customers.detail.portal.columns.added')}</th>
+                  <th style="padding: 0.75rem; font-weight: 600; color: var(--text-muted); font-size: 0.875rem;">{get(t)('admin.customers.portal.columns.added')}</th>
                   <th style="padding: 0.75rem; font-weight: 600; color: var(--text-muted); font-size: 0.875rem; text-align: right;">{$t('common.actions')}</th>
                 </tr>
               </thead>
@@ -2636,33 +2636,33 @@
   oncancel={() => { pppoeToDeleteId = null; }}
 />
 
-<Modal bind:show={showResetPasswordConfirm} title={get(t)('admin.customers.detail.portal.reset_password.title')}>
+<Modal bind:show={showResetPasswordConfirm} title={get(t)('admin.customers.portal.reset_password.title')}>
   {#if generatedPasswordResult}
     <div style="padding: 1rem 0; text-align: center;">
-      <p style="font-weight: 500; margin-bottom: 0.5rem;">{get(t)('admin.customers.detail.portal.reset_password.success_generated')}</p>
+      <p style="font-weight: 500; margin-bottom: 0.5rem;">{get(t)('admin.customers.portal.reset_password.success_generated')}</p>
       <div style="background: var(--bg-muted); padding: 0.75rem 1.25rem; border-radius: var(--radius); font-family: monospace; font-size: 1.25rem; font-weight: 600; color: var(--color-primary); letter-spacing: 0.05em; margin-bottom: 1rem; display: inline-block; border: 1px solid var(--border);">
         {generatedPasswordResult}
       </div>
-      <p style="font-size: 0.875rem; color: var(--text-muted);">{get(t)('admin.customers.detail.portal.reset_password.generated_notice')}</p>
+      <p style="font-size: 0.875rem; color: var(--text-muted);">{get(t)('admin.customers.portal.reset_password.generated_notice')}</p>
     </div>
     <div style="display: flex; justify-content: flex-end; margin-top: 1.5rem;">
-      <button class="btn btn-primary" onclick={() => { showResetPasswordConfirm = false; generatedPasswordResult = null; portalUserToReset = null; }}>{get(t)('admin.customers.detail.portal.reset_password.done')}</button>
+      <button class="btn btn-primary" onclick={() => { showResetPasswordConfirm = false; generatedPasswordResult = null; portalUserToReset = null; }}>{get(t)('admin.customers.portal.reset_password.done')}</button>
     </div>
   {:else}
     <div class="form" style="padding: 1rem 0;">
       <p style="font-size: 0.875rem; margin-bottom: 1.25rem; color: var(--text-muted);">
-        {@html get(t)('admin.customers.detail.portal.reset_password.message', { values: { email: portalUserToReset?.email || '' } })}
+        {@html get(t)('admin.customers.portal.reset_password.message', { values: { email: portalUserToReset?.email || '' } })}
       </p>
       <label>
-        <span style="font-weight: 500; font-size: 0.875rem; margin-bottom: 0.25rem; display: block;">{get(t)('admin.customers.detail.portal.reset_password.new_password_label')}</span>
-        <input class="input" type="text" bind:value={manualResetPassword} placeholder={get(t)('admin.customers.detail.portal.reset_password.placeholder')} />
+        <span style="font-weight: 500; font-size: 0.875rem; margin-bottom: 0.25rem; display: block;">{get(t)('admin.customers.portal.reset_password.new_password_label')}</span>
+        <input class="input" type="text" bind:value={manualResetPassword} placeholder={get(t)('admin.customers.portal.reset_password.placeholder')} />
       </label>
       {#if manualResetPassword.trim()}
         <label style="margin-top: 1rem; display: block;">
-          <span style="font-weight: 500; font-size: 0.875rem; margin-bottom: 0.25rem; display: block;">{get(t)('admin.customers.detail.portal.reset_password.confirm_password_label')}</span>
-          <input class="input" type="text" bind:value={manualResetPasswordConfirm} placeholder={get(t)('admin.customers.detail.portal.reset_password.confirm_placeholder')} />
+          <span style="font-weight: 500; font-size: 0.875rem; margin-bottom: 0.25rem; display: block;">{get(t)('admin.customers.portal.reset_password.confirm_password_label')}</span>
+          <input class="input" type="text" bind:value={manualResetPasswordConfirm} placeholder={get(t)('admin.customers.portal.reset_password.confirm_placeholder')} />
           {#if manualResetPasswordConfirm && manualResetPassword !== manualResetPasswordConfirm}
-            <p style="color: var(--color-danger); font-size: 0.8rem; margin-top: 0.3rem;">{get(t)('admin.customers.detail.portal.reset_password.mismatch')}</p>
+            <p style="color: var(--color-danger); font-size: 0.8rem; margin-top: 0.3rem;">{get(t)('admin.customers.portal.reset_password.mismatch')}</p>
           {/if}
         </label>
       {/if}
@@ -2670,7 +2670,7 @@
     <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
       <button class="btn btn-secondary" onclick={() => { showResetPasswordConfirm = false; portalUserToReset = null; manualResetPassword = ''; manualResetPasswordConfirm = ''; }}>{$t('common.cancel')}</button>
       <button class="btn btn-warning" onclick={confirmResetPassword} disabled={resettingPassword || (manualResetPassword.trim() !== '' && manualResetPassword !== manualResetPasswordConfirm)}>
-        {resettingPassword ? get(t)('admin.customers.detail.portal.reset_password.processing') : get(t)('admin.customers.detail.portal.reset_password.reset')}
+        {resettingPassword ? get(t)('admin.customers.portal.reset_password.processing') : get(t)('admin.customers.portal.reset_password.reset')}
       </button>
     </div>
   {/if}
@@ -2678,8 +2678,8 @@
 
 <ConfirmDialog
   bind:show={showRemovePortalUserConfirm}
-  title={get(t)('admin.customers.detail.portal.remove.title')}
-  message={get(t)('admin.customers.detail.portal.remove.message')}
+  title={get(t)('admin.customers.portal.remove.title')}
+  message={get(t)('admin.customers.portal.remove.message')}
   confirmText={$t('common.delete')}
   cancelText={$t('common.cancel')}
   type="danger"
