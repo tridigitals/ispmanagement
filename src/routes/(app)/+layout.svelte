@@ -18,8 +18,10 @@
   import { onMount } from 'svelte';
   import { secureGetItem } from '$lib/utils/tauri-store';
 
-  function isTauriHost(host: string) {
-    return host === 'tauri.localhost';
+  function isTauriHost(_host: string) {
+    // Tauri may use tauri.localhost, localhost, or 127.0.0.1 — detect the runtime, not the hostname.
+    if (typeof window === 'undefined') return false;
+    return !!(window as any).__TAURI_INTERNALS__;
   }
 
   let { children } = $props();
