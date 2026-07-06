@@ -1640,6 +1640,7 @@
   confirmText={$t('common.delete')}
   cancelText={$t('common.cancel')}
   loading={deleting}
+  confirmationKeyword={deleteTarget?.name || ''}
   onconfirm={doDelete}
   oncancel={() => (showDelete = false)}
 />
