@@ -422,7 +422,7 @@
             <span class="hint">{$t('auth.login.identifier_hint') || 'Login dengan email atau nomor HP Anda'}</span>
           </div>
 
-          <div class="input-group" class:focus={activeField === 'password'}>"
+          <div class="input-group" class:focus={activeField === 'password'}>
             <label for="password">{$t('auth.login.password_label')}</label>
             <div class="field">
               <span class="icon"><Icon name="lock" size={18} /></span>
