@@ -305,7 +305,7 @@
           <div class="input-group" class:focus={activeField === 'phone'}>
             <label for="phone">{$t('auth.register.phone_label') || 'Phone (optional)'}</label>
             <div class="field">
-              <span class="icon"><Icon name="phone" size={18} /></span>
+              <span class="icon"><Icon name="smartphone" size={18} /></span>
               <input
                 type="tel"
                 id="phone"
