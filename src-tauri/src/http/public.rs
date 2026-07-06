@@ -62,6 +62,8 @@ pub struct CustomerRegistrationStatus {
 #[derive(serde::Deserialize)]
 pub struct ValidateInviteQuery {
     pub token: String,
+    #[serde(default)]
+    pub domain: Option<String>,
 }
 
 #[derive(serde::Deserialize, Validate)]
@@ -155,18 +157,22 @@ pub async fn validate_customer_registration_invite_by_domain(
         }));
     }
 
-    let host = match request_host(&headers) {
-        Some(v) => v,
-        None => {
-            return Ok(Json(CustomerRegistrationInviteValidationView {
-                valid: false,
-                status: "invalid".to_string(),
-                message: "Unable to detect request host".to_string(),
-                expires_at: None,
-                max_uses: None,
-                used_count: None,
-                remaining_uses: None,
-            }));
+    let host = if let Some(domain) = query.domain.as_deref().and_then(normalize_host) {
+        domain
+    } else {
+        match request_host(&headers) {
+            Some(v) => v,
+            None => {
+                return Ok(Json(CustomerRegistrationInviteValidationView {
+                    valid: false,
+                    status: "invalid".to_string(),
+                    message: "Unable to detect request host".to_string(),
+                    expires_at: None,
+                    max_uses: None,
+                    used_count: None,
+                    remaining_uses: None,
+                }));
+            }
         }
     };
     let auth_settings = state.auth_service.get_auth_settings().await;
