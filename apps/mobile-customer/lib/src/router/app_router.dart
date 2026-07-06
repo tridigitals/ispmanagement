@@ -12,6 +12,7 @@ import '../features/contact/contact_screen.dart';
 import '../features/faq/faq_screen.dart';
 import '../features/home/home_shell.dart';
 import '../features/invoices/invoice_detail_screen.dart';
+import '../features/invoices/subscription_invoices_screen.dart';
 import '../features/notifications/notification_inbox_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/permissions/permissions_screen.dart';
@@ -150,6 +151,12 @@ GoRouter buildAppRouter({
             path: 'invoices/:id',
             builder: (_, state) =>
                 InvoiceDetailScreen(id: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: 'subscriptions/:subscriptionId/invoices',
+            builder: (_, state) => SubscriptionInvoicesScreen(
+              subscriptionId: state.pathParameters['subscriptionId']!,
+            ),
           ),
           GoRoute(
             path: 'tickets/new',

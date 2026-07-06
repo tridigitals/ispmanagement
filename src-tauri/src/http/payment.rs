@@ -332,9 +332,15 @@ async fn get_fx_rate(
     }))
 }
 
+#[derive(Deserialize)]
+struct ListInvoicesQuery {
+    subscription_id: Option<String>,
+}
+
 async fn list_invoices(
     State(state): State<AppState>,
     headers: HeaderMap,
+    Query(q): Query<ListInvoicesQuery>,
 ) -> Result<Json<Vec<Invoice>>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
     let scope = resolve_payment_read_scope(&state, &claims).await?;
@@ -352,7 +358,11 @@ async fn list_invoices(
         PaymentReadScope::CustomerPortal { customer_id } => {
             state
                 .payment_service
-                .list_customer_portal_invoices(tenant_id, &customer_id)
+                .list_customer_portal_invoices(
+                    tenant_id,
+                    &customer_id,
+                    q.subscription_id.as_deref(),
+                )
                 .await
         }
     };

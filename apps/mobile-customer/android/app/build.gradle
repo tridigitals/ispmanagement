@@ -19,9 +19,10 @@ def flutterVersionName = localProperties.getProperty('flutter.versionName') ?: '
 android {
     namespace = "com.tridigitals.ispcustomer"
     compileSdk = 35
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
+        coreLibraryDesugaringEnabled true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -99,6 +100,10 @@ android {
             universalApk true   // Also build universal APK as fallback
         }
     }
+}
+
+dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
 }
 
 flutter {

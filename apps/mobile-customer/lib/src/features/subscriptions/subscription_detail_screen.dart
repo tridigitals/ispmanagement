@@ -151,6 +151,16 @@ final l10n = AppLocalizations.of(context);
                     ),
                 ],
               ),
+              const SizedBox(height: IspSpacing.sm),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => GoRouter.of(context)
+                      .push('/subscriptions/${sub.id}/invoices'),
+                  icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                  label: const Text('Lihat Tagihan'),
+                ),
+              ),
               const SizedBox(height: IspSpacing.xl),
 
               // ── Actions ──────────────────────────────────

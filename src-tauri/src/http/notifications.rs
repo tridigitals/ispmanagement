@@ -169,7 +169,7 @@ async fn list_filtered_portal_notifications(
         .await?;
     let accessible_invoice_ids = state
         .payment_service
-        .list_customer_portal_invoices(tenant_id, &customer_id)
+        .list_customer_portal_invoices(tenant_id, &customer_id, None)
         .await?
         .into_iter()
         .map(|invoice| invoice.id)

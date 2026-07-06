@@ -14,6 +14,7 @@ class InvoiceService {
     int page = 1,
     int perPage = 20,
     String? status,
+    String? subscriptionId,
   }) async {
     return _execute(() async {
       final res = await dio.get<dynamic>(
@@ -22,6 +23,7 @@ class InvoiceService {
           'page': page,
           'per_page': perPage,
           if (status != null) 'status': status,
+          if (subscriptionId != null) 'subscription_id': subscriptionId,
         },
       );
       final raw = res.data;

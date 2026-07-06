@@ -861,6 +861,7 @@ impl PaymentService {
         &self,
         tenant_id: &str,
         customer_id: &str,
+        subscription_id: Option<&str>,
     ) -> AppResult<Vec<Invoice>> {
         #[cfg(feature = "postgres")]
         let invoices = sqlx::query_as::<_, Invoice>(
@@ -880,11 +881,13 @@ impl PaymentService {
              )
             WHERE i.tenant_id = $1
               AND cs.customer_id = $2
+              AND ($3::text IS NULL OR cs.id = $3)
             ORDER BY i.created_at DESC
             "#,
         )
         .bind(tenant_id)
         .bind(customer_id)
+        .bind(subscription_id)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
@@ -902,11 +905,14 @@ impl PaymentService {
              )
             WHERE i.tenant_id = ?
               AND cs.customer_id = ?
+              AND (? IS NULL OR cs.id = ?)
             ORDER BY i.created_at DESC
             "#,
         )
         .bind(tenant_id)
         .bind(customer_id)
+        .bind(subscription_id)
+        .bind(subscription_id)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;

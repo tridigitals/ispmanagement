@@ -36,6 +36,14 @@ final invoiceByIdProvider =
   return result.getOrThrow();
 });
 
+/// Fetch invoices filtered by subscription ID.
+final subscriptionInvoicesProvider =
+    FutureProvider.family<List<InvoiceModel>, String>((ref, subscriptionId) async {
+  final svc = ref.watch(invoiceServiceProvider);
+  final result = await svc.list(subscriptionId: subscriptionId, perPage: 50);
+  return result.getOrThrow().data;
+});
+
 // ── Announcements provider ─────────────────────────────────
 
 /// Auto-refreshes every 15 seconds so announcements stay realtime.
