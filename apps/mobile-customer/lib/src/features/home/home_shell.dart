@@ -178,8 +178,8 @@ class _HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: NbStyle.card(context), // neubrutalist
-                      // color: isp.surface,
+      decoration: BoxDecoration(
+        color: isp.background,
       ),
       child: Row(
         children: [
@@ -239,15 +239,12 @@ class _HeaderIconButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 44,
-        height: 44,
-        decoration: NbStyle.card(context), // neubrutalist
-                        // color: isp.surface,
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: isp.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isp.border, width: 1.5),
-          boxShadow: [
-            BoxShadow(color: isp.border.withOpacity(0.5), offset: Offset(3, 3), blurRadius: 0),
-          ],
+          border: Border.all(color: isp.border, width: 1),
         ),
         child: Stack(
           clipBehavior: Clip.none,
@@ -262,8 +259,8 @@ class _HeaderIconButton extends StatelessWidget {
                 child: Container(
                   width: 18,
                   height: 18,
-                  decoration: NbStyle.card(context), // neubrutalist
-                                  // color: isp.surface,
+                  decoration: BoxDecoration(
+                    color: isp.danger,
                     shape: BoxShape.circle,
                     border: Border.all(color: isp.background, width: 2),
                   ),
@@ -320,8 +317,8 @@ class _FloatingGlassNav extends StatelessWidget {
           child: BackdropFilter(
             filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
             child: Container(
-              decoration: NbStyle.card(context), // neubrutalist
-                              // color: isp.surface,
+              decoration: BoxDecoration(
+                color: const Color(0xDD111119),
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
                   color: isp.border.withOpacity(0.6),
@@ -425,8 +422,8 @@ class _GlassNavItemState extends State<_GlassNavItem>
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: NbStyle.card(context), // neubrutalist
-                          // color: isp.surface,
+          decoration: BoxDecoration(
+            color: selected ? isp.accent.withOpacity(0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(999),
           ),
           child: Column(
@@ -454,8 +451,8 @@ class _GlassNavItemState extends State<_GlassNavItem>
                 duration: const Duration(milliseconds: 250),
                 width: selected ? 5 : 0,
                 height: selected ? 5 : 0,
-                decoration: NbStyle.card(context), // neubrutalist
-                                // color: isp.surface,
+                decoration: BoxDecoration(
+                  color: isp.accent,
                   shape: BoxShape.circle,
                   boxShadow: selected
                       ? [

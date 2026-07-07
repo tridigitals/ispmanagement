@@ -11,7 +11,8 @@ import '../../services/service_providers.dart';
 import '../../services/settings_providers.dart' show currentTabProvider;
 import '../tickets/ticket_l10n.dart';
 
-// ─── Neubrutalist card helper ────────────────────────────────────
+// ─── Neubrutalist card ───────────────────────────────────────────
+
 BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
       color: isp.surface,
       borderRadius: BorderRadius.circular(20),
@@ -158,7 +159,6 @@ class _SupportTabState extends ConsumerState<SupportTab> {
             ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
-              style: NbStyle.accentButton(context, outline: true),
               onPressed: () {
                 setState(() {
                   _initialLoaded = false;
@@ -227,7 +227,6 @@ class _SupportTabState extends ConsumerState<SupportTab> {
                           style: TextStyle(color: isp.textMuted)),
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
-                        style: NbStyle.accentButton(context),
                         onPressed: () =>
                             GoRouter.of(context).push('/tickets/new'),
                         icon: const Icon(Icons.add),
@@ -239,6 +238,7 @@ class _SupportTabState extends ConsumerState<SupportTab> {
               : NotificationListener<ScrollNotification>(
                   onNotification: _onScroll,
                   child: RefreshIndicator(
+                    color: isp.accent,
                     onRefresh: () async {
                       setState(() {
                         _items.clear();

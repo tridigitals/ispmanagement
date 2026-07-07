@@ -283,7 +283,11 @@ class _NotificationTile extends ConsumerWidget {
         },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: NbStyle.card(context, radius: BorderRadius.zero),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: isp.border, width: 0.5),
+            ),
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

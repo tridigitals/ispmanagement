@@ -146,7 +146,12 @@ class _FaqTileState extends State<_FaqTile> {
   Widget build(BuildContext context) {
     final isp = context.isp;
     return Container(
-      decoration: NbStyle.card(context, radius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: isp.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isp.border, width: 1.5),
+        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.2), offset: Offset(2, 2))],
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () => setState(() => _expanded = !_expanded),

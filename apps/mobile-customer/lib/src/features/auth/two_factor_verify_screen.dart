@@ -156,8 +156,8 @@ class _State extends ConsumerState<TwoFactorVerifyScreen> {
                 Container(
                   width: 64,
                   height: 64,
-                  decoration: NbStyle.card(context), // neubrutalist
-                                  // color: isp.surface,
+                  decoration: BoxDecoration(
+                    color: isp.accent.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: Icon(Icons.security_outlined,
@@ -203,10 +203,10 @@ class _State extends ConsumerState<TwoFactorVerifyScreen> {
                             fontWeight: FontWeight.w800,
                             fontFamily: 'monospace',
                           ),
-                          decoration: NbStyle.card(context), // neubrutalist
-                                          // color: isp.surface,
-                            decoration: NbStyle.card(context), // neubrutalist
-                                            // color: isp.surface,
+                          decoration: InputDecoration(
+                            counterText: '',
+                            filled: true,
+                            fillColor: isp.surface,
                             border: OutlineInputBorder(
                               borderRadius:
                                   BorderRadius.circular(IspRadii.sm),
@@ -315,8 +315,8 @@ class _NeubrutalistAccentButton extends StatelessWidget {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: NbStyle.card(context), // neubrutalist
-                        // color: isp.surface,
+        decoration: BoxDecoration(
+          color: isp.accent,
           border: Border.all(width: 1.5, color: isp.accent),
           borderRadius: BorderRadius.circular(IspRadii.md),
           boxShadow: [

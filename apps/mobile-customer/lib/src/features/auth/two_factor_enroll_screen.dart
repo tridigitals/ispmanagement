@@ -140,13 +140,6 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
                           color: isp.surface,
                           border: Border.all(width: 1.5, color: isp.border),
                           borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              offset: const Offset(3, 3),
-                              blurRadius: 0,
-                              color: isp.border.withOpacity(0.5),
-                            ),
-                          ],
                         ),
                         child: Column(
                           children: [
@@ -154,7 +147,8 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
                               padding: const EdgeInsets.all(IspSpacing.md),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(IspRadii.md),
+                                borderRadius:
+                                    BorderRadius.circular(IspRadii.md),
                               ),
                               child: QrImageView(
                                 data: enrollment!.otpAuthUri,
@@ -168,17 +162,11 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 12),
                               decoration: BoxDecoration(
-                                color: isp.surface,
-                                borderRadius: BorderRadius.circular(IspRadii.md),
+                                color: isp.surfaceTertiary,
+                                borderRadius:
+                                    BorderRadius.circular(IspRadii.md),
                                 border: Border.all(
                                     width: 1.5, color: isp.border),
-                                boxShadow: [
-                                  BoxShadow(
-                                    offset: const Offset(3, 3),
-                                    blurRadius: 0,
-                                    color: isp.border.withOpacity(0.5),
-                                  ),
-                                ],
                               ),
                               child: Row(
                                 children: [
@@ -228,7 +216,28 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
                           fontWeight: FontWeight.w800,
                           letterSpacing: 8,
                         ),
-                        decoration: NbStyle.inputField(context, hint: '123 456'),
+                        decoration: InputDecoration(
+                          counterText: '',
+                          hintText: '123 456',
+                          hintStyle: TextStyle(color: isp.textMuted),
+                          filled: true,
+                          fillColor: isp.surface,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(IspRadii.md),
+                            borderSide:
+                                BorderSide(width: 1.5, color: isp.border),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(IspRadii.md),
+                            borderSide:
+                                BorderSide(width: 1.5, color: isp.border),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(IspRadii.md),
+                            borderSide:
+                                BorderSide(width: 1.5, color: isp.accent),
+                          ),
+                        ),
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
@@ -297,8 +306,8 @@ class _NeubrutalistAccentButton extends StatelessWidget {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: NbStyle.card(context), // neubrutalist
-                        // color: isp.surface,
+        decoration: BoxDecoration(
+          color: isp.accent,
           border: Border.all(width: 1.5, color: isp.accent),
           borderRadius: BorderRadius.circular(IspRadii.md),
           boxShadow: [

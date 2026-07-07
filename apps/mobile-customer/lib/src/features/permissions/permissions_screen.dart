@@ -111,8 +111,8 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
                     Container(
                       width: 64,
                       height: 64,
-                      decoration: NbStyle.card(context), // neubrutalist
-                                      // color: isp.surface,
+                      decoration: BoxDecoration(
+                        color: isp.accent.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Icon(Icons.shield_outlined,
@@ -174,10 +174,9 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
                       const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.all(12),
-                        decoration: NbStyle.card(context), // neubrutalist
-                                        border: Border.all(color: isp.border, width: 1.5),
-                                                        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
-                                                        borderRadius:
+                        decoration: BoxDecoration(
+                          color: isp.danger.withOpacity(0.08),
+                          borderRadius:
                               BorderRadius.circular(IspRadii.md),
                           border: Border.all(
                             color: isp.danger.withOpacity(0.2),
@@ -273,16 +272,15 @@ class _PermissionCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: NbStyle.card(context), // neubrutalist
-                      // color: isp.surface,
-        border: Border.all(color: isp.border, width: 1.5),
-                        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
-                        borderRadius:
+      decoration: BoxDecoration(
+        color: isp.surface,
+        border: Border.all(width: 1.5, color: isp.border),
+        borderRadius: BorderRadius.circular(IspRadii.md),
         boxShadow: [
           BoxShadow(
             offset: const Offset(3, 3),
-            decoration: NbStyle.card(context), // neubrutalist
-                            // color: isp.surface,
+            blurRadius: 0,
+            color: isp.surfaceElevated,
           ),
         ],
       ),
@@ -291,8 +289,8 @@ class _PermissionCard extends StatelessWidget {
           Container(
             width: 44,
             height: 44,
-            decoration: NbStyle.card(context), // neubrutalist
-                            // color: isp.surface,
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: statusColor, size: 22),
@@ -360,8 +358,8 @@ class _NeubrutalistAccentButton extends StatelessWidget {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: NbStyle.card(context), // neubrutalist
-                        // color: isp.surface,
+        decoration: BoxDecoration(
+          color: isp.accent,
           border: Border.all(width: 1.5, color: isp.accent),
           borderRadius: BorderRadius.circular(IspRadii.md),
           boxShadow: [

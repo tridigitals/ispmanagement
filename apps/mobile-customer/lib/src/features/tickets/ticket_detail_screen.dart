@@ -387,8 +387,8 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                   padding: const EdgeInsets.symmetric(
                       horizontal: IspSpacing.lg, vertical: IspSpacing.sm),
                   decoration: BoxDecoration(
-                    border: Border.all(color: isp.border, width: 1.5),
-                    boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
+                    border: Border(
+                        bottom: BorderSide(color: isp.borderSubtle)),
                   ),
                   child: Row(
                     children: [
@@ -713,8 +713,6 @@ class _MessageBubble extends StatelessWidget {
             bottomLeft: Radius.circular(isStaff ? 2 : IspRadii.lg),
             bottomRight: Radius.circular(isStaff ? IspRadii.lg : 2),
           ),
-          border: Border.all(color: isp.border, width: 1.5),
-          boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

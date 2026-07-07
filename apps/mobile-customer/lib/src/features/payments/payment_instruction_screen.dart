@@ -209,8 +209,6 @@ final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
             decoration: BoxDecoration(
               color: isp.warning.withOpacity(0.1),
               borderRadius: BorderRadius.circular(IspRadii.lg),
-              border: Border.all(color: isp.border, width: 1.5),
-              boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
             ),
             child: Column(
               children: [
@@ -297,7 +295,6 @@ class _QrisView extends StatelessWidget {
 
 final isp = context.isp;
 return IspCard(
-      nbStyle: true,
       child: Column(
         children: [
           const Text(
@@ -339,7 +336,6 @@ class _VirtualAccountView extends StatelessWidget {
 
 final isp = context.isp;
 return IspCard(
-      nbStyle: true,
       child: Column(
         children: [
           const Text(
@@ -378,7 +374,6 @@ class _EWalletView extends StatelessWidget {
 
 final isp = context.isp;
 return IspCard(
-      nbStyle: true,
       child: Column(
         children: [
           const Icon(Icons.account_balance_wallet, size: 48),
@@ -421,7 +416,6 @@ class _PaymentCodeView extends StatelessWidget {
 
 final isp = context.isp;
 return IspCard(
-      nbStyle: true,
       child: Column(
         children: [
           const Text(
@@ -451,7 +445,6 @@ class _GenericView extends StatelessWidget {
 
 final isp = context.isp;
 return IspCard(
-      nbStyle: true,
       child: Center(
         child: Text(message, textAlign: TextAlign.center),
       ),
@@ -560,9 +553,8 @@ return ListView(
         Container(
           padding: const EdgeInsets.all(IspSpacing.lg),
           decoration: BoxDecoration(
-            boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
-                     color: isp.surface,
-                     borderRadius: BorderRadius.circular(IspRadii.lg),
+            color: isp.surface,
+            borderRadius: BorderRadius.circular(IspRadii.lg),
           ),
           child: const Column(
             children: [

@@ -38,8 +38,14 @@ class IspCard extends StatelessWidget {
           : BoxDecoration(
               color: isp.surface,
               borderRadius: BorderRadius.circular(r),
-              border: showBorder ? Border.all(color: isp.borderSubtle) : null,
-              boxShadow: showShadow ? IspShadows.sm : null,
+              border: Border.all(color: isp.border, width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: isp.border.withOpacity(0.5),
+                  offset: const Offset(3, 3),
+                  blurRadius: 0,
+                ),
+              ],
             ),
       child: Padding(
         padding: padding ?? const EdgeInsets.all(IspSpacing.lg),

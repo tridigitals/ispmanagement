@@ -468,9 +468,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             letterSpacing: 8,
             fontWeight: FontWeight.w600,
           ),
-          decoration: NbStyle.inputField(context, hint: '••••••').copyWith(
+          decoration: InputDecoration(
+            hintText: '••••••',
             counterText: '',
+            hintStyle: TextStyle(color: isp.textMuted),
+            filled: true,
             fillColor: isp.surfaceTertiary,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(IspRadii.md),
+              borderSide: BorderSide.none,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -543,8 +550,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Center(
                 child: Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: NbStyle.card(context), // neubrutalist
-                                  // color: isp.surface,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Image.memory(
@@ -576,9 +583,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 letterSpacing: 8,
                 fontWeight: FontWeight.w600,
               ),
-              decoration: NbStyle.inputField(context, hint: '••••••').copyWith(
+              decoration: InputDecoration(
+                hintText: '••••••',
                 counterText: '',
+                hintStyle: TextStyle(color: isp.textMuted),
+                filled: true,
                 fillColor: isp.surfaceTertiary,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(IspRadii.md),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -592,8 +606,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 margin: const EdgeInsets.only(bottom: 16),
-                decoration: NbStyle.card(context), // neubrutalist
-                                // color: isp.surface,
+                decoration: BoxDecoration(
+                  color: isp.success.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -621,9 +635,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 letterSpacing: 8,
                 fontWeight: FontWeight.w600,
               ),
-              decoration: NbStyle.inputField(context, hint: '••••••').copyWith(
+              decoration: InputDecoration(
+                hintText: '••••••',
                 counterText: '',
+                hintStyle: TextStyle(color: isp.textMuted),
+                filled: true,
                 fillColor: isp.surfaceTertiary,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(IspRadii.md),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -680,7 +701,34 @@ class _NeubrutalistInput extends StatelessWidget {
       keyboardType: TextInputType.text,
       textInputAction: textInputAction,
       style: TextStyle(color: isp.textPrimary, fontSize: 14),
-      decoration: NbStyle.inputField(context, hint: hintText),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(color: isp.textMuted),
+        filled: true,
+        fillColor: isp.surface,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.accent),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.danger),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.danger),
+        ),
+      ),
       validator: validate,
     );
   }
@@ -709,14 +757,42 @@ class _NeubrutalistPasswordInput extends StatelessWidget {
       textInputAction: TextInputAction.done,
       onFieldSubmitted: onSubmitted,
       style: TextStyle(color: isp.textPrimary, fontSize: 14),
-      decoration: NbStyle.inputField(context, hint: '••••••••', suffix: IconButton(
-        icon: Icon(
-          obscure ? Icons.visibility : Icons.visibility_off,
-          color: isp.textMuted,
-          size: 20,
+      decoration: InputDecoration(
+        hintText: '••••••••',
+        hintStyle: TextStyle(color: isp.textMuted),
+        filled: true,
+        fillColor: isp.surface,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        suffixIcon: IconButton(
+          icon: Icon(
+            obscure ? Icons.visibility : Icons.visibility_off,
+            color: isp.textMuted,
+            size: 20,
+          ),
+          onPressed: onToggle,
         ),
-        onPressed: onToggle,
-      )),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.accent),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.danger),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.danger),
+        ),
+      ),
       validator: validate,
     );
   }
@@ -734,18 +810,47 @@ class _NeubrutalistAccentButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        style: NbStyle.accentButton(context),
-        onPressed: loading ? null : onTap,
-        child: loading
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-              )
-            : Text(label),
+    final isp = context.isp;
+    return GestureDetector(
+      onTap: loading ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        transform: (loading || onTap == null)
+            ? Matrix4.identity()
+            : Matrix4.translationValues(0, 0, 0),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isp.accent,
+          border: Border.all(width: 1.5, color: isp.accent),
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          boxShadow: [
+            BoxShadow(
+              offset: const Offset(3, 3),
+              blurRadius: 0,
+              color: isp.accent.withOpacity(0.3),
+            ),
+          ],
+        ),
+        child: Center(
+          child: loading
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(isp.textInverse),
+                  ),
+                )
+              : Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+        ),
       ),
     );
   }
@@ -763,13 +868,39 @@ class _NeubrutalistOutlineButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        style: NbStyle.accentButton(context, outline: true),
-        onPressed: onTap,
-        icon: Icon(icon, size: 22),
-        label: Text(label),
+    final isp = context.isp;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isp.surface,
+          border: Border.all(width: 1.5, color: isp.border),
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          boxShadow: [
+            BoxShadow(
+              offset: const Offset(3, 3),
+              blurRadius: 0,
+              color: isp.surfaceElevated,
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 22, color: isp.accentLight),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(
+                color: isp.textSecondary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -788,8 +919,8 @@ class _BrandLogo extends StatelessWidget {
         Container(
           width: 56,
           height: 56,
-          decoration: NbStyle.card(context), // neubrutalist
-                          // color: isp.surface,
+          decoration: BoxDecoration(
+            color: isp.accent, // solid purple, no gradient
             borderRadius: BorderRadius.circular(16),
           ),
           alignment: Alignment.center,
@@ -830,8 +961,8 @@ class _SetupMethodTab extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: NbStyle.card(context), // neubrutalist
-                        // color: isp.surface,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: selected ? isp.accent : isp.border,
             width: selected ? 2 : 1,

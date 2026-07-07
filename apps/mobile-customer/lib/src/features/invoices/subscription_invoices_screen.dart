@@ -91,79 +91,76 @@ class _InvoiceCard extends StatelessWidget {
     final isp = context.isp;
     final isPaid = inv.isPaid;
 
-    return Container(
-      decoration: NbStyle.card(context, radius: BorderRadius.circular(IspRadii.lg)),
-      child: Material(
-        color: Colors.transparent,
+    return Material(
+      color: isp.surface,
+      borderRadius: BorderRadius.circular(IspRadii.lg),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(IspRadii.lg),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(IspRadii.lg),
-          child: Padding(
-            padding: const EdgeInsets.all(IspSpacing.md),
-            child: Row(
-              children: [
-                // Status indicator
-                Container(
-                  width: 4,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: isPaid
-                        ? IspThemeColors.of(context).success
-                        : inv.isOverdue
-                            ? IspThemeColors.of(context).danger
-                            : IspThemeColors.of(context).warning,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+        child: Padding(
+          padding: const EdgeInsets.all(IspSpacing.md),
+          child: Row(
+            children: [
+              // Status indicator
+              Container(
+                width: 4,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: isPaid
+                      ? IspColors.success
+                      : inv.isOverdue
+                          ? IspColors.danger
+                          : IspColors.warning,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const SizedBox(width: IspSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        inv.invoiceNumber,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Jatuh tempo: ${dateFmt.format(inv.dueDate)}',
-                        style: TextStyle(
-                          color: isp.textMuted,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+              ),
+              const SizedBox(width: IspSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      fmt.format(inv.amount),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
+                      inv.invoiceNumber,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
                         fontSize: 15,
-                        color: isPaid ? IspThemeColors.of(context).success : isp.textPrimary,
                       ),
                     ),
-                    IspStatusBadge(
-                      label: inv.statusLabel(),
-                      tone: isPaid
-                          ? StatusTone.success
-                          : inv.isOverdue
-                              ? StatusTone.danger
-                              : StatusTone.warning,
+                    const SizedBox(height: 2),
+                    Text(
+                      'Jatuh tempo: ${dateFmt.format(inv.dueDate)}',
+                      style: TextStyle(
+                        color: isp.textMuted,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(width: IspSpacing.sm),
-                Icon(Icons.chevron_right, color: isp.textMuted),
-              ],
-            ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    fmt.format(inv.amount),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: isPaid ? IspColors.success : isp.textPrimary,
+                    ),
+                  ),
+                  IspStatusBadge(
+                    label: inv.statusLabel(),
+                    tone: isPaid
+                        ? StatusTone.success
+                        : inv.isOverdue
+                            ? StatusTone.danger
+                            : StatusTone.warning,
+                  ),
+                ],
+              ),
+              const SizedBox(width: IspSpacing.sm),
+              Icon(Icons.chevron_right, color: isp.textMuted),
+            ],
           ),
         ),
       ),

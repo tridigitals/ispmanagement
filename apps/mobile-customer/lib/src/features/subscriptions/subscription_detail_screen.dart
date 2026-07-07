@@ -227,8 +227,7 @@ class _HeroHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: isp.surface,
         borderRadius: BorderRadius.circular(IspRadii.xl),
-        border: Border.all(color: isp.border, width: 1.5),
-        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
+        border: Border.all(color: isp.border),
       ),
       child: Column(
         children: [
@@ -433,7 +432,6 @@ class _SectionCard extends StatelessWidget {
 
 
     final isp = context.isp;    return IspCard(
-      nbStyle: true,
       child: Padding(
         padding: const EdgeInsets.all(IspSpacing.lg),
         child: Column(
@@ -527,8 +525,7 @@ class _InfoChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: isp.surfaceTertiary,
         borderRadius: BorderRadius.circular(IspRadii.pill),
-        border: Border.all(color: isp.border, width: 1.5),
-        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
+        border: Border.all(color: isp.borderSubtle),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -568,7 +565,6 @@ class _InstallationTracker extends StatelessWidget {
     ];
 
     return IspCard(
-      nbStyle: true,
       child: Padding(
         padding: const EdgeInsets.all(IspSpacing.lg),
         child: Column(

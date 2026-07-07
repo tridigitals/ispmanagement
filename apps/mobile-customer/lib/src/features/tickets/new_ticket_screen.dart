@@ -379,7 +379,6 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
 
                     // ── Single card: subject + description + attachments + subscription ──
                     IspCard(
-                      nbStyle: true,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -432,12 +431,8 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                               Icon(
                                 Icons.attach_file,
                                 size: 18,
-                                boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
-                                          border: Border.all(color: isp.border, width: 1.5),
-                                                    color: isp.surface,
-                                                              border: Border.all(color: isp.border, width: 1.5),
-                                                              boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
-                                                              borderRadius:
+                                color: isp.accent,
+                              ),
                               const SizedBox(width: IspSpacing.sm),
                               Text(
                                 l10n.ticketFieldAttachments,
@@ -461,12 +456,11 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                                   child: Text(
                                     '${_pendingAttachments.length}',
                                     style: TextStyle(
-                                      decoration: BoxDecoration(
-                                        color: isp.accent.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(color: isp.border, width: 1.5),
-                                        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
-                                      ),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isp.accent,
+                                    ),
+                                  ),
                                 ),
                               ],
                               const Spacer(),
@@ -524,12 +518,9 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: isp.surface,
-                            border: Border.all(color: isp.border, width: 1.5),
-                            boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
-                            borderRadius:
+                  border: Border(
                     top: BorderSide(color: isp.border),
                   ),
-                  boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
                 ),
                 child: SizedBox(
                   width: double.infinity,
@@ -623,9 +614,8 @@ class _SubscriptionPicker extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          border: Border.all(color: isp.border, width: 1.5),
+          border: Border.all(color: isp.borderSubtle),
           borderRadius: BorderRadius.circular(8),
-          boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
         ),
         child: Row(
           children: [

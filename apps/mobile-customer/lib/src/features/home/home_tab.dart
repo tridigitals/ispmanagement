@@ -20,6 +20,21 @@ const _kCardRadius = 20.0;
 const _kSectionSpacing = 20.0;
 const _kElementSpacing = 12.0;
 
+// ─── Neubrutalist card decoration helpers ───────────────────────
+
+BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
+      color: isp.surface,
+      borderRadius: BorderRadius.circular(_kCardRadius),
+      border: Border.all(color: isp.border, width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: isp.border.withOpacity(0.5),
+          offset: const Offset(3, 3),
+          blurRadius: 0,
+        ),
+      ],
+    );
+
 // ─── Home Tab ────────────────────────────────────────────────────
 
 class HomeTab extends ConsumerStatefulWidget {
@@ -53,8 +68,8 @@ class _HomeTabState extends ConsumerState<HomeTab> {
           ref.read(mySubscriptionsProvider.future),
           ref.read(myInvoicesProvider.future),
         ]);
-      decoration: NbStyle.card(context), // neubrutalist
-                      // color: isp.surface,
+      },
+      color: isp.accent,
       child: CustomScrollView(
         slivers: [
           SliverPadding(
@@ -165,8 +180,8 @@ class _SubscriptionCarouselState
                     margin: const EdgeInsets.symmetric(horizontal: 3),
                     width: i == _currentPage ? 20 : 6,
                     height: 6,
-                    decoration: NbStyle.card(context), // neubrutalist
-                                    // color: isp.surface,
+                    decoration: BoxDecoration(
+                      color: i == _currentPage ? isp.accent : isp.border,
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
@@ -203,11 +218,11 @@ class _SubscriptionHeroCard extends StatelessWidget {
               // Accent line at top
               Container(
                 height: 3,
-                decoration: NbStyle.card(context), // neubrutalist
-                                // color: isp.surface,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.vertical(
                     top: const Radius.circular(_kCardRadius),
-                  decoration: NbStyle.card(context), // neubrutalist
-                                  // color: isp.surface,
+                  ),
+                  color: isp.accent,
                 ),
               ),
               Padding(
@@ -266,13 +281,13 @@ class _SubscriptionHeroCard extends StatelessWidget {
                       children: [
                         Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: NbStyle.card(context), // neubrutalist
-                                          // color: isp.surface,
+                          decoration: BoxDecoration(
+                            color: isp.accentSurface,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
-                            decoration: NbStyle.card(context), // neubrutalist
-                                            // color: isp.surface,
+                            Icons.router,
+                            color: isp.accent,
                             size: 16,
                           ),
                         ),
@@ -419,8 +434,8 @@ class _InvoiceAlert extends StatelessWidget {
         return GestureDetector(
           onTap: () => GoRouter.of(context).go('/?tab=2'),
           child: Container(
-            decoration: NbStyle.card(context), // neubrutalist
-                            // color: isp.surface,
+            decoration: BoxDecoration(
+              color: isp.dangerSurface,
               borderRadius: BorderRadius.circular(_kCardRadius),
               border: Border.all(color: isp.danger.withOpacity(0.4), width: 1.5),
               boxShadow: [
@@ -437,8 +452,8 @@ class _InvoiceAlert extends StatelessWidget {
                 Container(
                   width: 40,
                   height: 40,
-                  decoration: NbStyle.card(context), // neubrutalist
-                                  // color: isp.surface,
+                  decoration: BoxDecoration(
+                    color: isp.danger.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -498,8 +513,8 @@ class _TicketCTA extends StatelessWidget {
             Container(
               width: 48,
               height: 48,
-              decoration: NbStyle.card(context), // neubrutalist
-                              // color: isp.surface,
+              decoration: BoxDecoration(
+                color: isp.accentSurface,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(Icons.add_rounded, color: isp.accent, size: 26),
@@ -606,8 +621,8 @@ class _RecentInvoices extends StatelessWidget {
                           horizontal: 16,
                           vertical: 14,
                         ),
-                        decoration: NbStyle.card(context), // neubrutalist
-                                        // color: isp.surface,
+                        decoration: BoxDecoration(
+                          border: Border(
                             bottom: BorderSide(
                               color: isp.border,
                               width: 0.5,
@@ -618,8 +633,8 @@ class _RecentInvoices extends StatelessWidget {
                           children: [
                             Container(
                               padding: const EdgeInsets.all(8),
-                              decoration: NbStyle.card(context), // neubrutalist
-                                              // color: isp.surface,
+                              decoration: BoxDecoration(
+                                color: isp.surfaceElevated,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
@@ -674,8 +689,8 @@ class _RecentInvoices extends StatelessWidget {
                                     horizontal: 8,
                                     vertical: 3,
                                   ),
-                                  decoration: NbStyle.card(context), // neubrutalist
-                                                  // color: isp.surface,
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(999),
                                   ),
                                   child: Text(
@@ -716,8 +731,8 @@ class _ErrorCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.all(16),
-      decoration: NbStyle.card(context), // neubrutalist
-                      // color: isp.surface,
+      decoration: BoxDecoration(
+        color: isp.dangerSurface,
         borderRadius: BorderRadius.circular(_kCardRadius),
         border: Border.all(
           color: isp.danger.withOpacity(0.4),

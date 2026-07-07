@@ -23,7 +23,12 @@ class ContactScreen extends ConsumerWidget {
           // Hero card — contact intro
           Container(
             padding: const EdgeInsets.all(24),
-            decoration: NbStyle.card(context, radius: BorderRadius.circular(14)),
+            decoration: BoxDecoration(
+              color: isp.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: isp.border, width: 1.5),
+              boxShadow: [BoxShadow(color: isp.border.withOpacity(0.3), offset: Offset(2, 2))],
+            ),
             child: Column(
               children: [
                 Container(
@@ -51,9 +56,8 @@ class ContactScreen extends ConsumerWidget {
           const SizedBox(height: 16),
 
           // Contact methods
-          _buildSection(context, isp, [
+          _buildSection(isp, [
             _contactTile(
-              context: context,
               isp: isp,
               icon: Icons.whatshot,
               iconBg: const Color(0xFF25D366), // WhatsApp green
@@ -62,7 +66,6 @@ class ContactScreen extends ConsumerWidget {
               onTap: () => _launch('https://wa.me/6281234567890'),
             ),
             _contactTile(
-              context: context,
               isp: isp,
               icon: Icons.email_outlined,
               iconBg: isp.info,
@@ -71,7 +74,6 @@ class ContactScreen extends ConsumerWidget {
               onTap: () => _launch('mailto:support@tridigitals.com'),
             ),
             _contactTile(
-              context: context,
               isp: isp,
               icon: Icons.phone_outlined,
               iconBg: isp.success,
@@ -80,7 +82,6 @@ class ContactScreen extends ConsumerWidget {
               onTap: () => _launch('tel:14045'),
             ),
             _contactTile(
-              context: context,
               isp: isp,
               icon: Icons.chat_bubble_outline,
               iconBg: isp.warning,
@@ -95,9 +96,8 @@ class ContactScreen extends ConsumerWidget {
 
           // Social media
           _sectionHeader(isp, 'Media Sosial'),
-          _buildSection(context, isp, [
+          _buildSection(isp, [
             _contactTile(
-              context: context,
               isp: isp,
               icon: Icons.camera_alt_outlined,
               iconBg: const Color(0xFFE4405F), // Instagram
@@ -106,7 +106,6 @@ class ContactScreen extends ConsumerWidget {
               onTap: () => _launch('https://instagram.com/tridigitals.id'),
             ),
             _contactTile(
-              context: context,
               isp: isp,
               icon: Icons.facebook,
               iconBg: const Color(0xFF1877F2), // Facebook
@@ -148,11 +147,16 @@ Widget _sectionHeader(IspThemeColors isp, String label) {
   );
 }
 
-Widget _buildSection(BuildContext context, IspThemeColors isp, List<Widget> children) {
+Widget _buildSection(IspThemeColors isp, List<Widget> children) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: Container(
-      decoration: NbStyle.card(context, radius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(
+        color: isp.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: isp.border, width: 1.5),
+        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.3), offset: Offset(2, 2))],
+      ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
@@ -167,7 +171,6 @@ Widget _buildSection(BuildContext context, IspThemeColors isp, List<Widget> chil
 }
 
 Widget _contactTile({
-  required BuildContext context,
   required IspThemeColors isp,
   required IconData icon,
   required Color iconBg,
@@ -181,7 +184,15 @@ Widget _contactTile({
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          NbStyle.iconContainer(context, icon, color: iconBg, size: 19),
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              color: iconBg.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, size: 19, color: iconBg),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(

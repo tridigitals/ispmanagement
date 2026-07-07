@@ -10,7 +10,7 @@ class NbStyle {
   /// Neubrutalist card decoration.
   /// Usage: `Container(decoration: NbStyle.card(context), ...)`
   static BoxDecoration card(BuildContext context, {BorderRadius? radius}) {
-    final isp = IspThemeColors.of(context);
+    final isp = context.isp;
     return BoxDecoration(
       color: isp.surface,
       border: Border.all(color: isp.border, width: 1.5),
@@ -23,7 +23,7 @@ class NbStyle {
 
   /// Elevated button with neubrutalist shadow — solid accent color (no gradient).
   static ButtonStyle accentButton(BuildContext context, {bool outline = false}) {
-    final isp = IspThemeColors.of(context);
+    final isp = context.isp;
     return ButtonStyle(
       elevation: WidgetStateProperty.all(0),
       backgroundColor: WidgetStateProperty.all(outline ? Colors.transparent : isp.accent),
@@ -41,7 +41,7 @@ class NbStyle {
   /// Input field decoration — pill-shaped with 1.5px border.
   /// Usage: `TextField(decoration: NbStyle.inputField(context, label: 'Email'))`
   static InputDecoration inputField(BuildContext context, {String? label, String? hint, Widget? prefix, Widget? suffix}) {
-    final isp = IspThemeColors.of(context);
+    final isp = context.isp;
     return InputDecoration(
       labelText: label,
       hintText: hint,
@@ -74,7 +74,7 @@ class NbStyle {
   /// Tinted icon container (Apple settings style) — 32×32, 7px radius, tinted bg.
   /// Usage: `NbStyle.iconContainer(context, Icons.wifi, color: isp.accent)`
   static Container iconContainer(BuildContext context, IconData icon, {Color? color, double size = 18}) {
-    final isp = IspThemeColors.of(context);
+    final isp = context.isp;
     final tint = color ?? isp.accent;
     return Container(
       width: 34,
@@ -90,7 +90,7 @@ class NbStyle {
 
   /// Status pill badge — neubrutalist small label with severity background.
   static Container statusPill(BuildContext context, String label, {Color? bgColor, Color? textColor}) {
-    final isp = IspThemeColors.of(context);
+    final isp = context.isp;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -131,7 +131,7 @@ class _NeubrutalistPressableState extends State<_NeubrutalistPressable> {
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 80),
-        transform: _pressed ? Matrix4.translationValues(1, 1, 0) : Matrix4.identity,
+        transform: _pressed ? (Matrix4.translationValues(1, 1, 0) as Matrix4) : Matrix4.identity(),
         child: widget.child,
       ),
     );
