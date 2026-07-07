@@ -68,7 +68,7 @@ class _NotificationInboxScreenState
                     TextButton(
                       onPressed: () => Navigator.of(ctx).pop(true),
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.red,
+                        foregroundColor: isp.danger,
                       ),
                       child: const Text('Hapus Semua'),
                     ),
@@ -135,7 +135,7 @@ class _NotificationInboxScreenState
                     key: Key(list[index].id),
                     direction: DismissDirection.endToStart,
                     background: Container(
-                      color: Colors.red,
+                      color: isp.danger,
                       alignment: Alignment.centerRight,
                       padding: const EdgeInsets.only(right: 20),
                       child: const Icon(Icons.delete, color: Colors.white),

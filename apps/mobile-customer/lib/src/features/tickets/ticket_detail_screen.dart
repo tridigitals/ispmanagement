@@ -747,7 +747,7 @@ class _MessageBubble extends StatelessWidget {
               Text(
                 message.body,
                 style: TextStyle(
-                    color: isStaff ? isp.textPrimary : Colors.white),
+                    color: isStaff ? isp.textPrimary : isp.textOnPrimary),
               ),
             // Attachments
             if (message.attachments.isNotEmpty) ...[
@@ -767,7 +767,7 @@ class _MessageBubble extends StatelessWidget {
               dateFmt.format(message.createdAt),
               style: TextStyle(
                 fontSize: 10,
-                color: isStaff ? isp.textMuted : Colors.white70,
+                color: isStaff ? isp.textMuted : isp.textOnPrimary.withOpacity(0.7),
               ),
             ),
           ],
@@ -893,7 +893,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
             child: Container(
               padding: const EdgeInsets.all(IspSpacing.sm),
               decoration: BoxDecoration(
-                color: (isStaff ? Colors.black : Colors.white).withOpacity(0.1),
+                color: (isStaff ? isp.surfaceElevated : isp.accentSurface).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(IspRadii.sm),
               ),
               child: Row(
@@ -902,7 +902,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                   Icon(
                     _fileIcon(attachment.contentType),
                     size: 20,
-                    color: isStaff ? isp.textPrimary : Colors.white,
+                    color: isStaff ? isp.textPrimary : isp.textOnPrimary,
                   ),
                   const SizedBox(width: IspSpacing.sm),
                   Flexible(
@@ -916,7 +916,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                           style: TextStyle(
                             fontSize: 12,
                             color:
-                                isStaff ? isp.textPrimary : Colors.white,
+                                isStaff ? isp.textPrimary : isp.textOnPrimary,
                           ),
                         ),
                         Text(
@@ -925,7 +925,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                             fontSize: 10,
                             color: isStaff
                                 ? isp.textMuted
-                                : Colors.white60,
+                                : isp.textOnPrimary.withOpacity(0.6),
                           ),
                         ),
                       ],
@@ -937,7 +937,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                         ? Icons.hourglass_empty
                         : Icons.open_in_new,
                     size: 16,
-                    color: isStaff ? isp.textMuted : Colors.white60,
+                    color: isStaff ? isp.textMuted : isp.textOnPrimary.withOpacity(0.6),
                   ),
                 ],
               ),
@@ -966,7 +966,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
       alignment: Alignment.center,
       child: CircularProgressIndicator(
         strokeWidth: 2,
-        color: isStaff ? isp.accent : Colors.white70,
+        color: isStaff ? isp.accent : isp.textOnPrimary.withOpacity(0.7),
       ),
     );
   }
@@ -980,7 +980,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
       alignment: Alignment.center,
       padding: const EdgeInsets.symmetric(horizontal: IspSpacing.sm),
       decoration: BoxDecoration(
-        color: (isStaff ? Colors.black : Colors.white).withOpacity(0.05),
+        color: (isStaff ? isp.surfaceElevated : isp.accentSurface).withOpacity(0.05),
         borderRadius: BorderRadius.circular(IspRadii.sm),
       ),
       child: Column(
@@ -989,7 +989,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
         children: [
           Icon(
             Icons.broken_image,
-            color: isStaff ? isp.textMuted : Colors.white54,
+            color: isStaff ? isp.textMuted : isp.textOnPrimary.withOpacity(0.54),
           ),
           const SizedBox(height: 4),
           Text(
@@ -997,7 +997,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 10,
-              color: isStaff ? isp.textMuted : Colors.white54,
+              color: isStaff ? isp.textMuted : isp.textOnPrimary.withOpacity(0.54),
             ),
           ),
           const SizedBox(height: 4),
@@ -1076,7 +1076,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
           width: 220,
           padding: const EdgeInsets.all(IspSpacing.md),
           decoration: BoxDecoration(
-            color: (isStaff ? Colors.black : Colors.white).withOpacity(0.08),
+            color: (isStaff ? isp.surfaceElevated : isp.accentSurface).withOpacity(0.08),
             borderRadius: BorderRadius.circular(IspRadii.sm),
             border: Border.all(
               color: isp.borderSubtle.withOpacity(0.3),
@@ -1115,7 +1115,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
-                        color: isStaff ? isp.textPrimary : Colors.white,
+                        color: isStaff ? isp.textPrimary : isp.textOnPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),

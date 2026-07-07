@@ -78,7 +78,7 @@ class AnnouncementDetailScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: IspSpacing.xl),
-                Card(
+                IspCard(
                   child: Padding(
                     padding: const EdgeInsets.all(IspSpacing.lg),
                     child: Column(

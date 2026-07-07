@@ -112,7 +112,7 @@ class _AnnouncementCard extends StatelessWidget {
     final date =
         item.createdAt != null ? DateTime.tryParse(item.createdAt!) : null;
 
-    return Card(
+    return IspCard(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => GoRouter.of(context).push('/announcements/${item.id}'),

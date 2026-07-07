@@ -510,7 +510,7 @@ return Center(
                 color: isp.success,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check, color: Colors.white, size: 64),
+              child: const Icon(Icons.check, color: Color(0xFFFFFFFF), size: 64),
             ),
             const SizedBox(height: IspSpacing.lg),
             const Text(

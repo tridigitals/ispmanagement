@@ -430,7 +430,7 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
 
 
-    final isp = context.isp;    return Card(
+    final isp = context.isp;    return IspCard(
       child: Padding(
         padding: const EdgeInsets.all(IspSpacing.lg),
         child: Column(
@@ -563,7 +563,7 @@ class _InstallationTracker extends StatelessWidget {
       _Step('Aktif', Icons.check_circle, false),
     ];
 
-    return Card(
+    return IspCard(
       child: Padding(
         padding: const EdgeInsets.all(IspSpacing.lg),
         child: Column(
@@ -648,4 +648,50 @@ class _Step {
   final String label;
   final IconData icon;
   final bool done;
+}
+
+// ── Circular progress painter (neubrutalist ring) ──
+class _CircularProgressPainter extends CustomPainter {
+  const _CircularProgressPainter({
+    required this.progress,
+    required this.color,
+    required this.bgColor,
+    required this.strokeWidth,
+  });
+  final double progress;
+  final Color color;
+  final Color bgColor;
+  final double strokeWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+
+    // Background ring
+    final bgPaint = Paint()
+      ..color = bgColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // Progress arc
+    final progressPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -pi / 2, // start from top
+      2 * pi * progress,
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _CircularProgressPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.color != color;
 }

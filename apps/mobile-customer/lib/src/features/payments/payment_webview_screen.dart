@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ui_kit/ui_kit.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 /// In-app WebView screen for payment gateways (Midtrans / Duitku).
@@ -22,6 +23,14 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
   bool _handledCompletion = false;
+
+  late final IspThemeColors isp;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    isp = context.isp;
+  }
 
   @override
   void initState() {
@@ -56,14 +65,14 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
             title: 'Pembayaran Berhasil',
             message: 'Terima kasih, pembayaran Anda telah diproses.',
             icon: Icons.check_circle,
-            color: Colors.green,
+            color: isp.success,
           );
         } else {
           _showResultAndPop(
             title: 'Pembayaran Gagal',
             message: 'Pembayaran tidak berhasil. Silakan coba lagi.',
             icon: Icons.error,
-            color: Colors.red,
+            color: isp.danger,
           );
         }
       });
