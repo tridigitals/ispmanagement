@@ -81,11 +81,6 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
                 const SizedBox(height: _kSectionSpacing),
 
-                // ── Bento grid (speed / uptime) ──
-                _BentoGrid(),
-
-                const SizedBox(height: _kSectionSpacing),
-
                 // ── Network status ──
                 const NetworkStatusBanner(),
 
@@ -316,99 +311,6 @@ class _SubscriptionHeroCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-// ─── Bento Grid (speed / uptime tiles) ───────────────────────────
-
-class _BentoGrid extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final isp = context.isp;
-
-    // ponyato: hardcoded statics. Replace with real API data from speedTestProvider / uptimeProvider.
-
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () {},
-            child: Container(
-              decoration: _nbCard(isp),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.bolt_rounded, size: 22, color: isp.warning),
-                  const SizedBox(height: 10),
-                  Text(
-                    '50',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      color: isp.textPrimary,
-                      letterSpacing: -1,
-                      height: 1.0,
-                    ),
-                  ),
-                  Text(
-                    'Mbps',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isp.textMuted,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Kecepatan Aktif',
-                    style: TextStyle(fontSize: 10, color: isp.textMuted),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: GestureDetector(
-            onTap: () {},
-            child: Container(
-              decoration: _nbCard(isp),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.shield_outlined, size: 22, color: isp.success),
-                  const SizedBox(height: 10),
-                  Text(
-                    '99.8',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      color: isp.textPrimary,
-                      letterSpacing: -1,
-                      height: 1.0,
-                    ),
-                  ),
-                  Text(
-                    '%',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isp.textMuted,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Uptime 30 hari',
-                    style: TextStyle(fontSize: 10, color: isp.textMuted),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
