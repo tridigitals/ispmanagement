@@ -222,9 +222,7 @@ class _SubscriptionHeroCard extends StatelessWidget {
                   borderRadius: BorderRadius.vertical(
                     top: const Radius.circular(_kCardRadius),
                   ),
-                  gradient: LinearGradient(
-                    colors: [isp.accent, isp.accentLight],
-                  ),
+                  color: isp.accent,
                 ),
               ),
               Padding(

@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../../services/missing_providers.dart';
-import '../../services/fcm_service.dart';
 
 /// One-time permission request screen shown between onboarding and login.
 ///
@@ -21,7 +20,6 @@ class PermissionsScreen extends ConsumerStatefulWidget {
 class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
   bool _notifRequested = false;
   bool _notifGranted = false;
-  bool _notifDenied = false;
   bool _notifPermanentlyDenied = false;
   bool _loading = false;
 
@@ -67,12 +65,11 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
         _notifGranted = status == AuthorizationStatus.authorized ||
             status == AuthorizationStatus.provisional;
         _notifPermanentlyDenied =
-            status == AuthorizationStatus.denied && !_notifGranted;
-        _notifDenied = status == AuthorizationStatus.denied && !_notifGranted;
+            status == AuthorizationStatus.denied;
       });
     } catch (e) {
       debugPrint('[permissions] notification request failed: $e');
-      setState(() => _notifDenied = true);
+      setState(() {});
     }
   }
 
@@ -397,17 +394,3 @@ class _NeubrutalistAccentButton extends StatelessWidget {
   }
 }
 
-/// Minimal i18n stub — uses hardcoded strings so we don't have a circular
-/// import dependency. Extend app_localizations.dart for proper i18n.
-class _L10n {
-  _L10n._(this.context);
-  final BuildContext context;
-
-  String get continue_ => 'Lanjutkan';
-  String get skip => 'Lewati Saja';
-  String get notifications => 'Notifikasi Push';
-  String get notificationsSub =>
-      'Terima pengingat tagihan, update tiket, dan info gangguan.';
-  String get camera => 'Kamera';
-  String get cameraSub => 'Ambil foto untuk lampiran tiket dan profil avatar.';
-}
