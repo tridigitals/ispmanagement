@@ -176,44 +176,79 @@ class _HomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Extract greeting + name from title
+    final parts = title.split(', ');
+    final greeting = parts.length > 1 ? parts[0] : '';
+    final name = parts.length > 1 ? parts.sublist(1).join(', ') : title;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isp.background,
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 8, 16, 12),
+      decoration: BoxDecoration(color: isp.background),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: isp.textPrimary,
-              ),
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  greeting,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2,
+                    color: isp.textMuted,
+                    textBaseline: TextBaseline.alphabetic,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -.5,
+                    color: isp.textPrimary,
+                    textBaseline: TextBaseline.alphabetic,
+                  ),
+                ),
+              ],
             ),
           ),
-          // Notifications
+          // Notification bell with badge
           _HeaderIconButton(
             icon: Icons.notifications_outlined,
             isp: isp,
             badgeCount: unread,
             onTap: onNotifications,
           ),
-          const SizedBox(width: 4),
-          // Account
-          _HeaderIconButton(
-            icon: Icons.account_circle_outlined,
-            isp: isp,
+          const SizedBox(width: 8),
+          // Avatar — gradient circle with initials
+          GestureDetector(
             onTap: onAccount,
-          ),
-          const SizedBox(width: 4),
-          // Settings
-          _HeaderIconButton(
-            icon: Icons.settings_outlined,
-            isp: isp,
-            onTap: onSettings,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [isp.accentLight, isp.accent],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  name.isNotEmpty ? name[0].toUpperCase() : '?',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
