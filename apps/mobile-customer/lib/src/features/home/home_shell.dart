@@ -229,31 +229,11 @@ class _HomeHeader extends StatelessWidget {
             onTap: onNotifications,
           ),
           const SizedBox(width: 8),
-          // Avatar — gradient circle with initials
-          GestureDetector(
+          // Avatar — person icon (static, not dynamic)
+          _HeaderIconButton(
+            icon: Icons.person,
+            isp: isp,
             onTap: onAccount,
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [isp.accentLight, isp.accent],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  name.isNotEmpty ? name[0].toUpperCase() : '?',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
           ),
         ],
       ),

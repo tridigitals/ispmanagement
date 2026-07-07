@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:package_info_plus/package_info_plus.dart';
+
 import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -73,7 +75,7 @@ class ProfileScreen extends ConsumerWidget {
             ),
           const SizedBox(height: 28),
 
-          // Tinted menu tiles — Apple settings style
+          // Order: Edit Profil, FAQ, Hubungi Kami, Notifikasi, Ubah Kata Sandi, Tema
           _buildSection(isp, [
             _TintedTile(
               icon: Icons.person_outline,
@@ -82,10 +84,16 @@ class ProfileScreen extends ConsumerWidget {
               onTap: () => GoRouter.of(context).push('/edit-profile'),
             ),
             _TintedTile(
-              icon: Icons.lock_outline,
+              icon: Icons.help_outline,
+              iconBg: isp.success,
+              title: l10n.faq,
+              onTap: () => GoRouter.of(context).push('/faq'),
+            ),
+            _TintedTile(
+              icon: Icons.support_agent_outlined,
               iconBg: isp.info,
-              title: l10n.changePassword,
-              onTap: () => GoRouter.of(context).push('/change-password'),
+              title: l10n.contactUs,
+              onTap: () => GoRouter.of(context).push('/contact'),
             ),
             _TintedTile(
               icon: Icons.notifications_outlined,
@@ -94,26 +102,11 @@ class ProfileScreen extends ConsumerWidget {
               badge: unread > 0 ? '$unread' : null,
               onTap: () => GoRouter.of(context).push('/notifications'),
             ),
-          ]),
-
-          _buildSection(isp, [
             _TintedTile(
-              icon: Icons.support_agent_outlined,
+              icon: Icons.lock_outline,
               iconBg: isp.info,
-              title: l10n.contactUs,
-              onTap: () => GoRouter.of(context).push('/contact'),
-            ),
-            _TintedTile(
-              icon: Icons.help_outline,
-              iconBg: isp.success,
-              title: l10n.faq,
-              onTap: () => GoRouter.of(context).push('/faq'),
-            ),
-            _TintedTile(
-              icon: Icons.tune,
-              iconBg: isp.textMuted,
-              title: l10n.settings,
-              onTap: () => GoRouter.of(context).push('/settings'),
+              title: l10n.changePassword,
+              onTap: () => GoRouter.of(context).push('/change-password'),
             ),
           ]),
 
@@ -132,12 +125,7 @@ class ProfileScreen extends ConsumerWidget {
           ]),
 
           const SizedBox(height: 16),
-          Center(
-            child: Text(
-              'v0.1.0+7',
-              style: TextStyle(color: isp.textMuted, fontSize: 11),
-            ),
-          ),
+          _VersionLabel(),
           const SizedBox(height: 48),
         ],
       ),
@@ -315,4 +303,20 @@ Widget _toggleBtn(IconData icon, bool selected, IspThemeColors isp, VoidCallback
       child: Icon(icon, size: 16, color: selected ? Colors.white : isp.textMuted),
     ),
   );
+}
+
+class _VersionLabel extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    return FutureBuilder<String>(
+      future: PackageInfo.fromPlatform().then((p) => 'v${p.version}+${p.buildNumber}'),
+      builder: (_, snap) => Center(
+        child: Text(
+          snap.data ?? 'v...',
+          style: TextStyle(color: isp.textMuted, fontSize: 11),
+        ),
+      ),
+    );
+  }
 }
