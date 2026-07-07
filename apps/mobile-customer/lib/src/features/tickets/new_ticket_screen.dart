@@ -378,7 +378,8 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                     const SizedBox(height: IspSpacing.md),
 
                     // ── Single card: subject + description + attachments + subscription ──
-                    Container(decoration: NbStyle.card(context), child:
+                    IspCard(
+                      nbStyle: true,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -431,8 +432,12 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                               Icon(
                                 Icons.attach_file,
                                 size: 18,
-                                color: isp.accent,
-                              ),
+                                boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
+                                          border: Border.all(color: isp.border, width: 1.5),
+                                                    color: isp.surface,
+                                                              border: Border.all(color: isp.border, width: 1.5),
+                                                              boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
+                                                              borderRadius:
                               const SizedBox(width: IspSpacing.sm),
                               Text(
                                 l10n.ticketFieldAttachments,
@@ -456,11 +461,12 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                                   child: Text(
                                     '${_pendingAttachments.length}',
                                     style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: isp.accent,
-                                    ),
-                                  ),
+                                      decoration: BoxDecoration(
+                                        color: isp.accent.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: isp.border, width: 1.5),
+                                        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
+                                      ),
                                 ),
                               ],
                               const Spacer(),
@@ -518,9 +524,12 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: isp.surface,
-                  border: Border(
+                            border: Border.all(color: isp.border, width: 1.5),
+                            boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
+                            borderRadius:
                     top: BorderSide(color: isp.border),
                   ),
+                  boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
                 ),
                 child: SizedBox(
                   width: double.infinity,
@@ -614,8 +623,9 @@ class _SubscriptionPicker extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          border: Border.all(color: isp.borderSubtle),
+          border: Border.all(color: isp.border, width: 1.5),
           borderRadius: BorderRadius.circular(8),
+          boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
         ),
         child: Row(
           children: [

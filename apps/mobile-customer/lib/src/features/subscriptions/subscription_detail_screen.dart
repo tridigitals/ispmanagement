@@ -432,7 +432,8 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
 
 
-    final isp = context.isp;    return Container(decoration: NbStyle.card(context), child:
+    final isp = context.isp;    return IspCard(
+      nbStyle: true,
       child: Padding(
         padding: const EdgeInsets.all(IspSpacing.lg),
         child: Column(
@@ -526,7 +527,8 @@ class _InfoChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: isp.surfaceTertiary,
         borderRadius: BorderRadius.circular(IspRadii.pill),
-        border: Border.all(color: isp.borderSubtle),
+        border: Border.all(color: isp.border, width: 1.5),
+        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -565,7 +567,8 @@ class _InstallationTracker extends StatelessWidget {
       _Step('Aktif', Icons.check_circle, false),
     ];
 
-    return Container(decoration: NbStyle.card(context), child:
+    return IspCard(
+      nbStyle: true,
       child: Padding(
         padding: const EdgeInsets.all(IspSpacing.lg),
         child: Column(

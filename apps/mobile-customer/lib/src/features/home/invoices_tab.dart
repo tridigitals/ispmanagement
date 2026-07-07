@@ -10,10 +10,9 @@ import '../../l10n/app_localizations.dart';
 import '../../services/service_providers.dart';
 import '../../services/settings_providers.dart' show currentTabProvider;
 
-// ─── Neubrutalist card ───────────────────────────────────────────
-
-decoration: NbStyle.card(context), // neubrutalist
-                // color: isp.surface,
+// ─── Neubrutalist card helper ────────────────────────────────────
+BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
+      color: isp.surface,
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: isp.border, width: 1.5),
       boxShadow: [
@@ -25,13 +24,26 @@ decoration: NbStyle.card(context), // neubrutalist
       ],
     );
 
-// ─── Status-pill style helper ────────────────────────────────────
+// ─── Neubrutalist icon container ─────────────────────────────────
+BoxDecoration _nbIcon(IspThemeColors isp) => BoxDecoration(
+      color: isp.surface,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: isp.border, width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: isp.border.withOpacity(0.5),
+          offset: const Offset(3, 3),
+          blurRadius: 0,
+        ),
+      ],
+    );
 
+// ─── Status-pill style helper ────────────────────────────────────
 Widget _statusPill(IspThemeColors isp, String label, Color color) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    decoration: NbStyle.card(context), // neubrutalist
-                    // color: isp.surface,
+    decoration: BoxDecoration(
+      color: isp.surface,
       borderRadius: BorderRadius.circular(999),
       border: Border.all(color: color.withOpacity(0.3), width: 1),
     ),
@@ -202,8 +214,7 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
 
     return NotificationListener<ScrollNotification>(
       onNotification: _onScroll,
-      decoration: NbStyle.card(context), // neubrutalist
-                      // color: isp.surface,
+      child: RefreshIndicator(
         onRefresh: () async {
           setState(() {
             _items.clear();
@@ -274,10 +285,7 @@ class _InvoiceTile extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: NbStyle.card(context), // neubrutalist
-                                      // color: isp.surface,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      decoration: _nbIcon(isp),
                       child: Icon(Icons.receipt_outlined,
                           size: 22, color: isp.textSecondary),
                     ),
@@ -313,14 +321,11 @@ class _InvoiceTile extends StatelessWidget {
                     ),
                     Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: NbStyle.card(context), // neubrutalist
-                                      // color: isp.surface,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                      decoration: _nbIcon(isp),
                       child: Icon(
                         Icons.arrow_forward_ios,
-                        decoration: NbStyle.card(context), // neubrutalist
-                                        // color: isp.surface,
+                        size: 18,
+                        color: isp.textMuted,
                       ),
                     ),
                   ],

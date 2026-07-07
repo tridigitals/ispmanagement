@@ -174,6 +174,19 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
   }
 }
 
+BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
+      color: isp.surface,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: isp.border, width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: isp.border.withOpacity(0.5),
+          offset: const Offset(3, 3),
+          blurRadius: 0,
+        ),
+      ],
+    );
+
 class _SubscriptionTile extends StatelessWidget {
   const _SubscriptionTile({required this.sub});
   final SubscriptionModel sub;

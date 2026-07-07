@@ -11,10 +11,9 @@ import '../../services/service_providers.dart';
 import '../../services/settings_providers.dart' show currentTabProvider;
 import '../tickets/ticket_l10n.dart';
 
-// ─── Neubrutalist card ───────────────────────────────────────────
-
-decoration: NbStyle.card(context), // neubrutalist
-                // color: isp.surface,
+// ─── Neubrutalist card helper ────────────────────────────────────
+BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
+      color: isp.surface,
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: isp.border, width: 1.5),
       boxShadow: [
@@ -239,8 +238,7 @@ class _SupportTabState extends ConsumerState<SupportTab> {
                 )
               : NotificationListener<ScrollNotification>(
                   onNotification: _onScroll,
-                  decoration: NbStyle.card(context), // neubrutalist
-                                  // color: isp.surface,
+                  child: RefreshIndicator(
                     onRefresh: () async {
                       setState(() {
                         _items.clear();
@@ -323,8 +321,8 @@ class _TicketTile extends StatelessWidget {
                           horizontal: 8,
                           vertical: 3,
                         ),
-                        decoration: NbStyle.card(context), // neubrutalist
-                                        // color: isp.surface,
+                        decoration: BoxDecoration(
+                          color: isp.accent,
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
@@ -389,8 +387,8 @@ class _FilterChip extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: NbStyle.card(context), // neubrutalist
-                        // color: isp.surface,
+        decoration: BoxDecoration(
+          color: selected ? isp.accent : isp.surface,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected ? isp.accent : isp.border,

@@ -175,8 +175,9 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: NbStyle.card(context), // neubrutalist
-                                        // color: isp.surface,
-                          borderRadius:
+                                        border: Border.all(color: isp.border, width: 1.5),
+                                                        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
+                                                        borderRadius:
                               BorderRadius.circular(IspRadii.md),
                           border: Border.all(
                             color: isp.danger.withOpacity(0.2),
@@ -274,8 +275,9 @@ class _PermissionCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: NbStyle.card(context), // neubrutalist
                       // color: isp.surface,
-        border: Border.all(width: 1.5, color: isp.border),
-        borderRadius: BorderRadius.circular(IspRadii.md),
+        border: Border.all(color: isp.border, width: 1.5),
+                        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
+                        borderRadius:
         boxShadow: [
           BoxShadow(
             offset: const Offset(3, 3),

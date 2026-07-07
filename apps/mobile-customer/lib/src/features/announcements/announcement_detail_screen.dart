@@ -167,6 +167,8 @@ class _Header extends StatelessWidget {
         color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(IspRadii.lg),
         border: Border.all(color: isp.border, width: 1.5),
+                  boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
+                  borderRadius:
         boxShadow: [
           BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0),
         ],
