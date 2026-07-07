@@ -189,9 +189,10 @@ class _TicketTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
+    final color = t.isOpen ? isp.warning : isp.info;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -201,18 +202,28 @@ class _TicketTile extends StatelessWidget {
             decoration: _nbCard(isp),
             padding: const EdgeInsets.all(14),
             child: Row(children: [
+              // Tinted icon circle (match mockup ico-r 36px)
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.support_agent, size: 18, color: color),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(
                     t.subject,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isp.textPrimary),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isp.textPrimary),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
-                    t.id,
-                    style: TextStyle(fontSize: 12, color: isp.textMuted),
+                    '${t.id} · ${_timeAgo(t.createdAt)}',
+                    style: TextStyle(fontSize: 11, color: isp.textMuted),
                   ),
                 ]),
               ),
