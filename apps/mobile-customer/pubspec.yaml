@@ -14,11 +14,11 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  # Local monorepo packages
-  api_client:
-    path: ../../packages/api-client
-  ui_kit:
-    path: ../../packages/ui-kit
+  # Local monorepo packages — resolved by workspace, paths here cause conflict
+  # api_client:
+  #   path: ../../packages/api-client
+  # ui_kit:
+  #   path: ../../packages/ui-kit
 
   # State management
   flutter_riverpod: ^2.5.1
