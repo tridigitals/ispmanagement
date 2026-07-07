@@ -65,9 +65,9 @@ class ProfileScreen extends ConsumerWidget {
               textAlign: TextAlign.center,
               style: TextStyle(color: isp.textMuted, fontSize: 13),
             ),
-          if (user?.phone != null && user!.phone.isNotEmpty)
+          if (user?.phone != null && user!.phone?.isNotEmpty == true)
             Text(
-              user.phone,
+              user.phone!,
               textAlign: TextAlign.center,
               style: TextStyle(color: isp.textMuted, fontSize: 13),
             ),

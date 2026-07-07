@@ -747,7 +747,7 @@ class _MessageBubble extends StatelessWidget {
               Text(
                 message.body,
                 style: TextStyle(
-                    color: isStaff ? isp.textPrimary : isp.textOnPrimary),
+                    color: isStaff ? isp.textPrimary : isp.textPrimary),
               ),
             // Attachments
             if (message.attachments.isNotEmpty) ...[
@@ -767,7 +767,7 @@ class _MessageBubble extends StatelessWidget {
               dateFmt.format(message.createdAt),
               style: TextStyle(
                 fontSize: 10,
-                color: isStaff ? isp.textMuted : isp.textOnPrimary.withOpacity(0.7),
+                color: isStaff ? isp.textMuted : isp.textPrimary.withOpacity(0.7),
               ),
             ),
           ],
@@ -902,7 +902,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                   Icon(
                     _fileIcon(attachment.contentType),
                     size: 20,
-                    color: isStaff ? isp.textPrimary : isp.textOnPrimary,
+                    color: isStaff ? isp.textPrimary : isp.textPrimary,
                   ),
                   const SizedBox(width: IspSpacing.sm),
                   Flexible(
@@ -916,7 +916,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                           style: TextStyle(
                             fontSize: 12,
                             color:
-                                isStaff ? isp.textPrimary : isp.textOnPrimary,
+                                isStaff ? isp.textPrimary : isp.textPrimary,
                           ),
                         ),
                         Text(
@@ -925,7 +925,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                             fontSize: 10,
                             color: isStaff
                                 ? isp.textMuted
-                                : isp.textOnPrimary.withOpacity(0.6),
+                                : isp.textPrimary.withOpacity(0.6),
                           ),
                         ),
                       ],
@@ -937,7 +937,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                         ? Icons.hourglass_empty
                         : Icons.open_in_new,
                     size: 16,
-                    color: isStaff ? isp.textMuted : isp.textOnPrimary.withOpacity(0.6),
+                    color: isStaff ? isp.textMuted : isp.textPrimary.withOpacity(0.6),
                   ),
                 ],
               ),
@@ -966,7 +966,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
       alignment: Alignment.center,
       child: CircularProgressIndicator(
         strokeWidth: 2,
-        color: isStaff ? isp.accent : isp.textOnPrimary.withOpacity(0.7),
+        color: isStaff ? isp.accent : isp.textPrimary.withOpacity(0.7),
       ),
     );
   }
@@ -989,7 +989,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
         children: [
           Icon(
             Icons.broken_image,
-            color: isStaff ? isp.textMuted : isp.textOnPrimary.withOpacity(0.54),
+            color: isStaff ? isp.textMuted : isp.textPrimary.withOpacity(0.54),
           ),
           const SizedBox(height: 4),
           Text(
@@ -997,7 +997,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 10,
-              color: isStaff ? isp.textMuted : isp.textOnPrimary.withOpacity(0.54),
+              color: isStaff ? isp.textMuted : isp.textPrimary.withOpacity(0.54),
             ),
           ),
           const SizedBox(height: 4),
@@ -1115,7 +1115,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
-                        color: isStaff ? isp.textPrimary : isp.textOnPrimary,
+                        color: isStaff ? isp.textPrimary : isp.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),

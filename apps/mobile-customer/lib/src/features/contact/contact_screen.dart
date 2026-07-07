@@ -119,8 +119,7 @@ class ContactScreen extends ConsumerWidget {
 
           // Footer
           Text(
-            'Jam operasional: Senin-Jumat 08:00-17:00 WIB
-Sabtu 09:00-14:00 WIB',
+            "Jam operasional: Senin-Jumat 08:00-17:00 WIB\nSabtu 09:00-14:00 WIB",
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 11, color: isp.textMuted, height: 1.5),
           ),

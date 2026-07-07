@@ -2,7 +2,6 @@ name: mobile_customer
 description: ISP Management — Customer mobile app (Flutter, iOS + Android)
 version: 0.1.0+64
 publish_to: none
-resolution: workspace
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
@@ -14,11 +13,11 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  # Local monorepo packages — resolved by workspace, paths here cause conflict
-  # api_client:
-  #   path: ../../packages/api-client
-  # ui_kit:
-  #   path: ../../packages/ui-kit
+  # Local monorepo packages — workspace resolution broke build, use direct paths
+  api_client:
+    path: ../../packages/api-client
+  ui_kit:
+    path: ../../packages/ui-kit
 
   # State management
   flutter_riverpod: ^2.5.1
@@ -90,6 +89,9 @@ dev_dependencies:
 
 # Pin package_info_plus to 8.x — 9.0+ requires Flutter 3.27+ (flutter.compileSdkVersion)
 # sentry_flutter 8.14 depends on 9.0.1, force down here.
+dependency_overrides:
+  package_info_plus: ^8.0.0
+
 flutter_native_splash:
   color: "#08090D"
   image: assets/branding/splash_logo.png
