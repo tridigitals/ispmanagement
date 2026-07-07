@@ -79,6 +79,7 @@ class AnnouncementDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: IspSpacing.xl),
                 IspCard(
+                  nbStyle: true,
                   child: Padding(
                     padding: const EdgeInsets.all(IspSpacing.lg),
                     child: Column(
@@ -165,7 +166,10 @@ class _Header extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(IspRadii.lg),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: isp.border, width: 1.5),
+        boxShadow: [
+          BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

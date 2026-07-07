@@ -13,8 +13,8 @@ import '../tickets/ticket_l10n.dart';
 
 // ─── Neubrutalist card ───────────────────────────────────────────
 
-BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
-      color: isp.surface,
+decoration: NbStyle.card(context), // neubrutalist
+                // color: isp.surface,
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: isp.border, width: 1.5),
       boxShadow: [
@@ -159,6 +159,7 @@ class _SupportTabState extends ConsumerState<SupportTab> {
             ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
+              style: NbStyle.accentButton(context, outline: true),
               onPressed: () {
                 setState(() {
                   _initialLoaded = false;
@@ -227,6 +228,7 @@ class _SupportTabState extends ConsumerState<SupportTab> {
                           style: TextStyle(color: isp.textMuted)),
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
+                        style: NbStyle.accentButton(context),
                         onPressed: () =>
                             GoRouter.of(context).push('/tickets/new'),
                         icon: const Icon(Icons.add),
@@ -237,8 +239,8 @@ class _SupportTabState extends ConsumerState<SupportTab> {
                 )
               : NotificationListener<ScrollNotification>(
                   onNotification: _onScroll,
-                  child: RefreshIndicator(
-                    color: isp.accent,
+                  decoration: NbStyle.card(context), // neubrutalist
+                                  // color: isp.surface,
                     onRefresh: () async {
                       setState(() {
                         _items.clear();
@@ -321,8 +323,8 @@ class _TicketTile extends StatelessWidget {
                           horizontal: 8,
                           vertical: 3,
                         ),
-                        decoration: BoxDecoration(
-                          color: isp.accent,
+                        decoration: NbStyle.card(context), // neubrutalist
+                                        // color: isp.surface,
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
@@ -387,8 +389,8 @@ class _FilterChip extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? isp.accent : isp.surface,
+        decoration: NbStyle.card(context), // neubrutalist
+                        // color: isp.surface,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected ? isp.accent : isp.border,

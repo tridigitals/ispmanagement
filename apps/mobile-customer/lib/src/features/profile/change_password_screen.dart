@@ -96,13 +96,20 @@ final l10n = AppLocalizations.of(context);
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: IspSpacing.xxl),
+                Container(
+                  decoration: NbStyle.card(context),
+                  padding: const EdgeInsets.all(IspSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                 TextFormField(
                   controller: _current,
                   obscureText: _hideCurrent,
-                  decoration: InputDecoration(
-                    labelText: l10n.currentPassword,
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
+                  decoration: NbStyle.inputField(
+                    context,
+                    label: l10n.currentPassword,
+                    prefix: const Icon(Icons.lock_outline),
+                    suffix: IconButton(
                       icon: Icon(
                         _hideCurrent
                             ? Icons.visibility_outlined
@@ -119,11 +126,11 @@ final l10n = AppLocalizations.of(context);
                 TextFormField(
                   controller: _new,
                   obscureText: _hideNew,
-                  decoration: InputDecoration(
-                    labelText: l10n.newPassword,
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    helperText: l10n.passwordRule,
-                    suffixIcon: IconButton(
+                  decoration: NbStyle.inputField(
+                    context,
+                    label: l10n.newPassword,
+                    prefix: const Icon(Icons.lock_outline),
+                    suffix: IconButton(
                       icon: Icon(
                         _hideNew
                             ? Icons.visibility_outlined
@@ -138,10 +145,11 @@ final l10n = AppLocalizations.of(context);
                 TextFormField(
                   controller: _confirm,
                   obscureText: _hideConfirm,
-                  decoration: InputDecoration(
-                    labelText: l10n.confirmNewPassword,
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
+                  decoration: NbStyle.inputField(
+                    context,
+                    label: l10n.confirmNewPassword,
+                    prefix: const Icon(Icons.lock_outline),
+                    suffix: IconButton(
                       icon: Icon(
                         _hideConfirm
                             ? Icons.visibility_outlined
@@ -163,6 +171,9 @@ final l10n = AppLocalizations.of(context);
                   loading: _saving,
                   onPressed: _save,
                 ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),

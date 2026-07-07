@@ -130,8 +130,8 @@ final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
           children: [
             // ── Receipt-style hero card (flat, no gradient) ──
             Container(
-              decoration: BoxDecoration(
-                color: isp.surface,
+              decoration: NbStyle.card(context), // neubrutalist
+                              // color: isp.surface,
                 borderRadius: BorderRadius.circular(IspRadii.xl),
                 border: Border.all(color: isp.border),
               ),
@@ -142,8 +142,8 @@ final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
                     // Accent left border strip
                     Container(
                       width: 5,
-                      decoration: BoxDecoration(
-                        color: inv.isPaid
+                      decoration: NbStyle.card(context), // neubrutalist
+                                      // color: isp.surface,
                             ? isp.success
                             : inv.isOverdue
                                 ? isp.danger
@@ -213,6 +213,7 @@ final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
 
             // ── Details card ──
             IspCard(
+              nbStyle: true,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -404,6 +405,7 @@ return ListView(
         const SizedBox(height: IspSpacing.lg),
         // Details card skeleton
         IspCard(
+          nbStyle: true,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

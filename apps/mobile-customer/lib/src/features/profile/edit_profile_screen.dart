@@ -281,15 +281,17 @@ class _State extends ConsumerState<EditProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: IspSpacing.xxl),
+                Container(
+                  decoration: NbStyle.card(context),
+                  padding: const EdgeInsets.all(IspSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                 TextFormField(
                   controller: _name,
                   enabled: false,
                   textInputAction: TextInputAction.next,
-                  decoration: InputDecoration(
-                    labelText: l10n.fullName,
-                    prefixIcon: const Icon(Icons.person_outline),
-                    helperText: 'Nama hanya dapat diubah oleh admin',
-                  ),
+                  decoration: NbStyle.inputField(context, label: l10n.fullName, prefix: const Icon(Icons.person_outline)),
                   validator: (v) =>
                       Validators.required(v, label: l10n.fullName),
                 ),
@@ -299,21 +301,14 @@ class _State extends ConsumerState<EditProfileScreen> {
                   enabled: false,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
-                  decoration: InputDecoration(
-                    labelText: l10n.email,
-                    prefixIcon: const Icon(Icons.email_outlined),
-                    helperText: 'Email hanya dapat diubah oleh admin',
-                  ),
+                  decoration: NbStyle.inputField(context, label: l10n.email, prefix: const Icon(Icons.email_outlined)),
                   validator: Validators.email,
                 ),
                 const SizedBox(height: IspSpacing.md),
                 TextFormField(
                   controller: _phone,
                   keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: l10n.phone,
-                    prefixIcon: const Icon(Icons.phone_outlined),
-                  ),
+                  decoration: NbStyle.inputField(context, label: l10n.phone, prefix: const Icon(Icons.phone_outlined)),
                   validator: Validators.phone,
                 ),
                 const SizedBox(height: IspSpacing.xxl),
@@ -322,6 +317,9 @@ class _State extends ConsumerState<EditProfileScreen> {
                   loading: _saving,
                   onPressed: _save,
                 ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),

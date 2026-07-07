@@ -203,8 +203,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isp.accentSurface,
+              decoration: NbStyle.card(context), // neubrutalist
+                          // color: isp.surface,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -371,14 +371,15 @@ class _PaymentMethodTile extends StatelessWidget {
 
 
     final isp = context.isp;    return IspCard(
+      nbStyle: true,
       onTap: onTap,
       child: Row(
         children: [
           Container(
             width: 56,
             height: 56,
-            decoration: BoxDecoration(
-              color: isp.accentSurface,
+            decoration: NbStyle.card(context), // neubrutalist
+                        // color: isp.surface,
               borderRadius: BorderRadius.circular(IspRadii.md),
             ),
             child: Icon(icon, color: isp.accent, size: 28),
@@ -428,19 +429,20 @@ class _PaymentChannelTile extends StatelessWidget {
 
 
     final isp = context.isp;    return IspCard(
+      nbStyle: true,
       onTap: onTap,
       child: Row(
         children: [
           Container(
             width: 44,
             height: 44,
-            decoration: BoxDecoration(
-              color: isp.surfaceTertiary,
+            decoration: NbStyle.card(context), // neubrutalist
+                        // color: isp.surface,
               borderRadius: BorderRadius.circular(IspRadii.md),
             ),
             child: Icon(
-              _iconForMethod(channel.method),
-              color: isp.accent,
+              decoration: NbStyle.card(context), // neubrutalist
+                          // color: isp.surface,
               size: 22,
             ),
           ),
@@ -509,14 +511,15 @@ class _BankTransferTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isp = context.isp;
     return IspCard(
+      nbStyle: true,
       onTap: onTap,
       child: Row(
         children: [
           Container(
             width: 48,
             height: 48,
-            decoration: BoxDecoration(
-              color: isp.accentSurface,
+            decoration: NbStyle.card(context), // neubrutalist
+                        // color: isp.surface,
               borderRadius: BorderRadius.circular(IspRadii.md),
             ),
             child: Center(
@@ -524,8 +527,8 @@ class _BankTransferTile extends StatelessWidget {
                 bank.bankName.substring(0, bank.bankName.length.clamp(0, 3)).toUpperCase(),
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: isp.accent,
+                  decoration: NbStyle.card(context), // neubrutalist
+                              // color: isp.surface,
                 ),
               ),
             ),
@@ -698,8 +701,8 @@ class _UploadProofDialogState extends ConsumerState<_UploadProofDialog> {
             // Bank info
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: widget.isp.surface,
+              decoration: NbStyle.card(context), // neubrutalist
+                          // color: isp.surface,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
@@ -733,8 +736,8 @@ class _UploadProofDialogState extends ConsumerState<_UploadProofDialog> {
             if (_selectedFile != null) ...[
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: widget.isp.accentSurface,
+                decoration: NbStyle.card(context), // neubrutalist
+                            // color: isp.surface,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: widget.isp.accent.withOpacity(0.3)),
                 ),
@@ -780,8 +783,8 @@ class _UploadProofDialogState extends ConsumerState<_UploadProofDialog> {
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: widget.isp.danger.withOpacity(0.1),
+                decoration: NbStyle.card(context), // neubrutalist
+                            // color: isp.surface,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Row(

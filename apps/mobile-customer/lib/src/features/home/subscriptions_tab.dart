@@ -10,21 +10,6 @@ import '../../services/service_providers.dart';
 import '../../services/settings_providers.dart' show currentTabProvider;
 import '../../utils/loading_skeleton.dart';
 
-// ─── Neubrutalist card ───────────────────────────────────────────
-
-BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
-      color: isp.surface,
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: isp.border, width: 1.5),
-      boxShadow: [
-        BoxShadow(
-          color: isp.border.withOpacity(0.5),
-          offset: const Offset(3, 3),
-          blurRadius: 0,
-        ),
-      ],
-    );
-
 class SubscriptionsTab extends ConsumerStatefulWidget {
   const SubscriptionsTab({super.key});
 
@@ -152,7 +137,6 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
     return NotificationListener<ScrollNotification>(
       onNotification: _onScroll,
       child: RefreshIndicator(
-        color: isp.accent,
         onRefresh: () async {
           setState(() {
             _items.clear();
@@ -176,7 +160,6 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
                           height: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: isp.accent,
                           ),
                         ),
                       ),
@@ -292,13 +275,15 @@ class _SubscriptionTile extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: isp.accentSurface,
+                        color: isp.surface,
                         borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: isp.border, width: 1.5),
+                        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
                       ),
                       child: Icon(
                         Icons.arrow_forward_ios,
-                        size: 14,
-                        color: isp.accent,
+                        size: 18,
+                        color: isp.textMuted,
                       ),
                     ),
                   ],

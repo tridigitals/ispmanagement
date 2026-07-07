@@ -155,12 +155,7 @@ Widget _buildSection(IspThemeColors isp, List<Widget> tiles) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: Container(
-      decoration: BoxDecoration(
-        color: isp.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isp.border, width: 1.5),
-        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.3), offset: Offset(2, 2))],
-      ),
+      decoration: NbStyle.card(context, radius: BorderRadius.circular(14)),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
@@ -201,17 +196,7 @@ class _TintedTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            // Tinted icon container
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: iconBg.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(7),
-              ),
-              alignment: Alignment.center,
-              child: Icon(icon, size: 17, color: iconBg),
-            ),
+            NbStyle.iconContainer(context, icon, color: iconBg, size: 17),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -253,26 +238,15 @@ Widget _buildThemeToggle(
   return Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: Container(
-      decoration: BoxDecoration(
-        color: isp.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isp.border, width: 1.5),
-        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.3), offset: Offset(2, 2))],
-      ),
+      decoration: NbStyle.card(context, radius: BorderRadius.circular(14)),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(
-              color: isp.accent.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(7),
-            ),
-            alignment: Alignment.center,
-            child: Icon(
-              themeMode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
-              size: 17, color: isp.accent,
-            ),
+          NbStyle.iconContainer(
+            context,
+            themeMode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
+            color: isp.accent,
+            size: 17,
           ),
           const SizedBox(width: 12),
           Expanded(

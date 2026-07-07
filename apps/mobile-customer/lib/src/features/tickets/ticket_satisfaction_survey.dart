@@ -129,7 +129,8 @@ class _TicketSatisfactionSurveyState
       decoration: BoxDecoration(
         color: isp.surfaceTertiary,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isp.border),
+        border: Border.all(color: isp.border, width: 1.5),
+        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
       ),
       child: _submitted ? _buildSubmitted() : _buildForm(),
     );

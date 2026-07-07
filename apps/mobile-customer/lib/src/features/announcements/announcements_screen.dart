@@ -112,7 +112,7 @@ class _AnnouncementCard extends StatelessWidget {
     final date =
         item.createdAt != null ? DateTime.tryParse(item.createdAt!) : null;
 
-    return IspCard(
+    return Container(decoration: NbStyle.card(context), child:
       child: InkWell(
         onTap: () => GoRouter.of(context).push('/announcements/${item.id}'),
         child: Padding(

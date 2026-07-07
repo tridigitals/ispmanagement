@@ -12,8 +12,8 @@ import '../../services/settings_providers.dart' show currentTabProvider;
 
 // ─── Neubrutalist card ───────────────────────────────────────────
 
-BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
-      color: isp.surface,
+decoration: NbStyle.card(context), // neubrutalist
+                // color: isp.surface,
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: isp.border, width: 1.5),
       boxShadow: [
@@ -30,8 +30,8 @@ BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
 Widget _statusPill(IspThemeColors isp, String label, Color color) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.15),
+    decoration: NbStyle.card(context), // neubrutalist
+                    // color: isp.surface,
       borderRadius: BorderRadius.circular(999),
       border: Border.all(color: color.withOpacity(0.3), width: 1),
     ),
@@ -166,6 +166,7 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
               ),
               const SizedBox(height: 16),
               OutlinedButton.icon(
+                style: NbStyle.accentButton(context, outline: true),
                 onPressed: () {
                   setState(() {
                     _initialLoaded = false;
@@ -201,8 +202,8 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
 
     return NotificationListener<ScrollNotification>(
       onNotification: _onScroll,
-      child: RefreshIndicator(
-        color: isp.accent,
+      decoration: NbStyle.card(context), // neubrutalist
+                      // color: isp.surface,
         onRefresh: () async {
           setState(() {
             _items.clear();
@@ -273,8 +274,8 @@ class _InvoiceTile extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: isp.surfaceElevated,
+                      decoration: NbStyle.card(context), // neubrutalist
+                                      // color: isp.surface,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(Icons.receipt_outlined,
@@ -312,14 +313,14 @@ class _InvoiceTile extends StatelessWidget {
                     ),
                     Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isp.accentSurface,
+                      decoration: NbStyle.card(context), // neubrutalist
+                                      // color: isp.surface,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
                         Icons.arrow_forward_ios,
-                        size: 14,
-                        color: isp.accent,
+                        decoration: NbStyle.card(context), // neubrutalist
+                                        // color: isp.surface,
                       ),
                     ),
                   ],

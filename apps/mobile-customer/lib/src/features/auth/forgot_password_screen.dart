@@ -108,8 +108,8 @@ class _State extends ConsumerState<ForgotPasswordScreen> {
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: isp.success.withOpacity(0.1),
+                    decoration: NbStyle.card(context), // neubrutalist
+                                    // color: isp.surface,
                       borderRadius: BorderRadius.circular(IspRadii.md),
                       border: Border.all(
                         width: 1.5,
@@ -199,33 +199,7 @@ class _NeubrutalistInput extends StatelessWidget {
       textInputAction: textInputAction,
       maxLines: maxLines,
       style: TextStyle(color: isp.textPrimary, fontSize: 14),
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: TextStyle(color: isp.textMuted),
-        filled: true,
-        fillColor: isp.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(IspRadii.md),
-          borderSide: BorderSide(width: 1.5, color: isp.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(IspRadii.md),
-          borderSide: BorderSide(width: 1.5, color: isp.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(IspRadii.md),
-          borderSide: BorderSide(width: 1.5, color: isp.accent),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(IspRadii.md),
-          borderSide: BorderSide(width: 1.5, color: isp.danger),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(IspRadii.md),
-          borderSide: BorderSide(width: 1.5, color: isp.danger),
-        ),
-      ),
+      decoration: NbStyle.inputField(context, hint: hintText),
       validator: validate,
     );
   }
@@ -243,43 +217,18 @@ class _NeubrutalistAccentButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isp = context.isp;
-    return GestureDetector(
-      onTap: loading ? null : onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: isp.accent,
-          border: Border.all(width: 1.5, color: isp.accent),
-          borderRadius: BorderRadius.circular(IspRadii.md),
-          boxShadow: [
-            BoxShadow(
-              offset: const Offset(3, 3),
-              blurRadius: 0,
-              color: isp.accent.withOpacity(0.3),
-            ),
-          ],
-        ),
-        child: Center(
-          child: loading
-              ? SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(isp.textInverse),
-                  ),
-                )
-              : Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-        ),
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        style: NbStyle.accentButton(context),
+        onPressed: loading ? null : onTap,
+        child: loading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : Text(label),
       ),
     );
   }

@@ -114,8 +114,8 @@ class _State extends ConsumerState<OnboardingScreen> {
                   margin: const EdgeInsets.symmetric(horizontal: 4),
                   width: _page == i ? 24 : 8,
                   height: 8,
-                  decoration: BoxDecoration(
-                    color: _page == i ? isp.accent : isp.border,
+                  decoration: NbStyle.card(context), // neubrutalist
+                                  // color: isp.surface,
                     borderRadius: BorderRadius.circular(IspRadii.pill),
                   ),
                 ),
@@ -164,8 +164,8 @@ class _OnboardPage extends StatelessWidget {
           Container(
             width: isPremium ? 140.0 : 120.0,
             height: isPremium ? 140.0 : 120.0,
-            decoration: BoxDecoration(
-              color: isp.accent.withOpacity(0.12),
+            decoration: NbStyle.card(context), // neubrutalist
+                            // color: isp.surface,
               shape: BoxShape.circle,
               boxShadow: isPremium
                   ? [
@@ -225,8 +225,8 @@ class _NeubrutalistAccentButton extends StatelessWidget {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: isp.accent,
+        decoration: NbStyle.card(context), // neubrutalist
+                        // color: isp.surface,
           border: Border.all(width: 1.5, color: isp.accent),
           borderRadius: BorderRadius.circular(IspRadii.md),
           boxShadow: [

@@ -32,7 +32,7 @@ class SettingsScreen extends ConsumerWidget {
 
           // Account section
           _sectionHeader(isp, l10n.account),
-          _buildSection(isp, [
+          _buildSection(context, isp, [
             _switchTile(isp, Icons.fingerprint, l10n.biometric, l10n.biometricSub, bio,
                 (v) => _toggleBiometric(context, ref, v)),
             _switchTile(isp, Icons.security, l10n.twoFactorAuth,
@@ -43,31 +43,31 @@ class SettingsScreen extends ConsumerWidget {
                 user?.twoFactorEnabled == true && user?.enforce2fa == true
                     ? null
                     : (v) => _toggle2fa(context, ref, v)),
-            _navTile(isp, Icons.lock_outline, l10n.changePassword,
+            _navTile(context, isp, Icons.lock_outline, l10n.changePassword,
                 () => GoRouter.of(context).push('/change-password')),
-            _navTile(isp, Icons.edit_outlined, l10n.editProfile,
+            _navTile(context, isp, Icons.edit_outlined, l10n.editProfile,
                 () => GoRouter.of(context).push('/edit-profile')),
           ]),
 
           // Language section
           _sectionHeader(isp, 'Bahasa / Language'),
-          _buildSection(isp, [
-            _radioTile(isp, Icons.translate, 'Bahasa Indonesia', const Locale('id'),
+          _buildSection(context, isp, [
+            _radioTile(context, isp, Icons.translate, 'Bahasa Indonesia', const Locale('id'),
                 Localizations.localeOf(context),
                 (loc) => ref.read(localeProvider.notifier).setLocale(loc!)),
-            _radioTile(isp, Icons.translate, 'English', const Locale('en'),
+            _radioTile(context, isp, Icons.translate, 'English', const Locale('en'),
                 Localizations.localeOf(context),
                 (loc) => ref.read(localeProvider.notifier).setLocale(loc!)),
           ]),
 
           // About section
           _sectionHeader(isp, l10n.about),
-          _buildSection(isp, [
-            _navTile(isp, Icons.privacy_tip_outlined, l10n.privacyPolicy,
+          _buildSection(context, isp, [
+            _navTile(context, isp, Icons.privacy_tip_outlined, l10n.privacyPolicy,
                 () => _openUrl('https://tridigitals.com/privacy')),
-            _navTile(isp, Icons.description_outlined, l10n.termsOfService,
+            _navTile(context, isp, Icons.description_outlined, l10n.termsOfService,
                 () => _openUrl('https://tridigitals.com/terms')),
-            _infoTile(isp, Icons.info_outline, 'Versi Aplikasi', '0.1.0+1'),
+            _infoTile(context, isp, Icons.info_outline, 'Versi Aplikasi', '0.1.0+1'),
           ]),
 
           const SizedBox(height: 48),
@@ -208,16 +208,11 @@ Widget _sectionHeader(IspThemeColors isp, String label) {
   );
 }
 
-Widget _buildSection(IspThemeColors isp, List<Widget> children) {
+Widget _buildSection(BuildContext context, IspThemeColors isp, List<Widget> children) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: Container(
-      decoration: BoxDecoration(
-        color: isp.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isp.border, width: 1.5),
-        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.3), offset: Offset(2, 2))],
-      ),
+      decoration: NbStyle.card(context, radius: BorderRadius.circular(14)),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
@@ -245,20 +240,15 @@ Widget _switchTile(IspThemeColors isp, IconData icon, String title, String sub, 
   );
 }
 
-Widget _navTile(IspThemeColors isp, IconData icon, String title, VoidCallback onTap) {
+Widget _navTile(BuildContext context, IspThemeColors isp, IconData icon, String title, VoidCallback onTap) {
   return InkWell(
     onTap: onTap,
     child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(color: isp.accent.withOpacity(0.15), borderRadius: BorderRadius.circular(7)),
-            alignment: Alignment.center,
-            child: Icon(icon, size: 17, color: isp.accent),
-          ),
-          const SizedBox(width: 12),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    child: Row(
+      children: [
+        NbStyle.iconContainer(context, icon, color: isp.accent, size: 17),
+        const SizedBox(width: 12),
           Expanded(child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
           Icon(Icons.chevron_right, size: 18, color: isp.textMuted),
         ],
@@ -267,20 +257,15 @@ Widget _navTile(IspThemeColors isp, IconData icon, String title, VoidCallback on
   );
 }
 
-Widget _radioTile(IspThemeColors isp, IconData icon, String title, Locale value, Locale group, ValueChanged<Locale?> onChanged) {
+Widget _radioTile(BuildContext context, IspThemeColors isp, IconData icon, String title, Locale value, Locale group, ValueChanged<Locale?> onChanged) {
   return InkWell(
     onTap: () => onChanged(value),
     child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(color: isp.info.withOpacity(0.15), borderRadius: BorderRadius.circular(7)),
-            alignment: Alignment.center,
-            child: Icon(icon, size: 17, color: isp.info),
-          ),
-          const SizedBox(width: 12),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    child: Row(
+      children: [
+        NbStyle.iconContainer(context, icon, color: isp.info, size: 17),
+        const SizedBox(width: 12),
           Expanded(child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
           Icon(
             value == group ? Icons.radio_button_checked : Icons.radio_button_off,
@@ -292,17 +277,12 @@ Widget _radioTile(IspThemeColors isp, IconData icon, String title, Locale value,
   );
 }
 
-Widget _infoTile(IspThemeColors isp, IconData icon, String title, String value) {
+Widget _infoTile(BuildContext context, IspThemeColors isp, IconData icon, String title, String value) {
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     child: Row(
       children: [
-        Container(
-          width: 32, height: 32,
-          decoration: BoxDecoration(color: isp.textMuted.withOpacity(0.15), borderRadius: BorderRadius.circular(7)),
-          alignment: Alignment.center,
-          child: Icon(icon, size: 17, color: isp.textMuted),
-        ),
+        NbStyle.iconContainer(context, icon, color: isp.textMuted, size: 17),
         const SizedBox(width: 12),
         Expanded(child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
         Text(value, style: TextStyle(color: isp.textMuted, fontSize: 13)),

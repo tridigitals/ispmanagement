@@ -3,6 +3,7 @@ library;
 
 export 'src/theme/isp_theme_colors.dart';
 export 'src/theme/theme.dart';
+export 'src/theme/nb_style.dart';
 export 'src/widgets/isp_avatar.dart';
 export 'src/widgets/isp_button.dart';
 export 'src/widgets/isp_card.dart';

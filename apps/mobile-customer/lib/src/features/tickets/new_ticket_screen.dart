@@ -378,7 +378,7 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                     const SizedBox(height: IspSpacing.md),
 
                     // ── Single card: subject + description + attachments + subscription ──
-                    IspCard(
+                    Container(decoration: NbStyle.card(context), child:
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
