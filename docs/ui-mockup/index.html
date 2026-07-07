@@ -35,6 +35,8 @@ h1{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:3px;co
 .nc{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rxl);padding:16px}
 .nc-btn{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rm);box-shadow:3px 3px 0 var(--border2);transition:all .15s}
 .nc-btn:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--border2)}
+@keyframes shimmer{0%{opacity:.35}50%{opacity:.7}100%{opacity:.35}}
+.skel{background:var(--surface2);animation:shimmer 1.5s ease-in-out infinite;border-radius:4px}
 .btn{width:100%;padding:14px;border:none;border-radius:var(--rm);font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
 .btn-accent{background:var(--accent);color:white;box-shadow:0 8px 24px var(--accent-glow)}
 .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text2)}
@@ -141,7 +143,7 @@ function permissionsScr(){return`
 
 function loginScr(){return`
 <div class="content" style="display:flex;flex-direction:column;justify-content:center;padding:48px 28px;min-height:844px;">
-  <div style="width:56px;height:56px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:28px;box-shadow:0 12px 40px var(--accent-glow);">
+  <div style="width:56px;height:56px;background:var(--accent);border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:28px;">
     <span style="font-size:26px;font-weight:900;color:white;letter-spacing:-1px;">IS</span>
   </div>
   <div style="font-size:30px;font-weight:900;letter-spacing:-1px;margin-bottom:4px;">Masuk</div>
@@ -228,9 +230,9 @@ function homeTabScr(){return`
   </div>
   <!-- Multi-subscription carousel -->
   <div style="margin-bottom:14px;overflow:hidden;">
-    <div style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 0;scrollbar-width:none;">
-      ${[{name:'Fiber 50Mbps',loc:'Router Semarang',price:'Rp 350.000',pct:60,days:'18 hari',active:1,speed:'50 Mbps',col:'accent'},{name:'Fiber 30Mbps',loc:'Ungaran · Cabang B',price:'Rp 250.000',pct:100,days:'Kadaluarsa',active:0,speed:'30 Mbps',col:'red'}].map(s=>`
-      <div style="min-width:88%;scroll-snap-align:start;" class="nc-btn" onclick=""><div style="padding:16px 18px;">
+    <div style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 0;scrollbar-width:none;" data-carousel="true">
+      ${[{name:'Fiber 50Mbps',loc:'Router Semarang',price:'Rp 350.000',pct:60,days:'18 hari',active:1,col:'accent'},{name:'Fiber 30Mbps',loc:'Ungaran · Cabang B',price:'Rp 250.000',pct:100,days:'Kadaluarsa',active:0,col:'red'}].map((s,i)=>`
+      <div style="min-width:88%;scroll-snap-align:start;" class="nc-btn" data-slide="${i}"><div style="padding:16px 18px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--${s.col=='accent'?'accent2':'red2'});">${s.name}</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">${s.loc}</div></div><span class="badge ${s.active?'g':'r'}">${s.active?'AKTIF':'NONAKTIF'}</span></div>
         <div class="money" style="font-size:36px;">${s.price}</div>
         <div style="font-size:11px;color:var(--text3);margin:4px 0 10px;">per bulan · ${s.days} lagi</div>
@@ -239,7 +241,7 @@ function homeTabScr(){return`
       </div></div>
       `).join('')}
     </div>
-    <div style="display:flex;justify-content:center;gap:4px;margin-top:8px;">${'●○'.split('').map(c=>`<div style="width:5px;height:5px;border-radius:50%;background:${c=='●'?'var(--accent)':'var(--border2)'};"></div>`).join('')}</div>
+    <div style="display:flex;justify-content:center;gap:4px;margin-top:8px;">${['●','○'].map((c,i)=>`<div data-dot="${i}" style="width:${c=='●'?'16px':'5px'};height:5px;border-radius:3px;background:${c=='●'?'var(--accent)':'var(--border2)'};cursor:pointer;transition:all .25s;"></div>`).join('')}</div>
   </div>
   <!-- Bento grid -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -513,6 +515,46 @@ function satisfactionScr(){return`
   <button class="btn btn-accent" style="width:100%">Kirim</button>
 </div>`}
 
+function subInvoicesScr(){return`
+<div class="content" style="padding:0 16px 40px;">
+  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 8px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div><div style="font-size:18px;font-weight:800;">Riwayat Tagihan</div><div style="font-size:11px;color:var(--text3);">Fiber 50Mbps</div></div></div>
+  ${[{m:'Juli',invs:[{id:'INV-2026-07-002',amt:'Rp 350.000',date:'31 Jul 2026',s:'r',sl:'Jatuh Tempo'}]},{m:'Juni',invs:[{id:'INV-2026-06-001',amt:'Rp 350.000',date:'30 Jun 2026',s:'g',sl:'Lunas'}]},{m:'Mei',invs:[{id:'INV-2026-05-012',amt:'Rp 350.000',date:'31 Mei 2026',s:'g',sl:'Lunas'}]}].map(g=>`
+  <div style="margin-bottom:14px;"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;">${g.m}</div>
+  ${g.invs.map(i=>`<div class="nc-btn" style="margin-bottom:6px;padding:12px;display:flex;align-items:center;gap:12px;"><div class="ico-r" style="background:var(--surface2);">${I(IC.receipt,{w:18,h:18,c:'var(--text2)'})}</div><div style="flex:1;"><div style="font-size:12px;font-weight:600;">${i.id}</div><div style="font-size:10px;color:var(--text3);">${i.date}</div></div><div style="text-align:right;"><div class="money" style="font-size:14px;">${i.amt}</div><span class="badge ${i.s}">${i.sl}</span></div></div>`).join('')}
+  </div>`).join('')}
+</div>`}
+
+function annDetailScr(){return`
+<div class="content" style="padding:0 16px 40px;">
+  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 12px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div style="font-size:18px;font-weight:800;">Pengumuman</div></div>
+  <span class="badge r" style="margin-bottom:8px;display:inline-flex;align-items:center;gap:4px;">⚠️ Penting</span>
+  <div style="font-size:20px;font-weight:800;line-height:1.3;margin-bottom:6px;">Maintenance Terjadwal 15 Juli 2026</div>
+  <div style="font-size:11px;color:var(--text3);margin-bottom:16px;">📅 15 Jul 2026 · 10:45 WIB</div>
+  <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+    <p style="margin-bottom:12px;">Kepada pelanggan yang terhormat,</p>
+    <p style="margin-bottom:12px;">Kami akan melakukan maintenance rutin pada server di wilayah Semarang dan sekitarnya. Layanan internet mungkin akan terganggu selama periode berikut:</p>
+    <div class="nc" style="margin:12px 0;padding:14px;text-align:center;"><div style="font-size:13px;font-weight:700;">🗓 15 Juli 2026</div><div style="font-size:22px;font-weight:900;color:var(--accent2);">02:00 — 04:00 WIB</div></div>
+    <p style="margin-bottom:12px;">Mohon maaf atas ketidaknyamanan. Setelah maintenance, koneksi akan kembali normal dengan performa yang lebih baik.</p>
+    <p>Salam,<br><strong>Tim ISPMANAGEMENT</strong></p>
+  </div>
+</div>`}
+
+function emptyStateScr(){return`
+<div class="content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 28px;text-align:center;min-height:500px;">
+  <div style="width:100px;height:100px;border-radius:50%;background:var(--surface);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;margin-bottom:20px;">${I(IC.wifi,{w:40,h:40,c:'var(--text3)',sw:1.5})}</div>
+  <div style="font-size:16px;font-weight:700;margin-bottom:4px;">Belum Ada Langganan</div>
+  <div style="font-size:12px;color:var(--text3);line-height:1.6;margin-bottom:16px;">Anda belum memiliki layanan aktif. Hubungi ISP untuk berlangganan.</div>
+  <button class="btn btn-accent" style="width:auto;padding:10px 24px;">Hubungi ISP</button>
+</div>`}
+
+function skeletonScr(){return`
+<div class="content" style="padding:16px;">
+  <div style="padding:20px 4px 16px;display:flex;gap:10px;"><div style="width:48px;height:48px;border-radius:50%;background:var(--surface2);animation:shimmer 1.5s infinite;"></div><div style="flex:1;"><div style="width:60%;height:14px;background:var(--surface2);border-radius:4px;margin-bottom:8px;animation:shimmer 1.5s infinite;"></div><div style="width:40%;height:10px;background:var(--surface2);border-radius:4px;animation:shimmer 1.5s infinite;"></div></div></div>
+  <div style="height:200px;background:var(--surface2);border-radius:var(--rxl);margin-bottom:12px;animation:shimmer 1.5s infinite;"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">${[1,2,3,4].map(()=>`<div style="height:90px;background:var(--surface2);border-radius:var(--rm);animation:shimmer 1.5s infinite;"></div>`).join('')}</div>
+<style>@keyframes shimmer{0%{opacity:.4}50%{opacity:.8}100%{opacity:.4}}</style>
+</div>`}
+
 // ══════════════════════════════════════════════
 // SCREEN GROUPS & RENDERING
 // ══════════════════════════════════════════════
@@ -533,8 +575,9 @@ const groups = [
     { id: 'invoicestab', fn: invoicesTabScr, label: 'Tagihan' },
     { id: 'supporttab', fn: supportTabScr, label: 'Support' },
   ]},
-  { name: '🔍 Detail & Action (10)', screens: [
+  { name: '🔍 Detail & Action (12)', screens: [
     { id: 'subdetail', fn: subDetailScr, label: 'Sub Detail' },
+    { id: 'subinvoices', fn: subInvoicesScr, label: 'Sub Invoices' },
     { id: 'invdetail', fn: invDetailScr, label: 'Inv Detail' },
     { id: 'newticket', fn: newTicketScr, label: 'New Ticket' },
     { id: 'ticketdetail', fn: ticketDetailScr, label: 'Ticket Detail' },
@@ -542,16 +585,19 @@ const groups = [
     { id: 'paywebview', fn: paymentWebviewScr, label: 'Pay WebView' },
     { id: 'payinstr', fn: paymentInstrScr, label: 'Pay Instr' },
     { id: 'annlist', fn: announcementListScr, label: 'Ann List' },
+    { id: 'anndetail', fn: annDetailScr, label: 'Ann Detail' },
     { id: 'notif', fn: notifInboxScr, label: 'Notif' },
+    { id: 'satis', fn: satisfactionScr, label: 'Satisfaction' },
   ]},
-  { name: '👤 Profile & Utility (7)', screens: [
+  { name: '👤 Profile & Empty (9)', screens: [
     { id: 'profile', fn: profileScr, label: 'Profile' },
     { id: 'editprof', fn: editProfileScr, label: 'Edit Prof' },
     { id: 'chpsw', fn: changePswScr, label: 'Ganti Psw' },
     { id: 'settingsv', fn: settingsScr, label: 'Settings' },
     { id: 'faq', fn: faqScr, label: 'FAQ' },
     { id: 'contact', fn: contactScr, label: 'Contact' },
-    { id: 'satis', fn: satisfactionScr, label: 'Satisfaction' },
+    { id: 'empty', fn: emptyStateScr, label: 'Empty State' },
+    { id: 'skeleton', fn: skeletonScr, label: 'Skeleton' },
   ]},
 ];
 
@@ -578,6 +624,23 @@ function showGroup(idx) {
   group.screens.forEach(s => {
     document.getElementById('sc-' + s.id).innerHTML = s.fn();
   });
+  // Initialize carousel dots
+  setTimeout(function(){
+    document.querySelectorAll('[data-carousel]').forEach(function(el){
+      var slides=el.querySelectorAll('[data-slide]');
+      var dots=el.querySelectorAll('[data-dot]');
+      var idx=0;
+      function go(n){
+        idx=((n%slides.length)+slides.length)%slides.length;
+        el.scrollTo({left:slides[idx].offsetLeft-el.offsetLeft,behavior:'smooth'});
+        dots.forEach(function(d,i){d.style.background=i===idx?'var(--accent)':'var(--border2)';d.style.width=i===idx?'16px':'5px';});
+      }
+      dots.forEach(function(d,i){d.onclick=function(){go(i);};});
+      el.addEventListener('scroll',function(){
+        var c=Math.round(el.scrollLeft/el.offsetWidth);if(c>=0&&c<slides.length&&c!==idx){idx=c;dots.forEach(function(d,i){d.style.background=i===idx?'var(--accent)':'var(--border2)';d.style.width=i===idx?'16px':'5px';});}
+      });
+    });
+  },150);
 }
 
 renderTabs();
