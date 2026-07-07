@@ -154,7 +154,6 @@ function loginScr(){return`
   <button class="btn btn-accent">Masuk</button>
   <div style="display:flex;align-items:center;gap:14px;margin:24px 0;"><div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:12px;color:var(--text3)">atau</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
   <button class="btn btn-outline" style="gap:10px">${I(IC.fingerprint,{w:22,h:22,c:'var(--accent2)',sw:2})} Sidik Jari</button>
-  <div style="text-align:center;margin-top:40px;font-size:13px;color:var(--text3);">Belum punya akun? <a href="#" style="color:var(--accent2);font-weight:600;text-decoration:none;">Hubungi ISP</a></div>
 </div>`}
 
 function loadingScr(){return`
@@ -202,7 +201,7 @@ function faVerifyScr(){return`
 // === HOME SHELL ===
 function homeTabScr(){return`
 <div class="content" style="padding:0 16px 120px;">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:20px 4px 16px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:20px 4px 12px;">
     <div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--text3);margin-bottom:4px;">Selamat Pagi</div>
     <div style="font-size:26px;font-weight:800;letter-spacing:-.5px;">Tri Yanto 👋</div></div>
     <div style="display:flex;gap:8px;">
@@ -210,22 +209,44 @@ function homeTabScr(){return`
       <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;cursor:pointer;">TY</div>
     </div>
   </div>
-  <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
+  <!-- Status pills -->
+  <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
     <div class="status-pill"><span class="dot g"></span>Internet Aktif</div>
     <div class="status-pill">⚡ 12ms · 50 Mbps</div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-    <div class="nc-btn" style="grid-column:1/-1;padding:18px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent2);">Fiber 50Mbps</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">Router Semarang</div></div><span class="badge g">AKTIF</span></div>
-      <div class="money" style="font-size:40px;">Rp 350<span style="font-size:24px;color:var(--text3);font-weight:600;">.000</span></div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">per bulan · 18 hari lagi</div>
-      <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:14px;"><div style="width:60%;height:100%;background:var(--accent);border-radius:2px;"></div></div>
-      <div style="display:flex;gap:8px;"><button style="flex:1;padding:12px;background:var(--accent);color:white;border:none;border-radius:var(--rs);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;">Bayar Tagihan</button><button style="width:42px;height:42px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.chevron,{w:16,h:16,c:'var(--text2)'})}</button></div>
+  <!-- Announcement carousel -->
+  <div style="margin-bottom:14px;">
+    <div class="nc-btn" style="padding:12px 14px;display:flex;align-items:center;gap:10px;background:rgba(124,77,255,.06);border-color:rgba(124,77,255,.2);">
+      <div style="font-size:18px;">📢</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:700;color:var(--accent2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Maintenance Terjadwal 15 Juli</div>
+        <div style="font-size:10px;color:var(--text3);">Server maintenance 02:00–04:00 WIB</div>
+      </div>
+      <span class="badge r" style="font-size:9px;">PENTING</span>
+      <div style="display:flex;gap:3px;">${'●●○'.split('').map(c=>`<div style="width:5px;height:5px;border-radius:50%;background:${c=='●'?'var(--accent)':'var(--border2)'};"></div>`).join('')}</div>
     </div>
-    <div class="nc-btn" style="padding:14px;"><div style="margin-bottom:8px;">${I(IC.zap,{w:18,h:18,c:'var(--amber)'})}</div><div class="money" style="font-size:26px;">50<span style="font-size:13px;color:var(--text3);">Mbps</span></div><div style="font-size:10px;color:var(--text3);margin-top:3px;">Kecepatan</div></div>
-    <div class="nc-btn" style="padding:14px;"><div style="margin-bottom:8px;">${I(IC.shield,{w:18,h:18,c:'var(--green)'})}</div><div class="money" style="font-size:26px;">99.8<span style="font-size:13px;color:var(--text3);">%</span></div><div style="font-size:10px;color:var(--text3);margin-top:3px;">Uptime</div></div>
-    <div class="nc-btn" style="padding:14px;cursor:pointer;"><div style="margin-bottom:8px;">${I(IC.receipt,{w:18,h:18,c:'var(--red2)'})}</div><span class="badge r" style="margin-bottom:6px;display:inline-block;">1 JATUH TEMPO</span><div class="money" style="font-size:20px;">Rp 350K</div></div>
-    <div class="nc-btn" style="padding:14px;cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:110px;"><div style="width:36px;height:36px;border-radius:50%;background:rgba(124,77,255,.12);display:flex;align-items:center;justify-content:center;margin-bottom:6px;">${I(IC.plus,{w:20,h:20,c:'var(--accent)'})}</div><div style="font-size:12px;font-weight:700;color:var(--accent2);">Buat Tiket</div></div>
+  </div>
+  <!-- Multi-subscription carousel -->
+  <div style="margin-bottom:14px;overflow:hidden;">
+    <div style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 0;scrollbar-width:none;">
+      ${[{name:'Fiber 50Mbps',loc:'Router Semarang',price:'Rp 350.000',pct:60,days:'18 hari',active:1,speed:'50 Mbps',col:'accent'},{name:'Fiber 30Mbps',loc:'Ungaran · Cabang B',price:'Rp 250.000',pct:100,days:'Kadaluarsa',active:0,speed:'30 Mbps',col:'red'}].map(s=>`
+      <div style="min-width:88%;scroll-snap-align:start;" class="nc-btn" onclick=""><div style="padding:16px 18px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--${s.col=='accent'?'accent2':'red2'});">${s.name}</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">${s.loc}</div></div><span class="badge ${s.active?'g':'r'}">${s.active?'AKTIF':'NONAKTIF'}</span></div>
+        <div class="money" style="font-size:36px;">${s.price}</div>
+        <div style="font-size:11px;color:var(--text3);margin:4px 0 10px;">per bulan · ${s.days} lagi</div>
+        <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:12px;"><div style="width:${s.pct}%;height:100%;background:var(--${s.col});border-radius:2px;"></div></div>
+        <div style="display:flex;gap:8px;"><button style="flex:1;padding:11px;background:var(--accent);color:white;border:none;border-radius:var(--rs);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;">Bayar Tagihan</button><button style="width:38px;height:38px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.chevron,{w:16,h:16,c:'var(--text2)'})}</button></div>
+      </div></div>
+      `).join('')}
+    </div>
+    <div style="display:flex;justify-content:center;gap:4px;margin-top:8px;">${'●○'.split('').map(c=>`<div style="width:5px;height:5px;border-radius:50%;background:${c=='●'?'var(--accent)':'var(--border2)'};"></div>`).join('')}</div>
+  </div>
+  <!-- Bento grid -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div class="nc-btn" style="padding:14px;"><div style="margin-bottom:6px;">${I(IC.zap,{w:18,h:18,c:'var(--amber)'})}</div><div class="money" style="font-size:24px;">50<span style="font-size:12px;color:var(--text3);">Mbps</span></div><div style="font-size:10px;color:var(--text3);margin-top:2px;">Kecepatan Aktif</div></div>
+    <div class="nc-btn" style="padding:14px;"><div style="margin-bottom:6px;">${I(IC.shield,{w:18,h:18,c:'var(--green)'})}</div><div class="money" style="font-size:24px;">99.8<span style="font-size:12px;color:var(--text3);">%</span></div><div style="font-size:10px;color:var(--text3);margin-top:2px;">Uptime 30 hari</div></div>
+    <div class="nc-btn" style="padding:14px;cursor:pointer;"><div style="margin-bottom:6px;">${I(IC.receipt,{w:18,h:18,c:'var(--red2)'})}</div><span class="badge r" style="margin-bottom:4px;display:inline-block;">1 JATUH TEMPO</span><div class="money" style="font-size:18px;">Rp 350K</div><div style="font-size:10px;color:var(--text3);">INV-2026-07-002</div></div>
+    <div class="nc-btn" style="padding:14px;cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100px;"><div style="width:32px;height:32px;border-radius:50%;background:rgba(124,77,255,.12);display:flex;align-items:center;justify-content:center;margin-bottom:4px;">${I(IC.plus,{w:18,h:18,c:'var(--accent)'})}</div><div style="font-size:11px;font-weight:700;color:var(--accent2);">Buat Tiket</div><div style="font-size:9px;color:var(--text3);">Lapor gangguan</div></div>
   </div>
 </div>
 <div class="fnav">${[{i:IC.home,l:'Beranda',a:1},{i:IC.wifi,l:'Layanan'},{i:IC.receipt,l:'Tagihan'},{i:IC.headset,l:'Support'}].map(t=>`<div class="ni${t.a?' ac':''}">${I(t.i,{w:20,h:20,c:t.a?'var(--accent)':'var(--text3)'})}<span class="ni l" style="color:${t.a?'var(--accent2)':'var(--text3)'}">${t.l}</span></div>`).join('')}</div>`}
