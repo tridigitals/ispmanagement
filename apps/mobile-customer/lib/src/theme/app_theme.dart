@@ -7,31 +7,21 @@ import 'package:ui_kit/ui_kit.dart';
 class AppColors {
   AppColors._();
 
-  // Background
-  static const Color bg = Color(0xFF0A0A0F);
-  static const Color surface = Color(0xFF141419);
+  // Matches mockup design tokens — single source: IspThemeColors.dark
+  static const Color bg = Color(0xFF060609);
+  static const Color surface = Color(0xFF111119);
   static const Color surfaceElevated = Color(0xFF1C1C24);
-
-  // Border
-  static const Color border = Color(0xFF2A2A35);
-  static const Color borderSubtle = Color(0xFF222230);
-
-  // Text
+  static const Color border = Color(0xFF1E1E2E);
+  static const Color borderSubtle = Color(0xFF181824);
   static const Color textPrimary = Color(0xFFF0F0F5);
   static const Color textSecondary = Color(0xFF8888A0);
   static const Color textMuted = Color(0xFF55556A);
-
-  // Accent
-  static const Color accent = Color(0xFF6C5CE7);
-  static const Color accentLight = Color(0xFFA29BFE);
-
-  // Semantic
-  static const Color success = Color(0xFF00D2A0);
-  static const Color warning = Color(0xFFFFB347);
-  static const Color danger = Color(0xFFFF6B6B);
-  static const Color info = Color(0xFF4FC3F7);
-
-  // Light-mode equivalents (for light theme fallback)
+  static const Color accent = Color(0xFF7C4DFF);
+  static const Color accentLight = Color(0xFFB388FF);
+  static const Color success = Color(0xFF00E676);
+  static const Color warning = Color(0xFFFFD740);
+  static const Color danger = Color(0xFFFF5252);
+  static const Color info = Color(0xFF40C4FF);
   static const Color lightBg = Color(0xFFF5F5FA);
   static const Color lightSurface = Colors.white;
   static const Color lightSurfaceElevated = Color(0xFFF0F0F5);

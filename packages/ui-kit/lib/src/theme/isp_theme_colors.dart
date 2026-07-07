@@ -201,30 +201,31 @@ class IspThemeColors extends ThemeExtension<IspThemeColors> {
   // high contrast text, accent purple stays vivid.
   //
   static const dark = IspThemeColors(
-    background: Color(0xFF0A0A0F),     // app bg
-    surface: Color(0xFF141419),        // card
-    surfaceElevated: Color(0xFF1C1C24), // elevated card / modal
-    surfaceTertiary: Color(0xFF22222E), // input fill
-    surfaceHover: Color(0xFF2A2A35),   // hover overlay
-    border: Color(0xFF2A2A35),
-    borderSubtle: Color(0xFF1F1F28),
-    borderFocus: Color(0xFF6C5CE7),
-    textPrimary: Color(0xFFF0F0F5),    // high contrast
+    // Neubrutalist dark — matches mockup design tokens
+    background: Color(0xFF060609),     // --bg: deepest black
+    surface: Color(0xFF111119),        // --surface: card
+    surfaceElevated: Color(0xFF18181F), // elevated card / modal
+    surfaceTertiary: Color(0xFF1E1E28), // input fill
+    surfaceHover: Color(0xFF242430),   // hover overlay
+    border: Color(0xFF1E1E2E),         // --border
+    borderSubtle: Color(0xFF181824),
+    borderFocus: Color(0xFF7C4DFF),    // --accent
+    textPrimary: Color(0xFFF0F0F5),
     textSecondary: Color(0xFF8888A0),
     textMuted: Color(0xFF55556A),
-    textInverse: Color(0xFF0A0A0F),    // dark on light
-    accent: Color(0xFF6C5CE7),         // primary purple
-    accentLight: Color(0xFFA29BFE),    // hover/secondary
-    accentSurface: Color(0xFF2D2950),  // purple-15% (15% on dark bg)
-    accentText: Color(0xFFA29BFE),
-    success: Color(0xFF00D2A0),
-    warning: Color(0xFFFFB347),
-    danger: Color(0xFFFF6B6B),
-    info: Color(0xFF4FC3F7),
-    successSurface: Color(0xFF0E2E2A), // green-15%
-    warningSurface: Color(0xFF3A2B14), // amber-15%
-    dangerSurface: Color(0xFF3A1E20),  // red-15%
-    infoSurface: Color(0xFF0F2A3A),    // blue-15%
+    textInverse: Color(0xFF060609),
+    accent: Color(0xFF7C4DFF),         // --accent: vibrant purple
+    accentLight: Color(0xFFB388FF),    // --accent-light
+    accentSurface: Color(0xFF2D2956),  // purple-12% surface
+    accentText: Color(0xFFB388FF),
+    success: Color(0xFF00E676),        // --green
+    warning: Color(0xFFFFD740),        // --amber
+    danger: Color(0xFFFF5252),         // --red
+    info: Color(0xFF40C4FF),           // --blue
+    successSurface: Color(0xFF0E2A22),
+    warningSurface: Color(0xFF332A12),
+    dangerSurface: Color(0xFF3A1820),
+    infoSurface: Color(0xFF0F283A),
   );
 
   // ─── Light theme ────────────────────────────────────────

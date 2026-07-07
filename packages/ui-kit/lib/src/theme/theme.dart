@@ -1,43 +1,36 @@
 import 'package:flutter/material.dart';
-import 'dart:ui' as ui;
+
+enum StatusTone { neutral, success, warning, danger, info, primary }
 
 /// Design tokens — dark theme matching the Tauri web app's palette
 /// (see `src/lib/styles/global.css` in the Svelte frontend).
-enum StatusTone { neutral, success, warning, danger, info, primary }
-
+///
+/// ⚠️ DEPRECATED — use `IspThemeColors` via `context.isp` instead.
+/// Kept temporarily for `buildIspTheme()` compat; will be removed.
+@Deprecated('Use IspThemeColors via context.isp')
 class IspColors {
   IspColors._();
-
-  // Brand
-  static const Color primary = Color(0xFF8B9CFF);
-  static const Color primaryHover = Color(0xFFA3B1FF);
-  static const Color primaryLight = Color(0xFFB8C4FF);
-  static const Color primarySubtle = Color(0x1F8B9CFF); // 12% alpha
-
-  // Semantic
-  static const Color success = Color(0xFF10B981);
-  static const Color danger = Color(0xFFEF4444);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color info = Color(0xFF3B82F6);
-
-  // Surfaces (dark)
-  static const Color bgApp = Color(0xFF08090D);
+  static const Color primary = Color(0xFF7C4DFF);
+  static const Color primaryHover = Color(0xFFB388FF);
+  static const Color primaryLight = Color(0xFFCEBBFF);
+  static const Color primarySubtle = Color(0x1F7C4DFF);
+  static const Color success = Color(0xFF00E676);
+  static const Color danger = Color(0xFFFF5252);
+  static const Color warning = Color(0xFFFFD740);
+  static const Color info = Color(0xFF40C4FF);
+  static const Color bgApp = Color(0xFF060609);
   static const Color bgPrimary = Color(0xFF0D0F15);
-  static const Color bgSecondary = Color(0xFF121620);
-  static const Color bgSurface = Color(0xFF11141C);
-  static const Color bgTertiary = Color(0xFF171B25);
-  static const Color bgHover = Color(0xFF1B202C);
-  static const Color bgActive = Color(0xFF202638);
-
-  // Text
-  static const Color textPrimary = Color(0xFFF2F4F8);
-  static const Color textSecondary = Color(0xFFA7AFBF);
+  static const Color bgSecondary = Color(0xFF111119);
+  static const Color bgSurface = Color(0xFF111119);
+  static const Color bgTertiary = Color(0xFF1E1E28);
+  static const Color bgHover = Color(0xFF242430);
+  static const Color bgActive = Color(0xFF2A2A3A);
+  static const Color textPrimary = Color(0xFFF0F0F5);
+  static const Color textSecondary = Color(0xFF8888A0);
   static const Color textTertiary = Color(0xFF747D91);
-  static const Color textMuted = Color(0xFF5E6678);
-
-  // Borders
-  static const Color border = Color(0x2994A3B8); // 16% alpha
-  static const Color borderSubtle = Color(0x1A94A3B8); // 10% alpha
+  static const Color textMuted = Color(0xFF55556A);
+  static const Color border = Color(0x291E1E2E);
+  static const Color borderSubtle = Color(0x1A1E1E2E);
 }
 
 class IspRadii {
@@ -197,126 +190,4 @@ ThemeData buildIspTheme() {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     ),
   );
-}
-
-/// Glassmorphism helpers and gradient presets.
-class IspGlass {
-  IspGlass._();
-
-  /// Standard blur sigma for glassmorphism effects.
-  static const double blurSigma = 20.0;
-  static const double blurSigmaLight = 12.0;
-
-  /// Semi-transparent surface colors for glass layers (dark theme).
-  static const Color surfaceDark = Color(0x1A121620);
-  static const Color surfaceDarkMedium = Color(0x33121620);
-  static const Color surfaceLight = Color(0x1AFFFFFF);
-  static const Color surfaceLightMedium = Color(0x33FFFFFF);
-
-  /// Border color for glass edges (dark theme).
-  static const Color borderDark = Color(0x2994A3B8);
-  static const Color borderLight = Color(0x33FFFFFF);
-
-  /// Builds a glassmorphic container with [BackdropFilter] blur.
-  ///
-  /// [child] is placed inside a [ClipRRect] with [borderRadius].
-  /// [color] is the semi-transparent fill; defaults to a dark glass surface.
-  /// [border] is drawn on top; defaults to a subtle white-ish border.
-  static Widget container({
-    required Widget child,
-    BorderRadius borderRadius = const BorderRadius.all(Radius.circular(16)),
-    Color? color,
-    BoxBorder? border,
-    EdgeInsets padding = EdgeInsets.zero,
-    double blur = blurSigma,
-    List<BoxShadow>? boxShadow,
-  }) {
-    return ClipRRect(
-      borderRadius: borderRadius,
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: color ?? surfaceDark,
-            borderRadius: borderRadius,
-            border: border ?? Border.all(color: borderDark),
-            boxShadow: boxShadow,
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-
-  // ── Gradient presets ─────────────────────────────────────────
-
-  /// Primary brand gradient (purple-blue).
-  static const LinearGradient primaryGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [
-      Color(0xFF8B9CFF),
-      Color(0xFF6677EE),
-      Color(0xFF4F46E5),
-    ],
-    stops: [0.0, 0.5, 1.0],
-  );
-
-  /// Animated-shimmer friendly gradient (use with AnimationController).
-  static const LinearGradient shimmerGradient = LinearGradient(
-    begin: Alignment(-1.0, -0.3),
-    end: Alignment(1.0, 0.3),
-    colors: [
-      Color(0x00FFFFFF),
-      Color(0x11FFFFFF),
-      Color(0x00FFFFFF),
-    ],
-    stops: [0.0, 0.5, 1.0],
-  );
-
-  /// Success / active gradient.
-  static const LinearGradient successGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xFF10B981), Color(0xFF059669)],
-  );
-
-  /// Warning gradient.
-  static const LinearGradient warningGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
-  );
-
-  /// Info gradient.
-  static const LinearGradient infoGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
-  );
-
-  /// Returns a gradient for the given [StatusTone].
-  static LinearGradient gradientForTone(StatusTone tone) {
-    switch (tone) {
-      case StatusTone.success:
-        return successGradient;
-      case StatusTone.warning:
-        return warningGradient;
-      case StatusTone.danger:
-        return const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
-        );
-      case StatusTone.info:
-        return infoGradient;
-      case StatusTone.primary:
-        return primaryGradient;
-      case StatusTone.neutral:
-        return const LinearGradient(
-          colors: [IspColors.textSecondary, IspColors.textTertiary],
-        );
-    }
-  }
 }
