@@ -294,7 +294,7 @@ class _InvoiceTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${l10n.dueOn ?? 'Jatuh tempo'} ${dateFmt.format(inv.dueDate)}',
+                  '${l10n.dueOn} ${dateFmt.format(inv.dueDate)}',
                   style: TextStyle(fontSize: 12, color: isp.textMuted),
                 ),
                 const SizedBox(height: 12),

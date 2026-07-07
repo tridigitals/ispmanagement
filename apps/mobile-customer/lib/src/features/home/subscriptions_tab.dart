@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:api_client/api_client.dart';
 import 'package:ui_kit/ui_kit.dart';
 
-import '../../l10n/app_localizations.dart';
 import '../../services/service_providers.dart';
 import '../../services/settings_providers.dart' show currentTabProvider;
 import '../../utils/loading_skeleton.dart';
@@ -120,7 +119,6 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
     });
 
     final isp = context.isp;
-    final l10n = AppLocalizations.of(context);
 
     if (!_initialLoaded) {
       return const IspSkeletonList(itemCount: 4);

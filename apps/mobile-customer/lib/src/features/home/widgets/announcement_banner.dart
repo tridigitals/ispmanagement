@@ -1,16 +1,17 @@
 import 'dart:async';
 
-import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:ui_kit/ui_kit.dart';
+import 'package:api_client/api_client.dart';
 
 import '../../../services/feature_providers.dart';
 import '../../../services/missing_providers.dart';
 
-/// Swipeable announcement carousel with severity-based styling.
+/// Swipeable announcement carousel with neubrutalist dark styling,
+/// severity-colored left border strip, and swipe-to-dismiss.
 class AnnouncementBanner extends ConsumerStatefulWidget {
   const AnnouncementBanner({super.key});
 
@@ -21,7 +22,7 @@ class AnnouncementBanner extends ConsumerStatefulWidget {
 
 class _AnnouncementBannerState extends ConsumerState<AnnouncementBanner>
     with SingleTickerProviderStateMixin {
-  final PageController _pageCtrl = PageController();
+  final PageController _pageCtrl = PageController(viewportFraction: 0.92);
   Timer? _autoAdvance;
   bool _paused = false;
   int _currentPage = 0;
@@ -49,7 +50,7 @@ class _AnnouncementBannerState extends ConsumerState<AnnouncementBanner>
 
   @override
   Widget build(BuildContext context) {
-    final isp = context.isp;
+
     final async = ref.watch(activeAnnouncementsProvider);
 
     return async.when(
@@ -67,7 +68,7 @@ class _AnnouncementBannerState extends ConsumerState<AnnouncementBanner>
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                height: 130,
+                height: 146,
                 child: PageView.builder(
                   controller: _pageCtrl,
                   itemCount: announcements.length,
@@ -103,33 +104,37 @@ class _AnnouncementBannerState extends ConsumerState<AnnouncementBanner>
   }
 }
 
-// ─── Severity colors ───────────────────────────────────────────
+// ─── Severity colors ────────────────────────────────────────────
 
 _SeverityTheme _themeFor(String severity, IspThemeColors isp) {
   switch (severity) {
     case 'error':
       return _SeverityTheme(
         primary: isp.danger,
+        surface: isp.dangerSurface,
         icon: Icons.error_outline_rounded,
         label: 'Penting',
       );
     case 'warning':
       return _SeverityTheme(
         primary: isp.warning,
+        surface: isp.warningSurface,
         icon: Icons.warning_amber_rounded,
         label: 'Peringatan',
       );
     case 'success':
       return _SeverityTheme(
         primary: isp.success,
+        surface: isp.successSurface,
         icon: Icons.check_circle_outline_rounded,
-        label: 'Berhasil',
+        label: 'Info',
       );
     default: // info
       return _SeverityTheme(
         primary: isp.info,
-        icon: Icons.info_outline_rounded,
-        label: 'Info',
+        surface: isp.infoSurface,
+        icon: Icons.campaign_outlined,
+        label: 'Pengumuman',
       );
   }
 }
@@ -137,15 +142,17 @@ _SeverityTheme _themeFor(String severity, IspThemeColors isp) {
 class _SeverityTheme {
   const _SeverityTheme({
     required this.primary,
+    required this.surface,
     required this.icon,
     required this.label,
   });
   final Color primary;
+  final Color surface;
   final IconData icon;
   final String label;
 }
 
-// ─── Announcement Card ─────────────────────────────────────────
+// ─── Announcement Card (neubrutalist + severity sidebar) ────────
 
 class _AnnouncementCard extends StatelessWidget {
   const _AnnouncementCard({
@@ -164,144 +171,149 @@ class _AnnouncementCard extends StatelessWidget {
     final theme = _themeFor(announcement.severity, isp);
     final bodyText = announcement.plainBody;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.primary.withOpacity(0.15),
-              theme.primary.withOpacity(0.05),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: isp.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: theme.primary.withOpacity(0.4),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: theme.primary.withOpacity(0.15),
+                offset: const Offset(3, 3),
+                blurRadius: 0,
+              ),
             ],
           ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: theme.primary.withOpacity(0.30),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            // Left accent bar
-            Container(
-              width: 4,
-              decoration: BoxDecoration(
-                color: theme.primary,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  bottomLeft: Radius.circular(16),
+          clipBehavior: Clip.antiAlias,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Severity-colored left border strip
+                Container(
+                  width: 5,
+                  color: theme.primary,
                 ),
-              ),
-            ),
-            // Content
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Top row: severity badge + dismiss
-                    Row(
+                // Content
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: theme.primary.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(theme.icon, size: 12, color: theme.primary),
-                              const SizedBox(width: 4),
-                              Text(
-                                theme.label,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: theme.primary,
-                                  letterSpacing: 0.3,
+                        // Top row: severity badge + dismiss
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: theme.surface,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: theme.primary.withOpacity(0.3),
+                                  width: 1,
                                 ),
                               ),
-                            ],
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(theme.icon,
+                                      size: 12, color: theme.primary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    theme.label,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: theme.primary,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Spacer(),
+                            GestureDetector(
+                              onTap: onDismiss,
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  size: 16,
+                                  color: isp.textMuted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        // Title
+                        Text(
+                          announcement.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: isp.textPrimary,
+                            height: 1.3,
                           ),
                         ),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: onDismiss,
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(
-                              Icons.close_rounded,
-                              size: 16,
-                              color: isp.textMuted,
+                        if (bodyText.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            bodyText,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isp.textSecondary,
+                              height: 1.4,
                             ),
                           ),
+                        ],
+                        const SizedBox(height: 10),
+                        // CTA row
+                        Row(
+                          children: [
+                            Text(
+                              'Baca selengkapnya',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: theme.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 14,
+                              color: theme.primary,
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    // Title
-                    Text(
-                      announcement.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: isp.textPrimary,
-                        height: 1.3,
-                      ),
-                    ),
-                    if (bodyText.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        bodyText,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isp.textSecondary,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    // CTA row
-                    Row(
-                      children: [
-                        Text(
-                          'Baca selengkapnya',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: theme.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 14,
-                          color: theme.primary,
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ─── Dots Indicator ────────────────────────────────────────────
+// ─── Dots Indicator ─────────────────────────────────────────────
 
 class _DotsIndicator extends StatelessWidget {
   const _DotsIndicator({

@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
@@ -292,24 +291,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   // ─── Neubrutalist decoration helpers ──────────────────────────
 
-  BoxDecoration _nbSurface() => BoxDecoration(
-        color: isp.surface,
-        border: Border.all(width: 1.5, color: isp.border),
-        borderRadius: BorderRadius.circular(24),
-      );
 
-  BoxDecoration _nbBtn() => BoxDecoration(
-        color: isp.surface,
-        border: Border.all(width: 1.5, color: isp.border),
-        borderRadius: BorderRadius.circular(IspRadii.md),
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(3, 3),
-            blurRadius: 0,
-            color: isp.surfaceElevated,
-          ),
-        ],
-      );
 
   @override
   Widget build(BuildContext context) {

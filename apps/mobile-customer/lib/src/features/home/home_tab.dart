@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import 'package:api_client/api_client.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../../services/auth_providers.dart';
 import '../../services/missing_providers.dart';
 import '../../services/notifications_providers.dart' show unreadNotificationsCountProvider;
 import '../../services/settings_providers.dart' show currentTabProvider;
@@ -56,7 +56,6 @@ class _HomeTabState extends ConsumerState<HomeTab> {
     });
 
     final isp = context.isp;
-    final l10n = AppLocalizations.of(context);
     final subState = ref.watch(mySubscriptionsProvider);
     final invState = ref.watch(myInvoicesProvider);
 
@@ -143,13 +142,13 @@ class _SubscriptionCarouselState
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
-    final l10n = AppLocalizations.of(context);
 
     return widget.subState.when(
       loading: () => const IspSkeletonCard(height: 240),
       error: (e, _) => _ErrorCard(message: e.toString()),
       data: (page) {
         if (page.isEmpty) {
+          final l10n = AppLocalizations.of(context);
           return _EmptyState(label: l10n.noSubscription);
         }
         final sorted = [...page]

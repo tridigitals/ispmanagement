@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:otp/otp.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:ui_kit/ui_kit.dart';
@@ -54,16 +53,7 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
     });
   }
 
-  String get _currentCode {
-    if (_enrollment == null) return '------';
-    return OTP.generateTOTPCodeString(
-      _enrollment!.secret,
-      DateTime.now().millisecondsSinceEpoch,
-      interval: _enrollment!.periodSeconds,
-      algorithm: Algorithm.SHA1,
-      isGoogle: true,
-    );
-  }
+
 
   Future<void> _confirm() async {
     if (!_form.currentState!.validate()) return;

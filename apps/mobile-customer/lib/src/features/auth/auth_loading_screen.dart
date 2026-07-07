@@ -26,11 +26,10 @@ class _AuthLoadingScreenState extends ConsumerState<AuthLoadingScreen> {
 
   Future<void> _verifyAndGo() async {
     try {
-      // Fast check: is there a session token?
       final auth = ref.read(authControllerProvider);
       if (!auth.isAuthenticated) {
-        // State not ready yet — try bootstrap from storage
-        final restored = await ref.read(authControllerProvider.notifier).bootstrap();
+        final restored =
+            await ref.read(authControllerProvider.notifier).bootstrap();
         if (!restored || !mounted) {
           context.go('/login');
           return;
@@ -39,15 +38,8 @@ class _AuthLoadingScreenState extends ConsumerState<AuthLoadingScreen> {
 
       if (!mounted) return;
 
-      // Navigate to home — data loads naturally in HomeTab
       ref.read(fcmServiceProvider).clearPendingAction();
-
-      // Kick off FCM token registration (fire-and-forget, idempotent).
-      // This covers the case where the auth state transition happened
-      // before the ref.listen in app.dart was registered (cold start
-      // with valid session), and the delayed bootstrap hasn't fired yet.
       ref.read(fcmServiceProvider).init(force: true);
-
       context.go('/');
     } catch (e) {
       if (!mounted) return;
@@ -66,24 +58,41 @@ class _AuthLoadingScreenState extends ConsumerState<AuthLoadingScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // ─── Solid purple square logo (no gradient) ───
             Container(
-              width: 80,
-              height: 80,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
-                color: isp.accent.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
+                color: isp.accent, // solid, no gradient
+                borderRadius: BorderRadius.circular(18),
               ),
-              child: Icon(
-                Icons.wifi_rounded,
-                size: 40,
-                color: isp.accent,
+              alignment: Alignment.center,
+              child: const Text(
+                'IS',
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: -2,
+                ),
               ),
             ),
-            const SizedBox(height: 32),
-            const SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(strokeWidth: 3),
+            const SizedBox(height: 28),
+            Text(
+              'Memeriksa sesi...',
+              style: TextStyle(
+                color: isp.textMuted,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                valueColor: AlwaysStoppedAnimation<Color>(isp.accent),
+              ),
             ),
           ],
         ),

@@ -6,8 +6,6 @@ import 'package:ui_kit/ui_kit.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:api_client/api_client.dart' show NotificationModel;
-
 import '../../l10n/app_localizations.dart';
 import '../../services/notifications_providers.dart';
 import '../../services/settings_providers.dart';
