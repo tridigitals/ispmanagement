@@ -199,6 +199,12 @@ class _SubscriptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isp = context.isp;
     final fmt = NumberFormat.simpleCurrency(name: sub.currencyCode);
+    final color = sub.isActive ? isp.success : isp.danger;
+    // ponytail: compute days from endsAt, fallback to billingCycle label
+    final days = sub.endsAt != null
+        ? sub.endsAt!.difference(DateTime.now()).inDays
+        : 0;
+    final daysLabel = days > 0 ? '$days hari lagi' : 'Kadaluarsa';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -209,109 +215,103 @@ class _SubscriptionTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           child: Container(
             decoration: _nbCard(isp),
-            padding: const EdgeInsets.all(16),
+            clipBehavior: Clip.antiAlias,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Color-coded left accent strip hack — done via left border tint
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        sub.packageName ?? 'Paket',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: isp.textPrimary,
+                // Content row with left accent strip
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // 4px color strip
+                      Container(width: 4, color: color),
+                      // Card content
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      sub.packageName ?? 'Paket',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: isp.textPrimary,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  IspStatusBadge(
+                                    label: sub.statusLabel(),
+                                    tone: sub.isActive
+                                        ? StatusTone.success
+                                        : StatusTone.danger,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                sub.routerName ??
+                                    sub.locationLabel ??
+                                    '-',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isp.textMuted,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                fmt.format(sub.price),
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  color: isp.textPrimary,
+                                  letterSpacing: -1,
+                                  height: 1.0,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              // Progress bar
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(1),
+                                child: LinearProgressIndicator(
+                                  value:
+                                      sub.isActive ? 0.6 : 1.0,
+                                  backgroundColor: isp.border,
+                                  color: color,
+                                  minHeight: 2,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '$daysLabel lagi',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: isp.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    IspStatusBadge(
-                      label: sub.statusLabel(),
-                      tone: sub.isActive
-                          ? StatusTone.success
-                          : sub.needsAttention
-                              ? StatusTone.danger
-                              : StatusTone.warning,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Icon(Icons.router, size: 15, color: isp.textMuted),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        sub.routerName ?? sub.locationLabel ?? '-',
-                        style:
-                            TextStyle(fontSize: 13, color: isp.textMuted),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (sub.locationLabel != null && sub.routerName != null) ...[
-                      const SizedBox(width: 8),
-                      Icon(Icons.location_on_outlined,
-                          size: 14, color: isp.textMuted),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          sub.locationLabel!,
-                          style: TextStyle(fontSize: 12, color: isp.textMuted),
-                          overflow: TextOverflow.ellipsis,
+                      // Chevron
+                      Padding(
+                        padding: const EdgeInsets.only(
+                            right: 14, top: 16),
+                        child: Icon(
+                          Icons.chevron_right_rounded,
+                          size: 20,
+                          color: isp.textMuted,
                         ),
                       ),
                     ],
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          fmt.format(sub.price),
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: isp.textPrimary,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        Text(
-                          '/ ${sub.billingCycle}',
-                          style:
-                              TextStyle(fontSize: 12, color: isp.textMuted),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isp.accentSurface,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.arrow_forward_ios,
-                        size: 14,
-                        color: isp.accent,
-                      ),
-                    ),
-                  ],
-                ),
-                // Progress bar (ponyato: use actual billing cycle days)
-                const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(
-                    value: sub.isActive ? 0.6 : 1.0,
-                    backgroundColor: isp.border,
-                    color: sub.isActive ? isp.accent : isp.danger,
-                    minHeight: 3,
                   ),
                 ),
               ],
