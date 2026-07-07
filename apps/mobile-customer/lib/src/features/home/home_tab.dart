@@ -1,4 +1,3 @@
-import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,18 +10,30 @@ import '../../services/auth_providers.dart';
 import '../../services/missing_providers.dart';
 import '../../services/notifications_providers.dart' show unreadNotificationsCountProvider;
 import '../../services/settings_providers.dart' show currentTabProvider;
-
-import '../../theme/app_theme.dart';
 import '../../utils/loading_skeleton.dart';
 import 'widgets/network_status_banner.dart';
 import 'widgets/announcement_banner.dart';
 
-// ─── Design tokens (local) ──────────────────────────────────────
+// ─── Design tokens ───────────────────────────────────────────────
 
 const _kCardRadius = 20.0;
-const _kCardPadding = EdgeInsets.all(16);
 const _kSectionSpacing = 20.0;
 const _kElementSpacing = 12.0;
+
+// ─── Neubrutalist card decoration helpers ───────────────────────
+
+BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
+      color: isp.surface,
+      borderRadius: BorderRadius.circular(_kCardRadius),
+      border: Border.all(color: isp.border, width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: isp.border.withOpacity(0.5),
+          offset: const Offset(3, 3),
+          blurRadius: 0,
+        ),
+      ],
+    );
 
 // ─── Home Tab ────────────────────────────────────────────────────
 
@@ -36,7 +47,6 @@ class HomeTab extends ConsumerStatefulWidget {
 class _HomeTabState extends ConsumerState<HomeTab> {
   @override
   Widget build(BuildContext context) {
-    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
     ref.listen(currentTabProvider, (prev, next) {
       if (next == 0 && prev != next) {
         ref.invalidate(mySubscriptionsProvider);
@@ -47,7 +57,6 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
-    final user = ref.watch(currentUserProvider);
     final subState = ref.watch(mySubscriptionsProvider);
     final invState = ref.watch(myInvoicesProvider);
 
@@ -64,31 +73,42 @@ class _HomeTabState extends ConsumerState<HomeTab> {
       color: isp.accent,
       child: CustomScrollView(
         slivers: [
-          // ── Body ──
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── Hero subscription card ──
-                    _PrimarySubscription(subState: subState),
+                // ── Multi-subscription carousel ──
+                _SubscriptionCarousel(subState: subState),
 
-                    const SizedBox(height: _kSectionSpacing),
+                const SizedBox(height: _kSectionSpacing),
 
-                    // ── Network status banner ──
-                    const NetworkStatusBanner(),
+                // ── Bento grid (speed / uptime) ──
+                _BentoGrid(),
 
-                    const SizedBox(height: _kSectionSpacing),
+                const SizedBox(height: _kSectionSpacing),
 
-                    // ── Announcement banner ──
-                    const AnnouncementBanner(),
+                // ── Network status ──
+                const NetworkStatusBanner(),
 
-                    // ── Recent invoices ──
-                    _RecentInvoices(invState: invState),
-                  ],
-                ),
+                const SizedBox(height: _kSectionSpacing),
+
+                // ── Announcement banner ──
+                const AnnouncementBanner(),
+
+                const SizedBox(height: _kSectionSpacing),
+
+                // ── Invoice alert (overdue) ──
+                _InvoiceAlert(invState: invState),
+
+                const SizedBox(height: _kSectionSpacing),
+
+                // ── Ticket CTA ──
+                _TicketCTA(),
+
+                const SizedBox(height: _kSectionSpacing),
+
+                // ── Recent invoices ──
+                _RecentInvoices(invState: invState),
               ]),
             ),
           ),
@@ -98,19 +118,20 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   }
 }
 
-// ─── Primary subscription hero ──────────────────────────────────
+// ─── Subscription Carousel (PageView + dots) ─────────────────────
 
-class _PrimarySubscription extends ConsumerStatefulWidget {
-  const _PrimarySubscription({required this.subState});
+class _SubscriptionCarousel extends ConsumerStatefulWidget {
+  const _SubscriptionCarousel({required this.subState});
   final AsyncValue<List<SubscriptionModel>> subState;
 
   @override
-  ConsumerState<_PrimarySubscription> createState() =>
-      _PrimarySubscriptionState();
+  ConsumerState<_SubscriptionCarousel> createState() =>
+      _SubscriptionCarouselState();
 }
 
-class _PrimarySubscriptionState extends ConsumerState<_PrimarySubscription> {
-  final PageController _pageCtrl = PageController(viewportFraction: 0.92);
+class _SubscriptionCarouselState
+    extends ConsumerState<_SubscriptionCarousel> {
+  final PageController _pageCtrl = PageController(viewportFraction: 0.88);
   int _currentPage = 0;
 
   @override
@@ -121,25 +142,24 @@ class _PrimarySubscriptionState extends ConsumerState<_PrimarySubscription> {
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
 
-
-    final isp = context.isp;    final l10n = AppLocalizations.of(context);
     return widget.subState.when(
-      loading: () => const IspSkeletonCard(height: 220),
+      loading: () => const IspSkeletonCard(height: 240),
       error: (e, _) => _ErrorCard(message: e.toString()),
       data: (page) {
         if (page.isEmpty) {
           return _EmptyState(label: l10n.noSubscription);
         }
-        // Sort: active first
-        final sorted = [
-          ...page
-        ]..sort((a, b) => a.isActive == b.isActive ? 0 : (a.isActive ? -1 : 1));
+        final sorted = [...page]
+          ..sort((a, b) =>
+              a.isActive == b.isActive ? 0 : (a.isActive ? -1 : 1));
 
         return Column(
           children: [
             SizedBox(
-              height: 240,
+              height: 252,
               child: PageView.builder(
                 controller: _pageCtrl,
                 itemCount: sorted.length,
@@ -162,9 +182,7 @@ class _PrimarySubscriptionState extends ConsumerState<_PrimarySubscription> {
                     width: i == _currentPage ? 20 : 6,
                     height: 6,
                     decoration: BoxDecoration(
-                      color: i == _currentPage
-                          ? isp.accent
-                          : isp.border,
+                      color: i == _currentPage ? isp.accent : isp.border,
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
@@ -184,9 +202,8 @@ class _SubscriptionHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
     final fmt = NumberFormat.simpleCurrency(name: sub.currencyCode);
 
     return Material(
@@ -194,12 +211,8 @@ class _SubscriptionHeroCard extends StatelessWidget {
       child: InkWell(
         onTap: () => GoRouter.of(context).push('/subscriptions/${sub.id}'),
         borderRadius: BorderRadius.circular(_kCardRadius),
-        child: Ink(
-          decoration: BoxDecoration(
-            color: isp.surface,
-            borderRadius: BorderRadius.circular(_kCardRadius),
-            border: Border.all(color: isp.border, width: 1),
-          ),
+        child: Container(
+          decoration: _nbCard(isp),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -208,20 +221,18 @@ class _SubscriptionHeroCard extends StatelessWidget {
                 height: 3,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(_kCardRadius),
+                    top: const Radius.circular(_kCardRadius),
                   ),
                   gradient: LinearGradient(
                     colors: [isp.accent, isp.accentLight],
                   ),
                 ),
               ),
-
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Top row: package name + status
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -250,15 +261,13 @@ class _SubscriptionHeroCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 24),
-
-                    // Price — dominant element
                     Text(
                       fmt.format(sub.price),
                       style: TextStyle(
                         color: isp.textPrimary,
                         fontSize: 44,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -1.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -2,
                         height: 1.0,
                       ),
                     ),
@@ -268,18 +277,15 @@ class _SubscriptionHeroCard extends StatelessWidget {
                       style: TextStyle(
                         color: isp.textMuted,
                         fontSize: 14,
-                        fontWeight: FontWeight.w400,
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // Router / location info + chevron
                     Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: isp.accent.withOpacity(0.12),
+                            color: isp.accentSurface,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
@@ -295,7 +301,6 @@ class _SubscriptionHeroCard extends StatelessWidget {
                             style: TextStyle(
                               color: isp.textSecondary,
                               fontSize: 14,
-                              fontWeight: FontWeight.w400,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -318,7 +323,238 @@ class _SubscriptionHeroCard extends StatelessWidget {
   }
 }
 
-// ─── Recent invoices ────────────────────────────────────────────
+// ─── Bento Grid (speed / uptime tiles) ───────────────────────────
+
+class _BentoGrid extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+
+    // ponyato: hardcoded statics. Replace with real API data from speedTestProvider / uptimeProvider.
+
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () {},
+            child: Container(
+              decoration: _nbCard(isp),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.bolt_rounded, size: 22, color: isp.warning),
+                  const SizedBox(height: 10),
+                  Text(
+                    '50',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: isp.textPrimary,
+                      letterSpacing: -1,
+                      height: 1.0,
+                    ),
+                  ),
+                  Text(
+                    'Mbps',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isp.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Kecepatan Aktif',
+                    style: TextStyle(fontSize: 10, color: isp.textMuted),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: GestureDetector(
+            onTap: () {},
+            child: Container(
+              decoration: _nbCard(isp),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.shield_outlined, size: 22, color: isp.success),
+                  const SizedBox(height: 10),
+                  Text(
+                    '99.8',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: isp.textPrimary,
+                      letterSpacing: -1,
+                      height: 1.0,
+                    ),
+                  ),
+                  Text(
+                    '%',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isp.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Uptime 30 hari',
+                    style: TextStyle(fontSize: 10, color: isp.textMuted),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Invoice Alert (shows overdue count) ─────────────────────────
+
+class _InvoiceAlert extends StatelessWidget {
+  const _InvoiceAlert({required this.invState});
+  final AsyncValue<List<InvoiceModel>> invState;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+
+    return invState.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (invoices) {
+        final overdue =
+            invoices.where((inv) => inv.isOverdue && !inv.isPaid).length;
+        if (overdue == 0) return const SizedBox.shrink();
+
+        return GestureDetector(
+          onTap: () => GoRouter.of(context).go('/?tab=2'),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isp.dangerSurface,
+              borderRadius: BorderRadius.circular(_kCardRadius),
+              border: Border.all(color: isp.danger.withOpacity(0.4), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: isp.danger.withOpacity(0.15),
+                  offset: const Offset(3, 3),
+                  blurRadius: 0,
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isp.danger.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.warning_rounded,
+                    color: isp.danger,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$overdue tagihan jatuh tempo',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: isp.danger,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Segera lakukan pembayaran',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isp.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: isp.danger, size: 22),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─── Ticket CTA ──────────────────────────────────────────────────
+
+class _TicketCTA extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+
+    return GestureDetector(
+      onTap: () => GoRouter.of(context).push('/tickets/new'),
+      child: Container(
+        decoration: _nbCard(isp),
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: isp.accentSurface,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(Icons.add_rounded, color: isp.accent, size: 26),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Buat Tiket Baru',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: isp.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Laporkan gangguan atau minta bantuan',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isp.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: isp.textMuted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Recent Invoices ─────────────────────────────────────────────
 
 class _RecentInvoices extends StatelessWidget {
   const _RecentInvoices({required this.invState});
@@ -326,10 +562,10 @@ class _RecentInvoices extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
     final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -355,21 +591,17 @@ class _RecentInvoices extends StatelessWidget {
         ),
         const SizedBox(height: _kElementSpacing),
         Container(
-          decoration: BoxDecoration(
-            color: isp.surface,
-            borderRadius: BorderRadius.circular(_kCardRadius),
-            border: Border.all(color: isp.border, width: 1),
-          ),
+          decoration: _nbCard(isp),
           child: invState.when(
             loading: () => const IspSkeletonList(itemCount: 3),
             error: (e, _) => _ErrorCard(message: e.toString()),
             data: (page) {
               if (page.isEmpty) {
                 return Padding(
-                  padding: EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(24),
                   child: Center(
                     child: Text(
-                      'No invoices',
+                      'Belum ada tagihan',
                       style: TextStyle(color: isp.textMuted),
                     ),
                   ),
@@ -402,7 +634,6 @@ class _RecentInvoices extends StatelessWidget {
                         ),
                         child: Row(
                           children: [
-                            // Receipt icon
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
@@ -416,7 +647,6 @@ class _RecentInvoices extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            // Invoice info
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -445,7 +675,6 @@ class _RecentInvoices extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            // Amount + status
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
@@ -465,7 +694,7 @@ class _RecentInvoices extends StatelessWidget {
                                   ),
                                   decoration: BoxDecoration(
                                     color: statusColor.withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(9999),
+                                    borderRadius: BorderRadius.circular(999),
                                   ),
                                   child: Text(
                                     inv.statusLabel(),
@@ -493,7 +722,7 @@ class _RecentInvoices extends StatelessWidget {
   }
 }
 
-// ─── Error card ─────────────────────────────────────────────────
+// ─── Error card ──────────────────────────────────────────────────
 
 class _ErrorCard extends StatelessWidget {
   const _ErrorCard({required this.message});
@@ -501,18 +730,24 @@ class _ErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return Container(
+    final isp = context.isp;
+    return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isp.danger.withOpacity(0.1),
+        color: isp.dangerSurface,
         borderRadius: BorderRadius.circular(_kCardRadius),
         border: Border.all(
-          color: isp.danger.withOpacity(0.25),
-          width: 1,
+          color: isp.danger.withOpacity(0.4),
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: isp.danger.withOpacity(0.1),
+            offset: const Offset(3, 3),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -521,10 +756,7 @@ class _ErrorCard extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: TextStyle(
-                fontSize: 13,
-                color: isp.textPrimary,
-              ),
+              style: TextStyle(fontSize: 13, color: isp.textPrimary),
             ),
           ),
         ],
@@ -533,7 +765,7 @@ class _ErrorCard extends StatelessWidget {
   }
 }
 
-// ─── Empty state ────────────────────────────────────────────────
+// ─── Empty state ─────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.label});
@@ -541,29 +773,17 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return Container(
+    final isp = context.isp;
+    return Container(
       padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: isp.surface,
-        borderRadius: BorderRadius.circular(_kCardRadius),
-        border: Border.all(color: isp.border, width: 1),
-      ),
+      decoration: _nbCard(isp),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.inbox_outlined,
-              size: 48,
-              color: isp.textMuted,
-            ),
+            Icon(Icons.inbox_outlined, size: 48, color: isp.textMuted),
             const SizedBox(height: 12),
-            Text(
-              label,
-              style: TextStyle(color: isp.textMuted),
-            ),
+            Text(label, style: TextStyle(color: isp.textMuted)),
           ],
         ),
       ),

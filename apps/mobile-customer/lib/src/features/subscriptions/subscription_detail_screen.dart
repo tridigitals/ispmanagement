@@ -214,25 +214,65 @@ class _HeroHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
+    final statusColor = _statusTone() == StatusTone.success
+        ? isp.success
+        : _statusTone() == StatusTone.danger
+            ? isp.danger
+            : isp.warning;
 
-
-    final isp = context.isp;    return Container(
+    return Container(
       padding: const EdgeInsets.all(IspSpacing.xl),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            _gradientStart(),
-            _gradientEnd(),
-          ],
-        ),
+        color: isp.surface,
         borderRadius: BorderRadius.circular(IspRadii.xl),
-        boxShadow: IspShadows.md,
+        border: Border.all(color: isp.border),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Circular progress indicator ──
+          SizedBox(
+            width: 140,
+            height: 140,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CustomPaint(
+                  painter: _CircularProgressPainter(
+                    progress: _daysProgress(),
+                    color: statusColor,
+                    bgColor: isp.border,
+                    strokeWidth: 8,
+                  ),
+                ),
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        fmt.format(sub.price),
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: isp.textPrimary,
+                          height: 1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '/ ${sub.billingCycle}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isp.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: IspSpacing.lg),
           // Package name + status
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -240,10 +280,10 @@ class _HeroHeader extends StatelessWidget {
               Expanded(
                 child: Text(
                   sub.packageName ?? (l10n.internetPackage ?? 'Paket Internet'),
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+                  style: TextStyle(
+                    color: isp.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -254,43 +294,40 @@ class _HeroHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: IspSpacing.xl),
-          // Price
-          Text(
-            fmt.format(sub.price),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 36,
-              fontWeight: FontWeight.w800,
-              height: 1.0,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '/ ${sub.billingCycle}',
-            style: const TextStyle(color: Colors.white60, fontSize: 14),
-          ),
-          const SizedBox(height: IspSpacing.lg),
           // Router + Location chips
-          Wrap(
-            spacing: IspSpacing.sm,
-            runSpacing: IspSpacing.xs,
-            children: [
-              if (sub.routerName != null)
-                _InfoChip(
-                  icon: Icons.router,
-                  label: sub.routerName!,
-                ),
-              if (sub.locationLabel != null)
-                _InfoChip(
-                  icon: Icons.location_on_outlined,
-                  label: sub.locationLabel!,
-                ),
-            ],
-          ),
+          if (sub.routerName != null || sub.locationLabel != null) ...[
+            const SizedBox(height: IspSpacing.md),
+            Wrap(
+              spacing: IspSpacing.sm,
+              runSpacing: IspSpacing.xs,
+              children: [
+                if (sub.routerName != null)
+                  _InfoChip(
+                    icon: Icons.router,
+                    label: sub.routerName!,
+                  ),
+                if (sub.locationLabel != null)
+                  _InfoChip(
+                    icon: Icons.location_on_outlined,
+                    label: sub.locationLabel!,
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  /// Returns progress as 0.0–1.0 based on days elapsed between startAt and endAt.
+  double _daysProgress() {
+    final start = sub.startsAt;
+    final end = sub.endsAt;
+    if (start == null || end == null) return 0.0;
+    final total = end.difference(start).inDays;
+    final elapsed = DateTime.now().difference(start).inDays;
+    if (total <= 0) return 0.0;
+    return (elapsed / total).clamp(0.0, 1.0);
   }
 
   StatusTone _statusTone() {
@@ -315,36 +352,6 @@ class _HeroHeader extends StatelessWidget {
         return Icons.timer_off_outlined;
       default:
         return Icons.help_outline;
-    }
-  }
-
-  Color _gradientStart() {
-    switch (sub.status) {
-      case SubscriptionStatus.active:
-        return IspColors.primary;
-      case SubscriptionStatus.suspended:
-        return IspColors.warning;
-      case SubscriptionStatus.cancelled:
-        return IspColors.danger;
-      case SubscriptionStatus.grace:
-        return IspColors.warning;
-      default:
-        return IspColors.textMuted;
-    }
-  }
-
-  Color _gradientEnd() {
-    switch (sub.status) {
-      case SubscriptionStatus.active:
-        return IspColors.info;
-      case SubscriptionStatus.suspended:
-        return IspColors.warning;
-      case SubscriptionStatus.cancelled:
-        return IspColors.danger;
-      case SubscriptionStatus.grace:
-        return IspColors.warning;
-      default:
-        return IspColors.textMuted;
     }
   }
 }
@@ -515,18 +522,19 @@ class _InfoChip extends StatelessWidget {
     final isp = context.isp;    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
+        color: isp.surfaceTertiary,
         borderRadius: BorderRadius.circular(IspRadii.pill),
+        border: Border.all(color: isp.borderSubtle),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Colors.white70),
+          Icon(icon, size: 14, color: isp.accent),
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: isp.textPrimary,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),

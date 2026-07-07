@@ -50,102 +50,235 @@ class _State extends ConsumerState<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
 
-
-    final isp = context.isp;    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.forgotPassword)),
+      backgroundColor: isp.background,
+      appBar: AppBar(
+        backgroundColor: isp.background,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        ),
+        title: Text(
+          l10n.forgotPassword,
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
+        centerTitle: false,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(IspSpacing.lg),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
           child: Form(
             key: _form,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: IspSpacing.xl),
-                Icon(
-                  Icons.lock_reset_outlined,
-                  size: 64,
-                  color: isp.accent,
-                ),
-                const SizedBox(height: IspSpacing.lg),
+                // ─── Subtitle ───
                 Text(
-                  l10n.forgotPasswordHeadline,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+                  'Masukkan email terdaftar. Kami akan kirim kode verifikasi.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isp.textMuted,
+                    height: 1.5,
                   ),
-                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  l10n.forgotPasswordSub,
-                  style: TextStyle(color: isp.textMuted),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: IspSpacing.xxl),
-                TextFormField(
+                const SizedBox(height: 28),
+                // ─── Label + input ───
+                _NeubrutalistLabel(text: l10n.email),
+                const SizedBox(height: 8),
+                _NeubrutalistInput(
                   controller: _email,
-                  keyboardType: TextInputType.emailAddress,
+                  hintText: 'nama@email.com',
                   textInputAction: TextInputAction.next,
-                  autofillHints: const [AutofillHints.email],
-                  decoration: InputDecoration(
-                    labelText: l10n.email,
-                    prefixIcon: const Icon(Icons.email_outlined),
-                  ),
-                  validator: Validators.email,
+                  validate: Validators.email,
                 ),
-                const SizedBox(height: IspSpacing.md),
-                TextFormField(
+                const SizedBox(height: 16),
+                _NeubrutalistLabel(text: l10n.reasonOptional),
+                const SizedBox(height: 8),
+                _NeubrutalistInput(
                   controller: _reason,
+                  hintText: l10n.reasonHint,
+                  textInputAction: TextInputAction.done,
                   maxLines: 3,
-                  maxLength: 200,
-                  decoration: InputDecoration(
-                    labelText: l10n.reasonOptional,
-                    hintText: l10n.reasonHint,
-                    alignLabelWithHint: true,
-                  ),
                 ),
+                // ─── Result banner ───
                 if (_done != null) ...[
-                  const SizedBox(height: IspSpacing.md),
+                  const SizedBox(height: 16),
                   Container(
-                    padding: const EdgeInsets.all(IspSpacing.md),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: isp.success.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(IspRadii.md),
+                      border: Border.all(
+                        width: 1.5,
+                        color: isp.success.withOpacity(0.2),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.check_circle_outline,
-                          color: isp.success,
-                        ),
+                        Icon(Icons.check_circle_outline, color: isp.success),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _done!,
-                            style: TextStyle(color: isp.success),
+                            style: TextStyle(color: isp.success, fontSize: 13),
                           ),
                         ),
                       ],
                     ),
                   ),
                 ],
-                const SizedBox(height: IspSpacing.xl),
-                IspPrimaryButton(
-                  label: l10n.sendResetLink,
+                const SizedBox(height: 28),
+                // ─── Send code button ───
+                _NeubrutalistAccentButton(
+                  label: 'Kirim Kode',
                   loading: _sending,
-                  onPressed: _submit,
+                  onTap: _submit,
                 ),
-                const SizedBox(height: IspSpacing.md),
+                const SizedBox(height: 16),
+                // ─── Back to login ───
                 TextButton(
                   onPressed: () => context.pop(),
+                  style: TextButton.styleFrom(
+                    foregroundColor: isp.textSecondary,
+                  ),
                   child: Text(l10n.backToLogin),
                 ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Neubrutalist widget helpers ────────────────────────────────
+
+class _NeubrutalistLabel extends StatelessWidget {
+  const _NeubrutalistLabel({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.5,
+        color: isp.textMuted,
+      ),
+    );
+  }
+}
+
+class _NeubrutalistInput extends StatelessWidget {
+  const _NeubrutalistInput({
+    required this.controller,
+    required this.hintText,
+    this.textInputAction,
+    this.validate,
+    this.maxLines = 1,
+  });
+  final TextEditingController controller;
+  final String hintText;
+  final TextInputAction? textInputAction;
+  final String? Function(String?)? validate;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    return TextFormField(
+      controller: controller,
+      keyboardType: TextInputType.emailAddress,
+      textInputAction: textInputAction,
+      maxLines: maxLines,
+      style: TextStyle(color: isp.textPrimary, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(color: isp.textMuted),
+        filled: true,
+        fillColor: isp.surface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.accent),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.danger),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.danger),
+        ),
+      ),
+      validator: validate,
+    );
+  }
+}
+
+class _NeubrutalistAccentButton extends StatelessWidget {
+  const _NeubrutalistAccentButton({
+    required this.label,
+    required this.loading,
+    required this.onTap,
+  });
+  final String label;
+  final bool loading;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    return GestureDetector(
+      onTap: loading ? null : onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isp.accent,
+          border: Border.all(width: 1.5, color: isp.accent),
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          boxShadow: [
+            BoxShadow(
+              offset: const Offset(3, 3),
+              blurRadius: 0,
+              color: isp.accent.withOpacity(0.3),
+            ),
+          ],
+        ),
+        child: Center(
+          child: loading
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(isp.textInverse),
+                  ),
+                )
+              : Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
         ),
       ),
     );

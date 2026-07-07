@@ -10,7 +10,21 @@ import '../../l10n/app_localizations.dart';
 import '../../services/service_providers.dart';
 import '../../services/settings_providers.dart' show currentTabProvider;
 import '../tickets/ticket_l10n.dart';
-import '../../theme/app_theme.dart';
+
+// ─── Neubrutalist card ───────────────────────────────────────────
+
+BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
+      color: isp.surface,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: isp.border, width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: isp.border.withOpacity(0.5),
+          offset: const Offset(3, 3),
+          blurRadius: 0,
+        ),
+      ],
+    );
 
 class SupportTab extends ConsumerStatefulWidget {
   const SupportTab({super.key});
@@ -32,11 +46,8 @@ class _SupportTabState extends ConsumerState<SupportTab> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadInitial());
-    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
     ref.listen(currentTabProvider, (prev, next) {
-      if (next == 3 && prev != next) {
-        _loadInitial();
-      }
+      if (next == 3 && prev != next) _loadInitial();
     });
   }
 
@@ -119,15 +130,12 @@ class _SupportTabState extends ConsumerState<SupportTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
     ref.listen(currentTabProvider, (prev, next) {
-      if (next == 3 && prev != next) {
-        _refreshForTabActivation();
-      }
+      if (next == 3 && prev != next) _refreshForTabActivation();
     });
 
-
-    final isp = context.isp;    final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
 
     if (!_initialLoaded) {
       return Center(
@@ -168,7 +176,7 @@ class _SupportTabState extends ConsumerState<SupportTab> {
 
     return Column(
       children: [
-        // Category filter chips — always visible so user can recover from empty filtered results
+        // Category filter chips
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -212,16 +220,11 @@ class _SupportTabState extends ConsumerState<SupportTab> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.support_agent_outlined,
-                        size: 64,
-                        color: isp.textMuted,
-                      ),
+                      Icon(Icons.support_agent_outlined,
+                          size: 64, color: isp.textMuted),
                       const SizedBox(height: 12),
-                      Text(
-                        l10n.noTickets,
-                        style: TextStyle(color: isp.textMuted),
-                      ),
+                      Text(l10n.noTickets,
+                          style: TextStyle(color: isp.textMuted)),
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: () =>
@@ -282,153 +285,85 @@ class _TicketTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     final dateFmt = DateFormat('d MMM', 'id_ID');
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => GoRouter.of(context).push('/tickets/${t.id}'),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: isp.border, width: 0.5),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      t.subject,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: isp.textPrimary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (t.unreadCount > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isp.accent,
-                        borderRadius: BorderRadius.circular(9999),
-                      ),
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => GoRouter.of(context).push('/tickets/${t.id}'),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            decoration: _nbCard(isp),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
                       child: Text(
-                        '${t.unreadCount}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
+                        t.subject,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: isp.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (t.unreadCount > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isp.accent,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '${t.unreadCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  IspStatusBadge(
-                    label: l10n.ticketStatusLabel(t.status),
-                    tone: t.isOpen
-                        ? StatusTone.info
-                        : t.isClosed
-                            ? StatusTone.neutral
-                            : StatusTone.warning,
-                  ),
-                  if (t.category != null && t.category!.isNotEmpty) ...[
-                    const SizedBox(width: 6),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
                     IspStatusBadge(
-                      label: l10n.ticketCategoryLabel(t.category),
-                      tone: StatusTone.neutral,
+                      label: l10n.ticketStatusLabel(t.status),
+                      tone: t.isOpen
+                          ? StatusTone.info
+                          : t.isClosed
+                              ? StatusTone.neutral
+                              : StatusTone.warning,
+                    ),
+                    if (t.category != null && t.category!.isNotEmpty)
+                      IspStatusBadge(
+                        label: l10n.ticketCategoryLabel(t.category),
+                        tone: StatusTone.neutral,
+                      ),
+                    Text(
+                      '· ${dateFmt.format(t.updatedAt)}',
+                      style: TextStyle(fontSize: 12, color: isp.textMuted),
                     ),
                   ],
-                  const SizedBox(width: 8),
-                  Text(
-                    '· ${dateFmt.format(t.updatedAt)}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isp.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return Padding(
-      padding: const EdgeInsets.all(40),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: isp.surface,
-              shape: BoxShape.circle,
-              border: Border.all(color: isp.border),
-            ),
-            child: Icon(icon, size: 48, color: isp.textMuted),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: isp.textPrimary,
-            ),
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              subtitle!,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: isp.textMuted,
-              ),
-            ),
-          ],
-          if (actionLabel != null) ...[
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: onAction,
-              child: Text(actionLabel!),
-            ),
-          ],
-        ],
       ),
     );
   }
@@ -447,24 +382,33 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return GestureDetector(
+    final isp = context.isp;
+    return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? isp.accent : isp.surface,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected ? isp.accent : isp.border,
+            width: 1.5,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: isp.accent.withOpacity(0.2),
+                    offset: const Offset(2, 2),
+                    blurRadius: 0,
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 13,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             color: selected ? Colors.white : isp.textSecondary,
           ),
         ),

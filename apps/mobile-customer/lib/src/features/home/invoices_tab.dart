@@ -9,7 +9,42 @@ import 'package:ui_kit/ui_kit.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/service_providers.dart';
 import '../../services/settings_providers.dart' show currentTabProvider;
-import '../../theme/app_theme.dart';
+
+// ─── Neubrutalist card ───────────────────────────────────────────
+
+BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
+      color: isp.surface,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: isp.border, width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: isp.border.withOpacity(0.5),
+          offset: const Offset(3, 3),
+          blurRadius: 0,
+        ),
+      ],
+    );
+
+// ─── Status-pill style helper ────────────────────────────────────
+
+Widget _statusPill(IspThemeColors isp, String label, Color color) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.15),
+      borderRadius: BorderRadius.circular(999),
+      border: Border.all(color: color.withOpacity(0.3), width: 1),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: color,
+      ),
+    ),
+  );
+}
 
 class InvoicesTab extends ConsumerStatefulWidget {
   const InvoicesTab({super.key});
@@ -30,11 +65,8 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadInitial());
-    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
     ref.listen(currentTabProvider, (prev, next) {
-      if (next == 2 && prev != next) {
-        _loadInitial();
-      }
+      if (next == 2 && prev != next) _loadInitial();
     });
   }
 
@@ -103,11 +135,8 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
     ref.listen(currentTabProvider, (prev, next) {
-      if (next == 2 && prev != next) {
-        _refreshForTabActivation();
-      }
+      if (next == 2 && prev != next) _refreshForTabActivation();
     });
 
     final isp = context.isp;
@@ -159,16 +188,11 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.receipt_long_outlined,
-                size: 64,
-                color: isp.textMuted,
-              ),
+              Icon(Icons.receipt_long_outlined,
+                  size: 64, color: isp.textMuted),
               const SizedBox(height: 12),
-              Text(
-                l10n.noInvoicesYet,
-                style: TextStyle(color: isp.textMuted),
-              ),
+              Text(l10n.noInvoicesYet,
+                  style: TextStyle(color: isp.textMuted)),
             ],
           ),
         ),
@@ -220,64 +244,88 @@ class _InvoiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    final fmt = NumberFormat.simpleCurrency(name: inv.currencyCode);
+    final isp = context.isp;
+    final fmt = NumberFormat.simpleCurrency(name: inv.currencyCode);
     final dateFmt = DateFormat('d MMM yyyy', 'id_ID');
     final l10n = AppLocalizations.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => GoRouter.of(context).push('/invoices/${inv.id}'),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: isp.border, width: 0.5),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    inv.invoiceNumber,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isp.textPrimary,
+
+    final statusColor = inv.isPaid
+        ? isp.success
+        : inv.isOverdue
+            ? isp.danger
+            : isp.warning;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => GoRouter.of(context).push('/invoices/${inv.id}'),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            decoration: _nbCard(isp),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isp.surfaceElevated,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.receipt_outlined,
+                          size: 22, color: isp.textSecondary),
                     ),
-                  ),
-                  IspStatusBadge(
-                    label: inv.statusLabel(),
-                    tone: inv.isPaid
-                        ? StatusTone.success
-                        : inv.isOverdue
-                            ? StatusTone.danger
-                            : StatusTone.warning,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${l10n.dueOn ?? 'Jatuh tempo'} ${dateFmt.format(inv.dueDate)}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isp.textMuted,
+                    _statusPill(isp, inv.statusLabel(), statusColor),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                fmt.format(inv.amount),
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: isp.textPrimary,
+                const SizedBox(height: 14),
+                Text(
+                  inv.invoiceNumber,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: isp.textPrimary,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  '${l10n.dueOn ?? 'Jatuh tempo'} ${dateFmt.format(inv.dueDate)}',
+                  style: TextStyle(fontSize: 12, color: isp.textMuted),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      fmt.format(inv.amount),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: isp.textPrimary,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isp.accentSurface,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.arrow_forward_ios,
+                        size: 14,
+                        color: isp.accent,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

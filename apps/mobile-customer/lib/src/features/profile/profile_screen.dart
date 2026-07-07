@@ -23,108 +23,122 @@ class ProfileScreen extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
 
     return Scaffold(
+      backgroundColor: isp.background,
       appBar: AppBar(
         title: Text(l10n.profile),
+        centerTitle: false,
       ),
       body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
-          const SizedBox(height: IspSpacing.xl),
-          // Avatar + Name + Email
+          const SizedBox(height: 24),
+          // Avatar row — accent glow ring
           Center(
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 48,
-                  backgroundColor: isp.accentSurface,
-                  backgroundImage: user?.avatarUrl != null
-                      ? NetworkImage(_buildAbsoluteUrl(apiBaseUrl, user!.avatarUrl!))
-                      : null,
-                  child: user?.avatarUrl == null
-                      ? Icon(Icons.person, size: 48, color: isp.accent)
-                      : null,
-                ),
-                const SizedBox(height: IspSpacing.md),
-                Text(
-                  user?.name ?? '—',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (user?.email != null)
-                  Text(
-                    user!.email,
-                    style: TextStyle(color: isp.textMuted),
-                  ),
-              ],
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: isp.accent, width: 2),
+              ),
+              child: CircleAvatar(
+                radius: 47,
+                backgroundColor: isp.surfaceElevated,
+                backgroundImage: user?.avatarUrl != null
+                    ? NetworkImage(_buildAbsoluteUrl(apiBaseUrl, user!.avatarUrl!))
+                    : null,
+                child: user?.avatarUrl == null
+                    ? Icon(Icons.person, size: 40, color: isp.accent)
+                    : null,
+              ),
             ),
           ),
-          const SizedBox(height: IspSpacing.xl),
-          // Edit Profile
-          _ProfileGroup(
-            items: [
-              _ProfileItem(
-                icon: Icons.edit_outlined,
-                title: l10n.editProfile,
-                onTap: () => GoRouter.of(context).push('/edit-profile'),
-              ),
-            ],
+          const SizedBox(height: 12),
+          Text(
+            user?.name ?? '—',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: IspSpacing.md),
-          // Menu items
-          _ProfileGroup(
-            items: [
-              _ProfileItem(
-                icon: Icons.help_outline,
-                title: l10n.faq,
-                onTap: () => GoRouter.of(context).push('/faq'),
-              ),
-              _ProfileItem(
-                icon: Icons.support_agent_outlined,
-                title: l10n.contactUs,
-                onTap: () => GoRouter.of(context).push('/contact'),
-              ),
-              _ProfileItem(
-                icon: Icons.notifications_outlined,
-                title: l10n.notifications,
-                badge: unread > 0 ? '$unread' : null,
-                onTap: () => GoRouter.of(context).push('/notifications'),
-              ),
-              _ProfileItem(
-                icon: Icons.lock_outline,
-                title: l10n.changePassword,
-                onTap: () => GoRouter.of(context).push('/change-password'),
-              ),
-            ],
-          ),
-          const SizedBox(height: IspSpacing.md),
+          if (user?.email != null)
+            Text(
+              user!.email,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: isp.textMuted, fontSize: 13),
+            ),
+          if (user?.phone != null && user!.phone.isNotEmpty)
+            Text(
+              user.phone,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: isp.textMuted, fontSize: 13),
+            ),
+          const SizedBox(height: 28),
+
+          // Tinted menu tiles — Apple settings style
+          _buildSection(isp, [
+            _TintedTile(
+              icon: Icons.person_outline,
+              iconBg: isp.accent,
+              title: l10n.editProfile,
+              onTap: () => GoRouter.of(context).push('/edit-profile'),
+            ),
+            _TintedTile(
+              icon: Icons.lock_outline,
+              iconBg: isp.info,
+              title: l10n.changePassword,
+              onTap: () => GoRouter.of(context).push('/change-password'),
+            ),
+            _TintedTile(
+              icon: Icons.notifications_outlined,
+              iconBg: isp.warning,
+              title: l10n.notifications,
+              badge: unread > 0 ? '$unread' : null,
+              onTap: () => GoRouter.of(context).push('/notifications'),
+            ),
+          ]),
+
+          _buildSection(isp, [
+            _TintedTile(
+              icon: Icons.support_agent_outlined,
+              iconBg: isp.info,
+              title: l10n.contactUs,
+              onTap: () => GoRouter.of(context).push('/contact'),
+            ),
+            _TintedTile(
+              icon: Icons.help_outline,
+              iconBg: isp.success,
+              title: l10n.faq,
+              onTap: () => GoRouter.of(context).push('/faq'),
+            ),
+            _TintedTile(
+              icon: Icons.tune,
+              iconBg: isp.textMuted,
+              title: l10n.settings,
+              onTap: () => GoRouter.of(context).push('/settings'),
+            ),
+          ]),
+
           // Theme toggle
-          _ThemeToggleCard(
-            themeMode: themeMode,
-            onChanged: (mode) =>
-                ref.read(themeModeProvider.notifier).set(mode),
-          ),
-          const SizedBox(height: IspSpacing.md),
+          _buildThemeToggle(context, isp, themeMode, ref),
+
           // Logout
-          _ProfileGroup(
-            items: [
-              _ProfileItem(
-                icon: Icons.logout,
-                title: l10n.logout,
-                iconColor: isp.danger,
-                titleColor: isp.danger,
-                onTap: () => ref.read(authControllerProvider.notifier).logout(),
-              ),
-            ],
-          ),
-          const SizedBox(height: IspSpacing.xl),
+          _buildSection(isp, [
+            _TintedTile(
+              icon: Icons.logout,
+              iconBg: isp.danger,
+              title: l10n.logout,
+              isDestructive: true,
+              onTap: () => ref.read(authControllerProvider.notifier).logout(),
+            ),
+          ]),
+
+          const SizedBox(height: 16),
           Center(
             child: Text(
               'v0.1.0+7',
-              style: TextStyle(color: isp.textMuted, fontSize: 12),
+              style: TextStyle(color: isp.textMuted, fontSize: 11),
             ),
           ),
-          const SizedBox(height: IspSpacing.xl),
+          const SizedBox(height: 48),
         ],
       ),
     );
@@ -136,183 +150,169 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-// ─── Profile Group Card ────────────────────────────────────────
-
-class _ProfileGroup extends StatelessWidget {
-  const _ProfileGroup({required this.items});
-  final List<Widget> items;
-  @override
-  Widget build(BuildContext context) {
-    final isp = context.isp;
-    return IspCard(
-      margin: const EdgeInsets.symmetric(
-          horizontal: IspSpacing.lg, vertical: IspSpacing.sm),
+/// Grouped tinted card — Apple settings style
+Widget _buildSection(IspThemeColors isp, List<Widget> tiles) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Container(
+      decoration: BoxDecoration(
+        color: isp.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: isp.border, width: 1.5),
+        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.3), offset: Offset(2, 2))],
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          for (var i = 0; i < items.length; i++) ...[
-            items[i],
-            if (i < items.length - 1)
-              Divider(height: 1, color: isp.borderSubtle),
+          for (var i = 0; i < tiles.length; i++) ...[
+            tiles[i],
+            if (i < tiles.length - 1)
+              Divider(height: 1, indent: 56, color: isp.borderSubtle),
           ],
         ],
       ),
-    );
-  }
+    ),
+  );
 }
 
-// ─── Profile List Item ─────────────────────────────────────────
-
-class _ProfileItem extends StatelessWidget {
-  const _ProfileItem({
+class _TintedTile extends StatelessWidget {
+  const _TintedTile({
     required this.icon,
+    required this.iconBg,
     required this.title,
-    required this.onTap,
     this.badge,
-    this.iconColor,
-    this.titleColor,
+    this.isDestructive = false,
+    required this.onTap,
   });
+
   final IconData icon;
+  final Color iconBg;
   final String title;
-  final VoidCallback onTap;
   final String? badge;
-  final Color? iconColor;
-  final Color? titleColor;
+  final bool isDestructive;
+  final VoidCallback onTap;
+
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
-    return ListTile(
-      leading: Icon(icon, color: iconColor),
-      title: Text(title, style: TextStyle(color: titleColor)),
-      trailing: badge != null
-          ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: isp.danger,
-                borderRadius: BorderRadius.circular(IspRadii.pill),
-              ),
-              child: Text(
-                badge!,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            )
-          : Icon(Icons.chevron_right, color: isp.textMuted),
+    return InkWell(
       onTap: onTap,
-    );
-  }
-}
-
-// ─── Theme Toggle Card ─────────────────────────────────────────
-
-class _ThemeToggleCard extends StatelessWidget {
-  const _ThemeToggleCard({
-    required this.themeMode,
-    required this.onChanged,
-  });
-  final ThemeMode themeMode;
-  final ValueChanged<ThemeMode> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final isp = context.isp;
-    final l10n = AppLocalizations.of(context);
-
-    return IspCard(
-      margin: const EdgeInsets.symmetric(
-          horizontal: IspSpacing.lg, vertical: IspSpacing.sm),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Icon(
-              themeMode == ThemeMode.dark
-                  ? Icons.dark_mode
-                  : Icons.light_mode,
-              color: isp.accent,
+            // Tinted icon container
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: iconBg.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(7),
+              ),
+              alignment: Alignment.center,
+              child: Icon(icon, size: 17, color: iconBg),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                l10n.darkMode,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDestructive ? isp.danger : isp.textPrimary,
                 ),
               ),
             ),
-            // Compact toggle buttons
-            _buildToggle(isp),
+            if (badge != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isp.danger,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  badge!,
+                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                ),
+              ),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right, size: 18, color: isp.textMuted),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildToggle(IspThemeColors isp) {
-    return Container(
+Widget _buildThemeToggle(
+    BuildContext context,
+    IspThemeColors isp,
+    ThemeMode themeMode,
+    WidgetRef ref,
+) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Container(
       decoration: BoxDecoration(
-        color: isp.surfaceElevated,
-        borderRadius: BorderRadius.circular(IspRadii.pill),
+        color: isp.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: isp.border, width: 1.5),
+        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.3), offset: Offset(2, 2))],
       ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          _ToggleBtn(
-            icon: Icons.light_mode,
-            isSelected: themeMode == ThemeMode.light,
-            isp: isp,
-            onTap: () => onChanged(ThemeMode.light),
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(
+              color: isp.accent.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(7),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              themeMode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
+              size: 17, color: isp.accent,
+            ),
           ),
-          _ToggleBtn(
-            icon: Icons.brightness_auto,
-            isSelected: themeMode == ThemeMode.system,
-            isp: isp,
-            onTap: () => onChanged(ThemeMode.system),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text('Mode Gelap', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
           ),
-          _ToggleBtn(
-            icon: Icons.dark_mode,
-            isSelected: themeMode == ThemeMode.dark,
-            isp: isp,
-            onTap: () => onChanged(ThemeMode.dark),
+          // Compact pill toggle
+          Container(
+            decoration: BoxDecoration(
+              color: isp.surfaceTertiary,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _toggleBtn(Icons.light_mode, themeMode == ThemeMode.light, isp,
+                    () => ref.read(themeModeProvider.notifier).set(ThemeMode.light)),
+                _toggleBtn(Icons.brightness_auto, themeMode == ThemeMode.system, isp,
+                    () => ref.read(themeModeProvider.notifier).set(ThemeMode.system)),
+                _toggleBtn(Icons.dark_mode, themeMode == ThemeMode.dark, isp,
+                    () => ref.read(themeModeProvider.notifier).set(ThemeMode.dark)),
+              ],
+            ),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
 }
 
-class _ToggleBtn extends StatelessWidget {
-  const _ToggleBtn({
-    required this.icon,
-    required this.isSelected,
-    required this.isp,
-    required this.onTap,
-  });
-  final IconData icon;
-  final bool isSelected;
-  final IspThemeColors isp;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: isSelected ? isp.accent : Colors.transparent,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: isSelected ? Colors.white : isp.textMuted,
-        ),
+Widget _toggleBtn(IconData icon, bool selected, IspThemeColors isp, VoidCallback onTap) {
+  return GestureDetector(
+    onTap: onTap,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: selected ? isp.accent : Colors.transparent,
+        shape: BoxShape.circle,
       ),
-    );
-  }
+      child: Icon(icon, size: 16, color: selected ? Colors.white : isp.textMuted),
+    ),
+  );
 }

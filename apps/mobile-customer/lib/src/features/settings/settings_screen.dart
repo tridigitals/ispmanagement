@@ -18,135 +18,65 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isp = context.isp;
-final l10n = AppLocalizations.of(context);
+    final l10n = AppLocalizations.of(context);
     final user = ref.watch(currentUserProvider);
+    final bio = ref.watch(biometricEnabledProvider).valueOrNull ?? false;
+
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.settings)),
+      backgroundColor: isp.background,
+      appBar: AppBar(title: Text(l10n.settings), centerTitle: false),
       body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
-          const SizedBox(height: IspSpacing.sm),
-          _SectionHeader(label: l10n.account),
-          IspCard(
-            margin: const EdgeInsets.symmetric(
-                horizontal: IspSpacing.md, vertical: IspSpacing.xs),
-            child: Column(
-              children: [
-                _SwitchTile(
-                  icon: Icons.fingerprint,
-                  title: l10n.biometric,
-                  subtitle: l10n.biometricSub,
-                  value:
-                      ref.watch(biometricEnabledProvider).valueOrNull ?? false,
-                  onChanged: (v) => _toggleBiometric(context, ref, v),
-                ),
-                Divider(height: 1, color: isp.borderSubtle),
-                _SwitchTile(
-                  icon: Icons.security,
-                  title: l10n.twoFactorAuth,
-                  subtitle: user?.twoFactorEnabled == true
-                      ? (user?.enforce2fa == true
-                          ? l10n.twoFaRequired
-                          : l10n.twoFaOn)
-                      : l10n.twoFaOff,
-                  value: user?.twoFactorEnabled == true,
-                  onChanged: user?.twoFactorEnabled == true &&
-                          user?.enforce2fa == true
-                      ? null // Prevent disabling when enforced
-                      : (v) => _toggle2fa(context, ref, v),
-                ),
-                Divider(height: 1, color: isp.borderSubtle),
-                ListTile(
-                  leading: const Icon(Icons.lock_outline),
-                  title: Text(l10n.changePassword),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => GoRouter.of(context).push('/change-password'),
-                ),
-                Divider(height: 1, color: isp.borderSubtle),
-                ListTile(
-                  leading: const Icon(Icons.edit_outlined),
-                  title: Text(l10n.editProfile),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => GoRouter.of(context).push('/edit-profile'),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: IspSpacing.lg),
-          _SectionHeader(label: 'Bahasa / Language'),
-          IspCard(
-            margin: const EdgeInsets.symmetric(
-                horizontal: IspSpacing.md, vertical: IspSpacing.xs),
-            child: Column(
-              children: [
-                RadioListTile<Locale>(
-                  secondary: const Icon(Icons.language),
-                  title: const Text('Bahasa Indonesia'),
-                  value: const Locale('id'),
-                  groupValue: Localizations.localeOf(context),
-                  onChanged: (locale) {
-                    if (locale != null) {
-                      ref.read(localeProvider.notifier).setLocale(locale);
-                    }
-                  },
-                ),
-                Divider(height: 1, color: isp.borderSubtle),
-                RadioListTile<Locale>(
-                  secondary: const Icon(Icons.language),
-                  title: const Text('English'),
-                  value: const Locale('en'),
-                  groupValue: Localizations.localeOf(context),
-                  onChanged: (locale) {
-                    if (locale != null) {
-                      ref.read(localeProvider.notifier).setLocale(locale);
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: IspSpacing.lg),
-          _SectionHeader(label: l10n.about),
-          IspCard(
-            margin: const EdgeInsets.symmetric(
-                horizontal: IspSpacing.md, vertical: IspSpacing.xs),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.privacy_tip_outlined),
-                  title: Text(l10n.privacyPolicy),
-                  trailing: const Icon(Icons.open_in_new),
-                  onTap: () => _openUrl('https://tridigitals.com/privacy'),
-                ),
-                Divider(height: 1, color: isp.borderSubtle),
-                ListTile(
-                  leading: const Icon(Icons.description_outlined),
-                  title: Text(l10n.termsOfService),
-                  trailing: const Icon(Icons.open_in_new),
-                  onTap: () => _openUrl('https://tridigitals.com/terms'),
-                ),
-                Divider(height: 1, color: isp.borderSubtle),
-                ListTile(
-                  leading: Icon(Icons.info_outline),
-                  title: Text('Versi Aplikasi'),
-                  trailing: Text(
-                    '0.1.0+1',
-                    style: TextStyle(color: isp.textMuted),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: IspSpacing.xxl),
+          const SizedBox(height: 8),
+
+          // Account section
+          _sectionHeader(isp, l10n.account),
+          _buildSection(isp, [
+            _switchTile(isp, Icons.fingerprint, l10n.biometric, l10n.biometricSub, bio,
+                (v) => _toggleBiometric(context, ref, v)),
+            _switchTile(isp, Icons.security, l10n.twoFactorAuth,
+                user?.twoFactorEnabled == true
+                    ? (user?.enforce2fa == true ? l10n.twoFaRequired : l10n.twoFaOn)
+                    : l10n.twoFaOff,
+                user?.twoFactorEnabled == true,
+                user?.twoFactorEnabled == true && user?.enforce2fa == true
+                    ? null
+                    : (v) => _toggle2fa(context, ref, v)),
+            _navTile(isp, Icons.lock_outline, l10n.changePassword,
+                () => GoRouter.of(context).push('/change-password')),
+            _navTile(isp, Icons.edit_outlined, l10n.editProfile,
+                () => GoRouter.of(context).push('/edit-profile')),
+          ]),
+
+          // Language section
+          _sectionHeader(isp, 'Bahasa / Language'),
+          _buildSection(isp, [
+            _radioTile(isp, Icons.translate, 'Bahasa Indonesia', const Locale('id'),
+                Localizations.localeOf(context),
+                (loc) => ref.read(localeProvider.notifier).setLocale(loc!)),
+            _radioTile(isp, Icons.translate, 'English', const Locale('en'),
+                Localizations.localeOf(context),
+                (loc) => ref.read(localeProvider.notifier).setLocale(loc!)),
+          ]),
+
+          // About section
+          _sectionHeader(isp, l10n.about),
+          _buildSection(isp, [
+            _navTile(isp, Icons.privacy_tip_outlined, l10n.privacyPolicy,
+                () => _openUrl('https://tridigitals.com/privacy')),
+            _navTile(isp, Icons.description_outlined, l10n.termsOfService,
+                () => _openUrl('https://tridigitals.com/terms')),
+            _infoTile(isp, Icons.info_outline, 'Versi Aplikasi', '0.1.0+1'),
+          ]),
+
+          const SizedBox(height: 48),
         ],
       ),
     );
   }
 
-  Future<void> _toggleBiometric(
-    BuildContext context,
-    WidgetRef ref,
-    bool enable,
-  ) async {
+  Future<void> _toggleBiometric(BuildContext context, WidgetRef ref, bool enable) async {
     final l10n = AppLocalizations.of(context);
     if (enable) {
       final auth = LocalAuthentication();
@@ -169,9 +99,7 @@ final l10n = AppLocalizations.of(context);
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString())),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
         }
       }
     } else {
@@ -179,35 +107,21 @@ final l10n = AppLocalizations.of(context);
     }
   }
 
-  Future<void> _toggle2fa(
-    BuildContext context,
-    WidgetRef ref,
-    bool enable,
-  ) async {
+  Future<void> _toggle2fa(BuildContext context, WidgetRef ref, bool enable) async {
     if (enable) {
       GoRouter.of(context).push('/security/2fa/enroll');
     } else {
-      // Confirm before disabling
       final confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
           title: Text(AppLocalizations.of(ctx).disable2faConfirmTitle),
-          content: Text(
-            AppLocalizations.of(ctx).disable2faConfirmBody,
-          ),
+          content: Text(AppLocalizations.of(ctx).disable2faConfirmBody),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(AppLocalizations.of(ctx).cancel),
-            ),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppLocalizations.of(ctx).cancel)),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: FilledButton.styleFrom(
-                backgroundColor: ctx.isp.danger,
-              ),
-              child: Text(
-                AppLocalizations.of(ctx).disable,
-              ),
+              style: FilledButton.styleFrom(backgroundColor: ctx.isp.danger),
+              child: Text(AppLocalizations.of(ctx).disable),
             ),
           ],
         ),
@@ -218,63 +132,36 @@ final l10n = AppLocalizations.of(context);
     }
   }
 
-  Future<void> _processDisable2fa(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
+  Future<void> _processDisable2fa(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context);
-
-    // First attempt - request OTP
     final result = await ref.read(authControllerProvider.notifier).disable2fa();
-
     if (result is Failure) {
       final error = (result as Failure).exception;
-
-      // Check if this is the "requires_verification" signal
       if (error.message == 'requires_verification' && context.mounted) {
-        // Show OTP dialog
         final code = await _showOtpDialog(context);
         if (code != null && code.isNotEmpty && context.mounted) {
-          // Second attempt with OTP code
-          final result2 = await ref
-              .read(authControllerProvider.notifier)
-              .disable2fa(code: code);
-
-          if (result2 is Success) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l10n.twoFaDisabledSuccess)),
-              );
-            }
+          final result2 = await ref.read(authControllerProvider.notifier).disable2fa(code: code);
+          if (result2 is Success && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.twoFaDisabledSuccess)));
           } else if (result2 is Failure && context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text((result2 as Failure).exception.message),
-                backgroundColor: context.isp.danger,
-              ),
+              SnackBar(content: Text((result2 as Failure).exception.message), backgroundColor: context.isp.danger),
             );
           }
         }
       } else if (context.mounted) {
-        // Show other errors
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.message),
-            backgroundColor: context.isp.danger,
-          ),
+          SnackBar(content: Text(error.message), backgroundColor: context.isp.danger),
         );
       }
     } else if (result is Success && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.twoFaDisabledSuccess)),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.twoFaDisabledSuccess)));
     }
   }
 
   Future<String?> _showOtpDialog(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
     final controller = TextEditingController();
-
     return showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -282,34 +169,20 @@ final l10n = AppLocalizations.of(context);
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              l10n.otpSentToEmail,
-              style: TextStyle(color: ctx.isp.textMuted, fontSize: 13),
-            ),
+            Text(l10n.otpSentToEmail, style: TextStyle(color: ctx.isp.textMuted, fontSize: 13)),
             const SizedBox(height: 16),
             TextField(
-              controller: controller,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
+              controller: controller, autofocus: true, keyboardType: TextInputType.number, maxLength: 6,
               decoration: InputDecoration(
-                labelText: l10n.verificationCode,
-                hintText: '123456',
-                border: const OutlineInputBorder(),
+                labelText: l10n.verificationCode, hintText: '123456', border: const OutlineInputBorder(),
               ),
               onSubmitted: (value) => Navigator.pop(ctx, value),
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text),
-            child: Text(l10n.verify),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, controller.text), child: Text(l10n.verify)),
         ],
       ),
     );
@@ -323,51 +196,117 @@ final l10n = AppLocalizations.of(context);
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.label});
-  final String label;
-  @override
-  Widget build(BuildContext context) {
+// ─── Helpers ──────────────────────────────────────────────────────
 
-
-    final isp = context.isp;    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, IspSpacing.lg, 20, IspSpacing.sm),
-      child: Text(
-        label.toUpperCase(),
-        style: TextStyle(
-          fontSize: 11,
-          letterSpacing: 1.2,
-          color: isp.textMuted,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
+Widget _sectionHeader(IspThemeColors isp, String label) {
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(4, 20, 4, 8),
+    child: Text(
+      label.toUpperCase(),
+      style: TextStyle(fontSize: 11, letterSpacing: 1.2, color: isp.textMuted, fontWeight: FontWeight.w700),
+    ),
+  );
 }
 
-class _SwitchTile extends StatelessWidget {
-  const _SwitchTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool>? onChanged;
-  @override
-  Widget build(BuildContext context) {
+Widget _buildSection(IspThemeColors isp, List<Widget> children) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Container(
+      decoration: BoxDecoration(
+        color: isp.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: isp.border, width: 1.5),
+        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.3), offset: Offset(2, 2))],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            children[i],
+            if (i < children.length - 1) Divider(height: 1, indent: 56, color: isp.borderSubtle),
+          ],
+        ],
+      ),
+    ),
+  );
+}
 
-
-    final isp = context.isp;    return SwitchListTile(
-      secondary: Icon(icon),
-      title: Text(title),
-      subtitle: Text(subtitle),
+Widget _switchTile(IspThemeColors isp, IconData icon, String title, String sub, bool value, ValueChanged<bool>? onChanged) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+    child: SwitchListTile(
+      secondary: Icon(icon, size: 20, color: isp.accent),
+      title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+      subtitle: Text(sub, style: TextStyle(fontSize: 11, color: isp.textMuted)),
       value: value,
       onChanged: onChanged,
-    );
-  }
+      dense: true,
+    ),
+  );
+}
+
+Widget _navTile(IspThemeColors isp, IconData icon, String title, VoidCallback onTap) {
+  return InkWell(
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(color: isp.accent.withOpacity(0.15), borderRadius: BorderRadius.circular(7)),
+            alignment: Alignment.center,
+            child: Icon(icon, size: 17, color: isp.accent),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+          Icon(Icons.chevron_right, size: 18, color: isp.textMuted),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _radioTile(IspThemeColors isp, IconData icon, String title, Locale value, Locale group, ValueChanged<Locale?> onChanged) {
+  return InkWell(
+    onTap: () => onChanged(value),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(color: isp.info.withOpacity(0.15), borderRadius: BorderRadius.circular(7)),
+            alignment: Alignment.center,
+            child: Icon(icon, size: 17, color: isp.info),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+          Icon(
+            value == group ? Icons.radio_button_checked : Icons.radio_button_off,
+            size: 20, color: value == group ? isp.accent : isp.textMuted,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _infoTile(IspThemeColors isp, IconData icon, String title, String value) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    child: Row(
+      children: [
+        Container(
+          width: 32, height: 32,
+          decoration: BoxDecoration(color: isp.textMuted.withOpacity(0.15), borderRadius: BorderRadius.circular(7)),
+          alignment: Alignment.center,
+          child: Icon(icon, size: 17, color: isp.textMuted),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+        Text(value, style: TextStyle(color: isp.textMuted, fontSize: 13)),
+      ],
+    ),
+  );
 }

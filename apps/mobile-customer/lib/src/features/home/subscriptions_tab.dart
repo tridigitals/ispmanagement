@@ -9,8 +9,22 @@ import 'package:ui_kit/ui_kit.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/service_providers.dart';
 import '../../services/settings_providers.dart' show currentTabProvider;
-import '../../theme/app_theme.dart';
 import '../../utils/loading_skeleton.dart';
+
+// ─── Neubrutalist card ───────────────────────────────────────────
+
+BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
+      color: isp.surface,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: isp.border, width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: isp.border.withOpacity(0.5),
+          offset: const Offset(3, 3),
+          blurRadius: 0,
+        ),
+      ],
+    );
 
 class SubscriptionsTab extends ConsumerStatefulWidget {
   const SubscriptionsTab({super.key});
@@ -30,13 +44,9 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
   @override
   void initState() {
     super.initState();
-    // Defer first load to after build
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadInitial());
-    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
     ref.listen(currentTabProvider, (prev, next) {
-      if (next == 1 && prev != next) {
-        _loadInitial();
-      }
+      if (next == 1 && prev != next) _loadInitial();
     });
   }
 
@@ -105,24 +115,17 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Reload data when this tab becomes active (IndexedStack keeps all tabs alive)
     ref.listen(currentTabProvider, (prev, next) {
-      if (next == 1 && prev != next) {
-        _refreshForTabActivation();
-      }
+      if (next == 1 && prev != next) _refreshForTabActivation();
     });
 
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
 
-    final isp = context.isp;    final l10n = AppLocalizations.of(context);
-
-    // Still loading initial
     if (!_initialLoaded) {
-      return Scaffold(
-        body: const IspSkeletonList(itemCount: 4),
-      );
+      return const IspSkeletonList(itemCount: 4);
     }
 
-    // Initial error
     if (_initialError != null) {
       return Scaffold(
         body: IspErrorState(
@@ -138,7 +141,6 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
       );
     }
 
-    // Empty
     if (_items.isEmpty) {
       return Scaffold(
         body: IspEmptyState(
@@ -167,10 +169,9 @@ class _SubscriptionsTabState extends ConsumerState<SubscriptionsTab> {
           itemCount: _items.length + 1,
           itemBuilder: (context, index) {
             if (index == _items.length) {
-              // Load-more indicator
               return _loadingMore
                   ? Padding(
-                      padding: EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(24),
                       child: Center(
                         child: SizedBox(
                           width: 24,
@@ -198,123 +199,125 @@ class _SubscriptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
+    final fmt = NumberFormat.simpleCurrency(name: sub.currencyCode);
 
-
-    final isp = context.isp;    final fmt = NumberFormat.simpleCurrency(name: sub.currencyCode);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => GoRouter.of(context).push('/subscriptions/${sub.id}'),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: isp.border, width: 0.5),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Header row ──
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      sub.packageName ?? 'Paket',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: isp.textPrimary,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IspStatusBadge(
-                    label: sub.statusLabel(),
-                    tone: sub.isActive
-                        ? StatusTone.success
-                        : sub.needsAttention
-                            ? StatusTone.danger
-                            : StatusTone.warning,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // ── Router + Location ──
-              Row(
-                children: [
-                  Icon(Icons.router,
-                      size: 15, color: isp.textMuted),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      sub.routerName ?? sub.locationLabel ?? '-',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isp.textMuted,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (sub.locationLabel != null && sub.routerName != null) ...[
-                    const SizedBox(width: 8),
-                    Icon(Icons.location_on_outlined,
-                        size: 14, color: isp.textMuted),
-                    const SizedBox(width: 4),
-                    Flexible(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => GoRouter.of(context).push('/subscriptions/${sub.id}'),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            decoration: _nbCard(isp),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Color-coded left accent strip hack — done via left border tint
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
                       child: Text(
-                        sub.locationLabel!,
+                        sub.packageName ?? 'Paket',
                         style: TextStyle(
-                          fontSize: 12,
-                          color: isp.textMuted,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: isp.textPrimary,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    IspStatusBadge(
+                      label: sub.statusLabel(),
+                      tone: sub.isActive
+                          ? StatusTone.success
+                          : sub.needsAttention
+                              ? StatusTone.danger
+                              : StatusTone.warning,
+                    ),
                   ],
-                ],
-              ),
-              const SizedBox(height: 12),
-              // ── Price + detail hint ──
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        fmt.format(sub.price),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: isp.textPrimary,
-                        ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(Icons.router, size: 15, color: isp.textMuted),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        sub.routerName ?? sub.locationLabel ?? '-',
+                        style:
+                            TextStyle(fontSize: 13, color: isp.textMuted),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
-                        '/ ${sub.billingCycle}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isp.textMuted,
+                    ),
+                    if (sub.locationLabel != null && sub.routerName != null) ...[
+                      const SizedBox(width: 8),
+                      Icon(Icons.location_on_outlined,
+                          size: 14, color: isp.textMuted),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          sub.locationLabel!,
+                          style: TextStyle(fontSize: 12, color: isp.textMuted),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: isp.accent.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          fmt.format(sub.price),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: isp.textPrimary,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        Text(
+                          '/ ${sub.billingCycle}',
+                          style:
+                              TextStyle(fontSize: 12, color: isp.textMuted),
+                        ),
+                      ],
                     ),
-                    child: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 14,
-                      color: isp.accent,
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isp.accentSurface,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.arrow_forward_ios,
+                        size: 14,
+                        color: isp.accent,
+                      ),
                     ),
+                  ],
+                ),
+                // Progress bar (ponyato: use actual billing cycle days)
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: sub.isActive ? 0.6 : 1.0,
+                    backgroundColor: isp.border,
+                    color: sub.isActive ? isp.accent : isp.danger,
+                    minHeight: 3,
                   ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

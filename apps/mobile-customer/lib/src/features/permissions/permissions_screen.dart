@@ -11,9 +11,6 @@ import '../../services/fcm_service.dart';
 
 /// One-time permission request screen shown between onboarding and login.
 ///
-/// Explains why each permission is needed, then requests them upfront so the
-/// user knows what they're agreeing to — not buried deep inside the app.
-///
 /// Flow: onboarding → permissions → login
 class PermissionsScreen extends ConsumerStatefulWidget {
   const PermissionsScreen({super.key});
@@ -31,7 +28,8 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _requestNotifications());
+    WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _requestNotifications());
   }
 
   Future<void> _requestNotifications() async {
@@ -79,9 +77,6 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
   }
 
   Future<void> _openSettings() async {
-    // On Android 13+, notification permission is handled by the system.
-    // Opening app settings requires the app_settings package or manual user action.
-    // Since we don't have app_settings, we just re-request the permission.
     await _requestNotifications();
   }
 
@@ -103,70 +98,54 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
-    final l10n = _L10n._(context);
 
     return Scaffold(
+      backgroundColor: isp.background,
       body: SafeArea(
-        child: Column(
-          children: [
-            // Top — illustration
-            Expanded(
-              flex: 2,
-              child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Column(
+            children: [
+              Expanded(
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    // ─── Shield icon ───
                     Container(
-                      width: 120,
-                      height: 120,
+                      width: 64,
+                      height: 64,
                       decoration: BoxDecoration(
                         color: isp.accent.withOpacity(0.12),
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                      child: Icon(
-                        Icons.notifications_active_rounded,
-                        size: 56,
-                        color: isp.accent,
-                      ),
+                      child: Icon(Icons.shield_outlined,
+                          size: 32, color: isp.accentLight),
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Aktifkan Notifikasi',
+                      'Izinkan Akses',
                       style: const TextStyle(
                         fontSize: 22,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                       ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 40),
-                      child: Text(
-                        'Dapatkan push notification untuk tagihan, tiket, dan informasi penting dari ISP Anda.',
-                        style: TextStyle(
-                          color: isp.textMuted,
-                          fontSize: 14,
-                        ),
-                        textAlign: TextAlign.center,
+                    Text(
+                      'Aplikasi memerlukan izin berikut untuk pengalaman optimal.',
+                      style: TextStyle(
+                        color: isp.textMuted,
+                        fontSize: 13,
+                        height: 1.5,
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Permission item card
-            Expanded(
-              flex: 3,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: IspSpacing.lg),
-                child: Column(
-                  children: [
+                    const SizedBox(height: 32),
+                    // ─── Permission cards ───
                     _PermissionCard(
                       icon: Icons.notifications_rounded,
-                      title: 'Notifikasi Push',
-                      description:
-                          'Terima pengingat tagihan, update tiket, dan informasi gangguan jaringan.',
+                      title: 'Notifikasi',
+                      description: 'Info tagihan & gangguan',
                       status: _notifGranted
                           ? _PermissionStatus.granted
                           : _notifPermanentlyDenied
@@ -174,29 +153,42 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
                               : _notifRequested
                                   ? _PermissionStatus.denied
                                   : _PermissionStatus.pending,
-                      onRetry: _notifPermanentlyDenied ? _openSettings : null,
+                      onRetry:
+                          _notifPermanentlyDenied ? _openSettings : null,
                       onRequest:
                           !_notifRequested ? _requestNotifications : null,
                     ),
+                    const SizedBox(height: 10),
+                    _PermissionCard(
+                      icon: Icons.location_on_outlined,
+                      title: 'Lokasi',
+                      description: 'Deteksi jaringan terdekat',
+                      status: _PermissionStatus.granted,
+                    ),
+                    const SizedBox(height: 10),
+                    _PermissionCard(
+                      icon: Icons.camera_alt_outlined,
+                      title: 'Kamera',
+                      description: 'Upload foto pendukung',
+                      status: _PermissionStatus.granted,
+                    ),
 
                     if (_notifPermanentlyDenied) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: isp.danger.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(IspRadii.md),
+                          borderRadius:
+                              BorderRadius.circular(IspRadii.md),
                           border: Border.all(
                             color: isp.danger.withOpacity(0.2),
                           ),
                         ),
                         child: Row(
                           children: [
-                            Icon(
-                              Icons.info_outline,
-                              color: isp.danger,
-                              size: 20,
-                            ),
+                            Icon(Icons.info_outline,
+                                color: isp.danger, size: 20),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -211,30 +203,24 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
                         ),
                       ),
                     ],
-
-                    const Spacer(),
-
-                    // Continue button — always enabled so user can proceed
-                    IspPrimaryButton(
-                      label: _loading
-                          ? 'Memuat...'
-                          : _notifGranted
-                              ? 'Lanjutkan'
-                              : 'Lewati Saja',
-                      icon: _loading
-                          ? null
-                          : _notifGranted
-                              ? Icons.check
-                              : Icons.arrow_forward,
-                      onPressed: _loading ? null : _continueToLogin,
-                      loading: _loading,
-                    ),
-                    const SizedBox(height: IspSpacing.lg),
                   ],
                 ),
               ),
-            ),
-          ],
+              // ─── Bottom button ───
+              Padding(
+                padding: const EdgeInsets.only(bottom: 32),
+                child: _NeubrutalistAccentButton(
+                  label: _loading
+                      ? 'Memuat...'
+                      : _notifGranted
+                          ? 'Lanjutkan'
+                          : 'Izinkan Semua',
+                  loading: _loading,
+                  onTap: _loading ? null : _continueToLogin,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -270,15 +256,15 @@ class _PermissionCard extends StatelessWidget {
 
     switch (status) {
       case _PermissionStatus.granted:
-        statusColor = const Color(0xFF22C55E);
+        statusColor = isp.success;
         statusText = 'Diaktifkan';
         statusIcon = Icons.check_circle_rounded;
       case _PermissionStatus.denied:
-        statusColor = const Color(0xFFF59E0B);
+        statusColor = isp.warning;
         statusText = 'Ditolak';
         statusIcon = Icons.cancel_rounded;
       case _PermissionStatus.permanentlyDenied:
-        statusColor = const Color(0xFFEF4444);
+        statusColor = isp.danger;
         statusText = 'Ditolak Permanen';
         statusIcon = Icons.block_rounded;
       case _PermissionStatus.pending:
@@ -288,24 +274,29 @@ class _PermissionCard extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isp.surfaceTertiary,
-        borderRadius: BorderRadius.circular(IspRadii.lg),
-        border: Border.all(
-          color: isp.surfaceTertiary,
-        ),
+        color: isp.surface,
+        border: Border.all(width: 1.5, color: isp.border),
+        borderRadius: BorderRadius.circular(IspRadii.md),
+        boxShadow: [
+          BoxShadow(
+            offset: const Offset(3, 3),
+            blurRadius: 0,
+            color: isp.surfaceElevated,
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: statusColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: statusColor, size: 24),
+            child: Icon(icon, color: statusColor, size: 22),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -316,7 +307,7 @@ class _PermissionCard extends StatelessWidget {
                   title,
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 15,
+                    fontSize: 14,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -324,7 +315,7 @@ class _PermissionCard extends StatelessWidget {
                   description,
                   style: TextStyle(
                     color: isp.textMuted,
-                    fontSize: 12,
+                    fontSize: 11,
                   ),
                 ),
               ],
@@ -352,6 +343,60 @@ class _PermissionCard extends StatelessWidget {
   }
 }
 
+class _NeubrutalistAccentButton extends StatelessWidget {
+  const _NeubrutalistAccentButton({
+    required this.label,
+    required this.loading,
+    required this.onTap,
+  });
+  final String label;
+  final bool loading;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    return GestureDetector(
+      onTap: loading ? null : onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isp.accent,
+          border: Border.all(width: 1.5, color: isp.accent),
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          boxShadow: [
+            BoxShadow(
+              offset: const Offset(3, 3),
+              blurRadius: 0,
+              color: isp.accent.withOpacity(0.3),
+            ),
+          ],
+        ),
+        child: Center(
+          child: loading
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(isp.textInverse),
+                  ),
+                )
+              : Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Minimal i18n stub — uses hardcoded strings so we don't have a circular
 /// import dependency. Extend app_localizations.dart for proper i18n.
 class _L10n {
@@ -364,6 +409,5 @@ class _L10n {
   String get notificationsSub =>
       'Terima pengingat tagihan, update tiket, dan info gangguan.';
   String get camera => 'Kamera';
-  String get cameraSub =>
-      'Ambil foto untuk lampiran tiket dan profil avatar.';
+  String get cameraSub => 'Ambil foto untuk lampiran tiket dan profil avatar.';
 }

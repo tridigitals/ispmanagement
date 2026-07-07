@@ -128,63 +128,86 @@ final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
         data: (inv) => ListView(
           padding: const EdgeInsets.all(IspSpacing.lg),
           children: [
-            // ── Hero card ──
+            // ── Receipt-style hero card (flat, no gradient) ──
             Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: inv.isPaid
-                      ? [IspColors.success, IspColors.success.withOpacity(0.85)]
-                      : inv.isOverdue
-                          ? [IspColors.danger, IspColors.danger.withOpacity(0.85)]
-                          : [IspColors.primary, IspColors.info],
-                ),
+                color: isp.surface,
                 borderRadius: BorderRadius.circular(IspRadii.xl),
-                boxShadow: IspShadows.md,
+                border: Border.all(color: isp.border),
               ),
-              padding: const EdgeInsets.all(IspSpacing.xl),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        inv.invoiceNumber,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+              clipBehavior: Clip.antiAlias,
+              child: IntrinsicHeight(
+                child: Row(
+                  children: [
+                    // Accent left border strip
+                    Container(
+                      width: 5,
+                      decoration: BoxDecoration(
+                        color: inv.isPaid
+                            ? isp.success
+                            : inv.isOverdue
+                                ? isp.danger
+                                : isp.warning,
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(IspSpacing.xl),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  inv.invoiceNumber,
+                                  style: TextStyle(
+                                    color: isp.textSecondary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                IspStatusBadge(
+                                  label: inv.statusLabel(),
+                                  tone: inv.isPaid
+                                      ? StatusTone.success
+                                      : inv.isOverdue
+                                          ? StatusTone.danger
+                                          : StatusTone.warning,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: IspSpacing.xl),
+                            Text(
+                              fmt.format(inv.amount),
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w800,
+                                color: isp.textPrimary,
+                                height: 1.0,
+                              ),
+                            ),
+                            const SizedBox(height: IspSpacing.sm),
+                            Text(
+                              'Jatuh tempo ${dateFmt.format(inv.dueDate)}',
+                              style: TextStyle(
+                                color: isp.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      IspStatusBadge(
-                        label: inv.statusLabel(),
-                        tone: inv.isPaid
-                            ? StatusTone.success
-                            : inv.isOverdue
-                                ? StatusTone.danger
-                                : StatusTone.warning,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: IspSpacing.xl),
-                  Text(
-                    fmt.format(inv.amount),
-                    style: const TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      height: 1.0,
                     ),
-                  ),
-                  const SizedBox(height: IspSpacing.sm),
-                  Text(
-                    'Jatuh tempo ${dateFmt.format(inv.dueDate)}',
-                    style: const TextStyle(color: Colors.white60, fontSize: 13),
-                  ),
-                ],
+                  ],
+                ),
               ),
+            ),
+            const SizedBox(height: IspSpacing.md),
+            // ── Perforation line divider ──
+            CustomPaint(
+              size: const Size(double.infinity, 1),
+              painter: _DashedLinePainter(color: isp.border),
             ),
             const SizedBox(height: IspSpacing.lg),
 
@@ -409,4 +432,32 @@ return ListView(
       ],
     );
   }
+}
+
+// ── Perforation line painter (receipt-style dashed divider) ──
+class _DashedLinePainter extends CustomPainter {
+  const _DashedLinePainter({required this.color});
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    const dashWidth = 6.0;
+    const dashGap = 4.0;
+    var startX = 0.0;
+    while (startX < size.width) {
+      canvas.drawLine(
+        Offset(startX, 0),
+        Offset((startX + dashWidth).clamp(0, size.width), 0),
+        paint,
+      );
+      startX += dashWidth + dashGap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
