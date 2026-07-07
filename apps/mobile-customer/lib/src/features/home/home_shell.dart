@@ -123,7 +123,7 @@ class _State extends ConsumerState<HomeShell> {
               ),
               // Pages
               Padding(
-                padding: const EdgeInsets.only(top: 56),
+                padding: const EdgeInsets.only(top: 72),
                 child: IndexedStack(index: tab, children: pages),
               ),
               // FAB on support tab
