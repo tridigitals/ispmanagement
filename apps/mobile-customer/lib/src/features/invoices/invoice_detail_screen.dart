@@ -16,28 +16,38 @@ import '../../services/feature_providers.dart';
 import '../../utils/loading_skeleton.dart';
 import '../../utils/receipt_pdf.dart';
 
+// ─── Neubrutalist card ───────────────────────────────────────────
+
+BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
+      color: isp.surface,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: isp.border, width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: isp.border.withOpacity(0.5),
+          offset: const Offset(3, 3),
+          blurRadius: 0,
+        ),
+      ],
+    );
+
 class InvoiceDetailScreen extends ConsumerStatefulWidget {
   const InvoiceDetailScreen({required this.id, super.key});
   final String id;
 
   @override
-  ConsumerState<InvoiceDetailScreen> createState() =>
-      _InvoiceDetailScreenState();
+  ConsumerState<InvoiceDetailScreen> createState() => _InvoiceDetailScreenState();
 }
 
 class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
-
   late final IspThemeColors isp;
 
-
-
   @override
-
-
   void didChangeDependencies() {
     super.didChangeDependencies();
     isp = context.isp;
   }
+
   bool _uploadingProof = false;
 
   Future<void> _pickAndUploadProof() async {
@@ -53,21 +63,12 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
       setState(() => _uploadingProof = true);
 
       final ext = file.name.split('.').last.toLowerCase();
-      String contentType;
-      switch (ext) {
-        case 'jpg':
-        case 'jpeg':
-          contentType = 'image/jpeg';
-          break;
-        case 'png':
-          contentType = 'image/png';
-          break;
-        case 'pdf':
-          contentType = 'application/pdf';
-          break;
-        default:
-          contentType = 'application/octet-stream';
-      }
+      final contentType = switch (ext) {
+        'jpg' || 'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'pdf' => 'application/pdf',
+        _ => 'application/octet-stream',
+      };
 
       final svc = ref.read(paymentServiceProvider);
       final res = await svc.submitPaymentProof(
@@ -79,30 +80,17 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
 
       if (!mounted) return;
       res.fold(
-        (_) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Bukti pembayaran berhasil diunggah'),
-              backgroundColor: isp.success,
-            ),
-          );
-        },
-        (error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Gagal mengunggah: ${error.message}'),
-              backgroundColor: isp.danger,
-            ),
-          );
-        },
+        (_) => ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('Bukti pembayaran berhasil diunggah'), backgroundColor: isp.success),
+        ),
+        (error) => ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengunggah: ${error.message}'), backgroundColor: isp.danger),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal memilih file: $e'),
-          backgroundColor: isp.danger,
-        ),
+        SnackBar(content: Text('Gagal memilih file: $e'), backgroundColor: isp.danger),
       );
     } finally {
       if (mounted) setState(() => _uploadingProof = false);
@@ -111,9 +99,8 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-
-final isp = context.isp;
-final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
+    final isp = context.isp;
+    final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
     final dateFmt = DateFormat('d MMMM yyyy', 'id_ID');
     final invAsync = ref.watch(invoiceByIdProvider(widget.id));
 
@@ -126,159 +113,104 @@ final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
           onRetry: () => ref.invalidate(invoiceByIdProvider(widget.id)),
         ),
         data: (inv) => ListView(
-          padding: const EdgeInsets.all(IspSpacing.lg),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           children: [
-            // ── Receipt-style hero card (flat, no gradient) ──
+            // ── Hero card: receipt-style with left accent strip ──
             Container(
-              decoration: BoxDecoration(
-                color: isp.surface,
-                borderRadius: BorderRadius.circular(IspRadii.xl),
-                border: Border.all(color: isp.border),
-              ),
+              decoration: _nbCard(isp),
               clipBehavior: Clip.antiAlias,
               child: IntrinsicHeight(
-                child: Row(
-                  children: [
-                    // Accent left border strip
-                    Container(
-                      width: 5,
-                      decoration: BoxDecoration(
-                        color: inv.isPaid
-                            ? isp.success
-                            : inv.isOverdue
-                                ? isp.danger
-                                : isp.warning,
-                      ),
+                child: Row(children: [
+                  Container(
+                    width: 5,
+                    color: inv.isPaid ? isp.success : inv.isOverdue ? isp.danger : isp.warning,
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                          Text(inv.invoiceNumber ?? '', style: TextStyle(color: isp.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+                          _StatusPill(isp: isp, label: inv.statusLabel(), isPaid: inv.isPaid, isOverdue: inv.isOverdue),
+                        ]),
+                        const SizedBox(height: 16),
+                        Text(fmt.format(inv.amount), style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: isp.textPrimary, height: 1.0)),
+                        const SizedBox(height: 6),
+                        Text('Jatuh tempo ${dateFmt.format(inv.dueDate)}', style: TextStyle(color: isp.textSecondary, fontSize: 13)),
+                      ]),
                     ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.all(IspSpacing.xl),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  inv.invoiceNumber,
-                                  style: TextStyle(
-                                    color: isp.textSecondary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                IspStatusBadge(
-                                  label: inv.statusLabel(),
-                                  tone: inv.isPaid
-                                      ? StatusTone.success
-                                      : inv.isOverdue
-                                          ? StatusTone.danger
-                                          : StatusTone.warning,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: IspSpacing.xl),
-                            Text(
-                              fmt.format(inv.amount),
-                              style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                                color: isp.textPrimary,
-                                height: 1.0,
-                              ),
-                            ),
-                            const SizedBox(height: IspSpacing.sm),
-                            Text(
-                              'Jatuh tempo ${dateFmt.format(inv.dueDate)}',
-                              style: TextStyle(
-                                color: isp.textSecondary,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ]),
               ),
             ),
-            const SizedBox(height: IspSpacing.md),
-            // ── Perforation line divider ──
+
+            const SizedBox(height: 12),
+
+            // ── Perforation line ──
             CustomPaint(
               size: const Size(double.infinity, 1),
               painter: _DashedLinePainter(color: isp.border),
             ),
-            const SizedBox(height: IspSpacing.lg),
 
-            // ── Details card ──
-            IspCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Informasi Tagihan',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isp.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: IspSpacing.md),
-                  _InfoRow(
-                      label: 'Jatuh tempo', value: dateFmt.format(inv.dueDate)),
-                  if (inv.paidAt != null)
-                    _InfoRow(
-                        label: 'Dibayar pada',
-                        value: dateFmt.format(inv.paidAt!)),
-                  if (inv.subscriptionLabel != null)
-                    _InfoRow(label: 'Layanan', value: inv.subscriptionLabel!),
-                  if (inv.notes != null && inv.notes!.isNotEmpty)
-                    _InfoRow(label: 'Catatan', value: inv.notes!),
-                ],
-              ),
+            const SizedBox(height: 16),
+
+            // ── Detail info ──
+            Container(
+              decoration: _nbCard(isp),
+              padding: const EdgeInsets.all(16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Informasi Tagihan', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isp.textSecondary, letterSpacing: 0.5)),
+                const SizedBox(height: 12),
+                _InfoRow(isp: isp, label: 'Jatuh tempo', value: dateFmt.format(inv.dueDate)),
+                if (inv.paidAt != null) _InfoRow(isp: isp, label: 'Dibayar pada', value: dateFmt.format(inv.paidAt!)),
+                if (inv.subscriptionLabel != null) _InfoRow(isp: isp, label: 'Layanan', value: inv.subscriptionLabel!),
+                if (inv.notes != null && inv.notes!.isNotEmpty) _InfoRow(isp: isp, label: 'Catatan', value: inv.notes!),
+              ]),
             ),
-            const SizedBox(height: IspSpacing.lg),
 
-            // ── Actions ──
+            const SizedBox(height: 16),
+
+            // ── Action buttons ──
             if (!inv.isPaid) ...[
-              ElevatedButton.icon(
-                onPressed: () =>
-                    GoRouter.of(context).push('/payments/${inv.id}'),
-                icon: const Icon(Icons.payment),
-                label: const Text('Bayar Sekarang'),
+              _NeubrutalistBtn(
+                icon: Icons.payment,
+                label: 'Bayar Sekarang',
+                isp: isp,
+                filled: true,
+                onTap: () => GoRouter.of(context).push('/payments/${inv.id}'),
               ),
-              const SizedBox(height: IspSpacing.sm),
-              OutlinedButton.icon(
-                onPressed: _uploadingProof ? null : _pickAndUploadProof,
-                icon: _uploadingProof
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.upload_file),
-                label: Text(
-                  _uploadingProof ? 'Mengunggah...' : 'Upload Bukti Pembayaran',
-                ),
+              const SizedBox(height: 8),
+              _NeubrutalistBtn(
+                icon: Icons.upload_file,
+                label: _uploadingProof ? 'Mengunggah...' : 'Upload Bukti',
+                isp: isp,
+                filled: false,
+                loading: _uploadingProof,
+                onTap: _uploadingProof ? null : _pickAndUploadProof,
               ),
-              const SizedBox(height: IspSpacing.sm),
-              OutlinedButton.icon(
-                onPressed: () => GoRouter.of(context).push('/tickets/new'),
-                icon: const Icon(Icons.help_outline),
-                label: const Text('Butuh Bantuan?'),
+              const SizedBox(height: 8),
+              _NeubrutalistBtn(
+                icon: Icons.help_outline,
+                label: 'Bantuan',
+                isp: isp,
+                filled: false,
+                onTap: () => GoRouter.of(context).push('/tickets/new'),
               ),
             ] else ...[
-              OutlinedButton.icon(
-                onPressed: () => _shareReceipt(context, inv),
-                icon: const Icon(Icons.download),
-                label: const Text('Download Struk'),
+              _NeubrutalistBtn(
+                icon: Icons.download,
+                label: 'Download Struk',
+                isp: isp,
+                filled: false,
+                onTap: () => _shareReceipt(context, inv),
               ),
-              const SizedBox(height: IspSpacing.sm),
-              OutlinedButton.icon(
-                onPressed: () => _printReceipt(context, inv),
-                icon: const Icon(Icons.print),
-                label: const Text('Cetak Invoice'),
+              const SizedBox(height: 8),
+              _NeubrutalistBtn(
+                icon: Icons.print,
+                label: 'Cetak Invoice',
+                isp: isp,
+                filled: false,
+                onTap: () => _printReceipt(context, inv),
               ),
             ],
           ],
@@ -287,26 +219,20 @@ final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
     );
   }
 
-  /// Generate PDF → share via system share sheet (save to Files, Drive, WhatsApp, etc.)
   Future<void> _shareReceipt(BuildContext context, InvoiceModel inv) async {
     _showLoading(context);
     try {
       final path = await generateReceiptPdf(inv);
       if (!context.mounted) return;
-      Navigator.of(context).pop(); // dismiss loading
-
-      await Share.shareXFiles(
-        [XFile(path)],
-        subject: 'Bukti Pembayaran ${inv.invoiceNumber}',
-      );
+      Navigator.of(context).pop();
+      await Share.shareXFiles([XFile(path)], subject: 'Bukti Pembayaran ${inv.invoiceNumber}');
     } catch (e) {
       if (!context.mounted) return;
       try { Navigator.of(context).pop(); } catch (_) {}
-      _showError(context, 'Gagal membuat PDF: $e');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal membuat PDF: $e'), backgroundColor: isp.danger));
     }
   }
 
-  /// Generate PDF → open system print dialog
   Future<void> _printReceipt(BuildContext context, InvoiceModel inv) async {
     _showLoading(context);
     try {
@@ -314,15 +240,11 @@ final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
       final bytes = await io.File(path).readAsBytes();
       if (!context.mounted) return;
       Navigator.of(context).pop();
-
-      await Printing.layoutPdf(
-        onLayout: (_) async => bytes,
-        name: 'Invoice_${inv.invoiceNumber}',
-      );
+      await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'Invoice_${inv.invoiceNumber}');
     } catch (e) {
       if (!context.mounted) return;
       Navigator.of(context).pop();
-      _showError(context, 'Gagal mencetak: $e');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal mencetak: $e'), backgroundColor: isp.danger));
     }
   }
 
@@ -330,130 +252,134 @@ final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Membuat PDF...'),
-              ],
+      builder: (_) => const Center(child: Card(child: Padding(padding: EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [CircularProgressIndicator(), SizedBox(height: 16), Text('Membuat PDF...')])))),
+    );
+  }
+}
+
+// ─── Status pill ─────────────────────────────────────────────────
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.isp, required this.label, required this.isPaid, required this.isOverdue});
+  final IspThemeColors isp;
+  final String label;
+  final bool isPaid;
+  final bool isOverdue;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isPaid ? isp.success : isOverdue ? isp.danger : isp.warning;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(6)),
+      child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+    );
+  }
+}
+
+// ─── Info row ────────────────────────────────────────────────────
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.isp, required this.label, required this.value});
+  final IspThemeColors isp;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(width: 110, child: Text(label, style: TextStyle(color: isp.textMuted, fontSize: 13))),
+        Expanded(child: Text(value, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: isp.textPrimary))),
+      ]),
+    );
+  }
+}
+
+// ─── Neubrutalist button ─────────────────────────────────────────
+
+class _NeubrutalistBtn extends StatelessWidget {
+  const _NeubrutalistBtn({required this.icon, required this.label, required this.isp, required this.filled, this.loading = false, this.onTap});
+  final IconData icon;
+  final String label;
+  final IspThemeColors isp;
+  final bool filled;
+  final bool loading;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: filled ? isp.accent : isp.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: isp.border, width: 1.5),
+              boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
+            ),
+            child: Center(
+              child: loading
+                  ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: isp.textPrimary))
+                  : Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(icon, size: 18, color: filled ? Colors.white : isp.textPrimary),
+                      const SizedBox(width: 8),
+                      Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: filled ? Colors.white : isp.textPrimary)),
+                    ]),
             ),
           ),
         ),
       ),
     );
   }
-
-  void _showError(BuildContext context, String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: isp.danger),
-    );
-  }
 }
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
-  final String label;
-  final String value;
-  @override
-  Widget build(BuildContext context) {
+// ─── Skeleton ────────────────────────────────────────────────────
 
-final isp = context.isp;
-return Padding(
-      padding: const EdgeInsets.symmetric(vertical: IspSpacing.sm),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style:
-                  TextStyle(color: isp.textMuted, fontSize: 13),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Skeleton loading state for invoice detail.
 class _InvoiceDetailSkeleton extends StatelessWidget {
   const _InvoiceDetailSkeleton();
 
   @override
   Widget build(BuildContext context) {
-
-final isp = context.isp;
-return ListView(
-      padding: const EdgeInsets.all(IspSpacing.lg),
-      children: [
-        // Hero card skeleton
-        const IspSkeletonCard(height: 160),
-        const SizedBox(height: IspSpacing.lg),
-        // Details card skeleton
-        IspCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const IspShimmer.line(width: 140),
-              const SizedBox(height: IspSpacing.md),
-              ...List.generate(
-                3,
-                (_) => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: IspSpacing.sm),
-                  child: Row(
-                    children: [
-                      IspShimmer.line(width: 100),
-                      SizedBox(width: IspSpacing.md),
-                      Expanded(child: IspShimmer.line()),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: IspSpacing.lg),
-        const IspShimmer.box(height: 48),
-        const SizedBox(height: IspSpacing.sm),
-        const IspShimmer.box(height: 48),
-      ],
-    );
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      const IspSkeletonCard(height: 160),
+      const SizedBox(height: 16),
+      IspCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const IspShimmer.line(width: 140),
+          const SizedBox(height: 12),
+          ...List.generate(3, (_) => const Padding(padding: EdgeInsets.symmetric(vertical: 6), child: Row(children: [IspShimmer.line(width: 100), SizedBox(width: 12), Expanded(child: IspShimmer.line())]))),
+        ]),
+      ),
+      const SizedBox(height: 16),
+      const IspShimmer.box(height: 48),
+      const SizedBox(height: 8),
+      const IspShimmer.box(height: 48),
+    ]);
   }
 }
 
-// ── Perforation line painter (receipt-style dashed divider) ──
+// ─── Dashed line painter ─────────────────────────────────────────
+
 class _DashedLinePainter extends CustomPainter {
   const _DashedLinePainter({required this.color});
   final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
+    final paint = Paint()..color = color..strokeWidth = 1..style = PaintingStyle.stroke;
     const dashWidth = 6.0;
     const dashGap = 4.0;
     var startX = 0.0;
     while (startX < size.width) {
-      canvas.drawLine(
-        Offset(startX, 0),
-        Offset((startX + dashWidth).clamp(0, size.width), 0),
-        paint,
-      );
+      canvas.drawLine(Offset(startX, 0), Offset((startX + dashWidth).clamp(0, size.width), 0), paint);
       startX += dashWidth + dashGap;
     }
   }
