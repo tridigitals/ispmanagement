@@ -46,7 +46,12 @@ class _State extends ConsumerState<HomeShell> {
     if (tabStr != null) {
       final tabIdx = int.tryParse(tabStr);
       if (tabIdx != null && tabIdx >= 0 && tabIdx < 4) {
-        ref.read(currentTabProvider.notifier).state = tabIdx;
+        // Only switch if different — prevent stale query param from
+        // overriding current tab when popping back from detail screens.
+        final current = ref.read(currentTabProvider);
+        if (tabIdx != current) {
+          ref.read(currentTabProvider.notifier).state = tabIdx;
+        }
       }
     }
   }

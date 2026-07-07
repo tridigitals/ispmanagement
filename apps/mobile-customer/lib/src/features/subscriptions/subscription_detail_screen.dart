@@ -5,11 +5,11 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:api_client/api_client.dart';
-import 'dart:math';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../services/service_providers.dart';
+import '../../services/missing_providers.dart';
 
 // ── Provider ──────────────────────────────────────────────
 
@@ -37,146 +37,107 @@ class SubscriptionDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isp = context.isp;
-final l10n = AppLocalizations.of(context);
-    final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
-    final dateFmt = DateFormat('d MMM yyyy', 'id_ID');
+    final l10n = AppLocalizations.of(context);
     final subAsync = ref.watch(subscriptionByIdProvider(id));
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.subscriptionDetail ?? 'Detail Langganan'),
+    return subAsync.when(
+      loading: () => Scaffold(
+        body: Center(child: CircularProgressIndicator(color: isp.accent)),
       ),
-      body: subAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(IspSpacing.xl),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 48,
-                  color: isp.danger,
-                ),
-                const SizedBox(height: IspSpacing.md),
-                Text(e.toString(), textAlign: TextAlign.center),
-                const SizedBox(height: IspSpacing.lg),
-                OutlinedButton.icon(
-                  onPressed: () => ref.invalidate(subscriptionByIdProvider(id)),
-                  icon: const Icon(Icons.refresh),
-                  label: Text(l10n.retry ?? 'Coba Lagi'),
-                ),
-              ],
-            ),
-          ),
-        ),
-        data: (sub) => RefreshIndicator(
+      error: (e, _) => Scaffold(
+        appBar: AppBar(),
+        body: _ErrorView(message: e.toString(), onRetry: () => ref.invalidate(subscriptionByIdProvider(id))),
+      ),
+      data: (sub) => _DetailBody(sub: sub, ref: ref),
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  const _ErrorView({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    return Center(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.error_outline, size: 48, color: isp.danger),
+        const SizedBox(height: 16),
+        Text(message, textAlign: TextAlign.center),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh), label: const Text('Coba Lagi')),
+      ]),
+    );
+  }
+}
+
+class _DetailBody extends ConsumerWidget {
+  const _DetailBody({required this.sub, required this.ref});
+  final SubscriptionModel sub;
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref_) {
+    final isp = context.isp;
+    final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
+    final dateFmt = DateFormat('d MMM yyyy', 'id_ID');
+
+    // Compute remaining days
+    final remaining = sub.endsAt != null ? sub.endsAt!.difference(DateTime.now()).inDays : 0;
+    final statusColor = sub.isActive ? isp.success : isp.danger;
+
+    return Scaffold(
+      body: SafeArea(
+        child: RefreshIndicator(
+          color: isp.accent,
           onRefresh: () async {
-            ref.invalidate(subscriptionByIdProvider(id));
-            await ref.read(subscriptionByIdProvider(id).future);
+            ref_.invalidate(subscriptionByIdProvider(sub.id));
+            await ref_.read(subscriptionByIdProvider(sub.id).future);
           },
-          child: ListView(
-            padding: const EdgeInsets.only(
-              left: IspSpacing.lg,
-              right: IspSpacing.lg,
-              top: IspSpacing.lg,
-              bottom: IspSpacing.xxxl,
-            ),
-            children: [
-              // ── Hero header ──────────────────────────────
-              _HeroHeader(sub: sub, fmt: fmt, l10n: l10n),
-              const SizedBox(height: IspSpacing.lg),
-
-              // ── Speed section ────────────────────────────
-              _SpeedSection(sub: sub, l10n: l10n),
-              const SizedBox(height: IspSpacing.lg),
-
-              // ── Connection details ───────────────────────
-              _SectionCard(
-                title: l10n.connectionDetails ?? 'Detail Koneksi',
-                icon: Icons.settings_ethernet,
-                children: [
-                  _DetailRow(
-                    icon: Icons.router,
-                    label: l10n.router ?? 'Router',
-                    value: sub.routerName ?? '-',
-                  ),
-                  _DetailRow(
-                    icon: Icons.location_on_outlined,
-                    label: l10n.location ?? 'Lokasi',
-                    value: sub.locationLabel ?? '-',
-                  ),
-                  if (sub.notes != null && sub.notes!.isNotEmpty)
-                    _DetailRow(
-                      icon: Icons.note_outlined,
-                      label: l10n.notes ?? 'Catatan',
-                      value: sub.notes!,
+          child: CustomScrollView(
+            slivers: [
+              // ── Header with back button ──
+              SliverAppBar(
+                pinned: true,
+                backgroundColor: isp.background,
+                leading: GestureDetector(
+                  onTap: () => GoRouter.of(context).pop(),
+                  child: Container(
+                    margin: const EdgeInsets.only(left: 12),
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: isp.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isp.border, width: 1.5),
                     ),
-                ],
-              ),
-              const SizedBox(height: IspSpacing.lg),
-
-              // ── Billing info ─────────────────────────────
-              _SectionCard(
-                title: l10n.billingInfo ?? 'Informasi Tagihan',
-                icon: Icons.receipt_long_outlined,
-                children: [
-                  _DetailRow(
-                    icon: Icons.payments_outlined,
-                    label: l10n.price ?? 'Harga',
-                    value: '${fmt.format(sub.price)} / ${sub.billingCycle}',
+                    child: const Icon(Icons.arrow_back_rounded, size: 20),
                   ),
-                  _DetailRow(
-                    icon: Icons.calendar_today_outlined,
-                    label: l10n.cycle ?? 'Siklus',
-                    value: _billingCycleLabel(sub.billingCycle),
-                  ),
-                  if (sub.startsAt != null)
-                    _DetailRow(
-                      icon: Icons.event_available_outlined,
-                      label: l10n.startsAt ?? 'Mulai',
-                      value: dateFmt.format(sub.startsAt!),
-                    ),
-                  if (sub.endsAt != null)
-                    _DetailRow(
-                      icon: Icons.event_busy_outlined,
-                      label: l10n.endsAt ?? 'Berakhir',
-                      value: dateFmt.format(sub.endsAt!),
-                    ),
-                  if (sub.graceUntil != null)
-                    _DetailRow(
-                      icon: Icons.hourglass_bottom_outlined,
-                      label: l10n.gracePeriod ?? 'Masa tenggang',
-                      value: dateFmt.format(sub.graceUntil!),
-                    ),
-                ],
-              ),
-              const SizedBox(height: IspSpacing.sm),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => GoRouter.of(context)
-                      .push('/subscriptions/${sub.id}/invoices'),
-                  icon: const Icon(Icons.receipt_long_outlined, size: 18),
-                  label: const Text('Lihat Tagihan'),
+                ),
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(sub.packageName ?? 'Paket', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isp.textPrimary)),
+                    Text(sub.id, style: TextStyle(fontSize: 11, color: isp.textMuted)),
+                  ],
                 ),
               ),
-              const SizedBox(height: IspSpacing.xl),
-
-              // ── Actions ──────────────────────────────────
-              if (sub.status == SubscriptionStatus.pendingInstallation) ...[
-                _InstallationTracker(sub: sub, l10n: l10n),
-                const SizedBox(height: IspSpacing.lg),
-              ],
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () =>
-                      GoRouter.of(context).push('/tickets/new'),
-                  icon: const Icon(Icons.report_problem_outlined),
-                  label: Text(l10n.reportOutage ?? 'Lapor Gangguan'),
-                ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                sliver: SliverList(delegate: SliverChildListDelegate([
+                  const SizedBox(height: 8),
+                  // ── Hero card w/ countdown ──
+                  _HeroCard(sub: sub, remaining: remaining, statusColor: statusColor, fmt: fmt, dateFmt: dateFmt),
+                  const SizedBox(height: 16),
+                  // ── Stats grid (2x2) ──
+                  _StatsGrid(sub: sub),
+                  const SizedBox(height: 24),
+                  // ── Riwayat Tagihan header ──
+                  Text('Riwayat Tagihan', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isp.textPrimary)),
+                  const SizedBox(height: 12),
+                  // ── Invoice history ──
+                  _InvoiceHistory(sub: sub, ref: ref_),
+                ])),
               ),
             ],
           ),
@@ -184,515 +145,223 @@ final l10n = AppLocalizations.of(context);
       ),
     );
   }
-
-  static String _billingCycleLabel(String cycle) {
-    switch (cycle.toLowerCase()) {
-      case 'monthly':
-      case 'bulan':
-        return 'Bulanan';
-      case 'quarterly':
-        return 'Per 3 Bulan';
-      case 'yearly':
-      case 'tahun':
-        return 'Tahunan';
-      default:
-        return cycle;
-    }
-  }
 }
 
-// ── Hero header with gradient ─────────────────────────────
+// ── Hero Card (left content + right countdown ring) ──────
 
-class _HeroHeader extends StatelessWidget {
-  const _HeroHeader({
-    required this.sub,
-    required this.fmt,
-    required this.l10n,
-  });
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({required this.sub, required this.remaining, required this.statusColor, required this.fmt, required this.dateFmt});
   final SubscriptionModel sub;
+  final int remaining;
+  final Color statusColor;
   final NumberFormat fmt;
-  final AppLocalizations l10n;
+  final DateFormat dateFmt;
 
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
-    final statusColor = _statusTone() == StatusTone.success
-        ? isp.success
-        : _statusTone() == StatusTone.danger
-            ? isp.danger
-            : isp.warning;
 
     return Container(
-      padding: const EdgeInsets.all(IspSpacing.xl),
       decoration: BoxDecoration(
-        color: isp.surface,
-        borderRadius: BorderRadius.circular(IspRadii.xl),
-        border: Border.all(color: isp.border),
+        color: isp.surface, borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isp.border, width: 1.5),
       ),
-      child: Column(
-        children: [
-          // ── Circular progress indicator ──
-          SizedBox(
-            width: 140,
-            height: 140,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                CustomPaint(
-                  painter: _CircularProgressPainter(
-                    progress: _daysProgress(),
-                    color: statusColor,
-                    bgColor: isp.border,
-                    strokeWidth: 8,
+      padding: const EdgeInsets.all(16),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Left: package info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(sub.statusLabel().toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: statusColor, letterSpacing: 1)),
                   ),
-                ),
-                Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        fmt.format(sub.price),
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: isp.textPrimary,
-                          height: 1.0,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '/ ${sub.billingCycle}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isp.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  Text(fmt.format(sub.price), style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: isp.textPrimary, letterSpacing: -2, height: 1.0)),
+                  const SizedBox(height: 2),
+                  Text('/ ${sub.billingCycle}', style: TextStyle(fontSize: 12, color: isp.textMuted)),
+                  if (sub.endsAt != null) ...[
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      Icon(Icons.calendar_today_outlined, size: 12, color: isp.textMuted),
+                      const SizedBox(width: 4),
+                      Text('Jatuh tempo ${dateFmt.format(sub.endsAt!)}', style: TextStyle(fontSize: 11, color: isp.textMuted)),
+                    ]),
+                  ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: IspSpacing.lg),
-          // Package name + status
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  sub.packageName ?? (l10n.internetPackage ?? 'Paket Internet'),
-                  style: TextStyle(
-                    color: isp.textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+            const SizedBox(width: 12),
+            // Right: countdown ring
+            SizedBox(
+              width: 80, height: 80,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CircularProgressIndicator(
+                    value: (remaining / 30).clamp(0.0, 1.0),
+                    strokeWidth: 4, backgroundColor: isp.border,
+                    color: remaining > 7 ? isp.success : isp.warning,
                   ),
-                ),
+                  Center(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Text('$remaining', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: isp.textPrimary)),
+                      Text('hari lagi', style: TextStyle(fontSize: 10, color: isp.textMuted)),
+                    ]),
+                  ),
+                ],
               ),
-              IspStatusBadge(
-                label: sub.statusLabel(),
-                tone: _statusTone(),
-                icon: _statusIcon(),
-              ),
-            ],
-          ),
-          // Router + Location chips
-          if (sub.routerName != null || sub.locationLabel != null) ...[
-            const SizedBox(height: IspSpacing.md),
-            Wrap(
-              spacing: IspSpacing.sm,
-              runSpacing: IspSpacing.xs,
-              children: [
-                if (sub.routerName != null)
-                  _InfoChip(
-                    icon: Icons.router,
-                    label: sub.routerName!,
-                  ),
-                if (sub.locationLabel != null)
-                  _InfoChip(
-                    icon: Icons.location_on_outlined,
-                    label: sub.locationLabel!,
-                  ),
-              ],
             ),
           ],
-        ],
+        ),
       ),
     );
   }
-
-  /// Returns progress as 0.0–1.0 based on days elapsed between startAt and endAt.
-  double _daysProgress() {
-    final start = sub.startsAt;
-    final end = sub.endsAt;
-    if (start == null || end == null) return 0.0;
-    final total = end.difference(start).inDays;
-    final elapsed = DateTime.now().difference(start).inDays;
-    if (total <= 0) return 0.0;
-    return (elapsed / total).clamp(0.0, 1.0);
-  }
-
-  StatusTone _statusTone() {
-    if (sub.isActive) return StatusTone.success;
-    if (sub.needsAttention) return StatusTone.danger;
-    return StatusTone.warning;
-  }
-
-  IconData _statusIcon() {
-    switch (sub.status) {
-      case SubscriptionStatus.active:
-        return Icons.check_circle_outline;
-      case SubscriptionStatus.suspended:
-        return Icons.pause_circle_outline;
-      case SubscriptionStatus.cancelled:
-        return Icons.cancel_outlined;
-      case SubscriptionStatus.pendingInstallation:
-        return Icons.schedule;
-      case SubscriptionStatus.grace:
-        return Icons.hourglass_bottom;
-      case SubscriptionStatus.expired:
-        return Icons.timer_off_outlined;
-      default:
-        return Icons.help_outline;
-    }
-  }
 }
 
-// ── Speed section ─────────────────────────────────────────
+// ── Stats grid 2×2 (ponytail: hardcoded placeholders) ────
 
-class _SpeedSection extends StatelessWidget {
-  const _SpeedSection({required this.sub, required this.l10n});
+class _StatsGrid extends StatelessWidget {
+  const _StatsGrid({required this.sub});
   final SubscriptionModel sub;
-  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
 
+    final items = [
+      _StatItem(icon: Icons.download_rounded, value: '50 Mbps', label: 'Kecepatan', color: isp.accent),
+      _StatItem(icon: Icons.check_circle_outline, value: '99.8%', label: 'Uptime', color: isp.success),
+      _StatItem(icon: Icons.speed, value: '12 ms', label: 'Latensi', color: isp.info),
+      _StatItem(icon: Icons.cloud_download_outlined, value: '128 GB', label: 'Data Used', color: isp.warning),
+    ];
 
-    final isp = context.isp;    return Column(
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: IspStatCard(
-                label: 'Download',
-                value: sub.packageName ?? '-',
-                helper: l10n.internetPackage ?? 'Paket',
-                icon: Icons.arrow_downward_rounded,
-                tone: StatusTone.info,
-              ),
-            ),
-            const SizedBox(width: IspSpacing.md),
-            Expanded(
-              child: IspStatCard(
-                label: 'Upload',
-                value: sub.packageName ?? '-',
-                helper: l10n.internetPackage ?? 'Paket',
-                icon: Icons.arrow_upward_rounded,
-                tone: StatusTone.primary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: IspSpacing.md),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () => _openSpeedTest(context),
-            icon: const Icon(Icons.speed, size: 18),
-            label: Text(l10n.speedTest ?? 'Test Kecepatan'),
-          ),
-        ),
+        Expanded(child: _StatCard(item: items[0])),
+        const SizedBox(width: 8),
+        Expanded(child: _StatCard(item: items[1])),
+        const SizedBox(width: 8),
+        Expanded(child: _StatCard(item: items[2])),
+        const SizedBox(width: 8),
+        Expanded(child: _StatCard(item: items[3])),
       ],
     );
   }
-
-  void _openSpeedTest(BuildContext context) {
-    final uri = Uri.parse('https://www.speedtest.net');
-    canLaunchUrl(uri).then((can) {
-      if (can) launchUrl(uri, mode: LaunchMode.externalApplication);
-    });
-  }
 }
 
-// ── Section card ──────────────────────────────────────────
-
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({
-    required this.title,
-    required this.icon,
-    required this.children,
-  });
-
-  final String title;
+class _StatItem {
+  const _StatItem({required this.icon, required this.value, required this.label, required this.color});
   final IconData icon;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return IspCard(
-      child: Padding(
-        padding: const EdgeInsets.all(IspSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 18, color: isp.accent),
-                const SizedBox(width: IspSpacing.sm),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: isp.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: IspSpacing.md),
-            ...children,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Detail row (label + value) ────────────────────────────
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
   final String value;
-
-  @override
-  Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: IspSpacing.sm),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: isp.textMuted),
-          const SizedBox(width: IspSpacing.sm),
-          SizedBox(
-            width: 90,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                color: isp.textMuted,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: isp.textPrimary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Info chip (used in hero) ──────────────────────────────
-
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.icon, required this.label});
-  final IconData icon;
   final String label;
+  final Color color;
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({required this.item});
+  final _StatItem item;
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    final isp = context.isp;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
       decoration: BoxDecoration(
-        color: isp.surfaceTertiary,
-        borderRadius: BorderRadius.circular(IspRadii.pill),
-        border: Border.all(color: isp.borderSubtle),
+        color: isp.surface, borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isp.border, width: 1.5),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: isp.accent),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: isp.textPrimary,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
+      child: Column(children: [
+        Icon(item.icon, size: 20, color: item.color),
+        const SizedBox(height: 8),
+        Text(item.value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: isp.textPrimary), textAlign: TextAlign.center),
+        const SizedBox(height: 2),
+        Text(item.label, style: TextStyle(fontSize: 9, color: isp.textMuted), textAlign: TextAlign.center),
+      ]),
     );
   }
 }
 
-// ── Installation tracker ────────────────────────────────────
+// ── Invoice history cards ─────────────────────────────────
 
-class _InstallationTracker extends StatelessWidget {
-  const _InstallationTracker({required this.sub, required this.l10n});
+class _InvoiceHistory extends ConsumerWidget {
+  const _InvoiceHistory({required this.sub, required this.ref});
   final SubscriptionModel sub;
-  final AppLocalizations l10n;
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref_) {
+    final async = ref_.watch(subscriptionInvoicesProvider(sub.id));
+
+    return async.when(
+      loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(strokeWidth: 2))),
+      error: (e, _) => Text('Gagal memuat', style: TextStyle(color: context.isp.textMuted)),
+      data: (invoices) {
+        if (invoices.isEmpty) {
+          return Text('Belum ada tagihan', style: TextStyle(fontSize: 13, color: context.isp.textMuted));
+        }
+        return Column(
+          children: invoices.take(3).map((inv) => _InvoiceCard(invoice: inv)).toList(),
+        );
+      },
+    );
+  }
+}
+
+class _InvoiceCard extends StatelessWidget {
+  const _InvoiceCard({required this.invoice});
+  final InvoiceModel invoice;
 
   @override
   Widget build(BuildContext context) {
+    final isp = context.isp;
+    final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
+    final dateFmt = DateFormat('MMM yyyy', 'id_ID');
+    final isPaid = invoice.status == InvoiceStatus.paid;
 
-
-    final isp = context.isp;    final steps = [
-      _Step('Pendaftaran', Icons.app_registration, true),
-      _Step('Penjadwalan', Icons.event, true),
-      _Step('Pemasangan', Icons.build, false),
-      _Step('Aktif', Icons.check_circle, false),
-    ];
-
-    return IspCard(
-      child: Padding(
-        padding: const EdgeInsets.all(IspSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.construction,
-                    size: 18, color: isp.accent),
-                const SizedBox(width: IspSpacing.sm),
-                Text(
-                  'Progres Pemasangan',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: isp.textSecondary,
-                  ),
-                ),
-              ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => GoRouter.of(context).push('/invoices/${invoice.id}'),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isp.surface, borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isp.border, width: 1.5),
             ),
-            const SizedBox(height: IspSpacing.lg),
-            ...steps.asMap().entries.map((entry) {
-              final i = entry.key;
-              final step = entry.value;
-              final isLast = i == steps.length - 1;
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Column(
-                    children: [
-                      Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color:
-                              step.done ? isp.success : isp.border,
-                        ),
-                        child: Icon(
-                          step.done ? Icons.check : step.icon,
-                          size: 16,
-                          color:
-                              step.done ? Colors.white : isp.textMuted,
-                        ),
-                      ),
-                      if (!isLast)
-                        Container(
-                          width: 2,
-                          height: 24,
-                          color:
-                              step.done ? isp.success : isp.border,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(width: IspSpacing.md),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      step.label,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight:
-                            step.done ? FontWeight.w600 : FontWeight.w400,
-                        color: step.done
-                            ? isp.textPrimary
-                            : isp.textMuted,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }),
-          ],
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(invoice.invoiceNumber ?? invoice.id, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isp.textPrimary)),
+                  const SizedBox(height: 2),
+                  Text(dateFmt.format(invoice.dueDate ?? DateTime.now()), style: TextStyle(fontSize: 11, color: isp.textMuted)),
+                ]),
+              ),
+              Text(fmt.format(invoice.amount), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isp.textPrimary)),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isPaid ? isp.success.withOpacity(0.12) : isp.warning.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(isPaid ? 'Lunas' : 'Jatuh Tempo', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: isPaid ? isp.success : isp.warning)),
+              ),
+            ]),
+          ),
         ),
       ),
     );
   }
-}
-
-class _Step {
-  const _Step(this.label, this.icon, this.done);
-  final String label;
-  final IconData icon;
-  final bool done;
-}
-
-// ── Circular progress painter (neubrutalist ring) ──
-class _CircularProgressPainter extends CustomPainter {
-  const _CircularProgressPainter({
-    required this.progress,
-    required this.color,
-    required this.bgColor,
-    required this.strokeWidth,
-  });
-  final double progress;
-  final Color color;
-  final Color bgColor;
-  final double strokeWidth;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width - strokeWidth) / 2;
-
-    // Background ring
-    final bgPaint = Paint()
-      ..color = bgColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-    canvas.drawCircle(center, radius, bgPaint);
-
-    // Progress arc
-    final progressPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -pi / 2, // start from top
-      2 * pi * progress,
-      false,
-      progressPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _CircularProgressPainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.color != color;
 }
