@@ -437,17 +437,6 @@ class _ActionButtons extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: _ActionBtn(
-            icon: Icons.receipt_long_outlined,
-            label: 'Lihat Tagihan',
-            color: isp.accent,
-            onTap: () =>
-                GoRouter.of(context).push('/subscriptions/${sub.id}/invoices'),
-          ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: _ActionBtn(
             icon: Icons.report_problem_outlined,
             label: 'Lapor Gangguan',
             color: isp.warning,
