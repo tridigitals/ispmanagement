@@ -239,7 +239,7 @@ class _FilterPill extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: selected ? isp.accent : isp.surface,
           borderRadius: BorderRadius.circular(999),
@@ -248,7 +248,7 @@ class _FilterPill extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.w700,
             color: selected ? Colors.white : isp.textSecondary,
           ),
