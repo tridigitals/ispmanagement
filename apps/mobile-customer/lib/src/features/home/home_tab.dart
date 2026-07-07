@@ -76,18 +76,23 @@ class _HomeTabState extends ConsumerState<HomeTab> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                // ── Status pills (always visible) ──
+                _StatusPills(subState: subState),
+
+                const SizedBox(height: _kElementSpacing),
+
+                // ── Announcement banner ──
+                const AnnouncementBanner(),
+
+                const SizedBox(height: _kSectionSpacing),
+
                 // ── Multi-subscription carousel ──
                 _SubscriptionCarousel(subState: subState),
 
                 const SizedBox(height: _kSectionSpacing),
 
-                // ── Network status ──
+                // ── Network status (outage only) ──
                 const NetworkStatusBanner(),
-
-                const SizedBox(height: _kSectionSpacing),
-
-                // ── Announcement banner ──
-                const AnnouncementBanner(),
 
                 const SizedBox(height: _kSectionSpacing),
 
@@ -315,7 +320,79 @@ class _SubscriptionHeroCard extends StatelessWidget {
   }
 }
 
-// ─── Invoice Alert (shows overdue count) ─────────────────────────
+// ─── Status Pills (internet status + latency/speed) ────────────
+
+class _StatusPills extends StatelessWidget {
+  const _StatusPills({required this.subState});
+  final AsyncValue<List<SubscriptionModel>> subState;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          // "Internet Aktif" pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isp.surface,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: isp.border, width: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: isp.success,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                          color: isp.success.withOpacity(0.3), blurRadius: 8),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Internet Aktif',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isp.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // ⚡ speed pill (ponytail: hardcoded, replace with speedTestProvider)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isp.surface,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: isp.border, width: 1),
+            ),
+            child: Text(
+              '⚡ 12ms · 50 Mbps',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: isp.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _InvoiceAlert extends StatelessWidget {
   const _InvoiceAlert({required this.invState});
