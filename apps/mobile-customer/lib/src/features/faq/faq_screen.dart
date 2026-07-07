@@ -50,7 +50,7 @@ class _FaqScreenState extends State<FaqScreen> {
         children: [
           // Search
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Cari pertanyaan...',
@@ -59,54 +59,22 @@ class _FaqScreenState extends State<FaqScreen> {
                 fillColor: isp.surface,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide(color: isp.border, width: 1.5),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide(color: isp.border, width: 1.5),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide(color: isp.accent, width: 1.5),
                 ),
               ),
               onChanged: (v) => setState(() => _search = v),
             ),
           ),
-          // Category chips
-          SizedBox(
-            height: 40,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              itemBuilder: (_, i) {
-                final cat = categories[i];
-                final selected = _filter == cat;
-                return GestureDetector(
-                  onTap: () => setState(() => _filter = cat),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: selected ? isp.accent : isp.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: selected ? isp.accent : isp.border, width: 1.5),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(cat, style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : isp.textSecondary,
-                    )),
-                  ),
-                );
-              },
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemCount: categories.length,
-            ),
-          ),
-          const SizedBox(height: 12),
-          // FAQ list
+          // FAQ list — no category chips (match mockup)
           Expanded(
             child: _filtered.isEmpty
                 ? Center(
@@ -120,7 +88,7 @@ class _FaqScreenState extends State<FaqScreen> {
                     ),
                   )
                 : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 48),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 48),
                     itemBuilder: (_, i) => _FaqTile(item: _filtered[i]),
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemCount: _filtered.length,
@@ -148,12 +116,12 @@ class _FaqTileState extends State<_FaqTile> {
     return Container(
       decoration: BoxDecoration(
         color: isp.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: isp.border, width: 1.5),
-        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.2), offset: Offset(2, 2))],
+        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: Offset(3, 3), blurRadius: 0)],
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         onTap: () => setState(() => _expanded = !_expanded),
         child: Padding(
           padding: const EdgeInsets.all(16),
