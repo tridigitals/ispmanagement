@@ -113,8 +113,14 @@ class ProfileScreen extends ConsumerWidget {
           // Theme toggle
           _buildThemeToggle(context, isp, themeMode, ref),
 
-          // Logout
+          // Settings + Logout
           _buildSection(isp, [
+            _TintedTile(
+              icon: Icons.settings,
+              iconBg: isp.textMuted,
+              title: 'Pengaturan',
+              onTap: () => GoRouter.of(context).push('/settings'),
+            ),
             _TintedTile(
               icon: Icons.logout,
               iconBg: isp.danger,
