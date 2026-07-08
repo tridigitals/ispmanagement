@@ -2,13 +2,46 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../services/notifications_providers.dart';
-import '../../theme/app_theme.dart';
-import '../../utils/loading_skeleton.dart';
+
+// ─── Neubrutalist card ───────────────────────────────────────────
+
+BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
+      color: isp.surface,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: isp.border, width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: isp.border.withOpacity(0.5),
+          offset: const Offset(3, 3),
+          blurRadius: 0,
+        ),
+      ],
+    );
+
+// ─── Time format ─────────────────────────────────────────────────
+
+String _timeAgo(DateTime dt) {
+  final diff = DateTime.now().difference(dt);
+  if (diff.inMinutes < 60) return '${diff.inMinutes} menit yang lalu';
+  if (diff.inHours < 24) return '${diff.inHours} jam yang lalu';
+  return DateFormat('d MMM yyyy').format(dt);
+}
+
+String _dayGroup(DateTime dt) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final date = DateTime(dt.year, dt.month, dt.day);
+  final diff = today.difference(date).inDays;
+  if (diff == 0) return 'Hari ini';
+  if (diff == 1) return 'Kemarin';
+  return DateFormat('d MMMM yyyy').format(date);
+}
 
 class NotificationInboxScreen extends ConsumerStatefulWidget {
   const NotificationInboxScreen({super.key});
@@ -40,11 +73,21 @@ class _NotificationInboxScreenState
     return false;
   }
 
+  /// Group notifications by day (Hari ini / Kemarin / date)
+  List<MapEntry<String, List<NotificationModel>>> _grouped(
+      List<NotificationModel> items) {
+    final map = <String, List<NotificationModel>>{};
+    for (final item in items) {
+      final key = _dayGroup(item.createdAt);
+      map.putIfAbsent(key, () => []).add(item);
+    }
+    return map.entries.toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
     final async = ref.watch(notificationsProvider);
 
     return Scaffold(
@@ -58,7 +101,7 @@ class _NotificationInboxScreenState
                 builder: (ctx) => AlertDialog(
                   title: const Text('Hapus Semua?'),
                   content: const Text(
-                    'Semua notifikasi akan dihapus. Tindakan ini tidak dapat dibatalkan.',
+                    'Semua notifikasi akan dihapus.\nTindakan ini tidak dapat dibatalkan.',
                   ),
                   actions: [
                     TextButton(
@@ -67,9 +110,7 @@ class _NotificationInboxScreenState
                     ),
                     TextButton(
                       onPressed: () => Navigator.of(ctx).pop(true),
-                      style: TextButton.styleFrom(
-                        foregroundColor: isp.danger,
-                      ),
+                      style: TextButton.styleFrom(foregroundColor: isp.danger),
                       child: const Text('Hapus Semua'),
                     ),
                   ],
@@ -79,77 +120,96 @@ class _NotificationInboxScreenState
                 await ref.read(notificationsProvider.notifier).clearAll();
               }
             },
-            child: const Text('Hapus Semua'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await ref.read(notificationsProvider.notifier).markAllRead();
-            },
-            child: Text(l10n.markAllRead),
+            child: Text('Hapus', style: TextStyle(fontSize: 13, color: isp.textMuted)),
           ),
         ],
       ),
       body: async.when(
-        loading: () => const IspSkeletonList(itemCount: 6),
-        error: (e, _) => IspErrorState(
-          message: e.toString(),
-          onRetry: () => ref.invalidate(notificationsProvider),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.error_outline, size: 48, color: isp.danger),
+            const SizedBox(height: 12),
+            Text('Gagal memuat', style: TextStyle(color: isp.textSecondary)),
+            const SizedBox(height: 16),
+            OutlinedButton(
+              onPressed: () => ref.invalidate(notificationsProvider),
+              child: Text(l10n.retry),
+            ),
+          ]),
         ),
-        data: (list) {
-          if (list.isEmpty) {
-            return IspEmptyState(
-              icon: Icons.notifications_off_outlined,
-              title: l10n.noNotifications,
-              message: 'Notifikasi akan muncul di sini',
+        data: (items) {
+          if (items.isEmpty) {
+            return Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.notifications_none, size: 64, color: isp.textMuted),
+                const SizedBox(height: 8),
+                Text('Belum ada notifikasi', style: TextStyle(color: isp.textMuted)),
+              ]),
             );
           }
+
+          final groups = _grouped(items);
+
           return NotificationListener<ScrollNotification>(
             onNotification: _onScroll,
-            child: RefreshIndicator(
-              color: isp.accent,
-              onRefresh: () async {
-                ref.invalidate(notificationsProvider);
-                await ref.read(notificationsProvider.future);
-              },
-              child: ListView.builder(
-                itemCount: list.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == list.length) {
-                    return _loadingMore
-                        ? Padding(
-                            padding: EdgeInsets.all(24),
-                            child: Center(
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: isp.accent,
-                                ),
-                              ),
-                            ),
-                          )
-                        : const SizedBox.shrink();
-                  }
-                  return Dismissible(
-                    key: Key(list[index].id),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      color: isp.danger,
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 20),
-                      child: const Icon(Icons.delete, color: Colors.white),
-                    ),
-                    onDismissed: (_) {
-                      ref.read(notificationsProvider.notifier).delete(list[index].id);
-                    },
-                    child: _NotificationTile(item: list[index]),
+            child: ListView.builder(
+              padding: const EdgeInsets.only(bottom: 48),
+              itemCount: groups.length + (_loadingMore ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index >= groups.length) {
+                  return const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
                   );
-                },
-              ),
+                }
+                final group = groups[index];
+                return _DaySection(
+                  label: group.key,
+                  items: group.value,
+                  isp: isp,
+                );
+              },
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _DaySection extends StatelessWidget {
+  const _DaySection({
+    required this.label,
+    required this.items,
+    required this.isp,
+  });
+
+  final String label;
+  final List<NotificationModel> items;
+  final IspThemeColors isp;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 16, 8),
+            child: Text(
+              label.toUpperCase(),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: isp.textMuted,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          ...items.map((item) => _NotificationTile(item: item)),
+        ],
       ),
     );
   }
@@ -160,181 +220,89 @@ class _NotificationTile extends ConsumerWidget {
   final NotificationModel item;
 
   String? _resolveTarget(NotificationModel item) {
-    // Priority 1: actionUrl from root payload (backend sends action_url)
     final actionUrl = item.actionUrl?.trim();
-    if (actionUrl != null && actionUrl.isNotEmpty) {
-      return _normalizeRoute(actionUrl);
-    }
-    // Priority 2: deepLink
+    if (actionUrl != null && actionUrl.isNotEmpty) return _normalizeRoute(actionUrl);
     final deepLink = item.deepLink?.trim();
-    if (deepLink != null && deepLink.isNotEmpty) {
-      return _normalizeRoute(deepLink);
-    }
-    // Priority 3: action_url inside data map
+    if (deepLink != null && deepLink.isNotEmpty) return _normalizeRoute(deepLink);
     final action = item.data?['action_url']?.toString().trim();
-    if (action != null && action.isNotEmpty) {
-      return _normalizeRoute(action);
-    }
+    if (action != null && action.isNotEmpty) return _normalizeRoute(action);
     return null;
   }
 
-  /// Map backend routes to mobile app routes.
-  /// CRITICAL: Only return paths that match actual GoRouter routes!
-  /// Available routes: /subscriptions/:id, /invoices/:id, /tickets/:id,
-  ///   /payments/:invoiceId, /notifications, /profile, /settings, /?tab=N
-  /// Tab mapping: 0=Home, 1=Subscriptions, 2=Invoices, 3=Support, 4=Profile
   String _normalizeRoute(String route) {
-    // /support/{id} → /tickets/{id}
-    if (route.startsWith('/support/')) {
-      final id = route.substring('/support/'.length);
-      if (id.isNotEmpty) return '/tickets/$id';
-    }
-    // /admin/support/{id} → /tickets/{id}
-    if (route.startsWith('/admin/support/')) {
-      final id = route.substring('/admin/support/'.length);
-      if (id.isNotEmpty) return '/tickets/$id';
-    }
-    // /pay/{id} → /payments/{id}
-    if (route.startsWith('/pay/')) {
-      final id = route.substring('/pay/'.length);
-      if (id.isNotEmpty) return '/payments/$id';
-    }
-    // /admin/invoices/{id} → /invoices/{id}
-    if (route.startsWith('/admin/invoices/')) {
-      final id = route.substring('/admin/invoices/'.length);
-      if (id.isNotEmpty) return '/invoices/$id';
-    }
-    // /dashboard/invoices/{id} → /invoices/{id}
-    if (route.startsWith('/dashboard/invoices/')) {
-      final id = route.substring('/dashboard/invoices/'.length);
-      if (id.isNotEmpty) return '/invoices/$id';
-    }
-    // /dashboard/invoices → Invoices tab
+    if (route.startsWith('/support/')) return '/tickets/${route.substring('/support/'.length)}';
+    if (route.startsWith('/admin/support/')) return '/tickets/${route.substring('/admin/support/'.length)}';
+    if (route.startsWith('/pay/')) return '/payments/${route.substring('/pay/'.length)}';
+    if (route.startsWith('/admin/invoices/')) return '/invoices/${route.substring('/admin/invoices/'.length)}';
+    if (route.startsWith('/dashboard/invoices/')) return '/invoices/${route.substring('/dashboard/invoices/'.length)}';
     if (route == '/dashboard/invoices') return '/?tab=2';
-    // /dashboard/tickets/{id} → /tickets/{id}
-    if (route.startsWith('/dashboard/tickets/')) {
-      final id = route.substring('/dashboard/tickets/'.length);
-      if (id.isNotEmpty) return '/tickets/$id';
-    }
-    // /dashboard/subscriptions/{id} → /subscriptions/{id}
-    if (route.startsWith('/dashboard/subscriptions/')) {
-      final id = route.substring('/dashboard/subscriptions/'.length);
-      if (id.isNotEmpty) return '/subscriptions/$id';
-    }
-    // /dashboard/payments/{id} → /payments/{id}
-    if (route.startsWith('/dashboard/payments/')) {
-      final id = route.substring('/dashboard/payments/'.length);
-      if (id.isNotEmpty) return '/payments/$id';
-    }
-    // /dashboard/services → Subscriptions tab
-    if (route == '/dashboard/services' ||
-        route.startsWith('/dashboard/services/')) {
-      return '/?tab=1';
-    }
-    // /announcements/{id} → /announcements/{id}
-    if (route.startsWith('/announcements/')) {
-      final id = route.substring('/announcements/'.length);
-      if (id.isNotEmpty) return '/announcements/$id';
-    }
-    // /announcements → /announcements (list)
+    if (route.startsWith('/dashboard/tickets/')) return '/tickets/${route.substring('/dashboard/tickets/'.length)}';
+    if (route.startsWith('/dashboard/subscriptions/')) return '/subscriptions/${route.substring('/dashboard/subscriptions/'.length)}';
+    if (route.startsWith('/dashboard/payments/')) return '/payments/${route.substring('/dashboard/payments/'.length)}';
+    if (route == '/dashboard/services' || route.startsWith('/dashboard/services/')) return '/?tab=1';
+    if (route.startsWith('/announcements/')) return '/announcements/${route.substring('/announcements/'.length)}';
     if (route == '/announcements') return '/announcements';
-    // /admin/announcements/{id} → /announcements/{id}
-    if (route.startsWith('/admin/announcements/')) {
-      final id = route.substring('/admin/announcements/'.length);
-      if (id.isNotEmpty) return '/announcements/$id';
-    }
-    // /admin/announcements → /announcements (list)
+    if (route.startsWith('/admin/announcements/')) return '/announcements/${route.substring('/admin/announcements/'.length)}';
     if (route == '/admin/announcements') return '/announcements';
-    // No matching route — fallback to home
     return '/?tab=0';
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isp = context.isp;
-    return Material(
-      color: item.isUnread ? isp.surfaceElevated : Colors.transparent,
-      child: InkWell(
-        onTap: () async {
-          if (item.isUnread) {
-            await ref.read(notificationsProvider.notifier).markRead(item.id);
-          }
-          final target = _resolveTarget(item);
-          if (target != null && context.mounted) {
-            try {
-              GoRouter.of(context).push(target);
-            } catch (_) {
-              // Route doesn't exist — fallback to home
-              if (context.mounted) {
-                GoRouter.of(context).go('/');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text(
-                      'Halaman tidak tersedia di mobile',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    backgroundColor: isp.warning,
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () async {
+            if (item.isUnread) {
+              await ref.read(notificationsProvider.notifier).markRead(item.id);
+            }
+            final target = _resolveTarget(item);
+            if (target != null && context.mounted) {
+              try {
+                GoRouter.of(context).push(target);
+              } catch (_) {
+                if (context.mounted) GoRouter.of(context).go('/');
               }
             }
-          }
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: isp.border, width: 0.5),
-            ),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _IconFor(category: item.category),
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: _nbCard(isp),
+            padding: const EdgeInsets.all(12),
+            child: Row(children: [
+              // Tinted icon circle (36px, match mockup ico-r)
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: _colorFor(item.category, isp).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(_iconFor(item.category), size: 16, color: _colorFor(item.category, isp)),
+              ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight:
-                            item.isUnread ? FontWeight.w600 : FontWeight.w500,
-                        color: isp.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.body,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isp.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.categoryLabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isp.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(
+                    item.title,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isp.textPrimary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(_timeAgo(item.createdAt), style: TextStyle(fontSize: 10, color: isp.textMuted)),
+                ]),
               ),
-              if (item.isUnread) ...[
-                const SizedBox(width: 8),
-                Padding(
-                  padding: EdgeInsets.only(top: 6),
-                  child: Icon(Icons.circle, color: isp.accent, size: 10),
+              if (item.isUnread)
+                Container(
+                  width: 8, height: 8,
+                  margin: const EdgeInsets.only(left: 8),
+                  decoration: BoxDecoration(color: isp.accent, shape: BoxShape.circle),
                 ),
-              ],
-            ],
+            ]),
           ),
         ),
       ),
@@ -342,53 +310,40 @@ class _NotificationTile extends ConsumerWidget {
   }
 }
 
-class _IconFor extends StatelessWidget {
-  const _IconFor({required this.category});
-  final NotificationCategory category;
+IconData _iconFor(NotificationCategory c) {
+  switch (c) {
+    case NotificationCategory.invoice:
+      return Icons.receipt_long;
+    case NotificationCategory.ticket:
+      return Icons.support_agent;
+    case NotificationCategory.outage:
+      return Icons.warning_amber;
+    case NotificationCategory.payment:
+      return Icons.check_circle;
+    case NotificationCategory.subscription:
+      return Icons.wifi;
+    case NotificationCategory.promo:
+      return Icons.local_offer;
+    case NotificationCategory.system:
+      return Icons.info_outline;
+  }
+}
 
-  @override
-  Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    final IconData icon;
-    final Color color;
-    switch (category) {
-      case NotificationCategory.invoice:
-        icon = Icons.receipt_long;
-        color = isp.warning;
-        break;
-      case NotificationCategory.ticket:
-        icon = Icons.support_agent;
-        color = isp.info;
-        break;
-      case NotificationCategory.outage:
-        icon = Icons.warning_amber;
-        color = isp.danger;
-        break;
-      case NotificationCategory.payment:
-        icon = Icons.payment;
-        color = isp.success;
-        break;
-      case NotificationCategory.subscription:
-        icon = Icons.wifi;
-        color = isp.accent;
-        break;
-      case NotificationCategory.promo:
-        icon = Icons.local_offer;
-        color = isp.accent;
-        break;
-      case NotificationCategory.system:
-        icon = Icons.info_outline;
-        color = isp.textMuted;
-        break;
-    }
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Icon(icon, color: color, size: 20),
-    );
+Color _colorFor(NotificationCategory c, IspThemeColors isp) {
+  switch (c) {
+    case NotificationCategory.invoice:
+      return isp.danger;
+    case NotificationCategory.ticket:
+      return isp.info;
+    case NotificationCategory.outage:
+      return isp.danger;
+    case NotificationCategory.payment:
+      return isp.success;
+    case NotificationCategory.subscription:
+      return isp.accent;
+    case NotificationCategory.promo:
+      return isp.accent;
+    case NotificationCategory.system:
+      return isp.textMuted;
   }
 }
