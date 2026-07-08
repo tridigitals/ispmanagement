@@ -223,7 +223,7 @@ class _HomeHeader extends StatelessWidget {
           ),
           // Notification bell with badge
           _HeaderIconButton(
-            icon: Icons.notifications_outlined,
+            icon: Icons.notifications,
             isp: isp,
             badgeCount: unread,
             onTap: onNotifications,
