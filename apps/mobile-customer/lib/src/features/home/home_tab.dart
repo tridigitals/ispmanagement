@@ -330,18 +330,23 @@ class _StatusPills extends StatelessWidget {
   Widget build(BuildContext context) {
     final isp = context.isp;
     final subs = subState.valueOrNull ?? [];
+
     final activeCount = subs.where((s) => s.isActive).length;
     final suspendedCount = subs.where((s) => s.isSuspended).length;
 
     String statusLabel;
     Color statusColor;
     Color glowColor;
-    if (activeCount > 0) {
-      statusLabel = 'Internet Aktif';
+    if (activeCount >= subs.length) {
+      statusLabel = 'Semua Aktif';
       statusColor = isp.success;
       glowColor = isp.success;
+    } else if (activeCount > 0) {
+      statusLabel = '$activeCount/${subs.length} Aktif';
+      statusColor = isp.warning;
+      glowColor = isp.warning;
     } else if (suspendedCount > 0) {
-      statusLabel = 'Internet Ditangguhkan';
+      statusLabel = 'Ditangguhkan';
       statusColor = isp.warning;
       glowColor = isp.warning;
     } else {
