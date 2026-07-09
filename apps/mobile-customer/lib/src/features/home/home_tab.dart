@@ -77,11 +77,6 @@ class _HomeTabState extends ConsumerState<HomeTab> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // ── Status pills (always visible) ──
-                _StatusPills(subState: subState),
-
-                const SizedBox(height: _kElementSpacing),
-
                 // ── Announcement banner ──
                 const AnnouncementBanner(),
 
@@ -321,85 +316,6 @@ class _SubscriptionHeroCard extends StatelessWidget {
 }
 
 // ─── Status Pills (internet status) ────────────
-
-class _StatusPills extends StatelessWidget {
-  const _StatusPills({required this.subState});
-  final AsyncValue<List<SubscriptionModel>> subState;
-
-  @override
-  Widget build(BuildContext context) {
-    final isp = context.isp;
-    final subs = subState.valueOrNull ?? [];
-
-    final activeCount = subs.where((s) => s.isActive).length;
-    final suspendedCount = subs.where((s) => s.isSuspended).length;
-
-    String statusLabel;
-    Color statusColor;
-    Color glowColor;
-    if (activeCount >= subs.length) {
-      statusLabel = 'Semua Aktif';
-      statusColor = isp.success;
-      glowColor = isp.success;
-    } else if (activeCount > 0) {
-      statusLabel = '$activeCount/${subs.length} Aktif';
-      statusColor = isp.warning;
-      glowColor = isp.warning;
-    } else if (suspendedCount > 0) {
-      statusLabel = 'Ditangguhkan';
-      statusColor = isp.warning;
-      glowColor = isp.warning;
-    } else {
-      statusLabel = 'Tidak Ada Layanan';
-      statusColor = isp.textMuted;
-      glowColor = isp.textMuted;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: isp.surface,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: isp.border, width: 1),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                          color: glowColor.withOpacity(0.3), blurRadius: 8),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  statusLabel,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: isp.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _InvoiceAlert extends StatelessWidget {
   const _InvoiceAlert({required this.invState});
