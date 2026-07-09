@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 
 import 'app_config.dart';
+import 'fcm_service.dart';
 import 'missing_providers.dart';
 import 'notifications_providers.dart';
 import 'public_settings_providers.dart';
