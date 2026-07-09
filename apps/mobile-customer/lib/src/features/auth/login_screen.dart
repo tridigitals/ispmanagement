@@ -382,36 +382,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       onTap: _submit,
                     ),
                     const SizedBox(height: 24),
-                    // ─── Divider "atau" ───
-                    Row(
-                      children: [
-                        Expanded(
-                            child: Divider(color: isp.border, thickness: 1.5)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          child: Text(
-                            'atau',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isp.textMuted,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                            child: Divider(color: isp.border, thickness: 1.5)),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    // ─── Biometric button ───
-                    if (_biometricAvailable && !_biometricLoading)
-                      _NeubrutalistOutlineButton(
-                        icon: Icons.fingerprint,
-                        label: l10n.biometric,
-                        onTap: () {
-                          _biometricAttempted = false;
-                          _tryBiometricLogin();
-                        },
-                      ),
+                    // ─── Biometric auto-trigger or button ───
                     if (_biometricLoading)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -429,6 +400,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ],
                         ),
+                      ),
+                    if (_biometricAvailable && !_biometricLoading)
+                      _NeubrutalistOutlineButton(
+                        icon: Icons.fingerprint,
+                        label: l10n.biometric,
+                        onTap: () {
+                          _biometricAttempted = false;
+                          _tryBiometricLogin();
+                        },
                       ),
                     // ─── NO "Hubungi ISP" link (multi-tenant) ───
                   ],
