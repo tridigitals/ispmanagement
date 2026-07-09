@@ -1091,7 +1091,11 @@ pub async fn update_announcement_admin(
         .unwrap_or(existing.deliver_email_force);
     let cover_file_id = dto.cover_file_id.unwrap_or(existing.cover_file_id);
     let starts_at = dto.starts_at.unwrap_or(existing.starts_at);
-    let ends_at = dto.ends_at.or(existing.ends_at);
+    let ends_at = match dto.ends_at {
+        Some(Some(dt)) => Some(dt),
+        Some(None) => None,
+        None => existing.ends_at,
+    };
     if let Some(e) = ends_at {
         if e <= starts_at {
             return Err("ends_at must be after starts_at".to_string());

@@ -1,6 +1,6 @@
 use super::AppState;
 use crate::models::{
-    Announcement, CreateAnnouncementDto, PaginatedResponse, UpdateAnnouncementDto,
+    Announcement, CreateAnnouncementDto, CustomerAnnouncement, PaginatedResponse, UpdateAnnouncementDto,
 };
 use crate::services::encode_unsubscribe_token;
 use axum::{
@@ -172,7 +172,7 @@ pub async fn get_one(
 pub async fn list_active(
     State(state): State<AppState>,
     headers: HeaderMap,
-) -> Result<Json<Vec<Announcement>>, crate::error::AppError> {
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
     let claims = auth_claims(&state, &headers).await?;
     let tenant_id = claims.tenant_id.clone();
     let user_id = claims.sub.clone();
@@ -226,14 +226,19 @@ pub async fn list_active(
     #[cfg(not(feature = "postgres"))]
     let rows: Vec<Announcement> = Vec::new();
 
-    Ok(Json(rows))
+    if is_admin {
+        Ok(Json(serde_json::to_value(rows).unwrap_or_default()))
+    } else {
+        let customer_rows: Vec<CustomerAnnouncement> = rows.into_iter().map(Into::into).collect();
+        Ok(Json(serde_json::to_value(customer_rows).unwrap_or_default()))
+    }
 }
 
 pub async fn list_recent(
     State(state): State<AppState>,
     headers: HeaderMap,
     Query(params): Query<ListRecentParams>,
-) -> Result<Json<PaginatedResponse<Announcement>>, crate::error::AppError> {
+) -> Result<Json<PaginatedResponse<serde_json::Value>>, crate::error::AppError> {
     let claims = auth_claims(&state, &headers).await?;
     let tenant_id = claims.tenant_id.clone();
     let user_id = claims.sub.clone();
@@ -367,12 +372,17 @@ pub async fn list_recent(
     let page = params.page.unwrap_or(1).max(1);
     let per_page = params.per_page.unwrap_or(20).clamp(1, 100);
 
-    Ok(Json(PaginatedResponse {
-        data: rows,
-        total,
-        page,
-        per_page,
-    }))
+    if is_admin {
+        let data: Vec<serde_json::Value> = rows.into_iter()
+            .map(|r| serde_json::to_value(r).unwrap_or_default())
+            .collect();
+        Ok(Json(PaginatedResponse { data, total, page, per_page }))
+    } else {
+        let data: Vec<serde_json::Value> = rows.into_iter()
+            .map(|r| serde_json::to_value(CustomerAnnouncement::from(r)).unwrap_or_default())
+            .collect();
+        Ok(Json(PaginatedResponse { data, total, page, per_page }))
+    }
 }
 
 pub async fn dismiss(
@@ -1128,7 +1138,11 @@ pub async fn update_announcement(
         .deliver_email_force
         .unwrap_or(existing.deliver_email_force);
     let starts_at = dto.starts_at.unwrap_or(existing.starts_at);
-    let ends_at = dto.ends_at.or(existing.ends_at);
+    let ends_at = match dto.ends_at {
+        Some(Some(dt)) => Some(dt),
+        Some(None) => None, // explicitly set to null
+        None => existing.ends_at,
+    };
     if let Some(e) = ends_at {
         if e <= starts_at {
             return Err(crate::error::AppError::Validation(

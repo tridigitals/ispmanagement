@@ -8,6 +8,7 @@ pub struct FileRecord {
     pub tenant_id: String,
     pub name: String,
     pub original_name: String,
+    #[serde(skip_serializing)]
     pub path: String,
     pub size: i64,
     pub content_type: String,

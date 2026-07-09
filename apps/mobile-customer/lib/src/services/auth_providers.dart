@@ -524,6 +524,12 @@ class AuthController extends Notifier<AuthState> {
       return;
     }
 
+    // Unregister FCM token before logout so backend stops sending push
+    try {
+      final fcm = ref.read(fcmServiceProvider);
+      await fcm.unregister();
+    } catch (_) {}
+
     await ref.read(authServiceProvider).logout();
 
     // Invalidate ALL user-specific cached providers so a different user logging

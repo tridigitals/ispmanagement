@@ -144,6 +144,16 @@ async fn authorize_file_access(
         .await
         .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden").into_response())?;
 
+    // Non-admin users can only access files they uploaded (unless they have read_all)
+    let has_read_all = state
+        .auth_service
+        .has_permission(&claims.sub, &tenant_id, "storage_files", "read_all")
+        .await
+        .unwrap_or(false);
+    if !has_read_all && record.uploaded_by.as_deref() != Some(claims.sub.as_str()) {
+        return Err((StatusCode::FORBIDDEN, "Forbidden").into_response());
+    }
+
     Ok(())
 }
 

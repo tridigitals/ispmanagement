@@ -308,6 +308,24 @@ class FcmService {
     }
   }
 
+  /// Unregister FCM token on logout — best-effort, timeout 5s.
+  Future<void> unregister() async {
+    try {
+      final token = await FirebaseMessaging.instance
+          .getToken()
+          .timeout(const Duration(seconds: 3), onTimeout: () => null);
+      if (token == null) return;
+      final dio = _ref.read(dioProvider);
+      await dio.delete(
+        '/api/notifications/devices',
+        data: {'fcm_token': token},
+      ).timeout(const Duration(seconds: 5));
+      _status('✅ Token unregistered');
+    } catch (e) {
+      _status('⚠️ unregister failed (non-fatal): $e');
+    }
+  }
+
   /// Clear pending FCM URL after login redirect completes.
   /// Called by LoginScreen right before navigating to home.
   void clearPendingAction() {

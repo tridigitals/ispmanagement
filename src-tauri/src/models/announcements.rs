@@ -64,5 +64,39 @@ pub struct UpdateAnnouncementDto {
     pub deliver_push: Option<bool>,
     pub target_package_id: Option<Option<String>>,
     pub starts_at: Option<DateTime<Utc>>,
+    pub ends_at: Option<Option<DateTime<Utc>>>,
+}
+
+/// Customer-facing announcement — omits admin/internal fields.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct CustomerAnnouncement {
+    pub id: String,
+    pub title: String,
+    pub body: String,
+    pub severity: String,
+    pub audience: String,
+    pub mode: String,
+    pub format: String,
+    pub cover_file_id: Option<String>,
+    pub starts_at: DateTime<Utc>,
     pub ends_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<Announcement> for CustomerAnnouncement {
+    fn from(a: Announcement) -> Self {
+        Self {
+            id: a.id,
+            title: a.title,
+            body: a.body,
+            severity: a.severity,
+            audience: a.audience,
+            mode: a.mode,
+            format: a.format,
+            cover_file_id: a.cover_file_id,
+            starts_at: a.starts_at,
+            ends_at: a.ends_at,
+            created_at: a.created_at,
+        }
+    }
 }

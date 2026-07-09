@@ -16,6 +16,22 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use uuid::Uuid;
 
+/// Strip HTML tags from user input to prevent stored XSS.
+/// Subject is plain-text; message body may contain safe formatting but not script tags.
+fn strip_html_tags(input: &str) -> String {
+    let mut result = String::with_capacity(input.len());
+    let mut inside_tag = false;
+    for ch in input.chars() {
+        match ch {
+            '<' => inside_tag = true,
+            '>' => inside_tag = false,
+            _ if !inside_tag => result.push(ch),
+            _ => {}
+        }
+    }
+    result
+}
+
 use super::announcements_support_common::{
     normalize_priority, normalize_priority_optional_lowercase, normalize_status,
     support_admin_user_ids,
@@ -378,8 +394,8 @@ pub async fn list_support_tickets(
         .await?;
 
         (rows, total)
-    } else {
-        // Non-admin: see unassigned + assigned to self + created by self
+    } else if is_field_worker_role(&claims.role) {
+        // Technician / staff: see unassigned + assigned to self + created by self
         let total: i64 = sqlx::query_scalar(
             r#"
             SELECT COUNT(*)
@@ -420,6 +436,62 @@ pub async fn list_support_tickets(
               AND (t.assigned_to IS NULL OR t.assigned_to = $7 OR t.created_by = $7)
             ORDER BY
               CASE WHEN t.assigned_to IS NULL THEN 0 ELSE 1 END ASC,
+              COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
+            LIMIT $5 OFFSET $6
+        "#,
+        )
+        .bind(&tenant_id)
+        .bind(st)
+        .bind(search)
+        .bind(category)
+        .bind(per_page as i64)
+        .bind(offset)
+        .bind(&claims.sub)
+        .fetch_all(&state.auth_service.pool)
+        .await?;
+
+        (rows, total)
+    } else {
+        // Customer: only see tickets they created
+        let total: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)
+            FROM support_tickets t
+            LEFT JOIN users u ON u.id = t.created_by
+            WHERE t.tenant_id = $1
+              AND ($2::text IS NULL OR t.status = $2)
+              AND ($3::text IS NULL
+                OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
+                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%')
+              AND ($4::text IS NULL OR t.category = $4)
+              AND t.created_by = $5
+        "#,
+        )
+        .bind(&tenant_id)
+        .bind(st.clone())
+        .bind(search.clone())
+        .bind(category.clone())
+        .bind(&claims.sub)
+        .fetch_one(&state.auth_service.pool)
+        .await?;
+
+        let rows: Vec<SupportTicketListItem> = sqlx::query_as(
+            r#"
+            SELECT
+                t.*,
+                u.name AS created_by_name,
+                (SELECT COUNT(*) FROM support_ticket_messages m WHERE m.ticket_id = t.id) AS message_count,
+                (SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id) AS last_message_at
+            FROM support_tickets t
+            LEFT JOIN users u ON u.id = t.created_by
+            WHERE t.tenant_id = $1
+              AND ($2::text IS NULL OR t.status = $2)
+              AND ($3::text IS NULL
+                OR LOWER(t.subject) LIKE '%' || LOWER($3) || '%'
+                OR LOWER(COALESCE(u.name, '')) LIKE '%' || LOWER($3) || '%')
+              AND ($4::text IS NULL OR t.category = $4)
+              AND t.created_by = $7
+            ORDER BY
               COALESCE((SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id), t.updated_at) DESC
             LIMIT $5 OFFSET $6
         "#,
@@ -583,7 +655,7 @@ pub async fn create_support_ticket(
     .bind(&ticket_id)
     .bind(&tenant_id)
     .bind(&claims.sub)
-    .bind(dto.subject.trim())
+    .bind(strip_html_tags(dto.subject.trim()))
     .bind(&priority)
     .bind(dto.category.as_deref())
     .bind(dto.subscription_id.as_deref())
@@ -614,7 +686,7 @@ pub async fn create_support_ticket(
     .bind(&ticket_id)
     .bind(&claims.sub)
     .bind(creator_name.as_deref())
-    .bind(dto.message.trim())
+    .bind(strip_html_tags(dto.message.trim()))
     .bind(now)
     .execute(&mut *tx)
     .await?;
@@ -893,7 +965,7 @@ pub async fn reply_support_ticket(
     .bind(&id)
     .bind(&claims.sub)
     .bind(author_name.as_deref())
-    .bind(dto.message.trim())
+    .bind(strip_html_tags(dto.message.trim()))
     .bind(is_internal)
     .bind(now)
     .execute(&mut *tx)
@@ -1031,7 +1103,9 @@ pub async fn list_support_ticket_messages(
     let is_creator = ticket.created_by.as_deref() == Some(claims.sub.as_str());
     let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
     let is_unassigned = ticket.assigned_to.is_none();
-    if !can_all && !is_creator && !is_assignee && !is_unassigned {
+    // Customers can only see their own tickets; field workers can also see unassigned
+    let can_see_unassigned = is_field_worker_role(&claims.role);
+    if !can_all && !is_creator && !is_assignee && !(is_unassigned && can_see_unassigned) {
         return Err(crate::error::AppError::Forbidden(
             "Ticket is not assigned to you".to_string(),
         ));
