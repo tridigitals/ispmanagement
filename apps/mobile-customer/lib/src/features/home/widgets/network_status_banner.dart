@@ -32,9 +32,8 @@ class _Banner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    final (icon, color, text) = switch (status.status) {
+    final isp = context.isp;
+    final (icon, color, text) = switch (status.status) {
       NetworkOperationalStatus.majorOutage => (
           Icons.signal_wifi_off,
           isp.danger,

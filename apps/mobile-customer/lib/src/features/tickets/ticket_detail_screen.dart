@@ -13,7 +13,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
@@ -79,6 +78,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
     super.didChangeDependencies();
     isp = context.isp;
   }
+
   bool _sending = false;
   bool _uploading = false;
   Timer? _autoRefreshTimer;
@@ -387,8 +387,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                   padding: const EdgeInsets.symmetric(
                       horizontal: IspSpacing.lg, vertical: IspSpacing.sm),
                   decoration: BoxDecoration(
-                    border: Border(
-                        bottom: BorderSide(color: isp.borderSubtle)),
+                    border: Border(bottom: BorderSide(color: isp.borderSubtle)),
                   ),
                   child: Row(
                     children: [
@@ -418,8 +417,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen>
                       const Spacer(),
                       Text(
                         dateFmt.format(ticket.createdAt),
-                        style: TextStyle(
-                            fontSize: 11, color: isp.textMuted),
+                        style: TextStyle(fontSize: 11, color: isp.textMuted),
                       ),
                     ],
                   ),
@@ -655,9 +653,7 @@ class _MessagesSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return ListView.builder(
+    return ListView.builder(
       padding: const EdgeInsets.all(IspSpacing.lg),
       itemCount: 4,
       itemBuilder: (_, i) {
@@ -725,8 +721,7 @@ class _MessageBubble extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.shield,
-                        size: 12, color: isp.accent),
+                    Icon(Icons.shield, size: 12, color: isp.accent),
                     const SizedBox(width: IspSpacing.xs),
                     Text(
                       l10n.ticketAuthorLabel(
@@ -767,7 +762,8 @@ class _MessageBubble extends StatelessWidget {
               dateFmt.format(message.createdAt),
               style: TextStyle(
                 fontSize: 10,
-                color: isStaff ? isp.textMuted : isp.textPrimary.withOpacity(0.7),
+                color:
+                    isStaff ? isp.textMuted : isp.textPrimary.withOpacity(0.7),
               ),
             ),
           ],
@@ -808,7 +804,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     final isp = context.isp;
     final fileUrl =
         '$baseUrl/api/storage/files/${attachment.id}/ticket-content';
@@ -858,9 +854,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
         builder: (context, snap) {
           final token = snap.data ?? '';
           // Token embedded in URL (same pattern as non-image handler below).
-          final downloadUrl = token.isEmpty
-              ? fileUrl
-              : '$fileUrl?token=$token';
+          final downloadUrl = token.isEmpty ? fileUrl : '$fileUrl?token=$token';
           return _buildVideoTile(
             context: context,
             attachment: attachment,
@@ -893,7 +887,8 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
             child: Container(
               padding: const EdgeInsets.all(IspSpacing.sm),
               decoration: BoxDecoration(
-                color: (isStaff ? isp.surfaceElevated : isp.accentSurface).withOpacity(0.1),
+                color: (isStaff ? isp.surfaceElevated : isp.accentSurface)
+                    .withOpacity(0.1),
                 borderRadius: BorderRadius.circular(IspRadii.sm),
               ),
               child: Row(
@@ -915,8 +910,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 12,
-                            color:
-                                isStaff ? isp.textPrimary : isp.textPrimary,
+                            color: isStaff ? isp.textPrimary : isp.textPrimary,
                           ),
                         ),
                         Text(
@@ -937,7 +931,9 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                         ? Icons.hourglass_empty
                         : Icons.open_in_new,
                     size: 16,
-                    color: isStaff ? isp.textMuted : isp.textPrimary.withOpacity(0.6),
+                    color: isStaff
+                        ? isp.textMuted
+                        : isp.textPrimary.withOpacity(0.6),
                   ),
                 ],
               ),
@@ -980,7 +976,8 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
       alignment: Alignment.center,
       padding: const EdgeInsets.symmetric(horizontal: IspSpacing.sm),
       decoration: BoxDecoration(
-        color: (isStaff ? isp.surfaceElevated : isp.accentSurface).withOpacity(0.05),
+        color: (isStaff ? isp.surfaceElevated : isp.accentSurface)
+            .withOpacity(0.05),
         borderRadius: BorderRadius.circular(IspRadii.sm),
       ),
       child: Column(
@@ -997,7 +994,8 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 10,
-              color: isStaff ? isp.textMuted : isp.textPrimary.withOpacity(0.54),
+              color:
+                  isStaff ? isp.textMuted : isp.textPrimary.withOpacity(0.54),
             ),
           ),
           const SizedBox(height: 4),
@@ -1076,7 +1074,8 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
           width: 220,
           padding: const EdgeInsets.all(IspSpacing.md),
           decoration: BoxDecoration(
-            color: (isStaff ? isp.surfaceElevated : isp.accentSurface).withOpacity(0.08),
+            color: (isStaff ? isp.surfaceElevated : isp.accentSurface)
+                .withOpacity(0.08),
             borderRadius: BorderRadius.circular(IspRadii.sm),
             border: Border.all(
               color: isp.borderSubtle.withOpacity(0.3),
@@ -1120,9 +1119,7 @@ class _AttachmentWidgetState extends State<_AttachmentWidget> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      _downloadingVideo
-                          ? 'Mengunduh…'
-                          : 'Tap untuk buka',
+                      _downloadingVideo ? 'Mengunduh…' : 'Tap untuk buka',
                       style: TextStyle(
                         fontSize: 10,
                         color: isp.textMuted,

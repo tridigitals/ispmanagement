@@ -120,7 +120,8 @@ class _NotificationInboxScreenState
                 await ref.read(notificationsProvider.notifier).clearAll();
               }
             },
-            child: Text('Hapus', style: TextStyle(fontSize: 13, color: isp.textMuted)),
+            child: Text('Hapus',
+                style: TextStyle(fontSize: 13, color: isp.textMuted)),
           ),
         ],
       ),
@@ -144,7 +145,8 @@ class _NotificationInboxScreenState
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.notifications_none, size: 64, color: isp.textMuted),
                 const SizedBox(height: 8),
-                Text('Belum ada notifikasi', style: TextStyle(color: isp.textMuted)),
+                Text('Belum ada notifikasi',
+                    style: TextStyle(color: isp.textMuted)),
               ]),
             );
           }
@@ -160,7 +162,11 @@ class _NotificationInboxScreenState
                 if (index >= groups.length) {
                   return const Padding(
                     padding: EdgeInsets.all(24),
-                    child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+                    child: Center(
+                        child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2))),
                   );
                 }
                 final group = groups[index];
@@ -221,28 +227,41 @@ class _NotificationTile extends ConsumerWidget {
 
   String? _resolveTarget(NotificationModel item) {
     final actionUrl = item.actionUrl?.trim();
-    if (actionUrl != null && actionUrl.isNotEmpty) return _normalizeRoute(actionUrl);
+    if (actionUrl != null && actionUrl.isNotEmpty)
+      return _normalizeRoute(actionUrl);
     final deepLink = item.deepLink?.trim();
-    if (deepLink != null && deepLink.isNotEmpty) return _normalizeRoute(deepLink);
+    if (deepLink != null && deepLink.isNotEmpty)
+      return _normalizeRoute(deepLink);
     final action = item.data?['action_url']?.toString().trim();
     if (action != null && action.isNotEmpty) return _normalizeRoute(action);
     return null;
   }
 
   String _normalizeRoute(String route) {
-    if (route.startsWith('/support/')) return '/tickets/${route.substring('/support/'.length)}';
-    if (route.startsWith('/admin/support/')) return '/tickets/${route.substring('/admin/support/'.length)}';
-    if (route.startsWith('/pay/')) return '/payments/${route.substring('/pay/'.length)}';
-    if (route.startsWith('/admin/invoices/')) return '/invoices/${route.substring('/admin/invoices/'.length)}';
-    if (route.startsWith('/dashboard/invoices/')) return '/invoices/${route.substring('/dashboard/invoices/'.length)}';
+    if (route.startsWith('/support/'))
+      return '/tickets/${route.substring('/support/'.length)}';
+    if (route.startsWith('/admin/support/'))
+      return '/tickets/${route.substring('/admin/support/'.length)}';
+    if (route.startsWith('/pay/'))
+      return '/payments/${route.substring('/pay/'.length)}';
+    if (route.startsWith('/admin/invoices/'))
+      return '/invoices/${route.substring('/admin/invoices/'.length)}';
+    if (route.startsWith('/dashboard/invoices/'))
+      return '/invoices/${route.substring('/dashboard/invoices/'.length)}';
     if (route == '/dashboard/invoices') return '/?tab=2';
-    if (route.startsWith('/dashboard/tickets/')) return '/tickets/${route.substring('/dashboard/tickets/'.length)}';
-    if (route.startsWith('/dashboard/subscriptions/')) return '/subscriptions/${route.substring('/dashboard/subscriptions/'.length)}';
-    if (route.startsWith('/dashboard/payments/')) return '/payments/${route.substring('/dashboard/payments/'.length)}';
-    if (route == '/dashboard/services' || route.startsWith('/dashboard/services/')) return '/?tab=1';
-    if (route.startsWith('/announcements/')) return '/announcements/${route.substring('/announcements/'.length)}';
+    if (route.startsWith('/dashboard/tickets/'))
+      return '/tickets/${route.substring('/dashboard/tickets/'.length)}';
+    if (route.startsWith('/dashboard/subscriptions/'))
+      return '/subscriptions/${route.substring('/dashboard/subscriptions/'.length)}';
+    if (route.startsWith('/dashboard/payments/'))
+      return '/payments/${route.substring('/dashboard/payments/'.length)}';
+    if (route == '/dashboard/services' ||
+        route.startsWith('/dashboard/services/')) return '/?tab=1';
+    if (route.startsWith('/announcements/'))
+      return '/announcements/${route.substring('/announcements/'.length)}';
     if (route == '/announcements') return '/announcements';
-    if (route.startsWith('/admin/announcements/')) return '/announcements/${route.substring('/admin/announcements/'.length)}';
+    if (route.startsWith('/admin/announcements/'))
+      return '/announcements/${route.substring('/admin/announcements/'.length)}';
     if (route == '/admin/announcements') return '/announcements';
     return '/?tab=0';
   }
@@ -276,31 +295,41 @@ class _NotificationTile extends ConsumerWidget {
             child: Row(children: [
               // Tinted icon circle (36px, match mockup ico-r)
               Container(
-                width: 36, height: 36,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: _colorFor(item.category, isp).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(_iconFor(item.category), size: 16, color: _colorFor(item.category, isp)),
+                child: Icon(_iconFor(item.category),
+                    size: 16, color: _colorFor(item.category, isp)),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(
-                    item.title,
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isp.textPrimary),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(_timeAgo(item.createdAt), style: TextStyle(fontSize: 10, color: isp.textMuted)),
-                ]),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.title,
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isp.textPrimary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(_timeAgo(item.createdAt),
+                          style: TextStyle(fontSize: 10, color: isp.textMuted)),
+                    ]),
               ),
               if (item.isUnread)
                 Container(
-                  width: 8, height: 8,
+                  width: 8,
+                  height: 8,
                   margin: const EdgeInsets.only(left: 8),
-                  decoration: BoxDecoration(color: isp.accent, shape: BoxShape.circle),
+                  decoration:
+                      BoxDecoration(color: isp.accent, shape: BoxShape.circle),
                 ),
             ]),
           ),

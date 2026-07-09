@@ -73,6 +73,7 @@ class FcmService {
 
   /// Becomes true after the first authenticated state is detected.
   /// Used to suppress FCM navigation during the login startup window.
+  // ignore: unused_field
   bool _authHandledLogin = false;
 
   /// Step-level logging — written to debug log only (no UI banner).
@@ -103,7 +104,7 @@ class FcmService {
       await _initInternal();
       _initialized = true;
       _status('✅ init OK — all steps completed');
-    } catch (e, st) {
+    } catch (e) {
       _status('❌ init error: $e');
     } finally {
       _inFlight = false;
@@ -133,11 +134,11 @@ class FcmService {
     _status('Step 3/6: Requesting permission...');
     final settings = await FirebaseMessaging.instance
         .requestPermission(
-          alert: true,
-          badge: true,
-          sound: true,
-          provisional: false,
-        )
+      alert: true,
+      badge: true,
+      sound: true,
+      provisional: false,
+    )
         .timeout(const Duration(seconds: 5), onTimeout: () {
       _status('⚠️ requestPermission timeout — assuming granted');
       // Return a default-allowed value so init continues. If the user did
@@ -231,15 +232,13 @@ class FcmService {
     _status('Token: ${token.substring(0, 20)}…');
 
     final dio = _ref.read(dioProvider);
-    await dio
-        .post(
-          '/api/notifications/devices',
-          data: {
-            'fcm_token': token,
-            'platform': 'android',
-          },
-        )
-        .timeout(const Duration(seconds: 10));
+    await dio.post(
+      '/api/notifications/devices',
+      data: {
+        'fcm_token': token,
+        'platform': 'android',
+      },
+    ).timeout(const Duration(seconds: 10));
     _status('✅ Token registered OK!');
     return true;
   }
@@ -346,9 +345,7 @@ class FcmService {
       route = actionUrl;
     }
 
-    if (route != null) {
-      GoRouter.of(context).go(route);
-    }
+    GoRouter.of(context).go(route);
   }
 }
 

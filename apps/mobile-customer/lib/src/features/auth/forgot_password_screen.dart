@@ -204,7 +204,8 @@ class _NeubrutalistInput extends StatelessWidget {
         hintStyle: TextStyle(color: isp.textMuted),
         filled: true,
         fillColor: isp.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(IspRadii.md),
           borderSide: BorderSide(width: 1.5, color: isp.border),

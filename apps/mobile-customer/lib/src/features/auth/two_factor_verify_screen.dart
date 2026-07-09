@@ -208,22 +208,19 @@ class _State extends ConsumerState<TwoFactorVerifyScreen> {
                             filled: true,
                             fillColor: isp.surface,
                             border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.circular(IspRadii.sm),
-                              borderSide: BorderSide(
-                                  width: 1.5, color: isp.border),
+                              borderRadius: BorderRadius.circular(IspRadii.sm),
+                              borderSide:
+                                  BorderSide(width: 1.5, color: isp.border),
                             ),
                             enabledBorder: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.circular(IspRadii.sm),
-                              borderSide: BorderSide(
-                                  width: 1.5, color: isp.border),
+                              borderRadius: BorderRadius.circular(IspRadii.sm),
+                              borderSide:
+                                  BorderSide(width: 1.5, color: isp.border),
                             ),
                             focusedBorder: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.circular(IspRadii.sm),
-                              borderSide: BorderSide(
-                                  width: 1.5, color: isp.accent),
+                              borderRadius: BorderRadius.circular(IspRadii.sm),
+                              borderSide:
+                                  BorderSide(width: 1.5, color: isp.accent),
                             ),
                           ),
                           inputFormatters: [
@@ -238,9 +235,7 @@ class _State extends ConsumerState<TwoFactorVerifyScreen> {
                 const SizedBox(height: 20),
                 // ─── Countdown timer ───
                 Text(
-                  _expired
-                      ? 'Kode kadaluarsa'
-                      : 'Kode kadaluarsa dalam ',
+                  _expired ? 'Kode kadaluarsa' : 'Kode kadaluarsa dalam ',
                   style: TextStyle(
                     fontSize: 13,
                     color: isp.textMuted,
@@ -266,9 +261,7 @@ class _State extends ConsumerState<TwoFactorVerifyScreen> {
                       foregroundColor: isp.accentLight,
                     ),
                     child: Text(
-                      _usingBackup
-                          ? l10n.useAuthenticator
-                          : l10n.useBackupCode,
+                      _usingBackup ? l10n.useAuthenticator : l10n.useBackupCode,
                       style: const TextStyle(fontSize: 13),
                     ),
                   ),

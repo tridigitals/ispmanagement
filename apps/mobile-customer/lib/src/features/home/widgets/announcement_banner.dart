@@ -16,8 +16,7 @@ class AnnouncementBanner extends ConsumerStatefulWidget {
   const AnnouncementBanner({super.key});
 
   @override
-  ConsumerState<AnnouncementBanner> createState() =>
-      _AnnouncementBannerState();
+  ConsumerState<AnnouncementBanner> createState() => _AnnouncementBannerState();
 }
 
 class _AnnouncementBannerState extends ConsumerState<AnnouncementBanner>
@@ -50,7 +49,6 @@ class _AnnouncementBannerState extends ConsumerState<AnnouncementBanner>
 
   @override
   Widget build(BuildContext context) {
-
     final async = ref.watch(activeAnnouncementsProvider);
 
     return async.when(

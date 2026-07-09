@@ -15,18 +15,14 @@ class ChangePasswordScreen extends ConsumerStatefulWidget {
 }
 
 class _State extends ConsumerState<ChangePasswordScreen> {
-
   late final IspThemeColors isp;
 
-
-
   @override
-
-
   void didChangeDependencies() {
     super.didChangeDependencies();
     isp = context.isp;
   }
+
   final _form = GlobalKey<FormState>();
   final _current = TextEditingController();
   final _new = TextEditingController();
@@ -73,9 +69,7 @@ class _State extends ConsumerState<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-
-
-final l10n = AppLocalizations.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.changePassword)),
       body: SafeArea(

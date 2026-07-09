@@ -47,7 +47,8 @@ class ProfileScreen extends ConsumerWidget {
                 radius: 47,
                 backgroundColor: isp.surfaceElevated,
                 backgroundImage: user?.avatarUrl != null
-                    ? NetworkImage(_buildAbsoluteUrl(apiBaseUrl, user!.avatarUrl!))
+                    ? NetworkImage(
+                        _buildAbsoluteUrl(apiBaseUrl, user!.avatarUrl!))
                     : null,
                 child: user?.avatarUrl == null
                     ? Icon(Icons.person, size: 40, color: isp.accent)
@@ -153,7 +154,9 @@ Widget _buildSection(IspThemeColors isp, List<Widget> tiles) {
         color: isp.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: isp.border, width: 1.5),
-        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.3), offset: Offset(2, 2))],
+        boxShadow: [
+          BoxShadow(color: isp.border.withOpacity(0.3), offset: Offset(2, 2))
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -226,7 +229,10 @@ class _TintedTile extends StatelessWidget {
                 ),
                 child: Text(
                   badge!,
-                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700),
                 ),
               ),
             const SizedBox(width: 8),
@@ -239,10 +245,10 @@ class _TintedTile extends StatelessWidget {
 }
 
 Widget _buildThemeToggle(
-    BuildContext context,
-    IspThemeColors isp,
-    ThemeMode themeMode,
-    WidgetRef ref,
+  BuildContext context,
+  IspThemeColors isp,
+  ThemeMode themeMode,
+  WidgetRef ref,
 ) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 12),
@@ -251,13 +257,16 @@ Widget _buildThemeToggle(
         color: isp.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: isp.border, width: 1.5),
-        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.3), offset: Offset(2, 2))],
+        boxShadow: [
+          BoxShadow(color: isp.border.withOpacity(0.3), offset: Offset(2, 2))
+        ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Container(
-            width: 32, height: 32,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               color: isp.accent.withOpacity(0.15),
               borderRadius: BorderRadius.circular(7),
@@ -265,12 +274,14 @@ Widget _buildThemeToggle(
             alignment: Alignment.center,
             child: Icon(
               themeMode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
-              size: 17, color: isp.accent,
+              size: 17,
+              color: isp.accent,
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text('Mode Gelap', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            child: Text('Mode Gelap',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
           ),
           // Compact pill toggle
           Container(
@@ -281,12 +292,27 @@ Widget _buildThemeToggle(
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _toggleBtn(Icons.light_mode, themeMode == ThemeMode.light, isp,
-                    () => ref.read(themeModeProvider.notifier).set(ThemeMode.light)),
-                _toggleBtn(Icons.brightness_auto, themeMode == ThemeMode.system, isp,
-                    () => ref.read(themeModeProvider.notifier).set(ThemeMode.system)),
-                _toggleBtn(Icons.dark_mode, themeMode == ThemeMode.dark, isp,
-                    () => ref.read(themeModeProvider.notifier).set(ThemeMode.dark)),
+                _toggleBtn(
+                    Icons.light_mode,
+                    themeMode == ThemeMode.light,
+                    isp,
+                    () => ref
+                        .read(themeModeProvider.notifier)
+                        .set(ThemeMode.light)),
+                _toggleBtn(
+                    Icons.brightness_auto,
+                    themeMode == ThemeMode.system,
+                    isp,
+                    () => ref
+                        .read(themeModeProvider.notifier)
+                        .set(ThemeMode.system)),
+                _toggleBtn(
+                    Icons.dark_mode,
+                    themeMode == ThemeMode.dark,
+                    isp,
+                    () => ref
+                        .read(themeModeProvider.notifier)
+                        .set(ThemeMode.dark)),
               ],
             ),
           ),
@@ -296,7 +322,8 @@ Widget _buildThemeToggle(
   );
 }
 
-Widget _toggleBtn(IconData icon, bool selected, IspThemeColors isp, VoidCallback onTap) {
+Widget _toggleBtn(
+    IconData icon, bool selected, IspThemeColors isp, VoidCallback onTap) {
   return GestureDetector(
     onTap: onTap,
     child: AnimatedContainer(
@@ -306,7 +333,8 @@ Widget _toggleBtn(IconData icon, bool selected, IspThemeColors isp, VoidCallback
         color: selected ? isp.accent : Colors.transparent,
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, size: 16, color: selected ? Colors.white : isp.textMuted),
+      child:
+          Icon(icon, size: 16, color: selected ? Colors.white : isp.textMuted),
     ),
   );
 }
@@ -316,7 +344,8 @@ class _VersionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final isp = context.isp;
     return FutureBuilder<String>(
-      future: PackageInfo.fromPlatform().then((p) => 'v${p.version}+${p.buildNumber}'),
+      future: PackageInfo.fromPlatform()
+          .then((p) => 'v${p.version}+${p.buildNumber}'),
       builder: (_, snap) => Center(
         child: Text(
           snap.data ?? 'v...',

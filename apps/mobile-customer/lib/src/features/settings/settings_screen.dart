@@ -33,11 +33,21 @@ class SettingsScreen extends ConsumerWidget {
           // Account section
           _sectionHeader(isp, l10n.account),
           _buildSection(isp, [
-            _switchTile(isp, Icons.fingerprint, l10n.biometric, l10n.biometricSub, bio,
+            _switchTile(
+                isp,
+                Icons.fingerprint,
+                l10n.biometric,
+                l10n.biometricSub,
+                bio,
                 (v) => _toggleBiometric(context, ref, v)),
-            _switchTile(isp, Icons.security, l10n.twoFactorAuth,
+            _switchTile(
+                isp,
+                Icons.security,
+                l10n.twoFactorAuth,
                 user?.twoFactorEnabled == true
-                    ? (user?.enforce2fa == true ? l10n.twoFaRequired : l10n.twoFaOn)
+                    ? (user?.enforce2fa == true
+                        ? l10n.twoFaRequired
+                        : l10n.twoFaOn)
                     : l10n.twoFaOff,
                 user?.twoFactorEnabled == true,
                 user?.twoFactorEnabled == true && user?.enforce2fa == true
@@ -52,10 +62,18 @@ class SettingsScreen extends ConsumerWidget {
           // Language section
           _sectionHeader(isp, 'Bahasa / Language'),
           _buildSection(isp, [
-            _radioTile(isp, Icons.translate, 'Bahasa Indonesia', const Locale('id'),
+            _radioTile(
+                isp,
+                Icons.translate,
+                'Bahasa Indonesia',
+                const Locale('id'),
                 Localizations.localeOf(context),
                 (loc) => ref.read(localeProvider.notifier).setLocale(loc!)),
-            _radioTile(isp, Icons.translate, 'English', const Locale('en'),
+            _radioTile(
+                isp,
+                Icons.translate,
+                'English',
+                const Locale('en'),
                 Localizations.localeOf(context),
                 (loc) => ref.read(localeProvider.notifier).setLocale(loc!)),
           ]),
@@ -76,7 +94,8 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _toggleBiometric(BuildContext context, WidgetRef ref, bool enable) async {
+  Future<void> _toggleBiometric(
+      BuildContext context, WidgetRef ref, bool enable) async {
     final l10n = AppLocalizations.of(context);
     if (enable) {
       final auth = LocalAuthentication();
@@ -99,7 +118,8 @@ class SettingsScreen extends ConsumerWidget {
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(e.toString())));
         }
       }
     } else {
@@ -107,7 +127,8 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _toggle2fa(BuildContext context, WidgetRef ref, bool enable) async {
+  Future<void> _toggle2fa(
+      BuildContext context, WidgetRef ref, bool enable) async {
     if (enable) {
       GoRouter.of(context).push('/security/2fa/enroll');
     } else {
@@ -117,7 +138,9 @@ class SettingsScreen extends ConsumerWidget {
           title: Text(AppLocalizations.of(ctx).disable2faConfirmTitle),
           content: Text(AppLocalizations.of(ctx).disable2faConfirmBody),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppLocalizations.of(ctx).cancel)),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(AppLocalizations.of(ctx).cancel)),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: FilledButton.styleFrom(backgroundColor: ctx.isp.danger),
@@ -140,22 +163,30 @@ class SettingsScreen extends ConsumerWidget {
       if (error.message == 'requires_verification' && context.mounted) {
         final code = await _showOtpDialog(context);
         if (code != null && code.isNotEmpty && context.mounted) {
-          final result2 = await ref.read(authControllerProvider.notifier).disable2fa(code: code);
+          final result2 = await ref
+              .read(authControllerProvider.notifier)
+              .disable2fa(code: code);
           if (result2 is Success && context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.twoFaDisabledSuccess)));
+            ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(l10n.twoFaDisabledSuccess)));
           } else if (result2 is Failure && context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text((result2 as Failure).exception.message), backgroundColor: context.isp.danger),
+              SnackBar(
+                  content: Text((result2 as Failure).exception.message),
+                  backgroundColor: context.isp.danger),
             );
           }
         }
       } else if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message), backgroundColor: context.isp.danger),
+          SnackBar(
+              content: Text(error.message),
+              backgroundColor: context.isp.danger),
         );
       }
     } else if (result is Success && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.twoFaDisabledSuccess)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.twoFaDisabledSuccess)));
     }
   }
 
@@ -169,20 +200,29 @@ class SettingsScreen extends ConsumerWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(l10n.otpSentToEmail, style: TextStyle(color: ctx.isp.textMuted, fontSize: 13)),
+            Text(l10n.otpSentToEmail,
+                style: TextStyle(color: ctx.isp.textMuted, fontSize: 13)),
             const SizedBox(height: 16),
             TextField(
-              controller: controller, autofocus: true, keyboardType: TextInputType.number, maxLength: 6,
+              controller: controller,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
               decoration: InputDecoration(
-                labelText: l10n.verificationCode, hintText: '123456', border: const OutlineInputBorder(),
+                labelText: l10n.verificationCode,
+                hintText: '123456',
+                border: const OutlineInputBorder(),
               ),
               onSubmitted: (value) => Navigator.pop(ctx, value),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel)),
-          FilledButton(onPressed: () => Navigator.pop(ctx, controller.text), child: Text(l10n.verify)),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel)),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, controller.text),
+              child: Text(l10n.verify)),
         ],
       ),
     );
@@ -203,7 +243,11 @@ Widget _sectionHeader(IspThemeColors isp, String label) {
     padding: const EdgeInsets.fromLTRB(4, 20, 4, 8),
     child: Text(
       label.toUpperCase(),
-      style: TextStyle(fontSize: 11, letterSpacing: 1.2, color: isp.textMuted, fontWeight: FontWeight.w700),
+      style: TextStyle(
+          fontSize: 11,
+          letterSpacing: 1.2,
+          color: isp.textMuted,
+          fontWeight: FontWeight.w700),
     ),
   );
 }
@@ -216,14 +260,17 @@ Widget _buildSection(IspThemeColors isp, List<Widget> children) {
         color: isp.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: isp.border, width: 1.5),
-        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.3), offset: Offset(2, 2))],
+        boxShadow: [
+          BoxShadow(color: isp.border.withOpacity(0.3), offset: Offset(2, 2))
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           for (var i = 0; i < children.length; i++) ...[
             children[i],
-            if (i < children.length - 1) Divider(height: 1, indent: 56, color: isp.borderSubtle),
+            if (i < children.length - 1)
+              Divider(height: 1, indent: 56, color: isp.borderSubtle),
           ],
         ],
       ),
@@ -231,12 +278,14 @@ Widget _buildSection(IspThemeColors isp, List<Widget> children) {
   );
 }
 
-Widget _switchTile(IspThemeColors isp, IconData icon, String title, String sub, bool value, ValueChanged<bool>? onChanged) {
+Widget _switchTile(IspThemeColors isp, IconData icon, String title, String sub,
+    bool value, ValueChanged<bool>? onChanged) {
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
     child: SwitchListTile(
       secondary: Icon(icon, size: 20, color: isp.accent),
-      title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+      title: Text(title,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
       subtitle: Text(sub, style: TextStyle(fontSize: 11, color: isp.textMuted)),
       value: value,
       onChanged: onChanged,
@@ -245,7 +294,8 @@ Widget _switchTile(IspThemeColors isp, IconData icon, String title, String sub, 
   );
 }
 
-Widget _navTile(IspThemeColors isp, IconData icon, String title, VoidCallback onTap) {
+Widget _navTile(
+    IspThemeColors isp, IconData icon, String title, VoidCallback onTap) {
   return InkWell(
     onTap: onTap,
     child: Padding(
@@ -253,13 +303,19 @@ Widget _navTile(IspThemeColors isp, IconData icon, String title, VoidCallback on
       child: Row(
         children: [
           Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(color: isp.accent.withOpacity(0.15), borderRadius: BorderRadius.circular(7)),
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+                color: isp.accent.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(7)),
             alignment: Alignment.center,
             child: Icon(icon, size: 17, color: isp.accent),
           ),
           const SizedBox(width: 12),
-          Expanded(child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+          Expanded(
+              child: Text(title,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w600))),
           Icon(Icons.chevron_right, size: 18, color: isp.textMuted),
         ],
       ),
@@ -267,7 +323,8 @@ Widget _navTile(IspThemeColors isp, IconData icon, String title, VoidCallback on
   );
 }
 
-Widget _radioTile(IspThemeColors isp, IconData icon, String title, Locale value, Locale group, ValueChanged<Locale?> onChanged) {
+Widget _radioTile(IspThemeColors isp, IconData icon, String title, Locale value,
+    Locale group, ValueChanged<Locale?> onChanged) {
   return InkWell(
     onTap: () => onChanged(value),
     child: Padding(
@@ -275,16 +332,25 @@ Widget _radioTile(IspThemeColors isp, IconData icon, String title, Locale value,
       child: Row(
         children: [
           Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(color: isp.info.withOpacity(0.15), borderRadius: BorderRadius.circular(7)),
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+                color: isp.info.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(7)),
             alignment: Alignment.center,
             child: Icon(icon, size: 17, color: isp.info),
           ),
           const SizedBox(width: 12),
-          Expanded(child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+          Expanded(
+              child: Text(title,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w600))),
           Icon(
-            value == group ? Icons.radio_button_checked : Icons.radio_button_off,
-            size: 20, color: value == group ? isp.accent : isp.textMuted,
+            value == group
+                ? Icons.radio_button_checked
+                : Icons.radio_button_off,
+            size: 20,
+            color: value == group ? isp.accent : isp.textMuted,
           ),
         ],
       ),
@@ -292,19 +358,26 @@ Widget _radioTile(IspThemeColors isp, IconData icon, String title, Locale value,
   );
 }
 
-Widget _infoTile(IspThemeColors isp, IconData icon, String title, String value) {
+Widget _infoTile(
+    IspThemeColors isp, IconData icon, String title, String value) {
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     child: Row(
       children: [
         Container(
-          width: 32, height: 32,
-          decoration: BoxDecoration(color: isp.textMuted.withOpacity(0.15), borderRadius: BorderRadius.circular(7)),
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+              color: isp.textMuted.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(7)),
           alignment: Alignment.center,
           child: Icon(icon, size: 17, color: isp.textMuted),
         ),
         const SizedBox(width: 12),
-        Expanded(child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+        Expanded(
+            child: Text(title,
+                style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w600))),
         Text(value, style: TextStyle(color: isp.textMuted, fontSize: 13)),
       ],
     ),

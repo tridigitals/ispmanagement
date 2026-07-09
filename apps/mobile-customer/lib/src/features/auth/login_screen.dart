@@ -291,8 +291,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   // ─── Neubrutalist decoration helpers ──────────────────────────
 
-
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -388,8 +386,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Row(
                       children: [
                         Expanded(
-                            child:
-                                Divider(color: isp.border, thickness: 1.5)),
+                            child: Divider(color: isp.border, thickness: 1.5)),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                           child: Text(
@@ -401,8 +398,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                         Expanded(
-                            child:
-                                Divider(color: isp.border, thickness: 1.5)),
+                            child: Divider(color: isp.border, thickness: 1.5)),
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -612,14 +608,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.check_circle,
-                        color: isp.success, size: 18),
+                    Icon(Icons.check_circle, color: isp.success, size: 18),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Verification code sent to your email.',
-                        style: TextStyle(
-                            color: isp.success, fontSize: 13),
+                        style: TextStyle(color: isp.success, fontSize: 13),
                       ),
                     ),
                   ],

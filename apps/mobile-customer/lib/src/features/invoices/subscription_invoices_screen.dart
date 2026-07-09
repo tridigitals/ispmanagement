@@ -40,7 +40,8 @@ class SubscriptionInvoicesScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => IspErrorState(
           message: e.toString(),
-          onRetry: () => ref.invalidate(subscriptionInvoicesProvider(subscriptionId)),
+          onRetry: () =>
+              ref.invalidate(subscriptionInvoicesProvider(subscriptionId)),
         ),
         data: (invoices) {
           if (invoices.isEmpty) {
@@ -48,9 +49,11 @@ class SubscriptionInvoicesScreen extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.receipt_long_outlined, size: 64, color: isp.textMuted),
+                  Icon(Icons.receipt_long_outlined,
+                      size: 64, color: isp.textMuted),
                   const SizedBox(height: 12),
-                  Text('Belum ada tagihan', style: TextStyle(color: isp.textMuted, fontSize: 16)),
+                  Text('Belum ada tagihan',
+                      style: TextStyle(color: isp.textMuted, fontSize: 16)),
                 ]),
               ),
             );
@@ -65,7 +68,8 @@ class SubscriptionInvoicesScreen extends ConsumerWidget {
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(subscriptionInvoicesProvider(subscriptionId));
-              await ref.read(subscriptionInvoicesProvider(subscriptionId).future);
+              await ref
+                  .read(subscriptionInvoicesProvider(subscriptionId).future);
             },
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
@@ -76,11 +80,16 @@ class SubscriptionInvoicesScreen extends ConsumerWidget {
                     padding: const EdgeInsets.fromLTRB(4, 16, 0, 8),
                     child: Text(
                       entry.key,
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isp.textMuted, letterSpacing: 1),
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isp.textMuted,
+                          letterSpacing: 1),
                     ),
                   ),
                   // Invoices in this month
-                  ...entry.value.map((inv) => _InvoiceRow(inv: inv, fmt: fmt, dateFmt: dateFmt)),
+                  ...entry.value.map((inv) =>
+                      _InvoiceRow(inv: inv, fmt: fmt, dateFmt: dateFmt)),
                 ];
               }).toList(),
             ),
@@ -92,7 +101,8 @@ class SubscriptionInvoicesScreen extends ConsumerWidget {
 }
 
 class _InvoiceRow extends StatelessWidget {
-  const _InvoiceRow({required this.inv, required this.fmt, required this.dateFmt});
+  const _InvoiceRow(
+      {required this.inv, required this.fmt, required this.dateFmt});
   final InvoiceModel inv;
   final NumberFormat fmt;
   final DateFormat dateFmt;
@@ -114,33 +124,61 @@ class _InvoiceRow extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: IntrinsicHeight(
               child: Row(children: [
-                Container(width: 4, color: isPaid ? isp.success : inv.isOverdue ? isp.danger : isp.warning),
+                Container(
+                    width: 4,
+                    color: isPaid
+                        ? isp.success
+                        : inv.isOverdue
+                            ? isp.danger
+                            : isp.warning),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
                     child: Row(children: [
                       Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(inv.invoiceNumber ?? '', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isp.textPrimary)),
-                          const SizedBox(height: 2),
-                          Text(dateFmt.format(inv.dueDate ?? DateTime.now()), style: TextStyle(fontSize: 11, color: isp.textMuted)),
-                        ]),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(inv.invoiceNumber ?? '',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: isp.textPrimary)),
+                              const SizedBox(height: 2),
+                              Text(
+                                  dateFmt.format(inv.dueDate ?? DateTime.now()),
+                                  style: TextStyle(
+                                      fontSize: 11, color: isp.textMuted)),
+                            ]),
                       ),
-                      Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                        Text(fmt.format(inv.amount), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isp.textPrimary)),
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: isPaid ? isp.success.withOpacity(0.12) : isp.warning.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            isPaid ? 'Lunas' : 'Jatuh Tempo',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: isPaid ? isp.success : isp.warning),
-                          ),
-                        ),
-                      ]),
+                      Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(fmt.format(inv.amount),
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: isp.textPrimary)),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isPaid
+                                    ? isp.success.withOpacity(0.12)
+                                    : isp.warning.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                isPaid ? 'Lunas' : 'Jatuh Tempo',
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: isPaid ? isp.success : isp.warning),
+                              ),
+                            ),
+                          ]),
                     ]),
                   ),
                 ),

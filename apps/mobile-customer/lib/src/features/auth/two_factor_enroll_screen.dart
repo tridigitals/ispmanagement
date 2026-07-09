@@ -53,8 +53,6 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
     });
   }
 
-
-
   Future<void> _confirm() async {
     if (!_form.currentState!.validate()) return;
     if (_enrollment == null) return;
@@ -165,8 +163,8 @@ class _State extends ConsumerState<TwoFactorEnrollScreen> {
                                 color: isp.surfaceTertiary,
                                 borderRadius:
                                     BorderRadius.circular(IspRadii.md),
-                                border: Border.all(
-                                    width: 1.5, color: isp.border),
+                                border:
+                                    Border.all(width: 1.5, color: isp.border),
                               ),
                               child: Row(
                                 children: [

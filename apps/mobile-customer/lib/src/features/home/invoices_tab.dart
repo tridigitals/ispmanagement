@@ -78,14 +78,19 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
       final paginated = result.getOrThrow();
       if (!mounted) return;
       setState(() {
-        _items..clear()..addAll(paginated.data);
+        _items
+          ..clear()
+          ..addAll(paginated.data);
         _hasMore = paginated.hasMore;
         _page = 1;
         _initialLoaded = true;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _initialError = e; _initialLoaded = true; });
+      setState(() {
+        _initialError = e;
+        _initialLoaded = true;
+      });
     }
   }
 
@@ -121,13 +126,20 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
   }
 
   void _refreshForTabActivation() {
-    setState(() { _items.clear(); _page = 1; _hasMore = true; _initialLoaded = false; _initialError = null; });
+    setState(() {
+      _items.clear();
+      _page = 1;
+      _hasMore = true;
+      _initialLoaded = false;
+      _initialError = null;
+    });
     _loadInitial();
   }
 
   bool _onScroll(Notification notification) {
     if (notification is ScrollNotification &&
-        notification.metrics.extentAfter < notification.metrics.maxScrollExtent * 0.1) {
+        notification.metrics.extentAfter <
+            notification.metrics.maxScrollExtent * 0.1) {
       _loadMore();
     }
     return false;
@@ -154,11 +166,19 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(_initialError.toString(), textAlign: TextAlign.center, style: TextStyle(color: isp.textSecondary)),
+              child: Text(_initialError.toString(),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: isp.textSecondary)),
             ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
-              onPressed: () { setState(() { _initialLoaded = false; _initialError = null; }); _loadInitial(); },
+              onPressed: () {
+                setState(() {
+                  _initialLoaded = false;
+                  _initialError = null;
+                });
+                _loadInitial();
+              },
               icon: const Icon(Icons.refresh),
               label: Text(l10n.retry),
             ),
@@ -186,7 +206,12 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
       child: RefreshIndicator(
         color: isp.accent,
         onRefresh: () async {
-          setState(() { _items.clear(); _page = 1; _hasMore = true; _initialLoaded = false; });
+          setState(() {
+            _items.clear();
+            _page = 1;
+            _hasMore = true;
+            _initialLoaded = false;
+          });
           await _loadInitial();
         },
         child: CustomScrollView(
@@ -196,11 +221,20 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: Row(children: [
-                  _FilterPill(label: 'Semua', selected: _filter == _InvFilter.all, onTap: () => setState(() => _filter = _InvFilter.all)),
+                  _FilterPill(
+                      label: 'Semua',
+                      selected: _filter == _InvFilter.all,
+                      onTap: () => setState(() => _filter = _InvFilter.all)),
                   const SizedBox(width: 6),
-                  _FilterPill(label: 'Belum Bayar', selected: _filter == _InvFilter.unpaid, onTap: () => setState(() => _filter = _InvFilter.unpaid)),
+                  _FilterPill(
+                      label: 'Belum Bayar',
+                      selected: _filter == _InvFilter.unpaid,
+                      onTap: () => setState(() => _filter = _InvFilter.unpaid)),
                   const SizedBox(width: 6),
-                  _FilterPill(label: 'Lunas', selected: _filter == _InvFilter.paid, onTap: () => setState(() => _filter = _InvFilter.paid)),
+                  _FilterPill(
+                      label: 'Lunas',
+                      selected: _filter == _InvFilter.paid,
+                      onTap: () => setState(() => _filter = _InvFilter.paid)),
                 ]),
               ),
             ),
@@ -210,7 +244,14 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
                 (context, index) {
                   if (index == filtered.length) {
                     return _loadingMore
-                        ? const Padding(padding: EdgeInsets.all(24), child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))))
+                        ? const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Center(
+                                child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2))))
                         : const SizedBox.shrink();
                   }
                   return _InvoiceTile(inv: filtered[index]);
@@ -228,7 +269,8 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
 // ─── Filter pill ─────────────────────────────────────────────────
 
 class _FilterPill extends StatelessWidget {
-  const _FilterPill({required this.label, required this.selected, required this.onTap});
+  const _FilterPill(
+      {required this.label, required this.selected, required this.onTap});
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -243,7 +285,8 @@ class _FilterPill extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? isp.accent : isp.surface,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: selected ? isp.accent : isp.border, width: 1.5),
+          border:
+              Border.all(color: selected ? isp.accent : isp.border, width: 1.5),
         ),
         child: Text(
           label,
@@ -270,7 +313,11 @@ class _InvoiceTile extends StatelessWidget {
     final fmt = NumberFormat.simpleCurrency(name: inv.currencyCode);
     final dateFmt = DateFormat('d MMM yyyy', 'id_ID');
     final isPaid = inv.isPaid;
-    final statusColor = isPaid ? isp.success : inv.isOverdue ? isp.danger : isp.warning;
+    final statusColor = isPaid
+        ? isp.success
+        : inv.isOverdue
+            ? isp.danger
+            : isp.warning;
     final dateStr = inv.dueDate != null ? dateFmt.format(inv.dueDate!) : '-';
 
     return Padding(
@@ -286,24 +333,33 @@ class _InvoiceTile extends StatelessWidget {
             child: Row(children: [
               // Left: content
               Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(
-                    inv.invoiceNumber ?? inv.id,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isp.textPrimary),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '$dateStr',
-                    style: TextStyle(fontSize: 11, color: isp.textMuted),
-                  ),
-                ]),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        inv.invoiceNumber ?? inv.id,
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: isp.textPrimary),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '$dateStr',
+                        style: TextStyle(fontSize: 11, color: isp.textMuted),
+                      ),
+                    ]),
               ),
               // Right: amount + status
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 Text(
                   fmt.format(inv.amount),
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: isp.textPrimary, letterSpacing: -0.5),
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: isp.textPrimary,
+                      letterSpacing: -0.5),
                 ),
                 const SizedBox(height: 4),
                 _statusPill(isp, inv.statusLabel(), statusColor),

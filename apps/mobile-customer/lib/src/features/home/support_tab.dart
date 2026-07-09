@@ -65,14 +65,19 @@ class _SupportTabState extends ConsumerState<SupportTab> {
       final paginated = result.getOrThrow();
       if (!mounted) return;
       setState(() {
-        _items..clear()..addAll(paginated.data);
+        _items
+          ..clear()
+          ..addAll(paginated.data);
         _hasMore = paginated.hasMore;
         _page = 1;
         _initialLoaded = true;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _initialError = e; _initialLoaded = true; });
+      setState(() {
+        _initialError = e;
+        _initialLoaded = true;
+      });
     }
   }
 
@@ -98,14 +103,21 @@ class _SupportTabState extends ConsumerState<SupportTab> {
 
   bool _onScroll(Notification notification) {
     if (notification is ScrollNotification &&
-        notification.metrics.extentAfter < notification.metrics.maxScrollExtent * 0.1) {
+        notification.metrics.extentAfter <
+            notification.metrics.maxScrollExtent * 0.1) {
       _loadMore();
     }
     return false;
   }
 
   void _refreshForTabActivation() {
-    setState(() { _items.clear(); _page = 1; _hasMore = true; _initialLoaded = false; _initialError = null; });
+    setState(() {
+      _items.clear();
+      _page = 1;
+      _hasMore = true;
+      _initialLoaded = false;
+      _initialError = null;
+    });
     _loadInitial();
   }
 
@@ -129,11 +141,19 @@ class _SupportTabState extends ConsumerState<SupportTab> {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(_initialError.toString(), textAlign: TextAlign.center, style: TextStyle(color: isp.textSecondary)),
+            child: Text(_initialError.toString(),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: isp.textSecondary)),
           ),
           const SizedBox(height: 16),
           OutlinedButton.icon(
-            onPressed: () { setState(() { _initialLoaded = false; _initialError = null; }); _loadInitial(); },
+            onPressed: () {
+              setState(() {
+                _initialLoaded = false;
+                _initialError = null;
+              });
+              _loadInitial();
+            },
             icon: const Icon(Icons.refresh),
             label: Text(l10n.retry),
           ),
@@ -162,7 +182,12 @@ class _SupportTabState extends ConsumerState<SupportTab> {
       child: RefreshIndicator(
         color: isp.accent,
         onRefresh: () async {
-          setState(() { _items.clear(); _page = 1; _hasMore = true; _initialLoaded = false; });
+          setState(() {
+            _items.clear();
+            _page = 1;
+            _hasMore = true;
+            _initialLoaded = false;
+          });
           await _loadInitial();
         },
         child: ListView.builder(
@@ -171,7 +196,14 @@ class _SupportTabState extends ConsumerState<SupportTab> {
           itemBuilder: (context, index) {
             if (index == _items.length) {
               return _loadingMore
-                  ? const Padding(padding: EdgeInsets.all(24), child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))))
+                  ? const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(
+                          child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2))))
                   : const SizedBox.shrink();
             }
             return _TicketTile(t: _items[index]);
@@ -204,7 +236,8 @@ class _TicketTile extends StatelessWidget {
             child: Row(children: [
               // Tinted icon circle (match mockup ico-r 36px)
               Container(
-                width: 36, height: 36,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
@@ -213,22 +246,31 @@ class _TicketTile extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(
-                    t.subject,
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isp.textPrimary),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${t.id} · ${_timeAgo(t.createdAt)}',
-                    style: TextStyle(fontSize: 11, color: isp.textMuted),
-                  ),
-                ]),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        t.subject,
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: isp.textPrimary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${t.id} · ${_timeAgo(t.createdAt)}',
+                        style: TextStyle(fontSize: 11, color: isp.textMuted),
+                      ),
+                    ]),
               ),
               const SizedBox(width: 12),
-              _StatusPill(isp: isp, label: t.statusLabel(), isOpen: t.isOpen, isClosed: t.isClosed),
+              _StatusPill(
+                  isp: isp,
+                  label: t.statusLabel(),
+                  isOpen: t.isOpen,
+                  isClosed: t.isClosed),
             ]),
           ),
         ),
@@ -238,7 +280,11 @@ class _TicketTile extends StatelessWidget {
 }
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.isp, required this.label, required this.isOpen, required this.isClosed});
+  const _StatusPill(
+      {required this.isp,
+      required this.label,
+      required this.isOpen,
+      required this.isClosed});
   final IspThemeColors isp;
   final String label;
   final bool isOpen;
@@ -256,8 +302,12 @@ class _StatusPill extends StatelessWidget {
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(6)),
-      child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+      decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(6)),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w700, color: color)),
     );
   }
 }

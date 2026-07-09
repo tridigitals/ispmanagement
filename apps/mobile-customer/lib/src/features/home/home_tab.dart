@@ -8,7 +8,8 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../services/missing_providers.dart';
-import '../../services/notifications_providers.dart' show unreadNotificationsCountProvider;
+import '../../services/notifications_providers.dart'
+    show unreadNotificationsCountProvider;
 import '../../services/settings_providers.dart' show currentTabProvider;
 import '../../utils/loading_skeleton.dart';
 import 'widgets/network_status_banner.dart';
@@ -128,8 +129,7 @@ class _SubscriptionCarousel extends ConsumerStatefulWidget {
       _SubscriptionCarouselState();
 }
 
-class _SubscriptionCarouselState
-    extends ConsumerState<_SubscriptionCarousel> {
+class _SubscriptionCarouselState extends ConsumerState<_SubscriptionCarousel> {
   final PageController _pageCtrl = PageController(viewportFraction: 0.88);
   int _currentPage = 0;
 
@@ -151,9 +151,9 @@ class _SubscriptionCarouselState
           final l10n = AppLocalizations.of(context);
           return _EmptyState(label: l10n.noSubscription);
         }
-        final sorted = [...page]
-          ..sort((a, b) =>
-              a.isActive == b.isActive ? 0 : (a.isActive ? -1 : 1));
+        final sorted = [
+          ...page
+        ]..sort((a, b) => a.isActive == b.isActive ? 0 : (a.isActive ? -1 : 1));
 
         return Column(
           children: [
@@ -416,7 +416,8 @@ class _InvoiceAlert extends StatelessWidget {
             decoration: BoxDecoration(
               color: isp.dangerSurface,
               borderRadius: BorderRadius.circular(_kCardRadius),
-              border: Border.all(color: isp.danger.withOpacity(0.4), width: 1.5),
+              border:
+                  Border.all(color: isp.danger.withOpacity(0.4), width: 1.5),
               boxShadow: [
                 BoxShadow(
                   color: isp.danger.withOpacity(0.15),

@@ -2,21 +2,54 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 class _FaqItem {
-  const _FaqItem({required this.question, required this.answer, this.category = 'Umum'});
+  const _FaqItem(
+      {required this.question, required this.answer, this.category = 'Umum'});
   final String question;
   final String answer;
   final String category;
 }
 
 const _faqItems = <_FaqItem>[
-  _FaqItem(question: 'Bagaimana cara bayar tagihan?', answer: 'Buka halaman Tagihan, pilih tagihan yang akan dibayar, lalu pilih metode pembayaran (Virtual Account, E-Wallet, QRIS, atau Kartu Kredit) dan ikuti instruksi yang muncul.', category: 'Pembayaran'),
-  _FaqItem(question: 'Apa yang harus saya lakukan jika koneksi internet lambat?', answer: 'Coba restart router ONT Anda dengan mencabut listrik selama 30 detik. Jika masih lambat, lakukan Speed Test di aplikasi dan laporkan gangguan via menu Bantuan.', category: 'Koneksi'),
-  _FaqItem(question: 'Kapan tagihan saya terbit?', answer: 'Tagihan terbit otomatis 7 hari sebelum tanggal jatuh tempo. Anda akan menerima notifikasi push dan email.', category: 'Tagihan'),
-  _FaqItem(question: 'Bagaimana jika saya lupa password?', answer: 'Di halaman Login, ketuk "Lupa kata sandi?" lalu masukkan email Anda. Link reset akan dikirim ke email Anda.', category: 'Akun'),
-  _FaqItem(question: 'Berapa lama pemasangan baru?', answer: 'Pemasangan baru biasanya memakan waktu 1-3 hari kerja setelah konfirmasi alamat, tergantung antrian teknisi di area Anda.', category: 'Layanan'),
-  _FaqItem(question: 'Apakah saya bisa upgrade paket?', answer: 'Untuk saat ini, permintaan upgrade paket dilakukan melalui Customer Service. Dalam waktu dekat fitur ini akan tersedia di aplikasi.', category: 'Layanan'),
-  _FaqItem(question: 'Apa yang terjadi jika saya telat bayar?', answer: 'Setelah tanggal jatuh tempo, Anda masuk masa tenggang (grace period) 7 hari. Jika masih belum dibayar, koneksi akan dinonaktifkan sementara dan dapat diaktifkan kembali setelah pembayaran lunas.', category: 'Tagihan'),
-  _FaqItem(question: 'Bagaimana cara ganti password WiFi?', answer: 'Login ke router Anda melalui 192.168.1.1 dengan akun admin (default di stiker belakang router). Masuk ke menu WLAN/Wireless, ubah SSID dan password sesuai keinginan.', category: 'Koneksi'),
+  _FaqItem(
+      question: 'Bagaimana cara bayar tagihan?',
+      answer:
+          'Buka halaman Tagihan, pilih tagihan yang akan dibayar, lalu pilih metode pembayaran (Virtual Account, E-Wallet, QRIS, atau Kartu Kredit) dan ikuti instruksi yang muncul.',
+      category: 'Pembayaran'),
+  _FaqItem(
+      question: 'Apa yang harus saya lakukan jika koneksi internet lambat?',
+      answer:
+          'Coba restart router ONT Anda dengan mencabut listrik selama 30 detik. Jika masih lambat, lakukan Speed Test di aplikasi dan laporkan gangguan via menu Bantuan.',
+      category: 'Koneksi'),
+  _FaqItem(
+      question: 'Kapan tagihan saya terbit?',
+      answer:
+          'Tagihan terbit otomatis 7 hari sebelum tanggal jatuh tempo. Anda akan menerima notifikasi push dan email.',
+      category: 'Tagihan'),
+  _FaqItem(
+      question: 'Bagaimana jika saya lupa password?',
+      answer:
+          'Di halaman Login, ketuk "Lupa kata sandi?" lalu masukkan email Anda. Link reset akan dikirim ke email Anda.',
+      category: 'Akun'),
+  _FaqItem(
+      question: 'Berapa lama pemasangan baru?',
+      answer:
+          'Pemasangan baru biasanya memakan waktu 1-3 hari kerja setelah konfirmasi alamat, tergantung antrian teknisi di area Anda.',
+      category: 'Layanan'),
+  _FaqItem(
+      question: 'Apakah saya bisa upgrade paket?',
+      answer:
+          'Untuk saat ini, permintaan upgrade paket dilakukan melalui Customer Service. Dalam waktu dekat fitur ini akan tersedia di aplikasi.',
+      category: 'Layanan'),
+  _FaqItem(
+      question: 'Apa yang terjadi jika saya telat bayar?',
+      answer:
+          'Setelah tanggal jatuh tempo, Anda masuk masa tenggang (grace period) 7 hari. Jika masih belum dibayar, koneksi akan dinonaktifkan sementara dan dapat diaktifkan kembali setelah pembayaran lunas.',
+      category: 'Tagihan'),
+  _FaqItem(
+      question: 'Bagaimana cara ganti password WiFi?',
+      answer:
+          'Login ke router Anda melalui 192.168.1.1 dengan akun admin (default di stiker belakang router). Masuk ke menu WLAN/Wireless, ubah SSID dan password sesuai keinginan.',
+      category: 'Koneksi'),
 ];
 
 class FaqScreen extends StatefulWidget {
@@ -34,7 +67,8 @@ class _FaqScreenState extends State<FaqScreen> {
       if (_filter != 'Semua' && item.category != _filter) return false;
       if (_search.isEmpty) return true;
       final q = _search.toLowerCase();
-      return item.question.toLowerCase().contains(q) || item.answer.toLowerCase().contains(q);
+      return item.question.toLowerCase().contains(q) ||
+          item.answer.toLowerCase().contains(q);
     }).toList();
   }
 
@@ -57,7 +91,8 @@ class _FaqScreenState extends State<FaqScreen> {
                 prefixIcon: const Icon(Icons.search, size: 20),
                 filled: true,
                 fillColor: isp.surface,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide(color: isp.border, width: 1.5),
@@ -83,7 +118,8 @@ class _FaqScreenState extends State<FaqScreen> {
                       children: [
                         Icon(Icons.search_off, size: 48, color: isp.textMuted),
                         const SizedBox(height: 8),
-                        Text('Tidak ada hasil', style: TextStyle(color: isp.textMuted)),
+                        Text('Tidak ada hasil',
+                            style: TextStyle(color: isp.textMuted)),
                       ],
                     ),
                   )
@@ -118,7 +154,12 @@ class _FaqTileState extends State<_FaqTile> {
         color: isp.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: isp.border, width: 1.5),
-        boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: Offset(3, 3), blurRadius: 0)],
+        boxShadow: [
+          BoxShadow(
+              color: isp.border.withOpacity(0.5),
+              offset: Offset(3, 3),
+              blurRadius: 0)
+        ],
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -131,7 +172,9 @@ class _FaqTileState extends State<_FaqTile> {
               Row(
                 children: [
                   Expanded(
-                    child: Text(widget.item.question, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                    child: Text(widget.item.question,
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w700)),
                   ),
                   AnimatedRotation(
                     duration: const Duration(milliseconds: 200),
@@ -142,7 +185,9 @@ class _FaqTileState extends State<_FaqTile> {
               ),
               if (_expanded) ...[
                 const SizedBox(height: 12),
-                Text(widget.item.answer, style: TextStyle(fontSize: 13, color: isp.textSecondary, height: 1.6)),
+                Text(widget.item.answer,
+                    style: TextStyle(
+                        fontSize: 13, color: isp.textSecondary, height: 1.6)),
               ],
             ],
           ),

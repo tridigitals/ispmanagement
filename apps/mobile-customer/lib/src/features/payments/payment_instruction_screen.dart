@@ -37,11 +37,7 @@ class _PaymentInstructionScreenState
 
   late final IspThemeColors isp;
 
-
-
   @override
-
-
   void didChangeDependencies() {
     super.didChangeDependencies();
     isp = context.isp;
@@ -64,9 +60,8 @@ class _PaymentInstructionScreenState
 
   @override
   Widget build(BuildContext context) {
-
-final isp = context.isp;
-final l10n = AppLocalizations.of(context);
+    final isp = context.isp;
+    final l10n = AppLocalizations.of(context);
     final txnAsync = ref.watch(paymentStatusProvider(widget.transactionId));
 
     return Scaffold(
@@ -103,18 +98,14 @@ class _Body extends ConsumerStatefulWidget {
 }
 
 class _BodyState extends ConsumerState<_Body> {
-
   late final IspThemeColors isp;
 
-
-
   @override
-
-
   void didChangeDependencies() {
     super.didChangeDependencies();
     isp = context.isp;
   }
+
   bool _uploadingProof = false;
 
   Future<void> _pickAndUploadProof() async {
@@ -188,9 +179,8 @@ class _BodyState extends ConsumerState<_Body> {
 
   @override
   Widget build(BuildContext context) {
-
-final isp = context.isp;
-final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
+    final isp = context.isp;
+    final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
     final l10n = AppLocalizations.of(context);
     if (widget.txn.isPaid) {
       return _SuccessView(
@@ -292,9 +282,8 @@ class _QrisView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-final isp = context.isp;
-return IspCard(
+    final isp = context.isp;
+    return IspCard(
       child: Column(
         children: [
           const Text(
@@ -333,9 +322,8 @@ class _VirtualAccountView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-final isp = context.isp;
-return IspCard(
+    final isp = context.isp;
+    return IspCard(
       child: Column(
         children: [
           const Text(
@@ -371,9 +359,8 @@ class _EWalletView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-final isp = context.isp;
-return IspCard(
+    final isp = context.isp;
+    return IspCard(
       child: Column(
         children: [
           const Icon(Icons.account_balance_wallet, size: 48),
@@ -413,9 +400,8 @@ class _PaymentCodeView extends StatelessWidget {
   final String code;
   @override
   Widget build(BuildContext context) {
-
-final isp = context.isp;
-return IspCard(
+    final isp = context.isp;
+    return IspCard(
       child: Column(
         children: [
           const Text(
@@ -442,9 +428,8 @@ class _GenericView extends StatelessWidget {
   final String message;
   @override
   Widget build(BuildContext context) {
-
-final isp = context.isp;
-return IspCard(
+    final isp = context.isp;
+    return IspCard(
       child: Center(
         child: Text(message, textAlign: TextAlign.center),
       ),
@@ -458,9 +443,8 @@ class _Countdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-final isp = context.isp;
-return StreamBuilder<int>(
+    final isp = context.isp;
+    return StreamBuilder<int>(
       stream: Stream.periodic(const Duration(seconds: 1), (_) {
         return expiresAt.difference(DateTime.now()).inSeconds;
       }),
@@ -470,8 +454,7 @@ return StreamBuilder<int>(
         if (sec <= 0) {
           return Text(
             'Batas waktu habis',
-            style:
-                TextStyle(color: isp.danger, fontWeight: FontWeight.w600),
+            style: TextStyle(color: isp.danger, fontWeight: FontWeight.w600),
           );
         }
         final h = (sec ~/ 3600).toString().padLeft(2, '0');
@@ -496,9 +479,8 @@ class _SuccessView extends StatelessWidget {
   final VoidCallback onContinue;
   @override
   Widget build(BuildContext context) {
-
-final isp = context.isp;
-return Center(
+    final isp = context.isp;
+    return Center(
       child: Padding(
         padding: const EdgeInsets.all(IspSpacing.xl),
         child: Column(
@@ -510,7 +492,8 @@ return Center(
                 color: isp.success,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check, color: Color(0xFFFFFFFF), size: 64),
+              child:
+                  const Icon(Icons.check, color: Color(0xFFFFFFFF), size: 64),
             ),
             const SizedBox(height: IspSpacing.lg),
             const Text(
@@ -544,9 +527,8 @@ class _PaymentInstructionSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-final isp = context.isp;
-return ListView(
+    final isp = context.isp;
+    return ListView(
       padding: const EdgeInsets.all(IspSpacing.lg),
       children: [
         // Status header skeleton

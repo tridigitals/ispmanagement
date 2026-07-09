@@ -174,9 +174,8 @@ class _State extends ConsumerState<EditProfileScreen> {
     try {
       final bytes = await file.readAsBytes();
       final base64 = base64Encode(bytes);
-      final res = await ref
-          .read(authControllerProvider.notifier)
-          .uploadAvatar(base64);
+      final res =
+          await ref.read(authControllerProvider.notifier).uploadAvatar(base64);
       if (!mounted) return;
       res.fold(
         (url) {

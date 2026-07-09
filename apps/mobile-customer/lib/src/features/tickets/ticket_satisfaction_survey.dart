@@ -119,8 +119,6 @@ class _TicketSatisfactionSurveyState
 
   @override
   Widget build(BuildContext context) {
-
-
     if (_loading) return const SizedBox.shrink();
 
     return Container(
@@ -168,9 +166,7 @@ class _TicketSatisfactionSurveyState
                 child: Icon(
                   starNum <= _rating ? Icons.star : Icons.star_border,
                   size: 36,
-                  color: starNum <= _rating
-                      ? isp.warning
-                      : isp.textMuted,
+                  color: starNum <= _rating ? isp.warning : isp.textMuted,
                 ),
               ),
             );
@@ -196,8 +192,7 @@ class _TicketSatisfactionSurveyState
           maxLines: 2,
           decoration: InputDecoration(
             hintText: 'Komentar (opsional)',
-            hintStyle:
-                TextStyle(fontSize: 13, color: isp.textMuted),
+            hintStyle: TextStyle(fontSize: 13, color: isp.textMuted),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: isp.border),
@@ -250,9 +245,7 @@ class _TicketSatisfactionSurveyState
               child: Icon(
                 (i + 1) <= _rating ? Icons.star : Icons.star_border,
                 size: 24,
-                color: (i + 1) <= _rating
-                    ? isp.warning
-                    : isp.textMuted,
+                color: (i + 1) <= _rating ? isp.warning : isp.textMuted,
               ),
             );
           }),

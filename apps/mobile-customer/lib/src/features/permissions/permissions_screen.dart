@@ -26,8 +26,8 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _requestNotifications());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _requestNotifications());
   }
 
   Future<void> _requestNotifications() async {
@@ -38,11 +38,11 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
     try {
       final settings = await FirebaseMessaging.instance
           .requestPermission(
-            alert: true,
-            badge: true,
-            sound: true,
-            provisional: false,
-          )
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      )
           .timeout(const Duration(seconds: 5), onTimeout: () {
         return NotificationSettings(
           alert: AppleNotificationSetting.enabled,
@@ -64,8 +64,7 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
       setState(() {
         _notifGranted = status == AuthorizationStatus.authorized ||
             status == AuthorizationStatus.provisional;
-        _notifPermanentlyDenied =
-            status == AuthorizationStatus.denied;
+        _notifPermanentlyDenied = status == AuthorizationStatus.denied;
       });
     } catch (e) {
       debugPrint('[permissions] notification request failed: $e');
@@ -150,8 +149,7 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
                               : _notifRequested
                                   ? _PermissionStatus.denied
                                   : _PermissionStatus.pending,
-                      onRetry:
-                          _notifPermanentlyDenied ? _openSettings : null,
+                      onRetry: _notifPermanentlyDenied ? _openSettings : null,
                       onRequest:
                           !_notifRequested ? _requestNotifications : null,
                     ),
@@ -176,8 +174,7 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: isp.danger.withOpacity(0.08),
-                          borderRadius:
-                              BorderRadius.circular(IspRadii.md),
+                          borderRadius: BorderRadius.circular(IspRadii.md),
                           border: Border.all(
                             color: isp.danger.withOpacity(0.2),
                           ),
@@ -393,4 +390,3 @@ class _NeubrutalistAccentButton extends StatelessWidget {
     );
   }
 }
-

@@ -177,8 +177,8 @@ class _OnboardPage extends StatelessWidget {
                     ]
                   : null,
             ),
-            child: Icon(icon,
-                size: isPremium ? 64 : 48, color: isp.accentLight),
+            child:
+                Icon(icon, size: isPremium ? 64 : 48, color: isp.accentLight),
           ),
           const SizedBox(height: 32),
           Text(

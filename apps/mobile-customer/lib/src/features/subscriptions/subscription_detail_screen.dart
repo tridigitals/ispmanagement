@@ -212,10 +212,9 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
-    final progress =
-        sub.endsAt != null && sub.startsAt != null
-            ? _computeProgress(sub.startsAt!, sub.endsAt!)
-            : 0.0;
+    final progress = sub.endsAt != null && sub.startsAt != null
+        ? _computeProgress(sub.startsAt!, sub.endsAt!)
+        : 0.0;
 
     return Container(
       decoration: _nbCard(isp),
@@ -341,20 +340,39 @@ class _InfoCard extends StatelessWidget {
     final fmt = NumberFormat.simpleCurrency(name: 'IDR', locale: 'id_ID');
 
     final rows = <_InfoRow>[
-      _InfoRow(icon: Icons.receipt_long_outlined, label: 'Siklus', value: _billingLabel(sub.billingCycle)),
-      _InfoRow(icon: Icons.payments_outlined, label: 'Harga', value: '${fmt.format(sub.price)} / ${sub.billingCycle}'),
+      _InfoRow(
+          icon: Icons.receipt_long_outlined,
+          label: 'Siklus',
+          value: _billingLabel(sub.billingCycle)),
+      _InfoRow(
+          icon: Icons.payments_outlined,
+          label: 'Harga',
+          value: '${fmt.format(sub.price)} / ${sub.billingCycle}'),
       if (sub.locationLabel != null)
-        _InfoRow(icon: Icons.location_on_outlined, label: 'Lokasi', value: sub.locationLabel!),
+        _InfoRow(
+            icon: Icons.location_on_outlined,
+            label: 'Lokasi',
+            value: sub.locationLabel!),
       if (sub.routerName != null)
         _InfoRow(icon: Icons.router, label: 'Router', value: sub.routerName!),
       if (sub.startsAt != null)
-        _InfoRow(icon: Icons.event_available_outlined, label: 'Mulai', value: dateFmt.format(sub.startsAt!)),
+        _InfoRow(
+            icon: Icons.event_available_outlined,
+            label: 'Mulai',
+            value: dateFmt.format(sub.startsAt!)),
       if (sub.endsAt != null)
-        _InfoRow(icon: Icons.event_busy_outlined, label: 'Berakhir', value: dateFmt.format(sub.endsAt!)),
+        _InfoRow(
+            icon: Icons.event_busy_outlined,
+            label: 'Berakhir',
+            value: dateFmt.format(sub.endsAt!)),
       if (sub.graceUntil != null)
-        _InfoRow(icon: Icons.hourglass_bottom_outlined, label: 'Masa Tenggang', value: dateFmt.format(sub.graceUntil!)),
+        _InfoRow(
+            icon: Icons.hourglass_bottom_outlined,
+            label: 'Masa Tenggang',
+            value: dateFmt.format(sub.graceUntil!)),
       if (sub.notes != null && sub.notes!.isNotEmpty)
-        _InfoRow(icon: Icons.note_outlined, label: 'Catatan', value: sub.notes!),
+        _InfoRow(
+            icon: Icons.note_outlined, label: 'Catatan', value: sub.notes!),
     ];
 
     return Container(
@@ -529,8 +547,8 @@ class _InvoiceHistory extends ConsumerWidget {
             ),
             const Spacer(),
             GestureDetector(
-              onTap: () =>
-                  GoRouter.of(context).push('/subscriptions/${sub.id}/invoices'),
+              onTap: () => GoRouter.of(context)
+                  .push('/subscriptions/${sub.id}/invoices'),
               child: Text(
                 'Lihat Semua',
                 style: TextStyle(
@@ -568,8 +586,10 @@ class _InvoiceHistory extends ConsumerWidget {
               );
             }
             return Column(
-              children:
-                  invoices.take(3).map((inv) => _InvoiceRow(invoice: inv)).toList(),
+              children: invoices
+                  .take(3)
+                  .map((inv) => _InvoiceRow(invoice: inv))
+                  .toList(),
             );
           },
         ),
@@ -636,10 +656,9 @@ class _InvoiceRow extends StatelessWidget {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color:
-                        isPaid
-                            ? isp.success.withOpacity(0.12)
-                            : isp.warning.withOpacity(0.12),
+                    color: isPaid
+                        ? isp.success.withOpacity(0.12)
+                        : isp.warning.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -663,17 +682,17 @@ class _InvoiceRow extends StatelessWidget {
 // ── Helpers ───────────────────────────────────────────────
 
 BoxDecoration _nbCard(IspThemeColors isp) => BoxDecoration(
-  color: isp.surface,
-  borderRadius: BorderRadius.circular(16),
-  border: Border.all(color: isp.border, width: 1.5),
-  boxShadow: [
-    BoxShadow(
-      color: isp.border.withOpacity(0.5),
-      offset: const Offset(3, 3),
-      blurRadius: 0,
-    ),
-  ],
-);
+      color: isp.surface,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: isp.border, width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: isp.border.withOpacity(0.5),
+          offset: const Offset(3, 3),
+          blurRadius: 0,
+        ),
+      ],
+    );
 
 String _billingLabel(String cycle) {
   switch (cycle.toLowerCase()) {

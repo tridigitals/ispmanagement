@@ -18,9 +18,8 @@ class IspSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return Shimmer.fromColors(
+    final isp = context.isp;
+    return Shimmer.fromColors(
       baseColor: isp.surface,
       highlightColor: isp.surfaceTertiary,
       child: Container(
@@ -41,9 +40,7 @@ class IspSkeletonList extends StatelessWidget {
   final int itemCount;
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return Column(
+    return Column(
       children: List.generate(
         itemCount,
         (i) => Padding(
@@ -79,9 +76,8 @@ class IspSkeletonCard extends StatelessWidget {
   final double height;
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return Container(
+    final isp = context.isp;
+    return Container(
       height: height,
       decoration: BoxDecoration(
         color: isp.surface,

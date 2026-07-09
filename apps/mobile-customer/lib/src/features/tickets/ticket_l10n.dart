@@ -81,7 +81,8 @@ extension TicketStatusL10n on AppLocalizations {
       default:
         // Treat any other value as a real display name from the API.
         // (Backend populates author_name from users.name.)
-        if (roleOrName == null || roleOrName.isEmpty) return ticketAuthorAnonymous;
+        if (roleOrName == null || roleOrName.isEmpty)
+          return ticketAuthorAnonymous;
         return roleOrName;
     }
   }

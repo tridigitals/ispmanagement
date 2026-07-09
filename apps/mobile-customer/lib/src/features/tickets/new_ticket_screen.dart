@@ -369,7 +369,8 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                       children: [
                         for (final action in quickActions)
                           ActionChip(
-                            avatar: Icon(action.icon, size: 18, color: isp.accent),
+                            avatar:
+                                Icon(action.icon, size: 18, color: isp.accent),
                             label: Text(_quickLabel(l10n, action)),
                             onPressed: () => _applyQuickAction(action, l10n),
                           ),
@@ -391,10 +392,9 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                               labelText: l10n.ticketFieldSubject,
                               hintText: l10n.ticketFieldSubjectHint,
                             ),
-                            validator: (v) =>
-                                (v == null || v.trim().length < 3)
-                                    ? l10n.ticketValidationSubjectShort
-                                    : null,
+                            validator: (v) => (v == null || v.trim().length < 3)
+                                ? l10n.ticketValidationSubjectShort
+                                : null,
                           ),
                           const SizedBox(height: IspSpacing.md),
 
@@ -465,8 +465,7 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                               ],
                               const Spacer(),
                               TextButton.icon(
-                                onPressed:
-                                    _submitting ? null : _pickFile,
+                                onPressed: _submitting ? null : _pickFile,
                                 icon: const Icon(Icons.add, size: 18),
                                 label: Text(l10n.ticketButtonAdd),
                               ),
@@ -534,7 +533,9 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                           )
                         : const Icon(Icons.send),
                     label: Text(
-                      _submitting ? l10n.ticketButtonSending : l10n.ticketButtonSend,
+                      _submitting
+                          ? l10n.ticketButtonSending
+                          : l10n.ticketButtonSend,
                     ),
                   ),
                 ),
@@ -567,9 +568,11 @@ class _SubscriptionPicker extends ConsumerWidget {
 
     String displayLabel = l10n.ticketFieldNoSubscription;
     if (selectedId != null && asyncSubs.value != null) {
-      final match = asyncSubs.value!.where((s) => s.id == selectedId).firstOrNull;
+      final match =
+          asyncSubs.value!.where((s) => s.id == selectedId).firstOrNull;
       if (match != null) {
-        displayLabel = '${match.packageName ?? l10n.internetPackage} • ${match.id.substring(0, 8)}';
+        displayLabel =
+            '${match.packageName ?? l10n.internetPackage} • ${match.id.substring(0, 8)}';
       }
     }
 

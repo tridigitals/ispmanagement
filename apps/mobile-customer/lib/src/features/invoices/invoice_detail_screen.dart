@@ -36,7 +36,8 @@ class InvoiceDetailScreen extends ConsumerStatefulWidget {
   final String id;
 
   @override
-  ConsumerState<InvoiceDetailScreen> createState() => _InvoiceDetailScreenState();
+  ConsumerState<InvoiceDetailScreen> createState() =>
+      _InvoiceDetailScreenState();
 }
 
 class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
@@ -81,16 +82,22 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
       if (!mounted) return;
       res.fold(
         (_) => ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Bukti pembayaran berhasil diunggah'), backgroundColor: isp.success),
+          SnackBar(
+              content: const Text('Bukti pembayaran berhasil diunggah'),
+              backgroundColor: isp.success),
         ),
         (error) => ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal mengunggah: ${error.message}'), backgroundColor: isp.danger),
+          SnackBar(
+              content: Text('Gagal mengunggah: ${error.message}'),
+              backgroundColor: isp.danger),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memilih file: $e'), backgroundColor: isp.danger),
+        SnackBar(
+            content: Text('Gagal memilih file: $e'),
+            backgroundColor: isp.danger),
       );
     } finally {
       if (mounted) setState(() => _uploadingProof = false);
@@ -123,21 +130,45 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
                 child: Row(children: [
                   Container(
                     width: 5,
-                    color: inv.isPaid ? isp.success : inv.isOverdue ? isp.danger : isp.warning,
+                    color: inv.isPaid
+                        ? isp.success
+                        : inv.isOverdue
+                            ? isp.danger
+                            : isp.warning,
                   ),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.all(20),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                          Text(inv.invoiceNumber ?? '', style: TextStyle(color: isp.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
-                          _StatusPill(isp: isp, label: inv.statusLabel(), isPaid: inv.isPaid, isOverdue: inv.isOverdue),
-                        ]),
-                        const SizedBox(height: 16),
-                        Text(fmt.format(inv.amount), style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: isp.textPrimary, height: 1.0)),
-                        const SizedBox(height: 6),
-                        Text('Jatuh tempo ${dateFmt.format(inv.dueDate)}', style: TextStyle(color: isp.textSecondary, fontSize: 13)),
-                      ]),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(inv.invoiceNumber ?? '',
+                                      style: TextStyle(
+                                          color: isp.textSecondary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500)),
+                                  _StatusPill(
+                                      isp: isp,
+                                      label: inv.statusLabel(),
+                                      isPaid: inv.isPaid,
+                                      isOverdue: inv.isOverdue),
+                                ]),
+                            const SizedBox(height: 16),
+                            Text(fmt.format(inv.amount),
+                                style: TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.w800,
+                                    color: isp.textPrimary,
+                                    height: 1.0)),
+                            const SizedBox(height: 6),
+                            Text('Jatuh tempo ${dateFmt.format(inv.dueDate)}',
+                                style: TextStyle(
+                                    color: isp.textSecondary, fontSize: 13)),
+                          ]),
                     ),
                   ),
                 ]),
@@ -158,14 +189,33 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
             Container(
               decoration: _nbCard(isp),
               padding: const EdgeInsets.all(16),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Informasi Tagihan', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isp.textSecondary, letterSpacing: 0.5)),
-                const SizedBox(height: 12),
-                _InfoRow(isp: isp, label: 'Jatuh tempo', value: dateFmt.format(inv.dueDate)),
-                if (inv.paidAt != null) _InfoRow(isp: isp, label: 'Dibayar pada', value: dateFmt.format(inv.paidAt!)),
-                if (inv.subscriptionLabel != null) _InfoRow(isp: isp, label: 'Layanan', value: inv.subscriptionLabel!),
-                if (inv.notes != null && inv.notes!.isNotEmpty) _InfoRow(isp: isp, label: 'Catatan', value: inv.notes!),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Informasi Tagihan',
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: isp.textSecondary,
+                            letterSpacing: 0.5)),
+                    const SizedBox(height: 12),
+                    _InfoRow(
+                        isp: isp,
+                        label: 'Jatuh tempo',
+                        value: dateFmt.format(inv.dueDate)),
+                    if (inv.paidAt != null)
+                      _InfoRow(
+                          isp: isp,
+                          label: 'Dibayar pada',
+                          value: dateFmt.format(inv.paidAt!)),
+                    if (inv.subscriptionLabel != null)
+                      _InfoRow(
+                          isp: isp,
+                          label: 'Layanan',
+                          value: inv.subscriptionLabel!),
+                    if (inv.notes != null && inv.notes!.isNotEmpty)
+                      _InfoRow(isp: isp, label: 'Catatan', value: inv.notes!),
+                  ]),
             ),
 
             const SizedBox(height: 16),
@@ -225,11 +275,15 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
       final path = await generateReceiptPdf(inv);
       if (!context.mounted) return;
       Navigator.of(context).pop();
-      await Share.shareXFiles([XFile(path)], subject: 'Bukti Pembayaran ${inv.invoiceNumber}');
+      await Share.shareXFiles([XFile(path)],
+          subject: 'Bukti Pembayaran ${inv.invoiceNumber}');
     } catch (e) {
       if (!context.mounted) return;
-      try { Navigator.of(context).pop(); } catch (_) {}
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal membuat PDF: $e'), backgroundColor: isp.danger));
+      try {
+        Navigator.of(context).pop();
+      } catch (_) {}
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Gagal membuat PDF: $e'), backgroundColor: isp.danger));
     }
   }
 
@@ -240,11 +294,13 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
       final bytes = await io.File(path).readAsBytes();
       if (!context.mounted) return;
       Navigator.of(context).pop();
-      await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'Invoice_${inv.invoiceNumber}');
+      await Printing.layoutPdf(
+          onLayout: (_) async => bytes, name: 'Invoice_${inv.invoiceNumber}');
     } catch (e) {
       if (!context.mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal mencetak: $e'), backgroundColor: isp.danger));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Gagal mencetak: $e'), backgroundColor: isp.danger));
     }
   }
 
@@ -252,7 +308,15 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: Card(child: Padding(padding: EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [CircularProgressIndicator(), SizedBox(height: 16), Text('Membuat PDF...')])))),
+      builder: (_) => const Center(
+          child: Card(
+              child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Membuat PDF...')
+                  ])))),
     );
   }
 }
@@ -260,7 +324,11 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
 // ─── Status pill ─────────────────────────────────────────────────
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.isp, required this.label, required this.isPaid, required this.isOverdue});
+  const _StatusPill(
+      {required this.isp,
+      required this.label,
+      required this.isPaid,
+      required this.isOverdue});
   final IspThemeColors isp;
   final String label;
   final bool isPaid;
@@ -268,11 +336,19 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isPaid ? isp.success : isOverdue ? isp.danger : isp.warning;
+    final color = isPaid
+        ? isp.success
+        : isOverdue
+            ? isp.danger
+            : isp.warning;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(6)),
-      child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+      decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(6)),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w700, color: color)),
     );
   }
 }
@@ -290,8 +366,16 @@ class _InfoRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(width: 110, child: Text(label, style: TextStyle(color: isp.textMuted, fontSize: 13))),
-        Expanded(child: Text(value, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: isp.textPrimary))),
+        SizedBox(
+            width: 110,
+            child: Text(label,
+                style: TextStyle(color: isp.textMuted, fontSize: 13))),
+        Expanded(
+            child: Text(value,
+                style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: isp.textPrimary))),
       ]),
     );
   }
@@ -300,7 +384,13 @@ class _InfoRow extends StatelessWidget {
 // ─── Neubrutalist button ─────────────────────────────────────────
 
 class _NeubrutalistBtn extends StatelessWidget {
-  const _NeubrutalistBtn({required this.icon, required this.label, required this.isp, required this.filled, this.loading = false, this.onTap});
+  const _NeubrutalistBtn(
+      {required this.icon,
+      required this.label,
+      required this.isp,
+      required this.filled,
+      this.loading = false,
+      this.onTap});
   final IconData icon;
   final String label;
   final IspThemeColors isp;
@@ -323,15 +413,30 @@ class _NeubrutalistBtn extends StatelessWidget {
               color: filled ? isp.accent : isp.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: isp.border, width: 1.5),
-              boxShadow: [BoxShadow(color: isp.border.withOpacity(0.5), offset: const Offset(3, 3), blurRadius: 0)],
+              boxShadow: [
+                BoxShadow(
+                    color: isp.border.withOpacity(0.5),
+                    offset: const Offset(3, 3),
+                    blurRadius: 0)
+              ],
             ),
             child: Center(
               child: loading
-                  ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: isp.textPrimary))
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: isp.textPrimary))
                   : Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(icon, size: 18, color: filled ? Colors.white : isp.textPrimary),
+                      Icon(icon,
+                          size: 18,
+                          color: filled ? Colors.white : isp.textPrimary),
                       const SizedBox(width: 8),
-                      Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: filled ? Colors.white : isp.textPrimary)),
+                      Text(label,
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: filled ? Colors.white : isp.textPrimary)),
                     ]),
             ),
           ),
@@ -355,7 +460,15 @@ class _InvoiceDetailSkeleton extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const IspShimmer.line(width: 140),
           const SizedBox(height: 12),
-          ...List.generate(3, (_) => const Padding(padding: EdgeInsets.symmetric(vertical: 6), child: Row(children: [IspShimmer.line(width: 100), SizedBox(width: 12), Expanded(child: IspShimmer.line())]))),
+          ...List.generate(
+              3,
+              (_) => const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 6),
+                  child: Row(children: [
+                    IspShimmer.line(width: 100),
+                    SizedBox(width: 12),
+                    Expanded(child: IspShimmer.line())
+                  ]))),
         ]),
       ),
       const SizedBox(height: 16),
@@ -374,12 +487,16 @@ class _DashedLinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color..strokeWidth = 1..style = PaintingStyle.stroke;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
     const dashWidth = 6.0;
     const dashGap = 4.0;
     var startX = 0.0;
     while (startX < size.width) {
-      canvas.drawLine(Offset(startX, 0), Offset((startX + dashWidth).clamp(0, size.width), 0), paint);
+      canvas.drawLine(Offset(startX, 0),
+          Offset((startX + dashWidth).clamp(0, size.width), 0), paint);
       startX += dashWidth + dashGap;
     }
   }

@@ -27,6 +27,7 @@ class _RealtimeNotificationListenerState
     with WidgetsBindingObserver {
   StreamSubscription<Map<String, dynamic>>? _sub;
   RealtimeClient? _channel;
+  // ignore: unused_field
   bool _connected = false;
 
   @override

@@ -35,7 +35,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
     final settingsAsync = ref.watch(publicSettingsProvider);
@@ -47,8 +46,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       appBar: AppBar(title: Text(l10n.choosePaymentMethod)),
       body: settingsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => _buildPaymentList(context, isp, l10n, null, channelsAsync),
-        data: (settings) => _buildPaymentList(context, isp, l10n, settings, channelsAsync),
+        error: (_, __) =>
+            _buildPaymentList(context, isp, l10n, null, channelsAsync),
+        data: (settings) =>
+            _buildPaymentList(context, isp, l10n, settings, channelsAsync),
       ),
     );
   }
@@ -70,7 +71,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     final showDuitku = duitkuEnabled;
     final showManual = manualEnabled && bankAccounts.isNotEmpty;
 
-    if (!showMidtrans && !showDuitku && !showManual && (channelsAsync.valueOrNull?.isEmpty ?? true)) {
+    if (!showMidtrans &&
+        !showDuitku &&
+        !showManual &&
+        (channelsAsync.valueOrNull?.isEmpty ?? true)) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -102,13 +106,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         // Manual Bank Transfer
         if (showManual) ...[
           ...bankAccounts.map((bank) => Padding(
-            padding: const EdgeInsets.only(bottom: IspSpacing.sm),
-            child: _BankTransferTile(
-              bank: bank,
-              onTap: () => _showBankTransferDialog(context, isp, l10n, bank),
-              onCopy: (text) => _copyToClipboard(context, text),
-            ),
-          )),
+                padding: const EdgeInsets.only(bottom: IspSpacing.sm),
+                child: _BankTransferTile(
+                  bank: bank,
+                  onTap: () =>
+                      _showBankTransferDialog(context, isp, l10n, bank),
+                  onCopy: (text) => _copyToClipboard(context, text),
+                ),
+              )),
           const SizedBox(height: IspSpacing.md),
         ],
 
@@ -140,7 +145,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         channelsAsync.when(
           loading: () => const Padding(
             padding: EdgeInsets.only(top: IspSpacing.lg),
-            child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+            child: Center(
+                child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2))),
           ),
           error: (_, __) => const SizedBox.shrink(),
           data: (channels) {
@@ -150,12 +159,18 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               children: [
                 const Divider(),
                 const SizedBox(height: IspSpacing.md),
-                Text('Metode Lainnya', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isp.textSecondary)),
+                Text('Metode Lainnya',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isp.textSecondary)),
                 const SizedBox(height: IspSpacing.md),
                 ...channels.map((ch) => Padding(
-                  padding: const EdgeInsets.only(bottom: IspSpacing.sm),
-                  child: _PaymentChannelTile(channel: ch, onTap: () => _payChannel(context, ref, ch)),
-                )),
+                      padding: const EdgeInsets.only(bottom: IspSpacing.sm),
+                      child: _PaymentChannelTile(
+                          channel: ch,
+                          onTap: () => _payChannel(context, ref, ch)),
+                    )),
               ],
             );
           },
@@ -167,7 +182,9 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   void _copyToClipboard(BuildContext context, String text) {
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Nomor rekening berhasil disalin'), duration: const Duration(seconds: 2)),
+      SnackBar(
+          content: Text('Nomor rekening berhasil disalin'),
+          duration: const Duration(seconds: 2)),
     );
   }
 
@@ -191,7 +208,9 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             const SizedBox(height: 8),
             Row(
               children: [
-                Expanded(child: _InfoRow(label: 'No. Rekening', value: bank.accountNumber)),
+                Expanded(
+                    child: _InfoRow(
+                        label: 'No. Rekening', value: bank.accountNumber)),
                 IconButton(
                   icon: const Icon(Icons.copy, size: 18),
                   onPressed: () {
@@ -257,7 +276,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           Navigator.pop(ctx);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Bukti pembayaran berhasil diunggah. Menunggu konfirmasi admin.'),
+              content: Text(
+                  'Bukti pembayaran berhasil diunggah. Menunggu konfirmasi admin.'),
               backgroundColor: isp.success,
             ),
           );
@@ -368,9 +388,8 @@ class _PaymentMethodTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return IspCard(
+    final isp = context.isp;
+    return IspCard(
       onTap: onTap,
       child: Row(
         children: [
@@ -425,9 +444,8 @@ class _PaymentChannelTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return IspCard(
+    final isp = context.isp;
+    return IspCard(
       onTap: onTap,
       child: Row(
         children: [
@@ -521,7 +539,9 @@ class _BankTransferTile extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                bank.bankName.substring(0, bank.bankName.length.clamp(0, 3)).toUpperCase(),
+                bank.bankName
+                    .substring(0, bank.bankName.length.clamp(0, 3))
+                    .toUpperCase(),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -584,7 +604,8 @@ class _InfoRow extends StatelessWidget {
       children: [
         Text(label, style: TextStyle(fontSize: 11, color: isp.textMuted)),
         const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        Text(value,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
       ],
     );
   }
@@ -712,11 +733,13 @@ class _UploadProofDialogState extends ConsumerState<_UploadProofDialog> {
                   const SizedBox(height: 4),
                   Text(
                     'No. Rekening: ${widget.bank.accountNumber}',
-                    style: TextStyle(fontSize: 13, color: widget.isp.textSecondary),
+                    style: TextStyle(
+                        fontSize: 13, color: widget.isp.textSecondary),
                   ),
                   Text(
                     'Atas Nama: ${widget.bank.accountHolder}',
-                    style: TextStyle(fontSize: 13, color: widget.isp.textSecondary),
+                    style: TextStyle(
+                        fontSize: 13, color: widget.isp.textSecondary),
                   ),
                 ],
               ),
@@ -754,12 +777,14 @@ class _UploadProofDialogState extends ConsumerState<_UploadProofDialog> {
                         children: [
                           Text(
                             _selectedFile!.name,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                            style: const TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w500),
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             _formatBytes(_selectedFile!.size ?? 0),
-                            style: TextStyle(fontSize: 11, color: widget.isp.textMuted),
+                            style: TextStyle(
+                                fontSize: 11, color: widget.isp.textMuted),
                           ),
                         ],
                       ),
@@ -786,12 +811,14 @@ class _UploadProofDialogState extends ConsumerState<_UploadProofDialog> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline, size: 16, color: widget.isp.danger),
+                    Icon(Icons.error_outline,
+                        size: 16, color: widget.isp.danger),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: TextStyle(fontSize: 12, color: widget.isp.danger),
+                        style:
+                            TextStyle(fontSize: 12, color: widget.isp.danger),
                       ),
                     ),
                   ],

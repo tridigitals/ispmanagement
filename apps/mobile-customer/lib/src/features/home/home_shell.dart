@@ -135,8 +135,7 @@ class _State extends ConsumerState<HomeShell> {
                     mini: true,
                     backgroundColor: isp.accent,
                     foregroundColor: Colors.white,
-                    onPressed: () =>
-                        GoRouter.of(context).push('/tickets/new'),
+                    onPressed: () => GoRouter.of(context).push('/tickets/new'),
                     child: const Icon(Icons.add),
                   ),
                 ),

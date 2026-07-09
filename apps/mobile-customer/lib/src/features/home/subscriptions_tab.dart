@@ -201,9 +201,8 @@ class _SubscriptionTile extends StatelessWidget {
     final fmt = NumberFormat.simpleCurrency(name: sub.currencyCode);
     final color = sub.isActive ? isp.success : isp.danger;
     // ponytail: compute days from endsAt, fallback to billingCycle label
-    final days = sub.endsAt != null
-        ? sub.endsAt!.difference(DateTime.now()).inDays
-        : 0;
+    final days =
+        sub.endsAt != null ? sub.endsAt!.difference(DateTime.now()).inDays : 0;
     final daysLabel = days > 0 ? '$days hari lagi' : 'Kadaluarsa';
 
     return Padding(
@@ -258,9 +257,7 @@ class _SubscriptionTile extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                sub.routerName ??
-                                    sub.locationLabel ??
-                                    '-',
+                                sub.routerName ?? sub.locationLabel ?? '-',
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: isp.textMuted,
@@ -282,8 +279,7 @@ class _SubscriptionTile extends StatelessWidget {
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(1),
                                 child: LinearProgressIndicator(
-                                  value:
-                                      sub.isActive ? 0.6 : 1.0,
+                                  value: sub.isActive ? 0.6 : 1.0,
                                   backgroundColor: isp.border,
                                   color: color,
                                   minHeight: 2,
@@ -303,8 +299,7 @@ class _SubscriptionTile extends StatelessWidget {
                       ),
                       // Chevron
                       Padding(
-                        padding: const EdgeInsets.only(
-                            right: 14, top: 16),
+                        padding: const EdgeInsets.only(right: 14, top: 16),
                         child: Icon(
                           Icons.chevron_right_rounded,
                           size: 20,

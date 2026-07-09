@@ -43,8 +43,7 @@ class AnnouncementsScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline,
-                  size: 48, color: isp.danger),
+              Icon(Icons.error_outline, size: 48, color: isp.danger),
               const SizedBox(height: IspSpacing.md),
               Text(e.toString(), textAlign: TextAlign.center),
               const SizedBox(height: IspSpacing.lg),
@@ -106,9 +105,8 @@ class _AnnouncementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    final dateFmt = DateFormat('d MMM yyyy', 'id_ID');
+    final isp = context.isp;
+    final dateFmt = DateFormat('d MMM yyyy', 'id_ID');
     final date =
         item.createdAt != null ? DateTime.tryParse(item.createdAt!) : null;
 
@@ -166,9 +164,8 @@ class _SeverityChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    final Color color;
+    final isp = context.isp;
+    final Color color;
     final IconData icon;
     switch (severity) {
       case 'success':
