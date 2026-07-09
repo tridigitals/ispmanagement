@@ -20,6 +20,7 @@ class _State extends ConsumerState<ForgotPasswordScreen> {
   final _reason = TextEditingController();
   bool _sending = false;
   String? _done;
+  bool _isError = false;
 
   @override
   void dispose() {
@@ -41,10 +42,20 @@ class _State extends ConsumerState<ForgotPasswordScreen> {
     if (!mounted) return;
     setState(() {
       _sending = false;
-      _done = res.fold(
-        (_) => 'Kami mengirim tautan reset ke email Anda. Cek inbox/spam.',
-        (err) => err.message,
+      final errorMessage = res.fold(
+        (_) => null,
+        (err) => err.isSmtpNotConfigured
+            ? 'Maaf, layanan reset password sedang tidak tersedia. '
+                'Silakan hubungi dukungan pelanggan untuk bantuan.'
+            : err.message,
       );
+      if (errorMessage != null) {
+        _done = errorMessage;
+        _isError = true;
+      } else {
+        _done = 'Kami mengirim tautan reset ke email Anda. Cek inbox/spam.';
+        _isError = false;
+      }
     });
   }
 
@@ -109,21 +120,27 @@ class _State extends ConsumerState<ForgotPasswordScreen> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: isp.success.withOpacity(0.1),
+                      color: (_isError ? isp.danger : isp.success).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(IspRadii.md),
                       border: Border.all(
                         width: 1.5,
-                        color: isp.success.withOpacity(0.2),
+                        color: (_isError ? isp.danger : isp.success).withOpacity(0.2),
                       ),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.check_circle_outline, color: isp.success),
+                        Icon(
+                          _isError ? Icons.warning_amber_rounded : Icons.check_circle_outline,
+                          color: _isError ? isp.danger : isp.success,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _done!,
-                            style: TextStyle(color: isp.success, fontSize: 13),
+                            style: TextStyle(
+                              color: _isError ? isp.textPrimary : isp.success,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ],

@@ -779,23 +779,35 @@ impl AuthService {
 
             query.bind(&user.id).execute(&self.pool).await?;
 
-            // Send email
+            // Send email per-tenant
+            let tenant_id = user.tenant_slug.as_deref();
             let link = format!("/forgot-password/reset?token={}", token);
             let body = format!(
                 "Hello {},\n\nYou requested a password reset. Click the link below to reset your password:\n{}\n\nThis link expires in 1 hour.\n\nIf you did not request this, please ignore this email.",
                 user.name, link
             );
+            let subject = "Reset your password";
 
-            if let Err(e) = self
+            let send_result = self
                 .email_service
-                .send_email(&user.email, "Reset your password", &body)
-                .await
-            {
-                warn!("Failed to send reset email: {}", e);
+                .send_email_for_tenant(tenant_id, &user.email, subject, &body)
+                .await;
+
+            match &send_result {
+                Err(AppError::Validation(msg)) if msg.starts_with("Unknown email provider") => {
+                    return Err(AppError::Configuration(format!(
+                        "SMTP_NOT_CONFIGURED: email provider for tenant {:?}",
+                        tenant_id
+                    )));
+                }
+                Err(e) => {
+                    warn!("Failed to send reset email: {}", e);
+                }
+                Ok(()) => { /* email sent */ }
             }
         }
 
-        // Always return OK to prevent email enumeration
+        // Always return OK unless SMTP is not configured (prevent email enumeration)
         Ok(())
     }
 

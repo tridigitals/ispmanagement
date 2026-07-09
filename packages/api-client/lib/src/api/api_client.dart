@@ -264,6 +264,8 @@ class ApiException implements Exception {
   final Map<String, dynamic>? details;
 
   bool get isUnauthorized => statusCode == 401;
+  bool get isSmtpNotConfigured =>
+      message.startsWith('SMTP_NOT_CONFIGURED');
   bool get isForbidden => statusCode == 403;
   bool get isNotFound => statusCode == 404;
   bool get isRateLimited => statusCode == 429;
