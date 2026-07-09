@@ -780,7 +780,8 @@ impl AuthService {
             query.bind(&user.id).execute(&self.pool).await?;
 
             // Send email per-tenant
-            let tenant_id = user.tenant_slug.as_deref();
+            let tenant_id = self.get_primary_active_tenant_id(&user.id).await;
+            let tenant_id_str = tenant_id.as_deref();
             let link = format!("/forgot-password/reset?token={}", token);
             let body = format!(
                 "Hello {},\n\nYou requested a password reset. Click the link below to reset your password:\n{}\n\nThis link expires in 1 hour.\n\nIf you did not request this, please ignore this email.",
@@ -790,7 +791,7 @@ impl AuthService {
 
             let send_result = self
                 .email_service
-                .send_email_for_tenant(tenant_id, &user.email, subject, &body)
+                .send_email_for_tenant(tenant_id_str, &user.email, subject, &body)
                 .await;
 
             match &send_result {
