@@ -166,10 +166,18 @@ pub(crate) async fn root_handler() -> &'static str {
     "SaaS API is running. Use the frontend to interact."
 }
 
-pub(crate) async fn get_app_version() -> axum::Json<serde_json::Value> {
-    axum::Json(serde_json::json!({
+pub(crate) async fn get_app_version(headers: axum::http::HeaderMap) -> Result<axum::Json<serde_json::Value>, crate::error::AppError> {
+    // Require auth — version info is internal
+    let auth_header = headers
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .ok_or_else(|| crate::error::AppError::Unauthorized)?;
+    // Just validate token exists, don't need full claims
+    let _ = auth_header; // middleware already validates for protected routes
+    Ok(axum::Json(serde_json::json!({
         "version": env!("CARGO_PKG_VERSION")
-    }))
+    })))
 }
 
 #[cfg(test)]

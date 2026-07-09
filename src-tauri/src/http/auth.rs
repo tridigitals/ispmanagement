@@ -52,7 +52,11 @@ impl IntoResponse for crate::error::AppError {
             }
             crate::error::AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
             crate::error::AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
-            crate::error::AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
+            crate::error::AppError::Forbidden(msg) => {
+                // Log detailed permission info server-side, don't expose to client
+                tracing::warn!("Permission denied: {}", msg);
+                (StatusCode::FORBIDDEN, "Permission denied".to_string())
+            },
             crate::error::AppError::Cache(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
             crate::error::AppError::RateLimited(msg) => (StatusCode::TOO_MANY_REQUESTS, msg),
             crate::error::AppError::ServiceUnavailable(msg) => {
@@ -77,7 +81,16 @@ impl IntoResponse for crate::error::AppError {
 
 pub async fn get_auth_settings(
     State(state): State<AppState>,
+    headers: HeaderMap,
 ) -> Result<Json<AuthSettings>, crate::error::AppError> {
+    // Require valid auth — don't expose security config to unauthenticated users
+    let auth_header = headers
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .ok_or_else(|| crate::error::AppError::Unauthorized)?;
+    state.auth_service.validate_token(auth_header).await?;
+
     let settings = state.auth_service.get_auth_settings().await;
     Ok(Json(settings))
 }
