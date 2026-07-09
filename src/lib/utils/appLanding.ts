@@ -51,5 +51,9 @@ export function getDefaultTenantLandingPath(
 }
 
 export function canAccessCustomerDashboard(user: LandingUserLike | null | undefined): boolean {
+  if (!user) return false;
+  const role = String(user.role || '').toLowerCase();
+  // Customers/portal-only users always access dashboard, never admin
+  if (role === 'customer') return true;
   return !hasInternalAppAccess(user);
 }
