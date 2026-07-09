@@ -10,6 +10,32 @@ use std::sync::Arc;
 use std::{collections::HashMap, time::Instant};
 use tokio::sync::RwLock as TokioRwLock;
 
+/// Cookie name for the JWT auth token.
+pub const AUTH_COOKIE: &str = "auth_token";
+
+/// Extract JWT from httpOnly cookie first, then fall back to Authorization header.
+/// All handlers should use this instead of custom extract_token functions.
+pub fn extract_token(headers: &axum::http::HeaderMap) -> Result<String, crate::error::AppError> {
+    // 1. Try cookie first (httpOnly, set by login)
+    if let Some(cookie_header) = headers.get("cookie").and_then(|h| h.to_str().ok()) {
+        for pair in cookie_header.split(';') {
+            let pair = pair.trim();
+            if let Some((name, value)) = pair.split_once('=') {
+                if name.trim() == AUTH_COOKIE && !value.trim().is_empty() {
+                    return Ok(value.trim().to_string());
+                }
+            }
+        }
+    }
+    // 2. Fallback to Authorization header (backward compat / API clients)
+    headers
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .map(|s| s.to_string())
+        .ok_or_else(|| crate::error::AppError::Unauthorized)
+}
+
 pub mod announcements;
 pub mod announcements_support_common;
 pub mod audit;

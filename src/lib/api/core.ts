@@ -10,6 +10,7 @@ const commandMap: Record<string, { method: string; path: string }> = {
   is_installed: { method: 'GET', path: '/install/check' },
   install_app: { method: 'POST', path: '/install' },
   login: { method: 'POST', path: '/auth/login' },
+  logout: { method: 'POST', path: '/auth/logout' },
   register: { method: 'POST', path: '/auth/register' },
   verify_email: { method: 'POST', path: '/auth/verify-email' },
   forgot_password: { method: 'POST', path: '/auth/forgot-password' },
@@ -793,6 +794,7 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         response = await fetch(`${API_BASE}${path}${queryString}`, {
           method: route.method,
           headers,
+          credentials: 'include',
           body: bodyPayload ? JSON.stringify(bodyPayload) : undefined,
           signal: controller?.signal,
         });

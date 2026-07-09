@@ -42,6 +42,7 @@ export const backup = {
     try {
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
 
       if (!response.ok) throw new Error(`Download failed: ${response.statusText}`);

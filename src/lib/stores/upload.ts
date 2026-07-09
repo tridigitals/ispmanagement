@@ -60,6 +60,7 @@ function createUploadStore() {
         const initRes = await fetch(`${API_BASE}/storage/upload/init`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
         });
 
         if (!initRes.ok) throw new Error('Failed to initialize upload');
@@ -82,6 +83,7 @@ function createUploadStore() {
           const chunkRes = await fetch(`${API_BASE}/storage/upload/chunk`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}` },
+            credentials: 'include',
             body: formData,
           });
 
@@ -99,6 +101,7 @@ function createUploadStore() {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
+            credentials: 'include',
           },
           body: JSON.stringify({
             upload_id,

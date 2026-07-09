@@ -51,6 +51,7 @@ export const storage = {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${getTokenOrThrow()}`,
+        credentials: 'include',
       },
       body: formData,
     });

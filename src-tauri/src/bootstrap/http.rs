@@ -371,6 +371,7 @@ pub async fn start_server_impl(
         .route("/api/auth/settings", get(auth::get_auth_settings))
         .route("/api/auth/me", get(auth::get_current_user))
         .route("/api/auth/login", post(auth::login))
+        .route("/api/auth/logout", post(auth::logout))
         .route("/api/auth/register", post(auth::register))
         .route("/api/auth/verify-email", post(auth::verify_email))
         .route("/api/auth/forgot-password", post(auth::forgot_password))

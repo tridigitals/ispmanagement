@@ -120,7 +120,7 @@ pub async fn login(
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(payload): Json<LoginDto>,
-) -> Result<Json<AuthResponse>, crate::error::AppError> {
+) -> Result<axum::response::Response, crate::error::AppError> {
     // Validate payload (validator crate usage)
     use validator::Validate;
     if let Err(e) = payload.validate() {
@@ -144,7 +144,46 @@ pub async fn login(
         .auth_service
         .login(payload, Some(ip), Some(device_fingerprint))
         .await?;
-    Ok(Json(response))
+
+    // Build response with httpOnly cookie if token is present
+    let mut http_response = axum::response::Json(serde_json::to_value(&response).unwrap_or_default()).into_response();
+    if let Some(ref token) = response.token {
+        let cookie = format!(
+            "{}={}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age={}",
+            crate::http::AUTH_COOKIE,
+            token,
+            3600 * 100 // 100 hours matching JWT expiry
+        );
+        http_response.headers_mut().insert(
+            axum::http::header::SET_COOKIE,
+            axum::http::HeaderValue::from_str(&cookie).unwrap(),
+        );
+    }
+    Ok(http_response)
+}
+
+pub async fn logout(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+) -> Result<axum::response::Response, crate::error::AppError> {
+    // Try to get token for server-side invalidation
+    if let Ok(token) = crate::http::extract_token(&headers) {
+        let ip = extract_ip(&headers, addr);
+        let _ = state.auth_service.logout(&token, Some(ip)).await;
+    }
+
+    // Clear the httpOnly cookie
+    let mut response = axum::response::Json(serde_json::json!({"message": "Logged out"})).into_response();
+    let clear_cookie = format!(
+        "{}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0",
+        crate::http::AUTH_COOKIE
+    );
+    response.headers_mut().insert(
+        axum::http::header::SET_COOKIE,
+        axum::http::HeaderValue::from_str(&clear_cookie).unwrap(),
+    );
+    Ok(response)
 }
 
 pub async fn register(

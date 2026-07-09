@@ -255,6 +255,14 @@ export function setAuthData(
 }
 
 export function logout(): void {
+  // Call server logout to clear httpOnly cookie (fire-and-forget)
+  if (typeof window !== 'undefined') {
+    fetch(`${window.location.origin}/api/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch(() => {});
+  }
+
   token.set(null);
   user.set(null);
   tenant.set(null);
