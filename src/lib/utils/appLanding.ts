@@ -32,6 +32,7 @@ export function hasInternalAppAccess(user: LandingUserLike | null | undefined): 
   if (user.is_super_admin) return true;
 
   const role = String(user.role || '').toLowerCase();
+  if (role === 'customer' || role === 'pelanggan') return false;
   if (role === 'owner' || role === 'admin') return true;
 
   const permissions = Array.isArray(user.permissions) ? user.permissions : [];
@@ -47,6 +48,9 @@ export function getDefaultTenantLandingPath(
   user: LandingUserLike | null | undefined,
   _tenantPrefix: string,
 ): string {
+  // Customer/portal users always land on dashboard
+  const role = String(user?.role || '').toLowerCase();
+  if (role === 'customer') return '/dashboard';
   return hasInternalAppAccess(user) ? '/admin' : '/dashboard';
 }
 
