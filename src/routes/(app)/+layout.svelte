@@ -78,6 +78,9 @@
 
   function canAccessAdminPath(path: string) {
     if (!path.startsWith('/admin')) return true;
+    // Customer/portal users NEVER access admin routes
+    const role = String($user?.role || '').toLowerCase();
+    if (role === 'customer') return false;
     if ($isSuperAdmin) return true;
 
     // /admin home

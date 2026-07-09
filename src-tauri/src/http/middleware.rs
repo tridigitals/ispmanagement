@@ -253,6 +253,28 @@ pub async fn security_enforcer_middleware(
     next: Next,
 ) -> Response {
     let path = request.uri().path().to_string();
+
+    // ── Customer portal guard: deny /api/admin/* ──
+    if path.starts_with("/api/admin/") {
+        let auth_header = request
+            .headers()
+            .get("Authorization")
+            .and_then(|h| h.to_str().ok())
+            .and_then(|h| h.strip_prefix("Bearer "));
+        if let Some(tok) = auth_header {
+            if let Ok(claims) = state.auth_service.validate_token(tok).await {
+                let role = claims.role.to_lowercase();
+                if role == "customer" || role == "pelanggan" {
+                    let body = Json(json!({
+                        "error": "Forbidden",
+                        "message": "Customer portal users cannot access admin endpoints"
+                    }));
+                    return (StatusCode::FORBIDDEN, body).into_response();
+                }
+            }
+        }
+    }
+
     if should_bypass_rate_limit(&path) {
         return next.run(request).await;
     }
