@@ -320,7 +320,7 @@ class _SubscriptionHeroCard extends StatelessWidget {
   }
 }
 
-// ─── Status Pills (internet status + latency/speed) ────────────
+// ─── Status Pills (internet status) ────────────
 
 class _StatusPills extends StatelessWidget {
   const _StatusPills({required this.subState});
@@ -329,6 +329,26 @@ class _StatusPills extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isp = context.isp;
+    final subs = subState.valueOrNull ?? [];
+    final activeCount = subs.where((s) => s.isActive).length;
+    final suspendedCount = subs.where((s) => s.isSuspended).length;
+
+    String statusLabel;
+    Color statusColor;
+    Color glowColor;
+    if (activeCount > 0) {
+      statusLabel = 'Internet Aktif';
+      statusColor = isp.success;
+      glowColor = isp.success;
+    } else if (suspendedCount > 0) {
+      statusLabel = 'Internet Ditangguhkan';
+      statusColor = isp.warning;
+      glowColor = isp.warning;
+    } else {
+      statusLabel = 'Tidak Ada Layanan';
+      statusColor = isp.textMuted;
+      glowColor = isp.textMuted;
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -336,7 +356,6 @@ class _StatusPills extends StatelessWidget {
         spacing: 6,
         runSpacing: 6,
         children: [
-          // "Internet Aktif" pill
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -351,17 +370,17 @@ class _StatusPills extends StatelessWidget {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: isp.success,
+                    color: statusColor,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                          color: isp.success.withOpacity(0.3), blurRadius: 8),
+                          color: glowColor.withOpacity(0.3), blurRadius: 8),
                     ],
                   ),
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'Internet Aktif',
+                  statusLabel,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -369,23 +388,6 @@ class _StatusPills extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          ),
-          // ⚡ speed pill (ponytail: hardcoded, replace with speedTestProvider)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: isp.surface,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: isp.border, width: 1),
-            ),
-            child: Text(
-              '⚡ 12ms · 50 Mbps',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: isp.textSecondary,
-              ),
             ),
           ),
         ],
