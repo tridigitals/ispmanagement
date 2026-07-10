@@ -14,12 +14,7 @@ use std::net::SocketAddr;
 
 // Helper to get token from header
 fn get_token(headers: &HeaderMap) -> Result<String, crate::error::AppError> {
-    headers
-        .get("Authorization")
-        .and_then(|h: &axum::http::HeaderValue| h.to_str().ok())
-        .and_then(|h: &str| h.strip_prefix("Bearer "))
-        .map(|s: &str| s.to_string())
-        .ok_or(crate::error::AppError::Unauthorized)
+    crate::http::extract_token(headers)
 }
 
 #[derive(serde::Serialize)]

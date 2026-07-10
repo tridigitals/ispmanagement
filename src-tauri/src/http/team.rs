@@ -42,12 +42,7 @@ fn map_team_service_error(msg: String) -> crate::error::AppError {
 
 // Helper to extract token from headers
 fn extract_token(headers: &HeaderMap) -> Result<String, crate::error::AppError> {
-    headers
-        .get("Authorization")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "))
-        .map(|s| s.to_string())
-        .ok_or_else(|| crate::error::AppError::Unauthorized)
+    crate::http::extract_token(headers)
 }
 
 /// List all team members

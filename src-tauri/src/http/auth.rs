@@ -99,14 +99,9 @@ pub async fn get_current_user(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<UserResponse>, crate::error::AppError> {
-    let auth_header = headers
-        .get("Authorization")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "))
-        .ok_or_else(|| crate::error::AppError::Unauthorized)?;
+    let auth_header = crate::http::extract_token(&headers)?;
 
-    let claims = state.auth_service.validate_token(auth_header).await?;
-    // Pass tenant_id from claims to get enriched data (role, permissions)
+    let claims = state.auth_service.validate_token(&auth_header).await?;
     let user_response = state
         .auth_service
         .get_enriched_user(&claims.sub, claims.tenant_id)

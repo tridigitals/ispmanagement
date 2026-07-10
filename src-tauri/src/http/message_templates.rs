@@ -25,12 +25,7 @@ struct MessageTemplatePreviewEnvelope {
 }
 
 fn bearer_token(headers: &HeaderMap) -> AppResult<String> {
-    headers
-        .get("Authorization")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "))
-        .map(str::to_string)
-        .ok_or(AppError::Unauthorized)
+    crate::http::extract_token(headers)
 }
 
 async fn tenant_and_permission(

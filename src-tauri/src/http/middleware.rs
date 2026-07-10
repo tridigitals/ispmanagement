@@ -57,6 +57,26 @@ impl CorrelationId {
 }
 
 pub async fn correlation_id_middleware(mut request: Request<Body>, next: Next) -> Response {
+    // ── Cookie → Authorization header promotion ──
+    // If no Authorization header present but auth_token cookie exists,
+    // inject the cookie value as a Bearer Authorization header so all
+    // downstream handlers work transparently with httpOnly cookies.
+    if !request.headers().contains_key("Authorization") {
+        if let Some(cookie_header) = request.headers().get("cookie").and_then(|h| h.to_str().ok()) {
+            for pair in cookie_header.split(';') {
+                let pair = pair.trim();
+                if let Some((name, value)) = pair.split_once('=') {
+                    if name.trim() == crate::http::AUTH_COOKIE && !value.trim().is_empty() {
+                        if let Ok(val) = axum::http::HeaderValue::from_str(&format!("Bearer {}", value.trim())) {
+                            request.headers_mut().insert("Authorization", val);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     let request_id = request
         .headers()
         .get("x-request-id")
@@ -88,13 +108,10 @@ async fn rate_limit_key_for_request(
         return Some(format!("ip:{client_ip}"));
     }
 
-    let auth_header = headers
-        .get("Authorization")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "));
+    let auth_header = crate::http::extract_token(headers).ok();
 
     if let Some(tok) = auth_header {
-        if let Ok(claims) = state.auth_service.validate_token(tok).await {
+        if let Ok(claims) = state.auth_service.validate_token(&tok).await {
             return Some(format!("user:{}", claims.sub));
         }
     }
@@ -256,13 +273,9 @@ pub async fn security_enforcer_middleware(
 
     // ── Customer portal guard: deny /api/admin/* ──
     if path.starts_with("/api/admin/") {
-        let auth_header = request
-            .headers()
-            .get("Authorization")
-            .and_then(|h| h.to_str().ok())
-            .and_then(|h| h.strip_prefix("Bearer "));
+        let auth_header = crate::http::extract_token(request.headers()).ok();
         if let Some(tok) = auth_header {
-            if let Ok(claims) = state.auth_service.validate_token(tok).await {
+            if let Ok(claims) = state.auth_service.validate_token(&tok).await {
                 let role = claims.role.to_lowercase();
                 if role == "customer" || role == "pelanggan" {
                     let body = Json(json!({

@@ -4,12 +4,7 @@ use crate::models::{CustomerEmailSendRequest, CustomerEmailSendResponse};
 use axum::{extract::State, http::HeaderMap, Json};
 
 fn get_token(headers: &HeaderMap) -> Result<String, AppError> {
-    headers
-        .get("Authorization")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "))
-        .map(str::to_string)
-        .ok_or(AppError::Unauthorized)
+    crate::http::extract_token(headers)
 }
 
 async fn authorize_customer_manage(

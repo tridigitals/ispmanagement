@@ -23,12 +23,7 @@ pub struct ListUsersQuery {
 }
 
 fn extract_token(headers: &HeaderMap) -> Result<String, crate::error::AppError> {
-    headers
-        .get("Authorization")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "))
-        .map(|s| s.to_string())
-        .ok_or(crate::error::AppError::Unauthorized)
+    crate::http::extract_token(headers)
 }
 
 pub async fn list_users(

@@ -15,13 +15,8 @@ async fn auth_claims(
     state: &super::AppState,
     headers: &HeaderMap,
 ) -> Result<crate::services::auth_service::Claims, crate::error::AppError> {
-    let token = headers
-        .get("Authorization")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "))
-        .ok_or(crate::error::AppError::Unauthorized)?;
-
-    state.auth_service.validate_token(token).await
+    let token = crate::http::extract_token(headers)?;
+    state.auth_service.validate_token(&token).await
 }
 
 #[derive(Debug, Deserialize)]
