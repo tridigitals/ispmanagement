@@ -37,10 +37,19 @@ use super::announcements_support_common::{
     support_admin_user_ids,
 };
 
-/// Internal field workers (technicians + field staff) see tickets **assigned**
-/// to them. Customers see tickets they **created**. Admins/staff see all.
-fn is_field_worker_role(role: &str) -> bool {
-    matches!(role, "technician" | "staff")
+/// Resolve tenant role name and check if user is a field worker
+/// (technician or staff). Uses tenant_members→roles lookup —
+/// NOT the `claims.role` which always equals `users.role` ("user").
+async fn is_field_worker(
+    auth_service: &crate::services::AuthService,
+    user_id: &str,
+    tenant_id: &str,
+) -> bool {
+    auth_service
+        .get_tenant_role_name(user_id, tenant_id)
+        .await
+        .map(|r| matches!(r.as_deref(), Some("Technician" | "Staff")))
+        .unwrap_or(false)
 }
 
 #[cfg(feature = "postgres")]
@@ -389,7 +398,7 @@ pub async fn list_support_tickets(
         .await?;
 
         (rows, total)
-    } else if is_field_worker_role(&claims.role) {
+    } else if is_field_worker(&state.auth_service, &claims.sub, &tenant_id).await {
         // Technician / staff: see unassigned + assigned to self + created by self
         let total: i64 = sqlx::query_scalar(
             r#"
@@ -560,7 +569,7 @@ pub async fn get_support_ticket_stats(
         .bind(&tenant_id)
         .fetch_one(&state.auth_service.pool)
         .await?
-    } else if is_field_worker_role(&claims.role) {
+    } else if is_field_worker(&state.auth_service, &claims.sub, &tenant_id).await {
         // Technician / staff: stats over tickets ASSIGNED to them OR unassigned tickets.
         sqlx::query_as(
             r#"
@@ -978,7 +987,7 @@ pub async fn reply_support_ticket(
         .await?;
 
     // Auto-assign: first staff reply on unassigned ticket → claim it
-    if ticket.assigned_to.is_none() && is_field_worker_role(&claims.role) {
+    if ticket.assigned_to.is_none() && is_field_worker(&state.auth_service, &claims.sub, &tenant_id).await {
         sqlx::query(
             "UPDATE support_tickets SET assigned_to = $1, updated_at = $2 WHERE id = $3",
         )
@@ -1099,7 +1108,7 @@ pub async fn list_support_ticket_messages(
     let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
     let is_unassigned = ticket.assigned_to.is_none();
     // Customers can only see their own tickets; field workers can also see unassigned
-    let can_see_unassigned = is_field_worker_role(&claims.role);
+    let can_see_unassigned = is_field_worker(&state.auth_service, &claims.sub, &tenant_id).await;
     if !can_all && !is_creator && !is_assignee && !(is_unassigned && can_see_unassigned) {
         return Err(crate::error::AppError::Forbidden(
             "Ticket is not assigned to you".to_string(),

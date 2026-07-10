@@ -16,11 +16,19 @@ use super::announcements_support_common::{
     normalize_category, normalize_priority, normalize_status, support_admin_user_ids,
 };
 
-/// Internal field workers (technicians + field staff) see tickets **assigned**
-/// to them. Customers see tickets they **created**. Admins/staff see all.
-/// Returns true when the role is a field-worker (not a customer/admin).
-fn is_field_worker_role(role: &str) -> bool {
-    matches!(role, "technician" | "staff")
+/// Resolve tenant role name and check if user is a field worker
+/// (technician or staff). Uses tenant_members→roles lookup —
+/// NOT the `claims.role` which always equals `users.role` ("user").
+async fn is_field_worker(
+    auth_service: &AuthService,
+    user_id: &str,
+    tenant_id: &str,
+) -> bool {
+    auth_service
+        .get_tenant_role_name(user_id, tenant_id)
+        .await
+        .map(|r| matches!(r.as_deref(), Some("Technician" | "Staff")))
+        .unwrap_or(false)
 }
 
 #[cfg(feature = "postgres")]
@@ -433,7 +441,7 @@ pub async fn get_support_ticket_stats(
         .fetch_one(&auth_service.pool)
         .await
         .map_err(|e| e.to_string())?
-    } else if is_field_worker_role(&claims.role) {
+    } else if is_field_worker(&auth_service, &claims.sub, &tenant_id).await {
         // Technician / staff: stats over tickets ASSIGNED to them OR unassigned tickets.
         sqlx::query_as(
             r#"
