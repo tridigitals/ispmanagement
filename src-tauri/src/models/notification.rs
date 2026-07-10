@@ -3,6 +3,20 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
+fn strip_html_tags(input: &str) -> String {
+    let mut output = String::with_capacity(input.len());
+    let mut inside_tag = false;
+    for c in input.chars() {
+        match c {
+            '<' => inside_tag = true,
+            '>' => inside_tag = false,
+            _ if !inside_tag => output.push(c),
+            _ => {}
+        }
+    }
+    output
+}
+
 /// Notification entity
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Notification {
@@ -19,6 +33,13 @@ pub struct Notification {
 }
 
 impl Notification {
+    /// Strip HTML tags from title and message (defense-in-depth for old data).
+    pub fn sanitize(mut self) -> Self {
+        self.title = strip_html_tags(&self.title);
+        self.message = strip_html_tags(&self.message);
+        self
+    }
+
     pub fn new(
         user_id: String,
         tenant_id: Option<String>,

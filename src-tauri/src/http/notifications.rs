@@ -79,7 +79,14 @@ async fn list_notifications(
         let filtered = list_filtered_portal_notifications(&state, &user, &claims).await?;
         paginate_notifications(&filtered, page, per_page)
     };
-    Ok(Json(result))
+    // Sanitize old notifications that may contain HTML/XSS payloads
+    let sanitized = crate::models::PaginatedResponse {
+        data: result.data.into_iter().map(|n| n.sanitize()).collect(),
+        total: result.total,
+        page: result.page,
+        per_page: result.per_page,
+    };
+    Ok(Json(sanitized))
 }
 
 // GET /api/notifications/unread-count
