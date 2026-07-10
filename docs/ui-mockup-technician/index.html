@@ -543,6 +543,134 @@ function statusbar() {
   return `<div class="statusbar"><span>9:41</span><span style="display:flex;gap:4px;align-items:center;"><span style="display:flex;width:16px;height:12px;" title="signal">${ic.wifi}</span> <span title="battery">▮▮▮▮</span></span></div>`;
 }
 
+// ═══════════════ SCREEN 0-A: ONBOARDING ═══════════════
+function onboardingScr() {
+  const pages = [
+    {icon:ic.wifi, title:'Internet Cepat', body:'Pantau kecepatan, bayar tagihan, dan laporkan gangguan — semua dari satu aplikasi.', premium:true},
+    {icon:ic.ticket, title:'Tiket & Tugas', body:'Lihat dan kelola tiket pelanggan serta work order lapangan dalam satu tempat.', premium:false},
+    {icon:ic.check, title:'Lapor Gangguan Cepat', body:'Respon tiket pelanggan langsung dari HP. Update status real-time.', premium:false},
+    {icon:ic.notif, title:'Tetap Terinformasi', body:'Aktifkan notifikasi untuk menerima update tiket dan tugas baru.', premium:false, last:true},
+  ];
+  return `
+  ${statusbar()}
+  <div style="display:flex;flex-direction:column;height:100%;background:${T.bg};">
+    <div style="display:flex;justify-content:flex-end;padding:8px 20px;">
+      <span style="font-size:13px;font-weight:600;color:${T.tx3};cursor:pointer;">Lewati</span>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 32px;">
+      ${(()=>{
+        const p=pages[0]; const sz=p.premium?140:120;
+        return `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${T.a}1F;display:flex;align-items:center;justify-content:center;box-shadow:${p.premium?'0 0 40px '+T.a+'40':''};margin-bottom:32px;">
+          <span style="display:flex;width:${p.premium?64:48}px;height:${p.premium?64:48}px;color:${T.al};">${p.icon}</span>
+        </div>
+        <div style="font-size:28px;font-weight:900;letter-spacing:-1px;color:${T.tx};text-align:center;margin-bottom:12px;">${p.title}</div>
+        <div style="font-size:14px;color:${T.tx3};text-align:center;line-height:1.6;">${p.body}</div>`;
+      })()}
+    </div>
+    <div style="display:flex;justify-content:center;gap:8px;padding:12px 0;">
+      <div style="width:24px;height:8px;border-radius:4px;background:${T.a};"></div>
+      <div style="width:8px;height:8px;border-radius:50%;background:${T.b};"></div>
+      <div style="width:8px;height:8px;border-radius:50%;background:${T.b};"></div>
+      <div style="width:8px;height:8px;border-radius:50%;background:${T.b};"></div>
+    </div>
+    <div style="padding:0 28px 28px;">
+      <div style="width:100%;padding:14px;background:${T.a};border:1.5px solid ${T.a};border-radius:${T.rmd};box-shadow:3px 3px 0 ${T.a}4D;text-align:center;font-size:14px;font-weight:700;color:#fff;cursor:pointer;">Lanjutkan</div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════ SCREEN 0-B: LOGIN ═══════════════
+function loginScr() {
+  return `
+  ${statusbar()}
+  <div style="display:flex;flex-direction:column;height:100%;background:${T.bg};justify-content:center;padding:0 28px;">
+    <div style="text-align:center;margin-bottom:36px;">
+      <div style="width:72px;height:72px;border-radius:16px;background:${T.a};display:inline-flex;align-items:center;justify-content:center;">
+        <span style="display:flex;width:36px;height:36px;color:#fff;">${ic.wifi}</span>
+      </div>
+      <div style="font-size:30px;font-weight:900;letter-spacing:-1px;color:${T.tx};margin-top:20px;">Masuk</div>
+      <div style="font-size:14px;color:${T.tx3};margin-top:4px;">Kelola tiket & tugas lapangan.</div>
+    </div>
+
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:${T.tx3};margin-bottom:8px;text-transform:uppercase;">Email atau Nomor HP</div>
+    <div class="nc" style="padding:10px 16px;border-radius:${T.rmd};box-shadow:2px 2px 0 ${T.b2};margin-bottom:16px;">
+      <input type="text" placeholder="nama@email.com atau 08xxx" style="width:100%;background:transparent;border:none;color:${T.tx};font-size:14px;font-family:'Inter',sans-serif;outline:none;" placeholder-style="color:${T.tx3}">
+    </div>
+
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:${T.tx3};margin-bottom:8px;text-transform:uppercase;">Password</div>
+    <div class="nc" style="padding:10px 16px;border-radius:${T.rmd};box-shadow:2px 2px 0 ${T.b2};display:flex;align-items:center;margin-bottom:8px;">
+      <input type="password" value="rahasia123" style="flex:1;background:transparent;border:none;color:${T.tx};font-size:14px;font-family:'Inter',sans-serif;outline:none;">
+      <span style="color:${T.tx3};display:flex;width:20px;height:20px;cursor:pointer;">${ic.info}</span>
+    </div>
+
+    <div style="text-align:right;margin-bottom:24px;">
+      <span style="font-size:13px;font-weight:600;color:${T.al};cursor:pointer;">Lupa password?</span>
+    </div>
+
+    <div style="width:100%;padding:14px;background:${T.a};border:1.5px solid ${T.a};border-radius:${T.rmd};box-shadow:3px 3px 0 ${T.a}4D;text-align:center;font-size:14px;font-weight:700;color:#fff;cursor:pointer;">Masuk</div>
+
+    <div style="display:flex;flex-direction:column;align-items:center;margin-top:24px;">
+      <div style="width:48px;height:48px;border-radius:50%;border:1.5px solid ${T.b};display:flex;align-items:center;justify-content:center;color:${T.a};cursor:pointer;">${ic.person}</div>
+      <div style="font-size:13px;color:${T.tx3};margin-top:8px;">Login dengan sidik jari</div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════ SCREEN 0-C: FORGOT PASSWORD ═══════════════
+function forgotScr() {
+  return `
+  <div style="display:flex;align-items:center;padding:8px 20px 12px;flex-shrink:0;">
+    <div style="width:36px;height:36px;cursor:pointer;color:${T.tx2};display:flex;align-items:center;">←</div>
+    <div style="font-size:18px;font-weight:800;color:${T.tx};margin-left:8px;">Lupa Password</div>
+  </div>
+  <div class="content" style="padding-top:20px;">
+    <div style="font-size:13px;color:${T.tx3};line-height:1.5;margin-bottom:28px;">Masukkan email terdaftar. Kami akan kirim kode verifikasi.</div>
+
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:${T.tx3};margin-bottom:8px;text-transform:uppercase;">Email</div>
+    <div class="nc" style="padding:10px 16px;border-radius:${T.rmd};box-shadow:2px 2px 0 ${T.b2};margin-bottom:16px;">
+      <input type="text" placeholder="nama@email.com" style="width:100%;background:transparent;border:none;color:${T.tx};font-size:14px;font-family:'Inter',sans-serif;outline:none;" placeholder-style="color:${T.tx3}">
+    </div>
+
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:${T.tx3};margin-bottom:8px;text-transform:uppercase;">Alasan (opsional)</div>
+    <div class="nc" style="padding:10px 16px;border-radius:${T.rmd};box-shadow:2px 2px 0 ${T.b2};margin-bottom:28px;">
+      <textarea placeholder="Jelaskan alasan reset..." style="width:100%;background:transparent;border:none;color:${T.tx};font-size:14px;font-family:'Inter',sans-serif;outline:none;resize:none;height:60px;" placeholder-style="color:${T.tx3}"></textarea>
+    </div>
+
+    <div style="width:100%;padding:14px;background:${T.a};border:1.5px solid ${T.a};border-radius:${T.rmd};box-shadow:3px 3px 0 ${T.a}4D;text-align:center;font-size:14px;font-weight:700;color:#fff;cursor:pointer;">Kirim Kode</div>
+
+    <div style="text-align:center;margin-top:16px;">
+      <span style="font-size:13px;font-weight:600;color:${T.tx2};cursor:pointer;">Kembali ke login</span>
+    </div>
+  </div>`;
+}
+
+// ═══════════════ SCREEN 0-D: OTP VERIFICATION ═══════════════
+function otpScr() {
+  return `
+  <div style="display:flex;align-items:center;padding:8px 20px 12px;flex-shrink:0;">
+    <div style="width:36px;height:36px;cursor:pointer;color:${T.tx2};display:flex;align-items:center;">←</div>
+    <div style="font-size:18px;font-weight:800;color:${T.tx};margin-left:8px;">Verifikasi</div>
+  </div>
+  <div class="content" style="padding-top:20px;display:flex;flex-direction:column;align-items:center;">
+    <div style="width:64px;height:64px;border-radius:50%;background:${T.a}1F;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
+      <span style="display:flex;width:28px;height:28px;color:${T.al};">${ic.lock}</span>
+    </div>
+    <div style="font-size:18px;font-weight:700;color:${T.tx};margin-bottom:4px;">Masukkan Kode</div>
+    <div style="font-size:13px;color:${T.tx3};margin-bottom:32px;text-align:center;">Kode 6 digit dikirim ke email Anda</div>
+
+    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:32px;">
+      ${[1,2,3,4,5,6].map(()=>`<div class="nc-inset" style="width:44px;height:52px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:${T.tx};border-radius:${T.rsm};">•</div>`).join('')}
+    </div>
+
+    <div style="width:100%;padding:14px;background:${T.a};border:1.5px solid ${T.a};border-radius:${T.rmd};box-shadow:3px 3px 0 ${T.a}4D;text-align:center;font-size:14px;font-weight:700;color:#fff;cursor:pointer;">Verifikasi</div>
+
+    <div style="text-align:center;margin-top:20px;">
+      <span style="font-size:13px;color:${T.tx3};">Tidak menerima kode? </span>
+      <span style="font-size:13px;font-weight:600;color:${T.al};cursor:pointer;">Kirim ulang</span>
+    </div>
+  </div>`;
+}
+
 // === INACTIVE HOME SCREENS (empty state variant) ===
 function homeEmptyScr() {
   return `
@@ -569,6 +697,10 @@ function homeEmptyScr() {
 
 // === RENDER ALL ===
 const screens = [
+  { id:'onboarding', fn:onboardingScr, label:'Onboarding' },
+  { id:'login', fn:loginScr, label:'Login' },
+  { id:'forgot', fn:forgotScr, label:'Forgot Password' },
+  { id:'otp', fn:otpScr, label:'OTP Verification' },
   { id:'home', fn:homeScr, label:'Home — Dashboard' },
   { id:'tickets', fn:ticketsScr, label:'Tickets — List' },
   { id:'wo', fn:workOrdersScr, label:'Work Orders — List' },
