@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Technician App UI Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0A0A0F;
+  --surface: #141419;
+  --surface2: #1C1C24;
+  --border: #2A2A35;
+  --border2: #222230;
+  --accent: #6C5CE7;
+  --accent-light: #A29BFE;
+  --accent-12: rgba(108,92,231,0.12);
+  --accent-8: rgba(108,92,231,0.08);
+  --text: #F0F0F5;
+  --text2: #8888A0;
+  --text3: #55556A;
+  --green: #00D2A0;
+  --amber: #FFB347;
+  --red: #FF6B6B;
+  --rxl: 20px;
+  --rmd: 16px;
+  --rsm: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #050508; font-family: 'Inter', sans-serif; padding: 40px 20px; }
+.container { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+
+.phone {
+  width: 375px; height: 812px;
+  background: var(--bg);
+  border-radius: 44px;
+  overflow: hidden;
+  box-shadow: 0 40px 80px rgba(0,0,0,.6), 0 0 0 2px #222;
+  position: relative;
+  display: flex; flex-direction: column;
+}
+
+.notch {
+  width: 120px; height: 30px;
+  background: #000;
+  border-radius: 0 0 20px 20px;
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  z-index: 10;
+}
+
+.statusbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 24px 8px;
+  font-size: 12px; font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+/* ========== NEUBRUTAL CARD ========== */
+.nc {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--rxl);
+  box-shadow: 3px 3px 0 var(--border2);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.nc:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--border2); }
+.nc-inset {
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--rmd);
+}
+
+/* ========== TYPOGRAPHY ========== */
+.h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); }
+.h2 { font-size: 17px; font-weight: 700; color: var(--text); }
+.body { font-size: 14px; color: var(--text2); }
+.small { font-size: 12px; color: var(--text3); }
+.mono { font-family: 'SF Mono', 'Fira Code', monospace; }
+
+/* ========== SCREEN CONTENT ========== */
+.content { flex: 1; overflow-y: auto; padding: 0 20px 16px; scrollbar-width: none; }
+.content::-webkit-scrollbar { display: none; }
+
+/* ========== FLOATING GLASS NAV ========== */
+.fnav-wrap {
+  position: absolute; bottom: 12px; left: 20px; right: 20px; z-index: 5;
+}
+.fnav {
+  display: flex;
+  background: rgba(20,20,25,0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 999px;
+  border: 1.5px solid rgba(42,42,53,0.6);
+  padding: 6px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.4);
+}
+.fnav .item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  padding: 8px 0; border-radius: 999px; cursor: pointer;
+  transition: background .2s;
+  position: relative;
+}
+.fnav .item.sel { background: var(--accent-12); }
+.fnav .item svg { width: 22px; height: 22px; transition: color .2s; }
+.fnav .item span { font-size: 10px; font-weight: 500; margin-top: 2px; }
+.fnav .dot {
+  width: 5px; height: 5px; border-radius: 50%; margin-top: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  transition: opacity .25s;
+}
+
+/* ========== ICONS ========== */
+.icon-wrap {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ========== STATUS PILLS ========== */
+.pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 11px; font-weight: 600;
+}
+.pill-g { background: rgba(0,210,160,0.12); color: var(--green); }
+.pill-a { background: rgba(255,179,71,0.12); color: var(--amber); }
+.pill-r { background: rgba(255,107,107,0.12); color: var(--red); }
+.pill-p { background: var(--accent-12); color: var(--accent-light); }
+
+/* ========== FILTER CHIPS ========== */
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; scrollbar-width: none; }
+.chip {
+  padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  white-space: nowrap; cursor: pointer;
+  border: 1px solid var(--border); color: var(--text3);
+  transition: all .2s;
+}
+.chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ========== TICKET/WO CARD ========== */
+.task-card {
+  padding: 16px; cursor: pointer;
+}
+.task-card .row { display: flex; justify-content: space-between; align-items: flex-start; }
+.task-card .id { font-size: 11px; color: var(--text3); font-weight: 600; }
+.task-card .title { font-size: 14px; font-weight: 600; color: var(--text); margin: 4px 0 8px; line-height: 1.3; }
+.task-card .meta { display: flex; gap: 16px; font-size: 11px; color: var(--text3); }
+.task-card .meta-item { display: flex; align-items: center; gap: 4px; }
+
+/* ========== CHAT BUBBLES ========== */
+.chat-msg { display: flex; gap: 8px; margin-bottom: 12px; }
+.chat-msg.me { flex-direction: row-reverse; }
+.chat-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.chat-bubble {
+  max-width: 75%; padding: 10px 14px; border-radius: 16px;
+  font-size: 13px; line-height: 1.5;
+}
+.chat-msg.other .chat-bubble {
+  background: var(--surface); color: var(--text);
+  border-bottom-left-radius: 4px; border: 1px solid var(--border);
+}
+.chat-msg.me .chat-bubble {
+  background: var(--accent); color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.chat-msg.system .chat-bubble {
+  background: transparent; color: var(--text3); font-size: 11px;
+  text-align: center; max-width: 100%; padding: 4px;
+}
+.chat-time { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+/* ========== PROFILE ========== */
+.profile-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px;
+}
+.profile-item .icon-bg {
+  width: 38px; height: 38px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ========== SECTION HEADER ========== */
+.section-head { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+
+/* ========== DIVIDER ========== */
+.div { height: 1px; background: var(--border); margin: 0 16px; }
+
+/* ========== SKELETON ========== */
+@keyframes shimmer { 0% { opacity: 0.4; } 50% { opacity: 0.8; } 100% { opacity: 0.4; } }
+.skel { background: var(--surface); border-radius: var(--rmd); animation: shimmer 1.5s infinite; border: 1px solid var(--border); }
+
+/* ========== EMPTY STATE ========== */
+.empty { text-align: center; padding: 40px 20px; }
+.empty svg { opacity: 0.3; margin-bottom: 12px; }
+.empty .h2 { margin-bottom: 4px; }
+
+/* ========== ACCENT LINE (top of hero cards) ========== */
+.accent-line {
+  height: 3px; background: var(--accent);
+  border-radius: var(--rxl) var(--rxl) 0 0;
+}
+
+/* ========== HEADER ICON BTN ========== */
+.hdr-btn {
+  width: 42px; height: 42px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; position: relative;
+}
+.badge {
+  position: absolute; top: -4px; right: -4px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--red); border: 2px solid var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 800; color: #fff;
+}
+</style>
+</head>
+<body>
+
+<div class="container" id="container"></div>
+
+<script>
+// === DESIGN TOKENS ===
+const T = {
+  bg:'#0A0A0F', s:'#141419', s2:'#1C1C24', b:'#2A2A35', b2:'#222230',
+  a:'#6C5CE7', al:'#A29BFE', tx:'#F0F0F5', tx2:'#8888A0', tx3:'#55556A',
+  g:'#00D2A0', am:'#FFB347', r:'#FF6B6B'
+};
+
+// === SVG ICONS (lucide-style, 24x24 viewBox) ===
+const ic = {
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  ticket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 9V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4"/><path d="M2 13v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6"/><path d="M22 9v4H2V9"/><line x1="6" y1="13" x2="12" y2="13"/></svg>',
+  build: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+  notif: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+  person: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+  stats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  today: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  map: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  flash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+  logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  beach: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 9V5a3 3 0 0 0-6 0v4"/><path d="M20 9V5a3 3 0 0 0-6 0v4"/><path d="M10 9a6 6 0 0 0 12 0"/><path d="M6 13l3 3"/><path d="M18 13l-3 3"/></svg>',
+  send: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3.4 20.4 21 12 3.4 3.6 3 10.2l9 1.8-9 1.8z"/></svg>',
+  paperclip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>',
+  chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>',
+  wifi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>',
+};
+
+// === NAVIGATION BAR (shared) ===
+function fnav(sel) {
+  return `<div class="fnav-wrap"><div class="fnav">${[
+    {id:'home', icon:ic.home, label:'Beranda'},
+    {id:'tickets', icon:ic.ticket, label:'Tiket'},
+    {id:'wo', icon:ic.build, label:'Tugas'},
+  ].map((d,i)=>{
+    const s = d.id===sel;
+    return `<div class="item${s?' sel':''}" style="color:${s?T.al:T.tx3}">
+      ${d.icon}<span>${d.label}</span>
+      <div class="dot" style="opacity:${s?1:0}"></div>
+    </div>`;
+  }).join('')}</div></div>`;
+}
+
+// === HEADER (shared, compact no-AppBar) ===
+function header(title, subtitle, unread) {
+  const parts = title.split(', ');
+  const greeting = parts.length>1 ? parts[0] : '';
+  const name = parts.length>1 ? parts.slice(1).join(', ') : title;
+  return `<div style="display:flex;align-items:flex-start;padding:8px 0 12px;flex-shrink:0;margin:0 20px;">
+    <div style="flex:1">
+      <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:${T.tx3};text-transform:uppercase;">${greeting}</div>
+      <div style="font-size:26px;font-weight:800;letter-spacing:-0.5px;color:${T.tx};margin-top:2px;">${name}</div>
+      ${subtitle?`<div style="font-size:13px;color:${T.tx3};margin-top:2px;">${subtitle}</div>`:''}
+    </div>
+    <div style="display:flex;gap:8px;">
+      <div class="hdr-btn">${ic.notif}${unread>0?`<div class="badge">${unread>9?'9+':unread}</div>`:''}</div>
+      <div class="hdr-btn">${ic.person}</div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════ SCREEN 1: HOME TAB ═══════════════
+function homeScr() {
+  return `
+  ${statusbar()}
+  ${header('Halo, Budi 👋', 'Jumat, 11 Juli 2025')}
+  <div class="content">
+    <!-- Quick Stats Row -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      ${statCard(ic.ticket, 12, 'Tiket Aktif', T.am)}
+      ${statCard(ic.build, 5, 'Tugas Aktif', T.a)}
+      ${statCard(ic.today, 3, 'Hari Ini', T.g)}
+    </div>
+
+    <!-- Tasks Today -->
+    <div class="section-head">
+      <span style="color:${T.a};display:flex;">${ic.flash}</span>
+      <span class="h2">Tugas Hari Ini</span>
+      <span style="flex:1"></span>
+      <span style="font-size:12px;font-weight:600;color:${T.a};cursor:pointer;">Lihat Semua &rarr;</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${woCard({id:'WO-0042', title:'Pasang Baru — Fiber Optik', status:'in_progress', time:'09:00', addr:'Jl. Mangga No. 12'})}
+      ${woCard({id:'WO-0039', title:'Maintenance Rutin — Node B', status:'assigned', time:'11:30', addr:'Jl. Durian Raya No. 5'})}
+      ${woCard({id:'WO-0035', title:'Gangguan — Tidak Connect', status:'assigned', time:'14:00', addr:'Jl. Apel No. 88'})}
+    </div>
+  </div>
+  ${fnav('home')}`;
+}
+
+function statCard(icon, count, label, color) {
+  return `<div class="nc" style="flex:1;padding:14px 10px;text-align:center;">
+    <div class="icon-wrap" style="background:${color}1F;margin:0 auto 8px;color:${color};">${icon}</div>
+    <div style="font-size:22px;font-weight:800;color:${T.tx};line-height:1;">${count}</div>
+    <div style="font-size:11px;font-weight:500;color:${T.tx3};margin-top:2px;">${label}</div>
+  </div>`;
+}
+
+function woCard(wo) {
+  const statusMap = {
+    'assigned': {cls:'pill-p', label:'Ditugaskan'},
+    'in_progress': {cls:'pill-a', label:'Dalam Proses'},
+    'completed': {cls:'pill-g', label:'Selesai'},
+    'pending': {cls:'', label:'Pending', color:T.tx3}
+  };
+  const s = statusMap[wo.status] || statusMap.pending;
+  return `<div class="nc task-card">
+    <div class="row">
+      <div>
+        <span class="id">${wo.id}</span>
+        <div class="title">${wo.title}</div>
+        <div class="meta">
+          <span class="meta-item"><span style="display:flex;width:14px;height:14px;color:${T.tx3}">${ic.clock}</span> ${wo.time}</span>
+          <span class="meta-item"><span style="display:flex;width:14px;height:14px;color:${T.tx3}">${ic.map}</span> ${wo.addr}</span>
+        </div>
+      </div>
+      <span class="pill ${s.cls}" style="${s.color?`color:${s.color};border:1px solid ${T.b}`:''}">${s.label}</span>
+    </div>
+  </div>`;
+}
+
+// ═══════════════ SCREEN 2: TICKETS TAB ═══════════════
+function ticketsScr() {
+  return `
+  ${statusbar()}
+  ${header('Tiket', '', 3)}
+  <div class="content">
+    <div class="chips" style="margin-bottom:12px;">
+      <div class="chip on">Semua</div>
+      <div class="chip">Terbuka</div>
+      <div class="chip">Menunggu</div>
+      <div class="chip">Selesai</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${ticketCard({id:'TKT-0156', title:'Internet lemot dari pagi', customer:'Bpk. Ahmad', status:'open', time:'2 jam lalu', unread:true})}
+      ${ticketCard({id:'TKT-0154', title:'TV kabel tidak ada sinyal', customer:'Ibu Sari', status:'pending', time:'5 jam lalu', unread:false})}
+      ${ticketCard({id:'TKT-0151', title:'Minta upgrade speed 50Mbps', customer:'Bpk. Rudi', status:'closed', time:'1 hari lalu', unread:false})}
+      ${ticketCard({id:'TKT-0149', title:'Router sering restart', customer:'Ibu Dewi', status:'open', time:'2 hari lalu', unread:false})}
+    </div>
+  </div>
+  ${fnav('tickets')}`;
+}
+
+function ticketCard(t) {
+  const sMap = {open:{cls:'pill-r',l:'Terbuka'},pending:{cls:'pill-a',l:'Menunggu'},closed:{cls:'pill-g',l:'Selesai'}};
+  const s = sMap[t.status];
+  return `<div class="nc task-card">
+    <div class="row">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="id" style="${t.unread?'color:'+T.a+';font-weight:700':''}">${t.id}</span>
+          ${t.unread?'<span style="width:8px;height:8px;border-radius:50%;background:'+T.a+';box-shadow:0 0 6px '+T.a+';flex-shrink:0;"></span>':''}
+        </div>
+        <div class="title">${t.title}</div>
+        <div class="meta">
+          <span class="meta-item"><span style="display:flex;width:14px;height:14px;color:${T.tx3}">${ic.user}</span> ${t.customer}</span>
+          <span class="meta-item"><span style="display:flex;width:14px;height:14px;color:${T.tx3}">${ic.clock}</span> ${t.time}</span>
+        </div>
+      </div>
+      <span class="pill ${s.cls}">${s.l}</span>
+    </div>
+  </div>`;
+}
+
+// ═══════════════ SCREEN 3: WORK ORDERS TAB ═══════════════
+function workOrdersScr() {
+  return `
+  ${statusbar()}
+  ${header('Tugas Kerja', '', 2)}
+  <div class="content">
+    <div class="chips" style="margin-bottom:12px;">
+      <div class="chip on">Semua</div>
+      <div class="chip">Pending</div>
+      <div class="chip">Ditugaskan</div>
+      <div class="chip">Proses</div>
+      <div class="chip">Selesai</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${woCard({id:'WO-0042', title:'Pasang Baru — Fiber Optik', status:'in_progress', time:'09:00 - 12:00', addr:'Jl. Mangga No. 12'})}
+      ${woCard({id:'WO-0039', title:'Maintenance Rutin — Node B', status:'assigned', time:'11:30 - 13:00', addr:'Jl. Durian Raya No. 5'})}
+      ${woCard({id:'WO-0035', title:'Gangguan — Tidak Connect', status:'assigned', time:'14:00 - 16:00', addr:'Jl. Apel No. 88'})}
+      ${woCard({id:'WO-0030', title:'Upgrade Speed — 100Mbps', status:'completed', time:'10 Jul', addr:'Jl. Nangka No. 3'})}
+      ${woCard({id:'WO-0028', title:'Ganti Kabel Dropcore', status:'completed', time:'9 Jul', addr:'Jl. Salak No. 7'})}
+    </div>
+  </div>
+  ${fnav('wo')}`;
+}
+
+// ═══════════════ SCREEN 4: TICKET DETAIL (CHAT) ═══════════════
+function ticketDetailScr() {
+  return `
+  ${statusbar()}
+  <div style="display:flex;align-items:center;padding:8px 12px 12px;flex-shrink:0;">
+    <div style="width:36px;height:36px;cursor:pointer;color:${T.tx2};display:flex;align-items:center;">←</div>
+    <div style="flex:1;margin-left:8px;">
+      <div style="font-size:16px;font-weight:700;color:${T.tx};">TKT-0156</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:2px;">
+        <span class="pill pill-r">Terbuka</span>
+        <span style="font-size:12px;color:${T.tx3};">Bpk. Ahmad</span>
+      </div>
+    </div>
+  </div>
+  <div class="content">
+    <!-- Chat messages -->
+    <div class="chat-msg other">
+      <div class="chat-avatar" style="background:${T.s2};">A</div>
+      <div>
+        <div class="chat-bubble">Halo pak, internet saya dari tadi pagi lemot banget. Bisa dibantu?</div>
+        <div class="chat-time">08:45</div>
+      </div>
+    </div>
+    <div class="chat-msg me">
+      <div class="chat-avatar" style="background:${T.a};">B</div>
+      <div>
+        <div class="chat-bubble">Selamat pagi, Pak Ahmad. Saya cek dulu ya. Apakah semua perangkat lemot atau hanya tertentu?</div>
+        <div class="chat-time" style="text-align:right;">09:02</div>
+      </div>
+    </div>
+    <div class="chat-msg other">
+      <div class="chat-avatar" style="background:${T.s2};">A</div>
+      <div>
+        <div class="chat-bubble">Semua perangkat, pak. HP, laptop, TV semua lambat.</div>
+        <div class="chat-time">09:05</div>
+      </div>
+    </div>
+    <div class="chat-msg system">
+      <div class="chat-bubble">🔧 Work Order WO-0042 dibuat — Budi ditugaskan</div>
+    </div>
+    <div class="chat-msg me">
+      <div class="chat-avatar" style="background:${T.a};">B</div>
+      <div>
+        <div class="chat-bubble">Baik, saya sudah buat work order. Saya akan cek ke lapangan siang ini ya Pak.</div>
+        <div class="chat-time" style="text-align:right;">09:10</div>
+      </div>
+    </div>
+
+    <!-- Attachment preview -->
+    <div style="display:flex;gap:8px;margin:8px 0 4px 40px;">
+      <div class="nc-inset" style="padding:8px 12px;display:flex;align-items:center;gap:8px;font-size:12px;color:${T.tx2};">
+        <span style="display:flex;width:16px;height:16px;">${ic.paperclip}</span> speedtest.jpg
+      </div>
+    </div>
+  </div>
+  <!-- Chat Input -->
+  <div style="padding:12px 20px;border-top:1px solid ${T.b};display:flex;align-items:center;gap:10px;flex-shrink:0;background:${T.bg};">
+    <div style="color:${T.tx3};display:flex;width:22px;height:22px;cursor:pointer;">${ic.paperclip}</div>
+    <div style="flex:1;background:${T.s};border:1px solid ${T.b};border-radius:999px;padding:10px 16px;font-size:13px;color:${T.tx3};">Ketik pesan...</div>
+    <div style="width:38px;height:38px;border-radius:50%;background:${T.a};display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;">${ic.send}</div>
+  </div>`;
+}
+
+// ═══════════════ SCREEN 5: PROFILE ═══════════════
+function profileScr() {
+  return `
+  <div style="display:flex;align-items:center;padding:8px 20px 12px;flex-shrink:0;">
+    <div style="width:36px;height:36px;cursor:pointer;color:${T.tx2};display:flex;align-items:center;">←</div>
+    <div style="font-size:18px;font-weight:600;color:${T.tx};margin-left:8px;">Profil</div>
+  </div>
+  <div class="content">
+    <!-- Avatar -->
+    <div style="display:flex;flex-direction:column;align-items:center;padding:20px 0 24px;">
+      <div style="width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,${T.a},${T.al});display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:800;color:#fff;">B</div>
+      <div style="font-size:18px;font-weight:700;color:${T.tx};margin-top:12px;">Budi Santoso</div>
+      <div style="font-size:13px;color:${T.tx3};margin-top:2px;">budi@isp.co.id</div>
+      <div style="margin-top:10px;"><span class="pill pill-p">Teknisi Lapangan</span></div>
+    </div>
+
+    <!-- Menu items -->
+    <div class="nc" style="overflow:hidden;">
+      <div class="profile-item" style="cursor:pointer;">
+        <div class="icon-bg" style="background:${T.a}1F;color:${T.a};">${ic.edit}</div>
+        <div style="flex:1;font-size:14px;font-weight:500;color:${T.tx};">Edit Profil</div>
+        <span style="color:${T.tx3};display:flex;width:18px;height:18px;">${ic.chevron}</span>
+      </div>
+      <div class="div"></div>
+      <div class="profile-item" style="cursor:pointer;">
+        <div class="icon-bg" style="background:${T.g}1F;color:${T.g};">${ic.check}</div>
+        <div style="flex:1;font-size:14px;font-weight:500;color:${T.tx};">Riwayat Tugas Selesai</div>
+        <span style="color:${T.tx3};display:flex;width:18px;height:18px;">${ic.chevron}</span>
+      </div>
+      <div class="div"></div>
+      <div class="profile-item" style="cursor:pointer;">
+        <div class="icon-bg" style="background:${T.am}1F;color:${T.am};">${ic.lock}</div>
+        <div style="flex:1;font-size:14px;font-weight:500;color:${T.tx};">Ganti Password</div>
+        <span style="color:${T.tx3};display:flex;width:18px;height:18px;">${ic.chevron}</span>
+      </div>
+      <div class="div"></div>
+      <div class="profile-item" style="cursor:pointer;">
+        <div class="icon-bg" style="background:${T.a}1F;color:${T.a};">${ic.info}</div>
+        <div style="flex:1;font-size:14px;font-weight:500;color:${T.tx};">Tentang Aplikasi</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:12px;color:${T.tx3};">v0.1.0</span>
+          <span style="color:${T.tx3};display:flex;width:18px;height:18px;">${ic.chevron}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logout -->
+    <div class="nc" style="margin-top:12px;overflow:hidden;">
+      <div class="profile-item" style="cursor:pointer;">
+        <div class="icon-bg" style="background:${T.r}1F;color:${T.r};">${ic.logout}</div>
+        <div style="flex:1;font-size:14px;font-weight:600;color:${T.r};">Keluar</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function statusbar() {
+  return `<div class="statusbar"><span>9:41</span><span style="display:flex;gap:4px;align-items:center;"><span style="display:flex;width:16px;height:12px;" title="signal">${ic.wifi}</span> <span title="battery">▮▮▮▮</span></span></div>`;
+}
+
+// === INACTIVE HOME SCREENS (empty state variant) ===
+function homeEmptyScr() {
+  return `
+  ${statusbar()}
+  ${header('Halo, Budi 👋', 'Jumat, 11 Juli 2025')}
+  <div class="content">
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      ${statCard(ic.ticket, 0, 'Tiket Aktif', T.am)}
+      ${statCard(ic.build, 0, 'Tugas Aktif', T.a)}
+      ${statCard(ic.today, 0, 'Hari Ini', T.g)}
+    </div>
+    <div class="section-head">
+      <span style="color:${T.a};display:flex;">${ic.flash}</span>
+      <span class="h2">Tugas Hari Ini</span>
+    </div>
+    <div class="nc" style="padding:32px;text-align:center;">
+      <div style="display:flex;justify-content:center;color:${T.tx3};opacity:0.3;margin-bottom:12px;">${ic.beach}</div>
+      <div class="h2" style="margin-bottom:4px;">Tidak ada tugas hari ini</div>
+      <div class="small">Nikmati hari santai Anda 🏖️</div>
+    </div>
+  </div>
+  ${fnav('home')}`;
+}
+
+// === RENDER ALL ===
+const screens = [
+  { id:'home', fn:homeScr, label:'Home — Dashboard' },
+  { id:'tickets', fn:ticketsScr, label:'Tickets — List' },
+  { id:'wo', fn:workOrdersScr, label:'Work Orders — List' },
+  { id:'detail', fn:ticketDetailScr, label:'Ticket Detail — Chat' },
+  { id:'profile', fn:profileScr, label:'Profile' },
+];
+
+let html = '';
+screens.forEach((s,i) => {
+  html += `<div style="text-align:center;margin-bottom:16px;">
+    <div style="color:var(--text2);font-size:13px;font-weight:600;margin-bottom:12px;">${i+1}. ${s.label}</div>
+    <div class="phone" id="phone-${s.id}">
+      <div class="notch"></div>
+      ${s.fn()}
+    </div>
+  </div>`;
+});
+
+document.getElementById('container').innerHTML = html;
+</script>
+
+</body>
+</html>
