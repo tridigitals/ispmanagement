@@ -25,6 +25,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _identifierCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
   late final IspThemeColors isp;
 
   @override
@@ -32,7 +33,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.didChangeDependencies();
     isp = context.isp;
   }
-  final _passwordCtrl = TextEditingController();
+
   bool _obscure = true;
   bool _show2fa = false;
   bool _show2faSetup = false;
@@ -44,13 +45,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _tempToken;
   final _codeCtrl = TextEditingController();
   final _setupCodeCtrl = TextEditingController();
-  // Biometric button visibility: only true when ALL preconditions pass
-  // (biometric enabled in storage + has session token + device supports it).
-  // Set to false on first install / cleared storage / no prior login.
   bool _biometricAvailable = false;
-  // Marks that we've already run the auto-prompt (so initState postFrame
-  // callback doesn't loop forever). Independent of availability — even when
-  // checks fail, we still want to skip the auto-prompt on rebuilds.
   bool _biometricAttempted = false;
   bool _biometricLoading = false;
 
@@ -66,89 +61,63 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Auto-prompt fingerprint after build completes
     WidgetsBinding.instance.addPostFrameCallback((_) => _tryBiometricLogin());
   }
 
   Future<void> _tryBiometricLogin() async {
     if (_biometricAttempted) return;
-
-    // Wait for biometric provider to finish loading
     await ref.read(biometricEnabledProvider.future);
-
-    // Check if biometric is enabled — first install OR user never enabled
-    // biometric → button stays hidden forever (no point showing it).
     final biometricEnabled =
         ref.read(biometricEnabledProvider).valueOrNull ?? false;
     if (!biometricEnabled) {
-      _biometricAttempted = true; // skip auto-prompt on rebuild
+      _biometricAttempted = true;
       return;
     }
-
-    // Check if there's a stored session (token) — required to restore login.
-    // If user logged out and cleared token, button stays hidden.
     final authSvc = ref.read(authServiceProvider);
     final hasSession = await authSvc.hasSession();
     if (!hasSession) {
       _biometricAttempted = true;
       return;
     }
-
-    // Check device supports biometric hardware.
-    final auth = LocalAuthentication();
-    final canCheck = await auth.canCheckBiometrics;
-    if (!canCheck) {
-      _biometricAttempted = true;
-      return;
-    }
-
-    if (!mounted) return;
-
-    // All checks passed — biometric IS available. Show the button AND
-    // auto-prompt the user.
-    _biometricAttempted = true;
-    setState(() {
-      _biometricAvailable = true;
-      _biometricLoading = true;
-    });
-
     try {
-      final ok = await auth.authenticate(
-        localizedReason: 'Gunakan fingerprint untuk login',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: true,
-        ),
-      );
-
-      if (!ok || !mounted) {
-        setState(() => _biometricLoading = false);
-        return;
-      }
-
-      // Fingerprint verified — restore session from stored token
-      final restored =
-          await ref.read(authControllerProvider.notifier).bootstrap();
-
-      if (mounted) {
-        if (restored) {
-          ref.read(fcmServiceProvider).clearPendingAction();
-          context.go('/loading');
-        } else {
-          // Token ada tapi /me gagal (expired/network). Minta user login manual.
-          setState(() {
-            _biometricLoading = false;
-            _biometricAttempted = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Sesi berakhir. Silakan login ulang dengan email & password.',
-              ),
-              duration: Duration(seconds: 4),
-            ),
-          );
+      final available = await LocalAuthentication().canCheckBiometrics;
+      if (available) {
+        setState(() => _biometricAvailable = true);
+        _biometricLoading = true;
+        final ok = await LocalAuthentication().authenticate(
+          localizedReason: 'Gunakan fingerprint untuk masuk',
+          options: const AuthenticationOptions(
+            stickyAuth: true,
+            biometricOnly: true,
+          ),
+        );
+        if (!ok || !mounted) {
+          setState(() => _biometricLoading = false);
+          return;
         }
+        final restored =
+            await ref.read(authControllerProvider.notifier).bootstrap();
+        if (mounted) {
+          if (restored) {
+            ref.read(fcmServiceProvider).clearPendingAction();
+            context.go('/loading');
+          } else {
+            setState(() {
+              _biometricLoading = false;
+              _biometricAttempted = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Sesi berakhir. Silakan login ulang dengan email & password.',
+                ),
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+        }
+      } else {
+        _biometricAttempted = true;
       }
     } catch (e) {
       if (mounted) setState(() => _biometricLoading = false);
@@ -253,10 +222,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
       final res = await dio.post<Map<String, dynamic>>(endpoint, data: payload);
       final authResponse = AuthResponse.fromJson(res.data ?? const {});
-      // apply() enforces customer-only role. If the server returned a
-      // non-customer user (e.g. staff trying to enroll 2FA via this APK),
-      // apply() will return Failure and we must NOT navigate to home —
-      // just show the rejection message in the snackbar.
       final applied =
           await ref.read(authControllerProvider.notifier).apply(authResponse);
       if (applied is Failure<bool>) {
@@ -295,8 +260,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
     switch (res) {
       case Success(:final data):
-        // apply() enforces customer-only role. Surface role-rejection
-        // message via snackbar; do NOT navigate to home.
         final applied =
             await ref.read(authControllerProvider.notifier).apply(data);
         if (applied is Failure<bool>) {
@@ -321,152 +284,128 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  // ─── Neubrutalist decoration helpers ──────────────────────────
+
   @override
   Widget build(BuildContext context) {
-
-
     final l10n = AppLocalizations.of(context);
     final loading = ref.watch(authControllerProvider).isLoading;
     return Scaffold(
+      backgroundColor: isp.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 48),
             child: Form(
               key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const _BrandHeader(),
-                  const SizedBox(height: 32),
-                  if (_show2faSetup) ...[
-                    _build2FASetupUI(),
-                  ] else if (_show2fa) ...[
+                  if (_show2faSetup)
+                    _build2FASetupUI()
+                  else if (_show2fa)
+                    _build2FAInlineUI(l10n)
+                  else ...[
+                    // ─── Solid purple square logo (no gradient) ───
+                    _BrandLogo(isp: isp),
+                    const SizedBox(height: 36),
+                    // ─── Title ───
                     Text(
-                      l10n.enter2faCode,
-                      style: Theme.of(context).textTheme.titleMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    TextField(
-                      controller: _codeCtrl,
-                      maxLength: 6,
-                      keyboardType: TextInputType.number,
-                      textAlign: TextAlign.center,
+                      l10n.login,
                       style: const TextStyle(
-                        fontSize: 24,
-                        letterSpacing: 8,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -1,
+                        color: Color(0xFFF0F0F5),
                       ),
-                      decoration: InputDecoration(
-                        hintText: '••••••',
-                        counterText: '',
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Kelola tiket & tugas lapangan.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isp.textMuted,
                       ),
+                    ),
+                    const SizedBox(height: 36),
+                    // ─── Email / Phone label + input ───
+                    _NeubrutalistLabel(text: 'Email atau Nomor HP'),
+                    const SizedBox(height: 8),
+                    _NeubrutalistInput(
+                      controller: _identifierCtrl,
+                      hintText: 'nama@email.com atau 08xxx',
+                      textInputAction: TextInputAction.next,
+                      validate: (v) =>
+                          (v == null || v.isEmpty) ? 'Wajib diisi' : null,
                     ),
                     const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: loading ? null : _submit2fa,
-                      child: Text(l10n.verify),
-                    ),
-                    TextButton(
-                      onPressed: () => setState(() => _show2fa = false),
-                      child: Text(l10n.back),
-                    ),
-                  ] else ...[
-                    // Unified identifier field — accepts email or phone
-                    TextFormField(
-                      controller: _identifierCtrl,
-                      keyboardType: TextInputType.text,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Email atau Nomor HP',
-                        prefixIcon: Icon(Icons.person_outline),
-                        hintText: 'nama@email.com atau 08xxx',
-                      ),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) {
-                          return 'This field is required';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
+                    // ─── Password label + input ───
+                    _NeubrutalistLabel(text: l10n.password),
+                    const SizedBox(height: 8),
+                    _NeubrutalistPasswordInput(
                       controller: _passwordCtrl,
-                      obscureText: _obscure,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submit(),
-                      decoration: InputDecoration(
-                        labelText: l10n.password,
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscure
-                              ? Icons.visibility
-                              : Icons.visibility_off),
-                          onPressed: () => setState(() => _obscure = !_obscure),
-                        ),
-                      ),
-                      validator: (v) => (v == null || v.length < 6)
+                      obscure: _obscure,
+                      onToggle: () => setState(() => _obscure = !_obscure),
+                      onSubmitted: (_) => _submit(),
+                      validate: (v) => (v == null || v.length < 6)
                           ? l10n.passwordTooShort
                           : null,
                     ),
-                    const SizedBox(height: 8),
+                    // ─── Forgot password ───
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: () => context.push('/forgot-password'),
-                        child: Text(l10n.forgotPassword),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: loading ? null : _submit,
-                      child: loading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(l10n.login),
-                    ),
-                    const SizedBox(height: 12),
-                    // Fingerprint button — only visible when ALL preconditions
-                    // pass: biometric enabled in settings, session token exists,
-                    // device supports biometric hardware. Hidden on first install
-                    // or when user hasn't enabled biometric.
-                    if (_biometricAvailable && !_biometricLoading)
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          _biometricAttempted = false;
-                          _tryBiometricLogin();
-                        },
-                        icon: const Icon(Icons.fingerprint, size: 24),
-                        label: Text(l10n.biometric),
-                      ),
-                    if (_biometricLoading)
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        child: Center(
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.fingerprint,
-                                size: 48,
-                                color: isp.accent,
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Verifikasi sidik jari...',
-                                style: TextStyle(
-                                  color: isp.textMuted,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
+                        style: TextButton.styleFrom(
+                          foregroundColor: isp.accentLight,
+                        ),
+                        child: Text(
+                          l10n.forgotPassword,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 24),
+                    // ─── Login button (neubrutalist accent) ───
+                    _NeubrutalistAccentButton(
+                      label: l10n.login,
+                      loading: loading,
+                      onTap: _submit,
+                    ),
+                    const SizedBox(height: 24),
+                    // ─── Biometric auto-trigger or button ───
+                    if (_biometricLoading)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Column(
+                          children: [
+                            Icon(Icons.fingerprint,
+                                size: 48, color: isp.accent),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Verifikasi sidik jari...',
+                              style: TextStyle(
+                                color: isp.textMuted,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (_biometricAvailable && !_biometricLoading)
+                      _NeubrutalistOutlineButton(
+                        icon: Icons.fingerprint,
+                        label: l10n.biometric,
+                        onTap: () {
+                          _biometricAttempted = false;
+                          _tryBiometricLogin();
+                        },
+                      ),
+                    // ─── NO "Hubungi ISP" link (multi-tenant) ───
                   ],
                 ],
               ),
@@ -477,13 +416,66 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
+  Widget _build2FAInlineUI(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          l10n.enter2faCode,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        TextField(
+          controller: _codeCtrl,
+          maxLength: 6,
+          keyboardType: TextInputType.number,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 24,
+            letterSpacing: 8,
+            fontWeight: FontWeight.w600,
+          ),
+          decoration: InputDecoration(
+            hintText: '••••••',
+            counterText: '',
+            hintStyle: TextStyle(color: isp.textMuted),
+            filled: true,
+            fillColor: isp.surfaceTertiary,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(IspRadii.md),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _NeubrutalistAccentButton(
+          label: l10n.verify,
+          loading: ref.watch(authControllerProvider).isLoading,
+          onTap: _submit2fa,
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => setState(() => _show2fa = false),
+          child: Text(l10n.back),
+        ),
+      ],
+    );
+  }
+
   Widget _build2FASetupUI() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           'Security Setup Required',
-          style: Theme.of(context).textTheme.titleMedium,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 4),
@@ -562,15 +554,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 letterSpacing: 8,
                 fontWeight: FontWeight.w600,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: '••••••',
                 counterText: '',
+                hintStyle: TextStyle(color: isp.textMuted),
+                filled: true,
+                fillColor: isp.surfaceTertiary,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(IspRadii.md),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _setupLoading ? null : _submit2faSetup,
-              child: const Text('Activate & Login'),
+            _NeubrutalistAccentButton(
+              label: 'Activate & Login',
+              loading: _setupLoading,
+              onTap: _submit2faSetup,
             ),
           ] else ...[
             if (_setupEmailSent)
@@ -578,19 +578,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 padding: const EdgeInsets.all(12),
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Color(0x1F10B981),
+                  color: isp.success.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.check_circle,
-                        color: isp.success, size: 18),
-                    SizedBox(width: 8),
+                    Icon(Icons.check_circle, color: isp.success, size: 18),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Verification code sent to your email.',
-                        style: TextStyle(
-                            color: isp.success, fontSize: 13),
+                        style: TextStyle(color: isp.success, fontSize: 13),
                       ),
                     ),
                   ],
@@ -606,15 +604,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 letterSpacing: 8,
                 fontWeight: FontWeight.w600,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: '••••••',
                 counterText: '',
+                hintStyle: TextStyle(color: isp.textMuted),
+                filled: true,
+                fillColor: isp.surfaceTertiary,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(IspRadii.md),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _setupLoading ? null : _submit2faSetup,
-              child: const Text('Verify & Login'),
+            _NeubrutalistAccentButton(
+              label: 'Verify & Login',
+              loading: _setupLoading,
+              onTap: _submit2faSetup,
             ),
           ],
         ],
@@ -622,6 +628,283 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 }
+
+// ─── Neubrutalist widget helpers ────────────────────────────────
+
+class _NeubrutalistLabel extends StatelessWidget {
+  const _NeubrutalistLabel({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.5,
+        color: isp.textMuted,
+      ),
+    );
+  }
+}
+
+class _NeubrutalistInput extends StatelessWidget {
+  const _NeubrutalistInput({
+    required this.controller,
+    required this.hintText,
+    this.textInputAction,
+    required this.validate,
+  });
+  final TextEditingController controller;
+  final String hintText;
+  final TextInputAction? textInputAction;
+  final String? Function(String?)? validate;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    return TextFormField(
+      controller: controller,
+      keyboardType: TextInputType.text,
+      textInputAction: textInputAction,
+      style: TextStyle(color: isp.textPrimary, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(color: isp.textMuted),
+        filled: true,
+        fillColor: isp.surface,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.accent),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.danger),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.danger),
+        ),
+      ),
+      validator: validate,
+    );
+  }
+}
+
+class _NeubrutalistPasswordInput extends StatelessWidget {
+  const _NeubrutalistPasswordInput({
+    required this.controller,
+    required this.obscure,
+    required this.onToggle,
+    this.onSubmitted,
+    required this.validate,
+  });
+  final TextEditingController controller;
+  final bool obscure;
+  final VoidCallback onToggle;
+  final ValueChanged<String>? onSubmitted;
+  final String? Function(String?)? validate;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    return TextFormField(
+      controller: controller,
+      obscureText: obscure,
+      textInputAction: TextInputAction.done,
+      onFieldSubmitted: onSubmitted,
+      style: TextStyle(color: isp.textPrimary, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: '••••••••',
+        hintStyle: TextStyle(color: isp.textMuted),
+        filled: true,
+        fillColor: isp.surface,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        suffixIcon: IconButton(
+          icon: Icon(
+            obscure ? Icons.visibility : Icons.visibility_off,
+            color: isp.textMuted,
+            size: 20,
+          ),
+          onPressed: onToggle,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.accent),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.danger),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          borderSide: BorderSide(width: 1.5, color: isp.danger),
+        ),
+      ),
+      validator: validate,
+    );
+  }
+}
+
+class _NeubrutalistAccentButton extends StatelessWidget {
+  const _NeubrutalistAccentButton({
+    required this.label,
+    required this.loading,
+    required this.onTap,
+  });
+  final String label;
+  final bool loading;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    return GestureDetector(
+      onTap: loading ? null : onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isp.accent,
+          border: Border.all(width: 1.5, color: isp.accent),
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          boxShadow: [
+            BoxShadow(
+              offset: const Offset(3, 3),
+              blurRadius: 0,
+              color: isp.accent.withOpacity(0.3),
+            ),
+          ],
+        ),
+        child: Center(
+          child: loading
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(isp.textInverse),
+                  ),
+                )
+              : Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NeubrutalistOutlineButton extends StatelessWidget {
+  const _NeubrutalistOutlineButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isp = context.isp;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isp.surface,
+          border: Border.all(width: 1.5, color: isp.border),
+          borderRadius: BorderRadius.circular(IspRadii.md),
+          boxShadow: [
+            BoxShadow(
+              offset: const Offset(3, 3),
+              blurRadius: 0,
+              color: isp.surfaceElevated,
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 22, color: isp.accentLight),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(
+                color: isp.textSecondary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Solid purple square brand logo (NO gradient) ───────────────
+
+class _BrandLogo extends StatelessWidget {
+  const _BrandLogo({required this.isp});
+  final IspThemeColors isp;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: isp.accent, // solid purple, no gradient
+            borderRadius: BorderRadius.circular(16),
+          ),
+          alignment: Alignment.center,
+          child: const Text(
+            'IS',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              letterSpacing: -1,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Setup method tab ───────────────────────────────────────────
 
 class _SetupMethodTab extends StatelessWidget {
   const _SetupMethodTab({
@@ -638,9 +921,8 @@ class _SetupMethodTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return GestureDetector(
+    final isp = context.isp;
+    return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
@@ -672,42 +954,6 @@ class _SetupMethodTab extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _BrandHeader extends StatelessWidget {
-  const _BrandHeader();
-  @override
-  Widget build(BuildContext context) {
-
-
-    final isp = context.isp;    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: isp.accentSurface,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(Icons.wifi_tethering,
-              size: 40, color: isp.accent),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'ISP Teknisi',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Kelola langganan internet Anda',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: isp.textMuted,
-              ),
-        ),
-      ],
     );
   }
 }
