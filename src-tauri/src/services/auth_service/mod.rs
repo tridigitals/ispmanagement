@@ -955,7 +955,7 @@ impl AuthService {
                 .locked_until
                 .map(|t| (t - Utc::now()).num_minutes())
                 .unwrap_or(0);
-            return Err(AppError::Validation(format!(
+            return Err(AppError::RateLimited(format!(
                 "Account is locked. Try again in {} minutes",
                 remaining.max(1)
             )));
@@ -1087,7 +1087,7 @@ impl AuthService {
                     remaining
                 )));
             } else {
-                return Err(AppError::Validation(format!(
+                return Err(AppError::RateLimited(format!(
                     "Account locked for {} minutes",
                     settings.lockout_duration_minutes
                 )));
