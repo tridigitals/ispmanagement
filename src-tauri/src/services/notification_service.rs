@@ -624,9 +624,29 @@ impl NotificationService {
                     } else {
                         let body = resp.text().await.unwrap_or_default();
                         tracing::warn!("FCM v1 push failed ({}): {}", status, body);
-                        // If token expired, clear cache and retry once
-                        if status.as_u16() == 401 {
-                            tracing::info!("Token expired, will refresh on next attempt");
+                        // Auto-cleanup: delete token if FCM says it's invalid/unregistered
+                        let should_delete = match status.as_u16() {
+                            400 | 404 => {
+                                // Parse JSON to check error code
+                                serde_json::from_str::<serde_json::Value>(&body)
+                                    .ok()
+                                    .and_then(|v| v["error"]["status"].as_str().map(|s| s.to_string()))
+                                    .map(|s| s == "UNREGISTERED" || s == "NOT_FOUND")
+                                    .unwrap_or(false)
+                            }
+                            _ => false,
+                        };
+                        if should_delete {
+                            tracing::info!(
+                                "🗑️ FCM token unregistered — auto-deleting device {}",
+                                device.id
+                            );
+                            let _ = sqlx::query(
+                                "DELETE FROM user_devices WHERE id = $1"
+                            )
+                            .bind(&device.id)
+                            .execute(&self.pool)
+                            .await;
                         }
                     }
                 }
