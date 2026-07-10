@@ -20,7 +20,6 @@ import 'widgets/announcement_banner.dart';
 
 // ─── Design tokens ──────────────────────────────────────────────
 
-const _kCardRadius = 16.0;
 const _kSectionSpacing = 16.0;
 
 // ─── Home Tab (technician — Dashboard Ringkas) ──────────────────
@@ -365,8 +364,8 @@ class _QuickStatCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
       decoration: BoxDecoration(
         color: isp.surface,
-        borderRadius: BorderRadius.circular(_kCardRadius),
-        border: Border.all(color: isp.border, width: 1),
+        borderRadius: BorderRadius.circular(IspRadii.lg),
+        border: Border.all(color: isp.border, width: 1.5),
       ),
       child: Column(
         children: [
@@ -375,7 +374,7 @@ class _QuickStatCard extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(IspRadii.sm),
             ),
             child: Icon(icon, size: 20, color: color),
           ),
@@ -454,8 +453,8 @@ class _TodayTasksSection extends StatelessWidget {
                 padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
                   color: isp.surface,
-                  borderRadius: BorderRadius.circular(_kCardRadius),
-                  border: Border.all(color: isp.border),
+                  borderRadius: BorderRadius.circular(IspRadii.lg),
+                  border: Border.all(color: isp.border, width: 1.5),
                 ),
                 child: Column(
                   children: [
@@ -504,13 +503,13 @@ class _TaskHeroCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(_kCardRadius),
+        borderRadius: BorderRadius.circular(IspRadii.lg),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: isp.surface,
-            borderRadius: BorderRadius.circular(_kCardRadius),
-            border: Border.all(color: isp.border),
+            borderRadius: BorderRadius.circular(IspRadii.lg),
+            border: Border.all(color: isp.border, width: 1.5),
           ),
           child: Row(
             children: [
@@ -627,18 +626,7 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color) = _chipInfo(status);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w700, color: color),
-      ),
-    );
+    return NbStyle.statusPill(context, label, bgColor: color, textColor: color);
   }
 
   (String, Color) _chipInfo(String s) {

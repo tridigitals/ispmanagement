@@ -173,7 +173,7 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: isp.border, width: 0.5),
+              bottom: BorderSide(color: isp.border, width: 1.5),
             ),
           ),
           child: Row(
