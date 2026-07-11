@@ -101,7 +101,7 @@ class _NotificationInboxScreenState
                 builder: (ctx) => AlertDialog(
                   title: const Text('Hapus Semua?'),
                   content: const Text(
-                    'Semua notifikasi akan dihapus.\nTindakan ini tidak dapat dibatalkan.',
+                    'Semua notifikasi akan dihapus.\\nTindakan ini tidak dapat dibatalkan.',
                   ),
                   actions: [
                     TextButton(
@@ -121,6 +121,13 @@ class _NotificationInboxScreenState
               }
             },
             child: Text('Hapus',
+                style: TextStyle(fontSize: 13, color: isp.textMuted)),
+          ),
+          TextButton(
+            onPressed: () async {
+              await ref.read(notificationsProvider.notifier).markAllRead();
+            },
+            child: Text(l10n.markAllRead,
                 style: TextStyle(fontSize: 13, color: isp.textMuted)),
           ),
         ],
@@ -214,9 +221,36 @@ class _DaySection extends StatelessWidget {
               ),
             ),
           ),
-          ...items.map((item) => _NotificationTile(item: item)),
+          ...items.map((item) => _SwipeableTile(item: item)),
         ],
       ),
+    );
+  }
+}
+
+class _SwipeableTile extends ConsumerWidget {
+  const _SwipeableTile({required this.item});
+  final NotificationModel item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Dismissible(
+      key: Key(item.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      onDismissed: (_) {
+        ref.read(notificationsProvider.notifier).delete(item.id);
+      },
+      child: _NotificationTile(item: item),
     );
   }
 }

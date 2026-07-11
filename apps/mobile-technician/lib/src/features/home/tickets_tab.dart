@@ -119,11 +119,10 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
   Widget _buildFilterChips(BuildContext context) {
     final isp = context.isp;
     final l10n = AppLocalizations.of(context);
+    // Technician: only Open + Resolved (no InProgress/Waiting)
     final filters = <(String, TicketStatus?)>[
       (l10n.ticketAdminTabAll, null),
       (l10n.ticketStatusOpen, TicketStatus.open),
-      (l10n.ticketStatusInProgress, TicketStatus.inProgress),
-      (l10n.ticketStatusWaitingCustomer, TicketStatus.waitingCustomer),
       (l10n.ticketStatusResolved, TicketStatus.resolved),
     ];
 

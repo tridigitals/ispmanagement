@@ -114,9 +114,18 @@ class _State extends ConsumerState<HomeShell> {
         title: Text(tabTitles[tab]),
         automaticallyImplyLeading: false,
         actions: [
-          // Bell / notifications
-          IconButton(
-            icon: Stack(
+          // Bell / notifications — tap marks all read, long press opens inbox
+          GestureDetector(
+            onTap: () async {
+              if (unread > 0) {
+                await ref.read(notificationsProvider.notifier).markAllRead();
+                ref.invalidate(unreadNotificationsCountProvider);
+              }
+            },
+            onLongPress: () => GoRouter.of(context).push('/notifications'),
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Stack(
               clipBehavior: Clip.none,
               children: [
                 const Icon(Icons.notifications_outlined),
@@ -147,8 +156,8 @@ class _State extends ConsumerState<HomeShell> {
                   ),
               ],
             ),
-            onPressed: () => GoRouter.of(context).push('/notifications'),
-          ),
+            ), // GestureDetector child Padding
+          ), // GestureDetector
           // Account
           IconButton(
             icon: const Icon(Icons.account_circle_outlined),

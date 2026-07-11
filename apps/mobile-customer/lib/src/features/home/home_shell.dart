@@ -220,12 +220,18 @@ class _HomeHeader extends StatelessWidget {
               ],
             ),
           ),
-          // Notification bell with badge
+          // Notification bell — tap marks all read, long press opens inbox
           _HeaderIconButton(
             icon: Icons.notifications,
             isp: isp,
             badgeCount: unread,
-            onTap: onNotifications,
+            onTap: () async {
+              if (unread > 0) {
+                await ref.read(notificationsProvider.notifier).markAllRead();
+                ref.invalidate(unreadNotificationsCountProvider);
+              }
+            },
+            onLongPress: onNotifications,
           ),
           const SizedBox(width: 8),
           // Avatar — person icon (static, not dynamic)
@@ -246,17 +252,20 @@ class _HeaderIconButton extends StatelessWidget {
     required this.isp,
     this.badgeCount,
     required this.onTap,
+    this.onLongPress,
   });
 
   final IconData icon;
   final IspThemeColors isp;
   final int? badgeCount;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         width: 42,
         height: 42,
