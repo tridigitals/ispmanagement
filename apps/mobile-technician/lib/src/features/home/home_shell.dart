@@ -65,12 +65,12 @@ class _State extends ConsumerState<HomeShell> {
     final l10n = AppLocalizations.of(context);
     final notifState = ref.watch(notificationsProvider);
     final tab = ref.watch(currentTabProvider);
-    final user = ref.watch(currentUserProvider);
     final unread = ref.watch(unreadNotificationsCountProvider).valueOrNull ?? 0;
 
     // Tab titles matching bottom nav labels
+    // Tab titles matching bottom nav labels
     final tabTitles = [
-      '${l10n.hiPrefix}, ${user?.name.split(' ').first ?? ''} 👋',
+      l10n.home,
       l10n.tickets,
       l10n.workOrders,
     ];
@@ -114,15 +114,9 @@ class _State extends ConsumerState<HomeShell> {
         title: Text(tabTitles[tab]),
         automaticallyImplyLeading: false,
         actions: [
-          // Bell / notifications — tap marks all read, long press opens inbox
+          // Bell / notifications — tap opens inbox
           GestureDetector(
-            onTap: () async {
-              if (unread > 0) {
-                await ref.read(notificationsProvider.notifier).markAllRead();
-                ref.invalidate(unreadNotificationsCountProvider);
-              }
-            },
-            onLongPress: () => GoRouter.of(context).push('/notifications'),
+            onTap: () => GoRouter.of(context).push('/notifications'),
             child: Padding(
               padding: const EdgeInsets.all(8),
               child: Stack(

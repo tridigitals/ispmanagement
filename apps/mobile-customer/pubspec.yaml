@@ -1,6 +1,6 @@
 name: mobile_customer
 description: ISP Management — Customer mobile app (Flutter, iOS + Android)
-version: 0.1.0+65
+version: 0.1.0+66
 publish_to: none
 resolution: workspace
 
@@ -87,11 +87,6 @@ dev_dependencies:
     sdk: flutter
   flutter_launcher_icons: ^0.14.1
   flutter_native_splash: ^2.4.4
-
-# Pin package_info_plus to 8.x — 9.0+ requires Flutter 3.27+ (flutter.compileSdkVersion)
-# sentry_flutter 8.14 depends on 9.0.1, force down here.
-dependency_overrides:
-  package_info_plus: ^8.0.0
 
 flutter_native_splash:
   color: "#08090D"

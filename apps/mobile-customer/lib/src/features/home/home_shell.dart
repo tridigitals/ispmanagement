@@ -220,18 +220,12 @@ class _HomeHeader extends StatelessWidget {
               ],
             ),
           ),
-          // Notification bell — tap marks all read, long press opens inbox
+          // Notification bell — tap opens inbox
           _HeaderIconButton(
             icon: Icons.notifications,
             isp: isp,
             badgeCount: unread,
-            onTap: () async {
-              if (unread > 0) {
-                await ref.read(notificationsProvider.notifier).markAllRead();
-                ref.invalidate(unreadNotificationsCountProvider);
-              }
-            },
-            onLongPress: onNotifications,
+            onTap: onNotifications,
           ),
           const SizedBox(width: 8),
           // Avatar — person icon (static, not dynamic)
