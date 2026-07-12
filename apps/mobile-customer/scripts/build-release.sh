@@ -8,6 +8,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$PROJECT_DIR/../.." && pwd)"
+
+# Ensure flutter/dart are on PATH
+export PATH="$HOME/sdk/flutter/bin:$PATH"
+export ANDROID_HOME="$HOME/sdk/android-sdk"
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+export JAVA_HOME="$HOME/sdk/java17"
 
 cd "$PROJECT_DIR"
 
@@ -29,14 +36,48 @@ else
   echo "→ Building without Sentry (dev build)"
 fi
 
+# ── Workspace workaround ──────────────────────────────────────────
+# Flutter workspace mode (Dart 3.5+) skips writing package_config.json
+# into each member dir. flutter_tools then exits with "LocalDirectory:
+# pub did not create .dart_tools/package_config.json file" on
+# `flutter build apk`. Fix: temporarily remove this member from the
+# workspace, generate a per-member package_config.json, then restore
+# the workspace and build with --no-pub so flutter doesn't re-run pub
+# get (which would delete the per-member config).
+echo "→ Generating per-member package_config.json (workspace workaround)"
+
+cp "$REPO_ROOT/pubspec.yaml" /tmp/pubspec.yaml.bak
+sed -i 's|^  - apps/mobile-customer$|  #- apps/mobile-customer|' "$REPO_ROOT/pubspec.yaml"
+
+cleanup() {
+  cp /tmp/pubspec.yaml.bak "$REPO_ROOT/pubspec.yaml"
+}
+trap cleanup EXIT
+
+sed -i 's|^resolution: workspace|#resolution: workspace|' pubspec.yaml
+(
+  dart pub get > /dev/null 2>&1
+)
+sed -i 's|^#resolution: workspace|resolution: workspace|' pubspec.yaml
+
+cleanup
+trap - EXIT
+
+cp "$REPO_ROOT/.flutter-plugins" .flutter-plugins
+cp "$REPO_ROOT/.flutter-plugins-dependencies" .flutter-plugins-dependencies
+if ! grep -q "mobile_scanner" .flutter-plugins; then
+  echo "mobile_scanner=$HOME/.pub-cache/hosted/pub.dev/mobile_scanner-6.0.11/" >> .flutter-plugins
+fi
+
 flutter build apk --release \
   --target-platform android-arm64 \
+  --no-pub \
   "${DART_DEFINES[@]}"
 
 APK="build/app/outputs/flutter-apk/app-arm64-v8a-release.apk"
 if [[ -f "$APK" ]]; then
-  cp "$APK" /home/xtrabit/isp-management-customer-arm64.apk
+  cp "$APK" /home/xtrabit/apk-server/mobile-customer-arm64.apk
   echo
-  echo "✓ Built and copied to /home/xtrabit/isp-management-customer-arm64.apk"
-  ls -la /home/xtrabit/isp-management-customer-arm64.apk
+  echo "✓ Built and copied to /home/xtrabit/apk-server/mobile-customer-arm64.apk"
+  ls -la /home/xtrabit/apk-server/mobile-customer-arm64.apk
 fi
