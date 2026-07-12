@@ -3,648 +3,999 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ISPMANAGEMENT — Full Mockup (28 Screens)</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..900&display=swap" rel="stylesheet">
+<title>ISP Dashboard — UI Polish Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:#060609; --bg2:#0D0D14; --surface:#111119; --surface2:#181824;
-  --border:#1E1E2E; --border2:#282838;
-  --accent:#7C4DFF; --accent2:#B388FF; --accent-glow:rgba(124,77,255,0.25);
-  --green:#00E676; --green2:#69F0AE; --red:#FF5252; --red2:#FF8A80;
-  --amber:#FFD740; --amber2:#FFE57F; --blue:#40C4FF; --blue2:#80D8FF;
-  --text:#F5F5FA; --text2:#B0B0C0; --text3:#6B6B80;
-  --rs:10px; --rm:16px; --rl:20px; --rxl:24px; --rp:999px;
+  --bg-app: #07080d;
+  --bg-elevated: #0d0f17;
+  --bg-surface: #131620;
+  --bg-surface2: #181c28;
+  --bg-hover: #1c2130;
+  --border: #1e2433;
+  --border-light: #282e3d;
+
+  --accent: #5b6cf0;
+  --accent-soft: rgba(91,108,240,.16);
+  --accent-glow: rgba(91,108,240,.32);
+  --success: #22c55e;
+  --success-soft: rgba(34,197,94,.14);
+  --warning: #f59e0b;
+  --warning-soft: rgba(245,158,11,.14);
+  --danger: #ef4444;
+  --danger-soft: rgba(239,68,68,.14);
+  --info: #38bdf8;
+  --info-soft: rgba(56,189,248,.14);
+
+  --text: #eef0f6;
+  --text2: #9298a8;
+  --text3: #5c6272;
+
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --shadow: 0 1px 3px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+  --shadow-lg: 0 4px 12px rgba(0,0,0,.5), 0 16px 48px rgba(0,0,0,.4);
 }
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter',sans-serif;background:#010104;color:var(--text);padding:16px}
-h1{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:3px;color:var(--text3);text-align:center;margin:20px 0}
-.tabs{display:flex;gap:4px;justify-content:center;margin:16px 0;flex-wrap:wrap}
-.tab{padding:8px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rp);font-size:12px;font-weight:700;cursor:pointer;color:var(--text3);transition:all .15s}
-.tab.active{background:var(--accent);color:white;border-color:var(--accent)}
-.screens{display:flex;gap:32px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
-.phone{width:390px;height:844px;background:var(--bg);border-radius:48px;overflow:hidden;position:relative;box-shadow:0 0 0 3px #1a1a2e,0 0 0 6px #0d0d14,0 0 0 8px #1a1a2e,0 32px 80px rgba(0,0,0,.7)}
-.phone::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:30px;background:#0a0a0f;border-radius:0 0 20px 20px;z-index:10}
-.content{height:844px;overflow-y:auto;padding-top:12px;scrollbar-width:none}
-.content::-webkit-scrollbar{display:none}
-.status-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rp);font-size:12px;font-weight:600}
-.dot{width:8px;height:8px;border-radius:50%}
-.dot.g{background:var(--green);box-shadow:0 0 8px rgba(0,230,118,.3)}
-.dot.r{background:var(--red);box-shadow:0 0 8px rgba(255,82,82,.3)}
-.dot.a{background:var(--amber)}
-.nc{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rxl);padding:16px}
-.nc-btn{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rm);box-shadow:3px 3px 0 var(--border2);transition:all .15s}
-.nc-btn:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--border2)}
-@keyframes shimmer{0%{opacity:.35}50%{opacity:.7}100%{opacity:.35}}
-.skel{background:var(--surface2);animation:shimmer 1.5s ease-in-out infinite;border-radius:4px}
-.btn{width:100%;padding:14px;border:none;border-radius:var(--rm);font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
-.btn-accent{background:var(--accent);color:white;box-shadow:0 8px 24px var(--accent-glow)}
-.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text2)}
-.badge{padding:4px 10px;border-radius:var(--rp);font-size:10px;font-weight:700;white-space:nowrap}
-.badge.g{background:rgba(0,230,118,.12);color:var(--green)}
-.badge.r{background:rgba(255,82,82,.12);color:var(--red)}
-.badge.a{background:rgba(255,215,64,.12);color:var(--amber)}
-.badge.b{background:rgba(64,196,255,.12);color:var(--blue)}
-.chip{padding:6px 14px;border-radius:var(--rp);font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text3)}
-.chip.ac{background:var(--accent);color:white;border-color:var(--accent)}
-.fnav{position:absolute;bottom:24px;left:12px;right:12px;display:flex;gap:4px;background:rgba(17,17,25,.85);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.07);border-radius:var(--rxl);padding:5px}
-.ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:var(--rm);cursor:pointer;position:relative}
-.ni.ac{background:rgba(124,77,255,.12)}
-.ni.l{font-size:10px;font-weight:600}
-.money{font-weight:900;letter-spacing:-2px;line-height:.95}
-.ico{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle}
-.ico-r{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.input-box{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rm);padding:14px;font-size:14px;color:var(--text);font-family:inherit;outline:none;width:100%}
-.label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);margin-bottom:6px;display:block}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:'Inter',system-ui,sans-serif;background:var(--bg-app);color:var(--text);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+
+/* Layout */
+.app{display:flex;min-height:100vh}
+.sidebar{width:260px;background:var(--bg-elevated);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;z-index:10}
+.sidebar-brand{padding:1.25rem 1.5rem;display:flex;align-items:center;gap:.75rem;border-bottom:1px solid var(--border)}
+.sidebar-brand .logo{width:36px;height:36px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1rem;color:#fff}
+.sidebar-brand .name{font-weight:800;font-size:1.15rem;letter-spacing:-.02em}
+.sidebar-nav{flex:1;padding:.75rem;display:flex;flex-direction:column;gap:.25rem;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:.75rem;padding:.65rem .85rem;border-radius:var(--radius-sm);color:var(--text2);font-weight:550;font-size:.92rem;cursor:pointer;transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--bg-hover);color:var(--text)}
+.nav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.nav-item .nav-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+.nav-section{margin-top:.75rem;padding:.25rem .85rem .5rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text3)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{height:56px;background:var(--bg-elevated);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;flex-shrink:0;position:sticky;top:0;z-index:5}
+.topbar-left{display:flex;align-items:center;gap:.75rem}
+.topbar-right{display:flex;align-items:center;gap:.75rem}
+.avatar{width:32px;height:32px;border-radius:999px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem;color:#fff}
+.content{padding:1.5rem;flex:1;overflow-y:auto;max-width:1320px;width:100%;margin:0 auto}
+
+/* Cards */
+.card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow)}
+.card-elevated{background:var(--bg-surface2);border:1px solid var(--border-light);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg)}
+
+/* Header */
+.page-header{margin-bottom:1.5rem}
+.page-header h1{font-size:1.75rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.25rem}
+.page-header p{color:var(--text2);font-size:.92rem}
+.kicker{display:inline-flex;align-items:center;gap:.5rem;color:var(--text3);font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem}
+.kicker-dot{width:7px;height:7px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 5px var(--accent-soft)}
+
+/* Stat cards */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.25rem}
+.stat-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.15rem;display:flex;align-items:flex-start;gap:.9rem;cursor:pointer;transition:all .18s}
+.stat-card:hover{border-color:var(--accent-soft);transform:translateY(-1px)}
+.stat-card.selected{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.stat-icon.indigo{background:var(--accent-soft);color:var(--accent)}
+.stat-icon.emerald{background:var(--success-soft);color:var(--success)}
+.stat-icon.amber{background:var(--warning-soft);color:var(--warning)}
+.stat-icon.rose{background:var(--danger-soft);color:var(--danger)}
+.stat-icon.sky{background:var(--info-soft);color:var(--info)}
+.stat-info{min-width:0}
+.stat-value{font-size:1.6rem;font-weight:900;line-height:1.1;letter-spacing:-.03em}
+.stat-label{font-size:.8rem;color:var(--text2);font-weight:550;margin-top:.15rem}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:.45rem;padding:.55rem .9rem;border-radius:10px;font-weight:650;font-size:.87rem;cursor:pointer;transition:all .15s;border:1px solid var(--border);background:var(--bg-surface2);color:var(--text);white-space:nowrap}
+.btn:hover{background:var(--bg-hover);border-color:var(--border-light)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+.btn-primary:hover{background:#4f5fe0;border-color:#4f5fe0}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--text2)}
+.btn-ghost:hover{background:var(--bg-hover);color:var(--text)}
+.btn-sm{padding:.4rem .7rem;font-size:.8rem;border-radius:8px}
+.btn-danger{background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
+.btn-danger:hover{background:var(--danger);color:#fff}
+
+/* Pills */
+.pill{display:inline-flex;align-items:center;padding:.2rem .6rem;border-radius:999px;font-size:.73rem;font-weight:700;gap:.3rem}
+.pill-success{background:var(--success-soft);color:var(--success)}
+.pill-warning{background:var(--warning-soft);color:var(--warning)}
+.pill-danger{background:var(--danger-soft);color:var(--danger)}
+.pill-info{background:var(--info-soft);color:var(--info)}
+.pill-neutral{background:var(--bg-hover);color:var(--text2)}
+
+/* Table */
+.data-table{width:100%;border-collapse:collapse}
+.data-table th{text-align:left;padding:.7rem 1rem;font-size:.78rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border)}
+.data-table td{padding:.7rem 1rem;font-size:.9rem;border-bottom:1px solid var(--border)}
+.data-table tr:hover td{background:var(--bg-hover)}
+.table-actions{display:flex;gap:.4rem;justify-content:flex-end}
+.table-action{background:transparent;border:1px solid var(--border);color:var(--text2);padding:.35rem .6rem;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.3rem;transition:all .15s}
+.table-action:hover{background:var(--bg-hover);color:var(--text);border-color:var(--border-light)}
+
+/* Status dots */
+.status-dot{width:8px;height:8px;border-radius:999px;display:inline-block}
+.status-dot.green{background:var(--success);box-shadow:0 0 0 4px var(--success-soft)}
+.status-dot.amber{background:var(--warning);box-shadow:0 0 0 4px var(--warning-soft)}
+.status-dot.red{background:var(--danger);box-shadow:0 0 0 4px var(--danger-soft)}
+
+/* Dashboard specific */
+.hero-card{background:linear-gradient(135deg,var(--bg-surface2) 0%,var(--bg-surface) 100%);border:1px solid var(--border-light);border-radius:var(--radius-xl);padding:1.5rem 1.75rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;gap:1rem}
+.hero-welcome h1{font-size:1.6rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.2rem}
+.hero-welcome p{color:var(--text2);font-size:.9rem}
+.hero-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .65rem;border-radius:999px;font-size:.75rem;font-weight:700;background:var(--accent-soft);color:var(--accent)}
+
+.main-grid{display:grid;grid-template-columns:2fr 1fr;gap:1.25rem}
+.section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem}
+.section-title h2{font-size:1.05rem;font-weight:750}
+
+/* Activity list */
+.activity-list{list-style:none}
+.activity-item{display:flex;gap:.85rem;padding:.85rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.activity-item:last-child{border-bottom:none}
+.activity-item:hover{background:var(--bg-hover)}
+.activity-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;border:1px solid var(--border);background:var(--bg-surface2)}
+.activity-icon.success{color:var(--success);background:var(--success-soft);border-color:transparent}
+.activity-icon.warning{color:var(--warning);background:var(--warning-soft);border-color:transparent}
+.activity-text{min-width:0;flex:1}
+.activity-row{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;margin-bottom:.15rem}
+.activity-title{font-weight:650;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.activity-time{font-size:.76rem;color:var(--text3);flex-shrink:0}
+.activity-msg{font-size:.82rem;color:var(--text2);display:-webkit-box;-webkit-line-clamp:1;line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+
+/* Portal Summary */
+.summary-card{padding:1.25rem}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:.55rem 0;border-bottom:1px solid var(--border)}
+.summary-row:last-child{border-bottom:none;padding-bottom:0}
+.summary-k{font-size:.82rem;color:var(--text2);font-weight:550}
+.summary-v{font-weight:700;font-size:.92rem}
+.summary-amount{font-size:1.25rem;font-weight:900;color:var(--accent);letter-spacing:-.02em}
+.summary-due{font-size:.78rem;color:var(--danger);font-weight:600}
+.summary-actions{display:flex;gap:.5rem;margin-top:.75rem}
+
+/* Service page */
+.service-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}
+.filter-chips{display:flex;gap:.35rem;flex-wrap:wrap}
+
+/* Invoice summary strip */
+.invoice-strip{display:flex;gap:1rem;margin-bottom:1.25rem}
+.invoice-strip-item{flex:1;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.15rem;display:flex;align-items:center;gap:.85rem}
+.invoice-strip-item .strip-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.15rem}
+.invoice-strip-item .strip-val{font-size:1.5rem;font-weight:900;line-height:1.1}
+.invoice-strip-item .strip-label{font-size:.78rem;color:var(--text2);font-weight:550}
+
+/* Responsive */
+@media(max-width:900px){
+  .sidebar{position:fixed;left:0;top:0;z-index:50;width:260px;transform:translateX(-100%);transition:transform .25s ease}
+  .sidebar.open{transform:translateX(0);box-shadow:8px 0 24px rgba(0,0,0,.6)}
+  .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:49}
+  .sidebar-overlay.open{display:block}
+  .hamburger{display:flex!important;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface2);color:var(--text2);cursor:pointer;font-size:1.2rem}
+  .hamburger:hover{background:var(--bg-hover);color:var(--text)}
+  .main-grid,.stats-grid{grid-template-columns:1fr}
+  .hero-card{flex-direction:column;align-items:flex-start}
+  .invoice-strip{flex-direction:column}
+  .data-table{display:block;overflow-x:auto}
+}
+@media(max-width:640px){
+  .content{padding:1rem}
+  .topbar{padding:0 1rem}
+  .page-header h1{font-size:1.35rem}
+  .service-header{flex-direction:column}
+}
+
+/* Notifications dropdown */
+.notif-btn{position:relative;background:transparent;border:none;cursor:pointer;padding:0;display:flex;align-items:center}
+.notif-dropdown{display:none;position:absolute;top:48px;right:0;width:340px;background:var(--bg-surface2);border:1px solid var(--border-light);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);z-index:30;overflow:hidden}
+.notif-dropdown.open{display:block}
+.notif-item{display:flex;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.notif-item:hover{background:var(--bg-hover)}
+.notif-item:last-child{border-bottom:none}
+.notif-item.unread{background:var(--accent-soft)}
+.notif-item .notif-dot{width:8px;height:8px;border-radius:999px;background:var(--accent);flex-shrink:0;margin-top:6px}
+.notif-item .notif-body{min-width:0}
+.notif-item .notif-title{font-size:.85rem;font-weight:650}
+.notif-item .notif-msg{font-size:.78rem;color:var(--text2);margin-top:.1rem;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.notif-item .notif-time{font-size:.72rem;color:var(--text3);margin-top:.2rem}
+
+/* Modern touches */
+.card{transition:border-color .18s,box-shadow .18s}
+.card:hover{border-color:var(--border-light)}
+.stat-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.35)}
+.btn{position:relative;overflow:hidden}
+.btn::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at center,rgba(255,255,255,.08) 0%,transparent 70%);opacity:0;transition:opacity .2s}
+.btn:hover::after{opacity:1}
+.btn-primary::after{background:radial-gradient(circle at center,rgba(255,255,255,.18) 0%,transparent 70%)}
+
+/* Table sort */
+.th-sortable{cursor:pointer;user-select:none;transition:color .15s}
+.th-sortable:hover{color:var(--text)}
+.th-sortable::after{content:' ⇅';font-size:.7rem;opacity:.4;margin-left:.2rem}
+.th-sortable.asc::after{content:' ↑';opacity:1;color:var(--accent)}
+.th-sortable.desc::after{content:' ↓';opacity:1;color:var(--accent)}
+
+/* Toast */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--bg-surface2);border:1px solid var(--border-light);border-radius:var(--radius);padding:.85rem 1.15rem;box-shadow:var(--shadow-lg);z-index:100;display:flex;align-items:center;gap:.65rem;font-size:.87rem;font-weight:650;animation:slideUp .25s ease;max-width:380px}
+.toast.success{border-color:var(--success);background:var(--success-soft)}
+.toast.error{border-color:var(--danger);background:var(--danger-soft)}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* Settings forms */
+.form-group{margin-bottom:1rem}
+.form-label{display:block;font-size:.82rem;font-weight:650;color:var(--text2);margin-bottom:.35rem}
+.form-input{width:100%;padding:.6rem .8rem;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.89rem;font-family:inherit;transition:border-color .15s}
+.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.form-input::placeholder{color:var(--text3)}
+.form-select{width:100%;padding:.6rem .8rem;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.89rem;font-family:inherit;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%239298a8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;padding-right:2rem}
+.toggle-switch{position:relative;width:44px;height:24px;background:var(--bg-hover);border-radius:12px;cursor:pointer;transition:background .2s;border:1px solid var(--border);display:inline-block}
+.toggle-switch.on{background:var(--accent);border-color:var(--accent)}
+.toggle-switch::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:999px;background:#fff;transition:transform .2s}
+.toggle-switch.on::after{transform:translateX(20px)}
+
+/* Utility */
+.fade-in{animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.text-accent{color:var(--accent)}
+.text-success{color:var(--success)}
+.text-warning{color:var(--warning)}
+.text-danger{color:var(--danger)}
+.text2{color:var(--text2)}
+.font-mono{font-family:'SF Mono','Fira Code',monospace;font-size:.85rem}
+.mt-2{margin-top:.5rem}
+.mt-4{margin-top:1rem}
+.gap-sm{gap:.5rem}
+.flex-between{display:flex;justify-content:space-between;align-items:center}
+.flex-center{display:flex;align-items:center;gap:.5rem}
+.empty-state{text-align:center;padding:2.5rem 1.5rem;color:var(--text2)}
+.empty-state .empty-icon{font-size:2.2rem;margin-bottom:.75rem;opacity:.4}
+.empty-state h3{font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:.35rem}
+.empty-state p{font-size:.87rem;max-width:320px;margin:0 auto .75rem}
 </style>
 </head>
 <body>
+<div class="app">
 
-<!-- Navigation Tabs -->
-<div class="tabs" id="navTabs"></div>
-<div class="screens" id="screenContainer"></div>
+<!-- Sidebar Overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
-<script>
-const I=(p,o={})=>`<svg width="${o.w||24}" height="${o.h||24}" viewBox="0 0 24 24" fill="none" stroke="${o.c||'currentColor'}" stroke-width="${o.sw||2}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
-
-// ─── ICON LIBRARY ───
-const IC={
-  bell:'<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
-  home:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
-  wifi:'<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>',
-  receipt:'<path d="M4 2v20l2-2 2 2 2-2 2 2 2-2 2 2 2-2 2 2V2l-2 2-2-2-2 2-2-2-2 2-2-2z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/>',
-  headset:'<path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1v-7h3z"/><path d="M3 19a2 2 0 0 0 2 2h1v-7H3z"/>',
-  creditCard:'<rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>',
-  zap:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
-  shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
-  clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-  user:'<circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/>',
-  settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
-  arrowLeft:'<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
-  chevron:'<polyline points="9 6 15 12 9 18"/>',
-  check:'<polyline points="20 6 9 17 4 12"/>',
-  plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
-  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
-  share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>',
-  edit:'<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/>',
-  help:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
-  lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
-  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
-  fingerprint:'<path d="M12 11a2 2 0 0 0-2 2c0 1.5 1 3 1 5"/><path d="M12 11a2 2 0 0 1 2 2c0 4-3 6-3 10"/><path d="M17 18.5a7 7 0 0 0-1-3.5c-.5-1-1-2-1-4"/><path d="M6.5 5.5A7 7 0 0 1 19 13c0 1.5-.5 3-1 4.5"/>',
-  eye:'<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
-  eyeOff:'<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>',
-  moon:'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
-  sun:'<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
-  file:'<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>',
-  mail:'<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
-  phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
-  wa:'<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/><path d="M10 10h1M14 10h1M11 13h2"/>',
-  search:'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
-  smile:'<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>',
-  camera:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
-  '2fa':'<rect x="1" y="5" width="22" height="14" rx="2"/><path d="M8 5v2"/><path d="M16 5v2"/><rect x="3" y="8" width="18" height="8" rx="1"/><line x1="12" y1="17" x2="12" y2="19"/>',
-};
-
-// ─── SCREEN FUNCTIONS ───
-
-// === AUTH ===
-function onboardingScr(){return`
-<div class="content" style="display:flex;flex-direction:column;justify-content:center;align-items:center;padding:48px 28px;text-align:center;">
-  <div style="width:140px;height:140px;border-radius:50%;background:radial-gradient(circle at 40% 40%,var(--accent2),var(--accent));margin-bottom:32px;display:flex;align-items:center;justify-content:center;opacity:0.9;box-shadow:0 0 60px var(--accent-glow);">
-    ${I(IC.zap,{w:64,h:64,c:'white',sw:2})}
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo">N</div>
+    <div class="name">NetISP</div>
   </div>
-  <div style="font-size:28px;font-weight:900;letter-spacing:-1px;margin-bottom:8px;">Internet Cepat</div>
-  <div style="font-size:14px;color:var(--text3);line-height:1.6;margin-bottom:32px;">Pantau kecepatan, bayar tagihan, dan laporkan gangguan — semua dari satu aplikasi.</div>
-  <div style="display:flex;gap:6px;margin-bottom:28px;">
-    <div style="width:8px;height:8px;border-radius:50%;background:var(--accent);"></div>
-    <div style="width:8px;height:8px;border-radius:50%;background:var(--border2);"></div>
-    <div style="width:8px;height:8px;border-radius:50%;background:var(--border2);"></div>
-  </div>
-  <button class="btn btn-accent" style="width:100%">Lanjutkan</button>
-  <a href="#" style="margin-top:16px;font-size:13px;color:var(--text3);font-weight:600;">Lewati</a>
-</div>`}
+  <nav class="sidebar-nav">
+    <div class="nav-section">Main</div>
+    <button class="nav-item active" onclick="navTo('dashboard')">
+      <span class="nav-icon">◉</span><span>Dashboard</span>
+    </button>
+    <button class="nav-item" onclick="navTo('services')">
+      <span class="nav-icon">◎</span><span>Layanan Saya</span>
+    </button>
+    <button class="nav-item" onclick="navTo('invoices')">
+      <span class="nav-icon">◈</span><span>Tagihan</span>
+    </button>
+    <button class="nav-item" onclick="navTo('locations')">
+      <span class="nav-icon">◆</span><span>Lokasi</span>
+    </button>
+    <button class="nav-item" onclick="navTo('order')">
+      <span class="nav-icon">◇</span><span>Pesan Baru</span>
+    </button>
+    <div class="nav-section">Support</div>
+    <button class="nav-item" onclick="navTo('tickets')">
+      <span class="nav-icon">☆</span><span>Tiket</span>
+    </button>
+    <button class="nav-item" onclick="navTo('settings')">
+      <span class="nav-icon">⚙</span><span>Pengaturan</span>
+    </button>
+  </nav>
+</aside>
 
-function permissionsScr(){return`
-<div class="content" style="padding:32px 20px;">
-  <div style="text-align:center;margin-bottom:28px;">
-    <div style="width:64px;height:64px;border-radius:18px;background:rgba(124,77,255,.12);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;">${I(IC.shield,{w:32,h:32,c:'var(--accent2)'})}</div>
-    <div style="font-size:22px;font-weight:800;">Izinkan Akses</div>
-    <div style="font-size:13px;color:var(--text3);margin-top:6px;line-height:1.5;">Aplikasi memerlukan izin berikut untuk pengalaman optimal.</div>
+<div class="main">
+<header class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger" onclick="toggleSidebar()" style="display:none">☰</button>
+    <span class="text2" style="font-size:.85rem" id="breadcrumb">← Dashboard</span>
   </div>
-  ${[{i:IC.bell,t:'Notifikasi',d:'Info tagihan & gangguan'},{i:'location',t:'Lokasi',d:'Deteksi jaringan terdekat'},{i:IC.camera,t:'Kamera',d:'Upload foto pendukung'}].map(p=>`
-  <div class="nc-btn" style="margin-bottom:10px;display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--rm);">
-    <div class="ico-r" style="background:var(--surface2);width:44px;height:44px;border-radius:12px;">${I(p.i,{w:20,h:20,c:'var(--accent2)'})}</div>
-    <div style="flex:1"><div style="font-size:14px;font-weight:600;">${p.t}</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">${p.d}</div></div>
-    <div style="width:44px;height:26px;background:var(--accent);border-radius:var(--rp);position:relative;"><div style="position:absolute;right:2px;top:2px;width:22px;height:22px;background:white;border-radius:50%;"></div></div>
-  </div>
-  `).join('')}
-  <button class="btn btn-accent" style="margin-top:12px">Izinkan Semua</button>
-</div>`}
-
-function loginScr(){return`
-<div class="content" style="display:flex;flex-direction:column;justify-content:center;padding:48px 28px;min-height:844px;">
-  <div style="width:56px;height:56px;background:var(--accent);border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:28px;">
-    <span style="font-size:26px;font-weight:900;color:white;letter-spacing:-1px;">IS</span>
-  </div>
-  <div style="font-size:30px;font-weight:900;letter-spacing:-1px;margin-bottom:4px;">Masuk</div>
-  <div style="font-size:14px;color:var(--text3);margin-bottom:36px;">Kelola layanan internet Anda.</div>
-  <label class="label">Email atau Nomor HP</label>
-  <input class="input-box" value="tri@tridigitals.com" style="margin-bottom:14px">
-  <label class="label">Kata Sandi</label>
-  <div style="display:flex;align-items:center;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rm);"><input type="password" value="password123" class="input-box" style="border:none;flex:1;margin-bottom:0"><button style="background:none;border:none;padding:14px;cursor:pointer">${I(IC.eye,{w:20,h:20,c:'var(--text3)'})}</button></div>
-  <div style="text-align:right;margin:6px 0 24px;"><a href="#" style="font-size:13px;font-weight:600;color:var(--accent2);text-decoration:none;">Lupa kata sandi?</a></div>
-  <button class="btn btn-accent">Masuk</button>
-  <div style="display:flex;align-items:center;gap:14px;margin:24px 0;"><div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:12px;color:var(--text3)">atau</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
-  <button class="btn btn-outline" style="gap:10px">${I(IC.fingerprint,{w:22,h:22,c:'var(--accent2)',sw:2})} Sidik Jari</button>
-</div>`}
-
-function loadingScr(){return`
-<div class="content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:844px;gap:20px;">
-  <div style="width:64px;height:64px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:18px;display:flex;align-items:center;justify-content:center;animation:pulse 1.5s infinite;box-shadow:0 12px 40px var(--accent-glow);">
-    <span style="font-size:30px;font-weight:900;color:white;letter-spacing:-2px;">IS</span>
-  </div>
-  <div style="font-size:13px;color:var(--text3);">Memeriksa sesi...</div>
-</div>`}
-
-function forgotPswScr(){return`
-<div class="content" style="padding:32px 20px;">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px;">
-    <button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button>
-    <div style="font-size:18px;font-weight:800;">Lupa Kata Sandi</div>
-  </div>
-  <div style="font-size:13px;color:var(--text3);margin-bottom:24px;line-height:1.5;">Masukkan email terdaftar. Kami akan kirim kode verifikasi.</div>
-  <label class="label">Email</label>
-  <input class="input-box" value="tri@tridigitals.com" style="margin-bottom:20px">
-  <button class="btn btn-accent" style="gap:8px">${I('<polyline points="22 2 11 13 7 17 2 12"/>',{w:18,h:18,c:'white',sw:2})} Kirim Kode</button>
-</div>`}
-
-function faEnrollScr(){return`
-<div class="content" style="padding:32px 20px;">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-    <button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button>
-    <div style="font-size:18px;font-weight:800;">Keamanan 2FA</div>
-  </div>
-  <div style="font-size:13px;color:var(--text3);margin-bottom:20px;line-height:1.5;">Scan QR code dengan Google Authenticator atau aplikasi autentikasi Anda.</div>
-  <div style="width:180px;height:180px;background:white;margin:0 auto 16px;border-radius:var(--rm);display:flex;align-items:center;justify-content:center;overflow:hidden;"><div style="width:150px;height:150px;background:repeating-linear-gradient(0deg,transparent,transparent 8px,#000 8px,#000 10px),repeating-linear-gradient(90deg,transparent,transparent 8px,#000 8px,#000 10px);border-radius:6px;"></div></div>
-  <div class="nc" style="text-align:center;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:6px;"><span style="font-family:monospace;font-size:13px;color:var(--text);">JBSW Y3DP EKRX T4VV</span><button style="background:none;border:none;cursor:pointer;padding:4px">${I('<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',{w:18,h:18,c:'var(--accent2)'})}</button></div>
-  <button class="btn btn-accent">Verifikasi Kode</button>
-</div>`}
-
-function faVerifyScr(){return`
-<div class="content" style="display:flex;flex-direction:column;justify-content:center;align-items:center;padding:48px 28px;min-height:844px;">
-  <div class="ico-r" style="width:64px;height:64px;border-radius:18px;background:rgba(124,77,255,.12);margin-bottom:20px;">${I(IC['2fa'],{w:32,h:32,c:'var(--accent2)'})}</div>
-  <div style="font-size:22px;font-weight:800;margin-bottom:4px;">Verifikasi 2FA</div>
-  <div style="font-size:13px;color:var(--text3);margin-bottom:28px;text-align:center;">Masukkan 6 digit kode dari aplikasi autentikasi.</div>
-  <div style="display:flex;gap:8px;margin-bottom:24px;">${Array(6).fill(0).map((_,i)=>`<div style="width:44px;height:52px;background:var(--surface);border:1.5px solid ${i<3?'var(--accent)':'var(--border)'};border-radius:var(--rs);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;font-family:monospace;color:var(--text);">${i<3?['3','8','4'][i]:''}</div>`).join('')}</div>
-  <div style="font-size:13px;color:var(--text3);margin-bottom:24px;">Kode kadaluarsa dalam <span style="color:var(--amber);font-weight:700;">2:34</span></div>
-  <button class="btn btn-accent" style="width:100%">Verifikasi</button>
-</div>`}
-
-// === HOME SHELL ===
-function homeTabScr(){return`
-<div class="content" style="padding:0 16px 120px;">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:20px 4px 12px;">
-    <div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--text3);margin-bottom:4px;">Selamat Pagi</div>
-    <div style="font-size:26px;font-weight:800;letter-spacing:-.5px;">Tri Yanto 👋</div></div>
-    <div style="display:flex;gap:8px;">
-      <div style="width:42px;height:42px;border-radius:var(--rm);background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;">${I(IC.bell,{w:18,h:18,c:'var(--text2)'})}<span style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:var(--red);border-radius:50%;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);">3</span></div>
-      <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;cursor:pointer;">TY</div>
-    </div>
-  </div>
-  <!-- Status pills -->
-  <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
-    <div class="status-pill"><span class="dot g"></span>Internet Aktif</div>
-    <div class="status-pill">⚡ 12ms · 50 Mbps</div>
-  </div>
-  <!-- Announcement carousel -->
-  <div style="margin-bottom:14px;">
-    <div class="nc-btn" style="padding:12px 14px;display:flex;align-items:center;gap:10px;background:rgba(124,77,255,.06);border-color:rgba(124,77,255,.2);">
-      <div style="font-size:18px;">📢</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;font-weight:700;color:var(--accent2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Maintenance Terjadwal 15 Juli</div>
-        <div style="font-size:10px;color:var(--text3);">Server maintenance 02:00–04:00 WIB</div>
+  <div class="topbar-right" style="position:relative">
+    <div class="notif-btn">
+      <button class="btn btn-ghost btn-sm" onclick="toggleNotif()" id="notifBadge" style="gap:.35rem">🔔 <span id="notifCount">2</span></button>
+      <div class="notif-dropdown" id="notifDropdown">
+        <div style="padding:.75rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <strong style="font-size:.88rem">Notifikasi</strong>
+          <button class="btn btn-ghost btn-sm" style="font-size:.72rem" onclick="markAllRead()">Tandai Semua Dibaca</button>
+        </div>
+        <div class="notif-item unread"><div class="notif-dot"></div><div class="notif-body"><div class="notif-title">Pembayaran Diterima</div><div class="notif-msg">Tagihan INV-2026-00045 telah terkonfirmasi.</div><div class="notif-time">2 jam lalu</div></div></div>
+        <div class="notif-item unread"><div class="notif-dot"></div><div class="notif-body"><div class="notif-title">Jadwal Pemadaman</div><div class="notif-msg">Pemadaman area Semarang pada 20 Juli 2026 pukul 10:00-14:00.</div><div class="notif-time">5 jam lalu</div></div></div>
+        <div class="notif-item"><div class="notif-dot" style="background:transparent"></div><div class="notif-body"><div class="notif-title">Promo Upgrade</div><div class="notif-msg">Diskon 20% upgrade paket. Berlaku hingga Desember.</div><div class="notif-time">1 hari lalu</div></div></div>
+        <div class="notif-item"><div class="notif-dot" style="background:transparent"></div><div class="notif-body"><div class="notif-title">Tiket #TK-004 Selesai</div><div class="notif-msg">Tiket Anda tentang gangguan koneksi telah diselesaikan.</div><div class="notif-time">2 hari lalu</div></div></div>
       </div>
-      <span class="badge r" style="font-size:9px;">PENTING</span>
-      <div style="display:flex;gap:3px;">${'●●○'.split('').map(c=>`<div style="width:5px;height:5px;border-radius:50%;background:${c=='●'?'var(--accent)':'var(--border2)'};"></div>`).join('')}</div>
+    </div>
+    <div class="avatar">TY</div>
+  </div>
+</header>
+
+<!-- Content area -->
+<main class="content fade-in" id="screen-container">
+  <!-- Screen content inserted by JS -->
+</main>
+</div>
+</div>
+<script>
+// === Screen Templates ===
+function tpl(name, html) { return html.trim(); }
+
+const screens = {};
+
+screens.dashboard = tpl('dashboard',`
+<div class="fade-in">
+  <div class="hero-card">
+    <div class="hero-welcome">
+      <div class="kicker"><span class="kicker-dot"></span>Selamat Datang</div>
+      <h1>Halo, Tri Yanto! 👋</h1>
+      <p>Ringkasan layanan & aktivitas akun Anda.</p>
+    </div>
+    <span class="hero-badge">⭐ Pelanggan Aktif</span>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card" style="cursor:default">
+      <div class="stat-icon emerald">✓</div>
+      <div class="stat-info">
+        <div class="stat-value">2</div>
+        <div class="stat-label">Layanan Aktif</div>
+      </div>
+    </div>
+    <div class="stat-card" style="cursor:default">
+      <div class="stat-icon indigo">⬡</div>
+      <div class="stat-info">
+        <div class="stat-value">30 Mbps</div>
+        <div class="stat-label">Paket Internet</div>
+      </div>
+    </div>
+    <div class="stat-card" style="border-color:var(--warning);cursor:default">
+      <div class="stat-icon amber">⏳</div>
+      <div class="stat-info">
+        <div class="stat-value">1</div>
+        <div class="stat-label">Tagihan Pending</div>
+      </div>
+    </div>
+    <div class="stat-card" style="cursor:default">
+      <div class="stat-icon sky">📅</div>
+      <div class="stat-info">
+        <div class="stat-value">12 Jul</div>
+        <div class="stat-label">Anggota Sejak 2024</div>
+      </div>
     </div>
   </div>
-  <!-- Multi-subscription carousel -->
-  <div style="margin-bottom:14px;overflow:hidden;">
-    <div style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 0;scrollbar-width:none;" data-carousel="true">
-      ${[{name:'Fiber 50Mbps',loc:'Router Semarang',price:'Rp 350.000',pct:60,days:'18 hari',active:1,col:'accent'},{name:'Fiber 30Mbps',loc:'Ungaran · Cabang B',price:'Rp 250.000',pct:100,days:'Kadaluarsa',active:0,col:'red'}].map((s,i)=>`
-      <div style="min-width:88%;scroll-snap-align:start;" class="nc-btn" data-slide="${i}"><div style="padding:16px 18px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--${s.col=='accent'?'accent2':'red2'});">${s.name}</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">${s.loc}</div></div><span class="badge ${s.active?'g':'r'}">${s.active?'AKTIF':'NONAKTIF'}</span></div>
-        <div class="money" style="font-size:36px;">${s.price}</div>
-        <div style="font-size:11px;color:var(--text3);margin:4px 0 10px;">per bulan · ${s.days} lagi</div>
-        <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:12px;"><div style="width:${s.pct}%;height:100%;background:var(--${s.col});border-radius:2px;"></div></div>
-        <div style="display:flex;gap:8px;"><button style="flex:1;padding:11px;background:var(--accent);color:white;border:none;border-radius:var(--rs);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;">Bayar Tagihan</button><button style="width:38px;height:38px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.chevron,{w:16,h:16,c:'var(--text2)'})}</button></div>
-      </div></div>
-      `).join('')}
+
+  <div class="main-grid">
+    <div>
+      <div class="section-title"><h2>Aktivitas Terbaru</h2><button class="btn btn-ghost btn-sm">Lihat Semua →</button></div>
+      <div class="card" style="margin-bottom:1.25rem">
+        <ul class="activity-list">
+          <li class="activity-item">
+            <div class="activity-icon success">✓</div>
+            <div class="activity-text">
+              <div class="activity-row"><span class="activity-title">Pembayaran Diterima</span><span class="activity-time">2 jam lalu</span></div>
+              <div class="activity-msg">Tagihan INV-2026-00045 sebesar Rp 330.000 telah terkonfirmasi.</div>
+            </div>
+          </li>
+          <li class="activity-item">
+            <div class="activity-icon warning">!</div>
+            <div class="activity-text">
+              <div class="activity-row"><span class="activity-title">Pemasangan Terjadwal</span><span class="activity-time">Kemarin</span></div>
+              <div class="activity-msg">Teknisi dijadwalkan datang 15 Juli 2026 pukul 09:00.</div>
+            </div>
+          </li>
+          <li class="activity-item">
+            <div class="activity-icon" style="color:var(--info);background:var(--info-soft);border:none">i</div>
+            <div class="activity-text">
+              <div class="activity-row"><span class="activity-title">Pemeliharaan Jaringan</span><span class="activity-time">2 hari lalu</span></div>
+              <div class="activity-msg">Pemeliharaan rutin selesai. Layanan kembali normal.</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section-title"><h2>Pengumuman</h2><button class="btn btn-ghost btn-sm">Lihat Semua →</button></div>
+      <div class="card">
+        <ul class="activity-list">
+          <li class="activity-item" style="gap:.65rem">
+            <span class="status-dot green" style="margin-top:6px"></span>
+            <div class="activity-text">
+              <div class="activity-row"><span class="activity-title">Promo Akhir Tahun</span><span class="activity-time">2 hari lalu</span></div>
+              <div class="activity-msg">Diskon 20% untuk upgrade paket internet. Periode hingga 31 Desember.</div>
+            </div>
+          </li>
+          <li class="activity-item" style="gap:.65rem">
+            <span class="status-dot amber" style="margin-top:6px"></span>
+            <div class="activity-text">
+              <div class="activity-row"><span class="activity-title">Info Pemadaman</span><span class="activity-time">5 hari lalu</span></div>
+              <div class="activity-msg">Pemadaman listrik terjadwal area Semarang pada 20 Juli.</div>
+            </div>
+          </li>
+        </ul>
+      </div>
     </div>
-    <div style="display:flex;justify-content:center;gap:4px;margin-top:8px;">${['●','○'].map((c,i)=>`<div data-dot="${i}" style="width:${c=='●'?'16px':'5px'};height:5px;border-radius:3px;background:${c=='●'?'var(--accent)':'var(--border2)'};cursor:pointer;transition:all .25s;"></div>`).join('')}</div>
-  </div>
-  <!-- Bento grid -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-    <div class="nc-btn" style="padding:14px;"><div style="margin-bottom:6px;">${I(IC.zap,{w:18,h:18,c:'var(--amber)'})}</div><div class="money" style="font-size:24px;">50<span style="font-size:12px;color:var(--text3);">Mbps</span></div><div style="font-size:10px;color:var(--text3);margin-top:2px;">Kecepatan Aktif</div></div>
-    <div class="nc-btn" style="padding:14px;"><div style="margin-bottom:6px;">${I(IC.shield,{w:18,h:18,c:'var(--green)'})}</div><div class="money" style="font-size:24px;">99.8<span style="font-size:12px;color:var(--text3);">%</span></div><div style="font-size:10px;color:var(--text3);margin-top:2px;">Uptime 30 hari</div></div>
-    <div class="nc-btn" style="padding:14px;cursor:pointer;"><div style="margin-bottom:6px;">${I(IC.receipt,{w:18,h:18,c:'var(--red2)'})}</div><span class="badge r" style="margin-bottom:4px;display:inline-block;">1 JATUH TEMPO</span><div class="money" style="font-size:18px;">Rp 350K</div><div style="font-size:10px;color:var(--text3);">INV-2026-07-002</div></div>
-    <div class="nc-btn" style="padding:14px;cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100px;"><div style="width:32px;height:32px;border-radius:50%;background:rgba(124,77,255,.12);display:flex;align-items:center;justify-content:center;margin-bottom:4px;">${I(IC.plus,{w:18,h:18,c:'var(--accent)'})}</div><div style="font-size:11px;font-weight:700;color:var(--accent2);">Buat Tiket</div><div style="font-size:9px;color:var(--text3);">Lapor gangguan</div></div>
+
+    <aside>
+      <div class="section-title"><h2>Ringkasan</h2></div>
+      <div class="card summary-card" style="margin-bottom:1rem">
+        <div class="summary-row">
+          <span class="summary-k">Status Akun</span>
+          <span class="pill pill-success">Aktif</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-k">Paket Aktif</span>
+          <span class="summary-v">Internet 30 Mbps</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-k">Siklus</span>
+          <span class="summary-v">Bulanan</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-k">Lokasi</span>
+          <span class="summary-v">Jl. Merdeka No. 45, Semarang</span>
+        </div>
+        <div class="summary-row" style="border-bottom:0">
+          <span class="summary-k">Tagihan Pending</span>
+          <div style="text-align:right">
+            <div class="summary-amount">Rp 330.000</div>
+            <div class="summary-due">Jatuh tempo 20 Juli 2026</div>
+          </div>
+        </div>
+        <div class="summary-actions">
+          <button class="btn btn-primary btn-sm" style="flex:1">💳 Bayar Sekarang</button>
+          <button class="btn btn-sm">📦 Kelola Paket</button>
+        </div>
+      </div>
+
+      <div class="section-title"><h2>Aksi Cepat</h2></div>
+      <div class="card" style="overflow:hidden">
+        <button class="nav-item" style="border-radius:0;border-bottom:1px solid var(--border);width:100%">
+          <span class="nav-icon">👤</span> Update Profil
+        </button>
+        <button class="nav-item" style="border-radius:0;border-bottom:1px solid var(--border);width:100%">
+          <span class="nav-icon">🔒</span> Keamanan Akun
+        </button>
+        <button class="nav-item" style="border-radius:0;border-bottom:1px solid var(--border);width:100%">
+          <span class="nav-icon">💬</span> Bantuan / Support
+        </button>
+        <button class="nav-item" style="border-radius:0;width:100%">
+          <span class="nav-icon">📋</span> Riwayat Invoice
+        </button>
+      </div>
+    </aside>
   </div>
 </div>
-<div class="fnav">${[{i:IC.home,l:'Beranda',a:1},{i:IC.wifi,l:'Layanan'},{i:IC.receipt,l:'Tagihan'},{i:IC.headset,l:'Support'}].map(t=>`<div class="ni${t.a?' ac':''}">${I(t.i,{w:20,h:20,c:t.a?'var(--accent)':'var(--text3)'})}<span class="ni l" style="color:${t.a?'var(--accent2)':'var(--text3)'}">${t.l}</span></div>`).join('')}</div>`}
+`);
 
-function subsTabScr(){return`
-<div class="content" style="padding:0 16px 120px;">
-  <div style="padding:20px 4px 16px;"><div style="font-size:22px;font-weight:800;">Layanan Saya</div></div>
-  ${[{name:'Fiber 50Mbps',loc:'Router Semarang · Cabang A',price:'Rp 350.000',status:'AKTIF',col:'g',pct:60,days:'18 hari'},{name:'Fiber 30Mbps',loc:'Router Ungaran',price:'Rp 250.000',status:'NONAKTIF',col:'r',pct:100,days:'Kadaluarsa'}].map(s=>`
-  <div class="nc-btn" style="margin-bottom:12px;padding:16px;display:flex;align-items:center;gap:14px;">
-    <div style="width:4px;height:56px;border-radius:2px;background:var(--${s.col=='g'?'green':'red'});flex-shrink:0;"></div>
-    <div style="flex:1;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span style="font-size:14px;font-weight:700;">${s.name}</span><span class="badge ${s.col}">${s.status}</span></div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">${s.loc}</div>
-      <div class="money" style="font-size:18px;">${s.price}</div>
-      <div style="height:2px;background:var(--border);border-radius:1px;overflow:hidden;margin-top:8px;"><div style="width:${s.pct}%;height:100%;background:var(--${s.col=='g'?'accent':'red'});border-radius:1px;"></div></div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px;">${s.days} lagi</div>
+screens.services = tpl('services',`
+<div class="fade-in">
+  <div class="page-header">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem">
+      <div>
+        <div class="kicker"><span class="kicker-dot"></span>Layanan</div>
+        <h1>Layanan Saya</h1>
+        <p>Daftar semua layanan yang Anda pesan.</p>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm">↻ Refresh</button>
+        <button class="btn btn-ghost btn-sm">📄 Tagihan</button>
+        <button class="btn btn-primary btn-sm">＋ Pesan Layanan Baru</button>
+      </div>
     </div>
-    <div>${I(IC.chevron,{w:18,h:18,c:'var(--text3)'})}</div>
-  </div>`).join('')}
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card selected">
+      <div class="stat-icon indigo">☰</div>
+      <div class="stat-info"><div class="stat-value">3</div><div class="stat-label">Total Layanan</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon emerald">✓</div>
+      <div class="stat-info"><div class="stat-value">2</div><div class="stat-label">Aktif</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon amber">⏳</div>
+      <div class="stat-info"><div class="stat-value">1</div><div class="stat-label">Pending Instalasi</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon rose">!</div>
+      <div class="stat-info"><div class="stat-value">0</div><div class="stat-label">Perlu Perhatian</div></div>
+    </div>
+  </div>
+
+  <div class="card" style="overflow:hidden">
+    <div style="padding:1rem 1.25rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
+      <div>
+        <h2 style="font-size:1rem;font-weight:750;margin-bottom:.1rem">Layanan Dipesan</h2>
+        <span style="font-size:.8rem;color:var(--text2)">3 layanan</span>
+      </div>
+      <div class="filter-chips">
+        <span class="pill pill-info">Filter: Semua</span>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+    <table class="data-table">
+      <thead><tr><th>Layanan</th><th>Status</th><th>Lokasi</th><th>Siklus</th><th style="text-align:right">Harga</th><th style="text-align:right">Aksi</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Internet 30 Mbps</strong></td>
+          <td><span class="pill pill-success">Aktif</span></td>
+          <td>Jl. Merdeka 45</td>
+          <td>Bulanan</td>
+          <td style="text-align:right"><strong>Rp 330.000</strong></td>
+          <td><div class="table-actions">
+            <button class="table-action">📄 Invoice</button>
+          </div></td>
+        </tr>
+        <tr>
+          <td><strong>Internet 10 Mbps</strong></td>
+          <td><span class="pill pill-success">Aktif</span></td>
+          <td>Jl. Melati 12</td>
+          <td>Bulanan</td>
+          <td style="text-align:right"><strong>Rp 165.000</strong></td>
+          <td><div class="table-actions">
+            <button class="table-action">📄 Invoice</button>
+          </div></td>
+        </tr>
+        <tr style="background:var(--warning-soft)">
+          <td><strong>Internet 50 Mbps</strong></td>
+          <td><span class="pill pill-warning">Pending Instalasi</span></td>
+          <td>Jl. Mawar 8</td>
+          <td>Tahunan</td>
+          <td style="text-align:right"><strong>Rp 3.500.000</strong></td>
+          <td><div class="table-actions">
+            <button class="table-action" style="background:var(--accent-soft);color:var(--accent);border-color:var(--accent)">📍 Lacak Instalasi</button>
+            <button class="table-action">📄 Invoice</button>
+          </div></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
 </div>
-<div class="fnav">${[{i:IC.home,l:'Beranda'},{i:IC.wifi,l:'Layanan',a:1},{i:IC.receipt,l:'Tagihan'},{i:IC.headset,l:'Support'}].map(t=>`<div class="ni${t.a?' ac':''}">${I(t.i,{w:20,h:20,c:t.a?'var(--accent)':'var(--text3)'})}<span class="ni l" style="color:${t.a?'var(--accent2)':'var(--text3)'}">${t.l}</span></div>`).join('')}</div>`}
+`);
 
-function invoicesTabScr(){return`
-<div class="content" style="padding:0 16px 120px;">
-  <div style="padding:20px 4px 12px;"><div style="font-size:22px;font-weight:800;margin-bottom:12px;">Tagihan</div>
-  <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;"><span class="chip ac">Semua</span><span class="chip">Belum Bayar</span><span class="chip">Lunas</span><span class="chip">Jatuh Tempo</span></div></div>
-  ${[{id:'INV-2026-07-003',amt:'Rp 350.000',date:'15 Jul 2026',s:'r',sl:'Jatuh Tempo',svc:'Fiber 50Mbps'},{id:'INV-2026-06-002',amt:'Rp 350.000',date:'10 Jun 2026',s:'g',sl:'Lunas',svc:'Fiber 50Mbps'}].map(inv=>`
-  <div class="nc-btn" style="margin-bottom:8px;padding:14px;display:flex;align-items:center;gap:12px;">
-    <div class="ico-r" style="background:var(--surface2);">${I(IC.receipt,{w:18,h:18,c:'var(--text2)'})}</div>
-    <div style="flex:1;"><div style="font-size:13px;font-weight:600;">${inv.id}</div><div style="font-size:11px;color:var(--text3);">${inv.svc} · ${inv.date}</div></div>
-    <div style="text-align:right;"><div class="money" style="font-size:15px;">${inv.amt}</div><span class="badge ${inv.s}">${inv.sl}</span></div>
-  </div>`).join('')}
+screens.invoices = tpl('invoices',`
+<div class="fade-in">
+  <div class="page-header">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem">
+      <div>
+        <div class="kicker"><span class="kicker-dot"></span>Tagihan</div>
+        <h1>Tagihan Saya</h1>
+        <p>Riwayat & status pembayaran invoice.</p>
+      </div>
+      <button class="btn btn-ghost btn-sm">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div class="invoice-strip">
+    <div class="invoice-strip-item">
+      <div class="strip-icon emerald" style="background:var(--success-soft);color:var(--success)">💰</div>
+      <div>
+        <div class="strip-val">Rp 330.000</div>
+        <div class="strip-label">Tagihan Bulan Ini</div>
+      </div>
+    </div>
+    <div class="invoice-strip-item" style="border-color:var(--warning);background:var(--warning-soft)">
+      <div class="strip-icon amber" style="background:rgba(245,158,11,.2);color:var(--warning)">⚠</div>
+      <div>
+        <div class="strip-val">1</div>
+        <div class="strip-label">Belum Dibayar</div>
+      </div>
+    </div>
+    <div class="invoice-strip-item">
+      <div class="strip-icon" style="background:var(--info-soft);color:var(--info)">📅</div>
+      <div>
+        <div class="strip-val">20 Jul</div>
+        <div class="strip-label">Jatuh Tempo</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="overflow:hidden">
+    <div style="overflow-x:auto">
+    <table class="data-table">
+      <thead><tr><th>No. Invoice</th><th>Deskripsi</th><th style="text-align:right">Jumlah</th><th>Status</th><th>Jatuh Tempo</th><th style="text-align:right">Aksi</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="font-mono">INV-2026-00045</td>
+          <td>Internet 30 Mbps — Juli 2026</td>
+          <td style="text-align:right"><strong>Rp 330.000</strong></td>
+          <td><span class="pill pill-warning">Pending</span></td>
+          <td><span class="text-danger">20 Jul 2026</span></td>
+          <td><div class="table-actions">
+            <button class="table-action" style="background:var(--accent);color:#fff;border-color:var(--accent)">💳 Bayar</button>
+            <button class="table-action">🖨 Cetak</button>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="font-mono">INV-2026-00042</td>
+          <td>Internet 10 Mbps — Juli 2026</td>
+          <td style="text-align:right"><strong>Rp 165.000</strong></td>
+          <td><span class="pill pill-success">Lunas</span></td>
+          <td>18 Jul 2026</td>
+          <td><div class="table-actions">
+            <button class="table-action">🖨 Cetak</button>
+          </div></td>
+        </tr>
+        <tr>
+          <td class="font-mono">INV-2026-00038</td>
+          <td>Internet 30 Mbps — Juni 2026</td>
+          <td style="text-align:right"><strong>Rp 330.000</strong></td>
+          <td><span class="pill pill-success">Lunas</span></td>
+          <td>20 Jun 2026</td>
+          <td><div class="table-actions">
+            <button class="table-action">🖨 Cetak</button>
+          </div></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
 </div>
-<div class="fnav">${[{i:IC.home,l:'Beranda'},{i:IC.wifi,l:'Layanan'},{i:IC.receipt,l:'Tagihan',a:1},{i:IC.headset,l:'Support'}].map(t=>`<div class="ni${t.a?' ac':''}">${I(t.i,{w:20,h:20,c:t.a?'var(--accent)':'var(--text3)'})}<span class="ni l" style="color:${t.a?'var(--accent2)':'var(--text3)'}">${t.l}</span></div>`).join('')}</div>`}
+`);
 
-function supportTabScr(){return`
-<div class="content" style="padding:0 16px 120px;">
-  <div style="padding:20px 4px 16px;"><div style="font-size:22px;font-weight:800;">Support</div></div>
-  ${[{id:'TKT-1003',title:'Internet lambat malam hari',date:'2 jam lalu',s:'a',sl:'Menunggu'},{id:'TKT-1001',title:'Kabel putus setelah hujan',date:'5 hari lalu',s:'b',sl:'Diproses'}].map(t=>`
-  <div class="nc-btn" style="margin-bottom:8px;padding:14px;display:flex;align-items:center;gap:12px;">
-    <div class="ico-r" style="background:rgba(${t.s=='a'?'255,215,64':'64,196,255'},.12);">${I(IC.headset,{w:18,h:18,c:`var(--${t.s=='a'?'amber':'blue'})`})}</div>
-    <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.title}</div><div style="font-size:11px;color:var(--text3);">${t.id} · ${t.date}</div></div>
-    <div style="text-align:right;"><span class="badge ${t.s=='a'?'a':'b'}">${t.sl}</span></div>
-  </div>`).join('')}
-  <div style="position:absolute;bottom:80px;right:16px;width:52px;height:52px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px var(--accent-glow);cursor:pointer;">${I(IC.plus,{w:26,h:26,c:'white',sw:3})}</div>
+screens.locations = tpl('locations',`
+<div class="fade-in">
+  <div class="page-header">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem">
+      <div>
+        <div class="kicker"><span class="kicker-dot"></span>Lokasi</div>
+        <h1>Lokasi Saya</h1>
+        <p>Alamat yang terdaftar untuk instalasi & layanan.</p>
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-primary btn-sm">＋ Tambah Lokasi</button>
+        <button class="btn btn-ghost btn-sm">↻ Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card" style="cursor:default">
+      <div class="stat-icon indigo">📍</div>
+      <div class="stat-info"><div class="stat-value">3</div><div class="stat-label">Total Lokasi</div></div>
+    </div>
+    <div class="stat-card" style="cursor:default">
+      <div class="stat-icon emerald">🗺</div>
+      <div class="stat-info"><div class="stat-value">2</div><div class="stat-label">Dengan Koordinat</div></div>
+    </div>
+    <div class="stat-card" style="cursor:default">
+      <div class="stat-icon sky">📝</div>
+      <div class="stat-info"><div class="stat-value">1</div><div class="stat-label">Dengan Catatan</div></div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem">
+    <div class="card" style="padding:1.15rem">
+      <div class="flex-between" style="margin-bottom:.75rem">
+        <span class="pill pill-info" style="font-size:.73rem">📍 Lokasi</span>
+        <div style="display:flex;gap:.35rem">
+          <button class="table-action">✏</button>
+          <button class="table-action" style="border-color:var(--danger);color:var(--danger)">🗑</button>
+        </div>
+      </div>
+      <div style="font-size:1.05rem;font-weight:750;margin-bottom:.35rem">Rumah Utama</div>
+      <div class="text2" style="font-size:.85rem;line-height:1.5;margin-bottom:.5rem">Jl. Merdeka No. 45 • Semarang, Jawa Tengah 50123 • Indonesia</div>
+      <span class="pill pill-neutral">-7.005142, 110.438126</span>
+    </div>
+    <div class="card" style="padding:1.15rem">
+      <div class="flex-between" style="margin-bottom:.75rem">
+        <span class="pill pill-info" style="font-size:.73rem">📍 Lokasi</span>
+        <div style="display:flex;gap:.35rem">
+          <button class="table-action">✏</button>
+          <button class="table-action" style="border-color:var(--danger);color:var(--danger)">🗑</button>
+        </div>
+      </div>
+      <div style="font-size:1.05rem;font-weight:750;margin-bottom:.35rem">Kantor Cabang</div>
+      <div class="text2" style="font-size:.85rem;line-height:1.5;margin-bottom:.5rem">Jl. Melati No. 12 • Semarang, Jawa Tengah 50241 • Indonesia</div>
+      <span class="pill pill-neutral">-6.990400, 110.422900</span>
+    </div>
+    <div class="card" style="padding:1.15rem">
+      <div class="flex-between" style="margin-bottom:.75rem">
+        <span class="pill pill-info" style="font-size:.73rem">📍 Lokasi</span>
+        <div style="display:flex;gap:.35rem">
+          <button class="table-action">✏</button>
+          <button class="table-action" style="border-color:var(--danger);color:var(--danger)">🗑</button>
+        </div>
+      </div>
+      <div style="font-size:1.05rem;font-weight:750;margin-bottom:.35rem">Rumah Orang Tua</div>
+      <div class="text2" style="font-size:.85rem;line-height:1.5;margin-bottom:.5rem">Jl. Mawar No. 8 • Ungaran, Jawa Tengah • Indonesia</div>
+      <span class="pill pill-neutral">Koord. belum diisi</span>
+    </div>
+  </div>
 </div>
-<div class="fnav">${[{i:IC.home,l:'Beranda'},{i:IC.wifi,l:'Layanan'},{i:IC.receipt,l:'Tagihan'},{i:IC.headset,l:'Support',a:1}].map(t=>`<div class="ni${t.a?' ac':''}">${I(t.i,{w:20,h:20,c:t.a?'var(--accent)':'var(--text3)'})}<span class="ni l" style="color:${t.a?'var(--accent2)':'var(--text3)'}">${t.l}</span></div>`).join('')}</div>`}
+`);
 
-// === DETAIL ===
-function subDetailScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 8px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div><div style="font-size:18px;font-weight:800;">Fiber 50Mbps</div><div style="font-size:11px;color:var(--text3);">SUB-2024-0051</div></div></div>
-  <div class="nc" style="margin-bottom:12px;background:var(--surface);text-align:center;padding:24px;">
-    <div style="width:100px;height:100px;margin:0 auto 16px;position:relative;"><svg viewBox="0 0 100 100" style="transform:rotate(-90deg);"><circle cx="50" cy="50" r="42" fill="none" stroke="var(--border)" stroke-width="8"/><circle cx="50" cy="50" r="42" fill="none" stroke="var(--accent)" stroke-width="8" stroke-dasharray="264" stroke-dashoffset="106" stroke-linecap="round"/></svg><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;"><div class="money" style="font-size:22px;">18</div><div style="font-size:10px;color:var(--text3);">hari lagi</div></div></div>
-    <div class="money" style="font-size:36px;">Rp 350.000</div>
-    <div style="font-size:12px;color:var(--text3);margin-top:2px;">/ bulan · Jatuh tempo 31 Jul 2026</div>
-    <div style="margin-top:12px;"><span class="badge g">AKTIF</span></div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-    ${[{l:'Kecepatan',v:'50 Mbps',i:IC.zap,c:'amber'},{l:'Uptime',v:'99.8%',i:IC.shield,c:'green'},{l:'Latensi',v:'12 ms',i:IC.clock,c:'blue'},{l:'Data Used',v:'128 GB',i:'<path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/><path d="M12 2v6l4 4"/>',c:'accent'}].map(s=>`<div class="nc-btn" style="padding:14px;text-align:center;"><div style="margin-bottom:4px;">${I(s.i,{w:18,h:18,c:`var(--${s.c=='accent'?'accent2':s.c})`})}</div><div class="money" style="font-size:20px;">${s.v}</div><div style="font-size:10px;color:var(--text3);">${s.l}</div></div>`).join('')}
-  </div>
-  <div style="font-size:13px;font-weight:700;color:var(--text3);margin-bottom:8px;">Riwayat Tagihan</div>
-  ${[1,2,3].map(i=>`<div class="nc-btn" style="margin-bottom:6px;padding:12px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:12px;font-weight:600;">INV-2026-0${i}</div><div style="font-size:10px;color:var(--text3);">Jul 2026</div></div><div style="text-align:right;"><div class="money" style="font-size:14px;">Rp 350.000</div><span class="badge ${i<3?'g':'r'}">${i<3?'Lunas':'Jatuh Tempo'}</span></div></div>`).join('')}
-</div>`}
-
-function invDetailScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 8px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div><div style="font-size:18px;font-weight:800;">Detail Tagihan</div><div style="font-size:11px;color:var(--text3);">INV-2026-07-002</div></div><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:auto;">${I(IC.download,{w:20,h:20,c:'var(--text2)'})}</button></div>
-  <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rxl);overflow:hidden;margin-top:8px;">
-    <div style="height:3px;background:var(--red);"></div>
-    <div style="padding:24px 20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;"><div style="width:40px;height:40px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:white;">IS</div><span class="badge r">JATUH TEMPO</span></div>
-      <div class="money" style="font-size:48px;margin-bottom:4px;">Rp 350.000</div>
-      <div style="font-size:12px;color:var(--text3);">Jatuh tempo 15 Juli 2026</div>
-      <div style="margin:24px -20px;height:1px;background:repeating-linear-gradient(90deg,var(--border) 0,var(--border) 6px,transparent 6px,transparent 12px);"></div>
-      ${[{l:'Layanan',v:'Fiber 50Mbps',i:IC.wifi,c:'accent'},{l:'Periode',v:'Juli 2026',i:IC.clock,c:'amber'},{l:'Jatuh Tempo',v:'15 Jul 2026',i:IC.clock,c:'red'}].map(r=>`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><div style="width:32px;height:32px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;">${I(r.i,{w:16,h:16,c:`var(--${r.c}2)`})}</div><span style="flex:1;font-size:12px;color:var(--text3);">${r.l}</span><span style="font-size:13px;font-weight:600;">${r.v}</span></div>`).join('')}
-    </div>
-    <div style="background:var(--surface2);padding:16px 20px;border-top:1px solid var(--border);">
-      <button class="btn btn-accent" style="margin-bottom:8px;">${I(IC.creditCard,{w:18,h:18,c:'white'})} Bayar Sekarang</button>
-      <div style="display:flex;gap:8px;"><button class="btn btn-outline" style="font-size:12px;">${I(IC.share,{w:14,h:14,c:'var(--text2)'})} Upload</button><button class="btn btn-outline" style="font-size:12px;">${I(IC.help,{w:14,h:14,c:'var(--text2)'})} Bantuan</button></div>
+screens.order = tpl('order',`
+<div class="fade-in">
+  <div class="page-header">
+    <div>
+      <div class="kicker"><span class="kicker-dot"></span>Pesan Baru</div>
+      <h1>Internet Baru</h1>
+      <p>Pilih alamat, paket, dan siklus tagihan. Konfirmasi lalu kirim.</p>
     </div>
   </div>
-</div>`}
-
-function newTicketScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 16px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div style="font-size:18px;font-weight:800;">Tiket Baru</div></div>
-  <label class="label">Kategori</label>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">${['Internet','Tagihan','Teknis','Lainnya'].map((c,i)=>`<span class="chip${i==0?' ac':''}">${c}</span>`).join('')}</div>
-  <label class="label">Judul</label>
-  <input class="input-box" placeholder="Masukkan judul tiket..." style="margin-bottom:12px">
-  <label class="label">Deskripsi</label>
-  <textarea class="input-box" placeholder="Jelaskan masalah Anda..." style="height:120px;resize:none;margin-bottom:12px;"></textarea>
-  <div class="nc-btn" style="padding:24px;text-align:center;margin:12px 0;border-style:dashed;cursor:pointer;">${I('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',{w:24,h:24,c:'var(--text3)'})}<div style="font-size:12px;color:var(--text3);margin-top:8px;">Upload lampiran (foto / screenshot)</div></div>
-  <button class="btn btn-accent">Kirim Tiket</button>
-</div>`}
-
-function ticketDetailScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 8px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div><div style="font-size:16px;font-weight:800;">TKT-1003</div><div style="font-size:11px;color:var(--text3);">Internet lambat</div></div><span class="badge a" style="margin-left:auto;">Menunggu</span></div>
-  <div style="margin:8px 0 16px;display:flex;gap:20px;position:relative;">
-    ${[{d:'Dibuat',t:'2 jam lalu'},{d:'Diproses',t:'-',a:1},{d:'Selesai',t:'-',a:1}].map((s,i)=>`<div style="flex:1;text-align:center;position:relative;z-index:1;"><div style="width:12px;height:12px;border-radius:50%;background:${!s.a?'var(--accent)':'var(--border2)'};margin:0 auto 4px;border:2px solid ${!s.a?'var(--accent)':'var(--border2)'};"></div><div style="font-size:11px;font-weight:${!s.a?'700':'400'};color:${!s.a?'var(--text)':'var(--text3)'}">${s.d}</div><div style="font-size:9px;color:var(--text3)">${s.t}</div></div>`).join('')}
-  </div>
-  <div style="position:relative;margin-bottom:16px;">
-    ${[{r:'customer',n:'Tri Yanto',m:'Internet saya lambat sekali malam hari. Sudah coba restart router tetap sama. Tolong dicek.',t:'2 jam lalu'},{r:'agent',n:'CS ISPMANAGEMENT',m:'Selamat malam Pak Tri. Kami sedang cek dari sini. Bisa tolong share screenshot speed test?',t:'1 jam lalu'}].map(msg=>`
-    <div style="display:flex;gap:10px;margin-bottom:12px;${msg.r=='customer'?'':'flex-direction:row-reverse;text-align:right;'}">
-      <div style="width:32px;height:32px;border-radius:50%;background:${msg.r=='customer'?'var(--accent)':'var(--surface2)'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;color:${msg.r=='customer'?'white':'var(--text2)'}">${msg.n.charAt(0)}</div>
-      <div style="max-width:75%;"><div style="background:${msg.r=='customer'?'var(--surface)':'rgba(124,77,255,.08)'};padding:10px 14px;border-radius:${msg.r=='customer'?'4px 16px 16px 16px':'16px 4px 16px 16px'};border:1px solid var(--border);"><div style="font-size:10px;font-weight:700;color:var(--accent2);margin-bottom:4px;">${msg.n}</div><div style="font-size:12px;color:var(--text);line-height:1.5;">${msg.m}</div></div><div style="font-size:9px;color:var(--text3);margin-top:4px;">${msg.t}</div></div>
+  <div style="display:flex;gap:2rem;flex-wrap:wrap" id="orderFlow">
+    <div style="display:flex;flex-direction:column;gap:.75rem;flex-shrink:0">
+      <div class="order-step" data-step="1" style="display:flex;align-items:center;gap:.75rem;font-weight:700;color:var(--accent)">
+        <div style="width:32px;height:32px;border-radius:999px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.85rem">1</div> <span>Alamat</span>
+      </div>
+      <div style="width:2px;height:20px;background:var(--border);margin-left:15px"></div>
+      <div class="order-step" data-step="2" style="display:flex;align-items:center;gap:.75rem;font-weight:700;color:var(--text2)">
+        <div style="width:32px;height:32px;border-radius:999px;background:var(--bg-surface2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.85rem">2</div> <span>Paket</span>
+      </div>
+      <div style="width:2px;height:20px;background:var(--border);margin-left:15px"></div>
+      <div class="order-step" data-step="3" style="display:flex;align-items:center;gap:.75rem;font-weight:700;color:var(--text2)">
+        <div style="width:32px;height:32px;border-radius:999px;background:var(--bg-surface2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.85rem">3</div> <span>Review</span>
+      </div>
     </div>
-    `).join('')}
-  </div>
-  <div style="display:flex;gap:8px;padding:8px 0;background:var(--bg);position:sticky;bottom:0;"><input class="input-box" placeholder="Tulis balasan..." style="flex:1;"><button style="width:44px;height:44px;background:var(--accent);color:white;border:none;border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">${I('<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',{w:20,h:20,c:'white'})}</button></div>
-</div>`}
-
-function paymentScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 8px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div style="font-size:18px;font-weight:800;">Pilih Pembayaran</div></div>
-  <div class="nc" style="margin-bottom:16px;text-align:center;padding:16px;"><div style="font-size:11px;color:var(--text3);">Total Pembayaran</div><div class="money" style="font-size:28px;">Rp 350.000</div></div>
-  <div style="font-size:13px;font-weight:700;margin-bottom:10px;">Metode Pembayaran</div>
-  ${['Transfer Bank','E-Wallet','Gerai Retail'].map((m,i)=>`<div class="nc-btn" style="margin-bottom:8px;padding:16px;display:flex;align-items:center;gap:14px;${i==0?'border-color:var(--accent);box-shadow:3px 3px 0 var(--accent-glow);':''}"><div class="ico-r" style="background:${i==0?'rgba(124,77,255,.12)':'var(--surface2)'};width:44px;height:44px;border-radius:12px;">${I(i==0?IC.creditCard:i==1?IC.zap:IC.shield,{w:20,h:20,c:i==0?'var(--accent2)':'var(--text2)'})}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;">${m}</div><div style="font-size:11px;color:var(--text3);">${i==0?'BCA, Mandiri, BNI, BRI':i==1?'GoPay, OVO, Dana, ShopeePay':'Alfamart, Indomaret'}</div></div>${i==0?I(IC.check,{w:20,h:20,c:'var(--accent)'}):''}</div>`).join('')}
-  <button class="btn btn-accent" style="margin-top:12px;">Lanjut Bayar</button>
-  <div style="position:sticky;bottom:0;background:var(--bg);padding:12px 0;border-top:1px solid var(--border);text-align:center;font-size:11px;color:var(--text3);">🔒 Pembayaran aman · SSL encrypted</div>
-</div>`}
-
-function paymentWebviewScr(){return`
-<div class="content" style="padding:0;">
-  <div style="position:sticky;top:0;background:var(--bg);z-index:10;padding:8px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);"><button style="width:36px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',{w:18,h:18,c:'var(--text2)'})}</button><div style="flex:1;text-align:center;font-size:13px;font-weight:600;">Pembayaran</div></div>
-  <div style="display:flex;align-items:center;justify-content:center;min-height:700px;flex-direction:column;gap:12px;padding:40px;">
-    <div style="font-size:48px;">🏦</div>
-    <div style="font-size:13px;color:var(--text3);">Halaman pembayaran bank</div>
-    <div style="font-size:11px;color:var(--text2);font-family:monospace;">https://payment.bank.co.id/...</div>
-  </div>
-</div>`}
-
-function paymentInstrScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 8px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div><div style="font-size:18px;font-weight:800;">Instruksi</div><div style="font-size:11px;color:var(--text3);">Transfer Bank BCA</div></div></div>
-  ${[{s:1,t:'Nomor Virtual Account',v:'8166 0812 3456 7890',c:1},{s:2,t:'Jumlah Transfer',v:'Rp 350.000',c:0},{s:3,t:'Batas Waktu',v:'15 Jul 2026 23:59',c:1}].map(st=>`
-  <div class="nc" style="margin-bottom:10px;display:flex;align-items:center;gap:14px;${st.c?'border-color:var(--accent);':''}">
-    <div style="width:36px;height:36px;border-radius:50%;background:${st.c?'var(--accent)':'var(--surface2)'};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;color:${st.c?'white':'var(--text3)'}">${st.s}</div>
-    <div style="flex:1;"><div style="font-size:11px;color:var(--text3);">${st.t}</div><div style="font-size:14px;font-weight:700;font-family:${st.s==1?'JetBrains Mono,monospace':'inherit'}">${st.v}</div></div>
-    ${st.s==1?`<button style="background:none;border:none;cursor:pointer;padding:4px">${I('<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',{w:18,h:18,c:'var(--accent2)'})}</button>`:''}
-  </div>
-  `).join('')}
-  <div style="background:rgba(64,196,255,.08);border:1px solid rgba(64,196,255,.15);border-radius:var(--rm);padding:14px;font-size:11px;color:var(--blue2);line-height:1.5;margin-bottom:12px;">💡 Setelah transfer, sistem akan verifikasi otomatis dalam 1-5 menit.</div>
-  <button class="btn btn-accent">Saya Sudah Transfer</button>
-</div>`}
-
-function announcementListScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 16px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div style="font-size:18px;font-weight:800;">Pengumuman</div></div>
-  ${[{t:'Maintenance Terjadwal',d:'15 Jul 2026',p:'Server maintenance 02:00-04:00 WIB',u:0},{t:'Fitur Baru: Auto Pay',d:'10 Jul 2026',p:'Sekarang Anda bisa atur pembayaran otomatis',u:1}].map(a=>`
-  <div class="nc-btn" style="margin-bottom:8px;padding:14px;display:flex;align-items:center;gap:12px;">
-    <div style="width:44px;height:44px;border-radius:12px;background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">${I('<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',{w:20,h:20,c:'var(--accent2)'})}</div>
-    <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.t}</div><div style="font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.p}</div><div style="font-size:10px;color:var(--text3);margin-top:2px;">${a.d}</div></div>
-    ${a.u?'':`<div style="width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;"></div>`}
-  </div>`).join('')}
-</div>`}
-
-function notifInboxScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 16px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div style="font-size:18px;font-weight:800;">Notifikasi</div></div>
-  ${[{g:'Hari ini',items:[{t:'Tagihan baru tersedia',d:'2 jam lalu',i:IC.receipt,s:'r'},{t:'Pembayaran diterima',d:'5 jam lalu',i:IC.check,s:'g'}]},{g:'Kemarin',items:[{t:'Tiket #1003 diproses',d:'1 hari lalu',i:IC.headset,s:'b'}]}].map(g=>`
-  <div style="margin-bottom:16px;"><div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">${g.g}</div>
-  ${g.items.map(n=>`<div class="nc-btn" style="margin-bottom:6px;padding:12px;display:flex;align-items:center;gap:12px;"><div class="ico-r" style="background:rgba(${n.s=='r'?'255,82,82':n.s=='g'?'0,230,118':'64,196,255'},.1);">${I(n.i,{w:16,h:16,c:`var(--${n.s=='r'?'red':n.s=='g'?'green':'blue'})`})}</div><div style="flex:1;"><div style="font-size:12px;font-weight:600;">${n.t}</div><div style="font-size:10px;color:var(--text3);">${n.d}</div></div></div>`).join('')}</div>
-  `).join('')}
-</div>`}
-
-// === PROFILE ===
-function profileScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 4px 8px;"><div style="font-size:22px;font-weight:800;">Profil</div><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.settings,{w:20,h:20,c:'var(--text2)'})}</button></div>
-  <div style="text-align:center;padding:20px 0 20px;">
-    <div style="width:88px;height:88px;margin:0 auto 14px;position:relative;">
-      <div style="position:absolute;inset:-5px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));opacity:.3;filter:blur(12px);"></div>
-      <div style="width:100%;height:100%;border-radius:50%;background:var(--surface);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative;z-index:1;"><span style="font-size:28px;font-weight:900;color:var(--accent2);">TY</span></div>
-      <div style="position:absolute;bottom:0;right:0;width:24px;height:24px;border-radius:50%;background:var(--green);border:3px solid var(--bg);display:flex;align-items:center;justify-content:center;z-index:2;">${I(IC.zap,{w:12,h:12,c:'white',sw:3})}</div>
-    </div>
-    <div style="font-size:18px;font-weight:800;">Tri Yanto</div>
-    <div style="font-size:12px;color:var(--text3);">tri@tridigitals.com</div>
-    <span class="badge b" style="margin-top:8px;display:inline-flex;align-items:center;gap:4px;">${I(IC.shield,{w:12,h:12,c:'var(--blue2)'})} Premium Member</span>
-  </div>
-  <div class="nc-btn" style="overflow:hidden;margin-bottom:10px;padding:0;">
-    ${[{i:IC.edit,l:'Edit Profil',c:'accent'},{i:IC.help,l:'FAQ',c:'blue'},{i:IC.headset,l:'Hubungi Kami',c:'green'},{i:IC.bell,l:'Notifikasi',c:'amber',b:'3'},{i:IC.lock,l:'Ubah Kata Sandi',c:'neutral'}].map(m=>`
-    <div style="display:flex;align-items:center;padding:14px 16px;${m.b?'':'border-bottom:1px solid var(--border)'};cursor:pointer;">
-      <div class="ico-r" style="background:rgba(${m.c=='accent'?'124,77,255':m.c=='blue'?'64,196,255':m.c=='green'?'0,230,118':m.c=='amber'?'255,215,64':'255,255,255'},.08);">${I(m.i,{w:18,h:18,c:`var(--${m.c=='neutral'?'text2':m.c}2)`})}</div>
-      <span style="flex:1;margin-left:12px;font-size:13px;font-weight:600;">${m.l}</span>
-      ${m.b?`<span class="badge r" style="margin-right:8px;">${m.b}</span>`:''}
-      ${I(IC.chevron,{w:16,h:16,c:'var(--text3)'})}
-    </div>`).join('')}
-  </div>
-  <div class="nc-btn" style="padding:12px 16px;display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-    <div class="ico-r" style="background:var(--surface2);">${I(IC.moon,{w:18,h:18,c:'var(--accent2)'})}</div><span style="flex:1;font-size:13px;font-weight:600;">Tema</span>
-    <div style="display:flex;gap:2px;background:var(--surface2);border-radius:var(--rp);padding:2px;">
-      <div style="padding:7px 10px;border-radius:var(--rp);cursor:pointer;">${I(IC.sun,{w:14,h:14,c:'var(--text3)'})}</div>
-      <div style="padding:7px 10px;border-radius:var(--rp);background:var(--accent);cursor:pointer;">${I(IC.moon,{w:14,h:14,c:'white'})}</div>
+    <div style="flex:1;min-width:320px" id="orderStepContent">
     </div>
   </div>
-  <div class="nc-btn" style="padding:0;overflow:hidden;"><div style="display:flex;align-items:center;padding:14px 16px;cursor:pointer;"><div class="ico-r" style="background:rgba(255,82,82,.1);">${I(IC.logout,{w:18,h:18,c:'var(--red)'})}</div><span style="flex:1;margin-left:12px;font-size:13px;font-weight:700;color:var(--red);">Keluar</span></div></div>
-  <div style="text-align:center;margin-top:20px;font-size:11px;color:var(--text3);">v0.1.0+64</div>
-</div>`}
+</div>`);
 
-function editProfileScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 8px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div style="font-size:18px;font-weight:800;">Edit Profil</div><button style="margin-left:auto;background:none;border:none;font-size:13px;font-weight:700;color:var(--accent);cursor:pointer;">Simpan</button></div>
-  <div style="text-align:center;margin:20px 0 24px;position:relative;display:inline-block;left:50%;transform:translateX(-50%);">
-    <div style="width:80px;height:80px;border-radius:50%;background:var(--surface);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;"><span style="font-size:26px;font-weight:900;color:var(--accent2);">TY</span></div>
-    <div style="position:absolute;bottom:0;right:0;width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.camera,{w:14,h:14,c:'white',sw:2.5})}</div>
+screens.tickets = tpl('tickets',`
+<div class="fade-in">
+  <div class="page-header">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem">
+      <div>
+        <div class="kicker"><span class="kicker-dot"></span>Support</div>
+        <h1>Tiket Saya</h1>
+        <p>Pantau status tiket yang Anda ajukan.</p>
+      </div>
+      <button class="btn btn-primary btn-sm">＋ Buat Tiket Baru</button>
+    </div>
   </div>
-  ${[{l:'Nama',v:'Tri Yanto'},{l:'Email',v:'tri@tridigitals.com'},{l:'Nomor HP',v:'081234567890'}].map(f=>`<label class="label" style="margin-top:8px;">${f.l}</label><input class="input-box" value="${f.v}" style="margin-bottom:8px;">`).join('')}
-</div>`}
-
-function changePswScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 8px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div style="font-size:18px;font-weight:800;">Ubah Kata Sandi</div></div>
-  ${[{l:'Kata Sandi Lama',t:'password'},{l:'Kata Sandi Baru',t:'password'},{l:'Konfirmasi',t:'password'}].map((f,i)=>`
-  <label class="label" style="margin-top:12px;">${f.l}</label>
-  <div style="display:flex;align-items:center;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rm);margin-bottom:4px;"><input type="${f.t}" class="input-box" style="border:none;margin-bottom:0;" value="••••••••"><button style="background:none;border:none;padding:14px;cursor:pointer;">${I(IC.eyeOff,{w:18,h:18,c:'var(--text3)'})}</button></div>
-  `).join('')}
-  <div style="margin:12px 0;height:4px;background:var(--border);border-radius:2px;overflow:hidden;"><div style="width:60%;height:100%;background:var(--amber);border-radius:2px;"></div></div>
-  <div style="font-size:10px;color:var(--text3);display:flex;justify-content:space-between;"><span>Kekuatan: Sedang</span><span>Min 8 karakter, huruf & angka</span></div>
-  <button class="btn btn-accent" style="margin-top:24px;">Simpan</button>
-</div>`}
-
-function settingsScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 16px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div style="font-size:18px;font-weight:800;">Pengaturan</div></div>
-  ${[{i:IC.bell,l:'Notifikasi',d:'Push & email',on:1},{i:IC.fingerprint,l:'Biometrik',d:'Sidik jari & wajah',on:1},{i:IC.moon,l:'Mode Gelap',d:'Otomatis mengikuti sistem',on:0},{i:IC.download,l:'Auto-download',d:'Hanya WiFi',on:1}].map(s=>`
-  <div class="nc-btn" style="margin-bottom:8px;padding:14px;display:flex;align-items:center;gap:14px;">
-    <div class="ico-r" style="background:var(--surface2);">${I(s.i,{w:18,h:18,c:'var(--text2)'})}</div>
-    <div style="flex:1;"><div style="font-size:13px;font-weight:600;">${s.l}</div><div style="font-size:10px;color:var(--text3);">${s.d}</div></div>
-    <div style="width:44px;height:26px;border-radius:var(--rp);background:${s.on?'var(--accent)':'var(--border2)'};position:relative;transition:.2s;"><div style="position:absolute;${s.on?'right':'left'}:2px;top:2px;width:22px;height:22px;background:white;border-radius:50%;"></div></div>
-  </div>`).join('')}
-  <div style="margin-top:20px;font-size:11px;color:var(--text3);line-height:1.5;">ISPMANAGEMENT Customer v0.1.0+64</div>
-</div>`}
-
-function faqScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 12px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div style="font-size:18px;font-weight:800;">FAQ</div></div>
-  <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rm);padding:12px;margin-bottom:14px;">${I(IC.search,{w:18,h:18,c:'var(--text3)'})}<input placeholder="Cari pertanyaan..." style="background:none;border:none;flex:1;color:var(--text);font-size:13px;font-family:inherit;outline:none;"></div>
-  ${[{q:'Bagaimana cara bayar tagihan?',a:'Pilih menu Tagihan → pilih invoice → Bayar Sekarang.',open:1},{q:'Internet lambat, apa yang harus dilakukan?',a:'Restart router, cek kabel, atau buat tiket support.'},{q:'Bagaimana ganti paket langganan?',a:'Hubungi CS kami melalui menu Support.'}].map((f,i)=>
-  `<div class="nc-btn" style="margin-bottom:8px;padding:14px;cursor:pointer;"><div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13px;font-weight:600;flex:1;">${f.q}</span><span style="transform:rotate(${f.open?'180':'0'}deg);transition:.2s;">${I('<polyline points="6 9 12 15 18 9"/>',{w:18,h:18,c:'var(--text3)'})}</span></div>${f.open?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text3);line-height:1.6;">${f.a}</div>`:''}</div>`
-  ).join('')}
-</div>`}
-
-function contactScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 12px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div style="font-size:18px;font-weight:800;">Hubungi Kami</div></div>
-  <div style="display:flex;gap:8px;margin-bottom:20px;">
-    ${[{i:IC.phone,l:'Telepon',c:'green'},{i:IC.wa,l:'WhatsApp',c:'green'},{i:IC.mail,l:'Email',c:'blue'}].map(a=>`<div class="nc-btn" style="flex:1;text-align:center;padding:14px 8px;cursor:pointer;"><div style="margin-bottom:6px;">${I(a.i,{w:22,h:22,c:`var(--${a.c})`})}</div><div style="font-size:11px;font-weight:600;">${a.l}</div></div>`).join('')}
+  <div class="card" style="overflow:hidden">
+    <div style="overflow-x:auto">
+    <table class="data-table">
+      <thead><tr><th>No. Tiket</th><th>Judul</th><th>Kategori</th><th style="text-align:center">Status</th><th>Dibuat</th><th style="text-align:right">Aksi</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="font-mono">TK-001</td>
+          <td><strong>Koneksi Lambat 30 Mbps</strong></td>
+          <td><span class="pill pill-neutral">Gangguan</span></td>
+          <td style="text-align:center"><span class="pill pill-success">Selesai</span></td>
+          <td>5 Jul 2026</td>
+          <td><div class="table-actions"><button class="table-action">📄 Detail</button></div></td>
+        </tr>
+        <tr>
+          <td class="font-mono">TK-002</td>
+          <td><strong>Permintaan Upgrade Paket</strong></td>
+          <td><span class="pill pill-neutral">Layanan</span></td>
+          <td style="text-align:center"><span class="pill pill-info">Diproses</span></td>
+          <td>10 Jul 2026</td>
+          <td><div class="table-actions"><button class="table-action">📄 Detail</button></div></td>
+        </tr>
+        <tr>
+          <td class="font-mono">TK-003</td>
+          <td><strong>Tidak Bisa Akses Website</strong></td>
+          <td><span class="pill pill-neutral">Gangguan</span></td>
+          <td style="text-align:center"><span class="pill pill-warning">Menunggu</span></td>
+          <td>12 Jul 2026</td>
+          <td><div class="table-actions"><button class="table-action">📄 Detail</button><button class="table-action" style="border-color:var(--danger);color:var(--danger)">✕ Tutup</button></div></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
   </div>
-  <label class="label">Pesan</label>
-  <textarea class="input-box" placeholder="Tulis pesan Anda..." style="height:100px;resize:none;margin-bottom:12px;"></textarea>
-  <button class="btn btn-accent">Kirim Pesan</button>
-</div>`}
+</div>`);
 
-function satisfactionScr(){return`
-<div class="content" style="display:flex;flex-direction:column;justify-content:center;align-items:center;padding:48px 28px;text-align:center;min-height:844px;">
-  <div style="font-size:48px;margin-bottom:12px;">⭐</div>
-  <div style="font-size:22px;font-weight:800;margin-bottom:4px;">Bagaimana Pengalaman Anda?</div>
-  <div style="font-size:13px;color:var(--text3);margin-bottom:24px;">Beri rating untuk tiket #TKT-1003</div>
-  <div style="display:flex;gap:12px;margin-bottom:24px;">${['😞','😐','🙂','😊','😍'].map((e,i)=>`<div style="font-size:36px;cursor:pointer;filter:${i>=3?'grayscale(0)':'grayscale(1)'};transition:filter .2s;">${e}</div>`).join('')}</div>
-  <textarea class="input-box" placeholder="Ceritakan pengalaman Anda (opsional)..." style="height:80px;resize:none;margin-bottom:16px;"></textarea>
-  <button class="btn btn-accent" style="width:100%">Kirim</button>
-</div>`}
-
-function subInvoicesScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 8px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div><div style="font-size:18px;font-weight:800;">Riwayat Tagihan</div><div style="font-size:11px;color:var(--text3);">Fiber 50Mbps</div></div></div>
-  ${[{m:'Juli',invs:[{id:'INV-2026-07-002',amt:'Rp 350.000',date:'31 Jul 2026',s:'r',sl:'Jatuh Tempo'}]},{m:'Juni',invs:[{id:'INV-2026-06-001',amt:'Rp 350.000',date:'30 Jun 2026',s:'g',sl:'Lunas'}]},{m:'Mei',invs:[{id:'INV-2026-05-012',amt:'Rp 350.000',date:'31 Mei 2026',s:'g',sl:'Lunas'}]}].map(g=>`
-  <div style="margin-bottom:14px;"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;">${g.m}</div>
-  ${g.invs.map(i=>`<div class="nc-btn" style="margin-bottom:6px;padding:12px;display:flex;align-items:center;gap:12px;"><div class="ico-r" style="background:var(--surface2);">${I(IC.receipt,{w:18,h:18,c:'var(--text2)'})}</div><div style="flex:1;"><div style="font-size:12px;font-weight:600;">${i.id}</div><div style="font-size:10px;color:var(--text3);">${i.date}</div></div><div style="text-align:right;"><div class="money" style="font-size:14px;">${i.amt}</div><span class="badge ${i.s}">${i.sl}</span></div></div>`).join('')}
-  </div>`).join('')}
-</div>`}
-
-function annDetailScr(){return`
-<div class="content" style="padding:0 16px 40px;">
-  <div style="display:flex;align-items:center;gap:10px;padding:20px 4px 12px;"><button style="width:40px;height:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;cursor:pointer;">${I(IC.arrowLeft,{w:20,h:20,c:'var(--text2)'})}</button><div style="font-size:18px;font-weight:800;">Pengumuman</div></div>
-  <span class="badge r" style="margin-bottom:8px;display:inline-flex;align-items:center;gap:4px;">⚠️ Penting</span>
-  <div style="font-size:20px;font-weight:800;line-height:1.3;margin-bottom:6px;">Maintenance Terjadwal 15 Juli 2026</div>
-  <div style="font-size:11px;color:var(--text3);margin-bottom:16px;">📅 15 Jul 2026 · 10:45 WIB</div>
-  <div style="font-size:13px;color:var(--text2);line-height:1.8;">
-    <p style="margin-bottom:12px;">Kepada pelanggan yang terhormat,</p>
-    <p style="margin-bottom:12px;">Kami akan melakukan maintenance rutin pada server di wilayah Semarang dan sekitarnya. Layanan internet mungkin akan terganggu selama periode berikut:</p>
-    <div class="nc" style="margin:12px 0;padding:14px;text-align:center;"><div style="font-size:13px;font-weight:700;">🗓 15 Juli 2026</div><div style="font-size:22px;font-weight:900;color:var(--accent2);">02:00 — 04:00 WIB</div></div>
-    <p style="margin-bottom:12px;">Mohon maaf atas ketidaknyamanan. Setelah maintenance, koneksi akan kembali normal dengan performa yang lebih baik.</p>
-    <p>Salam,<br><strong>Tim ISPMANAGEMENT</strong></p>
+screens.settings = tpl('settings',`
+<div class="fade-in">
+  <div class="page-header">
+    <div>
+      <div class="kicker"><span class="kicker-dot"></span>Pengaturan</div>
+      <h1>Pengaturan Akun</h1>
+      <p>Kelola informasi akun, keamanan, dan preferensi.</p>
+    </div>
   </div>
-</div>`}
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:1.25rem">
+    <div class="card" style="padding:1.25rem">
+      <h3 style="font-size:1rem;font-weight:750;margin-bottom:1rem">Informasi Pribadi</h3>
+      <div class="form-group"><label class="form-label">Nama Lengkap</label><input class="form-input" value="Tri Yanto"></div>
+      <div class="form-group"><label class="form-label">Email</label><input class="form-input" value="tri.yanto@email.com"></div>
+      <div class="form-group"><label class="form-label">Telepon</label><input class="form-input" placeholder="+62 812-3456-7890"></div>
+      <div style="text-align:right"><button class="btn btn-primary btn-sm" onclick="showToast('Profil berhasil disimpan!','success')">Simpan</button></div>
+    </div>
 
-function emptyStateScr(){return`
-<div class="content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 28px;text-align:center;min-height:500px;">
-  <div style="width:100px;height:100px;border-radius:50%;background:var(--surface);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;margin-bottom:20px;">${I(IC.wifi,{w:40,h:40,c:'var(--text3)',sw:1.5})}</div>
-  <div style="font-size:16px;font-weight:700;margin-bottom:4px;">Belum Ada Langganan</div>
-  <div style="font-size:12px;color:var(--text3);line-height:1.6;margin-bottom:16px;">Anda belum memiliki layanan aktif. Hubungi ISP untuk berlangganan.</div>
-  <button class="btn btn-accent" style="width:auto;padding:10px 24px;">Hubungi ISP</button>
-</div>`}
+    <div class="card" style="padding:1.25rem">
+      <h3 style="font-size:1rem;font-weight:750;margin-bottom:1rem">Keamanan</h3>
+      <div class="form-group"><div class="flex-between"><label class="form-label" style="margin:0">Autentikasi Dua Faktor (2FA)</label><span class="toggle-switch on" onclick="this.classList.toggle('on')"></span></div></div>
+      <div class="form-group"><label class="form-label">Password Baru</label><input class="form-input" type="password" placeholder="Minimal 8 karakter"></div>
+      <div class="form-group"><label class="form-label">Konfirmasi Password</label><input class="form-input" type="password" placeholder="Masukkan ulang password"></div>
+      <div style="text-align:right"><button class="btn btn-primary btn-sm">Ubah Password</button></div>
+    </div>
 
-function skeletonScr(){return`
-<div class="content" style="padding:16px;">
-  <div style="padding:20px 4px 16px;display:flex;gap:10px;"><div style="width:48px;height:48px;border-radius:50%;background:var(--surface2);animation:shimmer 1.5s infinite;"></div><div style="flex:1;"><div style="width:60%;height:14px;background:var(--surface2);border-radius:4px;margin-bottom:8px;animation:shimmer 1.5s infinite;"></div><div style="width:40%;height:10px;background:var(--surface2);border-radius:4px;animation:shimmer 1.5s infinite;"></div></div></div>
-  <div style="height:200px;background:var(--surface2);border-radius:var(--rxl);margin-bottom:12px;animation:shimmer 1.5s infinite;"></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">${[1,2,3,4].map(()=>`<div style="height:90px;background:var(--surface2);border-radius:var(--rm);animation:shimmer 1.5s infinite;"></div>`).join('')}</div>
-<style>@keyframes shimmer{0%{opacity:.4}50%{opacity:.8}100%{opacity:.4}}</style>
-</div>`}
+    <div class="card" style="padding:1.25rem">
+      <h3 style="font-size:1rem;font-weight:750;margin-bottom:1rem">Preferensi Notifikasi</h3>
+      <div class="form-group"><div class="flex-between"><label class="form-label" style="margin:0">Notifikasi Email</label><span class="toggle-switch on" onclick="this.classList.toggle('on')"></span></div></div>
+      <div class="form-group"><div class="flex-between"><label class="form-label" style="margin:0">Notifikasi SMS</label><span class="toggle-switch" onclick="this.classList.toggle('on')"></span></div></div>
+      <div class="form-group"><div class="flex-between"><label class="form-label" style="margin:0">Notifikasi WA</label><span class="toggle-switch on" onclick="this.classList.toggle('on')"></span></div></div>
+      <div class="form-group"><div class="flex-between"><label class="form-label" style="margin:0">Promo & Penawaran</label><span class="toggle-switch" onclick="this.classList.toggle('on')"></span></div></div>
+    </div>
 
-// ══════════════════════════════════════════════
-// SCREEN GROUPS & RENDERING
-// ══════════════════════════════════════════════
+    <div class="card" style="padding:1.25rem">
+      <h3 style="font-size:1rem;font-weight:750;margin-bottom:1rem">Bahasa & Tampilan</h3>
+      <div class="form-group"><label class="form-label">Bahasa</label><select class="form-select"><option>Bahasa Indonesia</option><option>English</option></select></div>
+      <div class="form-group"><label class="form-label">Mata Uang</label><select class="form-select"><option>IDR (Rp)</option><option>USD ($)</option></select></div>
+      <div style="text-align:right"><button class="btn btn-primary btn-sm">Simpan</button></div>
+    </div>
+  </div>
+</div>`);
 
-const groups = [
-  { name: '🔐 Auth (7)', screens: [
-    { id: 'onboarding', fn: onboardingScr, label: 'Onboarding' },
-    { id: 'permissions', fn: permissionsScr, label: 'Permissions' },
-    { id: 'login-v2', fn: loginScr, label: 'Login' },
-    { id: 'loading', fn: loadingScr, label: 'Loading' },
-    { id: 'forgot', fn: forgotPswScr, label: 'Forgot Psw' },
-    { id: '2fa-enroll', fn: faEnrollScr, label: '2FA Enroll' },
-    { id: '2fa-verify', fn: faVerifyScr, label: '2FA Verify' },
-  ]},
-  { name: '🏠 Home Tabs (4)', screens: [
-    { id: 'hometab', fn: homeTabScr, label: 'Beranda' },
-    { id: 'substab', fn: subsTabScr, label: 'Layanan' },
-    { id: 'invoicestab', fn: invoicesTabScr, label: 'Tagihan' },
-    { id: 'supporttab', fn: supportTabScr, label: 'Support' },
-  ]},
-  { name: '🔍 Detail & Action (12)', screens: [
-    { id: 'subdetail', fn: subDetailScr, label: 'Sub Detail' },
-    { id: 'subinvoices', fn: subInvoicesScr, label: 'Sub Invoices' },
-    { id: 'invdetail', fn: invDetailScr, label: 'Inv Detail' },
-    { id: 'newticket', fn: newTicketScr, label: 'New Ticket' },
-    { id: 'ticketdetail', fn: ticketDetailScr, label: 'Ticket Detail' },
-    { id: 'payment', fn: paymentScr, label: 'Payment' },
-    { id: 'paywebview', fn: paymentWebviewScr, label: 'Pay WebView' },
-    { id: 'payinstr', fn: paymentInstrScr, label: 'Pay Instr' },
-    { id: 'annlist', fn: announcementListScr, label: 'Ann List' },
-    { id: 'anndetail', fn: annDetailScr, label: 'Ann Detail' },
-    { id: 'notif', fn: notifInboxScr, label: 'Notif' },
-    { id: 'satis', fn: satisfactionScr, label: 'Satisfaction' },
-  ]},
-  { name: '👤 Profile & Empty (9)', screens: [
-    { id: 'profile', fn: profileScr, label: 'Profile' },
-    { id: 'editprof', fn: editProfileScr, label: 'Edit Prof' },
-    { id: 'chpsw', fn: changePswScr, label: 'Ganti Psw' },
-    { id: 'settingsv', fn: settingsScr, label: 'Settings' },
-    { id: 'faq', fn: faqScr, label: 'FAQ' },
-    { id: 'contact', fn: contactScr, label: 'Contact' },
-    { id: 'empty', fn: emptyStateScr, label: 'Empty State' },
-    { id: 'skeleton', fn: skeletonScr, label: 'Skeleton' },
-  ]},
-];
+// === Order Flow Steps ===
+var orderState = {step:1, address:'', package:'', cycle:''};
 
-const allScreens = groups.flatMap(g => g.screens);
-let activeGroup = 0;
+function renderOrderStep1(){return `<div class="card" style="padding:1.25rem">
+  <h3 style="font-size:1.05rem;margin-bottom:.25rem">Pilih Alamat Instalasi</h3>
+  <p class="text2" style="font-size:.85rem;margin-bottom:1rem">Pilih lokasi tempat layanan akan dipasang.</p>
+  <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem">
+    <div class="addr-option" data-addr="Rumah Utama | Jl. Merdeka No. 45, Semarang" onclick="selectAddr(this)" style="padding:.75rem 1rem;border:2px solid var(--border);border-radius:var(--radius);cursor:pointer;flex:1;min-width:150px;transition:all .15s">
+      <div style="font-weight:700;font-size:.9rem">Rumah Utama</div>
+      <div class="text2" style="font-size:.78rem">Jl. Merdeka No. 45, Semarang</div>
+    </div>
+    <div class="addr-option" data-addr="Kantor Cabang | Jl. Melati No. 12, Semarang" onclick="selectAddr(this)" style="padding:.75rem 1rem;border:2px solid var(--border);border-radius:var(--radius);cursor:pointer;flex:1;min-width:150px;transition:all .15s">
+      <div style="font-weight:700;font-size:.9rem">Kantor Cabang</div>
+      <div class="text2" style="font-size:.78rem">Jl. Melati No. 12, Semarang</div>
+    </div>
+    <div class="addr-option" data-addr="Rumah Orang Tua | Jl. Mawar No. 8, Ungaran" onclick="selectAddr(this)" style="padding:.75rem 1rem;border:2px solid var(--border);border-radius:var(--radius);cursor:pointer;flex:1;min-width:150px;transition:all .15s">
+      <div style="font-weight:700;font-size:.9rem">Rumah Orang Tua</div>
+      <div class="text2" style="font-size:.78rem">Jl. Mawar No. 8, Ungaran</div>
+    </div>
+  </div>
+  <div style="text-align:right"><button class="btn btn-primary" onclick="advanceOrder(2)" id="addrNext">Lanjut Pilih Paket →</button></div></div>`;}
 
-function renderTabs() {
-  document.getElementById('navTabs').innerHTML = groups.map((g,i) =>
-    `<div class="tab${i===activeGroup?' active':''}" onclick="showGroup(${i})">${g.name}</div>`
-  ).join('');
-}
+function renderOrderStep2(){return `<div class="card" style="padding:1.25rem">
+  <h3 style="font-size:1.05rem;margin-bottom:.25rem">Pilih Paket Internet</h3>
+  <p class="text2" style="font-size:.85rem;margin-bottom:1rem">Pilih paket sesuai kebutuhan Anda.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem;margin-bottom:1rem">
+    <div class="pkg-option" data-pkg="Internet 10 Mbps | 165000" onclick="selectPkg(this)" style="padding:1rem;border:2px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all .15s;text-align:center">
+      <div style="font-size:2rem;margin-bottom:.35rem">📶</div>
+      <div style="font-weight:750;font-size:.95rem">10 Mbps</div>
+      <div class="text2" style="font-size:.78rem;margin:.2rem 0 .5rem">Unlimited</div>
+      <div style="font-weight:800;font-size:1.1rem;color:var(--accent)">Rp 165.000<small style="font-size:.7rem;color:var(--text3);font-weight:500">/bln</small></div>
+    </div>
+    <div class="pkg-option" data-pkg="Internet 30 Mbps | 330000" onclick="selectPkg(this)" style="padding:1rem;border:2px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all .15s;text-align:center">
+      <div style="font-size:2rem;margin-bottom:.35rem">🚀</div>
+      <div style="font-weight:750;font-size:.95rem">30 Mbps</div>
+      <div class="text2" style="font-size:.78rem;margin:.2rem 0 .5rem">Unlimited + IPTV</div>
+      <div style="font-weight:800;font-size:1.1rem;color:var(--accent)">Rp 330.000<small style="font-size:.7rem;color:var(--text3);font-weight:500">/bln</small></div>
+    </div>
+    <div class="pkg-option" data-pkg="Internet 50 Mbps | 550000" onclick="selectPkg(this)" style="padding:1rem;border:2px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all .15s;text-align:center">
+      <div style="font-size:2rem;margin-bottom:.35rem">⚡</div>
+      <div style="font-weight:750;font-size:.95rem">50 Mbps</div>
+      <div class="text2" style="font-size:.78rem;margin:.2rem 0 .5rem">Unlimited + IPTV + Gaming</div>
+      <div style="font-weight:800;font-size:1.1rem;color:var(--accent)">Rp 550.000<small style="font-size:.7rem;color:var(--text3);font-weight:500">/bln</small></div>
+    </div>
+  </div>
+  <div style="text-align:right;display:flex;justify-content:space-between"><button class="btn btn-ghost" onclick="advanceOrder(1)">← Kembali</button><button class="btn btn-primary" onclick="advanceOrder(3)" id="pkgNext">Lanjut Review →</button></div></div>`;}
 
-function showGroup(idx) {
-  activeGroup = idx;
-  renderTabs();
-  const group = groups[idx];
-  const container = document.getElementById('screenContainer');
-  container.innerHTML = group.screens.map(s =>
-    `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">${s.label}</div>
-      <div class="phone" id="sc-${s.id}"></div>
-    </div>`
-  ).join('');
-  group.screens.forEach(s => {
-    document.getElementById('sc-' + s.id).innerHTML = s.fn();
+function renderOrderStep3(){return `<div class="card" style="padding:1.25rem">
+  <h3 style="font-size:1.05rem;margin-bottom:1rem">Review Pesanan</h3>
+  <div class="card" style="background:var(--bg-surface);padding:1rem">
+    <div class="summary-row"><span class="summary-k">Alamat</span><span class="summary-v">`+(orderState.address||'—')+`</span></div>
+    <div class="summary-row"><span class="summary-k">Paket</span><span class="summary-v">`+(orderState.package||'—')+`</span></div>
+    <div class="summary-row"><span class="summary-k">Harga</span><span class="summary-amount">`+(orderState.amount||'—')+`</span></div>
+    <div class="summary-row" style="border-bottom:0"><span class="summary-k">Biaya Instalasi</span><span class="summary-v">Gratis</span></div>
+  </div>
+  <div style="margin-top:1rem;display:flex;justify-content:space-between"><button class="btn btn-ghost" onclick="advanceOrder(2)">← Kembali</button><button class="btn btn-primary" onclick="submitOrder()">✅ Konfirmasi Pesanan</button></div></div>`;}
+
+// === Screen Router ===
+const container = document.getElementById('screen-container');
+let currentScreen = 'dashboard';
+
+function navTo(name) {
+  if (!screens[name] || name === currentScreen) return;
+  currentScreen = name;
+  container.innerHTML = screens[name];
+
+  // Update nav active
+  document.querySelectorAll('.nav-item').forEach(function(el) {
+    el.classList.remove('active');
   });
-  // Initialize carousel dots
-  setTimeout(function(){
-    document.querySelectorAll('[data-carousel]').forEach(function(el){
-      var slides=el.querySelectorAll('[data-slide]');
-      var dots=el.querySelectorAll('[data-dot]');
-      var idx=0;
-      function go(n){
-        idx=((n%slides.length)+slides.length)%slides.length;
-        el.scrollTo({left:slides[idx].offsetLeft-el.offsetLeft,behavior:'smooth'});
-        dots.forEach(function(d,i){d.style.background=i===idx?'var(--accent)':'var(--border2)';d.style.width=i===idx?'16px':'5px';});
-      }
-      dots.forEach(function(d,i){d.onclick=function(){go(i);};});
-      el.addEventListener('scroll',function(){
-        var c=Math.round(el.scrollLeft/el.offsetWidth);if(c>=0&&c<slides.length&&c!==idx){idx=c;dots.forEach(function(d,i){d.style.background=i===idx?'var(--accent)':'var(--border2)';d.style.width=i===idx?'16px':'5px';});}
-      });
-    });
-  },150);
+  document.querySelectorAll('.nav-item').forEach(function(el) {
+    if (el.getAttribute('onclick') && el.getAttribute('onclick').indexOf("'"+name+"'") > -1) {
+      el.classList.add('active');
+    }
+  });
+
+  // Update breadcrumb
+  var breadcrumb = document.getElementById('breadcrumb');
+  var labels = {dashboard:'Dashboard', services:'Layanan Saya', invoices:'Tagihan', locations:'Lokasi', order:'Pesan Baru', tickets:'Tiket Saya', settings:'Pengaturan'};
+  if (breadcrumb) breadcrumb.textContent = '\u2190 ' + (labels[name] || name);
+
+  // Init order flow if needed
+  if (name === 'order') { orderState.step = 1; renderOrderStep(); }
+
+  // Close mobile sidebar
+  if (window.innerWidth <= 900) toggleSidebar(true);
 }
 
-renderTabs();
-showGroup(0);
+// === Mobile Sidebar ===
+function toggleSidebar(force) {
+  var s = document.getElementById('sidebar');
+  var o = document.getElementById('sidebarOverlay');
+  var open = typeof force === 'boolean' ? !force : !s.classList.contains('open');
+  s.classList.toggle('open', open);
+  if (o) o.classList.toggle('open', open);
+}
+
+// === Notifications ===
+function toggleNotif() {
+  document.getElementById('notifDropdown').classList.toggle('open');
+}
+function markAllRead() {
+  document.querySelectorAll('.notif-item.unread').forEach(function(el){ el.classList.remove('unread'); });
+  document.querySelectorAll('.notif-dot').forEach(function(el){ el.style.background = 'transparent'; });
+  document.getElementById('notifCount').textContent = '0';
+}
+
+// === Toast ===
+function showToast(msg, type) {
+  var t = document.createElement('div');
+  t.className = 'toast ' + (type||'');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 3000);
+}
+
+// === Order Flow ===
+function renderOrderStep() {
+  var el = document.getElementById('orderStepContent');
+  if (!el) return;
+  if (orderState.step === 1) el.innerHTML = renderOrderStep1();
+  else if (orderState.step === 2) el.innerHTML = renderOrderStep2();
+  else if (orderState.step === 3) el.innerHTML = renderOrderStep3();
+  updateOrderStepper();
+}
+function updateOrderStepper() {
+  document.querySelectorAll('.order-step').forEach(function(el){
+    var s = parseInt(el.getAttribute('data-step'));
+    var num = el.querySelector('div');
+    if (s < orderState.step) {
+      el.style.color = 'var(--success)';
+      num.style.background = 'var(--success)'; num.style.borderColor = 'var(--success)';
+      num.textContent = '\u2713'; num.style.color = '#fff';
+    } else if (s === orderState.step) {
+      el.style.color = 'var(--accent)';
+      num.style.background = 'var(--accent)'; num.style.border = 'none'; num.style.color = '#fff';
+      num.textContent = s;
+    } else {
+      el.style.color = 'var(--text2)';
+      num.style.background = 'var(--bg-surface2)'; num.style.border = '2px solid var(--border)'; num.style.color = 'var(--text2)';
+      num.textContent = s;
+    }
+  });
+}
+function advanceOrder(step) {
+  if (step === 2 && !orderState.address) { showToast('Silakan pilih alamat dulu','error'); return; }
+  if (step === 3 && !orderState.package) { showToast('Silakan pilih paket dulu','error'); return; }
+  orderState.step = step;
+  renderOrderStep();
+}
+function selectAddr(el) {
+  document.querySelectorAll('.addr-option').forEach(function(a){ a.style.borderColor='var(--border)'; a.style.background='transparent'; });
+  el.style.borderColor = 'var(--accent)'; el.style.background = 'var(--accent-soft)';
+  orderState.address = el.getAttribute('data-addr');
+}
+function selectPkg(el) {
+  document.querySelectorAll('.pkg-option').forEach(function(a){ a.style.borderColor='var(--border)'; a.style.background='transparent'; });
+  el.style.borderColor = 'var(--accent)'; el.style.background = 'var(--accent-soft)';
+  var parts = el.getAttribute('data-pkg').split('|');
+  orderState.package = parts[0]; orderState.amount = 'Rp ' + parseInt(parts[1]).toLocaleString('id-ID');
+}
+function submitOrder() {
+  showToast('Pesanan berhasil dikirim! Teknisi akan menghubungi Anda.','success');
+}
+// Init
+container.innerHTML = screens.dashboard;
 </script>
 </body>
 </html>
