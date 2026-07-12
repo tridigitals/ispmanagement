@@ -331,14 +331,15 @@
 </script>
 
 <div class="internet-order-page fade-in">
-  <section class="hero card">
-    <div>
-      <h1>{$t('dashboard.internet_order.hero.title')}</h1>
-      <p>
-        {$t('dashboard.internet_order.hero.subtitle')}
-      </p>
+  <!-- Page Header -->
+  <section class="page-header">
+    <div class="kicker">
+      <span class="kicker-dot"></span>
+      {$t('dashboard.internet_order.hero.title')}
     </div>
-    <div class="hero-actions">
+    <h1>{$t('dashboard.internet_order.hero.title')}</h1>
+    <p>{$t('dashboard.internet_order.hero.subtitle')}</p>
+    <div class="hero-actions" style="margin-top:0.6rem">
       <button class="btn btn-secondary" type="button" onclick={() => goto('/dashboard/services/order')}>
         <Icon name="arrow-left" size={15} />
         {$t('dashboard.internet_order.actions.service_types')}
@@ -354,241 +355,242 @@
     </div>
   </section>
 
-  <section class="steps card">
-    <button class={`step-pill ${step === 1 ? 'active' : ''}`} type="button" onclick={() => (step = 1)}>
-      1. {$t('dashboard.internet_order.steps.address')}
-    </button>
-    <button class={`step-pill ${step === 2 ? 'active' : ''}`} type="button" onclick={() => step === 1 ? moveToPackageStep() : (step = 2)}>
-      2. {$t('dashboard.internet_order.steps.package')}
-    </button>
-    <button class={`step-pill ${step === 3 ? 'active' : ''}`} type="button" onclick={() => (step = 3)}>
-      3. {$t('dashboard.internet_order.steps.review')}
-    </button>
-  </section>
-
   {#if loadError}
     <section class="alert alert-error">{loadError}</section>
   {/if}
-  {#if step === 1}
-    <section class="card stage-card">
-      <div class="stage-head">
-        <div>
-          <h3>{$t('dashboard.internet_order.stage.address.title')}</h3>
-          <p>
-            {$t('dashboard.internet_order.stage.address.subtitle')}
-          </p>
-        </div>
-        <button class="btn btn-secondary" type="button" onclick={openAddLocationModal}>
-          <Icon name="map-pin" size={15} />
-          {$t('dashboard.internet_order.actions.add_location')}
-        </button>
-      </div>
 
-      {#if !loading && locations.length === 0}
-        <div class="empty-state">
-          <Icon name="map-pin" size={18} />
-          <div>
-            <h4>{$t('dashboard.internet_order.empty.no_locations_title')}</h4>
-            <p>
-              {$t('dashboard.internet_order.empty.no_locations_subtitle')}
-            </p>
-          </div>
+  <!-- Two-column layout: stepper sidebar + content -->
+  <div class="order-layout">
+    <!--Vertical Stepper Sidebar -->
+    <nav class="stepper-sidebar">
+      <button class="stepper-step" class:active={step === 1} type="button" onclick={() => (step = 1)}>
+        <span class="step-bullet">1</span>
+        <div class="step-label">
+          <span class="step-title">{$t('dashboard.internet_order.steps.address')}</span>
+          <span class="step-subtitle">{$t('dashboard.internet_order.stage.address.subtitle')}</span>
         </div>
-      {:else}
-        <div class="field">
-          <label for="draft-location">{$t('dashboard.internet_order.labels.location')}</label>
-          <select id="draft-location" bind:value={draftLocationId} disabled={loading}>
-            {#each locations as location (location.id)}
-              <option value={location.id}>{location.label}</option>
-            {/each}
-          </select>
+      </button>
+      <div class="stepper-connector" class:filled={step >= 2}></div>
+      <button class="stepper-step" class:active={step === 2} type="button" onclick={moveToPackageStep} disabled={!draftLocationId}>
+        <span class="step-bullet">2</span>
+        <div class="step-label">
+          <span class="step-title">{$t('dashboard.internet_order.steps.package')}</span>
+          <span class="step-subtitle">{$t('dashboard.internet_order.stage.package.title')}</span>
         </div>
+      </button>
+      <div class="stepper-connector" class:filled={step >= 3}></div>
+      <button class="stepper-step" class:active={step === 3} type="button" onclick={() => orderItems.length > 0 && (step = 3)} disabled={orderItems.length === 0}>
+        <span class="step-bullet">3</span>
+        <div class="step-label">
+          <span class="step-title">{$t('dashboard.internet_order.steps.review')}</span>
+          <span class="step-subtitle">{$t('dashboard.internet_order.stage.review.subtitle')}</span>
+        </div>
+      </button>
+    </nav>
 
-        <div class="stage-actions">
-          <button class="btn btn-primary" type="button" onclick={moveToPackageStep} disabled={!draftLocationId}>
-            <Icon name="arrow-right" size={15} />
-            {$t('dashboard.internet_order.actions.next_choose_package')}
-          </button>
-        </div>
-      {/if}
-    </section>
-  {/if}
-
-  {#if step === 2}
-    <section class="card stage-card">
-      <div class="stage-head">
-        <div>
-          <h3>{$t('dashboard.internet_order.stage.package.title')}</h3>
-          <p>
-            {$t('dashboard.internet_order.labels.location')}: <strong>{selectedLocation?.label || '-'}</strong>
-          </p>
-        </div>
-        <button class="btn btn-secondary" type="button" onclick={moveBackToAddressStep}>
-          <Icon name="arrow-left" size={15} />
-          {$t('dashboard.internet_order.actions.back_to_address')}
-        </button>
-      </div>
-
-      <div class="package-toolbar">
-        <div class="field">
-          <div class="field-label">{$t('dashboard.internet_order.labels.billing_cycle')}</div>
-          <div class="cycle-pills">
-            <button
-              class={`cycle-pill ${draftBillingCycle === 'monthly' ? 'active' : ''}`}
-              type="button"
-              onclick={() => (draftBillingCycle = 'monthly')}
-            >
-              {$t('dashboard.internet_order.cycles.monthly')}
-            </button>
-            <button
-              class={`cycle-pill ${draftBillingCycle === 'yearly' ? 'active' : ''}`}
-              type="button"
-              onclick={() => (draftBillingCycle = 'yearly')}
-              disabled={!draftPackage || !hasYearlyPrice(draftPackage)}
-            >
-              {$t('dashboard.internet_order.cycles.yearly')}
+    <!-- Main Content Area -->
+    <div class="order-content">
+      {#if step === 1}
+        <!-- Step 1: Pilih Alamat -->
+        <section class="stage-card">
+          <div class="stage-head">
+            <div>
+              <h3>{$t('dashboard.internet_order.stage.address.title')}</h3>
+              <p>{$t('dashboard.internet_order.stage.address.subtitle')}</p>
+            </div>
+            <button class="btn btn-secondary" type="button" onclick={openAddLocationModal}>
+              <Icon name="map-pin" size={15} />
+              {$t('dashboard.internet_order.actions.add_location')}
             </button>
           </div>
-        </div>
-        <div class="mini-location">
-          <small>{$t('dashboard.internet_order.labels.selected_address')}</small>
-          <strong>{selectedLocation?.label || '-'}</strong>
-        </div>
-      </div>
 
-      {#if loading}
-        <p class="status-note">{$t('dashboard.internet_order.status.loading_packages')}</p>
-      {:else if packages.length === 0}
-        <div class="empty-state">
-          <Icon name="package" size={18} />
-          <div>
-            <h4>{$t('dashboard.internet_order.empty.no_packages_title')}</h4>
-            <p>{$t('dashboard.internet_order.empty.no_packages_subtitle')}</p>
-          </div>
-        </div>
-      {:else}
-        <div class="package-stage-grid">
-          <div class="package-grid">
-            {#each packages as pkg (pkg.id)}
-              <article class={`package-card ${draftPackageId === pkg.id ? 'active' : ''}`}>
-                <div class="package-top">
-                  <h4>{pkg.name}</h4>
-                  {#if draftPackageId === pkg.id}
-                    <span class="badge">{$t('dashboard.internet_order.badges.selected')}</span>
+          {#if !loading && locations.length === 0}
+            <div class="empty-state">
+              <Icon name="map-pin" size={18} />
+              <div>
+                <h4>{$t('dashboard.internet_order.empty.no_locations_title')}</h4>
+                <p>{$t('dashboard.internet_order.empty.no_locations_subtitle')}</p>
+              </div>
+            </div>
+          {:else}
+            <div class="addr-grid">
+              {#each locations as location (location.id)}
+                <button
+                  class="addr-option"
+                  class:selected={draftLocationId === location.id}
+                  type="button"
+                  onclick={() => (draftLocationId = location.id)}
+                >
+                  <div class="addr-option-head">
+                    <Icon name="map-pin" size={16} />
+                    <span class="addr-option-label">{location.label}</span>
+                    {#if draftLocationId === location.id}
+                      <span class="pill pill-success">{$t('dashboard.internet_order.badges.selected')}</span>
+                    {/if}
+                  </div>
+                  {#if location.address_line1}
+                    <p class="addr-option-detail">{location.address_line1}</p>
                   {/if}
-                </div>
-                <div class="package-price">
-                  <strong>{formatCurrency(Number(pkg.price_monthly || 0))}</strong>
-                  <span>{$t('dashboard.internet_order.labels.monthly_plan')}</span>
-                </div>
-                <div class="package-extra">
-                  {#if hasYearlyPrice(pkg)}
-                    <span>
-                      {formatCurrency(Number(pkg.price_yearly || 0))} {$t('dashboard.internet_order.labels.yearly_available')}
-                    </span>
-                  {:else}
-                    <span>{$t('dashboard.internet_order.labels.yearly_not_available')}</span>
+                  {#if location.city || location.state}
+                    <p class="addr-option-meta">
+                      {[location.city, location.state].filter(Boolean).join(', ')}
+                      {#if location.postal_code} {location.postal_code}{/if}
+                    </p>
                   {/if}
-                </div>
-                <button class={`btn select-btn ${draftPackageId === pkg.id ? 'btn-primary' : 'btn-secondary'}`} type="button" onclick={() => (draftPackageId = pkg.id)}>
-                  <Icon name={draftPackageId === pkg.id ? 'check-circle' : 'circle'} size={14} />
-                  {draftPackageId === pkg.id
-                    ? ($t('dashboard.internet_order.actions.selected') || 'Terpilih')
-                    : ($t('dashboard.internet_order.actions.select_package') || 'Pilih Paket')}
                 </button>
-              </article>
-            {/each}
-          </div>
-
-          <aside class="package-sidecard">
-            <div class="sidecard-head">
-              <h4>{$t('dashboard.internet_order.sidecard.title')}</h4>
-              <span class="sidecard-badge">{$t('dashboard.internet_order.sidecard.step_badge')}</span>
+              {/each}
             </div>
-            <dl class="sidecard-list">
-              <div>
-                <dt>{$t('dashboard.internet_order.sidecard.address')}</dt>
-                <dd>{selectedLocation?.label || '-'}</dd>
-              </div>
-              <div>
-                <dt>{$t('dashboard.internet_order.sidecard.package')}</dt>
-                <dd>{draftPackage?.name || '-'}</dd>
-              </div>
-              <div>
-                <dt>{$t('dashboard.internet_order.sidecard.billing')}</dt>
-                <dd>{billingCycleLabel(draftBillingCycle)}</dd>
-              </div>
-            </dl>
-            <div class="sidecard-total">
-              <small>{$t('dashboard.internet_order.labels.current_item_total')}</small>
-              <strong>{formatCurrency(draftAmount)}</strong>
-            </div>
-            <button class="btn btn-primary sidecard-cta" type="button" onclick={orderNowFromPackage}>
-              <Icon name="shopping-cart" size={16} />
-              {$t('dashboard.internet_order.actions.order_now')}
-            </button>
-            <p class="sidecard-hint">
-              {$t('dashboard.internet_order.sidecard.hint')}
-            </p>
-          </aside>
-        </div>
-      {/if}
-    </section>
-  {/if}
 
-  {#if step === 3}
-    <section class="card stage-card">
-      <div class="stage-head">
-        <div>
-          <h3>{$t('dashboard.internet_order.stage.review.title')}</h3>
-          <p>
-            {$t('dashboard.internet_order.stage.review.subtitle')}
-          </p>
-        </div>
-      </div>
-
-      {#if orderItems.length === 0}
-        <div class="empty-state">
-          <Icon name="clipboard-list" size={18} />
-          <div>
-            <h4>{$t('dashboard.internet_order.empty.no_order_items_title')}</h4>
-            <p>{$t('dashboard.internet_order.empty.no_order_items_subtitle')}</p>
-          </div>
-        </div>
-        <div class="stage-actions">
-          <button class="btn btn-secondary" type="button" onclick={() => (step = 2)}>
-            <Icon name="arrow-left" size={15} />
-            {$t('dashboard.internet_order.actions.back_to_package')}
-          </button>
-        </div>
-      {:else}
-        <div class="queue-list">
-          {#each orderItems as item, index (item.id)}
-            {@const pkg = getPackageById(item.package_id)}
-            <div class="queue-item">
-              <div class="queue-index">{index + 1}</div>
-              <div class="queue-main">
-                <strong>{pkg?.name || item.package_id}</strong>
-                <span>{locationLabel(item.location_id)} · {billingCycleLabel(item.billing_cycle)}</span>
-              </div>
-              <strong class="queue-price">{formatCurrency(getOrderItemAmount(item))}</strong>
-              <button class="btn btn-secondary icon-only" type="button" onclick={() => removeOrderItem(item.id)}>
-                <Icon name="trash-2" size={14} />
+            <div class="stage-nav">
+              <span></span>
+              <button class="btn btn-primary" type="button" onclick={moveToPackageStep} disabled={!draftLocationId}>
+                {$t('dashboard.internet_order.actions.next_choose_package')}
+                <Icon name="arrow-right" size={15} />
               </button>
             </div>
-          {/each}
-        </div>
+          {/if}
+        </section>
 
-        <div class="summary-row">
-          <div>
-            <small>{$t('dashboard.internet_order.labels.total_order_amount')}</small>
-            <strong>{formatCurrency(orderTotalAmount)}</strong>
+      {:else if step === 2}
+        <!-- Step 2: Pilih Paket -->
+        <section class="stage-card">
+          <div class="stage-head">
+            <div>
+              <h3>{$t('dashboard.internet_order.stage.package.title')}</h3>
+              <p>
+                {$t('dashboard.internet_order.labels.location')}: <strong>{selectedLocation?.label || '-'}</strong>
+              </p>
+            </div>
           </div>
-          <div class="hero-actions">
-            <button class="btn btn-secondary" type="button" onclick={addMoreFromStep3}>
-              <Icon name="plus" size={15} />
-              {$t('dashboard.internet_order.actions.add_more')}
+
+          <!-- Billing cycle toggle -->
+          <div class="cycle-toolbar">
+            <div class="cycle-pills">
+              <button
+                class="cycle-pill"
+                class:active={draftBillingCycle === 'monthly'}
+                type="button"
+                onclick={() => (draftBillingCycle = 'monthly')}
+              >
+                {$t('dashboard.internet_order.cycles.monthly')}
+              </button>
+              <button
+                class="cycle-pill"
+                class:active={draftBillingCycle === 'yearly'}
+                type="button"
+                onclick={() => (draftBillingCycle = 'yearly')}
+                disabled={!draftPackage || !hasYearlyPrice(draftPackage)}
+              >
+                {$t('dashboard.internet_order.cycles.yearly')}
+              </button>
+            </div>
+          </div>
+
+          {#if loading}
+            <p class="status-note">{$t('dashboard.internet_order.status.loading_packages')}</p>
+          {:else if packages.length === 0}
+            <div class="empty-state">
+              <Icon name="package" size={18} />
+              <div>
+                <h4>{$t('dashboard.internet_order.empty.no_packages_title')}</h4>
+                <p>{$t('dashboard.internet_order.empty.no_packages_subtitle')}</p>
+              </div>
+            </div>
+          {:else}
+            <div class="pkg-grid">
+              {#each packages as pkg (pkg.id)}
+                <button
+                  class="pkg-option"
+                  class:selected={draftPackageId === pkg.id}
+                  type="button"
+                  onclick={() => (draftPackageId = pkg.id)}
+                >
+                  <div class="pkg-option-head">
+                    <h4>{pkg.name}</h4>
+                    {#if draftPackageId === pkg.id}
+                      <span class="pill pill-success">{$t('dashboard.internet_order.badges.selected')}</span>
+                    {/if}
+                  </div>
+                  {#if pkg.description}
+                    <p class="pkg-option-desc">{pkg.description}</p>
+                  {/if}
+                  <div class="pkg-option-price">
+                    <strong>{formatCurrency(Number(pkg.price_monthly || 0))}</strong>
+                    <span>/{$t('dashboard.internet_order.cycles.monthly')}</span>
+                  </div>
+                  {#if hasYearlyPrice(pkg)}
+                    <div class="pkg-option-yearly">
+                      {formatCurrency(Number(pkg.price_yearly || 0))} {$t('dashboard.internet_order.labels.yearly_available')}
+                    </div>
+                  {/if}
+                </button>
+              {/each}
+            </div>
+          {/if}
+
+          <div class="stage-nav">
+            <button class="btn btn-ghost" type="button" onclick={moveBackToAddressStep}>
+              <Icon name="arrow-left" size={15} />
+              {$t('dashboard.internet_order.actions.back_to_address')}
             </button>
+            <button class="btn btn-primary" type="button" onclick={orderNowFromPackage} disabled={!draftPackageId}>
+              {$t('dashboard.internet_order.actions.order_now')}
+              <Icon name="arrow-right" size={15} />
+            </button>
+          </div>
+        </section>
+
+      {:else if step === 3}
+        <!-- Step 3: Review & Konfirmasi -->
+        <section class="stage-card">
+          <div class="stage-head">
+            <div>
+              <h3>{$t('dashboard.internet_order.stage.review.title')}</h3>
+              <p>{$t('dashboard.internet_order.stage.review.subtitle')}</p>
+            </div>
+          </div>
+
+          {#if orderItems.length === 0}
+            <div class="empty-state">
+              <Icon name="clipboard-list" size={18} />
+              <div>
+                <h4>{$t('dashboard.internet_order.empty.no_order_items_title')}</h4>
+                <p>{$t('dashboard.internet_order.empty.no_order_items_subtitle')}</p>
+              </div>
+            </div>
+          {:else}
+            <!-- Summary card -->
+            <div class="summary-card">
+              {#each orderItems as item, index (item.id)}
+                {@const pkg = getPackageById(item.package_id)}
+                <div class="summary-row">
+                  <span class="summary-label">
+                    <span class="queue-index" style="display:inline-flex;margin-right:.45rem;width:20px;height:20px;font-size:.68rem">{index + 1}</span>
+                    {pkg?.name || item.package_id}
+                  </span>
+                  <span class="summary-value">{formatCurrency(getOrderItemAmount(item))}</span>
+                </div>
+                <div class="summary-row" style="font-size:.82rem;color:var(--text-secondary)">
+                  <span>{locationLabel(item.location_id)} · {billingCycleLabel(item.billing_cycle)}</span>
+                  <button class="btn btn-ghost" style="padding:.25rem .5rem;font-size:.75rem" type="button" onclick={() => removeOrderItem(item.id)}>
+                    <Icon name="trash-2" size={12} />
+                  </button>
+                </div>
+              {/each}
+              <div class="summary-row" style="border-top:1px dashed var(--border-color);margin-top:.4rem;padding-top:.6rem">
+                <span class="summary-label" style="font-weight:700">{$t('dashboard.internet_order.labels.total_order_amount')}</span>
+                <span class="summary-value" style="font-size:1.15rem;color:var(--accent-primary)">{formatCurrency(orderTotalAmount)}</span>
+              </div>
+            </div>
+          {/if}
+
+          <div class="stage-nav">
+            <div>
+              <button class="btn btn-secondary" type="button" onclick={addMoreFromStep3}>
+                <Icon name="plus" size={15} />
+                {$t('dashboard.internet_order.actions.add_more')}
+              </button>
+            </div>
             <button
               class="btn btn-primary"
               type="button"
@@ -604,10 +606,10 @@
               {/if}
             </button>
           </div>
-        </div>
+        </section>
       {/if}
-    </section>
-  {/if}
+    </div>
+  </div>
 </div>
 
 <Modal
@@ -688,31 +690,9 @@
     gap: 0.9rem;
   }
 
-  .card {
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    background: var(--bg-surface);
-    padding: 1rem;
-  }
-
-  .hero {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.8rem;
-    flex-wrap: wrap;
-  }
-
-  .hero h1 {
-    margin: 0;
-    font-size: clamp(1.25rem, 2.2vw, 1.6rem);
-  }
-
-  .hero p {
-    margin: 0.3rem 0 0;
-    color: var(--text-secondary);
-    max-width: 780px;
-  }
-
+  /* ── page header / kicker ── */
+  .page-header h1 { margin: 0.15rem 0 0.25rem; }
+  .page-header p { color: var(--text-secondary); font-size: 0.88rem; }
   .hero-actions {
     display: inline-flex;
     align-items: center;
@@ -720,34 +700,81 @@
     flex-wrap: wrap;
   }
 
-  .steps {
-    display: inline-flex;
-    gap: 0.52rem;
-    flex-wrap: wrap;
-    align-items: center;
+  /* ── two-column layout ── */
+  .order-layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 1.2rem;
+    align-items: start;
   }
 
-  .step-pill {
+  /* ── vertical stepper ── */
+  .stepper-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
     border: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    border-radius: 999px;
-    padding: 0.32rem 0.78rem;
+    border-radius: 14px;
+    background: var(--bg-surface);
+    padding: 0.8rem;
+    position: sticky;
+    top: 0.8rem;
+  }
+  .stepper-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.55rem 0.45rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 10px;
+    text-align: left;
+    width: 100%;
+    transition: background 0.15s;
+  }
+  .stepper-step:disabled { opacity: 0.45; cursor: not-allowed; }
+  .stepper-step.active { background: color-mix(in srgb, var(--accent-primary) 8%, transparent); }
+  .step-bullet {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-size: 0.78rem;
     font-weight: 700;
-    cursor: pointer;
+    flex-shrink: 0;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
   }
+  .stepper-step.active .step-bullet {
+    border-color: var(--accent-primary);
+    background: var(--accent-primary);
+    color: var(--text-on-primary, #fff);
+  }
+  .step-label { display: grid; gap: 0.08rem; }
+  .step-title { font-size: 0.85rem; font-weight: 650; line-height: 1.2; }
+  .stepper-step.active .step-title { color: var(--accent-primary); }
+  .step-subtitle {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    line-height: 1.25;
+  }
+  .stepper-connector {
+    width: 2px;
+    height: 18px;
+    background: var(--border-color);
+    margin-left: 1rem;
+  }
+  .stepper-connector.filled { background: var(--accent-primary); }
 
-  .step-pill.active {
-    border-color: color-mix(in srgb, var(--accent-primary) 56%, var(--border-color));
-    background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
-    color: var(--accent-primary);
-  }
+  /* ── content area ── */
+  .order-content { min-width: 0; }
 
-  .stage-card {
-    display: grid;
-    gap: 0.8rem;
-  }
+  /* ── stage card (no border, no padding — just gap) ── */
+  .stage-card { display: grid; gap: 0.8rem; }
 
   .stage-head {
     display: flex;
@@ -756,83 +783,74 @@
     gap: 0.6rem;
     flex-wrap: wrap;
   }
+  .stage-head h3 { margin: 0; font-size: 1.03rem; }
+  .stage-head p { margin: 0.25rem 0 0; color: var(--text-secondary); font-size: 0.84rem; line-height: 1.45; }
 
-  .stage-head h3 {
-    margin: 0;
-    font-size: 1.03rem;
-  }
-
-  .stage-head p {
-    margin: 0.25rem 0 0;
-    color: var(--text-secondary);
-    font-size: 0.84rem;
-    line-height: 1.45;
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-  }
-
-  .package-toolbar {
+  /* ── navigation row ── */
+  .stage-nav {
     display: flex;
     justify-content: space-between;
-    align-items: end;
-    gap: 0.7rem;
+    align-items: center;
+    gap: 0.6rem;
     flex-wrap: wrap;
+    border-top: 1px dashed var(--border-color);
+    padding-top: 0.72rem;
+  }
+
+  /* ── address grid ── */
+  .addr-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.65rem;
+  }
+
+  /* addr-option & pkg-option share base (selected state via global .selected) */
+  .addr-option,
+  .pkg-option {
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.85rem;
+    background: var(--bg-surface);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.2s, background 0.2s;
+    display: grid;
+    gap: 0.4rem;
+  }
+  .addr-option:hover,
+  .pkg-option:hover { border-color: color-mix(in srgb, var(--accent-primary) 42%, var(--border-color)); }
+
+  .addr-option-head,
+  .pkg-option-head {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+  .addr-option-label { font-weight: 650; font-size: 0.92rem; }
+  .addr-option-detail { margin: 0; color: var(--text-primary); font-size: 0.83rem; line-height: 1.35; }
+  .addr-option-meta { margin: 0; color: var(--text-secondary); font-size: 0.78rem; }
+
+  .pkg-option-desc { margin: 0; color: var(--text-secondary); font-size: 0.8rem; line-height: 1.3; }
+  .pkg-option-price { display: flex; align-items: baseline; gap: 0.3rem; }
+  .pkg-option-price strong { font-size: 1.1rem; }
+  .pkg-option-price span { color: var(--text-secondary); font-size: 0.78rem; }
+  .pkg-option-yearly { color: var(--text-secondary); font-size: 0.79rem; }
+
+  .pkg-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.7rem;
+  }
+
+  /* ── cycle toolbar ── */
+  .cycle-toolbar {
     border: 1px solid var(--border-color);
     border-radius: 12px;
     background: color-mix(in srgb, var(--bg-secondary) 72%, transparent);
-    padding: 0.72rem;
+    padding: 0.6rem 0.72rem;
   }
-
-  .mini-location {
-    display: grid;
-    gap: 0.12rem;
-    min-width: 220px;
-  }
-
-  .mini-location small {
-    color: var(--text-secondary);
-    font-size: 0.73rem;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-  }
-
-  .mini-location strong {
-    font-size: 0.92rem;
-    line-height: 1.25;
-  }
-
-  .field label {
-    color: var(--text-secondary);
-    font-size: 0.84rem;
-    font-weight: 600;
-  }
-
-  .field select {
-    border: 1px solid var(--border-color);
-    background: var(--bg-input);
-    color: var(--text-primary);
-    border-radius: 10px;
-    padding: 0.65rem 0.75rem;
-    min-height: 40px;
-  }
-
-  .field-label {
-    font-size: 0.74rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    color: var(--text-secondary);
-  }
-
-  .cycle-pills {
-    display: inline-flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
+  .cycle-pills { display: inline-flex; gap: 0.5rem; align-items: center; }
   .cycle-pill {
     border: 1px solid var(--border-color);
     background: var(--bg-secondary);
@@ -842,7 +860,7 @@
     font-size: 0.85rem;
     cursor: pointer;
   }
-
+  .cycle-pill:disabled { opacity: 0.5; cursor: not-allowed; }
   .cycle-pill.active {
     border-color: color-mix(in srgb, var(--accent-primary) 55%, var(--border-color));
     background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
@@ -850,249 +868,7 @@
     font-weight: 700;
   }
 
-  .package-stage-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 0.85rem;
-    align-items: start;
-  }
-
-  .package-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 0.7rem;
-  }
-
-  .package-card {
-    display: grid;
-    gap: 0.62rem;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 0.8rem;
-    background: var(--bg-surface);
-    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .package-card.active {
-    border-color: color-mix(in srgb, var(--accent-primary) 60%, var(--border-color));
-    box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--accent-primary) 28%, transparent),
-      0 12px 22px color-mix(in srgb, #000 22%, transparent);
-    transform: translateY(-1px);
-  }
-
-  .package-top {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
-  .package-top h4 {
-    margin: 0;
-    font-size: 0.96rem;
-  }
-
-  .badge {
-    background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
-    border: 1px solid color-mix(in srgb, var(--accent-primary) 50%, transparent);
-    color: var(--accent-primary);
-    border-radius: 999px;
-    padding: 0.12rem 0.5rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-  }
-
-  .package-price {
-    display: grid;
-    gap: 0.12rem;
-  }
-
-  .package-price strong {
-    font-size: 1.13rem;
-    line-height: 1.1;
-  }
-
-  .package-price span {
-    color: var(--text-secondary);
-    font-size: 0.78rem;
-  }
-
-  .package-extra {
-    color: var(--text-secondary);
-    font-size: 0.79rem;
-    line-height: 1.35;
-  }
-
-  .select-btn {
-    min-height: 38px;
-    font-size: 0.84rem;
-  }
-
-  .package-sidecard {
-    border: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-color));
-    border-radius: 12px;
-    padding: 0.85rem;
-    background: var(--bg-surface);
-    display: grid;
-    gap: 0.72rem;
-    position: sticky;
-    top: 0.8rem;
-  }
-
-  .sidecard-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.45rem;
-  }
-
-  .sidecard-head h4 {
-    margin: 0;
-    font-size: 0.95rem;
-  }
-
-  .sidecard-badge {
-    border: 1px solid color-mix(in srgb, var(--accent-primary) 45%, var(--border-color));
-    color: var(--accent-primary);
-    border-radius: 999px;
-    padding: 0.14rem 0.48rem;
-    font-size: 0.69rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-  }
-
-  .sidecard-list {
-    margin: 0;
-    display: grid;
-    gap: 0.5rem;
-  }
-
-  .sidecard-list > div {
-    border: 1px solid var(--border-color);
-    border-radius: 9px;
-    padding: 0.45rem 0.58rem;
-    display: grid;
-    gap: 0.1rem;
-    background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
-  }
-
-  .sidecard-list dt {
-    margin: 0;
-    font-size: 0.71rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.035em;
-    font-weight: 700;
-  }
-
-  .sidecard-list dd {
-    margin: 0;
-    font-size: 0.88rem;
-    font-weight: 600;
-  }
-
-  .sidecard-total {
-    border-top: 1px dashed var(--border-color);
-    padding-top: 0.64rem;
-    display: grid;
-    gap: 0.18rem;
-  }
-
-  .sidecard-total small {
-    color: var(--text-secondary);
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-  }
-
-  .sidecard-total strong {
-    font-size: 1.25rem;
-    line-height: 1.1;
-  }
-
-  .sidecard-cta {
-    min-height: 42px;
-    font-size: 0.9rem;
-  }
-
-  .sidecard-hint {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: 0.77rem;
-    line-height: 1.4;
-  }
-
-  .summary-row {
-    border-top: 1px dashed var(--border-color);
-    padding-top: 0.72rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.65rem;
-    flex-wrap: wrap;
-  }
-
-  .summary-row small {
-    color: var(--text-secondary);
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    display: block;
-  }
-
-  .summary-row strong {
-    font-size: 1.2rem;
-    line-height: 1.1;
-  }
-
-  .queue-list {
-    display: grid;
-    gap: 0.52rem;
-  }
-
-  .queue-item {
-    display: grid;
-    grid-template-columns: 28px minmax(0, 1fr) auto auto;
-    gap: 0.5rem;
-    align-items: center;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 0.58rem 0.62rem;
-    background: color-mix(in srgb, var(--bg-secondary) 70%, transparent);
-  }
-
-  .queue-index {
-    width: 22px;
-    height: 22px;
-    border-radius: 7px;
-    border: 1px solid var(--border-color);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.72rem;
-    color: var(--text-secondary);
-    font-weight: 700;
-    background: var(--bg-surface);
-  }
-
-  .queue-main {
-    display: grid;
-    gap: 0.14rem;
-  }
-
-  .queue-main span {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-  }
-
-  .queue-price {
-    font-size: 0.93rem;
-  }
-
+  /* ── misc ── */
   .empty-state {
     border: 1px dashed var(--border-color);
     border-radius: 10px;
@@ -1101,32 +877,9 @@
     gap: 0.6rem;
     align-items: flex-start;
   }
-
-  .empty-state h4 {
-    margin: 0;
-    font-size: 0.95rem;
-  }
-
-  .empty-state p {
-    margin: 0.24rem 0 0;
-    color: var(--text-secondary);
-    font-size: 0.82rem;
-  }
-
-  .status-note {
-    color: var(--text-secondary);
-    font-size: 0.86rem;
-    margin: 0;
-  }
-
-  .stage-actions {
-    border-top: 1px dashed var(--border-color);
-    padding-top: 0.72rem;
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.6rem;
-    flex-wrap: wrap;
-  }
+  .empty-state h4 { margin: 0; font-size: 0.95rem; }
+  .empty-state p { margin: 0.24rem 0 0; color: var(--text-secondary); font-size: 0.82rem; }
+  .status-note { color: var(--text-secondary); font-size: 0.86rem; margin: 0; }
 
   .alert {
     border: 1px solid var(--border-color);
@@ -1134,70 +887,36 @@
     padding: 0.65rem 0.75rem;
     font-size: 0.85rem;
   }
-
   .alert-error {
     color: #fca5a5;
     border-color: color-mix(in srgb, #ef4444 40%, var(--border-color));
     background: color-mix(in srgb, #ef4444 8%, transparent);
   }
 
-  .btn {
-    display: inline-flex;
+  /* queue-index reused in summary */
+  .queue-index {
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    border: 1px solid var(--border-color);
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
-    border-radius: 10px;
-    border: 1px solid transparent;
-    padding: 0.6rem 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-weight: 700;
+    background: var(--bg-surface);
   }
 
-  .btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-secondary {
-    background: var(--bg-secondary);
-    border-color: var(--border-color);
-    color: var(--text-primary);
-  }
-
-  .btn-primary {
-    background: var(--accent-primary);
-    color: var(--text-on-primary, #fff);
-  }
-
-  .icon-only {
-    min-width: 38px;
-    min-height: 38px;
-    padding: 0;
-  }
-
-  .checkout-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.6rem;
-  }
-
-  .location-form {
-    display: grid;
-    gap: 0.85rem;
-  }
-
-  .form-field {
-    display: grid;
-    gap: 0.35rem;
-  }
-
+  /* ── modal styles (kept from original) ── */
+  .checkout-actions { display: flex; justify-content: flex-end; gap: 0.6rem; }
+  .location-form { display: grid; gap: 0.85rem; }
+  .form-field { display: grid; gap: 0.35rem; }
   .form-field > span {
     color: var(--text-secondary);
     font-size: 0.78rem;
     font-weight: 600;
     letter-spacing: 0.01em;
   }
-
   .input {
     width: 100%;
     border: 1px solid var(--border-color);
@@ -1207,58 +926,28 @@
     padding: 0.65rem 0.75rem;
     min-height: 40px;
   }
+  .textarea { min-height: 84px; resize: vertical; }
+  .location-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; }
 
-  .textarea {
-    min-height: 84px;
-    resize: vertical;
-  }
-
-  .location-grid-2 {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.65rem;
-  }
-
+  /* ── responsive ── */
   @media (max-width: 860px) {
-    .package-toolbar {
-      align-items: stretch;
-    }
-
-    .mini-location {
-      min-width: 0;
-      width: 100%;
-    }
-
-    .package-stage-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .package-sidecard {
+    .order-layout { grid-template-columns: 1fr; }
+    .stepper-sidebar {
       position: static;
+      flex-direction: row;
+      gap: 0;
+      padding: 0.4rem;
+      overflow-x: auto;
     }
+    .stepper-step { flex-direction: column; align-items: center; text-align: center; gap: 0.2rem; flex: 1; min-width: 0; }
+    .stepper-connector { width: 18px; height: 2px; margin-left: 0; margin-top: 0.6rem; flex-shrink: 0; }
+    .step-label { text-align: center; }
+    .step-subtitle { display: none; }
 
-    .queue-item {
-      grid-template-columns: 26px 1fr auto;
-      align-items: start;
-    }
-
-    .queue-price {
-      grid-column: 2;
-    }
-
-    .icon-only {
-      grid-column: 3;
-      grid-row: 1 / span 2;
-    }
-
-    .summary-row,
-    .stage-actions {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .location-grid-2 {
-      grid-template-columns: 1fr;
-    }
+    .cycle-toolbar { align-items: stretch; }
+    .stage-nav { flex-direction: column; align-items: stretch; }
+    .addr-grid { grid-template-columns: 1fr; }
+    .pkg-grid { grid-template-columns: 1fr; }
+    .location-grid-2 { grid-template-columns: 1fr; }
   }
 </style>
