@@ -156,97 +156,88 @@
   }
 </script>
 
-<div class="page-content fade-in">
-  <section class="hero">
-    <div class="hero-bg"></div>
-    <div class="hero-inner">
-      <div class="hgroup">
+<div class="page-container fade-in">
+  <section class="hero-card announcements-hero">
+    <div class="hero-left">
+      <div class="hero-badge">
+        <Icon name="megaphone" size={20} />
+      </div>
+      <div>
         <div class="kicker">
           <span class="dot"></span>
           {$t('announcements.title')}
         </div>
-        <h1 class="h1">{$t('announcements.title')}</h1>
-        <div class="sub">
-          {$t('announcements.feed_subtitle')}
-        </div>
+        <h1 class="hero-title">{$t('announcements.title')}</h1>
+        <p class="hero-sub">{$t('announcements.feed_subtitle')}</p>
       </div>
-
-      <div class="hero-actions">
-        <div class="search">
-          <Icon name="search" size={16} />
-          <input
-            class="search-input"
-            value={q}
-            oninput={(e) => (q = (e.currentTarget as HTMLInputElement).value)}
-            placeholder={$t('announcements.search_placeholder') ||
-              $t('notifications_page.search_placeholder') ||
-              'Search...'}
-          />
-        </div>
-        <button
-          class="btn"
-          type="button"
-          onclick={() => load(true)}
-          title={$t('common.refresh')}
-        >
-          <Icon name="refresh-cw" size={16} />
-          {$t('common.refresh')}
-        </button>
+    </div>
+    <div class="hero-right">
+      <div class="search">
+        <Icon name="search" size={16} />
+        <input
+          class="search-input"
+          value={q}
+          oninput={(e) => (q = (e.currentTarget as HTMLInputElement).value)}
+          placeholder={$t('announcements.search_placeholder') ||
+            $t('notifications_page.search_placeholder') ||
+            'Search...'}
+        />
       </div>
+      <button class="btn btn-secondary btn-sm" type="button" onclick={() => load(true)} disabled={loading}>
+        <Icon name="refresh-cw" size={14} />
+        <span>{$t('common.refresh')}</span>
+      </button>
     </div>
   </section>
 
   <div class="filters">
-    <div class="filter-group">
-      <Select
-        bind:value={sev}
-        options={severityTabs.map(t => ({ label: t.label, value: t.id }))}
-        placeholder={$t('announcements.filters.severity') || 'Severity'}
-        width="160px"
-      />
-    </div>
-    <div class="filter-group align-end">
-      <Select
-        bind:value={mode}
-        options={modeTabs.map(t => ({ label: t.label, value: t.id }))}
-        placeholder={$t('announcements.filters.mode') || 'Mode'}
-        width="140px"
-      />
-      {#if q.trim() || sev !== 'all' || mode !== 'all'}
-        <button class="filter-clear" type="button" onclick={clearFilters}>
-          <Icon name="x" size={16} />
-          {$t('common.clear')}
-        </button>
-      {/if}
-    </div>
+    <Select
+      bind:value={sev}
+      options={severityTabs.map(t => ({ label: t.label, value: t.id }))}
+      placeholder={$t('announcements.filters.severity') || 'Severity'}
+      width="160px"
+    />
+    <Select
+      bind:value={mode}
+      options={modeTabs.map(t => ({ label: t.label, value: t.id }))}
+      placeholder={$t('announcements.filters.mode') || 'Mode'}
+      width="140px"
+    />
+    {#if q.trim() || sev !== 'all' || mode !== 'all'}
+      <button class="filter-clear" type="button" onclick={clearFilters}>
+        <Icon name="x" size={16} />
+        {$t('common.clear')}
+      </button>
+    {/if}
   </div>
 
   {#if loading && rows.length === 0}
-    <div class="loading">
+    <div class="loading-state">
       <div class="spinner"></div>
-      <div>{$t('common.loading')}</div>
+      <p>{$t('common.loading')}</p>
     </div>
   {:else if rows.length === 0}
-    <div class="empty">
-      <Icon name="info" size={18} />
-      <span>{$t('announcements.empty_feed')}</span>
+    <div class="glass-card empty-state">
+      <Icon name="megaphone" size={32} />
+      <div class="empty-text">
+        <div class="title">{$t('announcements.empty_feed') || 'No announcements yet'}</div>
+        <div class="sub">{$t('announcements.feed_subtitle') || 'Stay tuned for updates.'}</div>
+      </div>
     </div>
   {:else}
     <div class="summary">
-      <div class="count">
-        <span class="num">{rows.length}</span>
-        <span class="txt">{$t('announcements.list.title')}</span>
-      </div>
-      <div class="hint">
+      <span class="count-num">{rows.length}</span>
+      <span class="count-label">{$t('announcements.list.title') || 'announcements'}</span>
+      <span class="summary-hint">
         {$t('common.updated')}:
         {formatDateTime(new Date().toISOString(), { timeZone: $appSettings.app_timezone })}
-      </div>
+      </span>
     </div>
 
     <div class="feed">
       {#each rows as a, i (a.id)}
         <button
-          class="post {a.severity}"
+          class="glass-card post {a.severity}"
           type="button"
           onclick={() => openDetail(a.id)}
           style={`--d:${i * 55}ms`}
@@ -258,35 +249,30 @@
                 alt=""
                 loading="lazy"
               />
-              <div class="cover-shade"></div>
             </div>
           {:else}
             <div class="cover fallback">
-              <div class="fallback-icon">
-                <Icon name={badgeIcon(a.severity)} size={20} />
-              </div>
-              <div class="cover-shade"></div>
+              <Icon name={badgeIcon(a.severity)} size={28} />
             </div>
           {/if}
           <div class="meta">
             <span class="pill {a.severity}">
-              <Icon name={badgeIcon(a.severity)} size={14} />
-              <span class="sev">{badgeLabel(a.severity)}</span>
+              <Icon name={badgeIcon(a.severity)} size={12} />
+              {badgeLabel(a.severity)}
             </span>
-            <span class="dot"></span>
-            <span class="time">
-              {formatDateTime(a.starts_at, { timeZone: $appSettings.app_timezone })}
-            </span>
+            <span>{formatDateTime(a.starts_at, { timeZone: $appSettings.app_timezone })}</span>
             {#if a.mode === 'banner'}
-              <span class="dot"></span>
-              <span class="mode">{$t('announcements.modes.banner')}</span>
+              <span class="pill banner-pill">
+                <Icon name="flag" size={12} />
+                {$t('announcements.modes.banner') || 'Banner'}
+              </span>
             {/if}
           </div>
           <div class="title">{a.title}</div>
           <div class="body">{snippet(a.body)}</div>
           <div class="more">
-            {$t('announcements.actions.read')}
-            <Icon name="arrow-right" size={16} />
+            {$t('announcements.actions.read') || 'Read'}
+            <Icon name="arrow-right" size={14} />
           </div>
         </button>
       {/each}
@@ -294,7 +280,7 @@
 
     {#if hasMore}
       <div class="load-more">
-        <button class="btn" type="button" onclick={loadMore} disabled={loadingMore}>
+        <button class="btn btn-secondary" type="button" onclick={loadMore} disabled={loadingMore}>
           <Icon name="chevron-down" size={16} />
           {loadingMore
             ? $t('common.loading') || 'Loading...'
@@ -306,53 +292,33 @@
 </div>
 
 <style>
-  .page-content {
-    padding: 1.5rem;
-    max-width: 1100px;
+  .page-container {
+    padding: clamp(1rem, 2.2vw, 2rem);
+    max-width: 1200px;
     margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
   }
 
-  @media (max-width: 640px) {
-    .page-content {
-      padding: 1rem;
-    }
-
-    .filters {
-      grid-template-columns: 1fr;
-    }
-
-    .filter-group,
-    .align-end {
-      justify-content: stretch;
-    }
+  .announcements-hero {
+    flex-wrap: wrap;
+    gap: 1rem;
   }
 
-  .hero {
-    position: relative;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    background: var(--bg-surface);
-    box-shadow: var(--shadow-md);
-    margin-bottom: 1rem;
+  .hero-left {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    min-width: 260px;
   }
 
-  .hero-bg {
-    position: absolute;
-    inset: 0;
-    background: var(--bg-surface);
-    filter: saturate(1.1);
-  }
-
-  :global([data-theme='light']) .hero-bg {
-    background: var(--bg-surface);
-  }
-
-  .hero-inner {
-    position: relative;
-    padding: 1rem 1.05rem 1.05rem;
-    display: grid;
-    gap: 0.85rem;
+  .hero-right {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
   }
 
   .kicker {
@@ -364,6 +330,7 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     font-size: 0.72rem;
+    margin-bottom: 0.35rem;
   }
 
   .kicker .dot {
@@ -374,31 +341,6 @@
     box-shadow: 0 0 0 6px var(--color-primary-subtle);
   }
 
-  .h1 {
-    margin-top: 0.25rem;
-    font-size: clamp(1.4rem, 2vw, 1.8rem);
-    font-weight: 1000;
-    letter-spacing: 0.01em;
-    color: var(--text-primary);
-    line-height: 1.12;
-  }
-
-  .sub {
-    margin-top: 0.25rem;
-    color: var(--text-secondary);
-    font-weight: 650;
-    max-width: 70ch;
-    font-size: 0.9rem;
-  }
-
-  .hero-actions {
-    display: flex;
-    gap: 0.55rem;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-  }
-
   .search {
     display: inline-flex;
     align-items: center;
@@ -407,13 +349,7 @@
     background: var(--bg-tertiary);
     padding: 0.5rem 0.68rem;
     border-radius: 10px;
-    min-width: min(520px, 100%);
-    color: var(--text-secondary);
-  }
-
-  :global([data-theme='light']) .search {
-    border-color: var(--border-color);
-    background: var(--bg-tertiary);
+    min-width: min(340px, 100%);
     color: var(--text-secondary);
   }
 
@@ -425,39 +361,26 @@
     color: inherit;
     font-weight: 750;
     font-size: 0.9rem;
-    min-height: 0;
   }
 
   .filters {
-    display: grid;
-    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-    gap: 0.65rem;
-    padding: 0.15rem 0.05rem 0.75rem;
-  }
-
-  .filter-group {
     display: flex;
+    gap: 0.75rem;
     align-items: center;
-    gap: 0.55rem;
-    min-width: 0;
-  }
-
-  .align-end {
-    justify-content: flex-end;
+    flex-wrap: wrap;
   }
 
   .filter-clear {
     border: 1px solid var(--border-color);
     background: var(--bg-surface);
     color: var(--text-secondary);
-    padding: 0.52rem 0.76rem;
-    border-radius: 999px;
+    padding: 0.6rem 0.85rem;
+    border-radius: 8px;
     font-weight: 700;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    flex: 0 0 auto;
   }
 
   .filter-clear:hover {
@@ -465,30 +388,52 @@
     background: var(--bg-hover);
   }
 
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 3rem 1rem;
+    color: var(--text-secondary);
+  }
+
+  .empty-state {
+    padding: 1.5rem;
+    display: flex;
+    gap: 0.9rem;
+    align-items: flex-start;
+  }
+
+  .empty-text .title {
+    font-weight: 750;
+    margin-bottom: 0.25rem;
+    color: var(--text-primary);
+  }
+
+  .empty-text .sub {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+
   .summary {
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
-    gap: 0.8rem;
-    margin: 0.15rem 0 0.8rem;
-  }
-
-  .count {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 0.55rem;
+    gap: 0.5rem;
     color: var(--text-secondary);
-    font-weight: 850;
   }
 
-  .count .num {
+  .count-num {
     font-size: 1.25rem;
     font-weight: 1000;
     color: var(--text-primary);
   }
 
-  .hint {
-    color: var(--text-secondary);
+  .count-label {
+    font-weight: 850;
+    margin-right: auto;
+  }
+
+  .summary-hint {
     font-weight: 650;
     font-size: 0.9rem;
   }
@@ -501,12 +446,8 @@
 
   .post {
     text-align: left;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 0.95rem 1.05rem 1rem;
-    background: var(--bg-surface);
-    box-shadow: var(--shadow-sm);
     cursor: pointer;
+    padding: 0;
     overflow: hidden;
     transition:
       transform 180ms ease,
@@ -516,60 +457,23 @@
     animation-delay: var(--d, 0ms);
   }
 
+  .post:hover {
+    border-color: rgba(99, 102, 241, 0.35);
+    transform: translateY(-1px);
+  }
+
+  .post.info:hover { border-color: color-mix(in srgb, var(--color-primary) 45%, var(--border-color)); }
+  .post.success:hover { border-color: color-mix(in srgb, var(--color-success) 45%, var(--border-color)); }
+  .post.warning:hover { border-color: color-mix(in srgb, var(--color-warning) 45%, var(--border-color)); }
+  .post.error:hover { border-color: color-mix(in srgb, var(--color-danger) 45%, var(--border-color)); }
+
   .cover {
-    margin: -0.95rem -1.05rem 0.9rem;
     height: 160px;
+    overflow: hidden;
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-tertiary);
-    position: relative;
-  }
-
-  :global([data-theme='light']) .cover {
-    border-bottom-color: var(--border-color);
-    background: var(--bg-tertiary);
-  }
-
-  .cover-shade {
-    position: absolute;
-    inset: 0;
-    background: var(--bg-surface);
-    opacity: 0.65;
-    pointer-events: none;
-  }
-
-  :global([data-theme='light']) .cover-shade {
-    background: var(--bg-surface);
-    opacity: 0.55;
-  }
-
-  .cover.fallback {
     display: grid;
-    place-items: center;
-    background: var(--bg-surface);
-  }
-
-  :global([data-theme='light']) .cover.fallback {
-    background: var(--bg-surface);
-  }
-
-  .fallback-icon {
-    width: 52px;
-    height: 52px;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color);
-    background: var(--bg-tertiary);
-    display: grid;
-    place-items: center;
-    color: var(--text-primary);
-    box-shadow: var(--shadow-sm);
-    position: relative;
-    z-index: 2;
-  }
-
-  :global([data-theme='light']) .fallback-icon {
-    border-color: var(--border-color);
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
+    place-items: stretch;
   }
 
   .cover img {
@@ -579,31 +483,10 @@
     display: block;
   }
 
-  :global([data-theme='light']) .post {
+  .cover.fallback {
+    place-items: center;
+    color: var(--text-secondary);
     background: var(--bg-surface);
-  }
-
-  .post:hover {
-    border-color: color-mix(in srgb, var(--color-primary) 45%, var(--border-color));
-    box-shadow: var(--shadow-md);
-    transform: translateY(-1px);
-  }
-
-  .post:active {
-    transform: translateY(0);
-  }
-
-  .post.info:hover {
-    border-color: color-mix(in srgb, var(--color-primary) 45%, var(--border-color));
-  }
-  .post.success:hover {
-    border-color: color-mix(in srgb, var(--color-success) 45%, var(--border-color));
-  }
-  .post.warning:hover {
-    border-color: color-mix(in srgb, var(--color-warning) 45%, var(--border-color));
-  }
-  .post.error:hover {
-    border-color: color-mix(in srgb, var(--color-danger) 45%, var(--border-color));
   }
 
   .meta {
@@ -613,60 +496,45 @@
     color: var(--text-secondary);
     font-weight: 750;
     font-size: 0.85rem;
+    padding: 0.8rem 1rem 0;
   }
 
   .pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
     border: 1px solid var(--border-color);
     background: var(--bg-tertiary);
-    padding: 0.28rem 0.55rem;
+    padding: 0.2rem 0.5rem;
     border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 800;
     text-transform: capitalize;
     color: var(--text-primary);
   }
 
-  :global([data-theme='light']) .pill {
-    border-color: var(--border-color);
-    background: var(--bg-tertiary);
-  }
+  .pill.info { border-color: color-mix(in srgb, var(--color-primary) 28%, var(--border-color)); }
+  .pill.success { border-color: color-mix(in srgb, var(--color-success) 28%, var(--border-color)); }
+  .pill.warning { border-color: color-mix(in srgb, var(--color-warning) 28%, var(--border-color)); }
+  .pill.error { border-color: color-mix(in srgb, var(--color-danger) 28%, var(--border-color)); }
 
-  .pill.info {
-    border-color: color-mix(in srgb, var(--color-primary) 28%, var(--border-color));
-  }
-  .pill.success {
-    border-color: color-mix(in srgb, var(--color-success) 28%, var(--border-color));
-  }
-  .pill.warning {
-    border-color: color-mix(in srgb, var(--color-warning) 28%, var(--border-color));
-  }
-  .pill.error {
-    border-color: color-mix(in srgb, var(--color-danger) 28%, var(--border-color));
-  }
-
-  .dot {
-    width: 4px;
-    height: 4px;
-    border-radius: 999px;
-    background: var(--border-color);
-  }
-
-  :global([data-theme='light']) .dot {
-    background: var(--border-color);
+  .banner-pill {
+    border-color: color-mix(in srgb, var(--color-primary) 25%, var(--border-color));
+    color: var(--color-primary);
   }
 
   .title {
-    margin-top: 0.65rem;
+    padding: 0 1rem;
+    margin-top: 0.5rem;
     font-size: 1.05rem;
     font-weight: 950;
     color: var(--text-primary);
     line-height: 1.2;
-    letter-spacing: 0.01em;
   }
 
   .body {
-    margin-top: 0.45rem;
+    padding: 0 1rem;
+    margin-top: 0.35rem;
     color: var(--text-secondary);
     font-weight: 650;
     line-height: 1.45;
@@ -678,7 +546,8 @@
   }
 
   .more {
-    margin-top: 0.85rem;
+    padding: 0 1rem 1rem;
+    margin-top: 0.75rem;
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
@@ -686,32 +555,20 @@
     font-weight: 850;
   }
 
-  .empty,
-  .loading {
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 1.1rem 1.2rem;
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-  }
-
   .load-more {
     display: flex;
     justify-content: center;
-    margin-top: 1rem;
   }
 
   @keyframes rise {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 640px) {
+    .page-container { padding: 0.75rem; }
+    .hero-right { width: 100%; }
+    .search { min-width: 100%; }
+    .feed { grid-template-columns: 1fr; }
   }
 </style>
