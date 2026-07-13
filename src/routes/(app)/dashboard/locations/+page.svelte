@@ -203,42 +203,54 @@
 
 </script>
 
-<div class="page-content fade-in">
-  <div class="page-header">
-    <div>
-      <div class="kicker">
-        <span class="dot"></span>
-        {$t('dashboard.locations.kicker')}
+<div class="page-container fade-in">
+  <div class="hero-card locations-hero">
+    <div class="hero-left">
+      <div class="hero-badge">
+        <Icon name="map-pin" size={20} />
       </div>
-      <h1>{$t('dashboard.locations.title')}</h1>
-      <p class="subtitle">
-        {$t('dashboard.locations.subtitle')}
-      </p>
+      <div>
+        <div class="kicker">
+          <span class="dot"></span>
+          {$t('dashboard.locations.kicker')}
+        </div>
+        <h1 class="hero-title">{$t('dashboard.locations.title')}</h1>
+        <p class="hero-sub">{$t('dashboard.locations.subtitle')}</p>
+      </div>
     </div>
-    <div class="header-actions">
-      <button class="btn-primary" onclick={openCreateLocation} disabled={loading || !hasLinkedCustomer}>
-        <Icon name="plus" size={16} />
-        Tambah Lokasi
+    <div class="hero-actions">
+      <button class="btn btn-secondary btn-sm" type="button" onclick={load} disabled={loading}>
+        <Icon name="refresh-cw" size={14} />
+        <span>{$t('common.refresh')}</span>
       </button>
-      <button class="btn-secondary" onclick={load} disabled={loading}>
-        <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh')}
+      <button class="btn btn-primary btn-sm" type="button" onclick={openCreateLocation} disabled={loading || !hasLinkedCustomer}>
+        <Icon name="plus" size={14} />
+        <span>Tambah Lokasi</span>
       </button>
     </div>
   </div>
 
-  <div class="summary-grid">
-    <div class="summary card">
-      <div class="summary-label">{$t('dashboard.locations.summary.total')}</div>
-      <div class="summary-value">{totalLocations}</div>
+  <div class="bento-grid stats-bento">
+    <div class="bento-card">
+      <div class="bento-icon">
+        <Icon name="map-pin" size={18} />
+      </div>
+      <div class="bento-value">{totalLocations}</div>
+      <div class="bento-label">{$t('dashboard.locations.summary.total')}</div>
     </div>
-    <div class="summary card">
-      <div class="summary-label">{$t('dashboard.locations.summary.pinned')}</div>
-      <div class="summary-value">{mappedLocations}</div>
+    <div class="bento-card">
+      <div class="bento-icon">
+        <Icon name="navigation" size={18} />
+      </div>
+      <div class="bento-value">{mappedLocations}</div>
+      <div class="bento-label">{$t('dashboard.locations.summary.pinned')}</div>
     </div>
-    <div class="summary card">
-      <div class="summary-label">{$t('dashboard.locations.summary.has_notes')}</div>
-      <div class="summary-value">{notedLocations}</div>
+    <div class="bento-card">
+      <div class="bento-icon">
+        <Icon name="file-text" size={18} />
+      </div>
+      <div class="bento-value">{notedLocations}</div>
+      <div class="bento-label">{$t('dashboard.locations.summary.has_notes')}</div>
     </div>
   </div>
 
@@ -262,8 +274,8 @@
       <p>{$t('common.loading')}</p>
     </div>
   {:else if locations.length === 0}
-    <div class="empty card">
-      <Icon name="map-pin" size={28} />
+    <div class="empty glass-card">
+      <Icon name="map-pin" size={32} />
       <div class="empty-text">
         <div class="title">{$t('dashboard.locations.empty')}</div>
         <div class="sub">{$t('dashboard.locations.empty_hint')}</div>
@@ -272,7 +284,7 @@
   {:else}
     <div class="grid">
       {#each locations as loc (loc.id)}
-        <div class="location card">
+        <div class="location glass-card">
           <div class="top">
             <div class="badge">
               <Icon name="map-pin" size={16} />
@@ -336,16 +348,17 @@
 />
 
 <style>
-  .page-content {
-    padding: 1.1rem 1.35rem 1.4rem;
+  .page-container {
+    padding: clamp(1rem, 2.2vw, 2rem);
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
   }
 
-  .page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1rem;
-    margin-bottom: 1.25rem;
+  .locations-hero {
+    margin-bottom: 0;
   }
 
   .kicker {
@@ -367,71 +380,8 @@
     box-shadow: 0 0 0 6px var(--color-primary-subtle);
   }
 
-  .subtitle {
-    color: var(--text-secondary);
-    margin-top: 0.35rem;
-    max-width: 720px;
-  }
-
-  .header-actions {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.8rem;
-    margin-bottom: 0.95rem;
-  }
-
-  .summary {
-    padding: 0.95rem 1rem;
-  }
-
-  .summary-label {
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-    font-weight: 650;
-  }
-
-  .summary-value {
-    margin-top: 0.3rem;
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--text-primary);
-  }
-
-  .btn-primary,
-  .btn-secondary {
-    border-radius: 12px;
-    padding: 0.55rem 0.85rem;
-    border: 1px solid var(--border-color);
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    cursor: pointer;
-    font-weight: 700;
-  }
-
-  .btn-primary {
-    background: var(--color-primary);
-    border-color: color-mix(in srgb, var(--color-primary) 55%, var(--border-color));
-    color: var(--bg-app);
-  }
-
-  .btn-secondary {
-    background: var(--bg-surface);
-    color: var(--text-primary);
-  }
-
-  .btn-primary:disabled,
-  .btn-secondary:disabled,
-  .btn-icon:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+  .stats-bento {
+    margin-bottom: 0;
   }
 
   .error-banner {
@@ -455,15 +405,6 @@
   .location {
     padding: 1.15rem;
     position: relative;
-    overflow: hidden;
-  }
-
-  .location::before {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    background: var(--bg-surface);
-    pointer-events: none;
   }
 
   .top {
@@ -489,11 +430,21 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    transition: border-color 0.15s;
+  }
+
+  .btn-icon:hover {
+    border-color: rgba(255,255,255,0.2);
   }
 
   .btn-icon.danger {
     border-color: color-mix(in srgb, var(--color-danger) 35%, var(--border-color));
     color: var(--color-danger);
+  }
+
+  .btn-icon:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .badge,
@@ -515,17 +466,11 @@
     background: color-mix(in srgb, var(--color-warning) 12%, transparent);
   }
 
-  .name,
-  .addr,
-  .coords,
-  .notes {
-    position: relative;
-  }
-
   .name {
     font-size: 1.1rem;
     font-weight: 750;
     margin-bottom: 0.35rem;
+    color: var(--text-primary);
   }
 
   .addr {
@@ -548,7 +493,7 @@
   }
 
   .empty {
-    padding: 1.2rem;
+    padding: 1.5rem;
     display: flex;
     gap: 0.9rem;
     align-items: flex-start;
@@ -557,6 +502,7 @@
   .empty-text .title {
     font-weight: 750;
     margin-bottom: 0.25rem;
+    color: var(--text-primary);
   }
 
   .empty-text .sub {

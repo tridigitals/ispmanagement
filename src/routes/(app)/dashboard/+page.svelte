@@ -189,126 +189,113 @@
 </script>
 
 <div class="dashboard-content fade-in">
-  <header class="welcome-header">
-    <div class="welcome-text">
-      <h1>{greeting()}, {$user?.name}!</h1>
-      <p>{$t('dashboard.greeting.welcome_message')}</p>
+  <!-- Hero Welcome -->
+  <section class="hero-card welcome-hero">
+    <div class="welcome-body">
+      <h1 class="welcome-greeting">{greeting()}, <span class="welcome-name">{$user?.name}</span></h1>
+      <p class="welcome-sub">{$t('dashboard.greeting.welcome_message')}</p>
+      <div class="welcome-meta">
+        <span class="welcome-badge"><Icon name="calendar" size={13} /> {$t('dashboard.stats.member_since')}: {formatDate($user?.created_at || Date.now(), { timeZone: $appSettings.app_timezone })}</span>
+        <span class="welcome-badge"><Icon name="check-circle" size={13} /> {$t('dashboard.stats.active')}</span>
+      </div>
     </div>
-  </header>
+  </section>
 
   {#if $isAdmin}
-    <div
-      class="admin-banner"
-      onclick={() => goto(`${tenantPrefix}/admin`)}
-      onkeydown={(e) => e.key === 'Enter' && goto(`${tenantPrefix}/admin`)}
-      role="button"
-      tabindex="0"
-    >
+    <div class="admin-banner" onclick={() => goto(`${tenantPrefix}/admin`)} onkeydown={(e) => e.key === 'Enter' && goto(`${tenantPrefix}/admin`)} role="button" tabindex="0">
       <div class="banner-content">
-        <div class="banner-icon">
-          <Icon name="shield" size={24} />
-        </div>
+        <div class="banner-icon"><Icon name="shield" size={22} /></div>
         <div>
           <h3>{$t('dashboard.admin_mode.title')}</h3>
           <p>{$t('dashboard.admin_mode.description')}</p>
         </div>
       </div>
-      <Icon name="arrow-right" size={20} />
+      <Icon name="arrow-right" size={18} />
     </div>
   {/if}
 
-  <!-- Stats Row (User Focused) -->
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-header">
-        <div class="icon-wrapper primary">
-          <Icon name="profile" size={20} />
-        </div>
+  <!-- Bento Stats -->
+  <div class="bento-grid">
+    <div class="bento-card">
+      <div class="bento-icon" style="background:color-mix(in srgb, var(--color-primary) 18%, transparent);color:var(--color-primary)">
+        <Icon name="package" size={18} />
       </div>
-      <div class="stat-body">
-        <span class="stat-value">{$user?.role}</span>
-        <span class="stat-label">{$t('dashboard.stats.account_role')}</span>
-      </div>
+      <span class="bento-value">
+        {#if activePortalSubscription}
+          {activePortalSubscription.package_name || 'Aktif'}
+        {:else}
+          —
+        {/if}
+      </span>
+      <span class="bento-label">{$t('dashboard.portal_summary.active_package') || 'Paket Aktif'}</span>
     </div>
 
-    <div class="stat-card">
-      <div class="stat-header">
-        <div class="icon-wrapper success">
-          <Icon name="calendar" size={20} />
-        </div>
+    <div class="bento-card">
+      <div class="bento-icon" style="background:color-mix(in srgb, var(--color-warning) 18%, transparent);color:var(--color-warning)">
+        <Icon name="credit-card" size={18} />
       </div>
-      <div class="stat-body">
-        <span class="stat-value"
-          >{formatDate($user?.created_at || Date.now(), {
-            timeZone: $appSettings.app_timezone,
-          })}</span
-        >
-        <span class="stat-label">{$t('dashboard.stats.member_since')}</span>
-      </div>
+      <span class="bento-value" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">
+        {#if nextPendingInvoice}
+          {formatInvoiceAmount(nextPendingInvoice)}
+        {:else}
+          Rp 0
+        {/if}
+      </span>
+      <span class="bento-label">
+        {#if nextPendingInvoice}
+          {$t('dashboard.portal_summary.due') || 'Jatuh Tempo'}: {formatDate(invoiceDateForDisplay(nextPendingInvoice), { timeZone: $appSettings.app_timezone })}
+        {:else}
+          {$t('dashboard.portal_summary.no_pending_invoice') || 'Tidak ada tagihan'}
+        {/if}
+      </span>
     </div>
 
-    <div class="stat-card">
-      <div class="stat-header">
-        <div class="icon-wrapper info">
-          <Icon name="check" size={20} />
-        </div>
+    <div class="bento-card">
+      <div class="bento-icon" style="background:color-mix(in srgb, var(--color-success) 18%, transparent);color:var(--color-success)">
+        <Icon name="shield" size={18} />
       </div>
-      <div class="stat-body">
-        <span class="stat-value">{$t('dashboard.stats.active')}</span>
-        <span class="stat-label">{$t('dashboard.stats.system_status')}</span>
+      <span class="bento-value" style="background:linear-gradient(135deg,#7dd3ae,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">
+        {portalStatusLabel(portalHealthStatus)}
+      </span>
+      <span class="bento-label">Status Akun</span>
+    </div>
+
+    <div class="bento-card">
+      <div class="bento-icon" style="background:color-mix(in srgb, var(--color-info, #3b82f6) 18%, transparent);color:var(--color-info, #3b82f6)">
+        <Icon name="message-circle" size={18} />
       </div>
+      <span class="bento-value">{$notifications.length || 0}</span>
+      <span class="bento-label">Notifikasi</span>
     </div>
   </div>
 
+  <!-- Main Grid: Activity + Sidebar -->
   <div class="main-grid">
     <section class="activity-section">
+      <!-- Activity Feed -->
       <div class="section-header">
         <h2>{$t('dashboard.recent_activity.title')}</h2>
-        <button class="text-btn" onclick={() => openNotificationModal()}>
-          {$t('dashboard.recent_activity.view_all')}
-        </button>
+        <button class="text-btn" onclick={() => openNotificationModal()}>{$t('dashboard.recent_activity.view_all')}</button>
       </div>
-
-      <div class="card activity-card">
+      <div class="glass-card activity-feed">
         {#if $notificationsLoading && recent.length === 0}
-          <div class="loading-state">
-            <div class="spinner"></div>
-            <p class="muted">
-              {$t('dashboard.recent_activity.loading') || $t('common.loading') || 'Loading...'}
-            </p>
-          </div>
+          <div class="loading-state"><div class="spinner"></div><p class="muted">{$t('common.loading') || 'Loading...'}</p></div>
         {:else if recent.length === 0}
           <div class="empty-state">
-            <div class="empty-icon-circle">
-              <Icon name="bell" size={32} />
-            </div>
+            <div class="empty-icon-circle"><Icon name="bell" size={32} /></div>
             <h3>{$t('dashboard.recent_activity.empty.title')}</h3>
             <p>{$t('dashboard.recent_activity.empty.description')}</p>
-            <button
-              class="btn btn-secondary mt-4"
-              onclick={() => openNotificationModal()}
-            >
-              {$t('dashboard.recent_activity.empty.learn_more')}
-            </button>
+            <button class="btn btn-secondary mt-4" onclick={() => openNotificationModal()}>{$t('dashboard.recent_activity.empty.learn_more')}</button>
           </div>
         {:else}
           <ul class="activity-list">
             {#each recent as n (n.id)}
               <li class="activity-li">
                 <button type="button" class="activity-item" onclick={() => openNotification(n)}>
-                  <div class="activity-icon {n.notification_type}">
-                    <Icon name={iconForType(n.notification_type)} size={16} />
-                  </div>
+                  <div class="activity-icon {n.notification_type}"><Icon name={iconForType(n.notification_type)} size={16} /></div>
                   <div class="activity-text">
-                    <div class="activity-row">
-                      <span class="activity-title">{n.title}</span>
-                      <span class="activity-time">{timeAgo(n.created_at)}</span>
-                    </div>
-                    {#if n.message}
-                      <div class="activity-msg">
-                        {n.message}
-                      </div>
-                    {/if}
+                    <div class="activity-row"><span class="activity-title">{n.title}</span><span class="activity-time">{timeAgo(n.created_at)}</span></div>
+                    {#if n.message}<div class="activity-msg">{n.message}</div>{/if}
                   </div>
                 </button>
               </li>
@@ -317,42 +304,20 @@
         {/if}
       </div>
 
-      <div class="section-header section-gap">
-        <h2>
-          {$t('dashboard.announcements.title') || $t('announcements.title') || 'Announcements'}
-        </h2>
-        <button class="text-btn" onclick={() => goto(`${tenantPrefix}/announcements`)}>
-          {$t('dashboard.announcements.view_all') ||
-            $t('dashboard.recent_activity.view_all') ||
-            'View all'}
-        </button>
+      <!-- Announcements -->
+      <div class="section-header" style="margin-top:1.25rem">
+        <h2>{$t('dashboard.announcements.title') || $t('announcements.title') || 'Announcements'}</h2>
+        <button class="text-btn" onclick={() => goto(`${tenantPrefix}/announcements`)}>{$t('dashboard.announcements.view_all') || 'View all'}</button>
       </div>
-
-      <div class="card ann-card">
+      <div class="glass-card ann-feed">
         {#if annLoading && annPosts.length === 0}
-          <div class="loading-state ann-state">
-            <div class="spinner"></div>
-            <p class="muted">{$t('common.loading')}</p>
-          </div>
+          <div class="loading-state ann-state"><div class="spinner"></div><p class="muted">{$t('common.loading')}</p></div>
         {:else if annPosts.length === 0}
           <div class="empty-state ann-state">
-            <div class="empty-icon-circle">
-              <Icon name="megaphone" size={32} />
-            </div>
-            <h3>
-              {$t('dashboard.announcements.empty.title') ||
-                $t('announcements.empty_feed') ||
-                'No announcements yet.'}
-            </h3>
-            <p>
-              {$t('dashboard.announcements.empty.description')}
-            </p>
-            <button
-              class="btn btn-secondary mt-4"
-              onclick={() => goto(`${tenantPrefix}/announcements`)}
-            >
-              {$t('dashboard.announcements.empty.open')}
-            </button>
+            <div class="empty-icon-circle"><Icon name="megaphone" size={32} /></div>
+            <h3>{$t('dashboard.announcements.empty.title') || 'No announcements yet.'}</h3>
+            <p>{$t('dashboard.announcements.empty.description')}</p>
+            <button class="btn btn-secondary mt-4" onclick={() => goto(`${tenantPrefix}/announcements`)}>{$t('dashboard.announcements.empty.open')}</button>
           </div>
         {:else}
           <ul class="ann-list">
@@ -361,15 +326,10 @@
                 <button class="ann-item" type="button" onclick={() => openAnnouncement(a.id)}>
                   <div class="ann-dot {a.severity}"></div>
                   <div class="ann-text">
-                    <div class="ann-row">
-                      <div class="ann-title">{a.title}</div>
-                      <div class="ann-time">{timeAgo(a.updated_at || a.created_at)}</div>
-                    </div>
+                    <div class="ann-row"><div class="ann-title">{a.title}</div><div class="ann-time">{timeAgo(a.updated_at || a.created_at)}</div></div>
                     <div class="ann-body">{stripHtmlToText(a.body || '')}</div>
                   </div>
-                  <div class="ann-go">
-                    <Icon name="arrow-right" size={16} />
-                  </div>
+                  <div class="ann-go"><Icon name="arrow-right" size={16} /></div>
                 </button>
               </li>
             {/each}
@@ -378,82 +338,36 @@
       </div>
     </section>
 
+    <!-- Sidebar: Billing + Quick Actions -->
     <aside class="quick-actions">
       {#if !$isAdmin}
-        <div class="section-header">
-          <h2>{$t('dashboard.portal_summary.title')}</h2>
-        </div>
-        <div class="portal-summary-card">
+        <div class="section-header"><h2>{$t('dashboard.portal_summary.title')}</h2></div>
+        <div class="billing-card">
           {#if portalSummaryLoading}
-            <div class="summary-loading">
-              <div class="spinner"></div>
-              <span>{$t('common.loading')}</span>
-            </div>
+            <div class="summary-loading"><div class="spinner"></div><span>{$t('common.loading')}</span></div>
           {:else}
-            <div class="summary-health-row">
-              <div class="summary-k">{$t('dashboard.portal_summary.health')}</div>
-              <span class="summary-health {portalHealthStatus}">
-                <span class="summary-health-dot"></span>
-                {portalStatusLabel(portalHealthStatus)}
+            <div class="billing-header">
+              <span class="billing-label">{$t('dashboard.portal_summary.health')}</span>
+              <span class="summary-health {portalHealthStatus}"><span class="summary-health-dot"></span>{portalStatusLabel(portalHealthStatus)}</span>
+            </div>
+            <div class="billing-body">
+              <span class="billing-amount">{nextPendingInvoice ? formatInvoiceAmount(nextPendingInvoice) : 'Rp 0'}</span>
+              <span class="billing-due">
+                <Icon name="clock" size={13} />
+                {#if nextPendingInvoice}
+                  {$t('dashboard.portal_summary.due') || 'Due'}: {formatDate(invoiceDateForDisplay(nextPendingInvoice), { timeZone: $appSettings.app_timezone })}
+                {:else}
+                  {$t('dashboard.portal_summary.no_pending_invoice') || 'No pending invoice'}
+                {/if}
               </span>
             </div>
-
-            <div class="summary-row">
-              <div class="summary-k">
-                {$t('dashboard.portal_summary.active_package')}
-              </div>
-              <div class="summary-v">
-                {#if activePortalSubscription}
-                  {activePortalSubscription.package_name || activePortalSubscription.package_id}
-                {:else}
-                  {$t('dashboard.portal_summary.none')}
-                {/if}
-              </div>
-              {#if activePortalSubscription}
-                <div class="summary-sub">
-                  {activePortalSubscription.billing_cycle} ·
-                  {activePortalSubscription.location_label || '-'}
-                </div>
-              {/if}
-            </div>
-
-            <div class="summary-row">
-              <div class="summary-k">
-                {$t('dashboard.portal_summary.next_invoice')}
-              </div>
-              <div class="summary-v">
-                {#if nextPendingInvoice}
-                  {nextPendingInvoice.invoice_number}
-                {:else}
-                  {$t('dashboard.portal_summary.no_pending_invoice')}
-                {/if}
-              </div>
-              {#if nextPendingInvoice}
-                <div class="summary-sub">
-                  {formatInvoiceAmount(nextPendingInvoice)} ·
-                  {$t('dashboard.portal_summary.due')}:
-                  {formatDate(invoiceDateForDisplay(nextPendingInvoice), {
-                    timeZone: $appSettings.app_timezone,
-                  })}
-                </div>
-              {/if}
-            </div>
-
-            <div class="summary-actions">
-              <button
-                class="summary-btn"
-                onclick={() => goto(`${tenantPrefix}/dashboard/services`)}
-              >
-                <Icon name="package" size={15} />
-                {$t('dashboard.portal_summary.manage_package')}
+            <div class="billing-actions">
+              <button class="btn btn-secondary btn-sm" onclick={() => goto(`${tenantPrefix}/dashboard/services`)}>
+                <Icon name="package" size={13} /> {$t('dashboard.portal_summary.manage_package')}
               </button>
               {#if nextPendingInvoice}
-                <button
-                  class="summary-btn primary"
-                  onclick={() => goto(`/pay/${nextPendingInvoice!.id}`)}
-                >
-                  <Icon name="credit-card" size={15} />
-                  {$t('dashboard.portal_summary.pay_now')}
+                <button class="btn btn-primary btn-sm" onclick={() => goto(`/pay/${nextPendingInvoice!.id}`)}>
+                  <Icon name="credit-card" size={13} /> {$t('dashboard.portal_summary.pay_now')}
                 </button>
               {/if}
             </div>
@@ -461,29 +375,12 @@
         </div>
       {/if}
 
-      <div class="section-header">
-        <h2>{$t('dashboard.quick_actions.title')}</h2>
-      </div>
+      <div class="section-header" style="margin-top:1rem"><h2>{$t('dashboard.quick_actions.title')}</h2></div>
       <div class="actions-list">
-        <button class="action-item" onclick={() => openProfileModal({ tab: 'general' })}>
-          <Icon name="profile" size={18} />
-          {$t('dashboard.quick_actions.update_profile')}
-        </button>
-        <button class="action-item" onclick={() => openNotificationModal()}>
-          <Icon name="mail" size={18} />
-          {$t('dashboard.quick_actions.check_messages')}
-        </button>
-        <button class="action-item" onclick={() => openProfileModal({ tab: 'security' })}>
-          <Icon name="lock" size={18} />
-          {$t('dashboard.quick_actions.security_settings')}
-        </button>
-        <button
-          class="action-item"
-          onclick={() => openProfileModal({ tab: 'notifications' })}
-        >
-          <Icon name="message-circle" size={18} />
-          {$t('dashboard.quick_actions.contact_support')}
-        </button>
+        <button class="action-item" onclick={() => openProfileModal({ tab: 'general' })}><Icon name="profile" size={16} />{$t('dashboard.quick_actions.update_profile')}</button>
+        <button class="action-item" onclick={() => openNotificationModal()}><Icon name="mail" size={16} />{$t('dashboard.quick_actions.check_messages')}</button>
+        <button class="action-item" onclick={() => openProfileModal({ tab: 'security' })}><Icon name="lock" size={16} />{$t('dashboard.quick_actions.security_settings')}</button>
+        <button class="action-item" onclick={() => openProfileModal({ tab: 'notifications' })}><Icon name="message-circle" size={16} />{$t('dashboard.quick_actions.contact_support')}</button>
       </div>
     </aside>
   </div>
@@ -496,744 +393,190 @@
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.25rem;
   }
 
   @media (max-width: 640px) {
-    .dashboard-content {
-      padding: 1rem;
-      gap: 1.5rem;
-    }
-
-    .welcome-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 1rem;
-    }
+    .dashboard-content { padding: .75rem; gap: 1rem; }
   }
 
-  /* Header */
-  .welcome-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    margin-bottom: 0.5rem;
+  /* Hero Welcome */
+  .welcome-hero {
+    padding: 1.5rem 1.75rem;
   }
-
-  .welcome-text h1 {
-    font-size: clamp(1.55rem, 2vw, 1.95rem);
-    font-weight: 760;
-    color: var(--text-primary);
-    margin: 0 0 0.5rem 0;
+  .welcome-body { position: relative; z-index: 1; }
+  .welcome-greeting {
+    font-size: clamp(1.4rem, 2.2vw, 1.85rem);
+    font-weight: 750; color: var(--text-primary); margin: 0 0 .35rem;
   }
-
-  .welcome-text p {
-    color: var(--text-secondary);
-    font-size: 1rem;
-    margin: 0;
+  .welcome-name {
+    background: linear-gradient(135deg, var(--color-primary), #c4b5fd);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .welcome-sub { color: var(--text-secondary); margin: 0 0 .75rem; font-size: .92rem; }
+  .welcome-meta { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .welcome-badge {
+    display: inline-flex; align-items: center; gap: .35rem;
+    font-size: .78rem; color: var(--text-tertiary);
+    padding: .25rem .6rem; border-radius: 6px;
+    background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.05);
   }
 
   /* Admin Banner */
   .admin-banner {
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    border: 1px solid color-mix(in srgb, var(--color-primary) 26%, var(--border-color));
+    background: linear-gradient(160deg, rgba(255,255,255,.035), rgba(255,255,255,.005));
+    border: 1px solid rgba(255,255,255,.07);
     border-radius: var(--radius-lg);
-    padding: 1.25rem 1.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    transition:
-      background 0.2s,
-      border-color 0.2s;
+    padding: 1rem 1.25rem;
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; transition: all .2s;
   }
-
   .admin-banner:hover {
-    background: var(--bg-secondary);
-    border-color: color-mix(in srgb, var(--color-primary) 34%, var(--border-color));
+    border-color: color-mix(in srgb, var(--color-primary) 30%, rgba(255,255,255,.07));
+    transform: translateY(-1px);
   }
-
-  .banner-content {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-  }
-
+  .banner-content { display: flex; align-items: center; gap: 1rem; }
   .banner-icon {
-    background: color-mix(in srgb, var(--color-primary) 16%, var(--bg-tertiary));
+    width: 38px; height: 38px; border-radius: 10px;
+    background: color-mix(in srgb, var(--color-primary) 18%, transparent);
     color: var(--color-primary);
-    width: 42px;
-    height: 42px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; align-items: center; justify-content: center;
   }
-
-  .banner-content h3 {
-    margin: 0 0 0.15rem 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-  }
-
-  .banner-content p {
-    margin: 0;
-    font-size: 0.9rem;
-    opacity: 0.9;
-  }
-
-  /* Stats Grid */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1rem;
-  }
-
-  @media (max-width: 640px) {
-    .stats-grid {
-      grid-template-columns: 1fr;
-      gap: 1rem;
-    }
-  }
-
-  .stat-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 1.15rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-    transition: border-color 0.2s;
-  }
-
-  .stat-card:hover {
-    border-color: color-mix(in srgb, var(--color-primary) 34%, var(--border-color));
-  }
-
-  .stat-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .icon-wrapper {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .icon-wrapper.primary {
-    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
-    color: var(--color-primary);
-  }
-  .icon-wrapper.success {
-    background: var(--bg-success);
-    color: var(--color-success);
-  }
-  .icon-wrapper.info {
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
-  }
-
-  .stat-body {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .stat-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    text-transform: capitalize;
-  }
-
-  .stat-label {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-  }
+  .banner-content h3 { margin: 0 0 .1rem; font-size: 1rem; font-weight: 650; }
+  .banner-content p { margin: 0; font-size: .82rem; color: var(--text-secondary); }
 
   /* Main Grid */
   .main-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 1.25rem;
+    display: grid; grid-template-columns: 2fr 1fr; gap: 1.25rem;
   }
-
   @media (max-width: 900px) {
-    .main-grid {
-      grid-template-columns: 1fr;
-    }
+    .main-grid { grid-template-columns: 1fr; }
   }
 
-  .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
+  .section-header h2 { font-size: .95rem; font-weight: 650; color: var(--text-primary); margin: 0; }
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .75rem; }
+
+  .text-btn { background: transparent; border: none; color: var(--color-primary); font-size: .82rem; font-weight: 600; cursor: pointer; }
+
+  /* Glass Feed */
+  .activity-feed, .ann-feed { min-height: 200px; }
+  .ann-state { min-height: 160px; }
+
+  .empty-state { text-align: center; padding: 2rem; max-width: 320px; margin: 0 auto; }
+  .empty-state h3 { font-size: 1rem; font-weight: 650; margin: .75rem 0 .4rem; color: var(--text-primary); }
+  .empty-state p { color: var(--text-secondary); font-size: .85rem; line-height: 1.5; margin: 0 0 1rem; }
+  .empty-icon-circle {
+    width: 56px; height: 56px; border-radius: 12px;
+    background: rgba(255,255,255,.04); display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem; color: var(--text-secondary); opacity: .5;
   }
 
-  .section-header h2 {
-    font-size: 1.15rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-  }
+  .loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; gap: .6rem; padding: 2rem; }
+  .muted { color: var(--text-secondary); margin: 0; }
 
-  .text-btn {
-    background: transparent;
-    border: none;
-    color: var(--color-primary);
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
+  .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.08); border-top-color: var(--color-primary); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } }
 
-  /* Activity Card */
-  .activity-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    min-height: 300px;
-    overflow: hidden;
+  /* Activity */
+  .activity-list { display: flex; flex-direction: column; list-style: none; padding: 0; margin: 0; }
+  .activity-li { border-bottom: 1px solid rgba(255,255,255,.04); }
+  .activity-li:last-child { border-bottom: 0; }
+  .activity-item {
+    width: 100%; background: transparent; border: 0;
+    padding: .75rem; display: flex; gap: .8rem; align-items: flex-start;
+    text-align: left; cursor: pointer; transition: background .12s; color: inherit;
   }
-
-  .section-gap {
-    margin-top: 1.25rem;
+  .activity-item:hover { background: rgba(255,255,255,.02); }
+  .activity-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.02);
+    color: var(--text-secondary); flex-shrink: 0; margin-top: 1px;
   }
+  .activity-icon.success { color: var(--color-success); background: color-mix(in srgb, var(--color-success) 14%, transparent); border-color: color-mix(in srgb, var(--color-success) 24%, rgba(255,255,255,.08)); }
+  .activity-icon.warning { color: var(--color-warning); background: color-mix(in srgb, var(--color-warning) 14%, transparent); border-color: color-mix(in srgb, var(--color-warning) 24%, rgba(255,255,255,.08)); }
+  .activity-icon.error { color: var(--color-danger); background: color-mix(in srgb, var(--color-danger) 14%, transparent); border-color: color-mix(in srgb, var(--color-danger) 24%, rgba(255,255,255,.08)); }
+  .activity-text { flex: 1; min-width: 0; }
+  .activity-row { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+  .activity-title { font-weight: 650; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .88rem; }
+  .activity-time { font-size: .75rem; color: var(--text-tertiary); flex-shrink: 0; }
+  .activity-msg { margin-top: .2rem; font-size: .82rem; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-  .ann-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-  }
-
-  .ann-state {
-    min-height: 220px;
-  }
-
-  .ann-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .ann-li {
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  .ann-li:last-child {
-    border-bottom: 0;
-  }
-
+  /* Announcements */
+  .ann-list { display: flex; flex-direction: column; list-style: none; padding: 0; margin: 0; }
+  .ann-li { border-bottom: 1px solid rgba(255,255,255,.04); }
+  .ann-li:last-child { border-bottom: 0; }
   .ann-item {
-    width: 100%;
-    background: transparent;
-    border: 0;
-    padding: 1rem;
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: 0.85rem;
-    align-items: start;
-    text-align: left;
-    cursor: pointer;
-    transition: background 0.15s;
-    color: inherit;
+    width: 100%; background: transparent; border: 0;
+    padding: .75rem; display: grid; grid-template-columns: auto 1fr auto;
+    gap: .7rem; align-items: start; text-align: left; cursor: pointer;
+    transition: background .12s; color: inherit;
   }
-
-  .ann-item:hover {
-    background: var(--bg-hover);
-  }
-
-  .ann-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 999px;
-    margin-top: 0.35rem;
-    background: var(--text-tertiary);
-    box-shadow: 0 0 0 6px var(--bg-tertiary);
-  }
-
-  .ann-dot.info {
-    background: var(--color-primary);
-    box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-primary) 12%, transparent);
-  }
-  .ann-dot.success {
-    background: var(--color-success);
-    box-shadow: 0 0 0 6px var(--bg-success);
-  }
-  .ann-dot.warning {
-    background: var(--color-warning);
-    box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-warning) 12%, transparent);
-  }
-  .ann-dot.error {
-    background: var(--color-danger);
-    box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-danger) 12%, transparent);
-  }
-
-  .ann-text {
-    min-width: 0;
-  }
-
-  .ann-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.75rem;
-  }
-
-  .ann-title {
-    font-weight: 750;
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .ann-time {
-    font-size: 0.8rem;
-    color: var(--text-tertiary);
-    flex-shrink: 0;
-  }
-
-  .ann-body {
-    margin-top: 0.25rem;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
+  .ann-item:hover { background: rgba(255,255,255,.02); }
+  .ann-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: .35rem; background: var(--text-tertiary); }
+  .ann-dot.info { background: var(--color-primary); }
+  .ann-dot.success { background: var(--color-success); }
+  .ann-dot.warning { background: var(--color-warning); }
+  .ann-dot.error { background: var(--color-danger); }
+  .ann-text { min-width: 0; }
+  .ann-row { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+  .ann-title { font-weight: 650; color: var(--text-primary); font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ann-time { font-size: .75rem; color: var(--text-tertiary); flex-shrink: 0; }
+  .ann-body { margin-top: .2rem; font-size: .82rem; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .ann-go {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    flex-shrink: 0;
-    margin-top: 2px;
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.02);
+    color: var(--text-secondary); flex-shrink: 0; margin-top: 2px;
   }
 
   @media (max-width: 560px) {
-    .section-header {
-      align-items: flex-start;
-      gap: 0.75rem;
-    }
-
-    .ann-item {
-      grid-template-columns: auto minmax(0, 1fr);
-      padding: 0.9rem;
-    }
-
-    .ann-go {
-      display: none;
-    }
-
-    .ann-row,
-    .activity-row,
-    .summary-health-row {
-      align-items: flex-start;
-      flex-direction: column;
-      gap: 0.35rem;
-    }
-
-    .ann-title,
-    .activity-title {
-      white-space: normal;
-    }
-
-    .ann-time,
-    .activity-time {
-      flex-shrink: 1;
-    }
+    .ann-item { grid-template-columns: auto minmax(0, 1fr); padding: .65rem; }
+    .ann-go { display: none; }
+    .ann-row, .activity-row { flex-direction: column; gap: .2rem; }
+    .ann-title, .activity-title { white-space: normal; }
   }
 
-  .empty-state {
-    text-align: center;
-    padding: 2rem;
-    max-width: 320px;
-    margin: 0 auto;
-  }
-
-  .empty-icon-circle {
-    width: 64px;
-    height: 64px;
-    background: var(--bg-tertiary);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 1.5rem;
-    color: var(--text-secondary);
-    opacity: 0.5;
-  }
-
-  .empty-state h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-  }
-
-  .empty-state p {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    line-height: 1.5;
-  }
-
-  .loading-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 300px;
-    gap: 0.75rem;
-    padding: 2rem;
-  }
-
-  .muted {
-    color: var(--text-secondary);
-    margin: 0;
-  }
-
-  .activity-list {
-    display: flex;
-    flex-direction: column;
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  .activity-li {
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  .activity-li:last-child {
-    border-bottom: 0;
-  }
-
-  .activity-item {
-    width: 100%;
-    background: transparent;
-    border: 0;
-    padding: 1rem;
-    display: flex;
-    gap: 0.9rem;
-    align-items: flex-start;
-    text-align: left;
-    cursor: pointer;
-    transition: background 0.15s;
-    color: inherit;
-  }
-
-  .activity-item:hover {
-    background: var(--bg-hover);
-  }
-
-  .activity-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-
-  .activity-icon.success {
-    color: var(--color-success);
-    background: var(--bg-success);
-    border-color: color-mix(in srgb, var(--color-success) 24%, var(--border-color));
-  }
-
-  .activity-icon.warning {
-    color: var(--color-warning);
-    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
-    border-color: color-mix(in srgb, var(--color-warning) 24%, var(--border-color));
-  }
-
-  .activity-icon.error {
-    color: var(--color-danger);
-    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
-    border-color: color-mix(in srgb, var(--color-danger) 24%, var(--border-color));
-  }
-
-  .activity-text {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .activity-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.75rem;
-  }
-
-  .activity-title {
-    font-weight: 700;
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .activity-time {
-    font-size: 0.8rem;
-    color: var(--text-tertiary);
-    flex-shrink: 0;
-  }
-
-  .activity-msg {
-    margin-top: 0.25rem;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  /* Quick Actions */
-  .actions-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .action-item {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: left;
-  }
-
-  .action-item:hover {
-    border-color: color-mix(in srgb, var(--color-primary) 34%, var(--border-color));
-    background: var(--bg-hover);
-    transform: translateX(2px);
-  }
-
-  .portal-summary-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 1rem;
-    margin-bottom: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-  }
-
-  .summary-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.22rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px dashed var(--border-color);
-  }
-
-  .summary-row:last-of-type {
-    border-bottom: 0;
-    padding-bottom: 0;
-  }
-
-  .summary-health-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.6rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px dashed var(--border-color);
-  }
+  /* Billing Card */
+  .billing-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .75rem; }
+  .billing-label { font-size: .78rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .04em; font-weight: 650; }
+  .billing-body { display: flex; flex-direction: column; gap: .4rem; margin-bottom: 1rem; }
+  .billing-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 
   .summary-health {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.38rem;
-    font-size: 0.76rem;
-    border-radius: 999px;
-    padding: 0.22rem 0.55rem;
-    border: 1px solid transparent;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+    display: inline-flex; align-items: center; gap: .35rem;
+    font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+    border-radius: 999px; padding: .18rem .5rem; border: 1px solid transparent;
   }
+  .summary-health.normal { color: var(--color-success); background: color-mix(in srgb, var(--color-success) 14%, transparent); border-color: color-mix(in srgb, var(--color-success) 30%, rgba(255,255,255,.08)); }
+  .summary-health.pending { color: var(--color-warning); background: color-mix(in srgb, var(--color-warning) 14%, transparent); border-color: color-mix(in srgb, var(--color-warning) 30%, rgba(255,255,255,.08)); }
+  .summary-health.overdue { color: var(--color-danger); background: color-mix(in srgb, var(--color-danger) 14%, transparent); border-color: color-mix(in srgb, var(--color-danger) 30%, rgba(255,255,255,.08)); }
+  .summary-health-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .summary-loading { display: inline-flex; align-items: center; gap: .5rem; color: var(--text-secondary); font-size: .84rem; }
 
-  .summary-health-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 999px;
-    background: currentColor;
+  /* Quick Actions */
+  .actions-list { display: flex; flex-direction: column; gap: .5rem; }
+  .action-item {
+    background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.05);
+    border-radius: 10px; padding: .75rem .85rem;
+    display: flex; align-items: center; gap: .75rem;
+    font-size: .84rem; font-weight: 550; color: var(--text-primary);
+    cursor: pointer; transition: all .15s; text-align: left;
   }
-
-  .summary-health.normal {
-    color: var(--color-success);
-    background: var(--bg-success);
-    border-color: color-mix(in srgb, var(--color-success) 30%, var(--border-color));
-  }
-
-  .summary-health.pending {
-    color: var(--color-warning);
-    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
-    border-color: color-mix(in srgb, var(--color-warning) 30%, var(--border-color));
-  }
-
-  .summary-health.overdue {
-    color: var(--color-danger);
-    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
-    border-color: color-mix(in srgb, var(--color-danger) 30%, var(--border-color));
-  }
-
-  .summary-k {
-    font-size: 0.78rem;
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 700;
-  }
-
-  .summary-v {
-    font-size: 0.98rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    line-height: 1.3;
-  }
-
-  .summary-sub {
-    font-size: 0.83rem;
-    color: var(--text-secondary);
-  }
-
-  .summary-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
-  .summary-btn {
-    border: 1px solid var(--border-color);
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    border-radius: 10px;
-    padding: 0.5rem 0.75rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .summary-btn:hover {
-    background: var(--bg-hover);
-  }
-
-  .summary-btn.primary {
-    background: var(--color-primary);
-    border-color: color-mix(in srgb, var(--color-primary) 70%, transparent);
-    color: #fff;
-  }
-
-  .summary-loading {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    color: var(--text-secondary);
-    font-size: 0.88rem;
+  .action-item:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 30%, rgba(255,255,255,.05));
+    background: rgba(255,255,255,.04); transform: translateX(2px);
   }
 
   /* Buttons */
-  .btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.6rem 1.2rem;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: none;
-  }
-
-  .btn-primary {
-    background: var(--color-primary);
-    color: white;
-  }
-
-  .btn-primary:hover {
-    filter: brightness(1.1);
-  }
-
-  .btn-secondary {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-  }
-
-  .btn-secondary:hover {
-    background: var(--bg-hover);
-  }
-
-  .mt-4 {
-    margin-top: 1rem;
-  }
-
-  .fade-in {
-    animation: fadeIn 0.4s ease-out;
-  }
-
-  .spinner {
-    width: 18px;
-    height: 18px;
-    border: 2px solid var(--border-color);
-    border-top-color: var(--color-primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  .btn { display: flex; align-items: center; gap: .4rem; padding: .55rem 1rem; border-radius: 8px; font-size: .85rem; font-weight: 600; cursor: pointer; transition: all .15s; border: none; }
+  .btn-primary { background: var(--color-primary); color: #fff; }
+  .btn-primary:hover { filter: brightness(1.15); }
+  .btn-secondary { background: rgba(255,255,255,.05); color: var(--text-primary); border: 1px solid rgba(255,255,255,.08); }
+  .btn-secondary:hover { background: rgba(255,255,255,.08); }
+  .btn-sm { padding: .4rem .7rem; font-size: .78rem; gap: .3rem; }
+  .mt-4 { margin-top: 1rem; }
+  .fade-in { animation: fadeIn .35s ease-out; }
 </style>

@@ -534,24 +534,21 @@
 </script>
 
 <div class="services-content fade-in">
-  <section class="page-head">
-    <div>
+  <section class="hero-card service-hero">
+    <div class="welcome-body">
       <h1>{tt('dashboard.services_portal.page.title', 'Customer Services')}</h1>
-      <p>{tt('dashboard.services_portal.page.subtitle', 'List of all services you have ordered.')}</p>
-    </div>
-    <div class="head-actions">
-      <button class="btn ghost" type="button" onclick={() => void refreshAll()} disabled={loading}>
-        <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh')}
-      </button>
-      <button class="btn ghost" type="button" onclick={() => goto('/dashboard/invoices')}>
-        <Icon name="file-text" size={16} />
-        {tt('dashboard.services_portal.actions.billing_invoices', 'Billing & Invoices')}
-      </button>
-      <button class="btn primary" type="button" onclick={() => goto('/dashboard/services/order')}>
-        <Icon name="plus" size={16} />
-        {tt('dashboard.services_portal.actions.order_new_service', 'Order New Service')}
-      </button>
+      <p class="welcome-sub">{tt('dashboard.services_portal.page.subtitle', 'List of all services you have ordered.')}</p>
+      <div class="head-actions">
+        <button class="btn btn-secondary btn-sm" type="button" onclick={() => void refreshAll()} disabled={loading}>
+          <Icon name="refresh-cw" size={14} /> {$t('common.refresh')}
+        </button>
+        <button class="btn btn-secondary btn-sm" type="button" onclick={() => goto('/dashboard/invoices')}>
+          <Icon name="file-text" size={14} /> {tt('dashboard.services_portal.actions.billing_invoices', 'Billing & Invoices')}
+        </button>
+        <button class="btn btn-primary btn-sm" type="button" onclick={() => goto('/dashboard/services/order')}>
+          <Icon name="plus" size={14} /> {tt('dashboard.services_portal.actions.order_new_service', 'Order New Service')}
+        </button>
+      </div>
     </div>
   </section>
 
@@ -559,53 +556,26 @@
     <section class="alert">{loadError}</section>
   {/if}
 
-  <section class="stats-grid">
-    <button
-      type="button"
-      class={`stat-card indigo ${statusFilter === 'all' ? 'is-active' : ''}`}
-      onclick={() => setStatusFilter('all')}
-    >
-      <div class="stat-icon"><Icon name="layers" size={20} /></div>
-      <div class="stat-content">
-        <span class="stat-value">{stats.total}</span>
-        <span class="stat-label">{tt('dashboard.services_portal.stats.total', 'Total Services')}</span>
-      </div>
+  <section class="bento-grid stats-bento">
+    <button type="button" class="bento-card {statusFilter === 'all' ? 'active' : ''}" onclick={() => setStatusFilter('all')}>
+      <div class="bento-icon" style="background:color-mix(in srgb, var(--color-primary) 18%, transparent);color:var(--color-primary)"><Icon name="layers" size={18} /></div>
+      <span class="bento-value">{stats.total}</span>
+      <span class="bento-label">{tt('dashboard.services_portal.stats.total', 'Total Services')}</span>
     </button>
-
-    <button
-      type="button"
-      class={`stat-card emerald ${statusFilter === 'active' ? 'is-active' : ''}`}
-      onclick={() => setStatusFilter('active')}
-    >
-      <div class="stat-icon"><Icon name="check-circle" size={20} /></div>
-      <div class="stat-content">
-        <span class="stat-value">{stats.active}</span>
-        <span class="stat-label">{tt('dashboard.services_portal.stats.active', 'Active')}</span>
-      </div>
+    <button type="button" class="bento-card {statusFilter === 'active' ? 'active' : ''}" onclick={() => setStatusFilter('active')}>
+      <div class="bento-icon" style="background:color-mix(in srgb, var(--color-success) 18%, transparent);color:var(--color-success)"><Icon name="check-circle" size={18} /></div>
+      <span class="bento-value" style="background:linear-gradient(135deg,#7dd3ae,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">{stats.active}</span>
+      <span class="bento-label">{tt('dashboard.services_portal.stats.active', 'Active')}</span>
     </button>
-
-    <button
-      type="button"
-      class={`stat-card amber ${statusFilter === 'pending_installation' ? 'is-active' : ''}`}
-      onclick={() => setStatusFilter('pending_installation')}
-    >
-      <div class="stat-icon"><Icon name="clock" size={20} /></div>
-      <div class="stat-content">
-        <span class="stat-value">{stats.pendingInstallation}</span>
-        <span class="stat-label">{tt('dashboard.services_portal.stats.pending_installation', 'Pending Installation')}</span>
-      </div>
+    <button type="button" class="bento-card {statusFilter === 'pending_installation' ? 'active' : ''}" onclick={() => setStatusFilter('pending_installation')}>
+      <div class="bento-icon" style="background:color-mix(in srgb, var(--color-warning) 18%, transparent);color:var(--color-warning)"><Icon name="clock" size={18} /></div>
+      <span class="bento-value" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">{stats.pendingInstallation}</span>
+      <span class="bento-label">{tt('dashboard.services_portal.stats.pending_installation', 'Pending Installation')}</span>
     </button>
-
-    <button
-      type="button"
-      class={`stat-card rose ${statusFilter === 'needs_attention' ? 'is-active' : ''}`}
-      onclick={() => setStatusFilter('needs_attention')}
-    >
-      <div class="stat-icon"><Icon name="alert-triangle" size={20} /></div>
-      <div class="stat-content">
-        <span class="stat-value">{stats.needsAttention}</span>
-        <span class="stat-label">{tt('dashboard.services_portal.stats.needs_attention', 'Need Attention')}</span>
-      </div>
+    <button type="button" class="bento-card {statusFilter === 'needs_attention' ? 'active' : ''}" onclick={() => setStatusFilter('needs_attention')}>
+      <div class="bento-icon" style="background:color-mix(in srgb, var(--color-danger) 18%, transparent);color:var(--color-danger)"><Icon name="alert-triangle" size={18} /></div>
+      <span class="bento-value" style="background:linear-gradient(135deg,#fca5a5,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">{stats.needsAttention}</span>
+      <span class="bento-label">{tt('dashboard.services_portal.stats.needs_attention', 'Need Attention')}</span>
     </button>
   </section>
 
@@ -882,70 +852,29 @@
   .services-content {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: clamp(1rem, 2.2vw, 2rem);
     display: grid;
     gap: 1.25rem;
   }
 
-  .page-head {
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    background: var(--bg-surface);
-    padding: 1.25rem;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 1rem;
-    align-items: center;
+  .service-hero {
+    padding: 1.5rem 1.75rem;
+    display: flex; align-items: center;
   }
-
-  .page-head h1 {
-    margin: 0;
-    font-size: 1.9rem;
-    color: var(--text-primary);
+  .service-hero h1 {
+    font-size: clamp(1.4rem, 2.2vw, 1.85rem);
+    font-weight: 750; color: var(--text-primary);
+    margin: 0 0 .35rem;
   }
-
-  .page-head p {
-    margin: 0.35rem 0 0;
-    color: var(--text-secondary);
-  }
+  .service-hero .welcome-sub { margin: 0 0 .75rem; }
 
   .head-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 0.65rem;
+    display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem;
   }
 
-  .btn {
-    border: 1px solid var(--border-color);
-    background: transparent;
-    color: var(--text-primary);
-    border-radius: 12px;
-    padding: 0.62rem 0.9rem;
-    font-weight: 800;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-  }
-
-  .btn:hover:not(:disabled) {
-    background: var(--bg-hover);
-  }
-
-  .btn.primary {
-    background: var(--color-primary);
-    border-color: color-mix(in srgb, var(--color-primary) 55%, var(--border-color));
-    color: white;
-  }
-
-  .btn.ghost {
-    background: color-mix(in srgb, var(--bg-surface) 75%, transparent);
-  }
-
-  .btn:disabled {
-    opacity: 0.66;
-    cursor: not-allowed;
+  .stats-bento .bento-card.active {
+    border-color: color-mix(in srgb, var(--color-primary) 50%, rgba(255,255,255,.07));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 26%, transparent);
   }
 
   .alert {

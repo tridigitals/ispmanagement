@@ -5,6 +5,7 @@
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
   import ResponsiveTabs from '$lib/components/ui/ResponsiveTabs.svelte';
+  import Select from '$lib/components/ui/Select.svelte';
   import { formatDateTime } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
   import { goto } from '$app/navigation';
@@ -197,22 +198,19 @@
 
   <div class="filters">
     <div class="filter-group">
-      <ResponsiveTabs
-        items={severityTabs}
-        bind:activeId={sev}
-        {isMobile}
-        priorityCount={2}
-        ariaLabel="Announcement severity filters"
+      <Select
+        bind:value={sev}
+        options={severityTabs.map(t => ({ label: t.label, value: t.id }))}
+        placeholder={$t('announcements.filters.severity') || 'Severity'}
+        width="160px"
       />
     </div>
-
     <div class="filter-group align-end">
-      <ResponsiveTabs
-        items={modeTabs}
-        bind:activeId={mode}
-        {isMobile}
-        priorityCount={2}
-        ariaLabel="Announcement mode filters"
+      <Select
+        bind:value={mode}
+        options={modeTabs.map(t => ({ label: t.label, value: t.id }))}
+        placeholder={$t('announcements.filters.mode') || 'Mode'}
+        width="140px"
       />
       {#if q.trim() || sev !== 'all' || mode !== 'all'}
         <button class="filter-clear" type="button" onclick={clearFilters}>

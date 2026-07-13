@@ -224,14 +224,14 @@
 </script>
 
 <div class="page-content fade-in">
-  <header class="hero">
+  <header class="hero-card support-hero">
     <div class="hero-left">
-      <div class="hero-icon">
-        <Icon name="life-buoy" size={18} />
+      <div class="hero-badge">
+        <Icon name="life-buoy" size={20} />
       </div>
       <div>
-        <h1 class="title">{$t('support.title')}</h1>
-        <p class="sub">{$t('support.subtitle')}</p>
+        <h1 class="hero-title">{$t('support.title')}</h1>
+        <p class="hero-sub">{$t('support.subtitle')}</p>
       </div>
     </div>
 
@@ -251,102 +251,77 @@
       </div>
 
       <div class="actions">
-        <div class="filter" aria-label={$t('support.filters.aria')}>
-          <button class:active={statusFilter === 'all'} onclick={() => setStatusFilter('all')}>
-            {$t('support.filters.all')}
-          </button>
-          <button class:active={statusFilter === 'open'} onclick={() => setStatusFilter('open')}>
-            {$t('support.filters.open')}
-          </button>
-          <button
-            class:active={statusFilter === 'pending'}
-            onclick={() => setStatusFilter('pending')}
-          >
-            {$t('support.filters.pending')}
-          </button>
-          <button
-            class:active={statusFilter === 'closed'}
-            onclick={() => setStatusFilter('closed')}
-          >
-            {$t('support.filters.closed')}
-          </button>
-        </div>
+        <div class="filter-dropdowns">
+          <Select
+            bind:value={statusFilter}
+            options={[
+              { label: $t('support.filters.all') || 'All', value: 'all' },
+              { label: $t('support.filters.open') || 'Open', value: 'open' },
+              { label: $t('support.filters.pending') || 'Pending', value: 'pending' },
+              { label: $t('support.filters.closed') || 'Closed', value: 'closed' },
+            ]}
+            placeholder={$t('support.filters.status') || 'Status'}
+            width="140px"
+            onchange={() => void loadTickets(true)}
+          />
+          <Select
+            bind:value={categoryFilter}
+            options={categoryOptions}
+            placeholder={$t('support.filters.category') || 'Category'}
+            width="150px"
+            onchange={() => void loadTickets(true)}
+          />
 
         {#if $can('create', 'support')}
-          <button class="btn-primary" onclick={() => (showCreate = true)} type="button">
+          <button class="btn-primary btn-glow" onclick={() => (showCreate = true)} type="button">
             <Icon name="plus" size={16} />
             {$t('support.actions.new')}
           </button>
         {/if}
       </div>
-
-      <!-- Category filter row -->
-      <div class="category-filter">
-        {#each categoryOptions as opt}
-          <button
-            class="cat-btn"
-            class:active={categoryFilter === opt.value}
-            type="button"
-            onclick={() => {
-              categoryFilter = opt.value as any;
-              void loadTickets(true);
-            }}
-          >
-            {opt.label}
-          </button>
-        {/each}
-      </div>
     </div>
   </header>
 
-  <div class="stats">
+  <div class="bento-grid stats-bento">
     <button
-      class="stat-card"
+      class="bento-card stat-btn"
       class:active={statusFilter === 'all'}
       type="button"
       onclick={() => setStatusFilter('all')}
     >
-      <div class="stat-top">
-        <span class="stat-label">{$t('support.stats.total')}</span>
-        <Icon name="list" size={14} />
-      </div>
-      <div class="stat-value">{stats.all}</div>
+      <div class="bento-icon"><Icon name="list" size={18} /></div>
+      <div class="bento-value">{stats.all}</div>
+      <div class="bento-label">{$t('support.stats.total')}</div>
     </button>
     <button
-      class="stat-card tone-open"
+      class="bento-card stat-btn tone-open"
       class:active={statusFilter === 'open'}
       type="button"
       onclick={() => setStatusFilter('open')}
     >
-      <div class="stat-top">
-        <span class="stat-label">{$t('support.filters.open')}</span>
-        <Icon name="info" size={14} />
-      </div>
-      <div class="stat-value">{stats.open}</div>
+      <div class="bento-icon"><Icon name="info" size={18} /></div>
+      <div class="bento-value">{stats.open}</div>
+      <div class="bento-label">{$t('support.filters.open')}</div>
     </button>
     <button
-      class="stat-card tone-pending"
+      class="bento-card stat-btn tone-pending"
       class:active={statusFilter === 'pending'}
       type="button"
       onclick={() => setStatusFilter('pending')}
     >
-      <div class="stat-top">
-        <span class="stat-label">{$t('support.filters.pending')}</span>
-        <Icon name="alert-triangle" size={14} />
-      </div>
-      <div class="stat-value">{stats.pending}</div>
+      <div class="bento-icon"><Icon name="alert-triangle" size={18} /></div>
+      <div class="bento-value">{stats.pending}</div>
+      <div class="bento-label">{$t('support.filters.pending')}</div>
     </button>
     <button
-      class="stat-card tone-closed"
+      class="bento-card stat-btn tone-closed"
       class:active={statusFilter === 'closed'}
       type="button"
       onclick={() => setStatusFilter('closed')}
     >
-      <div class="stat-top">
-        <span class="stat-label">{$t('support.filters.closed')}</span>
-        <Icon name="check-circle" size={14} />
-      </div>
-      <div class="stat-value">{stats.closed}</div>
+      <div class="bento-icon"><Icon name="check-circle" size={18} /></div>
+      <div class="bento-value">{stats.closed}</div>
+      <div class="bento-label">{$t('support.filters.closed')}</div>
     </button>
   </div>
 
@@ -371,7 +346,7 @@
   {:else}
     <div class="list">
       {#each tickets as item (item.id)}
-        <button class="card" type="button" onclick={() => openTicket(item.id)}>
+        <button class="card glass-card" type="button" onclick={() => openTicket(item.id)}>
           <div class="card-top">
             <div class="subject">{item.subject}</div>
             <div class="meta">
@@ -533,18 +508,9 @@
     margin: 0 auto;
   }
 
-  .hero {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
+  .support-hero {
     margin-bottom: 1rem;
     flex-wrap: wrap;
-    padding: 1rem;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    box-shadow: var(--shadow-md);
   }
 
   .hero-left {
@@ -554,36 +520,38 @@
     min-width: 260px;
   }
 
-  .hero-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
-    display: grid;
-    place-items: center;
-    background: rgba(99, 102, 241, 0.12);
-    border: 1px solid rgba(99, 102, 241, 0.25);
-    color: rgba(99, 102, 241, 0.95);
-    flex: 0 0 auto;
-  }
-
   .hero-right {
     display: grid;
     gap: 0.6rem;
     justify-items: end;
   }
 
-  .title {
-    margin: 0;
-    font-size: 1.6rem;
-    font-weight: 900;
-    color: var(--text-primary);
-    letter-spacing: -0.02em;
+
+  .stats-bento {
+    margin: 0.9rem 0 1.25rem 0;
   }
 
-  .sub {
-    margin: 0.35rem 0 0 0;
-    color: var(--text-secondary);
-    font-size: 0.95rem;
+  .stat-btn {
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .stat-btn.active {
+    border-color: var(--color-primary) !important;
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
+  }
+
+  .stat-btn.tone-open {
+    border-color: rgba(59, 130, 246, 0.22);
+  }
+
+  .stat-btn.tone-pending {
+    border-color: rgba(245, 158, 11, 0.22);
+  }
+
+  .stat-btn.tone-closed {
+    border-color: rgba(34, 197, 94, 0.22);
   }
 
   .search {
@@ -631,58 +599,10 @@
     justify-content: flex-end;
   }
 
-  .filter {
+  .filter-dropdowns {
     display: inline-flex;
-    gap: 0.35rem;
-    padding: 0.3rem;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.03);
-  }
-
-  .filter button {
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--text-secondary);
-    padding: 0.45rem 0.7rem;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 700;
-    font-size: 0.85rem;
-  }
-
-  .filter button.active {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.35);
-    color: var(--text-primary);
-  }
-
-  .category-filter {
-    display: inline-flex;
-    gap: 0.35rem;
-    padding: 0.3rem;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.02);
-    margin-top: 0.5rem;
-  }
-
-  .cat-btn {
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--text-secondary);
-    padding: 0.35rem 0.6rem;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 700;
-    font-size: 0.8rem;
-    text-transform: capitalize;
-  }
-
-  .cat-btn.active {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.35);
-    color: var(--text-primary);
+    gap: 0.5rem;
+    align-items: center;
   }
 
   .btn-primary {
@@ -713,71 +633,8 @@
     font-weight: 700;
   }
 
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.75rem;
-    margin: 0.9rem 0 1.25rem 0;
-  }
 
-  .stat-card {
-    text-align: left;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    background: var(--bg-surface);
-    padding: 0.9rem;
-    cursor: pointer;
-    transition:
-      transform 0.12s ease,
-      border-color 0.12s ease;
-  }
 
-  .stat-card:hover {
-    transform: translateY(-1px);
-    border-color: rgba(99, 102, 241, 0.35);
-  }
-
-  .stat-card.active {
-    border-color: rgba(99, 102, 241, 0.5);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-  }
-
-  .stat-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    color: var(--text-secondary);
-    font-weight: 800;
-    font-size: 0.85rem;
-    gap: 0.75rem;
-  }
-
-  .stat-label {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .stat-value {
-    margin-top: 0.35rem;
-    font-size: 1.55rem;
-    font-weight: 950;
-    letter-spacing: -0.03em;
-    color: var(--text-primary);
-  }
-
-  .tone-open {
-    border-color: rgba(59, 130, 246, 0.22);
-  }
-
-  .tone-pending {
-    border-color: rgba(245, 158, 11, 0.22);
-  }
-
-  .tone-closed {
-    border-color: rgba(34, 197, 94, 0.22);
-  }
 
   .loading {
     display: grid;
@@ -874,10 +731,6 @@
   .card {
     width: 100%;
     text-align: left;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 0.95rem;
     cursor: pointer;
     transition:
       transform 0.12s ease,

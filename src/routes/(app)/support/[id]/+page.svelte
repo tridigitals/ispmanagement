@@ -120,15 +120,14 @@
 </script>
 
 <div class="page-content fade-in">
-  <div class="head">
-    <button class="btn" type="button" onclick={goBack}>
+  <div class="detail-head">
+    <button class="btn-glass" type="button" onclick={goBack}>
       <Icon name="arrow-left" size={16} />
       {$t('common.back')}
     </button>
-
-    <button class="btn" type="button" onclick={load} title={$t('common.refresh')}>
+    <span class="head-id mono">#{id.slice(0, 8)}</span>
+    <button class="btn-glass" type="button" onclick={load} title={$t('common.refresh')}>
       <Icon name="refresh-cw" size={16} />
-      {$t('common.refresh')}
     </button>
   </div>
 
@@ -140,7 +139,7 @@
   {:else if detail}
     <div class="layout">
       <aside class="side">
-        <div class="ticket-card">
+        <div class="ticket-card glass-card">
           <div class="title-row">
             <div class="title">{detail.ticket.subject}</div>
             <div class="meta">
@@ -174,7 +173,7 @@
           {/if}
         </div>
 
-        <div class="reply">
+        <div class="reply glass-card">
           <div class="reply-head">
             <div class="reply-title">{$t('support.fields.reply')}</div>
             {#if isClosed}
@@ -252,7 +251,7 @@
       </aside>
 
       <section class="main">
-        <div class="thread-card">
+        <div class="thread-card glass-card">
           <div class="thread-head">
             <div class="thread-title">
               {$t('support.detail.thread')}
@@ -326,50 +325,28 @@
     margin: 0 auto;
   }
 
-  .head {
+  .detail-head {
     display: flex;
-    justify-content: space-between;
+    align-items: center;
     gap: 0.75rem;
     margin-bottom: 1rem;
   }
 
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
+  .head-id {
+    flex: 1;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: var(--text-secondary);
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    padding: 0.6rem 0.9rem;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 700;
-  }
-
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: var(--color-primary);
-    color: white;
-    border: none;
-    padding: 0.65rem 1rem;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 800;
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    letter-spacing: 0.04em;
   }
 
   .ticket-card {
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    border-radius: var(--radius-lg);
     padding: 1rem;
-    box-shadow: var(--shadow-md);
   }
 
   .title-row {
@@ -484,10 +461,6 @@
   }
 
   .thread-card {
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-md);
     overflow: hidden;
   }
 
@@ -612,13 +585,8 @@
   }
 
   .reply {
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    border-radius: var(--radius-lg);
-    padding: 1rem;
     display: grid;
     gap: 0.5rem;
-    box-shadow: var(--shadow-md);
   }
 
   .reply-head {

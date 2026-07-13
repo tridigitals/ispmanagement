@@ -18,6 +18,21 @@
   let loading = $state(true);
   let error = $state('');
 
+  let summary = $derived.by(() => {
+    const invs = invoices;
+    return {
+      total: invs.length,
+      pending: invs.filter(i => i.status === 'pending').length,
+      paid: invs.filter(i => i.status === 'paid').length,
+      overdue: invs.filter(i => {
+        if (i.status !== 'pending') return false;
+        if (!i.due_date) return false;
+        return new Date(i.due_date) < new Date();
+      }).length,
+      pendingTotal: invs.filter(i => i.status === 'pending').reduce((sum, i) => sum + (Number(i.amount) || 0), 0),
+    };
+  });
+
   // ---- printable invoice state -------------------------------------------
   let showPrintModal = $state(false);
   let printInvoice = $state<Invoice | null>(null);
@@ -127,18 +142,50 @@
 </script>
 
 <div class="page-container fade-in">
-  <div class="page-header">
-    <div class="header-content">
+  <section class="hero-card invoice-hero">
+    <div class="welcome-body">
       <h1>{$t('admin.invoices.title')}</h1>
-      <p class="subtitle">
-        {$t('admin.invoices.subtitle')}
-      </p>
+      <p class="welcome-sub">{$t('admin.invoices.subtitle')}</p>
     </div>
-    <button class="btn btn-secondary" onclick={loadInvoices}>
-      <Icon name="refresh-cw" size={18} />
+    <button class="btn btn-secondary btn-sm" onclick={loadInvoices}>
+      <Icon name="refresh-cw" size={14} />
       <span>{$t('common.refresh')}</span>
     </button>
-  </div>
+  </section>
+
+  <!-- Summary Strip -->
+  {#if !loading && !error}
+    <div class="bento-grid">
+      <div class="bento-card">
+        <div class="bento-icon" style="background:color-mix(in srgb, var(--color-primary) 18%, transparent);color:var(--color-primary)">
+          <Icon name="file-text" size={18} />
+        </div>
+        <span class="bento-value">{summary.total}</span>
+        <span class="bento-label">Total Invoice</span>
+      </div>
+      <div class="bento-card">
+        <div class="bento-icon" style="background:color-mix(in srgb, var(--color-success) 18%, transparent);color:var(--color-success)">
+          <Icon name="check-circle" size={18} />
+        </div>
+        <span class="bento-value" style="background:linear-gradient(135deg,#7dd3ae,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">{summary.paid}</span>
+        <span class="bento-label">Lunas</span>
+      </div>
+      <div class="bento-card">
+        <div class="bento-icon" style="background:color-mix(in srgb, var(--color-warning) 18%, transparent);color:var(--color-warning)">
+          <Icon name="clock" size={18} />
+        </div>
+        <span class="bento-value" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">{summary.pending}</span>
+        <span class="bento-label">Menunggu ({formatCurrency(summary.pendingTotal)})</span>
+      </div>
+      <div class="bento-card">
+        <div class="bento-icon" style="background:color-mix(in srgb, var(--color-danger) 18%, transparent);color:var(--color-danger)">
+          <Icon name="alert-triangle" size={18} />
+        </div>
+        <span class="bento-value" style="background:linear-gradient(135deg,#fca5a5,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">{summary.overdue}</span>
+        <span class="bento-label">Jatuh Tempo</span>
+      </div>
+    </div>
+  {/if}
 
   <div class="card content-card">
     {#if error}
@@ -211,25 +258,25 @@
 
 <style>
   .page-container {
-    padding: clamp(1rem, 3vw, 2rem);
+    padding: clamp(1rem, 2.2vw, 2rem);
     max-width: 1200px;
     margin: 0 auto;
-  }
-  .page-header {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 2rem;
-    gap: 1rem;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 1.25rem;
   }
-  .header-content h1 {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin: 0 0 0.5rem;
+
+  .invoice-hero {
+    padding: 1.5rem 1.75rem;
+    display: flex; align-items: center; justify-content: space-between;
   }
-  .subtitle {
-    color: var(--text-secondary);
+  .invoice-hero h1 {
+    font-size: clamp(1.4rem, 2.2vw, 1.85rem);
+    font-weight: 750; color: var(--text-primary);
+    margin: 0 0 .35rem;
+  }
+  .invoice-hero .welcome-sub {
+    color: var(--text-secondary); margin: 0; font-size: .92rem;
   }
   .content-card {
     background: var(--bg-surface);

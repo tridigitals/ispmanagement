@@ -74,11 +74,19 @@
 </script>
 
 <div class="settings-page">
-  <div class="page-header">
-    <span class="kicker"><span class="kicker-dot"></span>{$t('profile.title') || 'Settings'}</span>
-    <h1>{$t('profile.title') || 'Settings'}</h1>
-    <p>{$t('profile.subtitle') || 'Manage your account settings and preferences.'}</p>
-  </div>
+  <!-- Profile Header -->
+  <section class="hero-card profile-hero">
+    <div class="profile-avatar">
+      <span class="avatar-text">{$user?.name?.charAt(0) || 'U'}</span>
+    </div>
+    <div class="profile-info">
+      <h1 class="profile-name">{$user?.name || 'User'}</h1>
+      <span class="profile-role">{$user?.role || 'Customer'}</span>
+      <span class="profile-email">{$user?.email || ''}</span>
+    </div>
+  </section>
+
+  <div class="section-header"><h2>Pengaturan Akun</h2></div>
 
   <div class="settings-grid">
     <!-- Informasi Pribadi -->
@@ -186,6 +194,35 @@
     max-width: var(--content-max-width, 1400px);
   }
 
+  /* Profile Hero */
+  .profile-hero {
+    display: flex; align-items: center; gap: 1.25rem;
+    margin-bottom: 1.5rem; padding: 1.5rem;
+  }
+  .profile-avatar {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-primary), #5b6cf0);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .avatar-text {
+    font-size: 1.6rem; font-weight: 750; color: #fff;
+  }
+  .profile-info {
+    display: flex; flex-direction: column; gap: .2rem;
+    position: relative; z-index: 1;
+  }
+  .profile-name {
+    font-size: 1.4rem; font-weight: 750; color: var(--text-primary); margin: 0;
+  }
+  .profile-role {
+    font-size: .78rem; color: var(--color-primary); font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .profile-email {
+    font-size: .85rem; color: var(--text-secondary); margin-top: .15rem;
+  }
+
   .settings-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -207,6 +244,6 @@
     color: var(--text-primary);
     margin-bottom: 1rem;
     padding-bottom: .6rem;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid rgba(255,255,255,.06);
   }
 </style>

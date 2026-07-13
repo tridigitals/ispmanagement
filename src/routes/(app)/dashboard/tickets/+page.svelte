@@ -10,6 +10,16 @@
   let loading = $state(true);
   let error = $state('');
 
+  let stats = $derived.by(() => {
+    const tix = tickets;
+    return {
+      total: tix.length,
+      open: tix.filter(t => t.status === 'open').length,
+      pending: tix.filter(t => t.status === 'pending').length,
+      closed: tix.filter(t => t.status === 'closed').length,
+    };
+  });
+
   const statusPill = (status: string) => {
     switch (status) {
       case 'open': return 'pill-success';
@@ -52,6 +62,28 @@
       <span>{$t('dashboard.tickets.new_ticket') || 'New Ticket'}</span>
     </button>
   </div>
+
+  <!-- Stats Bar -->
+  {#if !loading && !error}
+    <div class="bento-grid stats-bar">
+      <div class="bento-card">
+        <span class="bento-value">{stats.total}</span>
+        <span class="bento-label">Total</span>
+      </div>
+      <div class="bento-card">
+        <span class="bento-value" style="background:linear-gradient(135deg,#7dd3ae,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">{stats.open}</span>
+        <span class="bento-label">Open</span>
+      </div>
+      <div class="bento-card">
+        <span class="bento-value" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">{stats.pending}</span>
+        <span class="bento-label">Pending</span>
+      </div>
+      <div class="bento-card">
+        <span class="bento-value" style="background:linear-gradient(135deg,#94a3b8,#64748b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">{stats.closed}</span>
+        <span class="bento-label">Closed</span>
+      </div>
+    </div>
+  {/if}
 
   {#if loading}
     <div class="card">
