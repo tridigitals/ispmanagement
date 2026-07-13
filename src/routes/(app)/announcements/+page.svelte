@@ -4,7 +4,6 @@
   import { t } from 'svelte-i18n';
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
-  import ResponsiveTabs from '$lib/components/ui/ResponsiveTabs.svelte';
   import Select from '$lib/components/ui/Select.svelte';
   import { formatDateTime } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
