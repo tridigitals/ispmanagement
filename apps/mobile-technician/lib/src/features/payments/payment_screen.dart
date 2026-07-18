@@ -272,8 +272,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   ) async {
     final l10n = AppLocalizations.of(context);
     final svc = ref.read(paymentServiceProvider);
+    final isProd = ref.read(publicSettingsProvider).valueOrNull
+            ?.paymentMidtransIsProduction ??
+        false;
     final result = gateway == 'midtrans'
-        ? await svc.initiateMidtrans(widget.invoiceId)
+        ? await svc.initiateMidtrans(widget.invoiceId, isProduction: isProd)
         : await svc.initiateDuitku(widget.invoiceId);
 
     result.fold(
@@ -312,13 +315,16 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   ) async {
     final l10n = AppLocalizations.of(context);
     final svc = ref.read(paymentServiceProvider);
+    final isProd = ref.read(publicSettingsProvider).valueOrNull
+            ?.paymentMidtransIsProduction ??
+        false;
 
     // Determine which gateway to use based on channel
     // Duitku for convenience store methods, Midtrans for others
     final isDuitku = channel.method == PaymentMethod.convenienceStore;
     final result = isDuitku
         ? await svc.initiateDuitku(widget.invoiceId)
-        : await svc.initiateMidtrans(widget.invoiceId);
+        : await svc.initiateMidtrans(widget.invoiceId, isProduction: isProd);
 
     result.fold(
       (url) async {

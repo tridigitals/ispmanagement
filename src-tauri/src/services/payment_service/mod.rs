@@ -45,7 +45,7 @@ use self::core::{
     MidtransTransitionDecision, CUSTOMER_PACKAGE_INVOICE_PREFIX,
 };
 use self::dto::{AssignmentCandidateNodeRow, AssignmentSubscriptionRef};
-use self::mapper::{filter_installation_request_user_ids, filter_owner_admin_user_ids};
+use self::mapper::filter_installation_request_user_ids;
 #[cfg(test)]
 use self::validation::is_owner_admin_or_technician_role;
 
@@ -4669,12 +4669,22 @@ impl PaymentService {
     }
 
     async fn list_tenant_owner_admin_user_ids(&self, tenant_id: &str) -> AppResult<Vec<String>> {
+        // Prefer roles.name / role_permissions over tenant_members.role (legacy string
+        // can be stale, e.g. role='member' while role_id still points to Owner).
+        // Recipients: Owner/Admin by role name, OR billing:manage (not billing:read —
+        // technicians often have read-only and should not get payment alerts).
         #[cfg(feature = "postgres")]
-        let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+        let rows: Vec<(String,)> = sqlx::query_as(
             r#"
-            SELECT DISTINCT user_id, role
-            FROM tenant_members
-            WHERE tenant_id = $1
+            SELECT DISTINCT tm.user_id
+            FROM tenant_members tm
+            LEFT JOIN roles r ON r.id = tm.role_id
+            LEFT JOIN role_permissions rp ON rp.role_id = r.id
+            WHERE tm.tenant_id = $1
+              AND (
+                lower(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin')
+                OR rp.permission_id = 'billing:manage'
+              )
             "#,
         )
         .bind(tenant_id)
@@ -4683,11 +4693,17 @@ impl PaymentService {
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         #[cfg(feature = "sqlite")]
-        let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+        let rows: Vec<(String,)> = sqlx::query_as(
             r#"
-            SELECT DISTINCT user_id, role
-            FROM tenant_members
-            WHERE tenant_id = ?
+            SELECT DISTINCT tm.user_id
+            FROM tenant_members tm
+            LEFT JOIN roles r ON r.id = tm.role_id
+            LEFT JOIN role_permissions rp ON rp.role_id = r.id
+            WHERE tm.tenant_id = ?
+              AND (
+                lower(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin')
+                OR rp.permission_id = 'billing:manage'
+              )
             "#,
         )
         .bind(tenant_id)
@@ -4695,7 +4711,7 @@ impl PaymentService {
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        Ok(filter_owner_admin_user_ids(rows))
+        Ok(rows.into_iter().map(|(user_id,)| user_id).collect())
     }
 
     async fn list_tenant_installation_alert_user_ids(
@@ -4709,9 +4725,10 @@ impl PaymentService {
         #[cfg(feature = "postgres")]
         let rows: Vec<(String, Option<String>)> = sqlx::query_as(
             r#"
-            SELECT DISTINCT user_id, role
-            FROM tenant_members
-            WHERE tenant_id = $1
+            SELECT DISTINCT tm.user_id, COALESCE(r.name, tm.role) AS role
+            FROM tenant_members tm
+            LEFT JOIN roles r ON r.id = tm.role_id
+            WHERE tm.tenant_id = $1
             "#,
         )
         .bind(tenant_id)
@@ -4722,9 +4739,10 @@ impl PaymentService {
         #[cfg(feature = "sqlite")]
         let rows: Vec<(String, Option<String>)> = sqlx::query_as(
             r#"
-            SELECT DISTINCT user_id, role
-            FROM tenant_members
-            WHERE tenant_id = ?
+            SELECT DISTINCT tm.user_id, COALESCE(r.name, tm.role) AS role
+            FROM tenant_members tm
+            LEFT JOIN roles r ON r.id = tm.role_id
+            WHERE tm.tenant_id = ?
             "#,
         )
         .bind(tenant_id)

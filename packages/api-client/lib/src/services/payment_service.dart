@@ -13,21 +13,54 @@ class PaymentService {
   final Dio _dio;
   final StorageService? _storageService;
 
+  /// Backend returns a Snap **token** (UUID, no scheme). Web uses `snap.pay(token)`.
+  /// Mobile WebView needs a full URL → Midtrans vtweb page.
+  static String resolveMidtransPaymentUrl(
+    String tokenOrUrl, {
+    bool isProduction = false,
+  }) {
+    final s = tokenOrUrl.trim();
+    if (s.isEmpty) return s;
+    if (s.contains('://')) return s;
+    final base = isProduction
+        ? 'https://app.midtrans.com/snap/v2/vtweb/'
+        : 'https://app.sandbox.midtrans.com/snap/v2/vtweb/';
+    return '$base$s';
+  }
+
+  static String _extractPaymentValue(dynamic raw) {
+    if (raw is String) return raw;
+    if (raw is Map) {
+      final map = raw is Map<String, dynamic>
+          ? raw
+          : raw.map((k, v) => MapEntry(k.toString(), v));
+      final redirect = map['redirect_url'] ?? map['url'] ?? map['redirectUrl'];
+      if (redirect != null && redirect.toString().trim().isNotEmpty) {
+        return redirect.toString();
+      }
+      final token = map['token'];
+      if (token != null && token.toString().trim().isNotEmpty) {
+        return token.toString();
+      }
+    }
+    return raw?.toString() ?? '';
+  }
+
   /// Initiate payment via Midtrans.
-  /// Returns the redirect URL string.
-  Future<ServiceResult<String>> initiateMidtrans(String invoiceId) async {
+  /// Returns a loadable payment URL (token auto-converted to Snap vtweb).
+  Future<ServiceResult<String>> initiateMidtrans(
+    String invoiceId, {
+    bool isProduction = false,
+  }) async {
     return _execute(() async {
       final resp = await _dio.post<dynamic>(
         ApiEndpoints.payInvoiceMidtrans(invoiceId),
         data: {},
       );
-      final raw = resp.data;
-      // Backend returns the redirect URL as a plain string or {redirect_url: "..."}
-      if (raw is String) return raw;
-      if (raw is Map<String, dynamic>) {
-        return (raw['redirect_url'] ?? raw['url'] ?? raw.toString()).toString();
-      }
-      return raw.toString();
+      return resolveMidtransPaymentUrl(
+        _extractPaymentValue(resp.data),
+        isProduction: isProduction,
+      );
     });
   }
 
@@ -39,12 +72,13 @@ class PaymentService {
         ApiEndpoints.payInvoiceDuitku(invoiceId),
         data: {},
       );
-      final raw = resp.data;
-      if (raw is String) return raw;
-      if (raw is Map<String, dynamic>) {
-        return (raw['redirect_url'] ?? raw['url'] ?? raw.toString()).toString();
+      final value = _extractPaymentValue(resp.data);
+      if (!value.contains('://') && value.isNotEmpty) {
+        throw ApiException(
+          message: 'Duitku tidak mengembalikan URL pembayaran',
+        );
       }
-      return raw.toString();
+      return value;
     });
   }
 

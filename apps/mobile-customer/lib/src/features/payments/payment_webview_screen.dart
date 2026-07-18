@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ui_kit/ui_kit.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-/// In-app WebView screen for payment gateways (Midtrans / Duitku).
-/// Loads the [paymentUrl] and monitors navigation for success/failure redirects.
-class PaymentWebViewScreen extends StatefulWidget {
+import '../../services/missing_providers.dart';
+
+/// In-app WebView for Midtrans / Duitku.
+///
+/// Backend Midtrans returns a Snap **token** (no scheme). Callers must pass a
+/// full URL (see [PaymentService.resolveMidtransPaymentUrl]).
+/// On finish (success/fail/close) → invoice detail, not payment method picker.
+class PaymentWebViewScreen extends ConsumerStatefulWidget {
   const PaymentWebViewScreen({
     required this.paymentUrl,
     required this.invoiceId,
@@ -16,13 +23,15 @@ class PaymentWebViewScreen extends StatefulWidget {
   final String invoiceId;
 
   @override
-  State<PaymentWebViewScreen> createState() => _PaymentWebViewScreenState();
+  ConsumerState<PaymentWebViewScreen> createState() =>
+      _PaymentWebViewScreenState();
 }
 
-class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
+class _PaymentWebViewScreenState extends ConsumerState<PaymentWebViewScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
   bool _handledCompletion = false;
+  String? _loadError;
 
   late final IspThemeColors isp;
 
@@ -35,29 +44,75 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
   @override
   void initState() {
     super.initState();
+    final uri = _safeUri(widget.paymentUrl);
+    if (uri == null) {
+      _loadError =
+          'URL pembayaran tidak valid (missing scheme). Value: ${widget.paymentUrl}';
+      _controller = WebViewController();
+      return;
+    }
+
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) {
-            if (mounted) setState(() => _isLoading = true);
+            if (mounted) {
+              setState(() {
+                _isLoading = true;
+                _loadError = null;
+              });
+            }
           },
           onPageFinished: (_) {
             if (mounted) setState(() => _isLoading = false);
           },
+          onWebResourceError: (error) {
+            // Ignore subframe / cancelled noise; surface main-frame failures.
+            if (error.isForMainFrame != true) return;
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+                _loadError = error.description.isNotEmpty
+                    ? error.description
+                    : 'Gagal memuat halaman pembayaran';
+              });
+            }
+          },
           onNavigationRequest: _onNavigationRequest,
         ),
       )
-      ..loadRequest(Uri.parse(widget.paymentUrl));
+      ..loadRequest(uri);
+  }
+
+  /// Parse only http(s). Bare Snap tokens must be converted before this screen.
+  Uri? _safeUri(String raw) {
+    final s = raw.trim();
+    if (s.isEmpty) return null;
+    final uri = Uri.tryParse(s);
+    if (uri == null || !uri.hasScheme) return null;
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https') return null;
+    return uri;
   }
 
   NavigationDecision _onNavigationRequest(NavigationRequest request) {
-    final url = request.url.toLowerCase();
+    final url = request.url;
+    final lower = url.toLowerCase();
+    final uri = Uri.tryParse(url);
 
-    // Detect payment result redirects from Midtrans / Duitku / common patterns
-    if (!_handledCompletion && _isResultUrl(url)) {
+    // Non-http schemes (gojek://, shopeeid://, intent://, tel:, etc.) → external.
+    if (uri != null &&
+        uri.hasScheme &&
+        uri.scheme != 'http' &&
+        uri.scheme != 'https') {
+      _openExternal(uri);
+      return NavigationDecision.prevent;
+    }
+
+    if (!_handledCompletion && _isResultUrl(lower)) {
       _handledCompletion = true;
-      final isSuccess = _isSuccessUrl(url);
+      final isSuccess = _isSuccessUrl(lower);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         if (isSuccess) {
@@ -80,7 +135,14 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
     return NavigationDecision.navigate;
   }
 
-  /// Returns true if the URL looks like a payment result/callback page.
+  Future<void> _openExternal(Uri uri) async {
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      // App not installed — stay on page; user can pick another method.
+    }
+  }
+
   bool _isResultUrl(String url) {
     return url.contains('/payment/result') ||
         url.contains('/payment/finish') ||
@@ -94,27 +156,38 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
         url.contains('status=success') ||
         url.contains('status=failed') ||
         url.contains('result=') ||
-        url.contains('/midtrans') && url.contains('status');
+        (url.contains('/midtrans') && url.contains('status')) ||
+        url.contains('/pay/');
   }
 
-  /// Returns true if the URL indicates a successful payment.
   bool _isSuccessUrl(String url) {
-    // Midtrans-style
     if (url.contains('transaction_status=settlement') ||
         url.contains('transaction_status=capture')) {
       return true;
     }
-    // Duitku-style or generic
     if (url.contains('status=success') || url.contains('/finish')) {
       return true;
     }
-    // Default to success if it's a result URL but not explicitly error/unfinish
-    if (!url.contains('error') &&
-        !url.contains('unfinish') &&
-        !url.contains('status=failed')) {
+    if (url.contains('status=error') ||
+        url.contains('status=failed') ||
+        url.contains('unfinish') ||
+        url.contains('transaction_status=deny') ||
+        url.contains('transaction_status=cancel') ||
+        url.contains('transaction_status=expire')) {
+      return false;
+    }
+    // /pay/{id} finish callback without explicit fail → treat pending/success UI
+    if (url.contains('/pay/') && !url.contains('status=error')) {
       return true;
     }
     return false;
+  }
+
+  void _exitToInvoice() {
+    ref.invalidate(invoiceByIdProvider(widget.invoiceId));
+    if (!mounted) return;
+    // Skip payment method picker → invoice detail.
+    context.go('/invoices/${widget.invoiceId}');
   }
 
   void _showResultAndPop({
@@ -133,9 +206,8 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop(); // dismiss dialog
-              // Pop back to invoices list or home
-              context.pop();
+              Navigator.of(context).pop();
+              _exitToInvoice();
             },
             child: const Text('OK'),
           ),
@@ -151,15 +223,47 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
         title: const Text('Pembayaran'),
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => context.pop(),
+          onPressed: _exitToInvoice,
         ),
       ),
-      body: Stack(
-        children: [
-          WebViewWidget(controller: _controller),
-          if (_isLoading) const Center(child: CircularProgressIndicator()),
-        ],
-      ),
+      body: _loadError != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline, size: 48, color: isp.danger),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Gagal memuat pembayaran',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: isp.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _loadError!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: isp.textMuted),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: _exitToInvoice,
+                      child: const Text('Kembali'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : Stack(
+              children: [
+                WebViewWidget(controller: _controller),
+                if (_isLoading)
+                  const Center(child: CircularProgressIndicator()),
+              ],
+            ),
     );
   }
 }
