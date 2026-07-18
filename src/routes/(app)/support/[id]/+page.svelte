@@ -24,7 +24,40 @@
   let LightboxComponent = $state<any>(null);
 
   const id = $derived($page.params.id || '');
-  const isClosed = $derived(detail?.ticket?.status === 'closed');
+  const isClosed = $derived(
+    ['closed', 'resolved', 'done', 'completed'].includes(
+      String(detail?.ticket?.status || '').toLowerCase()
+    )
+  );
+
+  // svelte-i18n returns the key itself when missing — falsy-or fallback never fires
+  function tt(key: string, fallback: string) {
+    const v = get(t)(key);
+    return !v || v === key ? fallback : v;
+  }
+
+  function normStatus(status: string) {
+    const s = String(status || '').toLowerCase();
+    if (s === 'resolved' || s === 'done' || s === 'completed') return 'closed';
+    if (s === 'in_progress' || s === 'waiting') return 'pending';
+    return s;
+  }
+
+  function statusLabel(status: string) {
+    const s = normStatus(status);
+    if (s === 'open') return tt('support.status.open', 'Open');
+    if (s === 'pending') return tt('support.status.pending', 'Pending');
+    if (s === 'closed') return tt('support.status.closed', 'Resolved');
+    return status || '—';
+  }
+
+  function priorityLabel(p: string) {
+    return tt(`support.priorities.${p}`, p || '—');
+  }
+
+  function categoryLabel(c: string) {
+    return tt(`support.categories.${c}`, c || '—');
+  }
 
   $effect(() => {
     if (!lightboxOpen) return;
@@ -119,39 +152,39 @@
   }
 </script>
 
-<div class="page-content fade-in">
+<div class="page">
   <div class="detail-head">
-    <button class="btn-glass" type="button" onclick={goBack}>
+    <button class="btn btn-secondary" type="button" onclick={goBack}>
       <Icon name="arrow-left" size={16} />
       {$t('common.back')}
     </button>
     <span class="head-id mono">#{id.slice(0, 8)}</span>
-    <button class="btn-glass" type="button" onclick={load} title={$t('common.refresh')}>
+    <button class="btn btn-secondary" type="button" onclick={load} title={$t('common.refresh')}>
       <Icon name="refresh-cw" size={16} />
     </button>
   </div>
 
   {#if loading}
-    <div class="loading">
+    <div class="state">
       <div class="spinner"></div>
       <p>{$t('support.loading_detail')}</p>
     </div>
   {:else if detail}
     <div class="layout">
       <aside class="side">
-        <div class="ticket-card glass-card">
+        <div class="ticket-card panel">
           <div class="title-row">
             <div class="title">{detail.ticket.subject}</div>
             <div class="meta">
-              <span class="badge status {detail.ticket.status}">
-                {$t(`support.status.${detail.ticket.status}`) || detail.ticket.status}
+              <span class="pill status-{normStatus(detail.ticket.status)}">
+                {statusLabel(detail.ticket.status)}
               </span>
-              <span class="badge priority {detail.ticket.priority}">
-                {$t(`support.priorities.${detail.ticket.priority}`) || detail.ticket.priority}
+              <span class="pill priority-{detail.ticket.priority}">
+                {priorityLabel(detail.ticket.priority)}
               </span>
               {#if detail.ticket.category}
-                <span class="badge category {detail.ticket.category}">
-                  {$t(`support.categories.${detail.ticket.category}`) || detail.ticket.category}
+                <span class="pill">
+                  {categoryLabel(detail.ticket.category)}
                 </span>
               {/if}
             </div>
@@ -173,11 +206,11 @@
           {/if}
         </div>
 
-        <div class="reply glass-card">
+        <div class="reply panel">
           <div class="reply-head">
             <div class="reply-title">{$t('support.fields.reply')}</div>
             {#if isClosed}
-              <span class="badge status closed">
+              <span class="pill status-closed">
                 {$t('support.status.closed')}
               </span>
             {/if}
@@ -251,7 +284,7 @@
       </aside>
 
       <section class="main">
-        <div class="thread-card glass-card">
+        <div class="thread-card panel">
           <div class="thread-head">
             <div class="thread-title">
               {$t('support.detail.thread')}
@@ -319,30 +352,39 @@
 {/if}
 
 <style>
-  .page-content {
-    padding: 1.5rem;
-    max-width: 1000px;
+  .page {
+    padding: clamp(1rem, 2.2vw, 1.75rem);
+    max-width: 1100px;
     margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .detail-head {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    margin-bottom: 1rem;
   }
 
   .head-id {
     flex: 1;
     text-align: center;
-    font-size: 0.9rem;
-    font-weight: 800;
+    font-size: 0.85rem;
+    font-weight: 700;
     color: var(--text-secondary);
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 0.35rem 0.75rem;
     border-radius: 999px;
     letter-spacing: 0.04em;
+  }
+
+  .panel {
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-lg, 12px);
+    padding: 1rem;
   }
 
   .ticket-card {
@@ -357,89 +399,77 @@
   }
 
   .title {
-    font-size: 1.1rem;
-    font-weight: 900;
+    font-size: 1.05rem;
+    font-weight: 750;
     color: var(--text-primary);
-    line-height: 1.2;
+    line-height: 1.3;
   }
 
   .meta {
     display: flex;
-    gap: 0.4rem;
+    gap: 0.35rem;
     flex-wrap: wrap;
     justify-content: flex-end;
   }
 
-  .badge {
-    border: 1px solid var(--border-color);
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.5rem;
     border-radius: 999px;
-    padding: 0.2rem 0.55rem;
-    font-size: 0.75rem;
-    font-weight: 800;
+    font-size: 0.7rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.03);
-  }
-
-  .badge.status.open {
-    border-color: rgba(59, 130, 246, 0.35);
-    color: rgba(59, 130, 246, 0.95);
-    background: rgba(59, 130, 246, 0.08);
-  }
-  .badge.status.pending {
-    border-color: rgba(245, 158, 11, 0.35);
-    color: rgba(245, 158, 11, 0.95);
-    background: rgba(245, 158, 11, 0.08);
-  }
-  .badge.status.closed {
-    border-color: rgba(34, 197, 94, 0.35);
-    color: rgba(34, 197, 94, 0.95);
-    background: rgba(34, 197, 94, 0.08);
-  }
-
-  .badge.priority.urgent {
-    border-color: rgba(239, 68, 68, 0.35);
-    color: rgba(239, 68, 68, 0.95);
-    background: rgba(239, 68, 68, 0.08);
-  }
-  .badge.priority.high {
-    border-color: rgba(245, 158, 11, 0.35);
-    color: rgba(245, 158, 11, 0.95);
-    background: rgba(245, 158, 11, 0.08);
-  }
-  .badge.priority.normal {
-    border-color: rgba(156, 163, 175, 0.35);
     color: var(--text-secondary);
-    background: rgba(156, 163, 175, 0.06);
   }
-  .badge.priority.low {
-    border-color: rgba(34, 197, 94, 0.25);
-    color: rgba(34, 197, 94, 0.9);
-    background: rgba(34, 197, 94, 0.06);
+  .pill.status-open {
+    background: color-mix(in srgb, #3b82f6 16%, transparent);
+    color: #60a5fa;
+    border-color: transparent;
+  }
+  .pill.status-pending {
+    background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+    color: var(--color-warning);
+    border-color: transparent;
+  }
+  .pill.status-closed {
+    background: color-mix(in srgb, var(--color-success) 16%, transparent);
+    color: var(--color-success);
+    border-color: transparent;
+  }
+  .pill.priority-urgent {
+    background: color-mix(in srgb, #ef4444 16%, transparent);
+    color: #f87171;
+    border-color: transparent;
+  }
+  .pill.priority-high {
+    background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+    color: var(--color-warning);
+    border-color: transparent;
   }
 
   .subrow {
-    margin-top: 0.6rem;
+    margin-top: 0.55rem;
     color: var(--text-secondary);
     font-size: 0.85rem;
     display: flex;
     align-items: center;
-    gap: 0.55rem;
+    gap: 0.5rem;
   }
 
   .layout {
-    margin-top: 1rem;
     display: grid;
-    grid-template-columns: minmax(320px, 380px) 1fr;
+    grid-template-columns: minmax(300px, 360px) 1fr;
     gap: 1rem;
     align-items: start;
   }
 
   @media (max-width: 900px) {
-    .layout {
-      grid-template-columns: 1fr;
-    }
+    .layout { grid-template-columns: 1fr; }
+    .side { position: static; }
   }
 
   .side {
@@ -450,18 +480,11 @@
     align-self: start;
   }
 
-  @media (max-width: 900px) {
-    .side {
-      position: static;
-    }
-  }
-
-  .main {
-    min-width: 0;
-  }
+  .main { min-width: 0; }
 
   .thread-card {
     overflow: hidden;
+    padding: 0;
   }
 
   .thread-head {
@@ -469,19 +492,18 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 0.75rem;
-    padding: 0.95rem 1rem;
-    border-bottom: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .thread-title {
-    font-weight: 900;
+    font-weight: 700;
     color: var(--text-primary);
   }
 
   .thread-sub {
     color: var(--text-secondary);
-    font-weight: 800;
+    font-weight: 650;
     font-size: 0.85rem;
   }
 
@@ -497,17 +519,15 @@
     justify-items: start;
   }
 
-  .msg.mine {
-    justify-items: end;
-  }
+  .msg.mine { justify-items: end; }
 
   .msg-top {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     color: var(--text-secondary);
-    font-size: 0.85rem;
-    font-weight: 800;
+    font-size: 0.82rem;
+    font-weight: 650;
   }
 
   .avatar {
@@ -516,34 +536,32 @@
     display: grid;
     place-items: center;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: var(--bg-tertiary);
-    color: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
   }
 
   .avatar.mine {
-    border-color: rgba(99, 102, 241, 0.28);
-    background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-surface));
-    color: rgba(99, 102, 241, 0.95);
+    border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    color: var(--color-primary);
   }
 
   .who {
-    font-weight: 900;
+    font-weight: 700;
     color: var(--text-primary);
   }
 
   .bubble {
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-lg, 12px);
     padding: 0.85rem 0.95rem;
-    box-shadow: var(--shadow-sm);
     max-width: min(720px, 100%);
   }
 
   .bubble.mine {
-    border-color: rgba(99, 102, 241, 0.28);
-    background: var(--bg-surface);
+    border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
   }
 
   .msg-body {
@@ -553,27 +571,27 @@
   }
 
   .attachments {
-    margin-top: 0.65rem;
+    margin-top: 0.6rem;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.45rem;
   }
 
   .file-chip {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    border: 1px solid var(--border-color);
+    gap: 0.4rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.03);
     color: var(--text-secondary);
-    padding: 0.35rem 0.6rem;
+    padding: 0.3rem 0.55rem;
     border-radius: 999px;
     cursor: pointer;
     max-width: 100%;
   }
 
   .file-chip:hover {
-    border-color: rgba(99, 102, 241, 0.35);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
     color: var(--color-primary);
   }
 
@@ -597,13 +615,13 @@
   }
 
   .reply-title {
-    font-weight: 900;
+    font-weight: 700;
     color: var(--text-primary);
   }
 
   .label {
     font-size: 0.85rem;
-    font-weight: 700;
+    font-weight: 650;
     color: var(--text-secondary);
   }
 
@@ -612,7 +630,7 @@
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-md, 8px);
     padding: 0.75rem 1rem;
     font-size: 0.95rem;
     resize: vertical;
@@ -625,14 +643,11 @@
     box-shadow: 0 0 0 3px var(--color-primary-subtle);
   }
 
-  .file-row {
-    display: grid;
-    gap: 0.35rem;
-  }
+  .file-row { display: grid; gap: 0.35rem; }
 
   .file-label {
     font-size: 0.85rem;
-    font-weight: 700;
+    font-weight: 650;
     color: var(--text-secondary);
   }
 
@@ -641,7 +656,7 @@
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-md, 8px);
     padding: 0.6rem 0.8rem;
     font-size: 0.9rem;
   }
@@ -655,7 +670,7 @@
   }
 
   .picked {
-    border: 1px solid var(--border-color);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.03);
     padding: 0.2rem 0.45rem;
     border-radius: 999px;
@@ -671,19 +686,19 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.55rem 0.7rem;
-    border-radius: 12px;
-    border: 1px solid rgba(245, 158, 11, 0.28);
-    background: rgba(245, 158, 11, 0.08);
-    color: rgba(245, 158, 11, 0.95);
-    font-weight: 800;
-    font-size: 0.9rem;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--color-warning) 28%, transparent);
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+    color: var(--color-warning);
+    font-weight: 650;
+    font-size: 0.88rem;
   }
 
   .satisfaction-display {
-    margin-top: 0.6rem;
+    margin-top: 0.5rem;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.35rem;
   }
   .rating-stars {
     display: flex;
@@ -691,15 +706,13 @@
     gap: 0.15rem;
   }
   .star {
-    font-size: 1.2rem;
-    color: var(--border-subtle, #e2e8f0);
+    font-size: 1.15rem;
+    color: rgba(255, 255, 255, 0.15);
   }
-  .star.filled {
-    color: #f59e0b;
-  }
+  .star.filled { color: #f59e0b; }
   .rating-num {
     margin-left: 0.5rem;
-    font-weight: 700;
+    font-weight: 650;
     font-size: 0.85rem;
     color: var(--text-secondary);
   }
@@ -711,58 +724,105 @@
   }
 
   .mono {
-    font-family:
-      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-      monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 
   .dot {
     width: 4px;
     height: 4px;
     border-radius: 999px;
-    background: var(--border-color);
+    background: rgba(255, 255, 255, 0.2);
   }
 
   .ticket-id {
-    color: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.03);
     padding: 0.1rem 0.45rem;
     border-radius: 999px;
-    font-weight: 900;
+    font-weight: 700;
     letter-spacing: 0.02em;
   }
 
-  .loading {
-    display: grid;
-    place-items: center;
-    padding: 3rem 1rem;
-    gap: 0.75rem;
+  .state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 220px;
+    gap: 0.5rem;
+    padding: 2rem 1.25rem;
     color: var(--text-secondary);
   }
 
   .spinner {
     width: 28px;
     height: 28px;
-    border: 3px solid var(--border-color);
+    border: 3px solid rgba(255, 255, 255, 0.08);
     border-top-color: var(--color-primary);
     border-radius: 50%;
-    animation: spin 1s linear infinite;
+    animation: spin 0.7s linear infinite;
   }
 
   @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
+    to { transform: rotate(360deg); }
   }
 
   .empty {
-    border: 1px dashed var(--border-color);
-    border-radius: var(--radius-lg);
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-lg, 12px);
     padding: 2rem 1.5rem;
     color: var(--text-secondary);
     display: flex;
     align-items: center;
     gap: 0.75rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.85rem;
+    border-radius: 8px;
+    font-weight: 650;
+    font-size: 0.88rem;
+    cursor: pointer;
+    border: none;
+    min-height: 40px;
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .btn-primary {
+    background: var(--color-primary);
+    color: #fff;
+  }
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .subscription-link {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 650;
+  }
+  .subscription-link:hover { text-decoration: underline; }
+
+  @media (max-width: 560px) {
+    .page { padding: 0.75rem; }
+    .title-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .meta { justify-content: flex-start; }
+    .detail-head { flex-wrap: wrap; }
+    .head-id { order: -1; width: 100%; }
   }
 </style>

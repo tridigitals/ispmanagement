@@ -53,9 +53,9 @@
   }
 </script>
 
-<div class="page-content fade-in">
-  <div class="topbar">
-    <button class="btn" type="button" onclick={goBack}>
+<div class="page">
+  <div class="page-head">
+    <button class="btn btn-secondary" type="button" onclick={goBack}>
       <Icon name="arrow-left" size={16} />
       {backLabel || $t('common.back') || 'Back'}
     </button>
@@ -77,42 +77,33 @@
       <span>{$t('announcements.not_found')}</span>
     </div>
   {:else}
-    <section class="hero {announcement.severity}">
-      <div class="hero-bg">
-        {#if announcement.cover_file_id}
-          <img
-            class="hero-img"
-            src={`${API_BASE}/storage/files/${announcement.cover_file_id}/content`}
-            alt=""
-            loading="lazy"
-          />
+    <div class="panel head-panel">
+      {#if announcement.cover_file_id}
+        <img
+          class="cover"
+          src={`${API_BASE}/storage/files/${announcement.cover_file_id}/content`}
+          alt=""
+          loading="lazy"
+        />
+      {/if}
+      <div class="meta">
+        <span class="pill {announcement.severity}">
+          <Icon name={iconForSeverity(announcement.severity)} size={14} />
+          <span>{sevLabel(announcement.severity)}</span>
+        </span>
+        <span class="time">
+          {formatDateTime(announcement.starts_at, { timeZone: $appSettings.app_timezone })}
+        </span>
+        {#if announcement.mode === 'banner'}
+          <span class="mode">{$t('announcements.modes.banner')}</span>
         {/if}
-        <div class="hero-shade"></div>
       </div>
-      <div class="hero-inner">
-        <div class="meta">
-          <span class="pill {announcement.severity}">
-            <Icon name={iconForSeverity(announcement.severity)} size={14} />
-            <span class="sev">{sevLabel(announcement.severity)}</span>
-          </span>
-          <span class="dot"></span>
-          <span class="time">
-            {formatDateTime(announcement.starts_at, { timeZone: $appSettings.app_timezone })}
-          </span>
-          {#if announcement.mode === 'banner'}
-            <span class="dot"></span>
-            <span class="mode">{$t('announcements.modes.banner')}</span>
-          {/if}
-        </div>
-        <h1 class="title">{announcement.title}</h1>
-        <div class="subtitle">
-          {$t('announcements.feed_subtitle')}
-        </div>
-      </div>
-    </section>
+      <h1 class="title">{announcement.title}</h1>
+      <p class="subtitle">{$t('announcements.feed_subtitle')}</p>
+    </div>
 
     <div class="grid">
-      <article class="post">
+      <article class="panel post">
         {#if announcement.format === 'html'}
           <div class="body prose">
             {@html sanitizeHtml(announcement.body)}
@@ -125,7 +116,7 @@
       </article>
 
       <aside class="rail">
-        <div class="card">
+        <div class="panel">
           <div class="card-title">{$t('common.details')}</div>
           <div class="row">
             <span class="k">{$t('announcements.fields.starts_at')}</span>
@@ -154,25 +145,19 @@
 </div>
 
 <style>
-  .page-content {
-    padding: 1.5rem;
+  .page {
+    padding: clamp(1rem, 2vw, 1.5rem);
     max-width: 1100px;
     margin: 0 auto;
   }
 
-  @media (max-width: 640px) {
-    .page-content {
-      padding: 1rem;
-    }
-  }
-
-  .topbar {
+  .page-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
     flex-wrap: wrap;
-    margin-bottom: 0.9rem;
+    margin-bottom: 1rem;
   }
 
   .crumb {
@@ -201,64 +186,44 @@
     flex: none;
   }
 
-  :global([data-theme='light']) .crumb .sep {
-    background: var(--border-color);
-  }
-
-  .hero {
-    position: relative;
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.85rem;
+    border-radius: var(--radius-md, 8px);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    box-shadow: var(--shadow-md);
-    margin-bottom: 1rem;
-    min-height: 220px;
-  }
-
-  .hero-bg {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-  }
-
-  .hero-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0.6;
-  }
-
-  .hero-shade {
-    position: absolute;
-    inset: 0;
     background: var(--bg-surface);
+    color: var(--text-primary);
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 40px;
   }
 
-  .hero-inner {
-    position: relative;
-    z-index: 1;
-    padding: 1.15rem 1.15rem 1.2rem;
-    display: flex;
-    min-height: 220px;
-    flex-direction: column;
-    justify-content: flex-end;
+  .btn-secondary {
+    background: var(--bg-tertiary, var(--bg-surface));
+  }
+
+  .panel {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg, 12px);
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-sm);
+    padding: 1rem;
+  }
+
+  .head-panel {
+    margin-bottom: 1rem;
+    display: grid;
     gap: 0.55rem;
   }
 
-  .hero.info {
-    background: var(--bg-surface);
-  }
-
-  .hero.success {
-    background: var(--bg-surface);
-  }
-
-  .hero.warning {
-    background: var(--bg-surface);
-  }
-
-  .hero.error {
-    background: var(--bg-surface);
+  .cover {
+    width: 100%;
+    max-height: 180px;
+    object-fit: cover;
+    border-radius: var(--radius-md, 8px);
+    border: 1px solid var(--border-color);
   }
 
   .meta {
@@ -266,54 +231,68 @@
     align-items: center;
     gap: 0.55rem;
     flex-wrap: wrap;
-    color: var(--text-primary);
-    font-weight: 700;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.9rem;
   }
 
   .pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    padding: 0.4rem 0.65rem;
+    gap: 0.4rem;
+    padding: 0.3rem 0.6rem;
     border-radius: 999px;
     border: 1px solid var(--border-color);
     background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    font-weight: 700;
   }
 
-  .dot {
-    width: 4px;
-    height: 4px;
-    border-radius: 999px;
-    background: var(--border-color);
+  .pill.success {
+    color: var(--color-success);
+    border-color: color-mix(in srgb, var(--color-success) 35%, var(--border-color));
+    background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  }
+
+  .pill.warning {
+    color: var(--color-warning);
+    border-color: color-mix(in srgb, var(--color-warning) 35%, var(--border-color));
+    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+  }
+
+  .pill.error {
+    color: var(--color-danger);
+    border-color: color-mix(in srgb, var(--color-danger) 35%, var(--border-color));
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  }
+
+  .pill.info {
+    color: var(--color-primary);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
   }
 
   .title {
     margin: 0;
     color: var(--text-primary);
-    font-size: clamp(1.6rem, 2.8vw, 2.5rem);
-    line-height: 1.1;
-    font-weight: 900;
-    letter-spacing: 0.01em;
+    font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+    line-height: 1.2;
+    font-weight: 800;
   }
 
   .subtitle {
+    margin: 0;
     color: var(--text-secondary);
     max-width: 72ch;
-    font-weight: 600;
+    font-weight: 500;
+    font-size: 0.95rem;
   }
 
   .grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 280px;
     gap: 1rem;
-  }
-
-  .post {
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    background: var(--bg-surface);
-    box-shadow: var(--shadow-sm);
-    padding: 1rem 1rem 1.1rem;
   }
 
   .body {
@@ -333,16 +312,8 @@
     align-self: start;
   }
 
-  .card {
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    background: var(--bg-surface);
-    box-shadow: var(--shadow-sm);
-    padding: 0.95rem;
-  }
-
   .card-title {
-    font-weight: 900;
+    font-weight: 800;
     margin-bottom: 0.7rem;
     color: var(--text-primary);
   }
@@ -413,6 +384,18 @@
   @media (max-width: 900px) {
     .grid {
       grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .page-head {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .btn {
+      width: 100%;
+      justify-content: center;
     }
   }
 </style>

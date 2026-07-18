@@ -155,22 +155,13 @@
   }
 </script>
 
-<div class="page-container fade-in">
-  <section class="hero-card announcements-hero">
-    <div class="hero-left">
-      <div class="hero-badge">
-        <Icon name="megaphone" size={20} />
-      </div>
-      <div>
-        <div class="kicker">
-          <span class="dot"></span>
-          {$t('announcements.title')}
-        </div>
-        <h1 class="hero-title">{$t('announcements.title')}</h1>
-        <p class="hero-sub">{$t('announcements.feed_subtitle')}</p>
-      </div>
+<div class="page fade-in">
+  <div class="page-head">
+    <div class="page-head-text">
+      <h1>{$t('announcements.title') || 'Pengumuman'}</h1>
+      <p class="page-sub">{$t('announcements.feed_subtitle') || 'Update terbaru dari ISP'}</p>
     </div>
-    <div class="hero-right">
+    <div class="head-actions">
       <div class="search">
         <Icon name="search" size={16} />
         <input
@@ -179,15 +170,15 @@
           oninput={(e) => (q = (e.currentTarget as HTMLInputElement).value)}
           placeholder={$t('announcements.search_placeholder') ||
             $t('notifications_page.search_placeholder') ||
-            'Search...'}
+            'Cari...'}
         />
       </div>
-      <button class="btn btn-secondary btn-sm" type="button" onclick={() => load(true)} disabled={loading}>
+      <button class="btn btn-ghost" type="button" onclick={() => load(true)} disabled={loading}>
         <Icon name="refresh-cw" size={14} />
-        <span>{$t('common.refresh')}</span>
+        <span>{$t('common.refresh') || 'Refresh'}</span>
       </button>
     </div>
-  </section>
+  </div>
 
   <div class="filters">
     <Select
@@ -216,30 +207,29 @@
       <p>{$t('common.loading')}</p>
     </div>
   {:else if rows.length === 0}
-    <div class="glass-card empty-state">
+    <div class="panel empty-state">
       <Icon name="megaphone" size={32} />
       <div class="empty-text">
-        <div class="title">{$t('announcements.empty_feed') || 'No announcements yet'}</div>
-        <div class="sub">{$t('announcements.feed_subtitle') || 'Stay tuned for updates.'}</div>
+        <div class="title">{$t('announcements.empty_feed') || 'Belum ada pengumuman'}</div>
+        <div class="sub">{$t('announcements.feed_subtitle') || 'Nantikan update selanjutnya.'}</div>
       </div>
     </div>
   {:else}
     <div class="summary">
       <span class="count-num">{rows.length}</span>
-      <span class="count-label">{$t('announcements.list.title') || 'announcements'}</span>
+      <span class="count-label">{$t('announcements.list.title') || 'pengumuman'}</span>
       <span class="summary-hint">
-        {$t('common.updated')}:
+        {$t('common.updated') || 'Diperbarui'}:
         {formatDateTime(new Date().toISOString(), { timeZone: $appSettings.app_timezone })}
       </span>
     </div>
 
     <div class="feed">
-      {#each rows as a, i (a.id)}
+      {#each rows as a (a.id)}
         <button
-          class="glass-card post {a.severity}"
+          class="panel post {a.severity}"
           type="button"
           onclick={() => openDetail(a.id)}
-          style={`--d:${i * 55}ms`}
         >
           {#if a.cover_file_id}
             <div class="cover">
@@ -291,74 +281,58 @@
 </div>
 
 <style>
-  .page-container {
-    padding: clamp(1rem, 2.2vw, 2rem);
-    max-width: 1200px;
+  .page {
+    padding: clamp(1rem, 2.2vw, 1.75rem);
+    max-width: 1100px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  .announcements-hero {
-    flex-wrap: wrap;
     gap: 1rem;
   }
 
-  .hero-left {
+  .page-head {
     display: flex;
-    gap: 0.75rem;
-    align-items: center;
-    min-width: 260px;
-  }
-
-  .hero-right {
-    display: flex;
-    gap: 0.6rem;
-    align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
     flex-wrap: wrap;
   }
-
-  .kicker {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    color: var(--text-secondary);
-    font-weight: 850;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-size: 0.72rem;
-    margin-bottom: 0.35rem;
+  .page-head h1 {
+    font-size: clamp(1.25rem, 2.2vw, 1.45rem);
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    margin: 0;
+    color: var(--text-primary);
   }
-
-  .kicker .dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 999px;
-    background: var(--color-primary);
-    box-shadow: 0 0 0 6px var(--color-primary-subtle);
+  .page-sub {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    margin: 0.25rem 0 0;
+  }
+  .head-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
   }
 
   .search {
     display: inline-flex;
     align-items: center;
     gap: 0.55rem;
-    border: 1px solid var(--border-color);
-    background: var(--bg-tertiary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
     padding: 0.5rem 0.68rem;
     border-radius: 10px;
-    min-width: min(340px, 100%);
+    min-width: min(280px, 100%);
     color: var(--text-secondary);
   }
-
   .search-input {
     width: 100%;
     background: transparent;
     border: none;
     outline: none;
-    color: inherit;
-    font-weight: 750;
+    color: var(--text-primary);
     font-size: 0.9rem;
   }
 
@@ -368,23 +342,27 @@
     align-items: center;
     flex-wrap: wrap;
   }
-
   .filter-clear {
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: transparent;
     color: var(--text-secondary);
-    padding: 0.6rem 0.85rem;
+    padding: 0.5rem 0.75rem;
     border-radius: 8px;
-    font-weight: 700;
+    font-weight: 650;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
   }
-
   .filter-clear:hover {
     color: var(--text-primary);
-    background: var(--bg-hover);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .panel {
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-lg, 12px);
   }
 
   .loading-state {
@@ -395,20 +373,17 @@
     padding: 3rem 1rem;
     color: var(--text-secondary);
   }
-
   .empty-state {
     padding: 1.5rem;
     display: flex;
     gap: 0.9rem;
     align-items: flex-start;
   }
-
   .empty-text .title {
-    font-weight: 750;
+    font-weight: 700;
     margin-bottom: 0.25rem;
     color: var(--text-primary);
   }
-
   .empty-text .sub {
     color: var(--text-secondary);
     font-size: 0.9rem;
@@ -420,72 +395,52 @@
     gap: 0.5rem;
     color: var(--text-secondary);
   }
-
   .count-num {
-    font-size: 1.25rem;
-    font-weight: 1000;
+    font-size: 1.15rem;
+    font-weight: 750;
     color: var(--text-primary);
   }
-
   .count-label {
-    font-weight: 850;
+    font-weight: 650;
     margin-right: auto;
   }
-
   .summary-hint {
-    font-weight: 650;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
 
   .feed {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 0.85rem;
   }
-
   .post {
     text-align: left;
     cursor: pointer;
     padding: 0;
     overflow: hidden;
-    transition:
-      transform 180ms ease,
-      box-shadow 180ms ease,
-      border-color 180ms ease;
-    animation: rise 420ms ease both;
-    animation-delay: var(--d, 0ms);
+    transition: border-color 0.12s ease;
   }
-
   .post:hover {
     border-color: rgba(99, 102, 241, 0.35);
-    transform: translateY(-1px);
   }
 
-  .post.info:hover { border-color: color-mix(in srgb, var(--color-primary) 45%, var(--border-color)); }
-  .post.success:hover { border-color: color-mix(in srgb, var(--color-success) 45%, var(--border-color)); }
-  .post.warning:hover { border-color: color-mix(in srgb, var(--color-warning) 45%, var(--border-color)); }
-  .post.error:hover { border-color: color-mix(in srgb, var(--color-danger) 45%, var(--border-color)); }
-
   .cover {
-    height: 160px;
+    height: 140px;
     overflow: hidden;
-    border-bottom: 1px solid var(--border-color);
-    background: var(--bg-tertiary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
     display: grid;
     place-items: stretch;
   }
-
   .cover img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
   }
-
   .cover.fallback {
     place-items: center;
     color: var(--text-secondary);
-    background: var(--bg-surface);
   }
 
   .meta {
@@ -493,49 +448,42 @@
     align-items: center;
     gap: 0.5rem;
     color: var(--text-secondary);
-    font-weight: 750;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     padding: 0.8rem 1rem 0;
+    flex-wrap: wrap;
   }
-
   .pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    border: 1px solid var(--border-color);
-    background: var(--bg-tertiary);
-    padding: 0.2rem 0.5rem;
+    gap: 0.3rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.15rem 0.5rem;
     border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 800;
+    font-size: 0.72rem;
+    font-weight: 700;
     text-transform: capitalize;
     color: var(--text-primary);
   }
-
-  .pill.info { border-color: color-mix(in srgb, var(--color-primary) 28%, var(--border-color)); }
-  .pill.success { border-color: color-mix(in srgb, var(--color-success) 28%, var(--border-color)); }
-  .pill.warning { border-color: color-mix(in srgb, var(--color-warning) 28%, var(--border-color)); }
-  .pill.error { border-color: color-mix(in srgb, var(--color-danger) 28%, var(--border-color)); }
-
-  .banner-pill {
-    border-color: color-mix(in srgb, var(--color-primary) 25%, var(--border-color));
-    color: var(--color-primary);
-  }
+  .pill.info { border-color: color-mix(in srgb, var(--color-primary) 28%, transparent); color: var(--color-primary); }
+  .pill.success { border-color: color-mix(in srgb, var(--color-success) 28%, transparent); color: var(--color-success); }
+  .pill.warning { border-color: color-mix(in srgb, var(--color-warning) 28%, transparent); color: var(--color-warning); }
+  .pill.error { border-color: color-mix(in srgb, var(--color-danger) 28%, transparent); color: var(--color-danger); }
+  .banner-pill { color: var(--color-primary); }
 
   .title {
     padding: 0 1rem;
-    margin-top: 0.5rem;
-    font-size: 1.05rem;
-    font-weight: 950;
+    margin-top: 0.45rem;
+    font-size: 1rem;
+    font-weight: 700;
     color: var(--text-primary);
-    line-height: 1.2;
+    line-height: 1.25;
   }
-
   .body {
     padding: 0 1rem;
-    margin-top: 0.35rem;
+    margin-top: 0.3rem;
     color: var(--text-secondary);
-    font-weight: 650;
+    font-size: 0.9rem;
     line-height: 1.45;
     display: -webkit-box;
     line-clamp: 3;
@@ -543,31 +491,25 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-
   .more {
     padding: 0 1rem 1rem;
-    margin-top: 0.75rem;
+    margin-top: 0.65rem;
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.3rem;
     color: var(--color-primary);
-    font-weight: 850;
+    font-weight: 650;
+    font-size: 0.88rem;
   }
-
   .load-more {
     display: flex;
     justify-content: center;
   }
 
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
   @media (max-width: 640px) {
-    .page-container { padding: 0.75rem; }
-    .hero-right { width: 100%; }
-    .search { min-width: 100%; }
+    .page { padding: 0.75rem; }
+    .head-actions { width: 100%; }
+    .search { min-width: 100%; flex: 1; }
     .feed { grid-template-columns: 1fr; }
   }
 </style>

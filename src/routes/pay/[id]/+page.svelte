@@ -458,74 +458,82 @@
       <div class="state">{$t('payment.checkout.loading')}</div>
     {:else if invoice}
       <div class="invoice-head">
-        <button class="back-link" onclick={() => goto(returnPath)}>
-          <Icon name="arrow-left" size={16} />
-          <span>{$t('common.back')}</span>
-        </button>
-        <div class="head-title">
+        <div class="header-top">
+          <button class="back-link" onclick={() => goto(returnPath)}>
+            <Icon name="arrow-left" size={16} />
+            <span>{$t('common.back')}</span>
+          </button>
+          <span class="status-pill {invoice.status}">{invoice.status}</span>
+        </div>
+        <div class="header-main">
           <h1>{$t('payment.checkout.title')}</h1>
           <span class="invoice-number">#{invoice.invoice_number}</span>
-        </div>
-        <div class="head-right">
-          <span class="doc-mark">{$t('components.invoice_print.invoice')}</span>
-          <span class="status-pill {invoice.status}">{invoice.status}</span>
         </div>
       </div>
 
       <div class="invoice-body">
-        <div class="party-grid">
-          <div class="party-card">
-            <span class="party-k">{$t('common.from')}</span>
-            <strong>{publicSettings?.app_name || 'ISP Management'}</strong>
-            <span>{publicSettings?.support_email || '-'}</span>
-            <span>{publicSettings?.company_phone || '-'}</span>
+        <section class="section">
+          <h2 class="section-title">{$t('components.invoice_print.bill_to')}</h2>
+          <div class="party-grid">
+            <div class="party-card">
+              <span class="party-k">{$t('common.from')}</span>
+              <strong>{publicSettings?.app_name || 'ISP Management'}</strong>
+              <span>{publicSettings?.support_email || '-'}</span>
+              <span>{publicSettings?.company_phone || '-'}</span>
+            </div>
+            <div class="party-card">
+              <span class="party-k">{$t('components.invoice_print.bill_to')}</span>
+              <strong>{$user?.name || 'Customer'}</strong>
+              <span>{$user?.email || '-'}</span>
+              <span>{publicSettings?.tenant_name || '-'}</span>
+            </div>
           </div>
-          <div class="party-card">
-            <span class="party-k">{$t('components.invoice_print.bill_to')}</span>
-            <strong>{$user?.name || 'Customer'}</strong>
-            <span>{$user?.email || '-'}</span>
-            <span>{publicSettings?.tenant_name || '-'}</span>
-          </div>
-        </div>
+        </section>
 
-        <div class="meta-grid">
-          <div class="meta-item">
-            <span class="k">Invoice #</span>
-            <span class="v">{invoice.invoice_number}</span>
+        <section class="section">
+          <h2 class="section-title">Detail Invoice</h2>
+          <div class="meta-grid">
+            <div class="meta-item">
+              <span class="k">Invoice #</span>
+              <span class="v">{invoice.invoice_number}</span>
+            </div>
+            <div class="meta-item">
+              <span class="k">{$t('payment.checkout.created')}</span>
+              <span class="v">{formatDateValue(invoice.created_at)}</span>
+            </div>
+            <div class="meta-item">
+              <span class="k">{$t('components.invoice_print.due_date')}</span>
+              <span class="v">{formatDateValue(invoice.due_date)}</span>
+            </div>
+            <div class="meta-item">
+              <span class="k">{$t('payment.checkout.status')}</span>
+              <span class="v">{invoice.status}</span>
+            </div>
           </div>
-          <div class="meta-item">
-            <span class="k">{$t('payment.checkout.created')}</span>
-            <span class="v">{formatDateValue(invoice.created_at)}</span>
-          </div>
-          <div class="meta-item">
-            <span class="k">{$t('components.invoice_print.due_date')}</span>
-            <span class="v">{formatDateValue(invoice.due_date)}</span>
-          </div>
-          <div class="meta-item">
-            <span class="k">{$t('payment.checkout.status')}</span>
-            <span class="status-pill {invoice.status}">{invoice.status}</span>
-          </div>
-        </div>
+        </section>
 
-        <div class="line-items">
-          <table class="invoice-table">
-            <thead>
-              <tr>
-                <th>{$t('payment.checkout.item')}</th>
-                <th>{$t('components.invoice_print.unit_price')}</th>
-                <th>Qty</th>
-                <th>{$t('common.amount')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>{invoice.description || '-'}</td>
-                <td>{formatCurrency(invoice.amount)}</td>
-                <td>1</td>
-                <td>{formatCurrency(invoice.amount)}</td>
-              </tr>
-            </tbody>
-          </table>
+        <section class="section">
+          <h2 class="section-title">{$t('payment.checkout.item')}</h2>
+          <div class="table-wrap">
+            <table class="invoice-table">
+              <thead>
+                <tr>
+                  <th>{$t('payment.checkout.item')}</th>
+                  <th>{$t('components.invoice_print.unit_price')}</th>
+                  <th>Qty</th>
+                  <th>{$t('common.amount')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{invoice.description || '-'}</td>
+                  <td>{formatCurrency(invoice.amount)}</td>
+                  <td>1</td>
+                  <td>{formatCurrency(invoice.amount)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
           <div class="totals-box">
             <div><span>{$t('components.invoice_print.subtotal')}</span><strong>{formatCurrency(invoice.amount)}</strong></div>
             <div><span>Tax</span><strong>{formatCurrency(0)}</strong></div>
@@ -534,179 +542,164 @@
               <strong>{formatCurrency(invoice.amount)}</strong>
             </div>
           </div>
-        </div>
+        </section>
 
         {#if invoice.status === 'pending' || invoice.status === 'failed'}
-          {#if invoice.status === 'failed' && invoice.rejection_reason}
-            <div class="failed-reason">
-              <span>{$t('payment.checkout.failed.reason_label')}</span>
-              <strong>{invoice.rejection_reason}</strong>
+          <section class="section">
+            <h2 class="section-title">{$t('payment.checkout.payment_method')}</h2>
+            <div class="method-tabs">
+              {#if midtransEnabled}
+                <button
+                  class="method-tab {paymentMethod === 'midtrans' ? 'active' : ''}"
+                  onclick={() => (paymentMethod = 'midtrans')}
+                >
+                  <Icon name="credit-card" size={16} />
+                  Midtrans
+                </button>
+              {/if}
+              {#if duitkuEnabled}
+                <button
+                  class="method-tab {paymentMethod === 'duitku' ? 'active' : ''}"
+                  onclick={() => (paymentMethod = 'duitku')}
+                >
+                  <Icon name="wallet-cards" size={16} />
+                  Duitku
+                </button>
+              {/if}
+              {#if manualEnabled}
+                <button
+                  class="method-tab {paymentMethod === 'manual' ? 'active' : ''}"
+                  onclick={() => (paymentMethod = 'manual')}
+                >
+                  <Icon name="landmark" size={16} />
+                  {$t('payment.checkout.tabs.manual')}
+                </button>
+              {/if}
             </div>
-          {/if}
-          <div class="method-tabs">
-            {#if midtransEnabled}
-              <button
-                class="method-tab {paymentMethod === 'midtrans' ? 'active' : ''}"
-                onclick={() => (paymentMethod = 'midtrans')}
-              >
-                <Icon name="credit-card" size={16} />
-                Midtrans
-              </button>
-            {/if}
-            {#if duitkuEnabled}
-              <button
-                class="method-tab {paymentMethod === 'duitku' ? 'active' : ''}"
-                onclick={() => (paymentMethod = 'duitku')}
-              >
-                <Icon name="wallet-cards" size={16} />
-                Duitku
-              </button>
-            {/if}
-            {#if manualEnabled}
-              <button
-                class="method-tab {paymentMethod === 'manual' ? 'active' : ''}"
-                onclick={() => (paymentMethod = 'manual')}
-              >
-                <Icon name="landmark" size={16} />
-                {$t('payment.checkout.tabs.manual')}
-              </button>
-            {/if}
-          </div>
 
-          <div class="payment-block">
-            {#if paymentMethod === 'midtrans' && midtransEnabled}
-              <p class="helper">
-                {$t('payment.checkout.online.description')}
-              </p>
-              <button class="btn btn-primary w-full" onclick={handlePayOnline}>
-                {$t('payment.checkout.online.pay_now')}
-              </button>
-              <button
-                class="btn btn-secondary w-full"
-                onclick={() =>
-                  checkPaymentStatus({
-                    silent: false,
-                    notifyOnChange: true,
-                  })}
-                disabled={autoChecking}
-              >
-                {#if autoChecking}
-                  {$t('payment.checkout.online.checking')}
-                {:else}
-                  {$t('payment.checkout.online.check_status')}
-                {/if}
-              </button>
-            {:else if paymentMethod === 'duitku' && duitkuEnabled}
-              <p class="helper">
-                Pilih kanal pembayaran. Setelah klik bayar, Anda akan diarahkan ke checkout aman
-                Duitku untuk menyelesaikan pembayaran.
-              </p>
-              {#if duitkuPaymentMethods.length > 1}
-                <div class="duitku-methods">
-                  {#each duitkuPaymentMethods as method}
-                    {@const methodInfo = getDuitkuPaymentMethodInfo(method)}
-                    <label
-                      class="duitku-method"
-                      class:selected={selectedDuitkuPaymentMethod === method}
-                    >
-                      <input
-                        type="radio"
-                        name="duitku-method"
-                        value={method}
-                        checked={selectedDuitkuPaymentMethod === method}
-                        onchange={() => (selectedDuitkuPaymentMethod = method)}
-                      />
-                      <span class="duitku-method-copy">
-                        <span class="duitku-method-title">
-                          <strong>{methodInfo.name}</strong>
-                          <small>Kode {method}</small>
+            <div class="payment-block">
+              {#if paymentMethod === 'midtrans' && midtransEnabled}
+                <p class="helper">{$t('payment.checkout.online.description')}</p>
+                <div class="actions">
+                  <button class="btn btn-primary w-full" onclick={handlePayOnline}>
+                    {$t('payment.checkout.online.pay_now')}
+                  </button>
+                  <button
+                    class="btn btn-secondary w-full"
+                    onclick={() => checkPaymentStatus({ silent: false, notifyOnChange: true })}
+                    disabled={autoChecking}
+                  >
+                    {#if autoChecking}
+                      {$t('payment.checkout.online.checking')}
+                    {:else}
+                      {$t('payment.checkout.online.check_status')}
+                    {/if}
+                  </button>
+                </div>
+              {:else if paymentMethod === 'duitku' && duitkuEnabled}
+                <p class="helper">
+                  Pilih kanal pembayaran. Setelah klik bayar, Anda akan diarahkan ke checkout aman
+                  Duitku untuk menyelesaikan pembayaran.
+                </p>
+                {#if duitkuPaymentMethods.length > 1}
+                  <div class="duitku-methods">
+                    {#each duitkuPaymentMethods as method}
+                      {@const methodInfo = getDuitkuPaymentMethodInfo(method)}
+                      <label
+                        class="duitku-method"
+                        class:selected={selectedDuitkuPaymentMethod === method}
+                      >
+                        <input
+                          type="radio"
+                          name="duitku-method"
+                          value={method}
+                          checked={selectedDuitkuPaymentMethod === method}
+                          onchange={() => (selectedDuitkuPaymentMethod = method)}
+                        />
+                        <span class="duitku-method-copy">
+                          <span class="duitku-method-title">
+                            <strong>{methodInfo.name}</strong>
+                            <small>Kode {method}</small>
+                          </span>
+                          <span class="duitku-method-description">{methodInfo.description}</span>
                         </span>
-                        <span class="duitku-method-description">{methodInfo.description}</span>
-                      </span>
-                    </label>
+                      </label>
+                    {/each}
+                  </div>
+                {:else if duitkuPaymentMethods.length === 1}
+                  {@const methodInfo = getDuitkuPaymentMethodInfo(selectedDuitkuPaymentMethod)}
+                  <div class="selected-method">
+                    <span>
+                      <small>{$t('payment.checkout.payment_method')}</small>
+                      <strong>{methodInfo.name}</strong>
+                      <em>{methodInfo.description}</em>
+                    </span>
+                    <small>Kode {selectedDuitkuPaymentMethod}</small>
+                  </div>
+                {/if}
+                <div class="actions">
+                  <button class="btn btn-primary w-full" onclick={handlePayOnline}>
+                    {$t('payment.checkout.online.pay_now')}
+                  </button>
+                  <button
+                    class="btn btn-secondary w-full"
+                    onclick={() => checkPaymentStatus({ silent: false, notifyOnChange: true })}
+                    disabled={autoChecking}
+                  >
+                    {#if autoChecking}
+                      {$t('payment.checkout.online.checking')}
+                    {:else}
+                      {$t('payment.checkout.online.check_status')}
+                    {/if}
+                  </button>
+                </div>
+              {:else if paymentMethod === 'manual' && manualEnabled}
+                <p class="helper">{$t('payment.checkout.manual.instructions')}</p>
+
+                <div class="bank-list">
+                  {#each bankAccounts as bank}
+                    <div class="bank-item">
+                      <div class="bank-left">
+                        <strong>{bank.bank_name}</strong>
+                        <span class="holder">{bank.account_holder}</span>
+                      </div>
+                      <span class="number">{bank.account_number}</span>
+                    </div>
                   {/each}
                 </div>
-              {:else if duitkuPaymentMethods.length === 1}
-                {@const methodInfo = getDuitkuPaymentMethodInfo(selectedDuitkuPaymentMethod)}
-                <div class="selected-method">
-                  <span>
-                    <small>{$t('payment.checkout.payment_method')}</small>
-                    <strong>{methodInfo.name}</strong>
-                    <em>{methodInfo.description}</em>
-                  </span>
-                  <small>Kode {selectedDuitkuPaymentMethod}</small>
+
+                <div class="upload-card">
+                  <p>{$t('payment.checkout.manual.upload_hint')}</p>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onchange={handleFileUpload}
+                    style="display: none;"
+                    bind:this={fileInput}
+                  />
+                  <button
+                    class="btn btn-secondary w-full"
+                    onclick={() => fileInput?.click()}
+                    disabled={uploading}
+                  >
+                    {#if uploading}
+                      {$t('payment.checkout.manual.uploading')}
+                    {:else}
+                      <Icon name="upload" size={16} />
+                      {$t('payment.checkout.manual.upload')}
+                    {/if}
+                  </button>
                 </div>
               {/if}
-              <button class="btn btn-primary w-full" onclick={handlePayOnline}>
-                {$t('payment.checkout.online.pay_now')}
-              </button>
-              <button
-                class="btn btn-secondary w-full"
-                onclick={() =>
-                  checkPaymentStatus({
-                    silent: false,
-                    notifyOnChange: true,
-                  })}
-                disabled={autoChecking}
-              >
-                {#if autoChecking}
-                  {$t('payment.checkout.online.checking')}
-                {:else}
-                  {$t('payment.checkout.online.check_status')}
-                {/if}
-              </button>
-            {:else if paymentMethod === 'manual' && manualEnabled}
-              <p class="helper">
-                {$t('payment.checkout.manual.instructions')}
-              </p>
-
-              <div class="bank-list">
-                {#each bankAccounts as bank}
-                  <div class="bank-item">
-                    <div class="bank-left">
-                      <strong>{bank.bank_name}</strong>
-                      <span class="holder">{bank.account_holder}</span>
-                    </div>
-                    <span class="number">{bank.account_number}</span>
-                  </div>
-                {/each}
-              </div>
-
-              <div class="upload-card">
-                <p>
-                  {$t('payment.checkout.manual.upload_hint')}
-                </p>
-                <input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  onchange={handleFileUpload}
-                  style="display: none;"
-                  bind:this={fileInput}
-                />
-                <button
-                  class="btn btn-secondary w-full"
-                  onclick={() => fileInput?.click()}
-                  disabled={uploading}
-                >
-                  {#if uploading}
-                    {$t('payment.checkout.manual.uploading')}
-                  {:else}
-                    <Icon name="upload" size={16} />
-                    {$t('payment.checkout.manual.upload')}
-                  {/if}
-                </button>
-              </div>
-            {/if}
-          </div>
+            </div>
+          </section>
         {:else if invoice.status === 'verification_pending'}
           <div class="state-card">
             <div class="icon-circle pending">
               <Icon name="clock" size={26} />
             </div>
             <h3>{$t('payment.checkout.pending.title')}</h3>
-            <p>
-              {$t('payment.checkout.pending.message')}
-            </p>
+            <p>{$t('payment.checkout.pending.message')}</p>
             <button class="btn btn-secondary" onclick={() => goto(returnPath)}>
               {$t('payment.checkout.pending.back')}
             </button>
@@ -717,9 +710,7 @@
               <Icon name="check" size={26} />
             </div>
             <h3>{$t('payment.checkout.success.title')}</h3>
-            <p>
-              {$t('payment.checkout.success.message')}
-            </p>
+            <p>{$t('payment.checkout.success.message')}</p>
             <button class="btn btn-primary" onclick={() => goto(returnPath)}>
               {$t('payment.checkout.success.cta')}
             </button>
@@ -731,48 +722,39 @@
     {/if}
   </div>
 </div>
-
 <style>
   .checkout-page {
     min-height: 100vh;
-    background: var(--bg-surface);
+    background: var(--bg-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: clamp(0.75rem, 2vw, 1.5rem);
+    padding: clamp(1rem, 3vw, 2rem);
   }
 
   .invoice-shell {
     width: 100%;
-    max-width: 820px;
-    border: 1px solid color-mix(in srgb, var(--border-color) 88%, #ffffff12);
-    border-radius: var(--radius-lg);
+    max-width: 720px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg, 12px);
     background: var(--bg-surface);
-    box-shadow:
-      0 26px 70px rgba(0, 0, 0, 0.45),
-      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    box-shadow: var(--shadow-sm);
     overflow: hidden;
-    position: relative;
-  }
-
-  .invoice-shell::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: var(--bg-surface);
-    pointer-events: none;
   }
 
   .invoice-head {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    gap: 0.75rem;
+  }
+
+  .header-top {
+    display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 1.15rem 1.2rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
-    background: var(--bg-surface);
-    position: relative;
-    z-index: 1;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
   }
 
   .back-link {
@@ -783,8 +765,9 @@
     border: 1px solid transparent;
     color: var(--text-secondary);
     cursor: pointer;
-    border-radius: 10px;
+    border-radius: var(--radius-md, 8px);
     padding: 0.4rem 0.5rem;
+    font-weight: 600;
   }
 
   .back-link:hover {
@@ -792,56 +775,54 @@
     color: var(--text-primary);
   }
 
-  .head-title h1 {
+  .header-main h1 {
     margin: 0;
     line-height: 1.2;
-    font-size: clamp(1.28rem, 2.2vw, 1.64rem);
-    letter-spacing: -0.01em;
+    font-size: clamp(1.4rem, 2.5vw, 1.75rem);
+    font-weight: 800;
   }
 
   .invoice-number {
-    font-family:
-      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-      monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
     color: var(--text-secondary);
-    font-size: 0.82rem;
-  }
-
-  .head-right {
-    display: grid;
-    justify-items: end;
-    gap: 0.35rem;
-  }
-
-  .doc-mark {
-    font-size: 0.7rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: color-mix(in srgb, var(--accent-primary) 70%, var(--text-secondary));
-    font-weight: 700;
+    font-size: 0.9rem;
+    display: block;
+    margin-top: 0.25rem;
   }
 
   .invoice-body {
-    padding: 1.05rem 1.2rem 1.3rem;
+    padding: 1.5rem;
     display: grid;
-    gap: 1.1rem;
-    position: relative;
-    z-index: 1;
+    gap: 1.5rem;
+  }
+
+  .section {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .section-title {
+    margin: 0;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+    font-weight: 700;
   }
 
   .party-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.9rem;
+    gap: 0.75rem;
   }
 
   .party-card {
     display: grid;
-    gap: 0.2rem;
-    border: 1px dashed color-mix(in srgb, var(--border-color) 88%, #ffffff12);
-    border-radius: 12px;
-    padding: 0.7rem 0.8rem;
-    background: var(--bg-surface);
+    gap: 0.25rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 8px);
+    padding: 0.85rem;
+    background: var(--bg-secondary);
   }
 
   .party-k {
@@ -850,6 +831,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-weight: 700;
+    margin-bottom: 0.25rem;
   }
 
   .party-card strong {
@@ -858,29 +840,27 @@
 
   .party-card span {
     color: var(--text-secondary);
-    font-size: 0.84rem;
+    font-size: 0.86rem;
   }
 
   .meta-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.9rem;
-    border-bottom: 1px dashed color-mix(in srgb, var(--border-color) 85%, #ffffff12);
-    padding-bottom: 0.9rem;
+    gap: 0.75rem;
   }
 
   .meta-item {
     display: grid;
     gap: 0.35rem;
-    border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
-    border-radius: 10px;
-    padding: 0.58rem 0.64rem;
-    background: color-mix(in srgb, var(--bg-secondary) 38%, transparent);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 8px);
+    padding: 0.75rem;
+    background: var(--bg-secondary);
   }
 
   .meta-item .k {
     color: var(--text-secondary);
-    font-size: 0.76rem;
+    font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-weight: 700;
@@ -888,37 +868,40 @@
 
   .meta-item .v {
     color: var(--text-primary);
-    font-size: 1rem;
+    font-size: 0.98rem;
+    font-weight: 700;
     line-height: 1.35;
   }
 
-  .line-items {
-    display: grid;
-    gap: 0.82rem;
+  .table-wrap {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 8px);
+    overflow: hidden;
   }
 
   .invoice-table {
     width: 100%;
     border-collapse: collapse;
-    overflow: hidden;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
   }
 
   .invoice-table th {
     text-align: left;
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: color-mix(in srgb, #ffffff 88%, var(--text-secondary));
-    background: var(--bg-surface);
-    padding: 0.72rem 0.75rem;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    padding: 0.85rem 0.9rem;
   }
 
   .invoice-table td {
-    padding: 0.72rem 0.75rem;
-    border-top: 1px solid var(--border-color);
-    font-size: 0.92rem;
+    padding: 0.85rem 0.9rem;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.95rem;
+  }
+
+  .invoice-table tr:last-child td {
+    border-bottom: none;
   }
 
   .invoice-table th:nth-child(3),
@@ -936,14 +919,12 @@
   }
 
   .totals-box {
-    margin-left: auto;
-    min-width: min(100%, 340px);
-    border: 1px solid color-mix(in srgb, var(--border-color) 80%, #ffffff12);
-    border-radius: 12px;
-    background: var(--bg-surface);
-    padding: 0.72rem 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 8px);
+    background: var(--bg-secondary);
+    padding: 1rem;
     display: grid;
-    gap: 0.5rem;
+    gap: 0.65rem;
   }
 
   .totals-box > div {
@@ -951,7 +932,7 @@
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
-    font-size: 0.92rem;
+    font-size: 0.95rem;
   }
 
   .totals-box > div > span {
@@ -960,18 +941,18 @@
 
   .grand-total {
     border-top: 1px dashed var(--border-color);
-    padding-top: 0.5rem;
+    padding-top: 0.65rem;
     font-size: 1rem;
   }
 
   .grand-total strong {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
   }
 
   .status-pill {
-    padding: 0.28rem 0.7rem;
+    padding: 0.35rem 0.85rem;
     border-radius: 999px;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
   }
@@ -994,44 +975,49 @@
 
   .method-tabs {
     display: inline-flex;
-    gap: 0.45rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
   }
 
   .method-tab {
-    border: 1px solid color-mix(in srgb, var(--border-color) 86%, #ffffff12);
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-primary);
     border-radius: 999px;
-    padding: 0.45rem 0.8rem;
+    padding: 0.55rem 1rem;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    font-size: 0.86rem;
+    font-size: 0.9rem;
     font-weight: 600;
   }
 
   .method-tab.active {
-    color: var(--accent-primary);
-    border-color: color-mix(in srgb, var(--accent-primary) 55%, var(--border-color));
-    background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
+    background: var(--accent-primary);
+    color: #fff;
+    border-color: var(--accent-primary);
   }
 
   .payment-block {
     display: grid;
-    gap: 0.85rem;
-    border: 1px solid color-mix(in srgb, var(--border-color) 80%, #ffffff0f);
-    border-radius: 14px;
-    background: var(--bg-surface);
-    padding: 0.95rem;
+    gap: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 8px);
+    background: var(--bg-secondary);
+    padding: 1.1rem;
   }
 
   .helper {
     margin: 0;
     color: var(--text-secondary);
-    font-size: 0.9rem;
-    line-height: 1.45;
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  .actions {
+    display: grid;
+    gap: 0.65rem;
   }
 
   .duitku-methods {
@@ -1044,23 +1030,20 @@
     display: flex;
     align-items: flex-start;
     gap: 0.55rem;
-    border: 1px solid color-mix(in srgb, var(--border-color) 84%, #ffffff10);
-    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 8px);
     background: var(--bg-surface);
     padding: 0.75rem;
     cursor: pointer;
     color: var(--text-primary);
     min-width: 0;
-    transition:
-      border-color 0.18s ease,
-      background 0.18s ease,
-      box-shadow 0.18s ease;
+    transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
   }
 
   .duitku-method.selected {
-    border-color: color-mix(in srgb, var(--accent-primary) 58%, var(--border-color));
-    background: color-mix(in srgb, var(--accent-primary) 9%, var(--bg-surface));
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 12%, transparent);
+    border-color: var(--accent-primary);
+    background: var(--bg-surface);
+    box-shadow: 0 0 0 2px var(--accent-primary);
   }
 
   .duitku-method input {
@@ -1091,7 +1074,7 @@
   .duitku-method-title small,
   .selected-method > small {
     flex: 0 0 auto;
-    border: 1px solid color-mix(in srgb, var(--border-color) 86%, #ffffff10);
+    border: 1px solid var(--border-color);
     border-radius: 999px;
     color: var(--text-secondary);
     font-size: 0.72rem;
@@ -1109,8 +1092,8 @@
   }
 
   .selected-method {
-    border: 1px solid color-mix(in srgb, var(--border-color) 84%, #ffffff10);
-    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 8px);
     background: var(--bg-surface);
     padding: 0.75rem;
     display: flex;
@@ -1148,10 +1131,10 @@
   }
 
   .bank-item {
-    border: 1px solid color-mix(in srgb, var(--border-color) 84%, #ffffff10);
-    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 8px);
     background: var(--bg-surface);
-    padding: 0.7rem 0.75rem;
+    padding: 0.75rem;
     display: flex;
     justify-content: space-between;
     gap: 0.8rem;
@@ -1165,13 +1148,11 @@
 
   .holder {
     color: var(--text-secondary);
-    font-size: 0.83rem;
+    font-size: 0.84rem;
   }
 
   .number {
-    font-family:
-      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-      monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
     font-weight: 700;
     font-size: 0.92rem;
     color: var(--text-primary);
@@ -1179,7 +1160,7 @@
 
   .upload-card {
     border-top: 1px dashed var(--border-color);
-    padding-top: 0.8rem;
+    padding-top: 0.9rem;
     display: grid;
     gap: 0.65rem;
   }
@@ -1187,19 +1168,20 @@
   .upload-card p {
     margin: 0;
     color: var(--text-secondary);
-    font-size: 0.88rem;
+    font-size: 0.9rem;
   }
 
   .btn {
     border: 1px solid transparent;
-    border-radius: 10px;
-    padding: 0.66rem 0.95rem;
+    border-radius: var(--radius-md, 8px);
+    padding: 0.85rem 1rem;
     font-weight: 700;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.45rem;
+    font-size: 0.95rem;
   }
 
   .btn:disabled {
@@ -1208,12 +1190,12 @@
   }
 
   .btn-primary {
-    background: var(--bg-surface);
+    background: var(--accent-primary);
     color: #fff;
   }
 
   .btn-secondary {
-    background: var(--bg-tertiary);
+    background: var(--bg-surface);
     color: var(--text-primary);
     border-color: var(--border-color);
   }
@@ -1229,14 +1211,14 @@
   }
 
   .state-card {
-    border: 1px solid color-mix(in srgb, var(--border-color) 82%, #ffffff10);
-    border-radius: 14px;
-    background: var(--bg-surface);
-    padding: 1.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 8px);
+    background: var(--bg-secondary);
+    padding: 1.5rem;
     display: grid;
     justify-items: center;
     text-align: center;
-    gap: 0.55rem;
+    gap: 0.65rem;
   }
 
   .state-card h3 {
@@ -1276,10 +1258,10 @@
 
   .failed-reason {
     width: min(100%, 46ch);
-    border: 1px solid color-mix(in srgb, var(--color-danger) 28%, var(--border-color));
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--color-danger) 8%, transparent);
-    padding: 0.7rem 0.75rem;
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-md, 8px);
+    background: var(--bg-surface);
+    padding: 0.75rem;
     margin-top: 0.2rem;
   }
 
@@ -1299,13 +1281,17 @@
 
   @media (max-width: 760px) {
     .invoice-head {
-      grid-template-columns: 1fr;
-      justify-items: flex-start;
-      gap: 0.45rem;
+      padding: 1rem;
     }
 
-    .head-right {
-      justify-items: flex-start;
+    .header-top {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .invoice-body {
+      padding: 1rem;
+      gap: 1.25rem;
     }
 
     .party-grid {
@@ -1313,7 +1299,7 @@
     }
 
     .meta-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr 1fr;
     }
   }
 </style>

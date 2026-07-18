@@ -267,12 +267,18 @@
       return;
     }
 
+    const isLocalDevHost =
+      currentHost === 'localhost' ||
+      currentHost === '127.0.0.1' ||
+      currentHost.endsWith('.localhost');
+
     if (
       userCustomDomain &&
       currentHost !== userCustomDomain &&
       !$isSuperAdmin &&
       !onPlatformDomain &&
-      !isTauriHost(currentHost)
+      !isTauriHost(currentHost) &&
+      !isLocalDevHost
     ) {
       debugLog('domain-mismatch-logout', {
         host: currentHost,

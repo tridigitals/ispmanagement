@@ -53,6 +53,35 @@
   let hasMore = $derived(tickets.length < total);
   let ready = $state(false);
 
+  // svelte-i18n returns the key itself when missing — falsy-or fallback never fires
+  function tt(key: string, fallback: string) {
+    const v = get(t)(key);
+    return !v || v === key ? fallback : v;
+  }
+
+  function normStatus(status: string) {
+    const s = String(status || '').toLowerCase();
+    if (s === 'resolved' || s === 'done' || s === 'completed') return 'closed';
+    if (s === 'in_progress' || s === 'waiting') return 'pending';
+    return s;
+  }
+
+  function statusLabel(status: string) {
+    const s = normStatus(status);
+    if (s === 'open') return tt('support.status.open', 'Open');
+    if (s === 'pending') return tt('support.status.pending', 'Pending');
+    if (s === 'closed') return tt('support.status.closed', 'Resolved');
+    return status || '—';
+  }
+
+  function priorityLabel(p: string) {
+    return tt(`support.priorities.${p}`, p || '—');
+  }
+
+  function categoryLabel(c: string) {
+    return tt(`support.categories.${c}`, c || '—');
+  }
+
   const priorityOptions = [
     { label: get(t)('support.priorities.low') || 'Low', value: 'low' },
     { label: get(t)('support.priorities.normal') || 'Normal', value: 'normal' },
@@ -223,158 +252,137 @@
   }
 </script>
 
-<div class="page-content fade-in">
-  <header class="hero-card support-hero">
-    <div class="hero-left">
-      <div class="hero-badge">
-        <Icon name="life-buoy" size={20} />
-      </div>
-      <div>
-        <h1 class="hero-title">{$t('support.title')}</h1>
-        <p class="hero-sub">{$t('support.subtitle')}</p>
-      </div>
+<div class="page fade-in">
+  <div class="page-head">
+    <div class="page-head-text">
+      <h1>{$t('support.title') || 'Support'}</h1>
+      <p class="page-sub">
+        {#if loading}
+          {$t('support.loading') || 'Memuat...'}
+        {:else}
+          {stats.all} tiket
+          {#if stats.open > 0} · {stats.open} open{/if}
+          {#if stats.pending > 0} · {stats.pending} pending{/if}
+        {/if}
+      </p>
     </div>
-
-    <div class="hero-right">
+    <div class="head-actions">
       <div class="search">
         <Icon name="search" size={16} />
         <input
           class="search-input"
           bind:value={searchQuery}
-          placeholder={$t('support.search_placeholder')}
+          placeholder={$t('support.search_placeholder') || 'Cari tiket...'}
         />
         {#if searchQuery}
-          <button class="clear" type="button" onclick={() => (searchQuery = '')}>
+          <button class="clear" type="button" onclick={() => (searchQuery = '')} aria-label="Clear">
             <Icon name="x" size={14} />
           </button>
         {/if}
       </div>
+      <Select
+        bind:value={statusFilter}
+        options={[
+          { label: $t('support.filters.all') || 'All', value: 'all' },
+          { label: $t('support.filters.open') || 'Open', value: 'open' },
+          { label: $t('support.filters.pending') || 'Pending', value: 'pending' },
+          { label: $t('support.filters.closed') || 'Closed', value: 'closed' },
+        ]}
+        placeholder={$t('support.filters.status') || 'Status'}
+        width="130px"
+        onchange={() => void loadTickets(true)}
+      />
+      <Select
+        bind:value={categoryFilter}
+        options={categoryOptions}
+        placeholder={$t('support.filters.category') || 'Category'}
+        width="140px"
+        onchange={() => void loadTickets(true)}
+      />
+      {#if $can('create', 'support')}
+        <button class="btn btn-primary" onclick={() => (showCreate = true)} type="button">
+          <Icon name="plus" size={16} />
+          <span>{$t('support.actions.new') || 'Buat tiket'}</span>
+        </button>
+      {/if}
+    </div>
+  </div>
 
-      <div class="actions">
-        <div class="filter-dropdowns">
-          <Select
-            bind:value={statusFilter}
-            options={[
-              { label: $t('support.filters.all') || 'All', value: 'all' },
-              { label: $t('support.filters.open') || 'Open', value: 'open' },
-              { label: $t('support.filters.pending') || 'Pending', value: 'pending' },
-              { label: $t('support.filters.closed') || 'Closed', value: 'closed' },
-            ]}
-            placeholder={$t('support.filters.status') || 'Status'}
-            width="140px"
-            onchange={() => void loadTickets(true)}
-          />
-          <Select
-            bind:value={categoryFilter}
-            options={categoryOptions}
-            placeholder={$t('support.filters.category') || 'Category'}
-            width="150px"
-            onchange={() => void loadTickets(true)}
-          />
+  {#if !loading}
+    <div class="kpis">
+      <button class="kpi" class:active={statusFilter === 'all'} type="button" onclick={() => setStatusFilter('all')}>
+        <div class="kpi-label">{$t('support.stats.total') || 'Total'}</div>
+        <div class="kpi-val">{stats.all}</div>
+        <div class="kpi-sub">semua</div>
+      </button>
+      <button class="kpi" class:active={statusFilter === 'open'} type="button" onclick={() => setStatusFilter('open')}>
+        <div class="kpi-label">{$t('support.filters.open') || 'Open'}</div>
+        <div class="kpi-val {stats.open > 0 ? 'ok' : ''}">{stats.open}</div>
+        <div class="kpi-sub">butuh respon</div>
+      </button>
+      <button class="kpi" class:active={statusFilter === 'pending'} type="button" onclick={() => setStatusFilter('pending')}>
+        <div class="kpi-label">{$t('support.filters.pending') || 'Pending'}</div>
+        <div class="kpi-val {stats.pending > 0 ? 'warn' : ''}">{stats.pending}</div>
+        <div class="kpi-sub">menunggu</div>
+      </button>
+      <button class="kpi" class:active={statusFilter === 'closed'} type="button" onclick={() => setStatusFilter('closed')}>
+        <div class="kpi-label">{$t('support.filters.closed') || 'Closed'}</div>
+        <div class="kpi-val">{stats.closed}</div>
+        <div class="kpi-sub">selesai</div>
+      </button>
+    </div>
+  {/if}
 
+  {#if loading}
+    <div class="panel">
+      <div class="state">
+        <div class="spinner"></div>
+        <p>{$t('support.loading') || 'Loading...'}</p>
+      </div>
+    </div>
+  {:else if tickets.length === 0}
+    <div class="panel">
+      <div class="state">
+        <Icon name="inbox" size={36} />
+        <h3>{$t('support.empty.title') || 'Belum ada tiket'}</h3>
+        <p>{$t('support.empty.subtitle') || 'Buat tiket jika butuh bantuan'}</p>
         {#if $can('create', 'support')}
-          <button class="btn-primary btn-glow" onclick={() => (showCreate = true)} type="button">
-            <Icon name="plus" size={16} />
-            {$t('support.actions.new')}
+          <button class="btn btn-primary" onclick={() => (showCreate = true)} type="button">
+            {$t('support.actions.new') || 'Buat tiket'}
           </button>
         {/if}
       </div>
     </div>
-  </header>
-
-  <div class="bento-grid stats-bento">
-    <button
-      class="bento-card stat-btn"
-      class:active={statusFilter === 'all'}
-      type="button"
-      onclick={() => setStatusFilter('all')}
-    >
-      <div class="bento-icon"><Icon name="list" size={18} /></div>
-      <div class="bento-value">{stats.all}</div>
-      <div class="bento-label">{$t('support.stats.total')}</div>
-    </button>
-    <button
-      class="bento-card stat-btn tone-open"
-      class:active={statusFilter === 'open'}
-      type="button"
-      onclick={() => setStatusFilter('open')}
-    >
-      <div class="bento-icon"><Icon name="info" size={18} /></div>
-      <div class="bento-value">{stats.open}</div>
-      <div class="bento-label">{$t('support.filters.open')}</div>
-    </button>
-    <button
-      class="bento-card stat-btn tone-pending"
-      class:active={statusFilter === 'pending'}
-      type="button"
-      onclick={() => setStatusFilter('pending')}
-    >
-      <div class="bento-icon"><Icon name="alert-triangle" size={18} /></div>
-      <div class="bento-value">{stats.pending}</div>
-      <div class="bento-label">{$t('support.filters.pending')}</div>
-    </button>
-    <button
-      class="bento-card stat-btn tone-closed"
-      class:active={statusFilter === 'closed'}
-      type="button"
-      onclick={() => setStatusFilter('closed')}
-    >
-      <div class="bento-icon"><Icon name="check-circle" size={18} /></div>
-      <div class="bento-value">{stats.closed}</div>
-      <div class="bento-label">{$t('support.filters.closed')}</div>
-    </button>
-  </div>
-
-  {#if loading}
-    <div class="loading">
-      <div class="spinner"></div>
-      <p>{$t('support.loading')}</p>
-    </div>
-  {:else if tickets.length === 0}
-    <div class="empty">
-      <Icon name="help-circle" size={28} />
-      <div class="empty-title">{$t('support.empty.title')}</div>
-      <div class="empty-sub">
-        {$t('support.empty.subtitle')}
-      </div>
-      {#if $can('create', 'support')}
-        <button class="btn-primary" onclick={() => (showCreate = true)} type="button">
-          {$t('support.actions.new')}
-        </button>
-      {/if}
-    </div>
   {:else}
     <div class="list">
       {#each tickets as item (item.id)}
-        <button class="card glass-card" type="button" onclick={() => openTicket(item.id)}>
+        <button class="card panel" type="button" onclick={() => openTicket(item.id)}>
           <div class="card-top">
             <div class="subject">{item.subject}</div>
             <div class="meta">
-              <span class="badge status {item.status}">
-                {$t(`support.status.${item.status}`) || item.status}
+              <span class="pill status-{normStatus(item.status)}">
+                {statusLabel(item.status)}
               </span>
-              <span class="badge priority {item.priority}">
-                {$t(`support.priorities.${item.priority}`) || item.priority}
+              <span class="pill priority-{item.priority}">
+                {priorityLabel(item.priority)}
               </span>
               {#if item.category}
-                <span class="badge category {item.category}">
-                  {$t(`support.categories.${item.category}`) || item.category}
+                <span class="pill">
+                  {categoryLabel(item.category)}
                 </span>
               {/if}
             </div>
           </div>
           <div class="card-bottom">
-            <div class="info">
-              <span>
-                {formatDateTime(item.last_message_at || item.updated_at, {
-                  timeZone: $appSettings.app_timezone,
-                })}
-              </span>
-            </div>
-            <div class="count">
+            <span class="info">
+              {formatDateTime(item.last_message_at || item.updated_at, {
+                timeZone: $appSettings.app_timezone,
+              })}
+            </span>
+            <span class="count">
               <Icon name="message-circle" size={14} />
               {item.message_count}
-            </div>
+            </span>
           </div>
         </button>
       {/each}
@@ -382,15 +390,10 @@
 
     {#if hasMore}
       <div class="footer">
-        <button class="btn-more" type="button" onclick={loadMore} disabled={loadingMore}>
-          {#if loadingMore}
-            <div class="spinner-sm"></div>
-          {/if}
-          {$t('common.load_more')}
+        <button class="btn btn-secondary" type="button" onclick={loadMore} disabled={loadingMore}>
+          {loadingMore ? ($t('common.loading') || '...') : ($t('common.load_more') || 'Load more')}
         </button>
-        <div class="foot-note">
-          {tickets.length}/{total}
-        </div>
+        <div class="foot-note">{tickets.length}/{total}</div>
       </div>
     {/if}
   {/if}
@@ -502,643 +505,420 @@
 </Modal>
 
 <style>
-  .page-content {
-    padding: 1.5rem;
-    max-width: 1100px;
-    margin: 0 auto;
-  }
-
-  .support-hero {
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-  }
-
-  .hero-left {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-    min-width: 260px;
-  }
-
-  .hero-right {
-    display: grid;
-    gap: 0.6rem;
-    justify-items: end;
-  }
-
-
-  .stats-bento {
-    margin: 0.9rem 0 1.25rem 0;
-  }
-
-  .stat-btn {
-    text-align: left;
-    cursor: pointer;
-    transition: border-color 0.15s;
-  }
-
-  .stat-btn.active {
-    border-color: var(--color-primary) !important;
-    box-shadow: 0 0 0 3px var(--color-primary-subtle);
-  }
-
-  .stat-btn.tone-open {
-    border-color: rgba(59, 130, 246, 0.22);
-  }
-
-  .stat-btn.tone-pending {
-    border-color: rgba(245, 158, 11, 0.22);
-  }
-
-  .stat-btn.tone-closed {
-    border-color: rgba(34, 197, 94, 0.22);
-  }
-
-  .search {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 12px;
-    padding: 0.55rem 0.65rem;
-    min-width: min(520px, 86vw);
-  }
-
-  .search-input {
-    width: 100%;
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--text-primary);
-    font-weight: 700;
-  }
-
-  .clear {
-    width: 28px;
-    height: 28px;
-    border-radius: 10px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--text-secondary);
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-  }
-
-  .clear:hover {
-    border-color: var(--border-color);
-    background: rgba(255, 255, 255, 0.04);
-  }
-
-  .actions {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-
-  .filter-dropdowns {
-    display: inline-flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: var(--color-primary);
-    color: white;
-    border: none;
-    padding: 0.6rem 0.9rem;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 700;
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-
-  .btn {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    padding: 0.6rem 0.9rem;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 700;
-  }
-
-
-
-
-  .loading {
-    display: grid;
-    place-items: center;
-    padding: 3rem 1rem;
-    gap: 0.75rem;
-    color: var(--text-secondary);
-  }
-
-  .spinner {
-    width: 28px;
-    height: 28px;
-    border: 3px solid var(--border-color);
-    border-top-color: var(--color-primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  .spinner-sm {
-    width: 16px;
-    height: 16px;
-    border: 2px solid var(--border-color);
-    border-top-color: var(--color-primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  .footer {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.9rem;
-    padding: 1.1rem 0.25rem 0.25rem;
-    color: var(--text-secondary);
-  }
-
-  .btn-more {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--text-primary);
-    padding: 0.65rem 0.85rem;
-    font-weight: 900;
-    cursor: pointer;
-  }
-
-  .btn-more:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .foot-note {
-    font-weight: 800;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  .empty {
-    border: 1px dashed var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 2.5rem 1.5rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 0.6rem;
-    color: var(--text-secondary);
-  }
-
-  .empty-title {
-    color: var(--text-primary);
-    font-weight: 800;
-    font-size: 1.1rem;
-    margin-top: 0.25rem;
-  }
-
-  .empty-sub {
-    max-width: 520px;
-    font-size: 0.95rem;
-  }
-
-  .list {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .card {
-    width: 100%;
-    text-align: left;
-    cursor: pointer;
-    transition:
-      transform 0.12s ease,
-      border-color 0.12s ease;
-  }
-
-  .card:hover {
-    border-color: rgba(99, 102, 241, 0.35);
-    transform: translateY(-1px);
-  }
-
-  .card-top {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: flex-start;
-  }
-
-  .subject {
-    color: var(--text-primary);
-    font-weight: 800;
-    font-size: 1rem;
-    line-height: 1.2;
-    flex: 1;
-  }
-
-  .meta {
-    display: flex;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-
-  .badge {
-    border: 1px solid var(--border-color);
-    border-radius: 999px;
-    padding: 0.2rem 0.55rem;
-    font-size: 0.75rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--text-secondary);
-    background: rgba(255, 255, 255, 0.03);
-  }
-
-  .badge.status.open {
-    border-color: rgba(59, 130, 246, 0.35);
-    color: rgba(59, 130, 246, 0.95);
-    background: rgba(59, 130, 246, 0.08);
-  }
-  .badge.status.pending {
-    border-color: rgba(245, 158, 11, 0.35);
-    color: rgba(245, 158, 11, 0.95);
-    background: rgba(245, 158, 11, 0.08);
-  }
-  .badge.status.closed {
-    border-color: rgba(34, 197, 94, 0.35);
-    color: rgba(34, 197, 94, 0.95);
-    background: rgba(34, 197, 94, 0.08);
-  }
-
-  .badge.priority.urgent {
-    border-color: rgba(239, 68, 68, 0.35);
-    color: rgba(239, 68, 68, 0.95);
-    background: rgba(239, 68, 68, 0.08);
-  }
-  .badge.priority.high {
-    border-color: rgba(245, 158, 11, 0.35);
-    color: rgba(245, 158, 11, 0.95);
-    background: rgba(245, 158, 11, 0.08);
-  }
-  .badge.priority.normal {
-    border-color: rgba(156, 163, 175, 0.35);
-    color: var(--text-secondary);
-    background: rgba(156, 163, 175, 0.06);
-  }
-  .badge.priority.low {
-    border-color: rgba(34, 197, 94, 0.25);
-    color: rgba(34, 197, 94, 0.9);
-    background: rgba(34, 197, 94, 0.06);
-  }
-
-  .badge.category.general {
-    border-color: rgba(156, 163, 175, 0.3);
-    color: var(--text-secondary);
-    background: rgba(156, 163, 175, 0.06);
-  }
-  .badge.category.billing {
-    border-color: rgba(139, 92, 246, 0.3);
-    color: rgba(139, 92, 246, 0.9);
-    background: rgba(139, 92, 246, 0.06);
-  }
-  .badge.category.technical {
-    border-color: rgba(59, 130, 246, 0.3);
-    color: rgba(59, 130, 246, 0.9);
-    background: rgba(59, 130, 246, 0.06);
-  }
-  .badge.category.installation {
-    border-color: rgba(16, 185, 129, 0.3);
-    color: rgba(16, 185, 129, 0.9);
-    background: rgba(16, 185, 129, 0.06);
-  }
-
-  .card-bottom {
-    margin-top: 0.6rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-    gap: 1rem;
-  }
-
-  .info {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-width: 0;
-  }
-
-  .dot {
-    width: 4px;
-    height: 4px;
-    border-radius: 999px;
-    background: var(--border-color);
-  }
-
-  .count {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.03);
-    padding: 0.25rem 0.5rem;
-    border-radius: 999px;
-    font-weight: 800;
-  }
-
-  .mono {
-    font-family:
-      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-      monospace;
-    font-size: 0.85rem;
-  }
-
-  .modal-body {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .textarea-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-
-  .label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin-left: 0.2rem;
-  }
-
-  .textarea {
-    width: 100%;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    border-radius: var(--radius-md);
-    padding: 0.75rem 1rem;
-    font-size: 0.95rem;
-    resize: vertical;
-    min-height: 120px;
-  }
-
-  .textarea:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px var(--color-primary-subtle);
-  }
-
-  .file-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-
-  .file-input-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .btn-file {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    background: var(--bg-surface);
-    border: 1px dashed var(--border-color);
-    color: var(--text-secondary);
-    padding: 0.5rem 0.75rem;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: 500;
-    transition: border-color 0.15s ease, color 0.15s ease;
-  }
-
-  .btn-file:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-  }
-
-  .file-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-  }
-
-  .file-count {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    font-weight: 600;
-  }
-
-  .file-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    margin-top: 0.2rem;
-  }
-
-  .file-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.3rem 0.5rem 0.3rem 0.6rem;
-    border: 1px solid var(--border-color);
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-  }
-
-  .file-chip .file-name {
-    max-width: 160px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .file-remove {
-    display: grid;
-    place-items: center;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: none;
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text-secondary);
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: background 0.15s ease, color 0.15s ease;
-  }
-
-  .file-remove:hover {
-    background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
-  }
-
-  /* Quick action chips */
-  .quick-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    padding-bottom: 0.4rem;
-    margin-bottom: 0.6rem;
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  .quick-label {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-  }
-
-  .quick-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.35rem 0.65rem;
-    border-radius: 20px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition:
-      border-color 0.15s ease,
-      background 0.15s ease,
-      color 0.15s ease;
-  }
-
-  .quick-chip:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-  }
-
-  .quick-chip.active {
-    border-color: var(--color-primary);
-    background: rgba(99, 102, 241, 0.1);
-    color: var(--color-primary);
-  }
-
-  .modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.6rem;
-    margin-top: 0.25rem;
-  }
-
-  @media (max-width: 900px) {
-    .page-content {
-      padding: 1rem;
-    }
-
-    .hero {
-      padding: 0.9rem;
-    }
-
-    .hero-left {
-      min-width: 0;
-      align-items: flex-start;
-    }
-
-    .hero-right {
-      justify-items: stretch;
-      width: 100%;
-    }
-
-    .actions {
-      width: 100%;
+  .page {
+      padding: clamp(1rem, 2.2vw, 1.75rem);
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
       flex-direction: column;
-      align-items: stretch;
-      gap: 0.65rem;
+      gap: 1rem;
     }
-
-    .actions {
-      justify-content: flex-start;
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .page-head h1 {
+      font-size: clamp(1.25rem, 2.2vw, 1.45rem);
+      font-weight: 750;
+      letter-spacing: -0.02em;
+      margin: 0;
+      color: var(--text-primary);
+    }
+    .page-sub {
+      color: var(--text-secondary);
+      font-size: 0.88rem;
+      margin: 0.25rem 0 0;
+    }
+    .head-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      align-items: center;
     }
 
     .search {
-      min-width: 100%;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 10px;
+      padding: 0.5rem 0.65rem;
+      min-width: min(240px, 100%);
+      color: var(--text-secondary);
     }
-
-    .stats {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .filter {
+    .search-input {
       width: 100%;
-      justify-content: stretch;
-      flex-wrap: wrap;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+    }
+    .clear {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+    }
+    .clear:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-primary);
     }
 
-    .filter button {
-      flex: 1 1 calc(50% - 0.35rem);
-      text-align: center;
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.7rem;
+    }
+    .kpi {
+      text-align: left;
+      background: rgba(255, 255, 255, 0.015);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      cursor: pointer;
+      color: inherit;
+    }
+    .kpi.active {
+      border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+    }
+    .kpi-label {
+      font-size: 0.7rem;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      margin-bottom: 0.35rem;
+    }
+    .kpi-val {
+      font-size: 1.25rem;
+      font-weight: 750;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+    .kpi-val.ok { color: var(--color-success); }
+    .kpi-val.warn { color: var(--color-warning); }
+    .kpi-sub {
+      font-size: 0.74rem;
+      color: var(--text-secondary);
+      margin-top: 0.2rem;
     }
 
-    .actions .btn-primary {
-      width: 100%;
-      justify-content: center;
+    .panel {
+      background: rgba(255, 255, 255, 0.015);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-lg, 12px);
     }
-  }
-
-  @media (max-width: 600px) {
-    .stats {
-      grid-template-columns: 1fr;
-    }
-
-    .card-top,
-    .card-bottom {
+    .state {
+      display: flex;
       flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      min-height: 220px;
+      gap: 0.5rem;
+      padding: 2rem 1.25rem;
+      color: var(--text-secondary);
+    }
+    .state h3 {
+      margin: 0.5rem 0 0;
+      color: var(--text-primary);
+      font-size: 1.05rem;
+    }
+    .state p {
+      margin: 0 0 0.75rem;
+      font-size: 0.88rem;
+      max-width: 320px;
+    }
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid rgba(255, 255, 255, 0.08);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .list {
+      display: grid;
+      gap: 0.65rem;
+    }
+    .card {
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+      padding: 0.95rem 1rem;
+      transition: border-color 0.12s ease;
+      color: inherit;
+    }
+    .card:hover {
+      border-color: rgba(99, 102, 241, 0.35);
+    }
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
       align-items: flex-start;
+    }
+    .subject {
+      color: var(--text-primary);
+      font-weight: 650;
+      font-size: 0.98rem;
+      line-height: 1.3;
+      flex: 1;
+    }
+    .meta {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-secondary);
+    }
+    .pill.status-open {
+      background: color-mix(in srgb, #3b82f6 16%, transparent);
+      color: #60a5fa;
+      border-color: transparent;
+    }
+    .pill.status-pending {
+      background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+      color: var(--color-warning);
+      border-color: transparent;
+    }
+    .pill.status-closed {
+      background: color-mix(in srgb, var(--color-success) 16%, transparent);
+      color: var(--color-success);
+      border-color: transparent;
+    }
+    .pill.priority-urgent {
+      background: color-mix(in srgb, #ef4444 16%, transparent);
+      color: #f87171;
+      border-color: transparent;
+    }
+    .pill.priority-high {
+      background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+      color: var(--color-warning);
+      border-color: transparent;
+    }
+    .card-bottom {
+      margin-top: 0.55rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      gap: 1rem;
+    }
+    .count {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0.2rem 0.45rem;
+      border-radius: 999px;
+      font-weight: 650;
+    }
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      padding-top: 0.25rem;
+      color: var(--text-secondary);
+    }
+    .foot-note { font-size: 0.85rem; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.55rem 0.95rem;
+      border-radius: 8px;
+      font-weight: 650;
+      font-size: 0.88rem;
+      cursor: pointer;
+      border: none;
+      min-height: 40px;
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .btn-primary {
+      background: var(--color-primary);
+      color: #fff;
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .modal-body { display: grid; gap: 1rem; }
+    .textarea-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .textarea {
+      width: 100%;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      border-radius: var(--radius-md, 8px);
+      padding: 0.75rem 1rem;
+      font-size: 0.95rem;
+      resize: vertical;
+      min-height: 120px;
+    }
+    .textarea:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px var(--color-primary-subtle);
+    }
+    .file-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .file-input-row { display: flex; align-items: center; gap: 0.75rem; }
+    .btn-file {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: transparent;
+      border: 1px dashed rgba(255, 255, 255, 0.12);
+      color: var(--text-secondary);
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .btn-file:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+    .file-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+    }
+    .file-count { font-size: 0.8rem; color: var(--text-secondary); }
+    .file-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .file-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+    }
+    .file-chip .file-name {
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-remove {
+      display: grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .file-remove:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+    .quick-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      padding-bottom: 0.4rem;
+      margin-bottom: 0.2rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .quick-label {
+      font-size: 0.75rem;
+      font-weight: 650;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .quick-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .quick-chip:hover,
+    .quick-chip.active {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+    .quick-chip.active {
+      background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
       gap: 0.6rem;
     }
 
-    .meta,
-    .count {
-      justify-content: flex-start;
+    @media (max-width: 900px) {
+      .kpis { grid-template-columns: 1fr 1fr; }
+      .head-actions { width: 100%; }
+      .search { min-width: 100%; flex: 1; }
     }
-
-    .modal-actions {
-      flex-direction: column-reverse;
+    @media (max-width: 560px) {
+      .page { padding: 0.75rem; }
+      .card-top, .card-bottom {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+      .meta { justify-content: flex-start; }
+      .modal-actions { flex-direction: column-reverse; }
+      .modal-actions .btn,
+      .modal-actions .btn-primary { width: 100%; }
     }
-
-    .modal-actions .btn,
-    .modal-actions .btn-primary {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-</style>
+  </style>

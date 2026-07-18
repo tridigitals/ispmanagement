@@ -18,22 +18,30 @@
   let loading = $state(true);
   let error = $state('');
 
+  const OPEN_STATUSES = new Set(['pending', 'verification_pending', 'failed']);
+
   let summary = $derived.by(() => {
     const invs = invoices;
+    const open = invs.filter((i) => OPEN_STATUSES.has(String(i.status || '').toLowerCase()));
+    const overdue = open.filter((i) => {
+      const st = String(i.status || '').toLowerCase();
+      if (st === 'verification_pending') return false;
+      if (!i.due_date) return false;
+      return new Date(i.due_date).getTime() < Date.now();
+    });
+    const payable = open.filter((i) => String(i.status || '').toLowerCase() !== 'verification_pending');
     return {
       total: invs.length,
-      pending: invs.filter(i => i.status === 'pending').length,
-      paid: invs.filter(i => i.status === 'paid').length,
-      overdue: invs.filter(i => {
-        if (i.status !== 'pending') return false;
-        if (!i.due_date) return false;
-        return new Date(i.due_date) < new Date();
-      }).length,
-      pendingTotal: invs.filter(i => i.status === 'pending').reduce((sum, i) => sum + (Number(i.amount) || 0), 0),
+      open: open.length,
+      paid: invs.filter((i) => String(i.status || '').toLowerCase() === 'paid').length,
+      overdue: overdue.length,
+      pendingTotal: open.reduce((sum, i) => sum + (Number(i.amount) || 0), 0),
+      payableTotal: payable.reduce((sum, i) => sum + (Number(i.amount) || 0), 0),
+      firstPayable: payable[0] || overdue[0] || null,
+      firstOverdue: overdue[0] || null,
     };
   });
 
-  // ---- printable invoice state -------------------------------------------
   let showPrintModal = $state(false);
   let printInvoice = $state<Invoice | null>(null);
   let printCustomer = $state<Customer | null>(null);
@@ -80,6 +88,7 @@
 
   async function loadInvoices() {
     loading = true;
+    error = '';
     try {
       invoices = await api.payment.listInvoices();
     } catch (e: any) {
@@ -94,15 +103,55 @@
     return formatMoney(amount, { currency });
   }
 
+  function statusKey(status?: string | null) {
+    return String(status || '').toLowerCase();
+  }
+
+  function statusLabel(status?: string | null) {
+    const st = statusKey(status);
+    if (st === 'verification_pending') return 'Menunggu verifikasi';
+    if (st === 'pending') return 'Menunggu bayar';
+    if (st === 'paid') return 'Lunas';
+    if (st === 'failed') return 'Gagal';
+    if (st === 'cancelled' || st === 'canceled') return 'Dibatalkan';
+    return status || '—';
+  }
+
+  function statusClass(status?: string | null) {
+    const st = statusKey(status);
+    if (st === 'paid') return 'pill-paid';
+    if (st === 'verification_pending') return 'pill-verify';
+    if (st === 'failed') return 'pill-failed';
+    if (st === 'pending') {
+      // overdue pending gets warn look via due check in cell
+      return 'pill-pending';
+    }
+    return 'pill-neutral';
+  }
+
+  function isOverdue(item: Invoice) {
+    const st = statusKey(item.status);
+    if (st !== 'pending' && st !== 'failed') return false;
+    if (!item.due_date) return false;
+    return new Date(item.due_date).getTime() < Date.now();
+  }
+
+  function canPay(item: Invoice) {
+    const st = statusKey(item.status);
+    return st === 'pending' || st === 'failed';
+  }
+
+  function payFirst() {
+    const target = summary.firstOverdue || summary.firstPayable;
+    if (target) goto(`/pay/${target.id}`);
+  }
+
   async function openPrintModal(item: Invoice) {
     if (printPreparing) return;
     printPreparing = true;
     try {
       printInvoice = item;
 
-      // Customer-side: build a Customer record from the active session user.
-      // The portal API doesn't expose a `getMe` for the customer entity,
-      // so we use the auth store to seed the bill-to block.
       const u = get(user) as any;
       printCustomer = u
         ? {
@@ -118,7 +167,6 @@
           }
         : null;
 
-      // Bank accounts are tenant-scoped public-ish data; cache on first fetch.
       if (cachedBanks === null) {
         try {
           cachedBanks = await api.payment.listBanks();
@@ -141,109 +189,155 @@
   }
 </script>
 
-<div class="page-container fade-in">
-  <section class="hero-card invoice-hero">
-    <div class="welcome-body">
-      <h1>{$t('admin.invoices.title')}</h1>
-      <p class="welcome-sub">{$t('admin.invoices.subtitle')}</p>
+<div class="page fade-in">
+  {#if !loading && summary.overdue > 0 && summary.firstOverdue}
+    <div class="alert-overdue" role="alert">
+      <div class="alert-left">
+        <div class="alert-ico"><Icon name="alert-triangle" size={18} /></div>
+        <div class="alert-text">
+          <strong>{summary.overdue} tagihan jatuh tempo</strong>
+          <p>
+            {summary.firstOverdue.description || summary.firstOverdue.invoice_number}
+            · {formatCurrency(summary.firstOverdue.amount, summary.firstOverdue.currency_code)}
+          </p>
+        </div>
+      </div>
+      <button class="btn btn-danger" type="button" onclick={() => goto(`/pay/${summary.firstOverdue!.id}`)}>
+        Bayar sekarang
+      </button>
     </div>
-    <button class="btn btn-secondary btn-sm" onclick={loadInvoices}>
-      <Icon name="refresh-cw" size={14} />
-      <span>{$t('common.refresh')}</span>
-    </button>
-  </section>
+  {/if}
 
-  <!-- Summary Strip -->
+  <div class="page-head">
+    <div class="page-head-text">
+      <h1>{$t('admin.invoices.title') || 'Tagihan'}</h1>
+      <p class="page-sub">
+        {#if loading}
+          Memuat tagihan...
+        {:else}
+          {summary.total} invoice
+          {#if summary.open > 0}
+            · {summary.open} terbuka
+          {/if}
+          {#if summary.overdue > 0}
+            · {summary.overdue} overdue
+          {/if}
+        {/if}
+      </p>
+    </div>
+    <div class="head-actions">
+      <button class="btn btn-ghost" type="button" onclick={loadInvoices} disabled={loading}>
+        <Icon name="refresh-cw" size={14} />
+        <span>{$t('common.refresh') || 'Refresh'}</span>
+      </button>
+      {#if summary.firstPayable || summary.firstOverdue}
+        <button class="btn btn-primary" type="button" onclick={payFirst}>
+          {#if summary.payableTotal > 0}
+            Bayar · {formatCurrency(summary.payableTotal)}
+          {:else}
+            Lihat tagihan
+          {/if}
+        </button>
+      {/if}
+    </div>
+  </div>
+
   {#if !loading && !error}
-    <div class="bento-grid">
-      <div class="bento-card">
-        <div class="bento-icon" style="background:color-mix(in srgb, var(--color-primary) 18%, transparent);color:var(--color-primary)">
-          <Icon name="file-text" size={18} />
-        </div>
-        <span class="bento-value">{summary.total}</span>
-        <span class="bento-label">Total Invoice</span>
+    <div class="kpis">
+      <div class="kpi">
+        <div class="kpi-label">Total</div>
+        <div class="kpi-val">{summary.total}</div>
+        <div class="kpi-sub">semua invoice</div>
       </div>
-      <div class="bento-card">
-        <div class="bento-icon" style="background:color-mix(in srgb, var(--color-success) 18%, transparent);color:var(--color-success)">
-          <Icon name="check-circle" size={18} />
+      <div class="kpi">
+        <div class="kpi-label">Terbuka</div>
+        <div class="kpi-val {summary.open > 0 ? 'warn' : ''}">
+          {summary.open > 0 ? formatCurrency(summary.pendingTotal) : 'Rp 0'}
         </div>
-        <span class="bento-value" style="background:linear-gradient(135deg,#7dd3ae,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">{summary.paid}</span>
-        <span class="bento-label">Lunas</span>
+        <div class="kpi-sub">{summary.open} menunggu</div>
       </div>
-      <div class="bento-card">
-        <div class="bento-icon" style="background:color-mix(in srgb, var(--color-warning) 18%, transparent);color:var(--color-warning)">
-          <Icon name="clock" size={18} />
-        </div>
-        <span class="bento-value" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">{summary.pending}</span>
-        <span class="bento-label">Menunggu ({formatCurrency(summary.pendingTotal)})</span>
+      <div class="kpi">
+        <div class="kpi-label">Jatuh tempo</div>
+        <div class="kpi-val {summary.overdue > 0 ? 'bad' : 'ok'}">{summary.overdue}</div>
+        <div class="kpi-sub">perlu bayar</div>
       </div>
-      <div class="bento-card">
-        <div class="bento-icon" style="background:color-mix(in srgb, var(--color-danger) 18%, transparent);color:var(--color-danger)">
-          <Icon name="alert-triangle" size={18} />
-        </div>
-        <span class="bento-value" style="background:linear-gradient(135deg,#fca5a5,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">{summary.overdue}</span>
-        <span class="bento-label">Jatuh Tempo</span>
+      <div class="kpi">
+        <div class="kpi-label">Lunas</div>
+        <div class="kpi-val ok">{summary.paid}</div>
+        <div class="kpi-sub">sudah dibayar</div>
       </div>
     </div>
   {/if}
 
-  <div class="card content-card">
+  <div class="panel">
     {#if error}
-      <div class="alert alert-error">{error}</div>
+      <div class="panel-pad">
+        <div class="empty">
+          <Icon name="alert-triangle" size={36} />
+          <h3>Gagal memuat</h3>
+          <p>{error}</p>
+          <button class="btn btn-secondary" type="button" onclick={loadInvoices}>Coba lagi</button>
+        </div>
+      </div>
+    {:else}
+      <Table
+        {loading}
+        data={invoices}
+        {columns}
+        searchable={true}
+        searchPlaceholder={$t('admin.invoices.search_placeholder') || 'Cari invoice...'}
+      >
+        {#snippet cell({ item, column })}
+          {#if column.key === 'amount'}
+            <span class="amount">{formatCurrency(item.amount, item.currency_code)}</span>
+          {:else if column.key === 'status'}
+            <span class="pill {statusClass(item.status)} {isOverdue(item) ? 'pill-overdue' : ''}">
+              {isOverdue(item) ? 'Jatuh tempo' : statusLabel(item.status)}
+            </span>
+          {:else if column.key === 'due_date'}
+            <span class={isOverdue(item) ? 'due-bad' : ''}>
+              {formatDate(item[column.key], { timeZone: $appSettings.app_timezone })}
+            </span>
+          {:else if column.key === 'actions'}
+            <div class="actions">
+              {#if canPay(item)}
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm"
+                  onclick={() => goto(`/pay/${item.id}`)}
+                >
+                  <Icon name="credit-card" size={14} />
+                  {$t('admin.invoices.pay_now') || 'Bayar'}
+                </button>
+              {:else}
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-sm"
+                  onclick={() => goto(`/pay/${item.id}`)}
+                >
+                  <Icon name="eye" size={14} />
+                  Detail
+                </button>
+              {/if}
+              <button
+                type="button"
+                class="icon-btn"
+                title={$t('admin.invoices.print_pdf') || 'Print'}
+                aria-label={$t('admin.invoices.print_pdf') || 'Print'}
+                onclick={() => openPrintModal(item)}
+                disabled={printPreparing}
+              >
+                <Icon name="printer" size={16} />
+              </button>
+            </div>
+          {:else if column.key === 'invoice_number'}
+            <span class="mono">{item.invoice_number}</span>
+          {:else}
+            {item[column.key]}
+          {/if}
+        {/snippet}
+      </Table>
     {/if}
-
-    <Table
-      {loading}
-      data={invoices}
-      {columns}
-      searchable={true}
-      searchPlaceholder={$t('admin.invoices.search_placeholder')}
-    >
-      {#snippet cell({ item, column })}
-        {#if column.key === 'amount'}
-          {formatCurrency(item.amount, item.currency_code)}
-        {:else if column.key === 'status'}
-          <span class="status-pill {item.status}">{item.status}</span>
-        {:else if column.key === 'due_date'}
-          {formatDate(item[column.key], { timeZone: $appSettings.app_timezone })}
-        {:else if column.key === 'actions'}
-          <div class="actions">
-            {#if item.status === 'pending'}
-              <button
-                type="button"
-                class="btn btn-primary btn-sm"
-                onclick={() => goto(`/pay/${item.id}`)}
-              >
-                <Icon name="credit-card" size={14} />
-                {$t('admin.invoices.pay_now')}
-              </button>
-            {:else}
-              <button
-                type="button"
-                class="action-btn"
-                title={$t('admin.invoices.view_details')}
-                aria-label={$t('admin.invoices.view_details')}
-                onclick={() => goto(`/pay/${item.id}`)}
-              >
-                <Icon name="eye" size={18} />
-              </button>
-            {/if}
-            <button
-              type="button"
-              class="action-btn"
-              title={$t('admin.invoices.print_pdf')}
-              aria-label={$t('admin.invoices.print_pdf')}
-              onclick={() => openPrintModal(item)}
-              disabled={printPreparing}
-            >
-              <Icon name="printer" size={18} />
-            </button>
-          </div>
-        {:else}
-          {item[column.key]}
-        {/if}
-      {/snippet}
-    </Table>
   </div>
 </div>
 
@@ -257,121 +351,298 @@
 {/if}
 
 <style>
-  .page-container {
-    padding: clamp(1rem, 2.2vw, 2rem);
+  .page {
+    padding: clamp(1rem, 2.2vw, 1.75rem);
     max-width: 1200px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 1rem;
   }
 
-  .invoice-hero {
-    padding: 1.5rem 1.75rem;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .invoice-hero h1 {
-    font-size: clamp(1.4rem, 2.2vw, 1.85rem);
-    font-weight: 750; color: var(--text-primary);
-    margin: 0 0 .35rem;
-  }
-  .invoice-hero .welcome-sub {
-    color: var(--text-secondary); margin: 0; font-size: .92rem;
-  }
-  .content-card {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
+  .alert-overdue {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 0.9rem 1.1rem;
     border-radius: 12px;
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
+    border: 1px solid color-mix(in srgb, var(--color-danger) 35%, transparent);
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  }
+  .alert-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+  .alert-ico {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-danger) 20%, transparent);
+    color: var(--color-danger);
+    flex-shrink: 0;
+  }
+  .alert-text strong {
+    display: block;
+    font-size: 0.92rem;
+    color: var(--text-primary);
+  }
+  .alert-text p {
+    margin: 0.15rem 0 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
   }
 
-  .status-pill {
-    padding: 0.25rem 0.6rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 700;
+  .page-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .page-head h1 {
+    font-size: clamp(1.25rem, 2.2vw, 1.45rem);
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    margin: 0;
+    color: var(--text-primary);
+  }
+  .page-sub {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    margin: 0.25rem 0 0;
+  }
+  .head-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.7rem;
+  }
+  .kpi {
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+  }
+  .kpi-label {
+    font-size: 0.7rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 0.35rem;
   }
-  .status-pill.pending {
-    background: #fef3c7;
-    color: #d97706;
+  .kpi-val {
+    font-size: 1.15rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
   }
-  .status-pill.paid {
-    background: #dcfce7;
-    color: #16a34a;
+  .kpi-val.ok {
+    color: var(--color-success);
   }
-  .status-pill.failed {
-    background: #fee2e2;
-    color: #dc2626;
+  .kpi-val.warn {
+    color: var(--color-warning);
+  }
+  .kpi-val.bad {
+    color: var(--color-danger);
+  }
+  .kpi-sub {
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+    margin-top: 0.2rem;
+  }
+
+  .panel {
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-lg, 12px);
+    overflow: hidden;
+  }
+  .panel-pad {
+    padding: 1.5rem;
+  }
+
+  .empty {
+    text-align: center;
+    max-width: 360px;
+    margin: 0 auto;
+    color: var(--text-secondary);
+    padding: 2rem 1rem;
+  }
+  .empty h3 {
+    margin: 0.75rem 0 0.35rem;
+    color: var(--text-primary);
+    font-size: 1.05rem;
+  }
+  .empty p {
+    margin: 0 0 1rem;
+    font-size: 0.88rem;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .pill-pending {
+    background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+    color: var(--color-warning);
+  }
+  .pill-verify {
+    background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+    color: var(--color-primary);
+  }
+  .pill-paid {
+    background: color-mix(in srgb, var(--color-success) 16%, transparent);
+    color: var(--color-success);
+  }
+  .pill-failed,
+  .pill-overdue {
+    background: color-mix(in srgb, var(--color-danger) 16%, transparent);
+    color: var(--color-danger);
+  }
+  .pill-neutral {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+  }
+
+  .amount {
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+  }
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.85rem;
+  }
+  .due-bad {
+    color: var(--color-danger);
+    font-weight: 650;
   }
 
   .actions {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.4rem;
     justify-content: flex-end;
     align-items: center;
+    flex-wrap: wrap;
   }
-  .action-btn {
-    width: 32px;
-    height: 32px;
-    display: flex;
+  .icon-btn {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: 8px;
   }
-  .action-btn:hover {
-    background: var(--bg-hover);
+  .icon-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.04);
     color: var(--text-primary);
+  }
+  .icon-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.6rem 1rem;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.95rem;
     border-radius: 8px;
-    font-weight: 600;
+    font-weight: 650;
+    font-size: 0.88rem;
     cursor: pointer;
     border: none;
     text-decoration: none;
+    min-height: 40px;
   }
   .btn-sm {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.85rem;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.82rem;
+    min-height: 34px;
   }
   .btn-primary {
     background: var(--color-primary);
-    color: white;
+    color: #fff;
+  }
+  .btn-danger {
+    background: var(--color-danger);
+    color: #fff;
   }
   .btn-secondary {
-    background: var(--bg-tertiary);
+    background: rgba(255, 255, 255, 0.06);
     color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
 
-  @media (max-width: 768px) {
-    .page-header {
-      flex-direction: column;
+  @media (max-width: 900px) {
+    .kpis {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (max-width: 560px) {
+    .page-head {
       align-items: stretch;
     }
-
-    .btn.btn-secondary {
+    .head-actions {
       width: 100%;
-      justify-content: center;
     }
-
-    .header-content h1 {
-      font-size: 1.35rem;
+    .head-actions .btn {
+      flex: 1;
+      min-height: 44px;
     }
-
-    .content-card {
-      border-radius: var(--radius-lg);
+    .alert-overdue {
+      align-items: stretch;
     }
-
+    .alert-overdue .btn {
+      width: 100%;
+      min-height: 44px;
+    }
+    .kpis {
+      gap: 0.55rem;
+    }
+    .kpi {
+      padding: 0.75rem 0.85rem;
+    }
+    .kpi-val {
+      font-size: 1.05rem;
+    }
     .actions {
       justify-content: flex-start;
     }

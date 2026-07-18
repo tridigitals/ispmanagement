@@ -534,48 +534,44 @@
 </script>
 
 <div class="services-content fade-in">
-  <section class="hero-card service-hero">
-    <div class="welcome-body">
+  <div class="page-head">
+    <div class="page-head-text">
       <h1>{tt('dashboard.services_portal.page.title', 'Customer Services')}</h1>
-      <p class="welcome-sub">{tt('dashboard.services_portal.page.subtitle', 'List of all services you have ordered.')}</p>
-      <div class="head-actions">
-        <button class="btn btn-secondary btn-sm" type="button" onclick={() => void refreshAll()} disabled={loading}>
-          <Icon name="refresh-cw" size={14} /> {$t('common.refresh')}
-        </button>
-        <button class="btn btn-secondary btn-sm" type="button" onclick={() => goto('/dashboard/invoices')}>
-          <Icon name="file-text" size={14} /> {tt('dashboard.services_portal.actions.billing_invoices', 'Billing & Invoices')}
-        </button>
-        <button class="btn btn-primary btn-sm" type="button" onclick={() => goto('/dashboard/services/order')}>
-          <Icon name="plus" size={14} /> {tt('dashboard.services_portal.actions.order_new_service', 'Order New Service')}
-        </button>
-      </div>
+      <p class="page-sub">{tt('dashboard.services_portal.page.subtitle', 'List of all services you have ordered.')}</p>
     </div>
-  </section>
+    <div class="head-actions">
+      <button class="btn btn-ghost btn-sm" type="button" onclick={() => void refreshAll()} disabled={loading}>
+        <Icon name="refresh-cw" size={14} /> {$t('common.refresh')}
+      </button>
+      <button class="btn btn-ghost btn-sm" type="button" onclick={() => goto('/dashboard/invoices')}>
+        <Icon name="file-text" size={14} /> {tt('dashboard.services_portal.actions.billing_invoices', 'Billing & Invoices')}
+      </button>
+      <button class="btn btn-primary btn-sm" type="button" onclick={() => goto('/dashboard/services/order')}>
+        <Icon name="plus" size={14} /> {tt('dashboard.services_portal.actions.order_new_service', 'Order New Service')}
+      </button>
+    </div>
+  </div>
 
   {#if loadError}
     <section class="alert">{loadError}</section>
   {/if}
 
-  <section class="bento-grid stats-bento">
-    <button type="button" class="bento-card {statusFilter === 'all' ? 'active' : ''}" onclick={() => setStatusFilter('all')}>
-      <div class="bento-icon" style="background:color-mix(in srgb, var(--color-primary) 18%, transparent);color:var(--color-primary)"><Icon name="layers" size={18} /></div>
-      <span class="bento-value">{stats.total}</span>
-      <span class="bento-label">{tt('dashboard.services_portal.stats.total', 'Total Services')}</span>
+  <section class="kpis">
+    <button type="button" class="kpi filter {statusFilter === 'all' ? 'active' : ''}" onclick={() => setStatusFilter('all')}>
+      <div class="kpi-label">{tt('dashboard.services_portal.stats.total', 'Total Services')}</div>
+      <div class="kpi-val">{stats.total}</div>
     </button>
-    <button type="button" class="bento-card {statusFilter === 'active' ? 'active' : ''}" onclick={() => setStatusFilter('active')}>
-      <div class="bento-icon" style="background:color-mix(in srgb, var(--color-success) 18%, transparent);color:var(--color-success)"><Icon name="check-circle" size={18} /></div>
-      <span class="bento-value" style="background:linear-gradient(135deg,#7dd3ae,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">{stats.active}</span>
-      <span class="bento-label">{tt('dashboard.services_portal.stats.active', 'Active')}</span>
+    <button type="button" class="kpi filter {statusFilter === 'active' ? 'active' : ''}" onclick={() => setStatusFilter('active')}>
+      <div class="kpi-label">{tt('dashboard.services_portal.stats.active', 'Active')}</div>
+      <div class="kpi-val ok">{stats.active}</div>
     </button>
-    <button type="button" class="bento-card {statusFilter === 'pending_installation' ? 'active' : ''}" onclick={() => setStatusFilter('pending_installation')}>
-      <div class="bento-icon" style="background:color-mix(in srgb, var(--color-warning) 18%, transparent);color:var(--color-warning)"><Icon name="clock" size={18} /></div>
-      <span class="bento-value" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">{stats.pendingInstallation}</span>
-      <span class="bento-label">{tt('dashboard.services_portal.stats.pending_installation', 'Pending Installation')}</span>
+    <button type="button" class="kpi filter {statusFilter === 'pending_installation' ? 'active' : ''}" onclick={() => setStatusFilter('pending_installation')}>
+      <div class="kpi-label">{tt('dashboard.services_portal.stats.pending_installation', 'Pending Installation')}</div>
+      <div class="kpi-val warn">{stats.pendingInstallation}</div>
     </button>
-    <button type="button" class="bento-card {statusFilter === 'needs_attention' ? 'active' : ''}" onclick={() => setStatusFilter('needs_attention')}>
-      <div class="bento-icon" style="background:color-mix(in srgb, var(--color-danger) 18%, transparent);color:var(--color-danger)"><Icon name="alert-triangle" size={18} /></div>
-      <span class="bento-value" style="background:linear-gradient(135deg,#fca5a5,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">{stats.needsAttention}</span>
-      <span class="bento-label">{tt('dashboard.services_portal.stats.needs_attention', 'Need Attention')}</span>
+    <button type="button" class="kpi filter {statusFilter === 'needs_attention' ? 'active' : ''}" onclick={() => setStatusFilter('needs_attention')}>
+      <div class="kpi-label">{tt('dashboard.services_portal.stats.needs_attention', 'Need Attention')}</div>
+      <div class="kpi-val bad">{stats.needsAttention}</div>
     </button>
   </section>
 
@@ -857,24 +853,89 @@
     gap: 1.25rem;
   }
 
-  .service-hero {
-    padding: 1.5rem 1.75rem;
-    display: flex; align-items: center;
+  .page-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
   }
-  .service-hero h1 {
-    font-size: clamp(1.4rem, 2.2vw, 1.85rem);
-    font-weight: 750; color: var(--text-primary);
-    margin: 0 0 .35rem;
+  .page-head h1 {
+    font-size: clamp(1.25rem, 2.2vw, 1.45rem);
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    margin: 0;
+    color: var(--text-primary);
   }
-  .service-hero .welcome-sub { margin: 0 0 .75rem; }
-
+  .page-sub {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    margin: 0.25rem 0 0;
+  }
   .head-actions {
-    display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
-  .stats-bento .bento-card.active {
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.7rem;
+  }
+  .kpi {
+    appearance: none;
+    text-align: left;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    cursor: pointer;
+    color: inherit;
+  }
+  .kpi.filter.active {
     border-color: color-mix(in srgb, var(--color-primary) 50%, rgba(255,255,255,.07));
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 26%, transparent);
+  }
+  .kpi-label {
+    font-size: 0.7rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 0.35rem;
+  }
+  .kpi-val {
+    font-size: 1.25rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+  .kpi-val.ok { color: var(--color-success); }
+  .kpi-val.warn { color: var(--color-warning); }
+  .kpi-val.bad { color: var(--color-danger); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  @media (max-width: 900px) {
+    .kpis { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 560px) {
+    .page-head { align-items: stretch; }
+    .head-actions { width: 100%; }
+    .head-actions .btn { flex: 1; min-height: 44px; }
+    .kpis { gap: 0.55rem; }
+    .kpi { padding: 0.75rem 0.85rem; }
+    .kpi-val { font-size: 1.1rem; }
   }
 
   .alert {

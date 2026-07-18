@@ -84,7 +84,6 @@
 
   async function ensureLocationFormModalComponent() {
     if (LocationFormModalComponent) return;
-
     const modules = await loadLocationFormModal();
     LocationFormModalComponent = modules.LocationFormModalComponent;
   }
@@ -200,101 +199,122 @@
       deletingLocation = false;
     }
   }
-
 </script>
 
-<div class="page-container fade-in">
-  <div class="hero-card locations-hero">
-    <div class="hero-left">
-      <div class="hero-badge">
-        <Icon name="map-pin" size={20} />
-      </div>
-      <div>
-        <div class="kicker">
-          <span class="dot"></span>
-          {$t('dashboard.locations.kicker')}
-        </div>
-        <h1 class="hero-title">{$t('dashboard.locations.title')}</h1>
-        <p class="hero-sub">{$t('dashboard.locations.subtitle')}</p>
-      </div>
+<div class="page fade-in">
+  <div class="page-head">
+    <div class="page-head-text">
+      <h1>{$t('dashboard.locations.title') || 'Lokasi'}</h1>
+      <p class="page-sub">
+        {#if loading}
+          Memuat lokasi...
+        {:else}
+          {$t('dashboard.locations.subtitle') || 'Alamat instalasi layanan Anda'}
+        {/if}
+      </p>
     </div>
-    <div class="hero-actions">
-      <button class="btn btn-secondary btn-sm" type="button" onclick={load} disabled={loading}>
+    <div class="head-actions">
+      <button class="btn btn-ghost" type="button" onclick={load} disabled={loading}>
         <Icon name="refresh-cw" size={14} />
-        <span>{$t('common.refresh')}</span>
+        <span>{$t('common.refresh') || 'Refresh'}</span>
       </button>
-      <button class="btn btn-primary btn-sm" type="button" onclick={openCreateLocation} disabled={loading || !hasLinkedCustomer}>
+      <button
+        class="btn btn-primary"
+        type="button"
+        onclick={openCreateLocation}
+        disabled={loading || !hasLinkedCustomer}
+      >
         <Icon name="plus" size={14} />
-        <span>Tambah Lokasi</span>
+        <span>Tambah lokasi</span>
       </button>
     </div>
   </div>
 
-  <div class="bento-grid stats-bento">
-    <div class="bento-card">
-      <div class="bento-icon">
-        <Icon name="map-pin" size={18} />
+  {#if !loading}
+    <div class="kpis">
+      <div class="kpi">
+        <div class="kpi-label">{$t('dashboard.locations.summary.total') || 'Total'}</div>
+        <div class="kpi-val">{totalLocations}</div>
+        <div class="kpi-sub">lokasi tersimpan</div>
       </div>
-      <div class="bento-value">{totalLocations}</div>
-      <div class="bento-label">{$t('dashboard.locations.summary.total')}</div>
-    </div>
-    <div class="bento-card">
-      <div class="bento-icon">
-        <Icon name="navigation" size={18} />
+      <div class="kpi">
+        <div class="kpi-label">{$t('dashboard.locations.summary.pinned') || 'Pinned'}</div>
+        <div class="kpi-val {mappedLocations > 0 ? 'ok' : ''}">{mappedLocations}</div>
+        <div class="kpi-sub">punya pin map</div>
       </div>
-      <div class="bento-value">{mappedLocations}</div>
-      <div class="bento-label">{$t('dashboard.locations.summary.pinned')}</div>
-    </div>
-    <div class="bento-card">
-      <div class="bento-icon">
-        <Icon name="file-text" size={18} />
+      <div class="kpi">
+        <div class="kpi-label">{$t('dashboard.locations.summary.has_notes') || 'Catatan'}</div>
+        <div class="kpi-val">{notedLocations}</div>
+        <div class="kpi-sub">ada notes</div>
       </div>
-      <div class="bento-value">{notedLocations}</div>
-      <div class="bento-label">{$t('dashboard.locations.summary.has_notes')}</div>
     </div>
-  </div>
+  {/if}
 
   {#if !hasLinkedCustomer}
-    <div class="error-banner">
+    <div class="banner warn">
       <Icon name="alert-triangle" size={18} />
-      <span>{$t('dashboard.locations.no_customer_hint')}</span>
+      <span>{$t('dashboard.locations.no_customer_hint') || 'Akun belum terhubung ke customer'}</span>
     </div>
   {/if}
 
   {#if error}
-    <div class="error-banner">
+    <div class="banner bad">
       <Icon name="alert-triangle" size={18} />
       <span>{error}</span>
+      <button class="btn btn-ghost btn-sm" type="button" onclick={load}>Coba lagi</button>
     </div>
   {/if}
 
   {#if loading}
-    <div class="loading-card card">
-      <div class="spinner"></div>
-      <p>{$t('common.loading')}</p>
+    <div class="panel">
+      <div class="state">
+        <div class="spinner"></div>
+        <p>{$t('common.loading') || 'Loading...'}</p>
+      </div>
     </div>
   {:else if locations.length === 0}
-    <div class="empty glass-card">
-      <Icon name="map-pin" size={32} />
-      <div class="empty-text">
-        <div class="title">{$t('dashboard.locations.empty')}</div>
-        <div class="sub">{$t('dashboard.locations.empty_hint')}</div>
+    <div class="panel">
+      <div class="state">
+        <Icon name="map-pin" size={40} />
+        <h3>{$t('dashboard.locations.empty') || 'Belum ada lokasi'}</h3>
+        <p>{$t('dashboard.locations.empty_hint') || 'Tambah alamat instalasi untuk layanan baru'}</p>
+        <button
+          class="btn btn-primary"
+          type="button"
+          onclick={openCreateLocation}
+          disabled={!hasLinkedCustomer}
+        >
+          <Icon name="plus" size={14} />
+          Tambah lokasi
+        </button>
       </div>
     </div>
   {:else}
     <div class="grid">
       {#each locations as loc (loc.id)}
-        <div class="location glass-card">
-          <div class="top">
-            <div class="badge">
-              <Icon name="map-pin" size={16} />
-              <span>{$t('dashboard.locations.title')}</span>
-            </div>
+        <div class="card">
+          <div class="card-top">
+            <span class="pill">
+              <Icon name="map-pin" size={12} />
+              {loc.label || 'Lokasi'}
+            </span>
             <div class="row-actions">
-              <button class="btn-icon" title={$t('common.edit')} onclick={() => openEditLocation(loc)}>
+              <button
+                class="icon-btn"
+                type="button"
+                title={$t('common.edit') || 'Edit'}
+                aria-label={$t('common.edit') || 'Edit'}
+                onclick={() => openEditLocation(loc)}
+              >
                 <Icon name="edit" size={14} />
               </button>
-              <button class="btn-icon danger" title={$t('common.delete')} onclick={() => askDeleteLocation(loc.id)}>
+              <button
+                class="icon-btn danger"
+                type="button"
+                title={$t('common.delete') || 'Delete'}
+                aria-label={$t('common.delete') || 'Delete'}
+                onclick={() => askDeleteLocation(loc.id)}
+              >
                 <Icon name="trash-2" size={14} />
               </button>
             </div>
@@ -303,9 +323,13 @@
           <div class="addr">{formatAddress(loc) || 'Alamat belum diisi'}</div>
           <div class="coords">
             {#if loc.latitude != null && loc.longitude != null}
-              <span class="coord-chip">{Number(loc.latitude).toFixed(6)}, {Number(loc.longitude).toFixed(6)}</span>
+              <span class="chip mono"
+                >{Number(loc.latitude).toFixed(6)}, {Number(loc.longitude).toFixed(6)}</span
+              >
             {:else}
-              <span class="coord-chip missing">{$t('dashboard.locations.form.no_map_pin')}</span>
+              <span class="chip missing"
+                >{$t('dashboard.locations.form.no_map_pin') || 'Belum ada pin'}</span
+              >
             {/if}
           </div>
           {#if loc.notes}
@@ -348,214 +372,283 @@
 />
 
 <style>
-  .page-container {
-    padding: clamp(1rem, 2.2vw, 2rem);
+  .page {
+    padding: clamp(1rem, 2.2vw, 1.75rem);
     max-width: 1200px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  .locations-hero {
-    margin-bottom: 0;
-  }
-
-  .kicker {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 0.35rem;
-  }
-
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    background: var(--color-primary);
-    box-shadow: 0 0 0 6px var(--color-primary-subtle);
-  }
-
-  .stats-bento {
-    margin-bottom: 0;
-  }
-
-  .error-banner {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    padding: 0.75rem 0.9rem;
-    border-radius: 12px;
-    border: 1px solid color-mix(in srgb, var(--color-danger) 30%, var(--border-color));
-    background: color-mix(in srgb, var(--color-danger) 8%, transparent);
-    color: var(--text-primary);
-    margin-bottom: 0.75rem;
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1rem;
   }
 
-  .location {
-    padding: 1.15rem;
-    position: relative;
-  }
-
-  .top {
-    position: relative;
+  .page-head {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.9rem;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
   }
-
-  .row-actions {
-    display: flex;
-    gap: 0.45rem;
-  }
-
-  .btn-icon {
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
+  .page-head h1 {
+    font-size: clamp(1.25rem, 2.2vw, 1.45rem);
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    margin: 0;
     color: var(--text-primary);
+  }
+  .page-sub {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    margin: 0.25rem 0 0;
+  }
+  .head-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.7rem;
+  }
+  .kpi {
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 10px;
-    padding: 0.35rem 0.45rem;
-    cursor: pointer;
-    display: inline-flex;
+    padding: 0.9rem 1rem;
+  }
+  .kpi-label {
+    font-size: 0.7rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 0.35rem;
+  }
+  .kpi-val {
+    font-size: 1.25rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+  .kpi-val.ok {
+    color: var(--color-success);
+  }
+  .kpi-sub {
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+    margin-top: 0.2rem;
+  }
+
+  .banner {
+    display: flex;
+    gap: 0.55rem;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 0.75rem 0.9rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    font-size: 0.88rem;
+  }
+  .banner.warn {
+    border-color: color-mix(in srgb, var(--color-warning) 35%, transparent);
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  }
+  .banner.bad {
+    border-color: color-mix(in srgb, var(--color-danger) 35%, transparent);
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  }
+
+  .panel {
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-lg, 12px);
+    overflow: hidden;
+  }
+  .state {
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    transition: border-color 0.15s;
-  }
-
-  .btn-icon:hover {
-    border-color: rgba(255,255,255,0.2);
-  }
-
-  .btn-icon.danger {
-    border-color: color-mix(in srgb, var(--color-danger) 35%, var(--border-color));
-    color: var(--color-danger);
-  }
-
-  .btn-icon:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .badge,
-  .coord-chip {
-    display: inline-flex;
-    align-items: center;
+    text-align: center;
+    min-height: 240px;
     gap: 0.5rem;
-    padding: 0.35rem 0.6rem;
-    border-radius: 999px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    font-size: 0.85rem;
-    font-weight: 650;
-  }
-
-  .coord-chip.missing {
-    border-color: color-mix(in srgb, var(--color-warning) 40%, var(--border-color));
-    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
-  }
-
-  .name {
-    font-size: 1.1rem;
-    font-weight: 750;
-    margin-bottom: 0.35rem;
-    color: var(--text-primary);
-  }
-
-  .addr {
-    color: var(--text-secondary);
-    line-height: 1.4;
-    font-size: 0.95rem;
-  }
-
-  .coords {
-    margin-top: 0.85rem;
-  }
-
-  .notes {
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--border-color);
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    white-space: pre-wrap;
-  }
-
-  .empty {
-    padding: 1.5rem;
-    display: flex;
-    gap: 0.9rem;
-    align-items: flex-start;
-  }
-
-  .empty-text .title {
-    font-weight: 750;
-    margin-bottom: 0.25rem;
-    color: var(--text-primary);
-  }
-
-  .empty-text .sub {
+    padding: 2rem 1.25rem;
     color: var(--text-secondary);
   }
-
-  .loading-card {
-    padding: 1.25rem;
-    display: grid;
-    place-items: center;
-    gap: 0.5rem;
+  .state h3 {
+    margin: 0.4rem 0 0;
+    color: var(--text-primary);
+    font-size: 1.05rem;
+  }
+  .state p {
+    margin: 0 0 0.75rem;
+    font-size: 0.88rem;
+    max-width: 320px;
   }
 
   .spinner {
-    width: 26px;
-    height: 26px;
-    border-radius: 999px;
-    border: 3px solid var(--border-color);
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(255, 255, 255, 0.08);
     border-top-color: var(--color-primary);
-    animation: spin 0.9s linear infinite;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
   }
-
   @keyframes spin {
-    from {
-      transform: rotate(0);
-    }
     to {
       transform: rotate(360deg);
     }
   }
 
-  @media (max-width: 980px) {
-    .page-content {
-      padding: 0.95rem;
-    }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 0.85rem;
+  }
+  .card {
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+  }
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .row-actions {
+    display: flex;
+    gap: 0.35rem;
+  }
+  .name {
+    font-size: 1.05rem;
+    font-weight: 750;
+    color: var(--text-primary);
+    margin-bottom: 0.3rem;
+  }
+  .addr {
+    color: var(--text-secondary);
+    line-height: 1.45;
+    font-size: 0.9rem;
+  }
+  .coords {
+    margin-top: 0.75rem;
+  }
+  .notes {
+    margin-top: 0.7rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    white-space: pre-wrap;
+  }
 
-    .summary-grid {
-      grid-template-columns: 1fr;
-    }
+  .pill,
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 650;
+  }
+  .chip.missing {
+    border-color: color-mix(in srgb, var(--color-warning) 35%, transparent);
+    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+    color: var(--color-warning);
+  }
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.78rem;
+  }
 
-    .page-header {
-      flex-direction: column;
+  .icon-btn {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 8px;
+  }
+  .icon-btn:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+  }
+  .icon-btn.danger {
+    color: var(--color-danger);
+    border-color: color-mix(in srgb, var(--color-danger) 30%, transparent);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.95rem;
+    border-radius: 8px;
+    font-weight: 650;
+    font-size: 0.88rem;
+    cursor: pointer;
+    border: none;
+    min-height: 40px;
+  }
+  .btn-sm {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.82rem;
+    min-height: 34px;
+  }
+  .btn-primary {
+    background: var(--color-primary);
+    color: #fff;
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 900px) {
+    .kpis {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (max-width: 560px) {
+    .page-head {
       align-items: stretch;
     }
-
-    .header-actions {
+    .head-actions {
       width: 100%;
-      justify-content: stretch;
     }
-
-    .header-actions > button {
-      flex: 1 1 auto;
-      justify-content: center;
+    .head-actions .btn {
+      flex: 1;
+      min-height: 44px;
+    }
+    .kpis {
+      grid-template-columns: 1fr;
+      gap: 0.55rem;
+    }
+    .kpi {
+      padding: 0.75rem 0.85rem;
     }
   }
 </style>

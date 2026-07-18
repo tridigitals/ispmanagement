@@ -2602,16 +2602,35 @@ impl PaymentService {
         );
 
         // 3. Prepare Payload
+        // Midtrans: item name max 50 chars; IDR amounts must be whole integers.
+        // f64→i64 truncates toward zero and can desync gross vs item price on float noise.
+        let amount_idr = invoice.amount.round() as i64;
+        if amount_idr <= 0 {
+            return Err(AppError::Validation(format!(
+                "Invoice amount must be positive for Midtrans (got {})",
+                invoice.amount
+            )));
+        }
+        let mut item_name = invoice
+            .description
+            .clone()
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or_else(|| "Payment".to_string());
+        // Truncate by Unicode scalar values (Midtrans limit 50).
+        if item_name.chars().count() > 50 {
+            item_name = item_name.chars().take(50).collect();
+        }
+
         let payload = json!({
             "transaction_details": {
                 "order_id": invoice.invoice_number,
-                "gross_amount": invoice.amount as i64 // IDR usually no decimals
+                "gross_amount": amount_idr
             },
             "item_details": [{
                 "id": invoice.id,
-                "price": invoice.amount as i64,
+                "price": amount_idr,
                 "quantity": 1,
-                "name": invoice.description.clone().unwrap_or("Payment".to_string())
+                "name": item_name
             }],
             "callbacks": {
                 "finish": format!("{}/pay/{}", app_url, invoice.id),
