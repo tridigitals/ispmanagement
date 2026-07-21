@@ -950,12 +950,22 @@ impl OltService {
                 continue;
             }
 
-            // Find admin users for this tenant to receive the alert
+            // Owner/Admin by role, OR olt:read/manage. Soft-deleted excluded.
             let admin_users: Vec<(String,)> = sqlx::query_as(
-                "SELECT u.id::text FROM users u
-                 WHERE u.tenant_id = $1::uuid
-                   AND u.role IN ('owner', 'admin')
-                 LIMIT 3",
+                r#"
+                SELECT DISTINCT tm.user_id
+                FROM tenant_members tm
+                LEFT JOIN roles r
+                  ON r.id = tm.role_id
+                 AND (r.tenant_id = tm.tenant_id OR r.tenant_id IS NULL)
+                LEFT JOIN role_permissions rp ON rp.role_id = tm.role_id
+                WHERE tm.tenant_id = $1
+                  AND tm.deleted_at IS NULL
+                  AND (
+                    lower(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin')
+                    OR rp.permission_id IN ('olt:read', 'olt:manage')
+                  )
+                "#,
             )
             .bind(tenant_id)
             .fetch_all(&self.pool)

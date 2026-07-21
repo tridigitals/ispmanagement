@@ -117,15 +117,30 @@ pub(crate) fn norm_format(f: Option<String>) -> String {
     }
 }
 
+/// Staff who should receive admin-audience announcements.
+/// Owner/Admin by role name, OR `announcements:manage`. Soft-deleted excluded.
 #[cfg(feature = "postgres")]
 pub(crate) async fn tenant_admin_user_ids(
     pool: &sqlx::Pool<sqlx::Postgres>,
     tenant_id: &str,
 ) -> Result<Vec<String>, sqlx::Error> {
-    sqlx::query_scalar("SELECT DISTINCT user_id FROM tenant_members WHERE tenant_id = $1")
-        .bind(tenant_id)
-        .fetch_all(pool)
-        .await
+    sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT tm.user_id
+        FROM tenant_members tm
+        LEFT JOIN roles r ON r.id = tm.role_id
+        LEFT JOIN role_permissions rp ON rp.role_id = tm.role_id
+        WHERE tm.tenant_id = $1
+          AND tm.deleted_at IS NULL
+          AND (
+            lower(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin')
+            OR rp.permission_id = 'announcements:manage'
+          )
+        "#,
+    )
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
 }
 
 #[cfg(feature = "postgres")]
@@ -135,7 +150,12 @@ pub(crate) async fn is_internal_tenant_member(
     user_id: &str,
 ) -> Result<bool, sqlx::Error> {
     sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM tenant_members WHERE tenant_id = $1 AND user_id = $2)",
+        r#"
+        SELECT EXISTS(
+          SELECT 1 FROM tenant_members
+          WHERE tenant_id = $1 AND user_id = $2 AND deleted_at IS NULL
+        )
+        "#,
     )
     .bind(tenant_id)
     .bind(user_id)
@@ -148,10 +168,12 @@ pub(crate) async fn tenant_user_ids(
     pool: &sqlx::Pool<sqlx::Postgres>,
     tenant_id: &str,
 ) -> Result<Vec<String>, sqlx::Error> {
-    sqlx::query_scalar("SELECT DISTINCT user_id FROM tenant_members WHERE tenant_id = $1")
-        .bind(tenant_id)
-        .fetch_all(pool)
-        .await
+    sqlx::query_scalar(
+        "SELECT DISTINCT user_id FROM tenant_members WHERE tenant_id = $1 AND deleted_at IS NULL",
+    )
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
 }
 
 #[cfg(feature = "postgres")]
@@ -166,6 +188,7 @@ pub(crate) async fn support_admin_user_ids(
         JOIN role_permissions rp ON rp.role_id = tm.role_id
         JOIN permissions p ON p.id = rp.permission_id
         WHERE tm.tenant_id = $1
+          AND tm.deleted_at IS NULL
           AND tm.role_id IS NOT NULL
           AND p.resource = 'support'
           AND p.action IN ('read', 'read_all')

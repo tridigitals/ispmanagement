@@ -210,43 +210,71 @@ impl CustomerService {
         &self,
         tenant_id: &str,
     ) -> AppResult<Vec<String>> {
+        // Owner/Admin by role, OR work_orders:manage.
+        // When tech alerts off: still allow non-technician manage holders (NOC).
+        let mode = self
+            .resolve_installation_work_order_visibility_mode(tenant_id)
+            .await;
+        let include_technician =
+            Self::should_non_admin_see_unassigned_installation_work_orders(mode);
+
         #[cfg(feature = "postgres")]
-        let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+        let rows: Vec<(String,)> = sqlx::query_as(
             r#"
-            SELECT tm.user_id, COALESCE(r.name, tm.role) AS role_name
+            SELECT DISTINCT tm.user_id
             FROM tenant_members tm
             LEFT JOIN roles r
               ON r.id = tm.role_id
              AND (r.tenant_id = tm.tenant_id OR r.tenant_id IS NULL)
+            LEFT JOIN role_permissions rp ON rp.role_id = tm.role_id
             WHERE tm.tenant_id = $1
+              AND tm.deleted_at IS NULL
+              AND (
+                lower(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin')
+                OR (
+                  rp.permission_id = 'work_orders:manage'
+                  AND (
+                    $2
+                    OR lower(COALESCE(r.name, tm.role, '')) NOT IN ('technician', 'teknisi')
+                  )
+                )
+              )
             "#,
         )
         .bind(tenant_id)
+        .bind(include_technician)
         .fetch_all(&self.pool)
         .await?;
 
         #[cfg(feature = "sqlite")]
-        let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+        let rows: Vec<(String,)> = sqlx::query_as(
             r#"
-            SELECT tm.user_id, COALESCE(r.name, tm.role) AS role_name
+            SELECT DISTINCT tm.user_id
             FROM tenant_members tm
             LEFT JOIN roles r
               ON r.id = tm.role_id
              AND (r.tenant_id = tm.tenant_id OR r.tenant_id IS NULL)
+            LEFT JOIN role_permissions rp ON rp.role_id = tm.role_id
             WHERE tm.tenant_id = ?
+              AND tm.deleted_at IS NULL
+              AND (
+                lower(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin')
+                OR (
+                  rp.permission_id = 'work_orders:manage'
+                  AND (
+                    ?
+                    OR lower(COALESCE(r.name, tm.role, '')) NOT IN ('technician', 'teknisi')
+                  )
+                )
+              )
             "#,
         )
         .bind(tenant_id)
+        .bind(include_technician)
         .fetch_all(&self.pool)
         .await?;
 
-        let mode = self
-            .resolve_installation_work_order_visibility_mode(tenant_id)
-            .await;
-        Ok(Self::filter_installation_request_user_ids(
-            rows,
-            Self::should_non_admin_see_unassigned_installation_work_orders(mode),
-        ))
+        Ok(rows.into_iter().map(|(user_id,)| user_id).collect())
     }
 
     pub(super) async fn notify_new_installation_request(

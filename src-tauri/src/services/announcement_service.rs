@@ -145,15 +145,29 @@ impl AnnouncementScheduler {
         });
     }
 
+    /// Owner/Admin by role name, OR `announcements:manage`. Soft-deleted excluded.
     #[cfg(feature = "postgres")]
     async fn tenant_admin_user_ids(
         pool: &sqlx::Pool<sqlx::Postgres>,
         tenant_id: &str,
     ) -> Result<Vec<String>, sqlx::Error> {
-        sqlx::query_scalar("SELECT DISTINCT user_id FROM tenant_members WHERE tenant_id = $1")
-            .bind(tenant_id)
-            .fetch_all(pool)
-            .await
+        sqlx::query_scalar(
+            r#"
+            SELECT DISTINCT tm.user_id
+            FROM tenant_members tm
+            LEFT JOIN roles r ON r.id = tm.role_id
+            LEFT JOIN role_permissions rp ON rp.role_id = tm.role_id
+            WHERE tm.tenant_id = $1
+              AND tm.deleted_at IS NULL
+              AND (
+                lower(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin')
+                OR rp.permission_id = 'announcements:manage'
+              )
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(pool)
+        .await
     }
 
     #[cfg(feature = "postgres")]
@@ -161,10 +175,12 @@ impl AnnouncementScheduler {
         pool: &sqlx::Pool<sqlx::Postgres>,
         tenant_id: &str,
     ) -> Result<Vec<String>, sqlx::Error> {
-        sqlx::query_scalar("SELECT DISTINCT user_id FROM tenant_members WHERE tenant_id = $1")
-            .bind(tenant_id)
-            .fetch_all(pool)
-            .await
+        sqlx::query_scalar(
+            "SELECT DISTINCT user_id FROM tenant_members WHERE tenant_id = $1 AND deleted_at IS NULL",
+        )
+        .bind(tenant_id)
+        .fetch_all(pool)
+        .await
     }
 
     #[cfg(feature = "postgres")]

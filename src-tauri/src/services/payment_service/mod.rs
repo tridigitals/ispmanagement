@@ -45,7 +45,6 @@ use self::core::{
     MidtransTransitionDecision, CUSTOMER_PACKAGE_INVOICE_PREFIX,
 };
 use self::dto::{AssignmentCandidateNodeRow, AssignmentSubscriptionRef};
-use self::mapper::filter_installation_request_user_ids;
 #[cfg(test)]
 use self::validation::is_owner_admin_or_technician_role;
 
@@ -3529,163 +3528,204 @@ impl PaymentService {
                     let subscription_id =
                         core::parse_customer_subscription_id(invoice.external_id.as_deref());
                     if let Some(subscription_id) = subscription_id {
-                        let customer_user_ids = self
+                        let customer_user_ids = match self
                             .list_customer_user_ids_for_subscription(
                                 &invoice.tenant_id,
                                 &subscription_id,
                             )
                             .await
-                            .unwrap_or_default();
-
-                        for user_id in customer_user_ids {
-                            let _ = self
-                                .notification_service
-                                .create_notification(
-                                    user_id,
-                                    Some(invoice.tenant_id.clone()),
-                                    title.clone(),
-                                    message.clone(),
-                                    "info".to_string(),
-                                    "billing".to_string(),
-                                    Some(format!("/pay/{}", invoice.id)),
-                                )
-                                .await;
-                        }
+                        {
+                            Ok(ids) => ids,
+                            Err(e) => {
+                                tracing::error!(
+                                    tenant_id = %invoice.tenant_id,
+                                    invoice_id = %invoice.id,
+                                    error = %e,
+                                    "failed to list customer recipients for manual payment failure"
+                                );
+                                Vec::new()
+                            }
+                        };
+                        self.notify_billing_users(
+                            &customer_user_ids,
+                            Some(invoice.tenant_id.clone()),
+                            &title,
+                            &message,
+                            "info",
+                            Some(format!("/pay/{}", invoice.id)),
+                        )
+                        .await;
                     }
-                    // For manual failed, stop here: no admin/owner or other tenant roles.
-                    // Requirement: notify only the affected customer.
+                    // Manual failed: customer only (no admin).
                     return Ok(());
                 }
 
-                // Notify admins about the payment outcome.
-                let admin_user_ids = self
+                // Admins: one notif (deduped). Paid uses admin-specific title; failed reuses status title.
+                let admin_user_ids = match self
                     .list_tenant_owner_admin_user_ids(&invoice.tenant_id)
                     .await
-                    .unwrap_or_default();
+                {
+                    Ok(ids) => {
+                        if ids.is_empty() {
+                            tracing::error!(
+                                tenant_id = %invoice.tenant_id,
+                                invoice_id = %invoice.id,
+                                invoice_number = %invoice.invoice_number,
+                                status,
+                                "payment admin recipient list empty — Owner/Admin will miss billing notif"
+                            );
+                        }
+                        ids
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            tenant_id = %invoice.tenant_id,
+                            invoice_id = %invoice.id,
+                            error = %e,
+                            "failed to list payment admin recipients"
+                        );
+                        Vec::new()
+                    }
+                };
 
-                for user_id in admin_user_ids {
-                    let _ = self
-                        .notification_service
-                        .create_notification(
-                            user_id,
-                            Some(invoice.tenant_id.clone()),
-                            title.clone(),
-                            message.clone(),
-                            "info".to_string(),
-                            "billing".to_string(),
-                            Some(format!("/admin/invoices/{}", invoice.id)),
-                        )
-                        .await;
+                if status == "paid" {
+                    let admin_msg = format!(
+                        "Customer invoice {} has been paid. Amount: {}",
+                        invoice.invoice_number, invoice.amount
+                    );
+                    self.notify_billing_users(
+                        &admin_user_ids,
+                        Some(invoice.tenant_id.clone()),
+                        "Customer Payment Received",
+                        &admin_msg,
+                        "success",
+                        Some(format!("/admin/invoices/{}", invoice.id)),
+                    )
+                    .await;
+                } else {
+                    self.notify_billing_users(
+                        &admin_user_ids,
+                        Some(invoice.tenant_id.clone()),
+                        &title,
+                        &message,
+                        "info",
+                        Some(format!("/admin/invoices/{}", invoice.id)),
+                    )
+                    .await;
                 }
 
-                // Notify only the customer users linked to this invoice's subscription.
+                // Customer users on this subscription only.
                 let subscription_id =
                     core::parse_customer_subscription_id(invoice.external_id.as_deref());
                 if let Some(subscription_id) = subscription_id {
-                    let customer_user_ids = self
+                    let customer_user_ids = match self
                         .list_customer_user_ids_for_subscription(
                             &invoice.tenant_id,
                             &subscription_id,
                         )
                         .await
-                        .unwrap_or_default();
-
-                    for user_id in customer_user_ids {
-                        let _ = self
-                            .notification_service
-                            .create_notification(
-                                user_id,
-                                Some(invoice.tenant_id.clone()),
-                                title.clone(),
-                                message.clone(),
-                                "info".to_string(),
-                                "billing".to_string(),
-                                Some(format!("/pay/{}", invoice.id)),
-                            )
-                            .await;
-                    }
+                    {
+                        Ok(ids) => ids,
+                        Err(e) => {
+                            tracing::error!(
+                                tenant_id = %invoice.tenant_id,
+                                invoice_id = %invoice.id,
+                                error = %e,
+                                "failed to list customer payment recipients"
+                            );
+                            Vec::new()
+                        }
+                    };
+                    self.notify_billing_users(
+                        &customer_user_ids,
+                        Some(invoice.tenant_id.clone()),
+                        &title,
+                        &message,
+                        "info",
+                        Some(format!("/pay/{}", invoice.id)),
+                    )
+                    .await;
                 }
             } else {
-                let users = self
+                let users = match self
                     .list_tenant_owner_admin_user_ids(&invoice.tenant_id)
                     .await
-                    .unwrap_or_default();
+                {
+                    Ok(ids) => {
+                        if ids.is_empty() {
+                            tracing::error!(
+                                tenant_id = %invoice.tenant_id,
+                                invoice_id = %invoice.id,
+                                "SaaS plan payment admin recipient list empty"
+                            );
+                        }
+                        ids
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            tenant_id = %invoice.tenant_id,
+                            invoice_id = %invoice.id,
+                            error = %e,
+                            "failed to list SaaS plan payment admin recipients"
+                        );
+                        Vec::new()
+                    }
+                };
 
-                for user_id in users {
-                    let _ = self
-                        .notification_service
-                        .create_notification(
-                            user_id,
-                            Some(invoice.tenant_id.clone()),
-                            title.clone(),
-                            message.clone(),
-                            "info".to_string(),
-                            "billing".to_string(),
-                            Some("/admin/subscription".to_string()),
-                        )
-                        .await;
-                }
+                self.notify_billing_users(
+                    &users,
+                    Some(invoice.tenant_id.clone()),
+                    &title,
+                    &message,
+                    "info",
+                    Some("/admin/subscription".to_string()),
+                )
+                .await;
             }
         }
 
-        // 5. Notify payment stakeholders
-        if status == "paid" {
-            if is_customer_package {
-                let tenant_admins = self
-                    .list_tenant_owner_admin_user_ids(&invoice.tenant_id)
+        // 5. Superadmin sale notif for SaaS plan paid (customer package already covered above).
+        if status == "paid" && !is_customer_package {
+            #[cfg(feature = "postgres")]
+            let super_admins: Vec<(String,)> =
+                match sqlx::query_as("SELECT id FROM users WHERE is_super_admin = true")
+                    .fetch_all(&self.pool)
                     .await
-                    .unwrap_or_default();
+                {
+                    Ok(rows) => rows,
+                    Err(e) => {
+                        tracing::error!(error = %e, "failed to list superadmin sale recipients");
+                        Vec::new()
+                    }
+                };
 
-                for user_id in tenant_admins {
-                    let _ = self
-                        .notification_service
-                        .create_notification(
-                            user_id,
-                            Some(invoice.tenant_id.clone()),
-                            "Customer Payment Received".to_string(),
-                            format!(
-                                "Customer invoice {} has been paid. Amount: {}",
-                                invoice.invoice_number, invoice.amount
-                            ),
-                            "success".to_string(),
-                            "billing".to_string(),
-                            Some(format!("/admin/invoices/{}", invoice.id)),
-                        )
-                        .await;
-                }
-            } else {
-                #[cfg(feature = "postgres")]
-                let super_admins: Vec<(String,)> =
-                    sqlx::query_as("SELECT id FROM users WHERE is_super_admin = true")
-                        .fetch_all(&self.pool)
-                        .await
-                        .unwrap_or_default();
+            #[cfg(feature = "sqlite")]
+            let super_admins: Vec<(String,)> =
+                match sqlx::query_as("SELECT id FROM users WHERE is_super_admin = 1")
+                    .fetch_all(&self.pool)
+                    .await
+                {
+                    Ok(rows) => rows,
+                    Err(e) => {
+                        tracing::error!(error = %e, "failed to list superadmin sale recipients");
+                        Vec::new()
+                    }
+                };
 
-                #[cfg(feature = "sqlite")]
-                let super_admins: Vec<(String,)> =
-                    sqlx::query_as("SELECT id FROM users WHERE is_super_admin = 1")
-                        .fetch_all(&self.pool)
-                        .await
-                        .unwrap_or_default();
-
-                for (admin_id,) in super_admins {
-                    let _ = self
-                        .notification_service
-                        .create_notification(
-                            admin_id,
-                            None, // System notification for SaaS billing
-                            "New Subscription Sale!".to_string(),
-                            format!(
-                                "Invoice {} has been paid. Amount: {}",
-                                invoice.invoice_number, invoice.amount
-                            ),
-                            "success".to_string(),
-                            "billing".to_string(),
-                            Some("/superadmin/invoices".to_string()),
-                        )
-                        .await;
-                }
-            }
+            let super_ids: Vec<String> = super_admins.into_iter().map(|(id,)| id).collect();
+            let sale_msg = format!(
+                "Invoice {} has been paid. Amount: {}",
+                invoice.invoice_number, invoice.amount
+            );
+            self.notify_billing_users(
+                &super_ids,
+                None,
+                "New Subscription Sale!",
+                &sale_msg,
+                "success",
+                Some("/superadmin/invoices".to_string()),
+            )
+            .await;
         }
 
         Ok(())
@@ -4668,11 +4708,51 @@ impl PaymentService {
         Ok(customer_user_ids)
     }
 
+    /// Fan-out billing notifications. Logs create failures (no pure swallow).
+    async fn notify_billing_users(
+        &self,
+        user_ids: &[String],
+        tenant_id: Option<String>,
+        title: &str,
+        message: &str,
+        notification_type: &str,
+        action_url: Option<String>,
+    ) -> usize {
+        let mut sent = 0usize;
+        for user_id in user_ids {
+            match self
+                .notification_service
+                .create_notification(
+                    user_id.clone(),
+                    tenant_id.clone(),
+                    title.to_string(),
+                    message.to_string(),
+                    notification_type.to_string(),
+                    "billing".to_string(),
+                    action_url.clone(),
+                )
+                .await
+            {
+                Ok(_) => sent += 1,
+                Err(e) => {
+                    tracing::error!(
+                        user_id = %user_id,
+                        title,
+                        error = %e,
+                        "failed to create billing notification"
+                    );
+                }
+            }
+        }
+        sent
+    }
+
     async fn list_tenant_owner_admin_user_ids(&self, tenant_id: &str) -> AppResult<Vec<String>> {
         // Prefer roles.name / role_permissions over tenant_members.role (legacy string
         // can be stale, e.g. role='member' while role_id still points to Owner).
         // Recipients: Owner/Admin by role name, OR billing:manage (not billing:read —
         // technicians often have read-only and should not get payment alerts).
+        // Exclude soft-deleted members.
         #[cfg(feature = "postgres")]
         let rows: Vec<(String,)> = sqlx::query_as(
             r#"
@@ -4681,6 +4761,7 @@ impl PaymentService {
             LEFT JOIN roles r ON r.id = tm.role_id
             LEFT JOIN role_permissions rp ON rp.role_id = r.id
             WHERE tm.tenant_id = $1
+              AND tm.deleted_at IS NULL
               AND (
                 lower(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin')
                 OR rp.permission_id = 'billing:manage'
@@ -4700,6 +4781,7 @@ impl PaymentService {
             LEFT JOIN roles r ON r.id = tm.role_id
             LEFT JOIN role_permissions rp ON rp.role_id = r.id
             WHERE tm.tenant_id = ?
+              AND tm.deleted_at IS NULL
               AND (
                 lower(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin')
                 OR rp.permission_id = 'billing:manage'
@@ -4718,42 +4800,67 @@ impl PaymentService {
         &self,
         tenant_id: &str,
     ) -> AppResult<Vec<String>> {
+        // Owner/Admin by role, OR work_orders:manage.
+        // When tech alerts off: still allow non-technician manage holders (NOC/CS).
         let include_technician = self
             .should_include_technicians_in_installation_request_alerts(tenant_id)
             .await?;
 
         #[cfg(feature = "postgres")]
-        let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+        let rows: Vec<(String,)> = sqlx::query_as(
             r#"
-            SELECT DISTINCT tm.user_id, COALESCE(r.name, tm.role) AS role
+            SELECT DISTINCT tm.user_id
             FROM tenant_members tm
             LEFT JOIN roles r ON r.id = tm.role_id
+            LEFT JOIN role_permissions rp ON rp.role_id = tm.role_id
             WHERE tm.tenant_id = $1
+              AND tm.deleted_at IS NULL
+              AND (
+                lower(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin')
+                OR (
+                  rp.permission_id = 'work_orders:manage'
+                  AND (
+                    $2
+                    OR lower(COALESCE(r.name, tm.role, '')) NOT IN ('technician', 'teknisi')
+                  )
+                )
+              )
             "#,
         )
         .bind(tenant_id)
+        .bind(include_technician)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         #[cfg(feature = "sqlite")]
-        let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+        let rows: Vec<(String,)> = sqlx::query_as(
             r#"
-            SELECT DISTINCT tm.user_id, COALESCE(r.name, tm.role) AS role
+            SELECT DISTINCT tm.user_id
             FROM tenant_members tm
             LEFT JOIN roles r ON r.id = tm.role_id
+            LEFT JOIN role_permissions rp ON rp.role_id = tm.role_id
             WHERE tm.tenant_id = ?
+              AND tm.deleted_at IS NULL
+              AND (
+                lower(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin')
+                OR (
+                  rp.permission_id = 'work_orders:manage'
+                  AND (
+                    ?
+                    OR lower(COALESCE(r.name, tm.role, '')) NOT IN ('technician', 'teknisi')
+                  )
+                )
+              )
             "#,
         )
         .bind(tenant_id)
+        .bind(include_technician)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        Ok(filter_installation_request_user_ids(
-            rows,
-            include_technician,
-        ))
+        Ok(rows.into_iter().map(|(user_id,)| user_id).collect())
     }
 
     async fn should_include_technicians_in_installation_request_alerts(
