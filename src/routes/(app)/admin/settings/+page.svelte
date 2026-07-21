@@ -957,7 +957,7 @@
                   />
                   <p class="help-text">
                     {$t('admin.settings.branding.custom_domain_help_prefix') ||
-                      "Point your domain's CNAME record to"} <code>cname.tridigitals.com</code>
+                      "Point your domain's CNAME record to"} <code>{import.meta.env.VITE_CNAME_DNS_TARGET || 'cname.tridigitals.com'}</code>
                     {$t('admin.settings.branding.custom_domain_help_suffix')}
                   </p>
                   <CustomDomainStatusPanel

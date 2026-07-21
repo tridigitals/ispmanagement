@@ -13,7 +13,7 @@ function getConfiguredMainDomains(): string[] {
   const list = [
     normalizeHostname(String(import.meta.env.VITE_MAIN_DOMAIN || '')),
     normalizeHostname(String(import.meta.env.VITE_APP_MAIN_DOMAIN || '')),
-    'billing.tridigitals.com',
+    ...(import.meta.env.VITE_ALLOWED_HOSTS || '').split(',').map(normalizeHostname).filter(Boolean),
   ].filter(Boolean);
 
   return Array.from(new Set(list));

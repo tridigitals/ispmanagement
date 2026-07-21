@@ -54,7 +54,7 @@
   }
 
   function resolvePlatformHost(): string {
-    return normalizeHost($appSettings.auth?.main_domain) || 'billing.tridigitals.com';
+    return normalizeHost($appSettings.auth?.main_domain) || normalizeHost((import.meta.env.FALLBACK_PLATFORM_DOMAIN as string) || '');
   }
 
   function redirectToHost(host: string, path: string) {
