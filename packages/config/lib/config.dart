@@ -10,13 +10,13 @@ class BuildConfig {
   /// Base URL for the REST API.
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://api-isp-management.tridigitals.com',
+    defaultValue: '',
   );
 
   /// WebSocket base URL.
   static const String wsBaseUrl = String.fromEnvironment(
     'WS_BASE_URL',
-    defaultValue: 'wss://api-isp-management.tridigitals.com',
+    defaultValue: '',
   );
 
   /// Enable verbose logging (debug builds only).

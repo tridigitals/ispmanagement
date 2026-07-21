@@ -31,7 +31,7 @@ class ApiConfig {
   static ApiConfig fromEnv() {
     const baseUrl = String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://103.190.112.214:3000',
+      defaultValue: '',
     );
     return const ApiConfig(baseUrl: baseUrl);
   }

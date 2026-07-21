@@ -100,8 +100,12 @@ echo "📦 Building mobile-customer v${BUILD_NAME}+${BUILD_NUMBER}"
 
 # Step 3: Build APK
 # API_BASE_URL is baked in at compile time so the app knows where to connect.
-API_BASE_URL="${API_BASE_URL:-http://103.190.112.214:3000}"
-WS_BASE_URL="${WS_BASE_URL:-ws://103.190.112.214:3000}"
+API_BASE_URL="${API_BASE_URL:-}"
+WS_BASE_URL="${WS_BASE_URL:-}"
+if [[ -z "$API_BASE_URL" ]]; then
+  echo "❌ API_BASE_URL not set. Pass via --dart-define or export API_BASE_URL."
+  exit 1
+fi
 echo "   API_BASE_URL=$API_BASE_URL"
 
 flutter build apk --release --no-pub \

@@ -185,7 +185,7 @@ Future<String> generateReceiptPdf(InvoiceModel inv) async {
           pw.SizedBox(height: 4),
           pw.Center(
             child: pw.Text(
-              'Tridigitals ISP Management — api-isp-management.tridigitals.com',
+              'Tridigitals ISP Management',
               style: const pw.TextStyle(
                 fontSize: 8,
                 color: PdfColors.grey500,

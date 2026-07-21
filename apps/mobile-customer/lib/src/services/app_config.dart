@@ -16,11 +16,11 @@ class AppConfig {
     return const AppConfig(
       apiBaseUrl: String.fromEnvironment(
         'API_BASE_URL',
-        defaultValue: 'http://103.190.112.214:3000',
+        defaultValue: '',
       ),
       wsBaseUrl: String.fromEnvironment(
         'WS_BASE_URL',
-        defaultValue: 'ws://103.190.112.214:3000',
+        defaultValue: '',
       ),
       appName: 'ISP Customer',
       appVersion: '0.1.0+1',
