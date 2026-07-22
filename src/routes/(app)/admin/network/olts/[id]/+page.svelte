@@ -389,7 +389,7 @@
                 <span class="info-value mono">{details.info.address}</span>
               </div>
             {/if}
-            {#each Object.entries(details.info) as [key, val]}
+            {#each Object.entries(details.info) as [key, val] (key)}
               {#if !['name', 'model', 'version', 'address'].includes(key) && val != null}
                 <div class="info-item">
                   <span class="info-label">{key}</span>
