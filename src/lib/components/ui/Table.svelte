@@ -187,7 +187,7 @@
         </tr>
       </thead>
       <tbody>
-        {#each paginatedData as item (item[keyField] || Math.random())}
+        {#each paginatedData as item, i (item[keyField] ?? `__idx_${i}`)}
           <tr transition:fade={{ duration: 200 }}>
             {#each columns as col}
               <td
