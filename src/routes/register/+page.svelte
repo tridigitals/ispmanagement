@@ -72,7 +72,7 @@
     const isMainDomain = isPlatformDomain(hostname);
     isCustomDomain = !isLocal && !isMainDomain;
 
-    if (!isCustomDomain) {
+    if (!isCustomDomain && !hasInviteToken) {
       toast.error(
         $t('auth.register.disabled_message') ||
           'Customer registration is only available from a tenant custom domain.',

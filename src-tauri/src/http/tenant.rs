@@ -187,6 +187,64 @@ pub async fn update_current_tenant(
         )
         .await;
 
+    // Notify superadmins when custom domain changes
+    let domain_changed = before_domain != tenant.custom_domain;
+    if domain_changed {
+        #[cfg(feature = "postgres")]
+        let super_admins: Vec<(String,)> =
+            match sqlx::query_as("SELECT id FROM users WHERE is_super_admin = true AND is_active = true")
+                .fetch_all(&state.auth_service.pool)
+                .await
+            {
+                Ok(rows) => rows,
+                Err(e) => {
+                    tracing::error!(error = %e, "failed to list superadmins for custom domain notif");
+                    Vec::new()
+                }
+            };
+
+        #[cfg(feature = "sqlite")]
+        let super_admins: Vec<(String,)> =
+            match sqlx::query_as("SELECT id FROM users WHERE is_super_admin = 1 AND is_active = 1")
+                .fetch_all(&state.auth_service.pool)
+                .await
+            {
+                Ok(rows) => rows,
+                Err(e) => {
+                    tracing::error!(error = %e, "failed to list superadmins for custom domain notif");
+                    Vec::new()
+                }
+            };
+
+        let title = "Tenant Custom Domain Updated";
+        let msg = format!(
+            "Tenant **{}** ({}) updated their custom domain.\n• Before: {}\n• After: {}\n• Status: {}",
+            tenant.name,
+            tenant_id,
+            before_domain.unwrap_or_else(|| "none".to_string()),
+            tenant.custom_domain.clone().unwrap_or_else(|| "none".to_string()),
+            tenant.custom_domain_status.clone().unwrap_or_else(|| "unknown".to_string()),
+        );
+
+        for (user_id,) in &super_admins {
+            if let Err(e) = state
+                .notification_service
+                .create_notification(
+                    user_id.clone(),
+                    None,
+                    title.to_string(),
+                    msg.clone(),
+                    "info".to_string(),
+                    "system".to_string(),
+                    None,
+                )
+                .await
+            {
+                tracing::error!(user_id = %user_id, error = %e, "failed to create custom-domain notification for superadmin");
+            }
+        }
+    }
+
     Ok(Json(tenant))
 }
 

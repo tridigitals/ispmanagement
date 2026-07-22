@@ -321,6 +321,91 @@ impl CustomerService {
         })
     }
 
+    /// Resolve the tenant_id for a given invite token by searching ALL tenants
+    pub async fn resolve_tenant_id_by_invite_token(
+        &self,
+        invite_token: &str,
+    ) -> AppResult<Option<String>> {
+        let token = invite_token.trim();
+        if token.len() < 20 {
+            return Ok(None);
+        }
+        let token_hash = Self::hash_registration_invite_token(token);
+        let now = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        let tenant_id: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT cri.tenant_id
+            FROM customer_registration_invites cri
+            WHERE cri.token_hash = $1
+              AND cri.is_revoked = false
+              AND cri.expires_at > $2
+              AND cri.used_count < cri.max_uses
+            LIMIT 1
+            "#,
+        )
+        .bind(&token_hash)
+        .bind(now)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let tenant_id: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT cri.tenant_id
+            FROM customer_registration_invites cri
+            WHERE cri.token_hash = ?
+              AND cri.is_revoked = 0
+              AND cri.expires_at > ?
+              AND cri.used_count < cri.max_uses
+            LIMIT 1
+            "#,
+        )
+        .bind(&token_hash)
+        .bind(now.to_rfc3339())
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(tenant_id)
+    }
+
+    /// Validate an invite token from anywhere (no domain required).
+    /// Falls back to global token lookup when on platform domain.
+    pub async fn validate_customer_registration_invite_global(
+        &self,
+        invite_token: &str,
+    ) -> AppResult<CustomerRegistrationInviteValidationView> {
+        let token = invite_token.trim();
+        if token.len() < 20 {
+            return Ok(CustomerRegistrationInviteValidationView {
+                valid: false,
+                status: "invalid".to_string(),
+                message: "Invite token is missing or malformed".to_string(),
+                expires_at: None,
+                max_uses: None,
+                used_count: None,
+                remaining_uses: None,
+            });
+        }
+
+        // Try global lookup first
+        let Some(tenant_id) = self.resolve_tenant_id_by_invite_token(token).await? else {
+            return Ok(CustomerRegistrationInviteValidationView {
+                valid: false,
+                status: "invalid".to_string(),
+                message: "Invite link is invalid, expired, or no longer available".to_string(),
+                expires_at: None,
+                max_uses: None,
+                used_count: None,
+                remaining_uses: None,
+            });
+        };
+
+        self.validate_customer_registration_invite(&tenant_id, token)
+            .await
+    }
+
     pub async fn list_customer_registration_invites(
         &self,
         actor_id: &str,

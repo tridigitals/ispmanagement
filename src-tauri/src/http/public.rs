@@ -185,26 +185,22 @@ pub async fn validate_customer_registration_invite_by_domain(
         auth_settings.main_domain.as_deref(),
     )
     .await?;
-    if let Some(view) = invite_domain_rejection(&domain_context) {
-        return Ok(Json(view));
-    }
 
-    let ResolvedDomainContext::TenantCustomDomain { tenant_id, .. } = domain_context else {
-        return Ok(Json(CustomerRegistrationInviteValidationView {
-            valid: false,
-            status: "invalid_domain".to_string(),
-            message: "Invite can only be used from a tenant custom domain".to_string(),
-            expires_at: None,
-            max_uses: None,
-            used_count: None,
-            remaining_uses: None,
-        }));
+    // Invite tokens work from ANY domain — skip domain gate when token is global-valid
+    let result = match domain_context {
+        ResolvedDomainContext::TenantCustomDomain { ref tenant_id, .. } => {
+            state.customer_service
+                .validate_customer_registration_invite(tenant_id, token)
+                .await?
+        }
+        _ => {
+            // Platform domain / localhost — try global token lookup
+            state.customer_service
+                .validate_customer_registration_invite_global(token)
+                .await?
+        }
     };
 
-    let result = state
-        .customer_service
-        .validate_customer_registration_invite(&tenant_id, token)
-        .await?;
     Ok(Json(result))
 }
 
@@ -298,39 +294,22 @@ pub async fn register_customer_by_domain(
         ));
     }
 
-    let host = request_host(&headers).ok_or_else(|| {
-        crate::error::AppError::Validation(
-            "Unable to detect request domain for tenant registration".to_string(),
-        )
-    })?;
-    let domain_context = resolve_request_domain(
-        &state.auth_service.pool,
-        &host,
-        auth_settings.main_domain.as_deref(),
-    )
-    .await?;
-    if let Some(err) = registration_domain_error(&domain_context) {
-        return Err(err);
-    }
-    let tenant_id = match domain_context {
-        ResolvedDomainContext::TenantCustomDomain { tenant_id, .. } => tenant_id,
-        _ => unreachable!("tenant custom domain already validated"),
+    let Some(invite_token) = invite_token else {
+        return Err(crate::error::AppError::Validation(
+            "Public registration is currently disabled".to_string(),
+        ));
     };
 
-    if let Some(invite_token) = invite_token {
-        state
-            .customer_service
-            .consume_customer_registration_invite(&tenant_id, invite_token)
-            .await?;
-    } else {
-        let tenant_self_registration_enabled =
-            get_tenant_self_registration_enabled(&state, &tenant_id).await?;
-        if !tenant_self_registration_enabled {
-            return Err(crate::error::AppError::Validation(
-                "Customer self registration is disabled for this tenant".to_string(),
-            ));
-        }
-    }
+    // Resolve tenant from invite token (works from any domain)
+    let tenant_id = state
+        .customer_service
+        .resolve_tenant_id_by_invite_token(invite_token)
+        .await?
+        .ok_or_else(|| {
+            crate::error::AppError::Validation(
+                "Invite link is invalid, expired, or already used".to_string(),
+            )
+        })?;
 
     let ip = extract_ip(&headers, addr);
     let register_dto = RegisterDto {
