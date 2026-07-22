@@ -1287,6 +1287,8 @@ impl AuthService {
         // (old tenants created before create_tenant role_id fix).
         // A global Owner role (tenant_id IS NULL) exists — if the user is
         // a tenant_member with NULL role_id, they're the original owner.
+        // Guard: also verify tm.role column says 'Owner'/'admin' to prevent
+        // privilege escalation from bugs setting role_id=NULL on non-owners.
         #[cfg(feature = "postgres")]
         let fallback_owner: bool = sqlx::query_scalar(
             r#"
@@ -1296,6 +1298,7 @@ impl AuthService {
             WHERE tm.user_id = $1 AND tm.tenant_id = $2
               AND r.name = 'Owner' AND r.tenant_id IS NULL
               AND tm.role_id IS NULL
+              AND tm.role IN ('Owner', 'admin')
         "#,
         )
         .bind(user_id)
@@ -1313,6 +1316,7 @@ impl AuthService {
             WHERE tm.user_id = ? AND tm.tenant_id = ?
               AND r.name = 'Owner' AND r.tenant_id IS NULL
               AND tm.role_id IS NULL
+              AND tm.role IN ('Owner', 'admin')
         "#,
         )
         .bind(user_id)
@@ -1501,6 +1505,8 @@ impl AuthService {
         // Fallback: check if user has NULL role_id but is the tenant owner
         // (old tenants created before create_tenant role_id fix).
         // Cross-join with global Owner role to detect this case.
+        // Guard: also verify tm.role column says 'Owner'/'admin' to prevent
+        // privilege escalation from bugs setting role_id=NULL on non-owners.
         #[cfg(feature = "postgres")]
         let fallback_count: i64 = sqlx::query_scalar(
             r#"
@@ -1510,6 +1516,7 @@ impl AuthService {
             WHERE tm.user_id = $1 AND tm.tenant_id = $2
               AND r.name = 'Owner' AND r.tenant_id IS NULL
               AND tm.role_id IS NULL
+              AND tm.role IN ('Owner', 'admin')
         "#,
         )
         .bind(user_id)
@@ -1526,6 +1533,7 @@ impl AuthService {
             WHERE tm.user_id = ? AND tm.tenant_id = ?
               AND r.name = 'Owner' AND r.tenant_id IS NULL
               AND tm.role_id IS NULL
+              AND tm.role IN ('Owner', 'admin')
         "#,
         )
         .bind(user_id)
