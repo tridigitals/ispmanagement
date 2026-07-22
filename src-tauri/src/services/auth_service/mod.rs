@@ -1177,6 +1177,7 @@ impl AuthService {
         user_id: &str,
         tenant_id: &str,
     ) -> AppResult<Option<String>> {
+        // Primary: JOIN through role_id
         #[cfg(feature = "postgres")]
         let query = r#"
             SELECT r.name 
@@ -1199,7 +1200,43 @@ impl AuthService {
             .fetch_optional(&self.pool)
             .await?;
 
-        Ok(role_name)
+        if role_name.is_some() {
+            return Ok(role_name);
+        }
+
+        // Fallback: NULL role_id but tenant_members.role = 'Owner'
+        // (old tenants created before role_id migration)
+        #[cfg(feature = "postgres")]
+        let fallback: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT tm.role
+            FROM tenant_members tm
+            WHERE tm.user_id = $1 AND tm.tenant_id = $2
+              AND tm.role_id IS NULL
+              AND tm.role IS NOT NULL
+            "#,
+        )
+        .bind(user_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let fallback: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT tm.role
+            FROM tenant_members tm
+            WHERE tm.user_id = ? AND tm.tenant_id = ?
+              AND tm.role_id IS NULL
+              AND tm.role IS NOT NULL
+            "#,
+        )
+        .bind(user_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(fallback)
     }
 
     /// Get all permissions for a user in a tenant
