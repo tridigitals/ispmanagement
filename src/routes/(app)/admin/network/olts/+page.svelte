@@ -276,7 +276,7 @@
     }
     void load();
     // Load router list for uplink dropdown
-    api.mikrotik.list().then((r: any) => {
+    api.mikrotik.routers.list().then((r: any) => {
       if (Array.isArray(r)) routers = r.filter((rt: any) => rt.enabled);
     }).catch(() => {});
     refreshHandle = setInterval(() => {
