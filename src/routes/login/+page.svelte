@@ -126,7 +126,7 @@
     const isTauri = typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__;
     const isLocalhost =
       currentHost === 'localhost' || currentHost === '127.0.0.1' || currentHost.includes('tauri');
-    const onPlatformHost = isPlatformDomain(currentHost);
+    const onPlatformHost = isPlatformDomain(currentHost) || currentHost === platformHost;
 
     const goToRoleHome = () => {
       const ctx = resolveTenantContext({
