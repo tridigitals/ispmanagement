@@ -50,6 +50,8 @@
     return String(value || '')
       .trim()
       .toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/\/+$/, '')
       .replace(/\.+$/, '');
   }
 

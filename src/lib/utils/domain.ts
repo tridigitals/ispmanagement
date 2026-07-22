@@ -6,7 +6,7 @@
 import { secureGetItem } from './tauri-store';
 
 function normalizeHostname(hostname: string): string {
-  return String(hostname || '').trim().toLowerCase().replace(/\.+$/, '');
+  return String(hostname || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '').replace(/\.+$/, '');
 }
 
 function getConfiguredMainDomains(): string[] {
