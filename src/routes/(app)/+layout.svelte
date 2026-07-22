@@ -238,7 +238,11 @@
     const userCustomDomain = ($user as any)?.tenant_custom_domain || ($user as any)?.custom_domain;
     const currentSlug = $page.params.tenant;
     const userSlug = $user?.tenant_slug;
-    const onPlatformDomain = isPlatformDomain(currentHost);
+    const onPlatformDomain = isPlatformDomain(currentHost) || ($appSettings.auth?.main_domain && currentHost === normalizeHost($appSettings.auth?.main_domain));
+
+    function normalizeHost(value: string | null | undefined): string {
+      return String(value || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '').replace(/\.+$/, '');
+    }
     const currentSlugLooksLikeAppRoot = !!currentSlug && RESERVED_APP_SEGMENTS.has(currentSlug);
     const hasTenantPrefixInPath =
       !!currentSlug &&
