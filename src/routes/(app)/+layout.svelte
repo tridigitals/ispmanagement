@@ -142,12 +142,14 @@
     if (path.startsWith('/admin/network/logs')) {
       return $can('read', 'network_logs') || $can('manage', 'network_logs');
     }
+    if (path.startsWith('/admin/network/routers')) {
+      return $can('read', 'router_inventory') || $can('manage', 'router_inventory');
+    }
     if (path.startsWith('/admin/network/olts')) {
       return $can('read', 'router_inventory') || $can('manage', 'router_inventory');
     }
-    if (path.startsWith('/admin/network/ftth')) {
-      return $can('read', 'router_inventory') || $can('manage', 'router_inventory') ||
-        $can('read', 'ftth_assets') || $can('manage', 'ftth_assets');
+    if (path.startsWith('/admin/network/assets')) {
+      return $can('read', 'ftth_assets') || $can('manage', 'ftth_assets');
     }
     if (path.startsWith('/admin/network/ppp-profiles')) {
       return $can('read', 'ppp_profiles') || $can('manage', 'ppp_profiles');
