@@ -65,7 +65,7 @@
     validateInstallationQuickAssetDraft,
     type InstallationQuickAssetDraft,
   } from './installationQuickAsset';
-  import { loadInstallationDetailDialogs } from './installationsPageModules';
+  import InstallationDetailModal from './InstallationDetailModal.svelte';
 
   let loading = $state(true);
   let busyId = $state<string | null>(null);
@@ -85,8 +85,6 @@
   let savingVisibilityMode = $state(false);
 
   let detailOpen = $state(false);
-  let detailDialogsLoading = $state(false);
-  let InstallationDetailDialogsComponent = $state<any>(null);
   let activeRow = $state<InstallationWorkOrderView | null>(null);
   let quickAssignOpen = $state(false);
   let quickAssignTarget = $state<InstallationWorkOrderView | null>(null);
@@ -398,19 +396,8 @@
     }
   }
 
-  async function ensureInstallationDetailDialogsLoaded() {
-    if (InstallationDetailDialogsComponent) return;
-    if (detailDialogsLoading) return;
-
-    detailDialogsLoading = true;
-    try {
-      const modules = await loadInstallationDetailDialogs();
-      InstallationDetailDialogsComponent = modules.InstallationDetailDialogsComponent;
-    } catch (e: any) {
-      toast.error(e?.message || tr('admin.network.installations.toasts.tools_load_failed', 'Failed to load installation tools'));
-    } finally {
-      detailDialogsLoading = false;
-    }
+  async function ensureInstallationDetailModules() {
+    // modules load on demand — keep for future DI
   }
 
   function isUnassigned(row: InstallationWorkOrderView) {
@@ -529,7 +516,7 @@
   }
 
   function openCancelDialog(row: InstallationWorkOrderView) {
-    void ensureInstallationDetailDialogsLoaded();
+    void ensureInstallationDetailModules();
     cancelTarget = row;
     cancelReason = buildDefaultInstallationCancelReason();
     cancelDialogOpen = true;
@@ -631,7 +618,7 @@
     rescheduleLoading = false;
     rescheduleDecisionNotes = '';
     rescheduleOverrideAt = '';
-    void ensureInstallationDetailDialogsLoaded();
+    void ensureInstallationDetailModules();
     void loadWorkOrderTimeline(row.id);
     void loadRescheduleRequest(row.id);
     void loadInstallationPppoeContext(row);
@@ -640,7 +627,7 @@
 
   $effect(() => {
     if (!detailOpen) return;
-    void ensureInstallationDetailDialogsLoaded();
+    void ensureInstallationDetailModules();
   });
 
   function closeDetail() {
@@ -2277,8 +2264,7 @@
 </Modal>
 
   {#if detailOpen || cancelDialogOpen}
-  {#if InstallationDetailDialogsComponent}
-    <InstallationDetailDialogsComponent
+    <InstallationDetailModal
       {tr}
       {canReadAuditLogs}
       {canManageWorkOrders}
@@ -2287,69 +2273,78 @@
       {activeRow}
       {closeDetail}
       {statusClass}
-      {effectiveStep}
-      bind:checkCable
-      bind:checkOnt
-      bind:checkPppoe
-      bind:checkSpeed
-      {onsiteActiveIndex}
-      {onsiteActiveTask}
-      {checklistDoneCount}
-      {checklistTotal}
+      {subscriptionStatusLabel}
       {isGraceActive}
       {subscriptionGraceDeadlineLabel}
-      {currentFocusTitle}
-      {currentFocusHint}
-      {subscriptionStatusLabel}
+      {checklistTotal}
+      {checklistDoneCount}
+      {effectiveStep}
       bind:formAssignee
       {assigneeOptions}
       {busyId}
+      bind:formSchedule
       bind:formNotes
       {canReleaseRow}
       {canSaveAssignStep}
       {saveAssignStep}
-      {rescheduleLoading}
-      {rescheduleRequest}
-      {formatDateTime}
-      {canReviewReschedule}
-      bind:rescheduleOverrideAt
-      bind:rescheduleDecisionNotes
-      {rescheduleDecisionBusy}
-      {approveRescheduleFromDetail}
-      {rejectRescheduleFromDetail}
       {assigneeLabel}
       {resetToAssignStep}
-      bind:formSchedule
       {canSaveScheduleStep}
       {saveScheduleStep}
       {canStartActive}
       {startFromDetail}
+      {claimWorkOrder}
+      {isUnassigned}
+      {isAssignedToCurrentUser}
+      {releaseWorkOrder}
+      {isClosedState}
+      {setStatus}
+      {canOperateRow}
+      {isPlanReady}
+      bind:checkCable
+      bind:checkOnt
+      bind:checkPppoe
+      bind:checkSpeed
+      {setOnsiteTaskChecked}
+      {savePlan}
       bind:showCableMapDrawer
       {openCableDesigner}
-      {handleCableMapSaved}
       {installationPhotos}
       {uploadingPhotos}
       {uploadInstallationPhotos}
       {removeInstallationPhoto}
       {getStorageContentUrl}
-      {loadingInstallationPppoe}
-      {loadingInstallationDhcp}
       {installationSubscription}
       bind:installationPppoeUsername
       bind:installationPppoePassword
       bind:installationPppoeComment
       bind:installationPppoeTarget
+      {installationPppoeTargetOptions}
+      {installationPppoeAccount}
+      {savingInstallationPppoe}
+      {saveInstallationPppoe}
+      {applyInstallationPppoe}
       bind:installationDhcpServerName
-      bind:installationDhcpServerNameError
-      bind:installationDhcpRouterError
       bind:installationDhcpMacAddress
       bind:installationDhcpIpAddress
       bind:installationDhcpComment
       bind:installationDhcpQueueMode
       bind:installationDhcpQueueRateLimit
-      bind:installationDhcpMacAddressError
-      bind:installationDhcpIpAddressError
-      bind:installationDhcpQueueRateLimitError
+      {installationDhcpService}
+      {savingInstallationDhcp}
+      {saveInstallationDhcp}
+      {applyInstallationDhcp}
+      {installationPppoeMapping}
+      {installationManagedRadiusHint}
+      {installationManagedRadiusLoadError}
+      {installationManagedRadiusSetup}
+      {loadingInstallationPppoe}
+      {loadingInstallationDhcp}
+      {installationDhcpServerNameError}
+      {installationDhcpRouterError}
+      {installationDhcpMacAddressError}
+      {installationDhcpIpAddressError}
+      {installationDhcpQueueRateLimitError}
       {installationDhcpQueueRateLimitPresets}
       {loadingInstallationAssets}
       {savingInstallationAssets}
@@ -2372,56 +2367,32 @@
       {createInstallationQuickAsset}
       {updateInstallationQuickAssetField}
       {continueToFinishStep}
-      {installationPppoeTargetOptions}
-      {installationManagedRadiusHint}
-      {installationManagedRadiusLoadError}
-      {installationManagedRadiusSetup}
-      {installationPppoeAccount}
-      {installationDhcpService}
-      {savingInstallationPppoe}
-      {savingInstallationDhcp}
-      {saveInstallationPppoe}
-      {applyInstallationPppoe}
-      {saveInstallationDhcp}
-      {applyInstallationDhcp}
-      {installationPppoeMapping}
-      {getOnsiteTaskChecked}
-      {setOnsiteTaskChecked}
-      {goPrevOnsiteStep}
-      {goNextOnsiteStep}
-      {markActiveOnsiteStepDone}
-      {savePlan}
       {canCompleteActive}
       {completeFromDetail}
-      {isClosedState}
       {isAwaitingFirstPayment}
       {canCreateMissingInvoice}
       {creatingInvoiceId}
       {createInvoiceFromDetail}
-      {setStatus}
+      {rescheduleLoading}
+      {rescheduleRequest}
+      {formatDateTime}
+      {canReviewReschedule}
+      bind:rescheduleOverrideAt
+      bind:rescheduleDecisionNotes
+      {rescheduleDecisionBusy}
+      {approveRescheduleFromDetail}
+      {rejectRescheduleFromDetail}
       {timelineLoading}
       {timelineRows}
-      {canOperateRow}
-      {isPlanReady}
-      {claimWorkOrder}
-      {isUnassigned}
-      {isAssignedToCurrentUser}
-      {releaseWorkOrder}
-      {openCancelDialog}
+      {handleCableMapSaved}
       bind:cancelDialogOpen
       {cancelTarget}
       bind:cancelReason
       {closeCancelDialog}
       {confirmCancelFromDialog}
       {hasValidCancelReason}
+      {openCancelDialog}
     />
-  {:else}
-    <div class="modal-backdrop" aria-busy={detailDialogsLoading}>
-      <div class="inline-loader">
-        {tr('common.loading', 'Loading...')}
-      </div>
-    </div>
-  {/if}
   {/if}
 
   <Modal
