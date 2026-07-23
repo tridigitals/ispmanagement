@@ -196,25 +196,30 @@
         {:else if activeTab === 'workflow'}
           {#if canManageWorkOrders}
             <div class="wizard-card">
-              {#if activeRow.status === 'pending'}
-                <h3>{tr('admin.network.installations.step_assign', 'Assign & Schedule')}</h3>
-                <p class="step-help">{tr('admin.network.installations.step_assign_help', 'Choose technician and schedule.')}</p>
+              {#if activeRow.status === 'pending' && effectiveStep === 1}
+                <h3>{tr('admin.network.installations.step_assign', 'Assign Technician')}</h3>
+                <p class="step-help">{tr('admin.network.installations.step_assign_help', 'Pilih teknisi dulu, lalu lanjut ke jadwal.')}</p>
                 {#if isAdminOwner}
                   <label>{tr('common.assignee', 'Assignee')}<select class="input" bind:value={formAssignee} disabled={busyId === activeRow.id}><option value="">{tr('admin.network.installations.assignee_placeholder', 'Select assignee')}</option>{#each assigneeOptions as opt}<option value={opt.value}>{opt.label}</option>{/each}</select></label>
-                  <div class="assigned-summary"><span class="summary-label">{tr('common.assignee', 'Assignee')}</span><strong>{assigneeLabel(formAssignee)}</strong>{#if isAdminOwner}<button class="btn ghost mini" type="button" onclick={resetToAssignStep}>{tr('common.change', 'Change')}</button>{/if}</div>
-                  <label>{tr('common.schedule', 'Schedule')}<input type="datetime-local" bind:value={formSchedule} disabled={busyId === activeRow.id} class="input" /></label>
                   <label class="notes">{tr('common.notes', 'Notes')}<textarea rows="3" bind:value={formNotes} class="input" placeholder={tr('admin.network.installations.notes_placeholder', '...')}></textarea></label>
                   <div class="modal-actions">
                     {#if canReleaseRow(activeRow)}<button class="btn ghost" onclick={() => activeRow && releaseWorkOrder(activeRow)} disabled={busyId === activeRow.id}>{tr('admin.network.installations.release', 'Release')}</button>{/if}
-                    <button class="btn ghost" onclick={saveAssignStep} disabled={busyId === activeRow.id || !canSaveAssignStep}>{tr('admin.network.installations.save_assign', 'Save')}</button>
-                    <button class="btn ghost" onclick={saveScheduleStep} disabled={busyId === activeRow.id || !canSaveScheduleStep}>{tr('admin.network.installations.save_schedule', 'Save Schedule')}</button>
-                    <button class="btn" onclick={startFromDetail} disabled={busyId === activeRow.id || !canStartActive}>{tr('common.start', 'Start')}</button>
+                    <button class="btn" onclick={saveAssignStep} disabled={busyId === activeRow.id || !canSaveAssignStep}>{tr('admin.network.installations.save_assign', 'Save & Lanjut ke Jadwal')}</button>
                   </div>
                 {:else}
                   {#if isUnassigned(activeRow)}<button class="btn ghost" onclick={() => activeRow && claimWorkOrder(activeRow)} disabled={busyId === activeRow.id}>{tr('admin.network.installations.claim_work_order', 'Claim')}</button>
                   {:else if isAssignedToCurrentUser(activeRow)}<p class="helper-text">{tr('admin.network.installations.already_taken_by_you', 'You took this WO.')}</p>
                   {:else}<p class="helper-text">{tr('admin.network.installations.taken_by_other', 'Taken by another technician.')}</p>{/if}
                 {/if}
+              {:else if activeRow.status === 'pending' && effectiveStep === 2}
+                <h3>{tr('admin.network.installations.step_schedule', 'Atur Jadwal')}</h3>
+                <p class="step-help">{tr('admin.network.installations.step_schedule_help', 'Set installation date/time, then start work order.')}</p>
+                <div class="assigned-summary"><span class="summary-label">{tr('common.assignee', 'Assignee')}</span><strong>{assigneeLabel(formAssignee)}</strong>{#if isAdminOwner}<button class="btn ghost mini" type="button" onclick={resetToAssignStep}>{tr('common.change', 'Change')}</button>{/if}</div>
+                <label>{tr('common.schedule', 'Schedule')}<input type="datetime-local" bind:value={formSchedule} disabled={busyId === activeRow.id} class="input" /></label>
+                <div class="modal-actions">
+                  <button class="btn ghost" onclick={saveScheduleStep} disabled={busyId === activeRow.id || !canSaveScheduleStep}>{tr('admin.network.installations.save_schedule', 'Save Schedule')}</button>
+                  <button class="btn" onclick={startFromDetail} disabled={busyId === activeRow.id || !canStartActive}>{tr('common.start', 'Start')}</button>
+                </div>
               {:else if activeRow.status === 'in_progress'}
                 <h3>{tr('admin.network.installations.in_progress', 'Work Order In Progress')}</h3>
                 <p class="step-help">{tr('admin.network.installations.in_progress_help', 'Installation is underway. Manage checklist and site details in the On-site tab.')}</p>
