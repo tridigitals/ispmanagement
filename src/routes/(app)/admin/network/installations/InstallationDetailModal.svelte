@@ -8,14 +8,13 @@
     detailOpen = $bindable(),
     activeRow,
     closeDetail,
-    // Info
     statusClass,
+    canReadAuditLogs,
     subscriptionStatusLabel,
     isGraceActive,
     subscriptionGraceDeadlineLabel,
     checklistTotal,
     checklistDoneCount,
-    // Workflow
     canManageWorkOrders,
     isAdminOwner,
     formAssignee = $bindable(),
@@ -40,7 +39,6 @@
     setStatus,
     canOperateRow,
     isPlanReady,
-    // Onsite
     checkCable = $bindable(),
     checkOnt = $bindable(),
     checkPppoe = $bindable(),
@@ -54,7 +52,6 @@
     uploadInstallationPhotos,
     removeInstallationPhoto,
     getStorageContentUrl,
-    // Network
     installationSubscription,
     installationPppoeUsername = $bindable(),
     installationPppoePassword = $bindable(),
@@ -79,6 +76,14 @@
     installationManagedRadiusHint,
     installationManagedRadiusLoadError,
     installationManagedRadiusSetup,
+    loadingInstallationPppoe,
+    loadingInstallationDhcp,
+    installationDhcpServerNameError,
+    installationDhcpRouterError,
+    installationDhcpMacAddressError,
+    installationDhcpIpAddressError,
+    installationDhcpQueueRateLimitError,
+    installationDhcpQueueRateLimitPresets,
     loadingInstallationAssets,
     savingInstallationAssets,
     installationTerminalAssetId = $bindable(),
@@ -93,12 +98,12 @@
     installationQuickAssetOpen = $bindable(),
     creatingInstallationQuickAsset,
     installationQuickAssetDraft = $bindable(),
+    installationQuickAssetDuplicates,
     installationQuickAssetCanSubmit,
     openInstallationQuickAsset,
     closeInstallationQuickAsset,
     createInstallationQuickAsset,
     updateInstallationQuickAssetField,
-    // Completion
     continueToFinishStep,
     canCompleteActive,
     completeFromDetail,
@@ -106,10 +111,6 @@
     canCreateMissingInvoice,
     creatingInvoiceId,
     createInvoiceFromDetail,
-    // Timeline
-    canReadAuditLogs,
-    timelineLoading,
-    timelineRows,
     rescheduleLoading,
     rescheduleRequest,
     formatDateTime,
@@ -119,7 +120,9 @@
     rescheduleDecisionBusy,
     approveRescheduleFromDetail,
     rejectRescheduleFromDetail,
-    // Cancel
+    timelineLoading,
+    timelineRows,
+    handleCableMapSaved,
     cancelDialogOpen = $bindable(),
     cancelTarget,
     cancelReason = $bindable(),
@@ -127,18 +130,7 @@
     confirmCancelFromDialog,
     hasValidCancelReason,
     openCancelDialog,
-    // Misc
     effectiveStep,
-    loadingInstallationPppoe,
-    loadingInstallationDhcp,
-    installationDhcpServerNameError,
-    installationDhcpRouterError,
-    installationDhcpMacAddressError,
-    installationDhcpIpAddressError,
-    installationDhcpQueueRateLimitError,
-    installationDhcpQueueRateLimitPresets,
-    installationQuickAssetDuplicates,
-    handleCableMapSaved,
   } = $props();
 
   let activeTab = $state<TabId>('info');
@@ -146,28 +138,39 @@
   const tabs = $derived.by(() => {
     const _tr = tr;
     return [
-      { id: 'info' as TabId,      label: _tr('common.info', 'Info'),                 icon: 'info' },
-      { id: 'workflow' as TabId,  label: _tr('admin.network.installations.workflow_tab', 'Workflow'), icon: 'clipboard-list' },
-      { id: 'onsite' as TabId,    label: _tr('admin.network.installations.onsite_tab', 'On-site'),   icon: 'wrench' },
-      { id: 'network' as TabId,   label: _tr('admin.network.installations.network_tab', 'Network'),  icon: 'wifi' },
-      { id: 'timeline' as TabId,  label: _tr('admin.network.installations.timeline_tab', 'Timeline'),icon: 'history' },
+      { id: 'info' as TabId, label: _tr('common.info', 'Info'), icon: 'info' },
+      { id: 'workflow' as TabId, label: _tr('admin.network.installations.workflow_tab', 'Workflow'), icon: 'clipboard-list' },
+      { id: 'onsite' as TabId, label: _tr('admin.network.installations.onsite_tab', 'On-site'), icon: 'wrench' },
+      { id: 'network' as TabId, label: _tr('admin.network.installations.network_tab', 'Network'), icon: 'wifi' },
+      { id: 'timeline' as TabId, label: _tr('admin.network.installations.timeline_tab', 'Timeline'), icon: 'history' },
     ];
   });
 
   $effect(() => {
     if (!detailOpen || !activeRow) return;
-    if (activeRow.status === 'pending')     activeTab = 'workflow';
+    if (activeRow.status === 'pending') activeTab = 'workflow';
     else if (activeRow.status === 'in_progress') activeTab = 'onsite';
     else activeTab = 'info';
   });
+
+  function backdropClick(e: MouseEvent) {
+    if (e.target === e.currentTarget) closeDetail();
+  }
+  function backdropKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') closeDetail();
+  }
+  function cancelBackdropClick(e: MouseEvent) {
+    if (e.target === e.currentTarget) closeCancelDialog();
+  }
+  function cancelBackdropKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') closeCancelDialog();
+  }
 </script>
 
 {#if detailOpen && activeRow}
-  <div class="modal-backdrop" role="button" tabindex="0"
-    onclick={(e) => { if (e.target === e.currentTarget) closeDetail(); }}
-    onkeydown={(e) => { if (e.key === 'Escape') closeDetail(); }}>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="modal-backdrop" onclick={backdropClick} onkeydown={backdropKeydown}>
     <div class="modal">
-      <!-- Header -->
       <div class="modal-head">
         <div class="modal-head-left">
           <h2>{activeRow.customer_name || activeRow.customer_id}</h2>
@@ -179,7 +182,6 @@
         </button>
       </div>
 
-      <!-- Tab bar -->
       <nav class="tab-bar">
         {#each tabs as tab}
           <button class="tab-btn" class:active={activeTab === tab.id} onclick={() => (activeTab = tab.id)}>
@@ -189,9 +191,7 @@
         {/each}
       </nav>
 
-      <!-- Tab content -->
       <div class="tab-content">
-        <!-- INFO TAB -->
         {#if activeTab === 'info'}
           <div class="meta-grid">
             <article class="meta-item"><span class="meta-label">{tr('common.customer', 'Customer')}</span><strong class="meta-value">{activeRow.customer_name || '—'}</strong></article>
@@ -218,7 +218,6 @@
             {/if}
           </div>
 
-        <!-- WORKFLOW TAB -->
         {:else if activeTab === 'workflow'}
           {#if canManageWorkOrders}
             <div class="wizard-card">
@@ -258,7 +257,6 @@
             </div>
           {/if}
 
-        <!-- ONSITE TAB -->
         {:else if activeTab === 'onsite'}
           {#if activeRow.status === 'in_progress'}
             <div class="wizard-card">
@@ -283,7 +281,6 @@
             </div>
           {/if}
 
-        <!-- NETWORK TAB -->
         {:else if activeTab === 'network'}
           <div class="wizard-card">
             <h3>{tr('admin.network.installations.network_config', 'Network Configuration')}</h3>
@@ -333,7 +330,6 @@
             {#if activeRow.status === 'in_progress'}<div class="modal-actions"><button class="btn success" onclick={completeFromDetail} disabled={busyId === activeRow.id || !canCompleteActive}>{tr('common.complete', 'Complete')}</button></div>{/if}
           </div>
 
-        <!-- TIMELINE TAB -->
         {:else if activeTab === 'timeline'}
           {#if rescheduleRequest}
             <div class="wizard-card">
@@ -366,9 +362,8 @@
 {/if}
 
 {#if cancelDialogOpen && cancelTarget}
-  <div class="modal-backdrop" role="button" tabindex="0"
-    onclick={(e) => { if (e.target === e.currentTarget) closeCancelDialog(); }}
-    onkeydown={(e) => { if (e.key === 'Escape') closeCancelDialog(); }}>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="modal-backdrop" onclick={cancelBackdropClick} onkeydown={cancelBackdropKeydown}>
     <div class="modal cancel-modal">
       <div class="modal-head"><h2>{tr('common.cancel', 'Cancel')} WO</h2><button class="btn ghost icon-btn" onclick={closeCancelDialog} aria-label={tr('common.close', 'Close')}><Icon name="x" size={16} /></button></div>
       <p class="step-help">{tr('admin.network.installations.cancel_reason_required', 'Min 10 chars reason.')}</p>
@@ -457,6 +452,7 @@
   .btn:disabled { opacity: 0.55; cursor: not-allowed; }
   .icon-btn { width: 36px; height: 36px; padding: 0; justify-content: center; }
   .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-top: 4px; }
+  .mt { margin-top: 14px; }
   .status { display: inline-flex; border-radius: 999px; border: 1px solid var(--border-color); padding: 2px 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
   .status.pending { border-color: color-mix(in srgb, var(--color-warning) 40%, var(--border-color)); color: var(--color-warning); }
   .status.progress { border-color: color-mix(in srgb, var(--color-primary) 40%, var(--border-color)); color: var(--color-primary); }
