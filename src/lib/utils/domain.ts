@@ -10,10 +10,14 @@ function normalizeHostname(hostname: string): string {
 }
 
 function getConfiguredMainDomains(): string[] {
+  const rawHosts = import.meta.env.VITE_ALLOWED_HOSTS || '';
+  // 'all' means every host is a platform domain, no custom-domain redirects
+  if (rawHosts.trim().toLowerCase() === 'all') return [];
+
   const list = [
     normalizeHostname(String(import.meta.env.VITE_MAIN_DOMAIN || '')),
     normalizeHostname(String(import.meta.env.VITE_APP_MAIN_DOMAIN || '')),
-    ...(import.meta.env.VITE_ALLOWED_HOSTS || '').split(',').map(normalizeHostname).filter(Boolean),
+    ...rawHosts.split(',').map(normalizeHostname).filter(Boolean),
   ].filter(Boolean);
 
   return Array.from(new Set(list));
@@ -22,6 +26,9 @@ function getConfiguredMainDomains(): string[] {
 export function isPlatformDomain(hostname: string): boolean {
   const host = normalizeHostname(hostname);
   if (!host) return false;
+  // 'VITE_ALLOWED_HOSTS=all' → every host is the platform domain
+  const rawHosts = import.meta.env.VITE_ALLOWED_HOSTS || '';
+  if (rawHosts.trim().toLowerCase() === 'all') return true;
   return getConfiguredMainDomains().includes(host);
 }
 
