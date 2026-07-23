@@ -215,6 +215,15 @@
                   {:else if isAssignedToCurrentUser(activeRow)}<p class="helper-text">{tr('admin.network.installations.already_taken_by_you', 'You took this WO.')}</p>
                   {:else}<p class="helper-text">{tr('admin.network.installations.taken_by_other', 'Taken by another technician.')}</p>{/if}
                 {/if}
+              {:else if activeRow.status === 'in_progress'}
+                <h3>{tr('admin.network.installations.in_progress', 'Work Order In Progress')}</h3>
+                <p class="step-help">{tr('admin.network.installations.in_progress_help', 'Installation is underway. Manage checklist and site details in the On-site tab.')}</p>
+                <div class="active-summary">
+                  <div class="summary-row"><span class="summary-label">{tr('common.assignee', 'Assignee')}</span><strong>{activeRow.assigned_to_name || '—'}</strong></div>
+                  <div class="summary-row"><span class="summary-label">{tr('common.schedule', 'Schedule')}</span><strong>{activeRow.scheduled_at ? formatDateTime(activeRow.scheduled_at) : '—'}</strong></div>
+                  <div class="summary-row"><span class="summary-label">{tr('admin.network.installations.checklist', 'Checklist')}</span><strong>{checklistDoneCount}/{checklistTotal}</strong></div>
+                </div>
+                <button class="btn ghost" onclick={() => (activeTab = 'onsite')}><Icon name="wrench" size={14} />{tr('admin.network.installations.go_to_onsite', 'Open On-site Tab')}</button>
               {:else if isClosedState}
                 <h3>{activeRow.status === 'completed' ? tr('common.complete', 'Completed') : tr('common.cancelled', 'Cancelled')}</h3>
                 <p class="step-help">{activeRow.status === 'completed' ? (isAwaitingFirstPayment ? tr('admin.network.installations.final_waiting_payment', 'Waiting first payment.') : tr('admin.network.installations.final_completed', 'Completed and active.')) : tr('admin.network.installations.final_cancelled', 'Cancelled.')}</p>
@@ -354,6 +363,8 @@
   .check-item.is-done .check-indicator { border-color: var(--color-success); background: var(--color-success); color: var(--bg-app); }
   .cable-designer-card { border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
   .cable-designer-card p { margin: 4px 0 0; font-size: 0.85rem; color: var(--text-secondary); }
+  .active-summary { border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-primary); display: grid; gap: 1px; overflow: hidden; }
+  .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-surface); }
   .photos-card { border: 1px solid var(--border-color); border-radius: 10px; padding: 10px; display: grid; gap: 10px; background: var(--bg-primary); }
   .photos-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .upload-btn { position: relative; overflow: hidden; }
