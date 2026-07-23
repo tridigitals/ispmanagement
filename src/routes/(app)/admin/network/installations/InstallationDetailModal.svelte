@@ -153,23 +153,15 @@
     else activeTab = 'info';
   });
 
-  function backdropClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) closeDetail();
-  }
-  function backdropKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') closeDetail();
-  }
-  function cancelBackdropClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) closeCancelDialog();
-  }
-  function cancelBackdropKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') closeCancelDialog();
-  }
+  function onBackdropClick(e: MouseEvent) { if (e.target === e.currentTarget) closeDetail(); }
+  function onBackdropKey(e: KeyboardEvent) { if (e.key === 'Escape') closeDetail(); }
+  function onCancelBackdropClick(e: MouseEvent) { if (e.target === e.currentTarget) closeCancelDialog(); }
+  function onCancelBackdropKey(e: KeyboardEvent) { if (e.key === 'Escape') closeCancelDialog(); }
 </script>
 
 {#if detailOpen && activeRow}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="modal-backdrop" onclick={backdropClick} onkeydown={backdropKeydown}>
+  <div class="modal-backdrop" onclick={onBackdropClick} onkeydown={onBackdropKey}>
     <div class="modal">
       <div class="modal-head">
         <div class="modal-head-left">
@@ -177,20 +169,13 @@
           <span class={statusClass(activeRow.status)}>{activeRow.status}</span>
           <span class="wo-id">WO #{activeRow.id.slice(0, 8)}</span>
         </div>
-        <button class="btn ghost icon-btn" onclick={closeDetail} aria-label={tr('common.close', 'Close')}>
-          <Icon name="x" size={16} />
-        </button>
+        <button class="btn ghost icon-btn" onclick={closeDetail} aria-label={tr('common.close', 'Close')}><Icon name="x" size={16} /></button>
       </div>
-
       <nav class="tab-bar">
         {#each tabs as tab}
-          <button class="tab-btn" class:active={activeTab === tab.id} onclick={() => (activeTab = tab.id)}>
-            <Icon name={tab.icon} size={14} />
-            {tab.label}
-          </button>
+          <button class="tab-btn" class:active={activeTab === tab.id} onclick={() => (activeTab = tab.id)}><Icon name={tab.icon} size={14} />{tab.label}</button>
         {/each}
       </nav>
-
       <div class="tab-content">
         {#if activeTab === 'info'}
           <div class="meta-grid">
@@ -204,18 +189,9 @@
           <div class="focus-panel">
             <div class="focus-copy">
               <span class="focus-kicker">{tr('admin.network.installations.current_step', 'Current')}</span>
-              <strong>
-                {activeRow.status === 'pending' ? tr('admin.network.installations.status_pending', 'Awaiting assignment')
-                  : activeRow.status === 'in_progress' ? tr('admin.network.installations.status_active', 'Installation in progress')
-                  : activeRow.status === 'completed' ? tr('admin.network.installations.status_done', 'Installation completed')
-                  : tr('admin.network.installations.status_cancelled', 'Cancelled')}
-              </strong>
+              <strong>{activeRow.status === 'pending' ? tr('admin.network.installations.status_pending', 'Awaiting assignment') : activeRow.status === 'in_progress' ? tr('admin.network.installations.status_active', 'Installation in progress') : activeRow.status === 'completed' ? tr('admin.network.installations.status_done', 'Installation completed') : tr('admin.network.installations.status_cancelled', 'Cancelled')}</strong>
             </div>
-            {#if activeRow.status === 'completed' && isGraceActive}
-              <div class="focus-chip"><span>{tr('admin.network.installations.grace_deadline', 'Grace until')}</span><strong>{subscriptionGraceDeadlineLabel}</strong></div>
-            {:else if activeRow.status === 'in_progress'}
-              <div class="focus-chip"><span>{tr('admin.network.installations.checklist', 'Checklist')}</span><strong>{checklistDoneCount}/{checklistTotal}</strong></div>
-            {/if}
+            {#if activeRow.status === 'completed' && isGraceActive}<div class="focus-chip"><span>{tr('admin.network.installations.grace_deadline', 'Grace until')}</span><strong>{subscriptionGraceDeadlineLabel}</strong></div>{:else if activeRow.status === 'in_progress'}<div class="focus-chip"><span>{tr('admin.network.installations.checklist', 'Checklist')}</span><strong>{checklistDoneCount}/{checklistTotal}</strong></div>{/if}
           </div>
 
         {:else if activeTab === 'workflow'}
@@ -225,15 +201,8 @@
                 <h3>{tr('admin.network.installations.step_assign', 'Assign & Schedule')}</h3>
                 <p class="step-help">{tr('admin.network.installations.step_assign_help', 'Choose technician and schedule.')}</p>
                 {#if isAdminOwner}
-                  <label>{tr('common.assignee', 'Assignee')}
-                    <select class="input" bind:value={formAssignee} disabled={busyId === activeRow.id}>
-                      <option value="">{tr('admin.network.installations.assignee_placeholder', 'Select assignee')}</option>
-                      {#each assigneeOptions as opt}<option value={opt.value}>{opt.label}</option>{/each}
-                    </select>
-                  </label>
-                  <div class="assigned-summary"><span class="summary-label">{tr('common.assignee', 'Assignee')}</span><strong>{assigneeLabel(formAssignee)}</strong>
-                    {#if isAdminOwner}<button class="btn ghost mini" type="button" onclick={resetToAssignStep}>{tr('common.change', 'Change')}</button>{/if}
-                  </div>
+                  <label>{tr('common.assignee', 'Assignee')}<select class="input" bind:value={formAssignee} disabled={busyId === activeRow.id}><option value="">{tr('admin.network.installations.assignee_placeholder', 'Select assignee')}</option>{#each assigneeOptions as opt}<option value={opt.value}>{opt.label}</option>{/each}</select></label>
+                  <div class="assigned-summary"><span class="summary-label">{tr('common.assignee', 'Assignee')}</span><strong>{assigneeLabel(formAssignee)}</strong>{#if isAdminOwner}<button class="btn ghost mini" type="button" onclick={resetToAssignStep}>{tr('common.change', 'Change')}</button>{/if}</div>
                   <label>{tr('common.schedule', 'Schedule')}<input type="datetime-local" bind:value={formSchedule} disabled={busyId === activeRow.id} class="input" /></label>
                   <label class="notes">{tr('common.notes', 'Notes')}<textarea rows="3" bind:value={formNotes} class="input" placeholder={tr('admin.network.installations.notes_placeholder', '...')}></textarea></label>
                   <div class="modal-actions">
@@ -261,19 +230,13 @@
           {#if activeRow.status === 'in_progress'}
             <div class="wizard-card">
               <h3>{tr('admin.network.installations.step_onsite', 'On-site Installation')}</h3>
-              <fieldset class="checklist">
-                <legend>{tr('admin.network.installations.checklist', 'Checklist')} <span class="progress-inline">{checklistDoneCount}/{checklistTotal}</span></legend>
+              <fieldset class="checklist"><legend>{tr('admin.network.installations.checklist', 'Checklist')} <span class="progress-inline">{checklistDoneCount}/{checklistTotal}</span></legend>
                 {#each [{ key: 'cable', label: 'Cable Installation', desc: 'Physical cable routing and termination', checked: checkCable },{ key: 'ont', label: 'ONT/ONU Setup', desc: 'Device mounted, powered, and connected', checked: checkOnt },{ key: 'pppoe', label: 'PPPoE/DHCP Test', desc: 'Internet connectivity verified', checked: checkPppoe },{ key: 'speed', label: 'Speed Test', desc: 'Bandwidth matches subscription', checked: checkSpeed }] as item, i}
-                  <label class="check-item" class:is-done={item.checked}>
-                    <input type="checkbox" checked={item.checked} onchange={(e) => setOnsiteTaskChecked(i, (e.currentTarget as HTMLInputElement).checked)} />
-                    <span class="check-indicator">{#if item.checked}<Icon name="check" size={14} />{/if}</span>
-                    <span class="check-content"><strong>{item.label}</strong><small>{item.desc}</small></span>
-                  </label>
+                  <label class="check-item" class:is-done={item.checked}><input type="checkbox" checked={item.checked} onchange={(e) => setOnsiteTaskChecked(i, (e.currentTarget as HTMLInputElement).checked)} /><span class="check-indicator">{#if item.checked}<Icon name="check" size={14} />{/if}</span><span class="check-content"><strong>{item.label}</strong><small>{item.desc}</small></span></label>
                 {/each}
               </fieldset>
-              <div class="cable-designer-card"><div><strong>{tr('admin.network.installations.cable_route_title', 'Cable Route')}</strong><p>{tr('admin.network.installations.cable_route_desc', 'Draw in Topology Map.')}</p></div><button class="btn ghost" type="button" onclick={openCableDesigner}><Icon name="map-pin" size={14} /> {tr('admin.network.installations.open_cable_designer', 'Draw')}</button></div>
-              <section class="photos-card">
-                <div class="photos-head"><strong>{tr('admin.network.installations.photos_title', 'Photos')}</strong><label class="btn ghost upload-btn"><Icon name="image" size={14} /> {uploadingPhotos ? tr('common.loading', '...') : tr('admin.network.installations.photos_add', 'Add')}<input type="file" accept="image/*" multiple onchange={uploadInstallationPhotos} disabled={uploadingPhotos} class="hidden-input" /></label></div>
+              <div class="cable-designer-card"><div><strong>{tr('admin.network.installations.cable_route_title', 'Cable Route')}</strong><p>{tr('admin.network.installations.cable_route_desc', 'Draw in Topology Map.')}</p></div><button class="btn ghost" type="button" onclick={openCableDesigner}><Icon name="map-pin" size={14} />{tr('admin.network.installations.open_cable_designer', 'Draw')}</button></div>
+              <section class="photos-card"><div class="photos-head"><strong>{tr('admin.network.installations.photos_title', 'Photos')}</strong><label class="btn ghost upload-btn"><Icon name="image" size={14} />{uploadingPhotos ? tr('common.loading', '...') : tr('admin.network.installations.photos_add', 'Add')}<input type="file" accept="image/*" multiple onchange={uploadInstallationPhotos} disabled={uploadingPhotos} class="hidden-input" /></label></div>
                 {#if installationPhotos.length > 0}<div class="photo-grid">{#each installationPhotos as file}<article class="photo-item"><img src={getStorageContentUrl(file.id)} alt={file.original_name || 'Photo'} loading="lazy" /><div class="photo-meta"><button class="btn danger mini" type="button" onclick={() => removeInstallationPhoto(file.id)}><Icon name="trash" size={12} /></button></div></article>{/each}</div>{:else}<p class="helper-text">{tr('admin.network.installations.photos_empty', 'No photos yet.')}</p>{/if}
               </section>
               <label class="notes">{tr('common.notes', 'Notes')}<textarea rows="3" bind:value={formNotes} class="input" placeholder={tr('admin.network.installations.notes_on_site_placeholder', '...')}></textarea></label>
@@ -286,73 +249,46 @@
             <h3>{tr('admin.network.installations.network_config', 'Network Configuration')}</h3>
             {#if activeRow?.package_provisioning_type === 'dhcp_static'}
               <h4>DHCP Static</h4>
-              <div class="form-grid two-col compact">
-                <label><span class="summary-label">{tr('admin.network.installations.dhcp_server', 'DHCP Server')}</span><input class="input" class:error={!!installationDhcpServerNameError} bind:value={installationDhcpServerName} /></label>
-                <label><span class="summary-label">{tr('admin.network.installations.mac_address', 'MAC Address')}</span><input class="input" class:error={!!installationDhcpMacAddressError} bind:value={installationDhcpMacAddress} /></label>
-                <label><span class="summary-label">{tr('admin.network.installations.ip_address', 'IP Address')}</span><input class="input" class:error={!!installationDhcpIpAddressError} bind:value={installationDhcpIpAddress} /></label>
-                <label><span class="summary-label">{tr('admin.network.installations.queue_mode', 'Queue')}</span><select class="input" bind:value={installationDhcpQueueMode}><option value="none">No queue</option><option value="simple_queue">Simple queue</option></select></label>
-              </div>
+              <div class="form-grid two-col compact"><label><span class="summary-label">{tr('admin.network.installations.dhcp_server', 'DHCP Server')}</span><input class="input" class:error={!!installationDhcpServerNameError} bind:value={installationDhcpServerName} /></label><label><span class="summary-label">{tr('admin.network.installations.mac_address', 'MAC Address')}</span><input class="input" class:error={!!installationDhcpMacAddressError} bind:value={installationDhcpMacAddress} /></label><label><span class="summary-label">{tr('admin.network.installations.ip_address', 'IP Address')}</span><input class="input" class:error={!!installationDhcpIpAddressError} bind:value={installationDhcpIpAddress} /></label><label><span class="summary-label">{tr('admin.network.installations.queue_mode', 'Queue')}</span><select class="input" bind:value={installationDhcpQueueMode}><option value="none">No queue</option><option value="simple_queue">Simple queue</option></select></label></div>
               {#if installationDhcpQueueMode === 'simple_queue'}<label><span class="summary-label">{tr('admin.network.installations.queue_rate_limit', 'Rate Limit')}</span><input class="input" bind:value={installationDhcpQueueRateLimit} placeholder="20M/20M" /></label>{/if}
               <label><span class="summary-label">{tr('common.comment', 'Comment')}</span><input class="input" bind:value={installationDhcpComment} /></label>
               <div class="modal-actions"><button class="btn ghost" onclick={saveInstallationDhcp} disabled={savingInstallationDhcp}>{savingInstallationDhcp ? '...' : installationDhcpService ? tr('admin.network.installations.save_reapply', 'Save & Reapply') : tr('admin.network.installations.save_activate', 'Save & Activate')}</button>{#if installationDhcpService}<button class="btn ghost" onclick={applyInstallationDhcp} disabled={savingInstallationDhcp}>{tr('admin.network.installations.reapply', 'Reapply')}</button>{/if}</div>
             {:else}
               <h4>PPPoE</h4>
-              <div class="form-grid two-col compact">
-                <label><span class="summary-label">{tr('admin.network.installations.pppoe_username', 'Username')}</span><input class="input" bind:value={installationPppoeUsername} placeholder="pppoe username" /></label>
-                <label><span class="summary-label">{tr('admin.network.installations.pppoe_password', 'Password')}</span><input class="input" type="password" bind:value={installationPppoePassword} placeholder="pppoe password" /></label>
-              </div>
+              <div class="form-grid two-col compact"><label><span class="summary-label">{tr('admin.network.installations.pppoe_username', 'Username')}</span><input class="input" bind:value={installationPppoeUsername} placeholder="pppoe username" /></label><label><span class="summary-label">{tr('admin.network.installations.pppoe_password', 'Password')}</span><input class="input" type="password" bind:value={installationPppoePassword} placeholder="pppoe password" /></label></div>
               {#if installationPppoeTargetOptions.length > 1}<label><span class="summary-label">{tr('admin.network.installations.provision_to', 'Provision to')}</span><select class="input" bind:value={installationPppoeTarget}>{#each installationPppoeTargetOptions as option (option.value)}<option value={option.value} disabled={option.disabled}>{option.label}</option>{/each}</select></label>{/if}
               <label><span class="summary-label">{tr('common.comment', 'Comment')}</span><input class="input" bind:value={installationPppoeComment} /></label>
               {#if installationPppoeAccount}<div class="pppoe-existing"><span>{tr('admin.network.installations.pppoe_existing', 'Existing:')}</span><strong>{installationPppoeAccount.username}</strong></div>{/if}
               <div class="modal-actions"><button class="btn ghost" onclick={saveInstallationPppoe} disabled={savingInstallationPppoe}>{savingInstallationPppoe ? '...' : installationPppoeAccount ? tr('admin.network.installations.save_reapply', 'Save & Reapply') : tr('admin.network.installations.save_activate', 'Save & Activate')}</button>{#if installationPppoeAccount}<button class="btn ghost" onclick={applyInstallationPppoe} disabled={savingInstallationPppoe}>{tr('admin.network.installations.reapply', 'Reapply')}</button>{/if}</div>
             {/if}
-
             <h4 class="mt">{tr('admin.network.installations.step_assets', 'Asset Binding')}</h4>
             {#if loadingInstallationAssets}<p class="helper-text">Loading...</p>
             {:else}
               <label><span class="summary-label">{tr('admin.network.installations.terminal_asset', 'Terminal (ONT/ONU)')}</span><select class="input" bind:value={installationTerminalAssetId} onchange={handleInstallationTerminalAssetChange}><option value="">{tr('admin.network.installations.select_terminal_asset', 'Select')}</option>{#each installationTerminalAssetOptions as option}<option value={option.value}>{option.label}</option>{/each}</select></label>
               <label><span class="summary-label">{tr('admin.network.installations.parent_asset_optional', 'Parent (Optional)')}</span><select class="input" bind:value={installationParentAssetId} onchange={handleInstallationParentAssetChange}><option value="">{tr('admin.network.installations.no_parent_asset', 'None')}</option>{#each installationParentAssetOptions as option}<option value={option.value}>{option.label}</option>{/each}</select></label>
-              <div class="modal-actions"><button class="btn ghost" type="button" onclick={openInstallationQuickAsset}><Icon name="plus" size={14} /> {tr('admin.network.installations.quick_create_terminal_asset', 'Create New')}</button></div>
+              <div class="modal-actions"><button class="btn ghost" type="button" onclick={openInstallationQuickAsset}><Icon name="plus" size={14} />{tr('admin.network.installations.quick_create_terminal_asset', 'Create New')}</button></div>
               {#if installationQuickAssetOpen}
-                <section class="quick-asset-card">
-                  <div class="quick-asset-head"><strong>{tr('admin.network.installations.quick_create_title', 'Quick Create')}</strong><button class="btn ghost mini" type="button" onclick={closeInstallationQuickAsset}>{tr('common.close', 'Close')}</button></div>
-                  <div class="form-grid two-col compact">
-                    <label class="summary-field">{tr('admin.network.installations.quick_asset_type', 'Type')}<select class="input" value={installationQuickAssetDraft.asset_type} onchange={(event) => updateInstallationQuickAssetField('asset_type', (event.currentTarget as HTMLSelectElement).value)}><option value="ont">ONT</option><option value="onu">ONU</option></select></label>
-                    <label class="summary-field">{tr('admin.network.installations.quick_asset_name', 'Name')}<input class="input" value={installationQuickAssetDraft.name} oninput={(event) => updateInstallationQuickAssetField('name', (event.currentTarget as HTMLInputElement).value)} /></label>
-                    <label class="summary-field">{tr('admin.network.installations.quick_asset_serial', 'Serial')}<input class="input" value={installationQuickAssetDraft.serial_number} oninput={(event) => updateInstallationQuickAssetField('serial_number', (event.currentTarget as HTMLInputElement).value)} /></label>
-                    <label class="summary-field">{tr('admin.network.installations.quick_asset_code', 'Code')}<input class="input" value={installationQuickAssetDraft.code} oninput={(event) => updateInstallationQuickAssetField('code', (event.currentTarget as HTMLInputElement).value)} /></label>
-                  </div>
+                <section class="quick-asset-card"><div class="quick-asset-head"><strong>{tr('admin.network.installations.quick_create_title', 'Quick Create')}</strong><button class="btn ghost mini" type="button" onclick={closeInstallationQuickAsset}>{tr('common.close', 'Close')}</button></div>
+                  <div class="form-grid two-col compact"><label class="summary-field">{tr('admin.network.installations.quick_asset_type', 'Type')}<select class="input" value={installationQuickAssetDraft.asset_type} onchange={(event) => updateInstallationQuickAssetField('asset_type', (event.currentTarget as HTMLSelectElement).value)}><option value="ont">ONT</option><option value="onu">ONU</option></select></label><label class="summary-field">{tr('admin.network.installations.quick_asset_name', 'Name')}<input class="input" value={installationQuickAssetDraft.name} oninput={(event) => updateInstallationQuickAssetField('name', (event.currentTarget as HTMLInputElement).value)} /></label><label class="summary-field">{tr('admin.network.installations.quick_asset_serial', 'Serial')}<input class="input" value={installationQuickAssetDraft.serial_number} oninput={(event) => updateInstallationQuickAssetField('serial_number', (event.currentTarget as HTMLInputElement).value)} /></label><label class="summary-field">{tr('admin.network.installations.quick_asset_code', 'Code')}<input class="input" value={installationQuickAssetDraft.code} oninput={(event) => updateInstallationQuickAssetField('code', (event.currentTarget as HTMLInputElement).value)} /></label></div>
                   <div class="modal-actions"><button class="btn ghost" type="button" onclick={closeInstallationQuickAsset}>{tr('common.cancel', 'Cancel')}</button><button class="btn" type="button" onclick={createInstallationQuickAsset} disabled={!installationQuickAssetCanSubmit}>{creatingInstallationQuickAsset ? '...' : tr('admin.network.installations.quick_create_submit', 'Create')}</button></div>
                 </section>
               {/if}
             {/if}
-
             {#if activeRow.status === 'in_progress'}<div class="modal-actions"><button class="btn success" onclick={completeFromDetail} disabled={busyId === activeRow.id || !canCompleteActive}>{tr('common.complete', 'Complete')}</button></div>{/if}
           </div>
 
         {:else if activeTab === 'timeline'}
           {#if rescheduleRequest}
-            <div class="wizard-card">
-              <h3>{tr('admin.network.installations.reschedule_pending_title', 'Reschedule Request')}</h3>
-              <div class="reschedule-request-card">
-                <div class="reschedule-request-head"><strong>Pending</strong><span>{formatDateTime(rescheduleRequest.created_at)}</span></div>
-                <div><strong>{tr('common.requested_by', 'By')}:</strong> {rescheduleRequest.requested_by_name || '-'}</div>
-                <div><strong>{tr('common.schedule', 'New')}:</strong> {formatDateTime(rescheduleRequest.requested_schedule)}</div>
+            <div class="wizard-card"><h3>{tr('admin.network.installations.reschedule_pending_title', 'Reschedule Request')}</h3>
+              <div class="reschedule-request-card"><div class="reschedule-request-head"><strong>Pending</strong><span>{formatDateTime(rescheduleRequest.created_at)}</span></div><div><strong>{tr('common.requested_by', 'By')}:</strong> {rescheduleRequest.requested_by_name || '-'}</div><div><strong>{tr('common.schedule', 'New')}:</strong> {formatDateTime(rescheduleRequest.requested_schedule)}</div>
                 {#if rescheduleRequest.reason}<p>{rescheduleRequest.reason}</p>{/if}
-                {#if canReviewReschedule}
-                  <label><span class="summary-label">{tr('admin.network.installations.override_schedule_optional', 'Override (optional)')}</span><input type="datetime-local" class="input" bind:value={rescheduleOverrideAt} disabled={rescheduleDecisionBusy} /></label>
-                  <label><span class="summary-label">{tr('common.notes', 'Notes')}</span><textarea rows="2" class="input" bind:value={rescheduleDecisionNotes} disabled={rescheduleDecisionBusy}></textarea></label>
-                  <div class="modal-actions"><button class="btn ghost" onclick={approveRescheduleFromDetail} disabled={rescheduleDecisionBusy}>{tr('common.approve', 'Approve')}</button><button class="btn danger" onclick={rejectRescheduleFromDetail} disabled={rescheduleDecisionBusy}>{tr('common.reject', 'Reject')}</button></div>
-                {/if}
+                {#if canReviewReschedule}<label><span class="summary-label">{tr('admin.network.installations.override_schedule_optional', 'Override (optional)')}</span><input type="datetime-local" class="input" bind:value={rescheduleOverrideAt} disabled={rescheduleDecisionBusy} /></label><label><span class="summary-label">{tr('common.notes', 'Notes')}</span><textarea rows="2" class="input" bind:value={rescheduleDecisionNotes} disabled={rescheduleDecisionBusy}></textarea></label><div class="modal-actions"><button class="btn ghost" onclick={approveRescheduleFromDetail} disabled={rescheduleDecisionBusy}>{tr('common.approve', 'Approve')}</button><button class="btn danger" onclick={rejectRescheduleFromDetail} disabled={rescheduleDecisionBusy}>{tr('common.reject', 'Reject')}</button></div>{/if}
               </div>
             </div>
           {/if}
           {#if canReadAuditLogs}
-            <div class="wizard-card">
-              <h3>{tr('admin.network.installations.timeline', 'Audit Timeline')}</h3>
-              {#if timelineLoading}<p class="helper-text">Loading...</p>
-              {:else if timelineRows.length === 0}<p class="helper-text">{tr('common.no_data', 'No data')}</p>
-              {:else}<div class="timeline-list">{#each timelineRows as log}<article class="timeline-item"><div class="timeline-head"><strong>{log.action}</strong><span>{formatDateTime(log.created_at)}</span></div><div class="timeline-meta"><span>{log.user_name || log.user_email || '-'}</span>{#if log.ip_address}<span>{log.ip_address}</span>{/if}</div>{#if log.details}<p>{log.details}</p>{/if}</article>{/each}</div>{/if}
+            <div class="wizard-card"><h3>{tr('admin.network.installations.timeline', 'Audit Timeline')}</h3>
+              {#if timelineLoading}<p class="helper-text">Loading...</p>{:else if timelineRows.length === 0}<p class="helper-text">{tr('common.no_data', 'No data')}</p>{:else}<div class="timeline-list">{#each timelineRows as log}<article class="timeline-item"><div class="timeline-head"><strong>{log.action}</strong><span>{formatDateTime(log.created_at)}</span></div><div class="timeline-meta"><span>{log.user_name || log.user_email || '-'}</span>{#if log.ip_address}<span>{log.ip_address}</span>{/if}</div>{#if log.details}<p>{log.details}</p>{/if}</article>{/each}</div>{/if}
             </div>
           {/if}
         {/if}
@@ -363,7 +299,7 @@
 
 {#if cancelDialogOpen && cancelTarget}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="modal-backdrop" onclick={cancelBackdropClick} onkeydown={cancelBackdropKeydown}>
+  <div class="modal-backdrop" onclick={onCancelBackdropClick} onkeydown={onCancelBackdropKey}>
     <div class="modal cancel-modal">
       <div class="modal-head"><h2>{tr('common.cancel', 'Cancel')} WO</h2><button class="btn ghost icon-btn" onclick={closeCancelDialog} aria-label={tr('common.close', 'Close')}><Icon name="x" size={16} /></button></div>
       <p class="step-help">{tr('admin.network.installations.cancel_reason_required', 'Min 10 chars reason.')}</p>
