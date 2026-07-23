@@ -153,7 +153,6 @@
     else activeTab = 'info';
   });
 
-  function onBackdropClick(e: MouseEvent) { if (e.target === e.currentTarget) closeDetail(); }
   function onBackdropKey(e: KeyboardEvent) { if (e.key === 'Escape') closeDetail(); }
   function onCancelBackdropClick(e: MouseEvent) { if (e.target === e.currentTarget) closeCancelDialog(); }
   function onCancelBackdropKey(e: KeyboardEvent) { if (e.key === 'Escape') closeCancelDialog(); }
@@ -161,7 +160,7 @@
 
 {#if detailOpen && activeRow}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="modal-backdrop" onclick={onBackdropClick} onkeydown={onBackdropKey}>
+  <div class="modal-backdrop" onkeydown={onBackdropKey}>
     <div class="modal">
       <div class="modal-head">
         <div class="modal-head-left">
