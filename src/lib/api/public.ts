@@ -29,13 +29,13 @@ export const publicApi = {
     inviteToken?: string | null,
     phone?: string | null,
   ): Promise<AuthResponse> =>
+    // Body must match PublicCustomerRegisterDto (camelCase, deny_unknown_fields).
+    // Do not send domain / invite_token snake_case — BE rejects unknown fields.
     safeInvoke('register_customer_by_domain', {
       email,
       password,
       name,
       phone: phone ?? undefined,
       inviteToken: inviteToken ?? undefined,
-      invite_token: inviteToken ?? undefined,
-      domain: currentDomain(),
     }),
 };

@@ -81,6 +81,8 @@ pub struct PublicCustomerRegisterDto {
     pub name: String,
     #[validate(length(max = 30, message = "Phone number too long"))]
     pub phone: Option<String>,
+    // rename_all=camelCase → inviteToken; alias keeps older clients working
+    #[serde(default, alias = "invite_token")]
     pub invite_token: Option<String>,
 }
 
