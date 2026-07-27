@@ -290,28 +290,80 @@ pub async fn register_customer_by_domain(
         .filter(|v| !v.is_empty());
 
     let auth_settings = state.auth_service.get_auth_settings().await;
-    if !auth_settings.allow_registration && invite_token.is_none() {
-        return Err(crate::error::AppError::Validation(
-            "Public registration is currently disabled".to_string(),
-        ));
-    }
 
-    let Some(invite_token) = invite_token else {
-        return Err(crate::error::AppError::Validation(
-            "Public registration is currently disabled".to_string(),
-        ));
+    // Resolve host: request Host > x-forwarded-host. Used both as fallback
+    // tenant resolver (no invite) and as domain guard.
+    let host = request_host(&headers);
+    let domain_context = match host.as_deref() {
+        Some(h) => {
+            resolve_request_domain(
+                &state.auth_service.pool,
+                h,
+                auth_settings.main_domain.as_deref(),
+            )
+            .await?
+        }
+        None => ResolvedDomainContext::InvalidHost,
     };
 
-    // Resolve tenant from invite token (works from any domain)
-    let tenant_id = state
-        .customer_service
-        .resolve_tenant_id_by_invite_token(invite_token)
-        .await?
-        .ok_or_else(|| {
-            crate::error::AppError::Validation(
-                "Invite link is invalid, expired, or already used".to_string(),
-            )
-        })?;
+    // Tenant resolution priority:
+    //   1. invite_token (works from any host)
+    //   2. custom-domain from Host
+    let tenant_id: String = if let Some(invite) = invite_token {
+        state
+            .customer_service
+            .resolve_tenant_id_by_invite_token(invite)
+            .await?
+            .ok_or_else(|| {
+                crate::error::AppError::Validation(
+                    "Invite link is invalid, expired, or already used".to_string(),
+                )
+            })?
+    } else {
+        // No invite → must be a tenant custom domain; otherwise reject.
+        match &domain_context {
+            ResolvedDomainContext::TenantCustomDomain { tenant_id, .. } => tenant_id.clone(),
+            ResolvedDomainContext::InvalidHost
+            | ResolvedDomainContext::LocalDevelopment { .. } => {
+                return Err(crate::error::AppError::Validation(
+                    "Customer registration is only available from a tenant custom domain or via invitation link".to_string(),
+                ));
+            }
+            ResolvedDomainContext::PlatformDomain { .. }
+            | ResolvedDomainContext::PlatformSubdomain { .. } => {
+                return Err(crate::error::AppError::Validation(
+                    "Use a tenant custom domain to register customer portal access".to_string(),
+                ));
+            }
+            ResolvedDomainContext::UnknownExternalDomain { .. } => {
+                return Err(crate::error::AppError::Validation(
+                    "No active tenant was found for this domain".to_string(),
+                ));
+            }
+        }
+    };
+
+    // Tenant-level self-registration guard (unless invite bypasses it)
+    // Invite-only: invite_token is consumed at create_customer_from_public_registration below;
+    // for non-invite flow we strictly require the tenant_self_registration_enabled flag.
+    if invite_token.is_none() {
+        if !auth_settings.allow_registration {
+            return Err(crate::error::AppError::Validation(
+                "Public registration is currently disabled".to_string(),
+            ));
+        }
+        let tenant_self_registration_enabled = state
+            .settings_service
+            .get_value(Some(&tenant_id), "customer_self_registration_enabled")
+            .await?
+            .map(|v| v == "true")
+            .unwrap_or(false);
+        if !tenant_self_registration_enabled {
+            return Err(crate::error::AppError::Validation(
+                "Customer self registration is disabled for this tenant".to_string(),
+            ));
+        }
+    }
 
     let ip = extract_ip(&headers, addr);
     let register_dto = RegisterDto {
@@ -332,6 +384,16 @@ pub async fn register_customer_by_domain(
         )
         .await?;
 
+    // Consume invite if provided (atomic decrement of used_count).
+    let invite_id = if let Some(invite) = invite_token {
+        state
+            .customer_service
+            .consume_customer_registration_invite(&tenant_id, invite)
+            .await?
+    } else {
+        None
+    };
+
     state
         .customer_service
         .create_customer_from_public_registration(
@@ -341,7 +403,7 @@ pub async fn register_customer_by_domain(
             &registration.user.email,
             payload.phone.as_deref(),
             Some(&ip),
-            None,
+            invite_id.as_deref(),
         )
         .await?;
 
