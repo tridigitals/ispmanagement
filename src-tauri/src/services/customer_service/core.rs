@@ -1369,7 +1369,7 @@ impl CustomerService {
             // Exception: if registration arrived with a valid invite token issued
             // by an authorized user (tenant admin/owner), the customer is active
             // immediately — invite path is trusted.
-            Some(registration_invite_id.is_none()),
+            Some(registration_invite_id.is_some()),
             Some(customer_number),
         );
 
