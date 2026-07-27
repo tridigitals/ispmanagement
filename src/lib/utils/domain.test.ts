@@ -21,13 +21,24 @@ function createStorage() {
 describe('domain utilities', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it('treats configured billing host as platform domain', () => {
+    vi.stubEnv('VITE_MAIN_DOMAIN', 'billing.tridigitals.com');
+    expect(isPlatformDomain('billing.tridigitals.com')).toBe(true);
+    expect(isPlatformDomain('isp.najahababy.com')).toBe(false);
+  });
+
+  it('ignores VITE_ALLOWED_HOSTS for platform detection', () => {
+    vi.stubEnv('VITE_MAIN_DOMAIN', 'billing.tridigitals.com');
+    vi.stubEnv('VITE_ALLOWED_HOSTS', 'all');
+    expect(isPlatformDomain('isp.najahababy.com')).toBe(false);
     expect(isPlatformDomain('billing.tridigitals.com')).toBe(true);
   });
 
   it('uses stored tenant hint on platform domain instead of guessing from hostname', () => {
+    vi.stubEnv('VITE_MAIN_DOMAIN', 'billing.tridigitals.com');
     const localStorage = createStorage();
     const sessionStorage = createStorage();
     localStorage.setItem('auth_user', JSON.stringify({ tenant_slug: 'tenant-a' }));

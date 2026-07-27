@@ -1,23 +1,26 @@
 /**
  * Domain utilities.
  * Browser-side host hints are intentionally weak: tenant authority should come from the backend.
+ *
+ * Platform domain source of truth: VITE_MAIN_DOMAIN (and optional VITE_APP_MAIN_DOMAIN alias).
+ * VITE_ALLOWED_HOSTS is Vite dev-server host allowlist only — never use it for routing.
  */
 
 import { secureGetItem } from './tauri-store';
 
 function normalizeHostname(hostname: string): string {
-  return String(hostname || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '').replace(/\.+$/, '');
+  return String(hostname || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/+$/, '')
+    .replace(/\.+$/, '');
 }
 
 function getConfiguredMainDomains(): string[] {
-  const rawHosts = import.meta.env.VITE_ALLOWED_HOSTS || '';
-  // 'all' means every host is a platform domain, no custom-domain redirects
-  if (rawHosts.trim().toLowerCase() === 'all') return [];
-
   const list = [
     normalizeHostname(String(import.meta.env.VITE_MAIN_DOMAIN || '')),
     normalizeHostname(String(import.meta.env.VITE_APP_MAIN_DOMAIN || '')),
-    ...rawHosts.split(',').map(normalizeHostname).filter(Boolean),
   ].filter(Boolean);
 
   return Array.from(new Set(list));
@@ -26,9 +29,6 @@ function getConfiguredMainDomains(): string[] {
 export function isPlatformDomain(hostname: string): boolean {
   const host = normalizeHostname(hostname);
   if (!host) return false;
-  // 'VITE_ALLOWED_HOSTS=all' → every host is the platform domain
-  const rawHosts = import.meta.env.VITE_ALLOWED_HOSTS || '';
-  if (rawHosts.trim().toLowerCase() === 'all') return true;
   return getConfiguredMainDomains().includes(host);
 }
 

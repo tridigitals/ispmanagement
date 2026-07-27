@@ -49,8 +49,9 @@
     password_require_special: false,
   };
 
+  // Invite token is tenant-scoped via backend; allow form on custom domain OR valid invite.
   $: canShowRegisterForm =
-    isCustomDomain &&
+    (isCustomDomain || (hasInviteToken && inviteTokenValidated)) &&
     (hasInviteToken ? inviteTokenValidated : customerRegistrationEnabled) &&
     (($appSettings.auth?.allow_registration === true) || hasInviteToken);
 
@@ -152,7 +153,7 @@
     error = '';
 
     const registerAllowed = hasInviteToken ? inviteTokenValidated : customerRegistrationEnabled;
-    if (!isCustomDomain || !registerAllowed) {
+    if (!(isCustomDomain || (hasInviteToken && inviteTokenValidated)) || !registerAllowed) {
       error =
         'Customer registration is only available from a tenant custom domain in web browser.';
       return;
