@@ -1361,7 +1361,15 @@ impl CustomerService {
             Some(email),
             phone.map(|p| p.trim().to_string()).filter(|p| !p.is_empty()),
             None,
-            Some(true),
+            // Customers created via public registration start inactive. They become
+            // active once the corresponding users.registration_status flips to
+            // 'active' (approved by admin/owner). Until then, the customer record
+            // exists for foreknowledge but no billing actions should run.
+            //
+            // Exception: if registration arrived with a valid invite token issued
+            // by an authorized user (tenant admin/owner), the customer is active
+            // immediately — invite path is trusted.
+            Some(registration_invite_id.is_none()),
             Some(customer_number),
         );
 

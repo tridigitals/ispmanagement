@@ -2682,6 +2682,41 @@ impl AuthService {
             ));
         }
 
+        // Activate any customer record bound to this user (created via public
+        // registration) so that downstream billing flows (subscriptions, invoices,
+        // PPPoE accounts) become reachable. Mirror on sqlite using bool-as-int.
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"UPDATE customers
+               SET is_active = true, updated_at = $1
+               WHERE tenant_id = $2 AND id IN (
+                   SELECT customer_id FROM customer_users
+                   WHERE tenant_id = $2 AND user_id = $3
+               )"#,
+        )
+        .bind(now)
+        .bind(tenant_id)
+        .bind(target_user_id)
+        .execute(&self.pool)
+        .await?;
+
+        #[cfg(not(feature = "postgres"))]
+        {
+            let now_str = now.to_rfc3339();
+            sqlx::query(
+                r#"UPDATE customers
+                   SET is_active = 1, updated_at = ? WHERE id IN (
+                       SELECT customer_id FROM customer_users
+                       WHERE tenant_id = ? AND user_id = ?
+                   )"#,
+            )
+            .bind(&now_str)
+            .bind(tenant_id)
+            .bind(target_user_id)
+            .execute(&self.pool)
+            .await?;
+        }
+
         // Attach user to tenant via tenant_members
         let member_id = Uuid::new_v4().to_string();
 
