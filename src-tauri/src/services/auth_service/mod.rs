@@ -513,18 +513,22 @@ impl AuthService {
         dto: RegisterDto,
         ip_address: Option<String>,
     ) -> AppResult<AuthResponse> {
-        self.register_with_email_verification_policy(dto, ip_address, None)
+        self.register_with_email_verification_policy(dto, ip_address, None, None)
             .await
     }
 
-    /// Register a new user with optional email verification policy override.
+    /// Register a new user with optional email verification policy override
+    /// and optional invite token context.
     ///
-    /// When override is `None`, the global auth setting is used.
+    /// `invite_token` only informs whether the registration is invited
+    /// (auto-active for users + customer) versus pending admin approval. The
+    /// token itself must be consumed by the caller before this method.
     pub async fn register_with_email_verification_policy(
         &self,
         dto: RegisterDto,
         ip_address: Option<String>,
         require_email_verification_override: Option<bool>,
+        invite_token: Option<&str>,
     ) -> AppResult<AuthResponse> {
         let settings = self.get_auth_settings().await;
         let require_email_verification =
@@ -560,8 +564,19 @@ impl AuthService {
         let mut user = User::new(dto.email, password_hash, dto.name);
 
         // Hybrid flow: all public registrations are pending
-        user.registration_status = "pending".to_string();
-        user.is_active = false; // Pending users are NOT active until approved
+        // Approval gating:
+        // - invite_token → trusted (admin/owner issued link) → auto-active
+        // - manual        → pending admin approval before login
+        let via_invite = invite_token
+            .map(|t| !t.trim().is_empty())
+            .unwrap_or(false);
+        if via_invite {
+            user.registration_status = "active".to_string();
+            user.is_active = true;
+        } else {
+            user.registration_status = "pending".to_string();
+            user.is_active = false; // Pending users are NOT active until approved
+        }
 
         // Handle email verification
         if require_email_verification {

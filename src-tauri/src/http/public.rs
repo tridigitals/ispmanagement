@@ -381,6 +381,7 @@ pub async fn register_customer_by_domain(
             register_dto,
             Some(ip.clone()),
             Some(require_email_verification),
+            invite_token,
         )
         .await?;
 

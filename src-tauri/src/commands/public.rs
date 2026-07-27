@@ -295,6 +295,7 @@ pub async fn register_customer_by_domain(
             payload,
             Some("127.0.0.1".to_string()),
             Some(require_email_verification),
+            invite_token.as_deref(),
         )
         .await
         .map_err(|e| e.to_string())?;
