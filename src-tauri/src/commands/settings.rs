@@ -415,7 +415,8 @@ pub async fn get_email_config_origin(
 
     let provider_raw = settings_service
         .get_value_fallback(effective_tenant_id.as_deref(), "email_provider")
-        .await?
+        .await
+        .map_err(|e| e.to_string())?
         .unwrap_or_else(|| "resend".to_string());
     let provider = provider_raw.trim().to_ascii_lowercase();
 
@@ -425,9 +426,14 @@ pub async fn get_email_config_origin(
 
     for key in EMAIL_SETTING_KEYS {
         // Direct read for this scope, no fallback.
-        let tenant_value =
-            settings_service.get_value(effective_tenant_id.as_deref(), key).await?;
-        let global_value = settings_service.get_value(None, key).await?;
+        let tenant_value = settings_service
+            .get_value(effective_tenant_id.as_deref(), key)
+            .await
+            .map_err(|e| e.to_string())?;
+        let global_value = settings_service
+            .get_value(None, key)
+            .await
+            .map_err(|e| e.to_string())?;
 
         if tenant_value.is_some() {
             has_tenant_override = true;
