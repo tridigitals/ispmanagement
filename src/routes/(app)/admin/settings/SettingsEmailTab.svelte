@@ -1,9 +1,11 @@
 <script lang="ts">
   import { get } from 'svelte/store';
+  import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Input from '$lib/components/ui/Input.svelte';
   import Select from '$lib/components/ui/Select.svelte';
+  import { api } from '$lib/api/client';
 
   export let localSettings: Record<string, string>;
   export let emailProviderOptions: Array<{ value: string; label: string }>;
@@ -17,11 +19,95 @@
   export let onTestSmtpConnection: () => void | Promise<void>;
   export let onViewOutbox: () => void | Promise<void>;
 
+  type EmailConfigOrigin = {
+    provider: string;
+    tenant_id: string | null;
+    has_tenant_override: boolean;
+    inherited_keys: string[];
+    origins: Array<{ key: string; scope: string; value: string | null }>;
+  };
+
+  let emailConfigOrigin: EmailConfigOrigin | null = null;
+  let emailConfigOriginLoading = false;
+
+  onMount(() => {
+    void loadEmailOrigin();
+  });
+
+  async function loadEmailOrigin() {
+    emailConfigOriginLoading = true;
+    try {
+      emailConfigOrigin = await api.settings.getEmailConfigOrigin();
+    } catch (err) {
+      // FE-grade fallback: treat as fully-unset so banner still shows.
+      emailConfigOrigin = {
+        provider: 'unset',
+        tenant_id: null,
+        has_tenant_override: false,
+        inherited_keys: [],
+        origins: [],
+      };
+    } finally {
+      emailConfigOriginLoading = false;
+    }
+  }
+
+  function getOriginScope(key: string): string {
+    if (!emailConfigOrigin) return 'unset';
+    const o = emailConfigOrigin.origins.find((x) => x.key === key);
+    return o?.scope ?? 'unset';
+  }
+
+  $: inheritedFromGlobal =
+    !!emailConfigOrigin && emailConfigOrigin.inherited_keys.length > 0;
+  $: completelyUnset =
+    !!emailConfigOrigin &&
+    emailConfigOrigin.origins.length > 0 &&
+    emailConfigOrigin.origins.every((o) => o.scope === 'unset');
+
   function tt(key: string, fallback: string) {
     const value = get(t)(key);
     return value && value !== key ? value : fallback;
   }
 </script>
+
+{#if inheritedFromGlobal}
+  <div class="info-banner info-banner-warn" role="status">
+    <Icon name="info" size={16} />
+    <div>
+      <strong>
+        {tt(
+          'admin.settings.email.inherit_banner.title',
+          'Using platform-wide email settings',
+        )}
+      </strong>
+      <p>
+        {tt(
+          'admin.settings.email.inherit_banner.desc',
+          'Email is not yet configured for this tenant. Outgoing emails are sent with the platform default provider. Override any field below to use a tenant-specific value.',
+        )}
+      </p>
+    </div>
+  </div>
+{:else if completelyUnset}
+  <div class="info-banner info-banner-error" role="alert">
+    <Icon name="alert-circle" size={16} />
+    <div>
+      <strong>
+        {tt(
+          'admin.settings.email.missing_banner.title',
+          'Email is not configured',
+        )}
+      </strong>
+      <p>
+        {tt(
+          'admin.settings.email.missing_banner.desc',
+          'No SMTP, API key, or webhook is configured globally or for this tenant. Reminder and verification emails will not be delivered.',
+        )}
+      </p>
+    </div>
+  </div>
+{/if}
 
 <div class="email-settings">
   <span class="section-label">{tt('admin.settings.email.provider_label', 'Email Delivery Provider')}</span>
@@ -63,7 +149,14 @@
     <h3>{tt('admin.settings.sections.sender_info', 'Sender Information')}</h3>
     <div class="config-grid mb-6">
       <div class="setting-item">
-        <label for="email-from-name">{tt('admin.settings.keys.email_from_name', 'From Name')}</label>
+        <div class="label-row">
+          <label for="email-from-name">{tt('admin.settings.keys.email_from_name', 'From Name')}</label>
+          {#if getOriginScope('email_from_name') === 'global'}
+            <span class="origin-badge origin-badge-global">
+              {tt('admin.settings.email.origin.inherited', 'Inherited')}
+            </span>
+          {/if}
+        </div>
         <Input
           id="email-from-name"
           value={localSettings['email_from_name']}
@@ -72,7 +165,14 @@
         />
       </div>
       <div class="setting-item">
-        <label for="email-from-address">{tt('admin.settings.keys.email_from_address', 'From Address')}</label>
+        <div class="label-row">
+          <label for="email-from-address">{tt('admin.settings.keys.email_from_address', 'From Address')}</label>
+          {#if getOriginScope('email_from_address') === 'global'}
+            <span class="origin-badge origin-badge-global">
+              {tt('admin.settings.email.origin.inherited', 'Inherited')}
+            </span>
+          {/if}
+        </div>
         <Input
           id="email-from-address"
           value={localSettings['email_from_address']}
@@ -91,7 +191,12 @@
     <div class="config-grid">
       {#if localSettings['email_provider'] === 'smtp'}
         <div class="setting-item">
-          <label for="smtp-host">{tt('admin.settings.keys.email_smtp_host', 'SMTP Host')}</label>
+          <div class="label-row">
+            <label for="smtp-host">{tt('admin.settings.keys.email_smtp_host', 'SMTP Host')}</label>
+            {#if getOriginScope('email_smtp_host') === 'global'}
+              <span class="origin-badge origin-badge-global">{tt('admin.settings.email.origin.inherited', 'Inherited')}</span>
+            {/if}
+          </div>
           <Input
             id="smtp-host"
             value={localSettings['email_smtp_host']}
@@ -100,7 +205,12 @@
           />
         </div>
         <div class="setting-item">
-          <label for="smtp-port">{tt('admin.settings.keys.email_smtp_port', 'SMTP Port')}</label>
+          <div class="label-row">
+            <label for="smtp-port">{tt('admin.settings.keys.email_smtp_port', 'SMTP Port')}</label>
+            {#if getOriginScope('email_smtp_port') === 'global'}
+              <span class="origin-badge origin-badge-global">{tt('admin.settings.email.origin.inherited', 'Inherited')}</span>
+            {/if}
+          </div>
           <Input
             id="smtp-port"
             type="number"
@@ -110,7 +220,12 @@
           />
         </div>
         <div class="setting-item">
-          <label for="smtp-encryption">{tt('admin.settings.keys.email_smtp_encryption', 'Encryption')}</label>
+          <div class="label-row">
+            <label for="smtp-encryption">{tt('admin.settings.keys.email_smtp_encryption', 'Encryption')}</label>
+            {#if getOriginScope('email_smtp_encryption') === 'global'}
+              <span class="origin-badge origin-badge-global">{tt('admin.settings.email.origin.inherited', 'Inherited')}</span>
+            {/if}
+          </div>
           <Select
             id="smtp-encryption"
             options={smtpEncryptionOptions}
@@ -119,7 +234,12 @@
           />
         </div>
         <div class="setting-item">
-          <label for="smtp-username">{tt('admin.settings.keys.email_smtp_username', 'Username')}</label>
+          <div class="label-row">
+            <label for="smtp-username">{tt('admin.settings.keys.email_smtp_username', 'Username')}</label>
+            {#if getOriginScope('email_smtp_username') === 'global'}
+              <span class="origin-badge origin-badge-global">{tt('admin.settings.email.origin.inherited', 'Inherited')}</span>
+            {/if}
+          </div>
           <Input
             id="smtp-username"
             value={localSettings['email_smtp_username']}
@@ -127,7 +247,12 @@
           />
         </div>
         <div class="setting-item full-width">
-          <label for="smtp-password">{tt('admin.settings.keys.email_smtp_password', 'Password')}</label>
+          <div class="label-row">
+            <label for="smtp-password">{tt('admin.settings.keys.email_smtp_password', 'Password')}</label>
+            {#if getOriginScope('email_smtp_password') === 'global'}
+              <span class="origin-badge origin-badge-global">{tt('admin.settings.email.origin.inherited', 'Inherited')}</span>
+            {/if}
+          </div>
           <Input
             id="smtp-password"
             type="password"
@@ -139,7 +264,12 @@
         </div>
       {:else}
         <div class="setting-item full-width">
-          <label for="api-key">{tt('admin.settings.keys.email_api_key', 'API Key')}</label>
+          <div class="label-row">
+            <label for="api-key">{tt('admin.settings.keys.email_api_key', 'API Key')}</label>
+            {#if getOriginScope('email_api_key') === 'global'}
+              <span class="origin-badge origin-badge-global">{tt('admin.settings.email.origin.inherited', 'Inherited')}</span>
+            {/if}
+          </div>
           <Input
             id="api-key"
             type="password"
@@ -271,6 +401,46 @@
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
+  }
+
+  .label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .origin-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 6px;
+    border: 2px solid currentColor;
+  }
+
+  .origin-badge-global {
+    color: var(--warning-fg, #b08900);
+  }
+
+  .info-banner {
+    border: 2px solid var(--text-color, #000);
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    background: var(--bg-color, #fff);
+  }
+
+  .info-banner-error {
+    border-color: var(--error-fg, #c00);
+    color: var(--error-fg, #c00);
+  }
+
+  .info-banner p {
+    margin: 0.25rem 0 0;
+    font-size: 0.85rem;
   }
 
   .section-label {

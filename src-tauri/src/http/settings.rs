@@ -454,6 +454,119 @@ pub async fn get_email_verification_readiness(
     }
 }
 
+#[derive(serde::Serialize, Debug, Clone)]
+pub struct EmailSettingOrigin {
+    pub key: String,
+    pub scope: String,
+    pub value: Option<String>,
+}
+
+#[derive(serde::Serialize, Debug, Clone)]
+pub struct EmailConfigStatus {
+    pub provider: String,
+    pub tenant_id: Option<String>,
+    pub has_tenant_override: bool,
+    pub inherited_keys: Vec<String>,
+    pub origins: Vec<EmailSettingOrigin>,
+}
+
+const HTTP_EMAIL_SETTING_KEYS: &[&str] = &[
+    "email_provider",
+    "email_from_address",
+    "email_from_name",
+    "email_smtp_host",
+    "email_smtp_port",
+    "email_smtp_encryption",
+    "email_smtp_username",
+    "email_smtp_password",
+    "email_api_key",
+    "email_webhook_url",
+];
+
+pub async fn get_email_config_origin(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<EmailConfigStatus>, crate::error::AppError> {
+    let token = get_token(&headers)?;
+    let claims = state.auth_service.validate_token(&token).await?;
+
+    // Superadmin can scope by ?tenant_id=; non-superadmin forced to their tenant.
+    let requested = params
+        .get("tenantId")
+        .or_else(|| params.get("tenant_id"))
+        .cloned();
+    let effective_tenant_id: Option<String> = if claims.is_super_admin {
+        requested
+    } else {
+        claims.tenant_id.clone()
+    };
+
+    if let Some(ref tid) = effective_tenant_id {
+        state
+            .auth_service
+            .check_permission(&claims.sub, tid, "settings", "read")
+            .await?;
+    }
+
+    let provider_raw = state
+        .settings_service
+        .get_value_fallback(effective_tenant_id.as_deref(), "email_provider")
+        .await?
+        .unwrap_or_else(|| "resend".to_string());
+    let provider = provider_raw.trim().to_ascii_lowercase();
+
+    let mut origins: Vec<EmailSettingOrigin> = Vec::with_capacity(HTTP_EMAIL_SETTING_KEYS.len());
+    let mut inherited_keys: Vec<String> = Vec::new();
+    let mut has_tenant_override = false;
+
+    for key in HTTP_EMAIL_SETTING_KEYS {
+        let tenant_value = state
+            .settings_service
+            .get_value(effective_tenant_id.as_deref(), key)
+            .await?;
+        let global_value = state.settings_service.get_value(None, key).await?;
+
+        if tenant_value.is_some() {
+            has_tenant_override = true;
+            origins.push(EmailSettingOrigin {
+                key: (*key).to_string(),
+                scope: "tenant".to_string(),
+                value: tenant_value,
+            });
+        } else if let Some(gv) = global_value.clone() {
+            if !gv.trim().is_empty() {
+                inherited_keys.push((*key).to_string());
+                origins.push(EmailSettingOrigin {
+                    key: (*key).to_string(),
+                    scope: "global".to_string(),
+                    value: Some(gv),
+                });
+            } else {
+                origins.push(EmailSettingOrigin {
+                    key: (*key).to_string(),
+                    scope: "unset".to_string(),
+                    value: None,
+                });
+            }
+        } else {
+            origins.push(EmailSettingOrigin {
+                key: (*key).to_string(),
+                scope: "unset".to_string(),
+                value: None,
+            });
+        }
+    }
+
+    Ok(Json(EmailConfigStatus {
+        provider,
+        tenant_id: effective_tenant_id,
+        has_tenant_override,
+        inherited_keys,
+        origins,
+    }))
+}
+
 #[derive(serde::Deserialize)]
 pub struct UpsertSettingRequest {
     key: String,

@@ -232,6 +232,10 @@ const commandMap: Record<string, { method: string; path: string }> = {
     method: 'GET',
     path: '/settings/email-verification-readiness',
   },
+  get_email_config_origin: {
+    method: 'GET',
+    path: '/settings/email-config-origin',
+  },
   upsert_setting: { method: 'POST', path: '/settings' },
   get_setting: { method: 'GET', path: '/settings/:key' },
   get_setting_value: { method: 'GET', path: '/settings/:key/value' },

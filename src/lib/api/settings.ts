@@ -57,6 +57,14 @@ export const settings = {
   testSmtpConnection: (): Promise<SmtpConnectionTestResult> =>
     safeInvoke('test_smtp_connection', { token: getTokenOrThrow() }),
 
+  getEmailConfigOrigin: (opts?: { tenantId?: string }): Promise<{
+    provider: string;
+    tenant_id: string | null;
+    has_tenant_override: boolean;
+    inherited_keys: string[];
+    origins: Array<{ key: string; scope: string; value: string | null }>;
+  }> => safeInvoke('get_email_config_origin', { token: getTokenOrThrow(), ...opts }),
+
   getAppVersion: async (): Promise<string> => {
     const res = await safeInvoke('get_app_version');
     if (typeof res === 'object' && res !== null && 'version' in res) {

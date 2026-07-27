@@ -295,6 +295,7 @@ pub fn run() {
                         get_setting,
                         get_setting_value,
                         get_email_verification_readiness,
+                        get_email_config_origin,
                         upsert_setting,
                         delete_setting,
                         upload_logo,

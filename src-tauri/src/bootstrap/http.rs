@@ -661,6 +661,10 @@ pub async fn start_server_impl(
             "/api/settings/{key}/value",
             get(settings::get_setting_value),
         )
+        .route(
+            "/api/settings/email-config-origin",
+            get(settings::get_email_config_origin),
+        )
         // Team Routes
         .route(
             "/api/team",

@@ -77,11 +77,45 @@ pub struct PublicSettings {
     pub payment_manual_enabled: bool,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Default, Debug, Clone)]
 pub struct EmailVerificationReadiness {
     pub ready: bool,
     pub reason: Option<String>,
 }
+
+/// Per-setting origin so the FE can render "Inheriting from platform"
+/// for keys the tenant hasn't configured.
+#[derive(serde::Serialize, Debug, Clone)]
+pub struct EmailSettingOrigin {
+    pub key: String,
+    pub scope: String, // "tenant" | "global" | "unset"
+    pub value: Option<String>,
+}
+
+#[derive(serde::Serialize, Debug, Clone)]
+pub struct EmailConfigStatus {
+    pub provider: String,
+    pub tenant_id: Option<String>,
+    /// true when the tenant row has at least one email_* override
+    pub has_tenant_override: bool,
+    /// keys not set on this tenant — render banner "Inheritance enabled"
+    pub inherited_keys: Vec<String>,
+    /// per-key origin so FE can badge each input field
+    pub origins: Vec<EmailSettingOrigin>,
+}
+
+const EMAIL_SETTING_KEYS: &[&str] = &[
+    "email_provider",
+    "email_from_address",
+    "email_from_name",
+    "email_smtp_host",
+    "email_smtp_port",
+    "email_smtp_encryption",
+    "email_smtp_username",
+    "email_smtp_password",
+    "email_api_key",
+    "email_webhook_url",
+];
 
 #[tauri::command]
 pub async fn get_public_settings(
@@ -357,6 +391,82 @@ pub async fn get_email_verification_readiness(
         }),
         Err(e) => Err(e.to_string()),
     }
+}
+
+/// Inspect email setting origin to render "Inherited" badges on the Settings → Email tab.
+#[tauri::command]
+pub async fn get_email_config_origin(
+    token: String,
+    tenant_id: Option<String>,
+    settings_service: State<'_, SettingsService>,
+    auth_service: State<'_, AuthService>,
+) -> Result<EmailConfigStatus, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    require_settings_read_access(&auth_service, &claims).await?;
+
+    let effective_tenant_id = if claims.is_super_admin {
+        tenant_id
+    } else {
+        claims.tenant_id.clone()
+    };
+
+    let provider_raw = settings_service
+        .get_value_fallback(effective_tenant_id.as_deref(), "email_provider")
+        .await?
+        .unwrap_or_else(|| "resend".to_string());
+    let provider = provider_raw.trim().to_ascii_lowercase();
+
+    let mut origins: Vec<EmailSettingOrigin> = Vec::with_capacity(EMAIL_SETTING_KEYS.len());
+    let mut inherited_keys: Vec<String> = Vec::new();
+    let mut has_tenant_override = false;
+
+    for key in EMAIL_SETTING_KEYS {
+        // Direct read for this scope, no fallback.
+        let tenant_value =
+            settings_service.get_value(effective_tenant_id.as_deref(), key).await?;
+        let global_value = settings_service.get_value(None, key).await?;
+
+        if tenant_value.is_some() {
+            has_tenant_override = true;
+            origins.push(EmailSettingOrigin {
+                key: (*key).to_string(),
+                scope: "tenant".to_string(),
+                value: tenant_value,
+            });
+        } else if let Some(gv) = global_value.clone() {
+            if !gv.trim().is_empty() {
+                inherited_keys.push((*key).to_string());
+                origins.push(EmailSettingOrigin {
+                    key: (*key).to_string(),
+                    scope: "global".to_string(),
+                    value: Some(gv),
+                });
+            } else {
+                origins.push(EmailSettingOrigin {
+                    key: (*key).to_string(),
+                    scope: "unset".to_string(),
+                    value: None,
+                });
+            }
+        } else {
+            origins.push(EmailSettingOrigin {
+                key: (*key).to_string(),
+                scope: "unset".to_string(),
+                value: None,
+            });
+        }
+    }
+
+    Ok(EmailConfigStatus {
+        provider,
+        tenant_id: effective_tenant_id,
+        has_tenant_override,
+        inherited_keys,
+        origins,
+    })
 }
 
 /// Upsert (create or update) setting
