@@ -87,6 +87,7 @@ pub struct EmailVerificationReadiness {
 pub async fn get_public_settings(
     token: Option<String>,
     tenant_id: Option<String>,
+    domain: Option<String>,
     settings_service: State<'_, SettingsService>,
     auth_service: State<'_, AuthService>,
 ) -> Result<PublicSettings, String> {
@@ -100,29 +101,66 @@ pub async fn get_public_settings(
     } else {
         None
     };
-    // Priority: explicit tenant_id param > token tenant_id
-    let effective_tenant_id = tenant_id.filter(|s| !s.is_empty()).or(token_tenant_id);
+
+    // Resolve tenant from domain when on custom domain (register/login unauthenticated)
+    let mut tenant_id_from_domain: Option<String> = None;
+    if let Some(raw) = domain.as_deref().filter(|s| !s.is_empty()) {
+        use crate::http::domain_resolver::{normalize_host, resolve_request_domain, ResolvedDomainContext};
+        if let Some(host) = normalize_host(raw) {
+            let auth_settings = auth_service.get_auth_settings().await;
+            match resolve_request_domain(
+                &auth_service.pool,
+                &host,
+                auth_settings.main_domain.as_deref(),
+            )
+            .await
+            {
+                Ok(ResolvedDomainContext::TenantCustomDomain { tenant_id, .. }) => {
+                    tenant_id_from_domain = Some(tenant_id);
+                }
+                Ok(ResolvedDomainContext::UnknownExternalDomain { host })
+                | Ok(ResolvedDomainContext::LocalDevelopment { host }) => {
+                    if let Ok(Some(row)) = sqlx::query_scalar::<_, String>(
+                        "SELECT id FROM tenants WHERE custom_domain = $1 LIMIT 1",
+                    )
+                    .bind(&host)
+                    .fetch_optional(&auth_service.pool)
+                    .await
+                    {
+                        tenant_id_from_domain = Some(row);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    // Priority: explicit tenant_id param > token tenant_id > domain
+    let effective_tenant_id = tenant_id
+        .filter(|s| !s.is_empty())
+        .or(token_tenant_id)
+        .or(tenant_id_from_domain);
     let tid = effective_tenant_id.as_deref();
 
-    // Platform-level settings (global)
+    // Branding: tenant override → global platform fallback
     let app_name = settings_service
-        .get_value(None, "app_name")
+        .get_value_fallback(tid, "app_name")
         .await
         .map_err(|e| e.to_string())?;
     let app_description = settings_service
-        .get_value(None, "app_description")
+        .get_value_fallback(tid, "app_description")
         .await
         .map_err(|e| e.to_string())?;
     let default_locale = settings_service
-        .get_value(None, "default_locale")
+        .get_value_fallback(tid, "default_locale")
         .await
         .map_err(|e| e.to_string())?;
     let app_timezone = settings_service
-        .get_value(None, "app_timezone")
+        .get_value_fallback(tid, "app_timezone")
         .await
         .map_err(|e| e.to_string())?;
     let currency_code = settings_service
-        .get_value(None, "currency_code")
+        .get_value_fallback(tid, "currency_code")
         .await
         .unwrap_or(None)
         .or_else(|| Some("IDR".to_string()));

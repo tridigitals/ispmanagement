@@ -110,7 +110,9 @@
       invoice = await api.payment.getInvoice(invoiceId);
 
       // Load Public Settings (filtered by invoice's tenant)
-      publicSettings = await api.settings.getPublicSettings(invoice?.merchant_id || undefined);
+      publicSettings = await api.settings.getPublicSettings(
+        invoice?.merchant_id ? { tenantId: invoice.merchant_id } : undefined,
+      );
 
       midtransEnabled = !!publicSettings.payment_midtrans_enabled;
       duitkuEnabled = !!publicSettings.payment_duitku_enabled;

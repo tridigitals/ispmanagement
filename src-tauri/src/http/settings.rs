@@ -1,6 +1,7 @@
 use super::websocket::WsEvent;
 use super::AppState;
 use crate::http::auth::extract_ip;
+use crate::http::domain_resolver::{normalize_host, resolve_request_domain, ResolvedDomainContext};
 use crate::models::{Setting, UpsertSettingDto};
 use axum::{
     extract::{ConnectInfo, Path, State},
@@ -54,6 +55,19 @@ pub struct EmailVerificationReadiness {
     pub reason: Option<String>,
 }
 
+fn request_host(headers: &HeaderMap) -> Option<String> {
+    headers
+        .get("x-forwarded-host")
+        .and_then(|h| h.to_str().ok())
+        .and_then(normalize_host)
+        .or_else(|| {
+            headers
+                .get("host")
+                .and_then(|h| h.to_str().ok())
+                .and_then(normalize_host)
+        })
+}
+
 pub async fn get_public_settings(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -77,30 +91,72 @@ pub async fn get_public_settings(
         None
     };
 
-    // Priority: query param tenant_id > token tenant_id
+    // Resolve tenant from Host / ?domain= when on custom domain (register/login unauthenticated)
+    let mut tenant_id_from_domain = None;
+    let domain_hint = params
+        .get("domain")
+        .and_then(|d| normalize_host(d))
+        .or_else(|| request_host(&headers));
+    if let Some(host) = domain_hint {
+        let auth_settings = state.auth_service.get_auth_settings().await;
+        match resolve_request_domain(
+            &state.auth_service.pool,
+            &host,
+            auth_settings.main_domain.as_deref(),
+        )
+        .await
+        {
+            Ok(ResolvedDomainContext::TenantCustomDomain { tenant_id, .. }) => {
+                tenant_id_from_domain = Some(tenant_id);
+            }
+            // Custom domain may be pending/not ACTIVE — still brand by tenants.custom_domain match
+            Ok(ResolvedDomainContext::UnknownExternalDomain { host })
+            | Ok(ResolvedDomainContext::LocalDevelopment { host }) => {
+                if let Ok(Some(row)) = sqlx::query_scalar::<_, String>(
+                    "SELECT id FROM tenants WHERE custom_domain = $1 LIMIT 1",
+                )
+                .bind(&host)
+                .fetch_optional(&state.auth_service.pool)
+                .await
+                {
+                    tenant_id_from_domain = Some(row);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // Priority: query param tenant_id > token > domain/Host
     let effective_tenant_id = params
         .get("tenant_id")
         .filter(|s| !s.is_empty())
         .cloned()
-        .or(tenant_id_from_token);
+        .or(tenant_id_from_token)
+        .or(tenant_id_from_domain);
 
-    // Platform-level settings (global) — app identity, locale, maintenance
-    let app_name = state.settings_service.get_value(None, "app_name").await?;
+    let tid = effective_tenant_id.as_deref();
+
+    // Branding: tenant override → global platform fallback
+    let app_name = state
+        .settings_service
+        .get_value_fallback(tid, "app_name")
+        .await?;
     let app_description = state
         .settings_service
-        .get_value(None, "app_description")
+        .get_value_fallback(tid, "app_description")
         .await?;
     let default_locale = state
         .settings_service
-        .get_value(None, "default_locale")
+        .get_value_fallback(tid, "default_locale")
         .await?;
     let app_timezone = state
         .settings_service
-        .get_value(None, "app_timezone")
+        .get_value_fallback(tid, "app_timezone")
         .await?;
+    // Display currency may be tenant-specific; base currency stays global/stable.
     let currency_code = state
         .settings_service
-        .get_value(None, "currency_code")
+        .get_value_fallback(tid, "currency_code")
         .await?
         .or_else(|| Some("IDR".to_string()));
     let base_currency_code = state
@@ -119,7 +175,6 @@ pub async fn get_public_settings(
 
     // Payment — tenant-level ONLY (no fallback to global platform)
     // Payments must go to tenant's own gateway account, not platform's
-    let tid = effective_tenant_id.as_deref();
     let midtrans_enabled_str = state
         .settings_service
         .get_value(tid, "payment_midtrans_enabled")

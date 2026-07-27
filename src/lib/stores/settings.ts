@@ -77,10 +77,16 @@ function createSettingsStore() {
     settingsLoadInFlight = (async () => {
     try {
       const canReadSettings = get(can)('read', 'settings');
+      const browserDomain =
+        typeof window !== 'undefined'
+          ? String(window.location.hostname || '').trim().toLowerCase()
+          : '';
       const [authSettingsResult, publicSettingsResult, tenantSettingsResult, appVersionResult] =
         await Promise.allSettled([
           settingsApi.getAuthSettings(),
-          settingsApi.getPublicSettings(),
+          settingsApi.getPublicSettings(
+            browserDomain ? { domain: browserDomain } : undefined,
+          ),
           canReadSettings ? settingsApi.getAll() : Promise.resolve([]),
           settingsApi.getAppVersion(),
         ]);
