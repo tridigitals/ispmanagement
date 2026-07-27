@@ -46,6 +46,7 @@ pub mod customers;
 pub mod dhcp_static;
 pub mod domain_resolver;
 pub mod email_outbox;
+pub mod fallback;
 pub mod install;
 pub mod isp_packages;
 pub mod message_templates;

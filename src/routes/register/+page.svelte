@@ -15,6 +15,7 @@
   import { toast } from '$lib/stores/toast';
   import { isPlatformDomain } from '$lib/utils/domain';
   import { publicApi } from '$lib/api/client';
+  import { extractApiErrorMessage } from '$lib/api/core';
 
   let name = '';
   let email = '';
@@ -203,7 +204,7 @@
           'Registration succeeded, but login session was not created. Please continue via login page.';
       }
     } catch (err) {
-      error = err instanceof Error ? err.message : String(err);
+      error = extractApiErrorMessage(err, 'Failed to register. Please try again.');
     } finally {
       loading = false;
     }

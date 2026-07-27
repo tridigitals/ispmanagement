@@ -902,10 +902,35 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
     } else if (isAuthError) {
       handleAuthExpired(`Auth error from ${command}: ${error.message || error}`);
       console.warn(`API Warning (${command}):`, error.message);
+    } else if (status === 403) {
+      // 403 may be normal — silently enrich the error for the FE to surface.
+      (error as any).__forbidden = true;
+    } else if (status === 404) {
+      (error as any).__notFound = true;
     } else if (!args?.__suppress_error_log) {
       console.error(`API Error (${command}):`, error);
     }
     throw error;
+  }
+}
+
+/**
+ * Pull a human-readable error message out of any of the error shapes the
+ * backend may return. Falls back gracefully when none of the well-known
+ * fields are present so the FE never logs `[object Object]`.
+ */
+export function extractApiErrorMessage(err: unknown, fallback = 'Unknown error'): string {
+  if (!err) return fallback;
+  if (typeof err === 'string') return err;
+  const e = err as any;
+  if (e?.message) return String(e.message);
+  if (e?.error) return String(e.error);
+  if (e?.detail) return String(e.detail);
+  if (e?.details) return String(e.details);
+  try {
+    return String(err);
+  } catch {
+    return fallback;
   }
 }
 

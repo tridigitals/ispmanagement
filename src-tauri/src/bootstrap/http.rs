@@ -9,7 +9,7 @@ use crate::services::{
 use axum::{
     extract::DefaultBodyLimit,
     http::header::{HeaderName, ACCEPT, AUTHORIZATION, CONTENT_TYPE, ORIGIN, USER_AGENT},
-    routing::{delete, get, post, put},
+    routing::{any, delete, get, post, put},
     Router,
 };
 use std::env;
@@ -762,6 +762,10 @@ pub async fn start_server_impl(
         )
         // Version Route
         .route("/api/version", get(crate::http::get_app_version))
+        .route(
+            "/api/{*fallback}",
+            any(crate::http::fallback::unknown_route_handler),
+        )
         .layer(DefaultBodyLimit::max(1024 * 1024 * 1024)) // 1GB Upload Limit
         .layer({
             #[allow(deprecated)]
