@@ -35,8 +35,13 @@ pub struct AuthService {
     email_service: EmailService,
     audit_service: AuditService,
     settings_service: SettingsService,
-    /// Cached auth settings with TTL (60 seconds)
+    /// Cached global auth settings (tenant_id=None) with TTL (60 seconds).
     auth_settings_cache: Arc<crate::services::cache::SingleValueCache<AuthSettings>>,
+    /// Per-tenant effective auth settings cache, keyed by Option<&str> tenant_id.
+    /// Used by every code path that resolves a user/session and needs the
+    /// tenant-aware override for password / lockout / JWT / registration.
+    per_tenant_auth_settings_cache:
+        Arc<crate::services::cache::MemoryCache<AuthSettings>>,
 }
 
 impl AuthService {
@@ -55,7 +60,87 @@ impl AuthService {
             settings_service,
             // Initialize cache with 60 second TTL
             auth_settings_cache: Arc::new(crate::services::cache::SingleValueCache::new(60)),
+            per_tenant_auth_settings_cache: Arc::new(
+                crate::services::cache::MemoryCache::new(60),
+            ),
         }
+    }
+
+    /// Tenant-aware effective settings lookup.
+    ///
+    /// Resolves every `auth_*` key with `get_value_fallback(Some(tid), key)` so
+    /// that overriding a setting at the tenant row actually replaces the global
+    /// behaviour for that tenant only (matching the documented tenant > global
+    /// precedence). Falls back to the cached global settings when the tenant
+    /// has no override. Results are cached per-tenant for 60 seconds; calling
+    /// `invalidate_auth_settings_cache` clears both caches.
+    pub async fn get_effective_auth_settings(
+        &self,
+        tenant_id: Option<&str>,
+    ) -> AuthSettings {
+        let cache_key = tenant_id.unwrap_or("__global__").to_string();
+        if let Some(cached) = self.per_tenant_auth_settings_cache.get(&cache_key) {
+            return cached;
+        }
+
+        let base = self.get_auth_settings().await;
+        let mut settings = base.clone();
+        if let Some(tid) = tenant_id {
+            let s = &self.settings_service;
+            if let Ok(Some(v)) = s.get_value(Some(tid), "auth_jwt_expiry_hours").await {
+                if let Ok(n) = v.trim().parse::<i64>() {
+                    settings.jwt_expiry_hours = n;
+                }
+            }
+            if let Ok(Some(v)) = s.get_value(Some(tid), "auth_session_timeout_minutes").await {
+                if let Ok(n) = v.trim().parse::<i64>() {
+                    settings.session_timeout_minutes = n;
+                }
+            }
+            if let Ok(Some(v)) = s.get_value(Some(tid), "auth_password_min_length").await {
+                if let Ok(n) = v.trim().parse::<usize>() {
+                    settings.password_min_length = n;
+                }
+            }
+            if let Ok(Some(v)) = s.get_value(Some(tid), "auth_password_require_uppercase").await {
+                settings.password_require_uppercase = v.trim().eq_ignore_ascii_case("true");
+            }
+            if let Ok(Some(v)) = s.get_value(Some(tid), "auth_password_require_number").await {
+                settings.password_require_number = v.trim().eq_ignore_ascii_case("true");
+            }
+            if let Ok(Some(v)) = s.get_value(Some(tid), "auth_password_require_special").await {
+                settings.password_require_special = v.trim().eq_ignore_ascii_case("true");
+            }
+            if let Ok(Some(v)) = s.get_value(Some(tid), "auth_max_login_attempts").await {
+                if let Ok(n) = v.trim().parse::<i32>() {
+                    settings.max_login_attempts = n;
+                }
+            }
+            if let Ok(Some(v)) = s.get_value(Some(tid), "auth_lockout_duration_minutes").await {
+                if let Ok(n) = v.trim().parse::<i64>() {
+                    settings.lockout_duration_minutes = n;
+                }
+            }
+            if let Ok(Some(v)) = s.get_value(Some(tid), "auth_allow_registration").await {
+                settings.allow_registration = v.trim().eq_ignore_ascii_case("true");
+            }
+            if let Ok(Some(v)) = s
+                .get_value(Some(tid), "auth_logout_all_on_password_change")
+                .await
+            {
+                settings.logout_all_on_password_change = v.trim().eq_ignore_ascii_case("true");
+            }
+        }
+
+        self.per_tenant_auth_settings_cache
+            .set(cache_key, settings.clone());
+        settings
+    }
+
+    /// Invalidate both global and per-tenant auth-settings caches.
+    pub fn invalidate_auth_settings_cache(&self) {
+        self.auth_settings_cache.invalidate();
+        self.per_tenant_auth_settings_cache.clear();
     }
 
     /// Get auth settings from database (with caching)
@@ -77,11 +162,6 @@ impl AuthService {
     /// Fetch auth settings from database (internal helper)
     async fn fetch_auth_settings_from_db(&self) -> AuthSettings {
         repository::fetch_auth_settings_from_db(&self.pool).await
-    }
-
-    /// Invalidate auth settings cache (call when settings are updated)
-    pub fn invalidate_auth_settings_cache(&self) {
-        self.auth_settings_cache.invalidate();
     }
 
     /// Resolve effective email verification requirement.
@@ -109,14 +189,36 @@ impl AuthService {
         self.get_auth_settings().await.require_email_verification
     }
 
-    /// Validate password against policy
-    pub fn validate_password(
-        &self,
-        password: &str,
-        settings: &AuthSettings,
-    ) -> PasswordValidationResult {
-        validation::validate_password(password, settings)
-    }
+    /// Validate password
+        pub fn validate_password(
+            &self,
+            password: &str,
+            settings: &AuthSettings,
+        ) -> PasswordValidationResult {
+            validation::validate_password(password, settings)
+        }
+
+        /// Look up the primary tenant id for a user (if any) and return the
+        /// tenant-aware auth settings. Falls back to global when the user has
+        /// no tenant or no per-tenant override for any of the auth_* keys.
+        pub async fn effective_auth_settings_for_user(&self, user_id: &str) -> AuthSettings {
+            if let Ok(Some(user)) = sqlx::query_as::<_, crate::models::User>(
+                "SELECT * FROM users WHERE id = $1",
+            )
+            .bind(user_id)
+            .fetch_optional(&self.pool)
+            .await
+            {
+                if !user.is_super_admin {
+                    if let Some(tenant_id) = self.get_primary_active_tenant_id(user_id).await {
+                        return self
+                            .get_effective_auth_settings(Some(&tenant_id))
+                            .await;
+                    }
+                }
+            }
+            self.get_effective_auth_settings(None).await
+        }
 
     /// Hash password using Argon2
     pub fn hash_password(password: &str) -> AppResult<String> {
@@ -888,7 +990,11 @@ impl AuthService {
         ip_address: Option<String>,
         device_fingerprint: Option<String>,
     ) -> AppResult<AuthResponse> {
-        let settings = self.get_auth_settings().await;
+        // tenant_id is unknown before we fetch the user. Use the cached
+        // global settings as the conservative baseline and re-resolve once
+        // we know which tenant the user belongs to (see post-fetch reapply
+        // below).
+        let mut settings = self.get_auth_settings().await;
 
         // Normalize identifier: if it looks like a phone number, normalize it
         // Otherwise treat as email (lowercase, trimmed)
@@ -1050,6 +1156,15 @@ impl AuthService {
         let require_email_verification = self
             .get_effective_require_email_verification(tenant_id_for_email_policy.as_deref())
             .await;
+        // Re-resolve lockout / password policy against the user's tenant so
+        // per-tenant auth_* overrides take effect, instead of always using
+        // the cached global baseline pulled before we knew which tenant the
+        // user belongs to.
+        if !user.is_super_admin {
+            settings = self
+                .get_effective_auth_settings(tenant_id_for_email_policy.as_deref())
+                .await;
+        }
 
         if require_email_verification && user.email_verified_at.is_none() {
             let details = serde_json::json!({
@@ -1430,7 +1545,9 @@ impl AuthService {
         old_password: &str,
         new_password: &str,
     ) -> AppResult<()> {
-        let settings = self.get_auth_settings().await;
+        // Tenant-aware password policy — overridden by per-tenant auth_*
+        // settings, falls back to global.
+        let settings = self.effective_auth_settings_for_user(user_id).await;
 
         // Get user to check current password
         let user = self.get_user_by_id(user_id).await?;
