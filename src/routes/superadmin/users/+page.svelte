@@ -8,6 +8,7 @@
   import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
   import { toast } from '$lib/stores/toast';
   import type { User } from '$lib/api/client';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
 
@@ -201,6 +202,14 @@
   let userPendingStatus = $state<User | null>(null);
   let pendingIsActive = $state<boolean>(false);
 
+  // Permanent delete state. We surface a separate ConfirmDialog from
+  // UserActionModals that requires typing the literal "DELETE" before
+  // accepting, in addition to the in-button `disabled` guards for
+  // super-admin rows and the actor's own row.
+  let showDeleteConfirm = $state(false);
+  let deleteConfirmLoading = $state(false);
+  let userPendingDelete = $state<User | null>(null);
+
   let statusConfirmTitle = $derived.by(() =>
     pendingIsActive
       ? $t('superadmin.users.status.activate_title') || 'Activate User'
@@ -276,6 +285,60 @@
     } finally {
       statusConfirmLoading = false;
       userPendingStatus = null;
+    }
+  }
+
+  // Open the typed-keyword delete confirm dialog for a target user.
+  async function confirmDeleteUser(u: User) {
+    if ((u as any).is_super_admin) {
+      toast.error(
+        get(t)('superadmin.users.toasts.superadmin_cannot_delete') ||
+          'Super Admin accounts cannot be deleted here.',
+      );
+      return;
+    }
+    if (u.id === $currentUser?.id) {
+      toast.error(
+        get(t)('superadmin.users.toasts.cannot_delete_self') ||
+          'You cannot delete your own account from this view.',
+      );
+      return;
+    }
+    userPendingDelete = u;
+    showDeleteConfirm = true;
+    await ensureModalModulesLoaded();
+  }
+
+  // Effective delete handler (called by UserActionModals after the user
+  // has typed the literal "DELETE"). We call api.users.delete which goes
+  // through the Tauri command (and on web FE it routes through the same
+  // HTTP DELETE /api/users/{id} endpoint via safeInvoke).
+  async function deleteUser() {
+    const u = userPendingDelete;
+    if (!u) return;
+
+    deleteConfirmLoading = true;
+    try {
+      await api.users.delete(u.id);
+      // Remove from local cache so it disappears without full reload.
+      allUsers = allUsers.filter((x: any) => x.id !== u.id);
+      totalUsers = Math.max(0, (totalUsers ?? 0) - 1);
+      toast.success(
+        get(t)('superadmin.users.toasts.deleted') ||
+          `User ${u.email} deleted permanently. Their active sessions have been invalidated.`,
+      );
+      showDeleteConfirm = false;
+    } catch (e: any) {
+      toast.error(
+        extractApiErrorMessage(
+          e,
+          get(t)('superadmin.users.toasts.delete_failed') ||
+            'Failed to delete user. The user may be the last active super-admin.',
+        ),
+      );
+    } finally {
+      deleteConfirmLoading = false;
+      userPendingDelete = null;
     }
   }
 
@@ -393,6 +456,7 @@
         onOpenDetails={openDetails}
         onReset2FA={confirmReset2FA}
         onToggleActive={confirmToggleActive}
+        onDelete={confirmDeleteUser}
         {getTenantName}
         {getInitials}
       />
@@ -413,6 +477,9 @@
     {statusConfirmLoading}
     onToggleActive={toggleActive}
     {pendingIsActive}
+    bind:showDeleteConfirm
+    {deleteConfirmLoading}
+    onDelete={deleteUser}
   />
 {/if}
 

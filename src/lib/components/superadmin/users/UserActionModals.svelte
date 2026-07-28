@@ -14,6 +14,11 @@
     statusConfirmLoading,
     onToggleActive,
     pendingIsActive,
+    showDeleteConfirm = $bindable(false),
+    deleteConfirmTitle,
+    deleteConfirmMessage,
+    deleteConfirmLoading = false,
+    onDelete,
   } = $props<{
     showResetConfirm: boolean;
     confirmLoading: boolean;
@@ -26,6 +31,11 @@
     statusConfirmLoading: boolean;
     onToggleActive: () => void;
     pendingIsActive: boolean;
+    showDeleteConfirm: boolean;
+    deleteConfirmTitle?: string;
+    deleteConfirmMessage?: string;
+    deleteConfirmLoading?: boolean;
+    onDelete?: () => void;
   }>();
 </script>
 
@@ -51,4 +61,23 @@
   type={statusConfirmType}
   loading={statusConfirmLoading}
   onconfirm={onToggleActive}
+/>
+
+<ConfirmDialog
+  bind:show={showDeleteConfirm}
+  title={
+    deleteConfirmTitle ||
+    $t('superadmin.users.delete.title') ||
+    'Delete user permanently?'
+  }
+  message={
+    deleteConfirmMessage ||
+    $t('superadmin.users.delete.message') ||
+    'This will permanently delete the user account and invalidate every active session. Type DELETE to confirm.'
+  }
+  confirmText={$t('superadmin.users.delete.confirm') || 'Delete permanently'}
+  confirmationKeyword="DELETE"
+  type="danger"
+  loading={deleteConfirmLoading}
+  onconfirm={() => onDelete?.()}
 />

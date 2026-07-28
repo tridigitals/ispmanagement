@@ -16,6 +16,7 @@
     onOpenDetails,
     onReset2FA,
     onToggleActive,
+    onDelete,
     getTenantName,
     getInitials,
   } = $props<{
@@ -27,6 +28,7 @@
     onOpenDetails: (u: User) => void;
     onReset2FA: (u: User) => void;
     onToggleActive: (u: User) => void;
+    onDelete?: (u: User) => void;
     getTenantName: (u: any) => string;
     getInitials: (name: string) => string;
   }>();
@@ -141,6 +143,21 @@
                 >
                   <Icon name={u.is_active ? 'ban' : 'check-circle'} size={16} />
                 </button>
+
+                {#if onDelete}
+                  <button
+                    class="btn-icon danger"
+                    onclick={() => onDelete(u)}
+                    title={$t('superadmin.users.actions.delete_user') ||
+                      'Delete user permanently'}
+                    aria-label={$t('superadmin.users.actions.delete_user') ||
+                      'Delete user permanently'}
+                    disabled={u.is_super_admin || u.id === currentUser?.id}
+                    type="button"
+                  >
+                    <Icon name="trash" size={16} />
+                  </button>
+                {/if}
               </div>
             </div>
 
@@ -342,6 +359,21 @@
             >
               <Icon name={item.is_active ? 'ban' : 'check-circle'} size={16} />
             </button>
+
+            {#if onDelete}
+              <button
+                class="btn-icon danger"
+                onclick={() => onDelete(item)}
+                title={$t('superadmin.users.actions.delete_user') ||
+                  'Delete user permanently'}
+                aria-label={$t('superadmin.users.actions.delete_user') ||
+                  'Delete user permanently'}
+                disabled={item.is_super_admin || item.id === currentUser?.id}
+                type="button"
+              >
+                <Icon name="trash" size={16} />
+              </button>
+            {/if}
           </div>
         {:else}
           {item[key]}

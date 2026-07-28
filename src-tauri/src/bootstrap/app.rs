@@ -79,7 +79,11 @@ pub async fn initialize_backend<R: tauri::Runtime>(
         audit_service.clone(),
         settings_service.clone(),
     );
-    let user_service = UserService::new(pool.clone(), audit_service.clone());
+    // Create WebSocket hub for real-time sync (shared between HTTP and Tauri).
+    // Declared BEFORE CustomerService and UserService so both can wire the
+    // hub into their constructor for broadcasting SessionInvalidated events.
+    let ws_hub = std::sync::Arc::new(crate::http::WsHub::new());
+    let user_service = UserService::new(pool.clone(), audit_service.clone(), Some(ws_hub.clone()));
     let pppoe_service = PppoeService::new(
         pool.clone(),
         auth_service.clone(),
@@ -118,9 +122,6 @@ pub async fn initialize_backend<R: tauri::Runtime>(
         settings_service.clone(),
     );
     scheduler.start().await;
-
-    // Create WebSocket hub for real-time sync (shared between HTTP and Tauri)
-    let ws_hub = std::sync::Arc::new(crate::http::WsHub::new());
 
     let email_outbox_service = EmailOutboxService::new(
         pool.clone(),

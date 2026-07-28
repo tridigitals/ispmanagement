@@ -87,7 +87,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         audit_service.clone(),
         settings_service.clone(),
     );
-    let user_service = UserService::new(pool.clone(), audit_service.clone());
+    // WebSocket hub declared BEFORE services that need to broadcast
+    // SessionInvalidated events (CustomerService, UserService).
+    let ws_hub = Arc::new(WsHub::new());
+    let user_service = UserService::new(pool.clone(), audit_service.clone(), Some(ws_hub.clone()));
     let pppoe_service = PppoeService::new(
         pool.clone(),
         auth_service.clone(),
@@ -119,7 +122,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let storage_service = StorageService::new(pool.clone(), plan_service.clone(), storage_dir);
 
-    let ws_hub = Arc::new(WsHub::new());
     let email_outbox_service = EmailOutboxService::new(
         pool.clone(),
         settings_service.clone(),

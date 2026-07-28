@@ -15,13 +15,19 @@ use chrono::Utc;
 pub struct UserService {
     pool: DbPool,
     audit_service: AuditService,
+    ws_hub: Option<std::sync::Arc<crate::http::WsHub>>,
 }
 
 impl UserService {
-    pub fn new(pool: DbPool, audit_service: AuditService) -> Self {
+    pub fn new(
+        pool: DbPool,
+        audit_service: AuditService,
+        ws_hub: Option<std::sync::Arc<crate::http::WsHub>>,
+    ) -> Self {
         Self {
             pool,
             audit_service,
+            ws_hub,
         }
     }
 
@@ -289,13 +295,72 @@ impl UserService {
     }
 
     /// Delete user — also invalidates all their sessions so the deleted user
-    /// is immediately kicked out instead of staying on the page until token expiry.
+    /// is immediately kicked out instead of staying on the page until token
+    /// expiry. Honors two safety guards:
+    /// 1) cannot delete your own account (self-delete protection), and
+    /// 2) cannot delete the last active super-admin (lockout prevention).
     pub async fn delete(
         &self,
         id: &str,
         actor_id: Option<&str>,
         ip_address: Option<&str>,
     ) -> AppResult<()> {
+        // Safety guard 1: reject self-delete. Without this an operator
+        // could accidentally brick their own session and lock themselves
+        // out of the platform.
+        if let Some(actor) = actor_id {
+            if actor == id {
+                return Err(AppError::Validation(
+                    "You cannot delete your own account. Ask another super-admin to perform this action if necessary.".to_string(),
+                ));
+            }
+        }
+
+        // Safety guard 2: never delete the last active super-admin. Without
+        // this a single super-admin could lock the system out of all admin
+        // operations.
+        #[cfg(feature = "postgres")]
+        let target: Option<(bool, bool)> = sqlx::query_as(
+            "SELECT is_super_admin, is_active FROM users WHERE id = $1",
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+        #[cfg(not(feature = "postgres"))]
+        let target: Option<(bool, bool)> = sqlx::query_as(
+            "SELECT is_super_admin, is_active FROM users WHERE id = ?",
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let target = match target {
+            Some(row) => row,
+            None => return Err(AppError::UserNotFound),
+        };
+
+        if target.0 {
+            #[cfg(feature = "postgres")]
+            let active_superadmin_count: (i64,) = sqlx::query_as(
+                "SELECT COUNT(*) FROM users WHERE is_super_admin = true AND is_active = true",
+            )
+            .fetch_one(&self.pool)
+            .await?;
+            #[cfg(not(feature = "postgres"))]
+            let active_superadmin_count: (i64,) = sqlx::query_as(
+                "SELECT COUNT(*) FROM users WHERE is_super_admin = 1 AND is_active = 1",
+            )
+            .fetch_one(&self.pool)
+            .await?;
+
+            if active_superadmin_count.0 <= 1 {
+                return Err(AppError::Validation(
+                    "Cannot delete the last active super-admin. Promote another user first."
+                        .to_string(),
+                ));
+            }
+        }
+
         // Invalidate all sessions for this user BEFORE deleting the user row.
         // This ensures the deleted user's next API call returns 401 immediately.
         let _ = sqlx::query("DELETE FROM sessions WHERE user_id = $1")
@@ -317,13 +382,24 @@ impl UserService {
             .log(
                 actor_id,
                 None,
-                "USER_DELETE",
+                "USER_DELETE_PERMANENT",
                 "user",
                 Some(id),
-                Some("Deleted user"),
+                Some("Permanently deleted user (with session invalidation)"),
                 ip_address,
             )
             .await;
+
+        // Broadcast SessionInvalidated so any active tab belonging to the
+        // deleted user is force-logged-out in real time. Same event the
+        // customer-deletion flow already emits; reason differentiates the
+        // source ("user_deleted" vs "customer_deleted") on the FE.
+        if let Some(hub) = self.ws_hub.as_ref() {
+            hub.broadcast(crate::http::WsEvent::SessionInvalidated {
+                user_id: id.to_string(),
+                reason: "user_deleted".to_string(),
+            });
+        }
 
         Ok(())
     }
