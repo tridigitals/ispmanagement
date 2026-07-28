@@ -954,8 +954,10 @@ impl AuthService {
             return Err(AppError::Validation("Invalid token state".to_string()));
         }
 
+        // Tenant-aware password policy for the user being reset.
+        let settings = self.effective_auth_settings_for_user(&user.id).await;
+
         // Validate password
-        let settings = self.get_auth_settings().await;
         let validation = self.validate_password(new_password, &settings);
         if !validation.valid {
             return Err(AppError::Validation(validation.errors.join(", ")));
