@@ -938,6 +938,15 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
 }
 
 /**
+ * Redacted console logger that hides BE internals (sqlx / axum stack, file
+ * paths, env names). Call sites that previously did `console.error(e)` are
+ * expected to migrate to `logApiError(scope, e)` so DevTools stays quiet.
+ */
+export function logApiError(scope: string, err: unknown, fallback = 'request failed'): void {
+  console.warn(`[${scope}]`, extractApiErrorMessage(err, fallback));
+}
+
+/**
  * Pull a human-readable error message out of any of the error shapes the
  * backend may return. Falls back gracefully when none of the well-known
  * fields are present so the FE never logs `[object Object]`.
