@@ -10,11 +10,16 @@ export const handle: Handle = async ({ event, resolve }) => {
   if (!response.headers.has('Content-Security-Policy')) {
     // Midtrans Snap needs script+frame; Duitku is full-page redirect (form-action).
     // connect/img stay broad for MapLibre tiles + payment XHR. Tighten later if needed.
+    // Cloudflare auto-injects its Web Analytics beacon
+    // (https://static.cloudflareinsights.com/beacon.min.js) when the site
+    // is fronted by Cloudflare. Allow it explicitly so the analytics
+    // endpoint can load in production behind Cloudflare without breaking
+    // script-src enforcement.
     response.headers.set(
       'Content-Security-Policy',
       [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' https://app.midtrans.com https://app.sandbox.midtrans.com",
+        "script-src 'self' 'unsafe-inline' https://app.midtrans.com https://app.sandbox.midtrans.com https://static.cloudflareinsights.com",
         "frame-src 'self' https://*.midtrans.com https://app.midtrans.com https://app.sandbox.midtrans.com",
         "connect-src 'self' https:",
         "img-src 'self' data: blob: https:",
