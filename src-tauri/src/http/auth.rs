@@ -24,14 +24,20 @@ pub fn extract_ip(headers: &HeaderMap, addr: SocketAddr) -> String {
 }
 
 // Helper to map AppError to Axum Response
+//
+// CRITICAL: every branch here returns a short, generic, user-safe message.
+// Detailed cause (SQL text, file paths, sqlx chain, env names) is logged
+// server-side via `tracing` so operators can debug, but never sent over
+// the wire — otherwise a 500 with "Database error: connection refused at
+// 10.0.0.7:5432" leaks internals to whoever can talk to the API.
 impl IntoResponse for crate::error::AppError {
     fn into_response(self) -> Response {
-        let (status, message) = match self {
+        let (status, public_message) = match self {
             crate::error::AppError::Validation(msg) => (StatusCode::BAD_REQUEST, msg),
-            crate::error::AppError::Database(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {}", err),
-            ),
+            crate::error::AppError::Database(err) => {
+                tracing::error!(error = ?err, "database error");
+                (StatusCode::INTERNAL_SERVER_ERROR, "A database error occurred.".to_string())
+            }
             crate::error::AppError::InvalidCredentials => {
                 (StatusCode::UNAUTHORIZED, "Invalid credentials".to_string())
             }
@@ -48,23 +54,33 @@ impl IntoResponse for crate::error::AppError {
                 (StatusCode::UNAUTHORIZED, "Invalid token".to_string())
             }
             crate::error::AppError::TokenExpired => {
-                (StatusCode::UNAUTHORIZED, "Token expired".to_string())
+                (StatusCode::UNAUTHORIZED, "Session expired, please log in again.".to_string())
             }
-            crate::error::AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            crate::error::AppError::Internal(msg) => {
+                tracing::error!(internal = %msg, "internal error");
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+            }
             crate::error::AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             crate::error::AppError::Forbidden(msg) => {
-                // Log detailed permission info server-side, don't expose to client
-                tracing::warn!("Permission denied: {}", msg);
+                // Log detailed permission info server-side, don't expose to client.
+                tracing::warn!(reason = %msg, "permission denied");
                 (StatusCode::FORBIDDEN, "Permission denied".to_string())
             },
-            crate::error::AppError::Cache(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            crate::error::AppError::Cache(msg) => {
+                tracing::error!(cache = %msg, "cache error");
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+            }
             crate::error::AppError::RateLimited(msg) => (StatusCode::TOO_MANY_REQUESTS, msg),
             crate::error::AppError::ServiceUnavailable(msg) => {
-                (StatusCode::SERVICE_UNAVAILABLE, msg)
+                tracing::warn!(reason = %msg, "service unavailable");
+                (StatusCode::SERVICE_UNAVAILABLE, "Service temporarily unavailable. Please try again in a few seconds.".to_string())
             }
             crate::error::AppError::Conflict(msg) => (StatusCode::CONFLICT, msg),
             crate::error::AppError::Authentication(msg) => (StatusCode::UNAUTHORIZED, msg),
-            crate::error::AppError::Configuration(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            crate::error::AppError::Configuration(msg) => {
+                tracing::error!(config = %msg, "server misconfigured");
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+            }
             crate::error::AppError::AccountPendingApproval => (
                 StatusCode::FORBIDDEN,
                 "Account pending approval".to_string(),
@@ -72,7 +88,7 @@ impl IntoResponse for crate::error::AppError {
         };
 
         let body = Json(json!({
-            "error": message
+            "error": public_message
         }));
 
         (status, body).into_response()

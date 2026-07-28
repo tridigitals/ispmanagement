@@ -20,11 +20,19 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Initialize Logging
+    //
+    // Default verbosity is intentionally quiet so that:
+    //   - the operator log stream doesn't drown out real issues,
+    //   - any leaked crate name (axum, sqlx, tokio, hyper, ...) does not
+    //     surface in the FE error path through AppError to_string().
+    // The RUST_LOG env var still wins when explicitly set.
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
         .with(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive("info".parse().unwrap()),
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| {
+                    tracing_subscriber::EnvFilter::new("warn,saas_tauri_lib=info")
+                }),
         )
         .init();
 

@@ -928,7 +928,10 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
     } else if (status === 404) {
       (error as any).__notFound = true;
     } else if (!args?.__suppress_error_log) {
-      console.error(`API Error (${command}):`, error);
+      // Default to a quiet log line. Backend should already give us a
+      // user-safe public_message — anything beyond that gets redacted so a
+      // leaked stack trace / DB error doesn't surface in the dev tools.
+      console.warn(`API ${command} failed:`, extractApiErrorMessage(error, 'request failed'));
     }
     throw error;
   }
