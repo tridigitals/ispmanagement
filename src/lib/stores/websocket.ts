@@ -5,6 +5,7 @@
  * When permission-related events are received, triggers checkAuth to refresh user data.
  */
 import { writable, get } from 'svelte/store';
+import { logApiError } from '$lib/api/core';
 import { checkAuth, authVersion, token, isSuperAdmin, user } from './auth';
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
@@ -176,7 +177,7 @@ export function connectWebSocket() {
     };
 
     ws.onerror = (error) => {
-      console.error('[WS] Error:', error);
+      logApiError('websocket', error, 'WebSocket connection error');
       wsError.set('WebSocket connection error');
       // Some environments can get "stuck" in CONNECTING without reliably firing onclose.
       // Watchdog will handle it, but scheduling here makes reconnect more aggressive.
@@ -196,7 +197,7 @@ export function connectWebSocket() {
       }
     };
   } catch (e) {
-    console.error('[WS] Failed to create WebSocket:', e);
+    logApiError('websocket', e, 'Failed to create WebSocket');
     wsError.set('Failed to connect to WebSocket');
     scheduleReconnect();
   }

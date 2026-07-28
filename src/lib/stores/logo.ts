@@ -82,7 +82,7 @@ function createLogoStore() {
         } else {
         }
       } catch (err) {
-        console.error('[LogoStore] Failed to load logo:', err);
+        logApiError('logo', err, 'Failed to load logo');
       }
     },
   };

@@ -1,4 +1,5 @@
 import { writable, get } from 'svelte/store';
+import { logApiError } from '$lib/api/core';
 import {
   notifications as api,
   type Notification,
@@ -66,7 +67,7 @@ export async function loadNotifications(page: number = 1, append: boolean = fals
     // Also refresh count (throttled to avoid extra calls on frequent dropdown opens)
     refreshUnreadCount();
   } catch (e) {
-    console.error('Failed to load notifications:', e);
+    logApiError('notifications', e, 'request failed');
   } finally {
     loading.set(false);
   }
@@ -86,7 +87,7 @@ export async function refreshUnreadCount(force: boolean = false) {
   } catch (e) {
     const fallbackCount = get(notifications).filter((notification) => !notification.is_read).length;
     unreadCount.set(fallbackCount);
-    console.error('Failed to get unread count:', e);
+    logApiError('notifications', e, 'request failed');
   }
 }
 
@@ -103,7 +104,7 @@ export async function markAsRead(id: string) {
     await api.markAsRead(id);
   } catch (e) {
     // Revert on error?
-    console.error('Failed to mark as read:', e);
+    logApiError('notifications', e, 'request failed');
     refreshUnreadCount(); // Sync back
   }
 }
@@ -119,7 +120,7 @@ export async function markAllAsRead() {
   try {
     await api.markAllAsRead();
   } catch (e) {
-    console.error('Failed to mark all as read:', e);
+    logApiError('notifications', e, 'request failed');
     loadNotifications(1); // Reload to sync
     refreshUnreadCount();
   }
@@ -140,7 +141,7 @@ export async function deleteNotification(id: string) {
   try {
     await api.delete(id);
   } catch (e) {
-    console.error('Failed to delete notification:', e);
+    logApiError('notifications', e, 'request failed');
     loadNotifications(1); // Reload
   }
 }
@@ -154,7 +155,7 @@ export async function deleteAllNotifications() {
   try {
     await api.deleteAll();
   } catch (e) {
-    console.error('Failed to delete all notifications:', e);
+    logApiError('notifications', e, 'request failed');
     loadNotifications(1); // Reload
   }
 }
@@ -167,7 +168,7 @@ export async function loadPreferences() {
     const res = await api.getPreferences();
     preferences.set(res);
   } catch (e) {
-    console.error('Failed to load preferences:', e);
+    logApiError('notifications', e, 'request failed');
   }
 }
 
@@ -199,7 +200,7 @@ export async function updatePreference(channel: string, category: string, enable
   try {
     await api.updatePreference(channel, category, enabled);
   } catch (e) {
-    console.error('Failed to update preference:', e);
+    logApiError('notifications', e, 'request failed');
     loadPreferences(); // Revert
   }
 }
@@ -218,7 +219,7 @@ export async function checkSubscription() {
     const subscription = await registration.pushManager.getSubscription();
     pushEnabled.set(!!subscription);
   } catch (e) {
-    console.error('Failed to check push subscription:', e);
+    logApiError('notifications', e, 'request failed');
     pushEnabled.set(false);
   }
 }
@@ -258,7 +259,7 @@ export async function subscribePush() {
     const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
     if (!vapidPublicKey) {
-      console.error('VAPID public key not found');
+      logApiError('notifications', 'VAPID public key not found', 'VAPID public key not found');
       toast.error(
         get(t)('notifications.toasts.missing_vapid') || 'Configuration error: Missing VAPID key',
       );
@@ -292,7 +293,7 @@ export async function subscribePush() {
       console.warn('Push subscription missing keys');
     }
   } catch (e) {
-    console.error('Failed to subscribe to push:', e);
+    logApiError('notifications', e, 'request failed');
     const msg = e instanceof Error ? e.message : 'Unknown error';
     toast.error(
       get(t)('notifications.toasts.generic_error', {
@@ -319,7 +320,7 @@ export async function unsubscribePush() {
       toast.success(get(t)('notifications.toasts.disabled') || 'Push notifications disabled');
     }
   } catch (e) {
-    console.error('Failed to unsubscribe push:', e);
+    logApiError('notifications', e, 'request failed');
   }
 }
 
@@ -331,7 +332,7 @@ export async function sendTestNotification() {
     await api.sendTest();
     toast.success(get(t)('notifications.toasts.test_sent') || 'Test notification sent!');
   } catch (e) {
-    console.error('Failed to send test notification:', e);
+    logApiError('notifications', e, 'request failed');
     toast.error(get(t)('notifications.toasts.test_failed') || 'Failed to send test notification');
   }
 }
@@ -359,7 +360,7 @@ export function handleNotificationReceived(notification: Notification) {
         body: notification.message || 'New notification received',
       });
     } catch (e) {
-      console.error('Failed to send system notification:', e);
+      logApiError('notifications', e, 'request failed');
     }
   } else if (Notification.permission === 'granted') {
     // Validation for Browser: Trigger standard Web Notification
@@ -377,7 +378,7 @@ export function handleNotificationReceived(notification: Notification) {
         // Optional: navigate if action_url exists
       };
     } catch (e) {
-      console.error('Failed to trigger Web Notification:', e);
+      logApiError('notifications', e, 'request failed');
     }
   }
 

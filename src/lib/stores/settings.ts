@@ -132,7 +132,7 @@ function createSettingsStore() {
       updateWindowTitle(finalSettings.app_name);
       lastLoadedAt = Date.now();
     } catch (err) {
-      console.error('Failed to load settings:', err);
+      logApiError('settings', err, 'Failed to load settings');
     }
     })().finally(() => {
       settingsLoadInFlight = null;
