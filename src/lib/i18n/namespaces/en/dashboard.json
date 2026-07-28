@@ -237,8 +237,10 @@
         "postal_code": "Postal code",
         "country": "Country",
         "notes": "Notes",
-        "latitude": "Latitude",
-        "longitude": "Longitude"
+        "latitude": "Latitude (legacy)",
+        "longitude": "Longitude (legacy)",
+        "coordinates_picker": "Pin the location on the map — click anywhere or drag the marker. The coordinates below update in real time.",
+        "use_my_location": "Use my current location"
       },
       "placeholders": {
         "label": "Home / Office",
@@ -271,7 +273,11 @@
       "latitude_range": "Latitude must be between -90 and 90",
       "longitude_range": "Longitude must be between -180 and 180",
       "location_saved": "Location saved",
-      "location_create_failed": "Failed to create location"
+      "location_create_failed": "Failed to create location",
+      "map_load_failed": "Map failed to load. Please check your internet connection and try again.",
+      "map_container_missing": "Map container missing — try closing and reopening the dialog.",
+      "geolocation_unsupported": "Your browser does not support automatic location detection.",
+      "geolocation_failed": "Could not detect your location. Make sure the location permission is enabled."
     }
   },
   "services_portal": {

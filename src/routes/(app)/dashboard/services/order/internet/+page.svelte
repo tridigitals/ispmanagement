@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
   import Icon from '$lib/components/ui/Icon.svelte';
@@ -47,6 +47,25 @@
   let newLocationLongitude = $state('');
   let newLocationNotes = $state('');
 
+  // ── Map picker state ──────────────────────────────────────────────
+  // Replaces the old latitude/longitude text inputs with a click-to-pick
+  // map. The text state above is kept as the data sink so the existing
+  // save/lifecycle logic continues to work unchanged.
+  let mapPickerContainer = $state<HTMLDivElement | null>(null);
+  let mapPickerMounted = $state(false);
+  let mapPickerError = $state('');
+  let mapPickerDetecting = $state(false);
+  let pickerMapInstance: any = null;
+  let pickerMarkerInstance: any = null;
+  let pickerMaplibreAny: any = null;
+
+  function parseCoord(raw: string): number | null {
+    const trimmed = (raw ?? '').trim();
+    if (!trimmed) return null;
+    const n = Number(trimmed);
+    return Number.isFinite(n) ? n : null;
+  }
+
   type TxValues = Record<string, string | number | boolean | Date | null | undefined>;
 
   function tx(key: string, fallback: string, values?: TxValues) {
@@ -56,6 +75,189 @@
   onMount(() => {
     void loadData();
   });
+
+  // ── Map picker lifecycle ──────────────────────────────────────────
+  // Lazy-import maplibre-gl so the chunk only loads when the modal is
+  // actually opened. Single OSM raster style (no API key required).
+  async function ensureMapPickerReady() {
+    if (pickerMapInstance) return;
+    if (!mapPickerContainer) {
+      // Wait one tick for the Modal to mount the DOM node.
+      await new Promise((r) => setTimeout(r, 50));
+      if (!mapPickerContainer) {
+        mapPickerError = tx(
+          'dashboard.internet_order.toasts.map_container_missing',
+          'Peta tidak dapat dimuat (container hilang). Silakan tutup dan buka kembali.',
+        );
+        return;
+      }
+    }
+    try {
+      const maplibreMod = await import('maplibre-gl');
+      await import('maplibre-gl/dist/maplibre-gl.css');
+      const maplibre = (maplibreMod as any).default ?? maplibreMod;
+
+      const initialLat = parseCoord(newLocationLatitude) ?? -2.5489;
+      const initialLng = parseCoord(newLocationLongitude) ?? 118.0149;
+      const hasMarker = parseCoord(newLocationLatitude) !== null && parseCoord(newLocationLongitude) !== null;
+
+      const map = new maplibre.Map({
+        container: mapPickerContainer,
+        // Free OSM raster style — no token, no quota, works on any domain.
+        style: {
+          version: 8,
+          sources: {
+            'osm-raster': {
+              type: 'raster',
+              tiles: [
+                'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              ],
+              tileSize: 256,
+              attribution: '© OpenStreetMap contributors',
+            },
+          },
+          layers: [
+            { id: 'osm-raster-layer', type: 'raster', source: 'osm-raster' },
+          ],
+        },
+        center: [initialLng, initialLat],
+        zoom: hasMarker ? 12 : 5,
+      });
+
+      map.addControl(new maplibre.NavigationControl({ showCompass: false }), 'top-right');
+      map.addControl(new maplibre.ScaleControl({ unit: 'metric' }), 'bottom-left');
+
+      const syncFromLngLat = (lng: number, lat: number) => {
+        newLocationLatitude = lat.toFixed(6);
+        newLocationLongitude = lng.toFixed(6);
+      };
+
+      // Seed marker if we already have coords in state.
+      if (hasMarker) {
+        pickerMarkerInstance = new maplibre.Marker({ draggable: true, color: '#d33' })
+          .setLngLat([initialLng, initialLat])
+          .addTo(map);
+        pickerMarkerInstance.on('dragend', () => {
+          const ll = pickerMarkerInstance.getLngLat();
+          syncFromLngLat(ll.lng, ll.lat);
+        });
+      }
+
+      // Click anywhere on the map to drop/reposition the marker.
+      map.on('click', (ev: any) => {
+        const lng = ev.lngLat.lng;
+        const lat = ev.lngLat.lat;
+        syncFromLngLat(lng, lat);
+        if (pickerMarkerInstance) {
+          pickerMarkerInstance.setLngLat([lng, lat]);
+        } else {
+          pickerMarkerInstance = new maplibre.Marker({ draggable: true, color: '#d33' })
+            .setLngLat([lng, lat])
+            .addTo(map);
+          pickerMarkerInstance.on('dragend', () => {
+            const ll = pickerMarkerInstance.getLngLat();
+            syncFromLngLat(ll.lng, ll.lat);
+          });
+        }
+      });
+
+      pickerMapInstance = map;
+      pickerMaplibreAny = maplibre;
+      mapPickerMounted = true;
+      mapPickerError = '';
+    } catch (err) {
+      console.error('[internet-order] failed to init map picker', err);
+      mapPickerError = tx(
+        'dashboard.internet_order.toasts.map_load_failed',
+        'Peta gagal dimuat. Silakan cek koneksi internet atau coba lagi.',
+      );
+    }
+  }
+
+  function teardownMapPicker() {
+    try {
+      if (pickerMarkerInstance) {
+        pickerMarkerInstance.remove();
+      }
+    } catch {
+      /* ignore */
+    }
+    try {
+      if (pickerMapInstance) {
+        pickerMapInstance.remove();
+      }
+    } catch {
+      /* ignore */
+    }
+    pickerMarkerInstance = null;
+    pickerMapInstance = null;
+    pickerMaplibreAny = null;
+    mapPickerMounted = false;
+  }
+
+  $effect(() => {
+    if (showAddLocationModal) {
+      void ensureMapPickerReady();
+    } else {
+      teardownMapPicker();
+    }
+  });
+
+  onDestroy(() => {
+    teardownMapPicker();
+  });
+
+  async function detectMyLocation() {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      toast.error(
+        tx(
+          'dashboard.internet_order.toasts.geolocation_unsupported',
+          'Browser Anda tidak mendukung deteksi lokasi otomatis.',
+        ),
+      );
+      return;
+    }
+    mapPickerDetecting = true;
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 8000,
+          maximumAge: 60_000,
+        });
+      });
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      newLocationLatitude = lat.toFixed(6);
+      newLocationLongitude = lng.toFixed(6);
+      if (pickerMapInstance && pickerMaplibreAny) {
+        pickerMapInstance.flyTo({ center: [lng, lat], zoom: 14 });
+        if (pickerMarkerInstance) {
+          pickerMarkerInstance.setLngLat([lng, lat]);
+        } else {
+          pickerMarkerInstance = new pickerMaplibreAny.Marker({ draggable: true, color: '#d33' })
+            .setLngLat([lng, lat])
+            .addTo(pickerMapInstance);
+          pickerMarkerInstance.on('dragend', () => {
+            const ll = pickerMarkerInstance.getLngLat();
+            newLocationLatitude = ll.lat.toFixed(6);
+            newLocationLongitude = ll.lng.toFixed(6);
+          });
+        }
+      }
+    } catch (err) {
+      toast.error(
+        tx(
+          'dashboard.internet_order.toasts.geolocation_failed',
+          'Tidak dapat mendeteksi lokasi. Pastikan izin lokasi diaktifkan.',
+        ),
+      );
+    } finally {
+      mapPickerDetecting = false;
+    }
+  }
 
   const selectedLocation = $derived.by(
     () => locations.find((location) => location.id === draftLocationId) || null,
@@ -650,15 +852,54 @@
       <span>{$t('dashboard.internet_order.modal.fields.notes')}</span>
       <textarea class="input textarea" bind:value={newLocationNotes} rows="3"></textarea>
     </label>
-    <div class="location-grid-2">
-      <label class="form-field">
-        <span>{$t('dashboard.internet_order.modal.fields.latitude')}</span>
-        <input class="input" bind:value={newLocationLatitude} placeholder="-6.200000" />
-      </label>
-      <label class="form-field">
-        <span>{$t('dashboard.internet_order.modal.fields.longitude')}</span>
-        <input class="input" bind:value={newLocationLongitude} placeholder="106.816666" />
-      </label>
+
+    <div class="map-picker">
+      <div class="map-picker-header">
+        <span class="form-field-label">
+          {$t('dashboard.internet_order.modal.fields.coordinates_picker') ||
+            'Pilih lokasi pada peta (klik atau geser marker)'}
+        </span>
+        <div class="map-picker-actions">
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            onclick={detectMyLocation}
+            disabled={mapPickerDetecting}
+          >
+            <Icon
+              name={mapPickerDetecting ? 'refresh-cw' : 'crosshair'}
+              size={14}
+            />
+            {$t('dashboard.internet_order.actions.use_my_location') ||
+              'Gunakan lokasi saya'}
+          </button>
+        </div>
+      </div>
+      <div
+        class="map-picker-canvas"
+        bind:this={mapPickerContainer}
+        role="application"
+        aria-label="Map picker"
+      ></div>
+      {#if mapPickerError}
+        <p class="map-picker-error">{mapPickerError}</p>
+      {/if}
+      <div class="map-picker-coords">
+        <span>
+          <strong>Lat:</strong>
+          {newLocationLatitude || '—'}
+        </span>
+        <span>
+          <strong>Lng:</strong>
+          {newLocationLongitude || '—'}
+        </span>
+        {#if !mapPickerMounted && !mapPickerError}
+          <span class="map-picker-status">
+            <Icon name="refresh-cw" size={12} />
+            Memuat peta…
+          </span>
+        {/if}
+      </div>
     </div>
     <div class="checkout-actions">
       <button
@@ -928,6 +1169,56 @@
   }
   .textarea { min-height: 84px; resize: vertical; }
   .location-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; }
+
+  /* ── map picker ── */
+  .map-picker {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.7rem;
+    background: var(--bg-surface);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .map-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .map-picker-actions { display: flex; gap: 0.35rem; }
+  .form-field-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .map-picker-canvas {
+    width: 100%;
+    height: 260px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--bg-elevated, #f3f4f6);
+    border: 1px solid var(--border-color);
+  }
+  .map-picker-error {
+    color: var(--color-danger, #c33);
+    font-size: 0.82rem;
+    margin: 0;
+  }
+  .map-picker-coords {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    font-family: var(--font-mono, ui-monospace, "JetBrains Mono", monospace);
+  }
+  .map-picker-status {
+    color: var(--text-tertiary, #6b7280);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
 
   /* ── responsive ── */
   @media (max-width: 860px) {

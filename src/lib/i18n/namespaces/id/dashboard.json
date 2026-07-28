@@ -237,8 +237,10 @@
         "postal_code": "Kode Pos",
         "country": "Negara",
         "notes": "Catatan",
-        "latitude": "Latitude",
-        "longitude": "Longitude"
+        "latitude": "Latitude (warisan)",
+        "longitude": "Longitude (warisan)",
+        "coordinates_picker": "Pasang pin lokasi di peta — klik di mana saja atau geser markernya. Koordinat di bawah akan ter-update otomatis.",
+        "use_my_location": "Gunakan lokasi saya saat ini"
       },
       "placeholders": {
         "label": "Rumah / Kantor",
@@ -271,7 +273,11 @@
       "latitude_range": "Latitude harus di antara -90 hingga 90",
       "longitude_range": "Longitude harus di antara -180 hingga 180",
       "location_saved": "Lokasi berhasil disimpan",
-      "location_create_failed": "Gagal menambahkan lokasi"
+      "location_create_failed": "Gagal menambahkan lokasi",
+      "map_load_failed": "Peta gagal dimuat. Periksa koneksi internet Anda lalu coba lagi.",
+      "map_container_missing": "Container peta tidak terdeteksi — coba tutup dan buka kembali dialog ini.",
+      "geolocation_unsupported": "Browser Anda tidak mendukung deteksi lokasi otomatis.",
+      "geolocation_failed": "Tidak dapat mendeteksi lokasi Anda. Pastikan izin lokasi diaktifkan."
     }
   },
   "services_portal": {
