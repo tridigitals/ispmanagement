@@ -14,6 +14,7 @@
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { publicApi } from '$lib/api/public';
   import { getDefaultTenantLandingPath } from '$lib/utils/appLanding';
+  import { toast } from '$lib/stores/toast';
 
   let identifier = '';
   let password = '';
@@ -92,6 +93,25 @@
     // @ts-ignore
     isTauriApp = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
     await Promise.all([appSettings.init(), appLogo.init()]);
+
+    // Surface "you were logged out" via a banner-style toast so the user
+    // understands the redirect instead of being dumped on /login silently.
+    const reasonParam = new URLSearchParams($page.url?.search || '').get('reason');
+    if (reasonParam === 'expired') {
+      toast.warning(
+        $t('auth.session_expired_message') ||
+          'Your session has expired. Please log in again to continue.',
+      );
+      // Strip the reason from the URL so it does not keep firing on refresh.
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('reason');
+        window.history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + url.hash);
+      } catch {
+        // non-blocking
+      }
+    }
+
     const currentHost = window.location.hostname;
     const isLocal =
       currentHost === 'localhost' || currentHost === '127.0.0.1' || currentHost.includes('tauri');
