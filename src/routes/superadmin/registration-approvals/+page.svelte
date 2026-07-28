@@ -454,7 +454,7 @@
 </Modal>
 
 <style>
-  .superadmin-content {
+  .sa-approvals {
     padding: clamp(16px, 3vw, 32px);
     max-width: 1400px;
     margin: 0 auto;
