@@ -179,7 +179,8 @@
       "add_more": "Add More",
       "submit_installation_request": "Submit Installation Request",
       "cancel": "Cancel",
-      "save": "Save"
+      "save": "Save",
+      "use_my_location": "Use my current location"
     },
     "labels": {
       "location": "Location",

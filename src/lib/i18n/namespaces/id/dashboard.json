@@ -166,20 +166,21 @@
       "review": "Tinjau"
     },
     "actions": {
-      "service_types": "Jenis Layanan",
+      "service_types": "Tipe Layanan",
       "billing_invoices": "Tagihan & Invoice",
-      "refresh": "Muat Ulang",
+      "refresh": "Muat ulang",
       "add_location": "Tambah Lokasi",
       "next_choose_package": "Lanjut: Pilih Paket",
       "back_to_address": "Kembali ke Alamat",
-      "selected": "Terpilih",
+      "selected": "Dipilih",
       "select_package": "Pilih Paket",
       "order_now": "Pesan Sekarang",
       "back_to_package": "Kembali ke Paket",
       "add_more": "Tambah Lagi",
       "submit_installation_request": "Kirim Permintaan Instalasi",
       "cancel": "Batal",
-      "save": "Simpan"
+      "save": "Simpan",
+      "use_my_location": "Gunakan lokasi saya saat ini"
     },
     "labels": {
       "location": "Lokasi",
