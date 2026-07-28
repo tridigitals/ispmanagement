@@ -8,7 +8,10 @@
       "users": "Users",
       "system_health": "System Health",
       "health_ok": "OK",
-      "health_down": "DB Down"
+      "health_down": "DB Down",
+      "active_pct": "{pct}% active",
+      "needs_review": "needs review",
+      "pending_approvals": "Pending Approvals"
     },
     "quick_actions": {
       "title": "Quick Actions",
@@ -28,6 +31,46 @@
         "title": "Platform Settings",
         "desc": "Configure policies and system defaults."
       }
+    },
+    "crumbs": {
+      "root": "Superadmin",
+      "dashboard": "Dashboard"
+    },
+    "welcome": "Welcome back 👋",
+    "subtitle": "Platform overview at a glance",
+    "actions": {
+      "refresh": "Refresh",
+      "new_tenant": "New Tenant"
+    },
+    "time": {
+      "just_now": "just now",
+      "hours_ago": "{count} hours ago",
+      "days_ago": "{count} days ago"
+    },
+    "health": {
+      "database": "Database",
+      "connected": "Connected",
+      "down": "Disconnected",
+      "latency_ms": "avg {ms} ms",
+      "sessions": "Active Sessions",
+      "sessions_value": "{count} sessions",
+      "backup": "Backup",
+      "backup_never": "No backup yet",
+      "details": "System Details",
+      "details_hint": "CPU, memory, tables"
+    },
+    "attention": {
+      "title": "Needs Attention",
+      "review": "Review",
+      "follow_up": "Follow up",
+      "run": "Run",
+      "approvals_title": "{count} tenant registrations awaiting approval",
+      "approvals_desc": "Review and approve new registrations",
+      "invoices_title": "{count} tenant invoices overdue",
+      "invoices_desc": "Total outstanding: {amount}",
+      "backup_title": "Automatic backup is behind schedule",
+      "backup_desc_last": "Last successful backup: {when}",
+      "backup_desc_none": "No backup has ever been created"
     }
   },
   "audit_logs": {
@@ -107,6 +150,10 @@
     "empty": {
       "title": "No logs found",
       "subtitle": "Try adjusting your filters."
+    },
+    "crumbs": {
+      "root": "Superadmin",
+      "audit_logs": "Audit Logs"
     }
   },
   "users": {
@@ -216,6 +263,10 @@
       "deleted": "User {email} deleted permanently. Their active sessions have been invalidated.",
       "update_status_failed": "Failed to update user status: {message}",
       "delete_failed": "Failed to delete user. The user may be the last active super-admin."
+    },
+    "crumbs": {
+      "root": "Superadmin",
+      "users": "Users"
     }
   },
   "radius": {
@@ -398,6 +449,10 @@
       "secret_revealed": "Shared secret loaded",
       "secret_rotated": "Shared secret rotated",
       "cli_copied": "RouterOS CLI copied"
+    },
+    "crumbs": {
+      "root": "Superadmin",
+      "radius": "RADIUS"
     }
   },
   "tenants": {
@@ -510,7 +565,11 @@
       "deactivated": "Tenant deactivated"
     },
     "domain_status": "Domain Status",
-    "failure_reason": "Failure Reason"
+    "failure_reason": "Failure Reason",
+    "crumbs": {
+      "root": "Superadmin",
+      "tenants": "Tenants"
+    }
   },
   "invoices": {
     "aria": {
@@ -588,7 +647,11 @@
       "no_proof": "No proof uploaded yet.",
       "not_found": "Invoice not found"
     },
-    "payment_proof": "Payment Proof"
+    "payment_proof": "Payment Proof",
+    "crumbs": {
+      "root": "Superadmin",
+      "invoices": "Invoices"
+    }
   },
   "system": {
     "tabs": {
@@ -666,7 +729,11 @@
     "public_url_label": "Public Url Label",
     "requests_per_min": "Requests Per Min",
     "tenant_label": "Tenant Label",
-    "timezone_label": "Timezone Label"
+    "timezone_label": "Timezone Label",
+    "crumbs": {
+      "root": "Superadmin",
+      "system": "System"
+    }
   },
   "settings": {
     "title": "Platform Settings",
@@ -1070,6 +1137,10 @@
       "message": "Message",
       "sending": "Sending...",
       "send_test_button": "Send Test"
+    },
+    "crumbs": {
+      "root": "Superadmin",
+      "settings": "Settings"
     }
   },
   "plans": {
@@ -1183,6 +1254,10 @@
       "errors": {
         "save_failed": "Failed to save plan"
       }
+    },
+    "crumbs": {
+      "root": "Superadmin",
+      "plans": "Plans"
     }
   },
   "backups": {
@@ -1216,7 +1291,11 @@
     "toast_download_success": "Download complete",
     "toast_download_failed": "Download failed",
     "toast_restore_success": "System restore completed successfully. The application will now reload.",
-    "toast_restore_failed": "Restore failed"
+    "toast_restore_failed": "Restore failed",
+    "crumbs": {
+      "root": "Superadmin",
+      "backups": "Backups"
+    }
   },
   "pending_approvals": {
     "title": "Pending Registrations",
@@ -1256,6 +1335,18 @@
       "default_policy": "Default policy",
       "default_expiry": "Default expiry (hours)",
       "default_max_uses": "Default max uses"
+    }
+  },
+  "registration_approvals": {
+    "crumbs": {
+      "root": "Superadmin",
+      "approvals": "Registration Approvals"
+    }
+  },
+  "storage": {
+    "crumbs": {
+      "root": "Superadmin",
+      "storage": "Storage"
     }
   }
 }

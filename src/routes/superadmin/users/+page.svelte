@@ -4,8 +4,7 @@
   import { api } from '$lib/api/client';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
-  import { fly } from 'svelte/transition';
-  import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
+  import Icon from '$lib/components/ui/Icon.svelte';
   import { toast } from '$lib/stores/toast';
   import type { User } from '$lib/api/client';
   import { extractApiErrorMessage } from '$lib/api/core';
@@ -354,93 +353,56 @@
   const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
 </script>
 
-<div class="superadmin-content fade-in">
+<div class="sa-users fade-in">
+  <!-- ── Page header ── -->
+  <div class="page-head">
+    <div>
+      <div class="crumbs">
+        {$t('superadmin.users.crumbs.root')}
+        <span class="crumb-sep">›</span>
+        <b>{$t('superadmin.users.crumbs.users')}</b>
+      </div>
+      <h1>{$t('superadmin.users.title')}</h1>
+      <p class="subtitle">{$t('superadmin.users.subtitle')}</p>
+    </div>
+    <div class="head-actions">
+      <button class="btn ghost" onclick={() => loadData()}><Icon name="refresh-cw" size={14} /></button>
+    </div>
+  </div>
+
+  <!-- ── Stat chips (filter + display) ── -->
   <div class="stats-row" aria-label={$t('superadmin.users.aria.stats')}>
-    <button
-      class="stat-btn"
-      class:active={statusFilter === 'all'}
-      onclick={() => {
-        statusFilter = 'all';
-        roleFilter = 'all';
-      }}
-      aria-label={$t('superadmin.users.stats.show_all')}
-      title={$t('superadmin.users.stats.show_all')}
-      type="button"
-    >
-      <StatsCard
-        title={$t('superadmin.users.stats.all_title')}
-        value={stats.total}
-        icon="users"
-        color="primary"
-      />
+    <button class="stat-chip" class:on={statusFilter === 'all' && roleFilter === 'all'} onclick={() => { statusFilter = 'all'; roleFilter = 'all'; }}>
+      <span class="chip-val">{stats.total}</span>
+      <span class="chip-lbl">{$t('superadmin.users.stats.all_title')}</span>
     </button>
-    <button
-      class="stat-btn"
-      class:active={statusFilter === 'active'}
-      onclick={() => (statusFilter = 'active')}
-      aria-label={$t('superadmin.users.stats.show_active')}
-      title={$t('superadmin.users.stats.show_active')}
-      type="button"
-    >
-      <StatsCard
-        title={$t('superadmin.users.stats.active_title')}
-        value={stats.active}
-        icon="check-circle"
-        color="success"
-      />
+    <button class="stat-chip" class:on={statusFilter === 'active'} onclick={() => (statusFilter = 'active')}>
+      <span class="chip-val">{stats.active}</span>
+      <span class="chip-lbl">{$t('superadmin.users.stats.active_title')}</span>
     </button>
-    <button
-      class="stat-btn"
-      class:active={statusFilter === 'inactive'}
-      onclick={() => (statusFilter = 'inactive')}
-      aria-label={$t('superadmin.users.stats.show_inactive')}
-      title={$t('superadmin.users.stats.show_inactive')}
-      type="button"
-    >
-      <StatsCard
-        title={$t('superadmin.users.stats.inactive_title')}
-        value={stats.inactive}
-        icon="slash"
-        color="warning"
-      />
+    <button class="stat-chip" class:on={statusFilter === 'inactive'} onclick={() => (statusFilter = 'inactive')}>
+      <span class="chip-val">{stats.inactive}</span>
+      <span class="chip-lbl">{$t('superadmin.users.stats.inactive_title')}</span>
     </button>
-    <button
-      class="stat-btn"
-      class:active={roleFilter === 'superadmin'}
-      onclick={() => {
-        roleFilter = 'superadmin';
-        statusFilter = 'all';
-      }}
-      aria-label={$t('superadmin.users.stats.show_superadmins')}
-      title={$t('superadmin.users.stats.show_superadmins')}
-      type="button"
-    >
-      <StatsCard
-        title={$t('superadmin.users.stats.superadmins_title')}
-        value={stats.superadmins}
-        icon="server"
-        color="danger"
-      />
+    <button class="stat-chip" class:on={roleFilter === 'superadmin'} onclick={() => { roleFilter = 'superadmin'; statusFilter = 'all'; }}>
+      <span class="chip-val">{stats.superadmins}</span>
+      <span class="chip-lbl">{$t('superadmin.users.stats.superadmins_title')}</span>
     </button>
   </div>
 
-  <div class="glass-card" in:fly={{ y: 20, delay: 80 }}>
-    <div class="card-header glass">
-      <div>
-        <h3>{$t('superadmin.users.title')}</h3>
-        <span class="muted">
-          {$t('superadmin.users.subtitle')}
-        </span>
+  <!-- ── Table panel ── -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-tools">
+        <button class="icon-btn small" class:active={viewMode === 'table'} onclick={() => (viewMode = 'table')} title={$t('common.table') || 'Table'}>
+          <Icon name="list" size={15} />
+        </button>
+        <button class="icon-btn small" class:active={viewMode === 'cards'} onclick={() => (viewMode = 'cards')} title={$t('common.cards') || 'Cards'}>
+          <Icon name="layout-grid" size={15} />
+        </button>
       </div>
-      <span class="count-badge">
-        {totalUsers || stats.total}
-        {$t('superadmin.users.count')}
-      </span>
     </div>
-
-    <div class="toolbar-wrapper">
-      <UserFilters bind:searchQuery bind:roleFilter bind:statusFilter bind:viewMode {isMobile} />
-    </div>
+    <UserFilters bind:searchQuery bind:roleFilter bind:statusFilter bind:viewMode {isMobile} />
 
     {#if error}
       <div class="error-state">
@@ -489,113 +451,153 @@
 {/if}
 
 <style>
-  .superadmin-content {
+  .sa-users {
     padding: clamp(16px, 3vw, 32px);
-    max-width: 1400px;
+    max-width: 1280px;
     margin: 0 auto;
     color: var(--text-primary);
   }
 
-  .stats-row {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.25rem;
+  /* ── Page header ── */
+  .page-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
   }
 
-  @media (max-width: 900px) {
-    .stats-row {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.75rem;
-    }
+  .crumbs {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    opacity: 0.75;
+    margin-bottom: 6px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
   }
 
-  @media (max-width: 480px) {
-    .stats-row {
-      grid-template-columns: 1fr;
-    }
+  .crumbs b { font-weight: 500; opacity: 1; }
+
+  .page-head h1 {
+    font-size: 1.45rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    margin: 0;
   }
 
-  .stat-btn {
-    border: none;
-    padding: 0;
-    background: transparent;
+  .subtitle {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 2px 0 0;
+  }
+
+  .head-actions { display: flex; gap: 10px; align-items: center; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
     cursor: pointer;
-    text-align: left;
-    border-radius: var(--radius-lg);
-    transition: transform 0.15s ease;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    transition: all 0.15s;
   }
 
-  .stat-btn:hover {
+  .btn:hover { border-color: var(--color-primary); }
+  .btn.ghost { background: transparent; }
+
+  /* ── Stat chips ── */
+  .stats-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .stat-chip {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--text-primary);
+    text-align: left;
+    min-width: 100px;
+  }
+
+  .stat-chip.on {
+    border-color: var(--color-primary);
+    background: rgba(139, 156, 255, 0.06);
+  }
+
+  .stat-chip:hover {
+    border-color: var(--color-primary);
     transform: translateY(-1px);
   }
 
-  .stat-btn.active :global(.stats-card) {
-    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
-    box-shadow: 0 0 0 1px var(--color-primary-subtle);
-  }
-
-  .glass-card {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-      }
-
-  :global([data-theme='light']) .glass-card {
-    background: var(--bg-surface);
-    border-color: var(--border-color);
-    box-shadow: var(--shadow-sm);
-  }
-
-  .card-header {
-    padding: 1.25rem 1.25rem 1rem 1.25rem;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  :global([data-theme='light']) .card-header {
-    border-bottom-color: var(--border-color);
-  }
-
-  .card-header h3 {
-    margin: 0;
-    font-size: 1.1rem;
+  .chip-val {
+    font-size: 1.4rem;
     font-weight: 800;
-    color: var(--text-primary);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
   }
 
-  .muted {
-    display: block;
-    margin-top: 0.25rem;
+  .chip-lbl {
+    font-size: 0.75rem;
     color: var(--text-secondary);
-    font-size: 0.92rem;
-  }
-
-  .count-badge {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    padding: 0.35rem 0.75rem;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    font-weight: 650;
     white-space: nowrap;
-    align-self: flex-start;
   }
 
-  :global([data-theme='light']) .count-badge {
-    background: var(--bg-tertiary);
-    border-color: var(--border-color);
+  /* ── Panel ── */
+  .panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 24px;
   }
 
-  .toolbar-wrapper {
-    padding: 1rem 1.25rem 0.25rem 1.25rem;
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border-color);
+    gap: 12px;
+  }
+
+  .panel-tools { display: flex; gap: 6px; }
+
+  .icon-btn.small {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-raised);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .icon-btn.small:hover { color: var(--color-primary); border-color: var(--color-primary); }
+
+  .icon-btn.small.active {
+    background: rgba(139, 156, 255, 0.1);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
   }
 
   .error-state {
@@ -604,8 +606,8 @@
     color: var(--text-secondary);
   }
 
-  .error-state p {
-    margin: 0.75rem 0 0 0;
-    color: var(--text-secondary);
+  @media (max-width: 768px) {
+    .page-head { align-items: flex-start; flex-direction: column; }
+    .stat-chip { min-width: 80px; padding: 10px 14px; }
   }
 </style>

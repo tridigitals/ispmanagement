@@ -8,7 +8,10 @@
       "users": "Pengguna",
       "system_health": "Kesehatan Sistem",
       "health_ok": "OK",
-      "health_down": "DB Down"
+      "health_down": "DB Down",
+      "active_pct": "{pct}% aktif",
+      "needs_review": "perlu review",
+      "pending_approvals": "Approval Tertunda"
     },
     "quick_actions": {
       "title": "Aksi Cepat",
@@ -28,6 +31,46 @@
         "title": "Pengaturan Platform",
         "desc": "Atur kebijakan dan default sistem."
       }
+    },
+    "crumbs": {
+      "root": "Superadmin",
+      "dashboard": "Dashboard"
+    },
+    "welcome": "Selamat datang kembali 👋",
+    "subtitle": "Ringkasan platform secara sekilas",
+    "actions": {
+      "refresh": "Muat ulang",
+      "new_tenant": "Tenant Baru"
+    },
+    "time": {
+      "just_now": "baru saja",
+      "hours_ago": "{count} jam lalu",
+      "days_ago": "{count} hari lalu"
+    },
+    "health": {
+      "database": "Database",
+      "connected": "Terhubung",
+      "down": "Terputus",
+      "latency_ms": "rata-rata {ms} ms",
+      "sessions": "Sesi Aktif",
+      "sessions_value": "{count} sesi",
+      "backup": "Backup",
+      "backup_never": "Belum ada backup",
+      "details": "Detail Sistem",
+      "details_hint": "CPU, memori, tabel"
+    },
+    "attention": {
+      "title": "Perlu Perhatian",
+      "review": "Review",
+      "follow_up": "Tindak lanjut",
+      "run": "Jalankan",
+      "approvals_title": "{count} pendaftaran tenant menunggu approval",
+      "approvals_desc": "Tinjau dan setujui pendaftaran baru",
+      "invoices_title": "{count} invoice tenant overdue",
+      "invoices_desc": "Total tunggakan: {amount}",
+      "backup_title": "Backup otomatis melewati jadwal",
+      "backup_desc_last": "Backup sukses terakhir: {when}",
+      "backup_desc_none": "Belum pernah ada backup dibuat"
     }
   },
   "audit_logs": {
@@ -107,6 +150,10 @@
     "empty": {
       "title": "Tidak ada log",
       "subtitle": "Coba sesuaikan filter Anda."
+    },
+    "crumbs": {
+      "root": "Superadmin",
+      "audit_logs": "Log Audit"
     }
   },
   "users": {
@@ -216,6 +263,10 @@
       "deleted": "User {email} telah dihapus permanen. Semua sesi aktif-nya sudah di-invalidate.",
       "update_status_failed": "Gagal mengubah status user: {message}",
       "delete_failed": "Gagal menghapus user. User kemungkinan adalah satu-satunya super-admin aktif."
+    },
+    "crumbs": {
+      "root": "Superadmin",
+      "users": "Pengguna"
     }
   },
   "radius": {
@@ -398,6 +449,10 @@
       "secret_revealed": "Shared secret berhasil dimuat",
       "secret_rotated": "Shared secret berhasil diputar",
       "cli_copied": "CLI RouterOS berhasil disalin"
+    },
+    "crumbs": {
+      "root": "Superadmin",
+      "radius": "RADIUS"
     }
   },
   "tenants": {
@@ -510,7 +565,11 @@
       "deactivated": "Tenant dinonaktifkan"
     },
     "domain_status": "Status Domain",
-    "failure_reason": "Alasan Gagal"
+    "failure_reason": "Alasan Gagal",
+    "crumbs": {
+      "root": "Superadmin",
+      "tenants": "Tenant"
+    }
   },
   "invoices": {
     "aria": {
@@ -588,7 +647,11 @@
       "no_proof": "Belum ada bukti yang diunggah.",
       "not_found": "Invoice tidak ditemukan"
     },
-    "payment_proof": "Bukti Pembayaran"
+    "payment_proof": "Bukti Pembayaran",
+    "crumbs": {
+      "root": "Superadmin",
+      "invoices": "Invoice"
+    }
   },
   "system": {
     "tabs": {
@@ -666,7 +729,11 @@
     "public_url_label": "URL Publik",
     "requests_per_min": "Request per Menit",
     "tenant_label": "Tenant",
-    "timezone_label": "Zona Waktu"
+    "timezone_label": "Zona Waktu",
+    "crumbs": {
+      "root": "Superadmin",
+      "system": "Sistem"
+    }
   },
   "settings": {
     "title": "Pengaturan Platform",
@@ -1070,6 +1137,10 @@
       "message": "Pesan",
       "sending": "Mengirim...",
       "send_test_button": "Kirim Tes"
+    },
+    "crumbs": {
+      "root": "Superadmin",
+      "settings": "Pengaturan"
     }
   },
   "plans": {
@@ -1183,6 +1254,10 @@
       "errors": {
         "save_failed": "Gagal menyimpan paket"
       }
+    },
+    "crumbs": {
+      "root": "Superadmin",
+      "plans": "Paket"
     }
   },
   "backups": {
@@ -1216,7 +1291,11 @@
     "toast_download_success": "Unduhan selesai",
     "toast_download_failed": "Unduhan gagal",
     "toast_restore_success": "Pemulihan sistem berhasil. Aplikasi akan dimuat ulang.",
-    "toast_restore_failed": "Pemulihan gagal"
+    "toast_restore_failed": "Pemulihan gagal",
+    "crumbs": {
+      "root": "Superadmin",
+      "backups": "Backup"
+    }
   },
   "pending_approvals": {
     "title": "Pendaftaran Tertunda",
@@ -1256,6 +1335,18 @@
       "default_policy": "Kebijakan default",
       "default_expiry": "Batas waktu default (jam)",
       "default_max_uses": "Maks penggunaan default"
+    }
+  },
+  "registration_approvals": {
+    "crumbs": {
+      "root": "Superadmin",
+      "approvals": "Approval Registrasi"
+    }
+  },
+  "storage": {
+    "crumbs": {
+      "root": "Superadmin",
+      "storage": "Penyimpanan"
     }
   }
 }
