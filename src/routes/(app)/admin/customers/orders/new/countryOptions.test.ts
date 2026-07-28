@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildCountryOptions } from './countryOptions';
+import { buildCountryOptions, type CountryOption } from '$lib/utils/countryOptions';
 
 describe('buildCountryOptions', () => {
   it('builds searchable country options with Indonesia first', () => {

@@ -3,8 +3,12 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+  import Select2 from '$lib/components/ui/Select2.svelte';
   import { api, type UserAddress } from '$lib/api/client';
+  import { buildCountryOptions } from '$lib/utils/countryOptions';
   import { t } from 'svelte-i18n';
+
+  const countryOptions = buildCountryOptions();
 
   let { loading = false } = $props();
 
@@ -303,10 +307,15 @@
 
       <div class="form-group">
         <label class="form-label" for="countryCode">{$t('profile.addresses.fields.country_code')}</label>
-        <select id="countryCode" class="form-input" bind:value={form.countryCode}>
-          <option value="ID">{$t('profile.addresses.fields.country_id')}</option>
-          <option value="US">{$t('profile.addresses.fields.country_us')}</option>
-        </select>
+        <Select2
+          id="countryCode"
+          bind:value={form.countryCode}
+          options={countryOptions}
+          placeholder={$t('admin.network.installations.select_country') || 'Pilih negara'}
+          searchPlaceholder={$t('admin.network.installations.search_country') || 'Cari negara…'}
+          noResultsText={$t('admin.network.installations.no_country_found') || 'Negara tidak ditemukan'}
+          maxItems={50}
+        />
       </div>
     </div>
 

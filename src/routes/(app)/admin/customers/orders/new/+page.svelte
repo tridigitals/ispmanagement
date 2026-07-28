@@ -13,7 +13,7 @@
   import { getVisibleInternetOrderPackages } from '$lib/utils/internetOrderPackages';
   import { getAdminCustomerNavigation } from '$lib/utils/adminCustomerNavigation';
   import Icon from '$lib/components/ui/Icon.svelte';
-  import { buildCountryOptions } from './countryOptions';
+  import { buildCountryOptions } from '$lib/utils/countryOptions';
   import { getCustomerSearchViewState } from './customerSearchState';
   import {
     buildPhonePrefixOptions,

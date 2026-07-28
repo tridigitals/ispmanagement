@@ -4,6 +4,7 @@
   import Modal from '$lib/components/ui/Modal.svelte';
   import Select2 from '$lib/components/ui/Select2.svelte';
   import Toggle from '$lib/components/ui/Toggle.svelte';
+  import { buildCountryOptions } from '$lib/utils/countryOptions';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 
   let {
@@ -67,6 +68,10 @@
     deletingLocation = false,
     onDeleteLocation,
   } = $props();
+
+  // Shared catalog used by every country picker in the product — Indonesia
+  // (ID) is intentionally first because we ship primarily to Indonesian ISPs.
+  const countryOptions = buildCountryOptions();
 </script>
 
 <Modal
