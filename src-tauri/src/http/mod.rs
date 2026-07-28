@@ -51,6 +51,7 @@ pub mod install;
 pub mod isp_packages;
 pub mod message_templates;
 pub mod middleware;
+pub mod middleware_panic;
 pub mod mikrotik;
 pub mod mixradius_import;
 pub mod network_assets;

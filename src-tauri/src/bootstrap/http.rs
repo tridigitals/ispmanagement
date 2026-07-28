@@ -771,6 +771,7 @@ pub async fn start_server_impl(
             #[allow(deprecated)]
             TimeoutLayer::new(Duration::from_secs(3600))
         }) // 1 Hour Timeout for large uploads
+        .layer(axum::middleware::from_fn(crate::http::middleware_panic::panic_recovery_middleware))
         .layer(axum::middleware::from_fn(middleware::metrics_middleware))
         .layer(axum::middleware::from_fn(
             middleware::correlation_id_middleware,
