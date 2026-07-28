@@ -7,6 +7,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import { toast } from 'svelte-sonner';
   import { t } from 'svelte-i18n';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { get } from 'svelte/store';
 
   let invoiceId = $page.params.id as string;
@@ -155,7 +156,7 @@
       }
     } catch (e: any) {
       toast.error(
-        e.message || get(t)('payment.checkout.errors.load_failed') || 'Failed to load invoice',
+        extractApiErrorMessage(e, get(t)('payment.checkout.errors.load_failed') || 'Failed to load invoice'),
       );
     } finally {
       loading = false;
@@ -255,8 +256,7 @@
         window.location.href = paymentUrl;
       } catch (e: any) {
         toast.error(
-          (get(t)('payment.checkout.errors.initiate_failed') || 'Failed to initiate payment: ') +
-            e.message,
+          extractApiErrorMessage(e, get(t)('payment.checkout.errors.initiate_failed') || 'Failed to initiate payment'),
         );
       }
       return;
@@ -296,8 +296,7 @@
       });
     } catch (e: any) {
       toast.error(
-        (get(t)('payment.checkout.errors.initiate_failed') || 'Failed to initiate payment: ') +
-          e.message,
+        extractApiErrorMessage(e, get(t)('payment.checkout.errors.initiate_failed') || 'Failed to initiate payment'),
       );
     }
   }
@@ -335,8 +334,7 @@
     } catch (e: any) {
       if (!options?.silent) {
         toast.error(
-          (get(t)('payment.checkout.errors.check_status_failed') || 'Failed to check status: ') +
-            e.message,
+          extractApiErrorMessage(e, get(t)('payment.checkout.errors.check_status_failed') || 'Failed to check status'),
         );
       }
     }
@@ -446,7 +444,7 @@
       location.reload();
     } catch (e: any) {
       toast.error(
-        (get(t)('payment.checkout.errors.upload_failed') || 'Upload failed: ') + e.message,
+        extractApiErrorMessage(e, get(t)('payment.checkout.errors.upload_failed') || 'Upload failed'),
       );
     } finally {
       uploading = false;

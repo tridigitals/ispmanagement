@@ -9,6 +9,7 @@
   import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import { t } from 'svelte-i18n';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import type { Role, Permission } from '$lib/api/client';
   import { toast } from 'svelte-sonner';
   import { get } from 'svelte/store';
@@ -166,7 +167,7 @@
       await loadData();
       showModal = false;
     } catch (e: any) {
-      toast.error(e.message || get(t)('admin.roles.errors.save_failed') || 'Failed to save role');
+      toast.error(extractApiErrorMessage(e, get(t)('admin.roles.errors.save_failed') || 'Failed to save role'));
       console.error(e);
     } finally {
       saving = false;
@@ -189,7 +190,7 @@
       roleToDelete = null;
     } catch (e: any) {
       toast.error(
-        (get(t)('admin.roles.errors.delete_failed') || 'Failed to delete role: ') + e.message,
+        extractApiErrorMessage(e, get(t)('admin.roles.errors.delete_failed') || 'Failed to delete role'),
       );
     } finally {
       isDeleting = false;

@@ -9,6 +9,7 @@
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import { fly } from 'svelte/transition';
   import { t } from 'svelte-i18n';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { get } from 'svelte/store';
 
   let backups = $state<BackupRecord[]>([]);
@@ -31,7 +32,7 @@
       backups = await api.backup.list({ scope: 'all' });
       backups = backups.filter((b) => b.backup_type === 'global');
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(extractApiErrorMessage(e, 'Backup operation failed'));
     } finally {
       loading = false;
     }
@@ -46,7 +47,7 @@
       );
       await loadBackups();
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(extractApiErrorMessage(e, 'Backup operation failed'));
     } finally {
       creating = false;
     }
@@ -65,7 +66,7 @@
       toast.success(get(t)('superadmin.backups.toast_delete_success') || 'Backup deleted');
       await loadBackups();
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(extractApiErrorMessage(e, 'Backup operation failed'));
     } finally {
       isDeleting = false;
       showDeleteModal = false;
@@ -121,7 +122,7 @@
       setTimeout(() => window.location.reload(), 2000);
     } catch (e: any) {
       toast.error(
-        (get(t)('superadmin.backups.toast_restore_failed') || 'Restore failed') + ': ' + e.message,
+        extractApiErrorMessage(e, get(t)('superadmin.backups.toast_restore_failed') || 'Restore failed'),
       );
     } finally {
       restoring = false;

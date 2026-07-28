@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { t } from 'svelte-i18n';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { can, user, tenant } from '$lib/stores/auth';
   import { api, type IspPackageRouterMappingView, type PppoeAccountPublic } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
@@ -450,9 +451,9 @@
       if (e instanceof PppoeCreateApplyError) {
         toast.error(
           $t('admin.network.pppoe.toasts.auto_apply_failed', {
-            values: { message: (e.applyError as any)?.message || e.applyError || e.message },
+            values: { message: extractApiErrorMessage(e.applyError ?? e, '') || String(e.applyError ?? e) },
           }) ||
-            `Saved, but auto-apply failed: ${(e.applyError as any)?.message || e.applyError || e.message}`,
+            `Saved, but auto-apply failed: ${extractApiErrorMessage(e.applyError ?? e, '')}`,
         );
         showCreate = false;
         await loadAccounts();

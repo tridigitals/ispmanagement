@@ -13,6 +13,7 @@
   import { appSettings } from '$lib/stores/settings';
   import { formatDate } from '$lib/utils/date';
   import { t } from 'svelte-i18n';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { getAdminBillingNavigation } from '$lib/utils/adminBillingNavigation';
 
   let loading = $state(true);
@@ -130,7 +131,7 @@
       goto(`/pay/${invoice.id}`);
     } catch (e: any) {
       toast.error(
-        e.message ||
+        extractApiErrorMessage(e, '') ||
           $t('admin.subscription.errors.create_invoice_failed') ||
           'Failed to create invoice',
       );

@@ -11,6 +11,7 @@
   import { superadminPlansCache } from '$lib/stores/superadminPlans';
   import { get } from 'svelte/store';
   import { t } from 'svelte-i18n';
+  import { extractApiErrorMessage } from '$lib/api/core';
 
   let id = $state('');
   let isNew = $state(true);
@@ -71,7 +72,7 @@
           });
         }
       } catch (e: any) {
-        toast.error(e.message || 'Failed to load plan data');
+        toast.error(extractApiErrorMessage(e, 'Failed to load plan data'));
         goto('/superadmin/plans');
       } finally {
         loading = false;
@@ -140,7 +141,7 @@
       }
     } catch (e: any) {
       toast.error(
-        e.message || get(t)('superadmin.plans.editor.errors.save_failed') || 'Failed to save plan',
+        extractApiErrorMessage(e, get(t)('superadmin.plans.editor.errors.save_failed') || 'Failed to save plan'),
       );
     } finally {
       saving = false;

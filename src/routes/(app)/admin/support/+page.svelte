@@ -14,6 +14,7 @@
   import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
   import { toast } from '$lib/stores/toast';
   import { t } from 'svelte-i18n';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { get } from 'svelte/store';
   import { formatDateTime } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
@@ -166,7 +167,7 @@
       toast.success($t('support.toasts.claimed'));
       await load(true);
     } catch (e: any) {
-      toast.error($t('support.toasts.claim_failed', { message: e.message || '' }));
+      toast.error($t('support.toasts.claim_failed', { message: extractApiErrorMessage(e, '') }));
     }
   }
 </script>

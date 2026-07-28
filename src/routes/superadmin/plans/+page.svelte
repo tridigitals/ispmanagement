@@ -12,6 +12,7 @@
   import { superadminPlansCache, type SuperadminPlan } from '$lib/stores/superadminPlans';
   import { get } from 'svelte/store';
   import { t } from 'svelte-i18n';
+  import { extractApiErrorMessage } from '$lib/api/core';
 
   let plans = $state<SuperadminPlan[]>([]);
   let loading = $state(true);
@@ -114,7 +115,7 @@
       superadminPlansCache.set({ plans, fetchedAt: Date.now() });
     } catch (e: any) {
       toast.error(
-        e.message || get(t)('superadmin.plans.errors.load_failed') || 'Failed to load data',
+        extractApiErrorMessage(e, get(t)('superadmin.plans.errors.load_failed') || 'Failed to load data'),
       );
     } finally {
       loading = false;

@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { t } from 'svelte-i18n';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { can, user, tenant } from '$lib/stores/auth';
   import { api } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
@@ -423,7 +424,7 @@
             <div class="k">{$t('admin.network.pppoe.import.result.errors')}</div>
             <ul class="err-list">
               {#each result.errors as e}
-                <li><span class="mono">{e.username}</span>: {e.message}</li>
+                <li><span class="mono">{e.username}</span>: {extractApiErrorMessage(e, '')}</li>
               {/each}
             </ul>
           </div>

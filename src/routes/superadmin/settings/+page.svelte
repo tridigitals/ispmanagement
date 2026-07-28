@@ -11,6 +11,7 @@
   import { superadminPlatformSettingsCache } from '$lib/stores/superadminPlatformSettings';
   import { get } from 'svelte/store';
   import { t } from 'svelte-i18n';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import {
     loadSettingsTabComponent,
     type SettingsTabId,
@@ -875,7 +876,7 @@
       toast.success(get(t)('superadmin.settings.toasts.bank_added') || 'Bank account added');
     } catch (e: any) {
       toast.error(
-        e.message || get(t)('superadmin.settings.errors.bank_add_failed') || 'Failed to add bank',
+        extractApiErrorMessage(e, get(t)('superadmin.settings.errors.bank_add_failed') || 'Failed to add bank'),
       );
     } finally {
       addingBank = false;
@@ -897,9 +898,7 @@
       toast.success(get(t)('superadmin.settings.toasts.bank_removed') || 'Bank account removed');
     } catch (e: any) {
       toast.error(
-        e.message ||
-          get(t)('superadmin.settings.errors.bank_remove_failed') ||
-          'Failed to delete bank',
+        extractApiErrorMessage(e, get(t)('superadmin.settings.errors.bank_remove_failed') || 'Failed to delete bank'),
       );
     }
   }

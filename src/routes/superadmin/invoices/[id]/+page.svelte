@@ -10,6 +10,7 @@
   import { formatDateTime } from '$lib/utils/date';
   import { loadLightboxModule } from '$lib/components/ui/lightboxModule';
   import { t } from 'svelte-i18n';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { getTenantsCached } from '$lib/stores/superadminTenantsCache';
   import { appSettings } from '$lib/stores/settings';
   import { getApiBaseUrl } from '$lib/utils/apiUrl';
@@ -81,7 +82,7 @@
       toast.error(
         ($t('superadmin.invoices.detail.load_failed') || 'Failed to load invoice') +
           ': ' +
-          (e.message || String(e)),
+          extractApiErrorMessage(e, String(e || 'unknown error')),
       );
     } finally {
       loading = false;
@@ -124,7 +125,7 @@
       toast.error(
         ($t('superadmin.invoices.detail.verify_failed') || 'Verification failed') +
           ': ' +
-          (e.message || String(e)),
+          extractApiErrorMessage(e, String(e || 'unknown error')),
       );
     } finally {
       processing = false;

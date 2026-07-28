@@ -12,6 +12,7 @@
   import { loadTeamDialogModules } from './teamPageModules';
   import { toast } from 'svelte-sonner';
   import { t } from 'svelte-i18n';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { get } from 'svelte/store';
   import { appSettings } from '$lib/stores/settings';
   import { formatDate } from '$lib/utils/date';
@@ -205,7 +206,7 @@
       toast.error(
         get(t)('admin.team.toasts.add_failed', {
           values: { message: e?.message || e },
-        }) || 'Failed to add member: ' + e.message,
+        }) || extractApiErrorMessage(e, 'Failed to add member'),
       );
     } finally {
       inviting = false;
@@ -232,7 +233,7 @@
       toast.error(
         get(t)('admin.team.toasts.remove_failed', {
           values: { message: e?.message || e },
-        }) || 'Failed to remove member: ' + e.message,
+        }) || extractApiErrorMessage(e, 'Failed to remove member'),
       );
     } finally {
       isDeleting = false;
@@ -266,7 +267,7 @@
       toast.error(
         get(t)('admin.team.toasts.role_update_failed', {
           values: { message: e?.message || e },
-        }) || 'Failed to update role: ' + e.message,
+        }) || extractApiErrorMessage(e, 'Failed to update role'),
       );
     } finally {
       savingRole = false;

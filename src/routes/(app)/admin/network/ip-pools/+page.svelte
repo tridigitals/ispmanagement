@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { t } from 'svelte-i18n';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { can } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { api } from '$lib/api/client';
@@ -217,9 +218,9 @@
         String(error?.message || '').includes('mirror refresh failed') ? 'mirror_sync_failed' : 'router_write_failed',
       );
       if (state.tone === 'warning' && typeof toast.warning === 'function') {
-        toast.warning(error?.message || state.message);
+        toast.warning(extractApiErrorMessage(error, state.message || ''));
       } else {
-        toast.error(error?.message || state.message);
+        toast.error(extractApiErrorMessage(error, state.message || ''));
       }
     } finally {
       saving = false;

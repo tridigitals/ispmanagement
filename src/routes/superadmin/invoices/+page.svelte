@@ -11,6 +11,7 @@
   import { goto } from '$app/navigation';
   import { getTenantsCached } from '$lib/stores/superadminTenantsCache';
   import { t } from 'svelte-i18n';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { get } from 'svelte/store';
 
   type InvoiceStatus = 'all' | 'pending' | 'paid' | 'failed' | 'verification_pending' | 'expired';
@@ -137,7 +138,7 @@
         (tenantsRes.data || []).map((t: any) => [t.id, { name: t.name, slug: t.slug }]),
       );
     } catch (e: any) {
-      error = e.message || e.toString();
+      error = extractApiErrorMessage(e, String(e || 'unknown error'));
       toast.error(
         get(t)('superadmin.invoices.list.errors.load_failed') || 'Failed to load invoices',
       );

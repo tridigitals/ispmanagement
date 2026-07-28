@@ -6,6 +6,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import { systemHealthCache, type SystemHealth } from '$lib/stores/systemHealth';
   import { t } from 'svelte-i18n';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { appSettings } from '$lib/stores/settings';
   import { formatDateTime } from '$lib/utils/date';
 
@@ -118,7 +119,7 @@
       error = '';
     } catch (e: any) {
       console.error('Failed to load system health:', e);
-      error = e.message || 'Failed to load system health';
+      error = extractApiErrorMessage(e, 'Failed to load system health');
     } finally {
       loading = false;
     }
@@ -131,7 +132,7 @@
       diagError = '';
     } catch (e: any) {
       console.error('Failed to load diagnostics:', e);
-      diagError = e.message || 'Failed to load diagnostics';
+      diagError = extractApiErrorMessage(e, 'Failed to load diagnostics');
     } finally {
       diagLoading = false;
     }
