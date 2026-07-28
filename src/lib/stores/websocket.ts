@@ -10,6 +10,7 @@ import { checkAuth, authVersion, token, isSuperAdmin, user, logout } from './aut
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
 import { toast } from '$lib/stores/toast';
+import { t } from 'svelte-i18n';
 import {
   handleNotificationReceived,
   handleUnreadCountUpdated,
@@ -21,22 +22,17 @@ import { getApiBaseUrl } from '$lib/utils/apiUrl';
 
 /**
  * Map server-side `session_invalidated.reason` codes to user-facing
- * strings. Keep the code block here in sync with the matching block in
- * src-tauri/src/http/websocket.rs.
+ * strings backed by the i18n catalog at `auth.session_reasons.*`.
+ * Falls back to the entry listed under `default` when no specific
+ * match exists. Keep the 1:1 mapping in sync with src-tauri's
+ * WsEvent::SessionInvalidated emitters (customer_service.rs and
+ * user_service.rs).
  */
 function describeSessionInvalidationReason(reason: string): string {
-  switch (reason) {
-    case 'customer_deleted':
-      return 'Your customer account has been removed. Please contact your ISP for assistance.';
-    case 'user_deactivated':
-      return 'Your account has been deactivated. Please contact your administrator.';
-    case 'tenant_locked':
-      return 'Your tenant has been locked. Please contact your administrator.';
-    case 'forced_password_reset':
-      return 'Your password was reset. Please log in again.';
-    default:
-      return 'Your session has ended. Please log in again.';
-  }
+  return reason && get(t)(`auth.session_reasons.${reason}`)
+    ? get(t)(`auth.session_reasons.${reason}`)
+    : get(t)('auth.session_reasons.default') ||
+        'Your session has ended. Please log in again.';
 }
 
 // WebSocket connection state

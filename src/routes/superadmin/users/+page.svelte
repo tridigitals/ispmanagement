@@ -479,6 +479,7 @@
     {pendingIsActive}
     bind:showDeleteConfirm
     {deleteConfirmLoading}
+    deleteConfirmMessageValues={{ name: userPendingDelete?.name || 'this user', email: userPendingDelete?.email || '—' }}
     onDelete={deleteUser}
   />
 {/if}

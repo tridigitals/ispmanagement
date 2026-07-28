@@ -160,8 +160,15 @@
       "reset_2fa": "Reset 2FA",
       "activate_user": "Activate user",
       "deactivate_user": "Deactivate user",
+      "delete_user": "Delete user permanently",
       "activate": "Activate",
       "deactivate": "Deactivate"
+    },
+    "delete": {
+      "title": "Delete user permanently?",
+      "message": "You are about to permanently delete {name} ({email}). Their account, sessions, and active tabs will be removed immediately. This cannot be undone. Type DELETE to confirm.",
+      "confirm": "Delete permanently",
+      "with_name_message": "You are about to permanently delete {name}. Their account, sessions, and active tabs will be removed immediately. This cannot be undone. Type DELETE to confirm."
     },
     "status": {
       "activate_title": "Activate User",
@@ -202,9 +209,13 @@
       "reset_2fa_failed": "Failed to reset 2FA: {message}",
       "superadmin_cannot_deactivate": "Super Admin accounts cannot be deactivated here",
       "cannot_deactivate_self": "You cannot deactivate your own account",
+      "superadmin_cannot_delete": "Super Admin accounts cannot be deleted here. Promote a replacement first if needed.",
+      "cannot_delete_self": "You cannot delete your own account from this view. Ask another super-admin if needed.",
       "activated": "User activated",
       "deactivated": "User deactivated",
-      "update_status_failed": "Failed to update user status: {message}"
+      "deleted": "User {email} deleted permanently. Their active sessions have been invalidated.",
+      "update_status_failed": "Failed to update user status: {message}",
+      "delete_failed": "Failed to delete user. The user may be the last active super-admin."
     }
   },
   "radius": {

@@ -158,10 +158,17 @@
     "actions": {
       "view_details": "Lihat detail",
       "reset_2fa": "Reset 2FA",
-      "activate_user": "Aktifkan pengguna",
-      "deactivate_user": "Nonaktifkan pengguna",
+      "activate_user": "Aktifkan user",
+      "deactivate_user": "Nonaktifkan user",
+      "delete_user": "Hapus user secara permanen",
       "activate": "Aktifkan",
       "deactivate": "Nonaktifkan"
+    },
+    "delete": {
+      "title": "Hapus user secara permanen?",
+      "message": "Anda akan menghapus permanen user {name} ({email}). Akun, sesi, dan tab aktif miliknya akan langsung dihapus. Tindakan ini tidak dapat dibatalkan. Ketik DELETE untuk konfirmasi.",
+      "confirm": "Hapus permanen",
+      "with_name_message": "Anda akan menghapus permanen user {name}. Akun, sesi, dan tab aktif miliknya akan langsung dihapus. Tindakan ini tidak dapat dibatalkan. Ketik DELETE untuk konfirmasi."
     },
     "status": {
       "activate_title": "Aktifkan Pengguna",
@@ -198,13 +205,17 @@
       }
     },
     "toasts": {
-      "reset_2fa_success": "Autentikasi dua faktor berhasil direset",
-      "reset_2fa_failed": "Gagal mereset 2FA: {message}",
-      "superadmin_cannot_deactivate": "Akun Super Admin tidak bisa dinonaktifkan di sini",
-      "cannot_deactivate_self": "Anda tidak bisa menonaktifkan akun sendiri",
-      "activated": "Pengguna diaktifkan",
-      "deactivated": "Pengguna dinonaktifkan",
-      "update_status_failed": "Gagal memperbarui status pengguna: {message}"
+      "reset_2fa_success": "Two-factor authentication telah di-reset",
+      "reset_2fa_failed": "Gagal reset 2FA: {message}",
+      "superadmin_cannot_deactivate": "Akun Super Admin tidak dapat dinonaktifkan di sini",
+      "cannot_deactivate_self": "Anda tidak dapat menonaktifkan akun sendiri",
+      "superadmin_cannot_delete": "Akun Super Admin tidak dapat dihapus di sini. Promosikan pengganti terlebih dahulu jika perlu.",
+      "cannot_delete_self": "Anda tidak dapat menghapus akun sendiri dari halaman ini. Minta super-admin lain jika perlu.",
+      "activated": "User diaktifkan",
+      "deactivated": "User dinonaktifkan",
+      "deleted": "User {email} telah dihapus permanen. Semua sesi aktif-nya sudah di-invalidate.",
+      "update_status_failed": "Gagal mengubah status user: {message}",
+      "delete_failed": "Gagal menghapus user. User kemungkinan adalah satu-satunya super-admin aktif."
     }
   },
   "radius": {

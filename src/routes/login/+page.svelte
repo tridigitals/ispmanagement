@@ -97,34 +97,12 @@
     // Surface the redirect reason via a toast so the user understands the
     // forced jump to /login instead of being dumped there silently.
     const reasonParam = new URLSearchParams($page.url?.search || '').get('reason');
-    if (reasonParam === 'expired') {
-      toast.warning(
-        $t('auth.session_expired_message') ||
-          'Your session has expired. Please log in again to continue.',
-      );
-    } else if (reasonParam === 'init_error') {
-      toast.error(
-        $t('auth.init_failed_message') ||
-          'Could not start the app. Please log in again — if the problem persists, contact your administrator.',
-      );
-    } else if (reasonParam === 'customer_deleted') {
-      toast.warning(
-        'Your customer account has been removed. Please contact your ISP for assistance.',
-      );
-    } else if (reasonParam === 'user_deactivated') {
-      toast.warning(
-        'Your account has been deactivated. Please contact your administrator.',
-      );
-    } else if (reasonParam === 'tenant_locked') {
-      toast.warning(
-        'Your tenant has been locked. Please contact your administrator.',
-      );
-    } else if (reasonParam === 'forced_password_reset') {
-      toast.warning('Your password was reset. Please log in again.');
-    } else if (reasonParam) {
-      toast.warning(
-        'Your session has ended. Please log in again.',
-      );
+    if (reasonParam) {
+      const banner =
+        $t(`auth.session_reasons.${reasonParam}`) ||
+        $t('auth.session_reasons.default') ||
+        'Your session has ended. Please log in again.';
+      toast.warning(banner);
     }
     if (reasonParam) {
       // Strip the reason so refreshes won't keep firing the toast.

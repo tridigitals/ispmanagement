@@ -17,6 +17,7 @@
     showDeleteConfirm = $bindable(false),
     deleteConfirmTitle,
     deleteConfirmMessage,
+    deleteConfirmMessageValues,
     deleteConfirmLoading = false,
     onDelete,
   } = $props<{
@@ -34,6 +35,7 @@
     showDeleteConfirm: boolean;
     deleteConfirmTitle?: string;
     deleteConfirmMessage?: string;
+    deleteConfirmMessageValues?: Record<string, string>;
     deleteConfirmLoading?: boolean;
     onDelete?: () => void;
   }>();
@@ -72,8 +74,11 @@
   }
   message={
     deleteConfirmMessage ||
-    $t('superadmin.users.delete.message') ||
-    'This will permanently delete the user account and invalidate every active session. Type DELETE to confirm.'
+    $t('superadmin.users.delete.message', {
+      values:
+        deleteConfirmMessageValues || { name: 'this user', email: '—' },
+    }) ||
+    'You are about to permanently delete this user. Their account, sessions, and active tabs will be removed immediately. This cannot be undone. Type DELETE to confirm.'
   }
   confirmText={$t('superadmin.users.delete.confirm') || 'Delete permanently'}
   confirmationKeyword="DELETE"
