@@ -937,7 +937,20 @@
   }
 </script>
 
-<div class="page-container fade-in">
+<div class="sa-settings fade-in">
+  <!-- ── Page header ── -->
+  <div class="page-head">
+    <div>
+      <div class="crumbs">
+        {$t('superadmin.settings.crumbs.root')}
+        <span class="crumb-sep">›</span>
+        <b>{$t('superadmin.settings.crumbs.settings')}</b>
+      </div>
+      <h1>{$t('superadmin.settings.title')}</h1>
+      <p class="subtitle">{$t('superadmin.settings.subtitle')}</p>
+    </div>
+  </div>
+
   <div class="layout-grid">
     <!-- Desktop Sidebar -->
     <aside class="sidebar card desktop-sidebar">
@@ -970,10 +983,6 @@
     />
 
     <main class="content">
-      <div class="header-mobile">
-        <h1>{pageTitle}</h1>
-        <p class="subtitle">{pageSubtitle}</p>
-      </div>
 
       {#if loading}
         <div class="loading-state">
@@ -1249,12 +1258,47 @@
 />
 
 <style>
-  .page-container {
-    --page-pad: clamp(16px, 3vw, 32px);
-    padding: var(--page-pad);
+  .sa-settings {
+    padding: clamp(16px, 3vw, 32px);
     max-width: 1200px;
     margin: 0 auto;
+    color: var(--text-primary);
     overflow-x: hidden;
+  }
+
+  /* ── Page header (shared across all superadmin pages) ── */
+  .page-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+
+  .crumbs {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    opacity: 0.75;
+    margin-bottom: 6px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .crumbs b { font-weight: 500; opacity: 1; }
+
+  .page-head h1 {
+    font-size: 1.45rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  .subtitle {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 2px 0 0;
   }
 
   .layout-grid {
@@ -1306,23 +1350,6 @@
   .nav-item.active {
     background: var(--color-primary-subtle);
     color: var(--color-primary);
-  }
-
-  .header-mobile {
-    margin-bottom: 1.5rem;
-  }
-
-  .header-mobile h1 {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin: 0 0 0.5rem 0;
-    color: var(--text-primary);
-  }
-
-  .subtitle {
-    color: var(--text-secondary);
-    font-size: 0.95rem;
-    margin: 0;
   }
 
   .card {
@@ -1399,15 +1426,14 @@
     gap: 1rem;
     position: sticky;
     bottom: 0px;
-    padding: clamp(1rem, 3vw, 1.5rem) var(--page-pad);
+    padding: clamp(1rem, 3vw, 1.5rem) 1rem;
     background: var(--bg-surface);
     border-top: 1px solid var(--border-color);
     z-index: 100;
-    /* Negative margins to span full width of container padding */
-    margin-left: calc(-1 * var(--page-pad));
-    margin-right: calc(-1 * var(--page-pad));
-    margin-bottom: calc(-1 * var(--page-pad));
-    width: calc(100% + 2 * var(--page-pad));
+    margin-left: -1rem;
+    margin-right: -1rem;
+    margin-bottom: -1rem;
+    width: calc(100% + 2rem);
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
   }
 
@@ -1463,6 +1489,7 @@
 
   /* Mobile Responsive */
   @media (max-width: 900px) {
+    .page-head { align-items: flex-start; flex-direction: column; }
     .layout-grid {
       grid-template-columns: 1fr;
       gap: 0;
@@ -1470,10 +1497,6 @@
 
     .desktop-sidebar {
       display: none;
-    }
-
-    .header-mobile h1 {
-      font-size: 1.5rem;
     }
 
     .card {
@@ -1486,11 +1509,7 @@
   }
 
   @media (max-width: 480px) {
-    .header-mobile {
-      margin-bottom: 1rem;
-    }
-
-    .header-mobile h1 {
+    .page-head h1 {
       font-size: 1.3rem;
     }
 
@@ -1504,7 +1523,7 @@
     }
 
     .actions-footer {
-      padding: 0.75rem var(--page-pad);
+      padding: 0.75rem 1rem;
     }
   }
 

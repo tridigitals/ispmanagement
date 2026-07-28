@@ -1,8 +1,10 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { api } from '$lib/api/client';
   import { isSuperAdmin } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
+  import Icon from '$lib/components/ui/Icon.svelte';
+  import { t } from 'svelte-i18n';
+  import { onMount } from 'svelte';
+  import { api } from '$lib/api/client';
   import type { AuditLog } from '$lib/api/client';
 
   // New components
@@ -121,8 +123,19 @@
   }
 </script>
 
-<div class="superadmin-content fade-in">
-  <div class="glass-card">
+<div class="sa-audit fade-in">
+  <div class="page-head">
+    <div>
+      <div class="crumbs">
+        {$t('superadmin.audit_logs.crumbs.root')}
+        <span class="crumb-sep">›</span>
+        <b>{$t('superadmin.audit_logs.crumbs.audit_logs')}</b>
+      </div>
+      <h1>{$t('superadmin.audit_logs.title') || 'Audit Logs'}</h1>
+    </div>
+  </div>
+
+  <div class="panel">
     <AuditLogFilters
       bind:searchQuery
       bind:actionFilter
@@ -149,28 +162,49 @@
 </div>
 
 <style>
-  .superadmin-content {
-    padding: clamp(12px, 2vw, 32px);
-    max-width: 1400px;
+  .sa-audit {
+    padding: clamp(16px, 3vw, 32px);
+    max-width: 1280px;
     margin: 0 auto;
     color: var(--text-primary);
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-    min-width: 0;
   }
 
-  .glass-card {
+  .page-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+
+  .crumbs {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    opacity: 0.75;
+    margin-bottom: 6px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .crumbs b { font-weight: 500; opacity: 1; }
+
+  .page-head h1 {
+    font-size: 1.45rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  .panel {
     background: var(--bg-surface);
-    border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
+    border-radius: 12px;
     overflow: hidden;
   }
 
-  :global([data-theme='light']) .glass-card {
-    background: var(--bg-surface);
-    border-color: var(--border-color);
-    box-shadow: var(--shadow-sm);
+  @media (max-width: 768px) {
+    .page-head { align-items: flex-start; flex-direction: column; }
   }
 </style>

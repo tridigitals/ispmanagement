@@ -795,13 +795,17 @@
   }
 </script>
 
-<div class="page-shell">
-  <div class="hero">
+<div class="sa-radius fade-in">
+  <!-- ── Page header ── -->
+  <div class="page-head">
     <div>
+      <div class="crumbs">
+        {$t('superadmin.radius.crumbs.root')}
+        <span class="crumb-sep">›</span>
+        <b>{$t('superadmin.radius.crumbs.radius')}</b>
+      </div>
       <h1>{$t('superadmin.radius.title')}</h1>
-      <p>
-        {$t('superadmin.radius.subtitle')}
-      </p>
+      <p class="subtitle">{$t('superadmin.radius.subtitle')}</p>
       {#if runtimeStatus}
         <div class="runtime-banner">
           <span class="badge" class:good={runtimeStatusTone === 'good'} class:warn={runtimeStatusTone === 'warn'} class:danger={runtimeStatusTone === 'danger'}>
@@ -822,8 +826,7 @@
         </div>
       {/if}
     </div>
-
-    <div class="hero-actions">
+    <div class="head-actions">
       <MobileOverflowActions
         items={radiusActionItems}
         primaryIds={['new-mapping', 'refresh']}
@@ -1247,31 +1250,57 @@
 {/if}
 
 <style>
-  .page-shell {
+  .sa-radius {
     padding: clamp(16px, 3vw, 32px);
     max-width: 1500px;
     margin: 0 auto;
     display: grid;
     gap: 1.5rem;
     overflow-x: hidden;
+    color: var(--text-primary);
   }
 
-  .hero {
+  /* ── Page header (shared across all superadmin pages) ── */
+  .page-head {
     display: flex;
+    align-items: flex-end;
     justify-content: space-between;
-    gap: 1rem;
-    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
   }
 
-  .hero h1 {
-    margin: 0 0 0.35rem;
-    font-size: clamp(1.5rem, 2.5vw, 2rem);
-  }
-
-  .hero p {
-    margin: 0;
+  .crumbs {
+    font-size: 0.75rem;
     color: var(--text-secondary);
+    opacity: 0.75;
+    margin-bottom: 6px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .crumbs b { font-weight: 500; opacity: 1; }
+
+  .page-head h1 {
+    font-size: 1.45rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.35rem;
+  }
+
+  .subtitle {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 2px 0 0;
     max-width: 760px;
+  }
+
+  .head-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    align-items: center;
   }
 
   .runtime-banner {

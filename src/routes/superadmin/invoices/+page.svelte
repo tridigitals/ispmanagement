@@ -177,18 +177,21 @@
   }
 </script>
 
-<div class="page-container fade-in">
-  <div class="page-header">
-    <div class="header-content">
+<div class="sa-invoices fade-in">
+  <!-- ── Page header ── -->
+  <div class="page-head">
+    <div>
+      <div class="crumbs">
+        {$t('superadmin.invoices.crumbs.root')}
+        <span class="crumb-sep">›</span>
+        <b>{$t('superadmin.invoices.crumbs.invoices')}</b>
+      </div>
       <h1>{$t('superadmin.invoices.list.title')}</h1>
-      <p class="subtitle">
-        {$t('superadmin.invoices.list.subtitle')}
-      </p>
+      <p class="subtitle">{$t('superadmin.invoices.list.subtitle')}</p>
     </div>
-    <button class="btn btn-secondary" onclick={loadInvoices}>
-      <Icon name="refresh-cw" size={18} />
-      <span>{$t('common.refresh')}</span>
-    </button>
+    <div class="head-actions">
+      <button class="btn ghost" onclick={loadInvoices}><Icon name="refresh-cw" size={14} /> {$t('common.refresh')}</button>
+    </div>
   </div>
 
   <div class="stats-row" aria-label={$t('superadmin.invoices.aria.stats')}>
@@ -432,25 +435,72 @@
 </div>
 
 <style>
-  .page-container {
+  .sa-invoices {
     padding: clamp(16px, 3vw, 32px);
-    max-width: 1400px;
+    max-width: 1280px;
     margin: 0 auto;
+    color: var(--text-primary);
   }
-  .page-header {
+
+  /* ── Page header (shared across all superadmin pages) ── */
+  .page-head {
     display: flex;
+    align-items: flex-end;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 2rem;
+    gap: 16px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
   }
-  .header-content h1 {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin: 0 0 0.5rem;
+
+  .crumbs {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    opacity: 0.75;
+    margin-bottom: 6px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
   }
+
+  .crumbs b { font-weight: 500; opacity: 1; }
+
+  .page-head h1 {
+    font-size: 1.45rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
   .subtitle {
     color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 2px 0 0;
   }
+
+  .head-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    transition: all 0.15s;
+  }
+
+  .btn:hover { border-color: var(--color-primary); }
+
+  .btn.ghost { background: transparent; }
   .content-card {
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
@@ -616,21 +666,6 @@
     color: var(--text-primary);
   }
 
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.6rem 1rem;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-  }
-  .btn-secondary {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-  }
-
   .invoices-grid {
     padding: 1rem;
     display: grid;
@@ -719,13 +754,9 @@
   }
 
   @media (max-width: 720px) {
-    .page-header {
+    .page-head {
+      align-items: flex-start;
       flex-direction: column;
-      gap: 0.75rem;
-      align-items: stretch;
-    }
-    .btn-secondary {
-      justify-content: center;
     }
     .stats-row {
       grid-template-columns: repeat(2, minmax(0, 1fr));

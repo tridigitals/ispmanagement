@@ -154,32 +154,27 @@
   }
 </script>
 
-<div class="page-container fade-in">
-  <div class="page-header">
-    <div class="header-content">
+<div class="sa-system fade-in">
+  <div class="page-head">
+    <div>
+      <div class="crumbs">
+        {$t('superadmin.system.crumbs.root')}
+        <span class="crumb-sep">›</span>
+        <b>{$t('superadmin.system.crumbs.system')}</b>
+      </div>
       <h1>{$t('superadmin.system.title')}</h1>
-      <p class="subtitle">
-        {$t('superadmin.system.subtitle')}
-      </p>
+      <p class="subtitle">{$t('superadmin.system.subtitle')}</p>
       <div class="view-toggle" role="group" aria-label={$t('superadmin.system.views')}>
         <button class:active={activeView === 'health'} onclick={() => switchView('health')}>
           {$t('superadmin.system.tabs.health')}
         </button>
-        <button
-          class:active={activeView === 'diagnostics'}
-          onclick={() => switchView('diagnostics')}
-        >
+        <button class:active={activeView === 'diagnostics'} onclick={() => switchView('diagnostics')}>
           {$t('superadmin.system.tabs.diagnostics')}
         </button>
       </div>
     </div>
-    <button
-      class="btn-refresh"
-      onclick={refreshCurrent}
-      title={$t('common.refresh')}
-      aria-label={$t('common.refresh')}
-    >
-      <Icon name="refresh-cw" size={18} />
+    <button class="btn ghost" onclick={refreshCurrent} title={$t('common.refresh')} aria-label={$t('common.refresh')}>
+      <Icon name="refresh-cw" size={14} />
     </button>
   </div>
 
@@ -262,6 +257,53 @@
 </div>
 
 <style>
+  .sa-system {
+    padding: clamp(16px, 3vw, 32px);
+    max-width: 1280px;
+    margin: 0 auto;
+    color: var(--text-primary);
+  }
+
+  .page-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+
+  .crumbs {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    opacity: 0.75;
+    margin-bottom: 6px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .crumbs b { font-weight: 500; opacity: 1; }
+
+  .page-head h1 {
+    font-size: 1.45rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  .btn.ghost {
+    background: transparent;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text-secondary);
+    display: inline-flex;
+    transition: all 0.15s;
+  }
+
+  .btn.ghost:hover { color: var(--color-primary); border-color: var(--color-primary); }
   .page-container {
     padding: clamp(16px, 3vw, 32px);
     max-width: 1400px;

@@ -192,26 +192,25 @@
   }
 </script>
 
-<div class="superadmin-content fade-in">
-  <div class="page-header">
-    <div class="header-content">
+<div class="sa-approvals fade-in">
+  <!-- ── Page header ── -->
+  <div class="page-head">
+    <div>
+      <div class="crumbs">
+        {$t('superadmin.registration_approvals.crumbs.root')}
+        <span class="crumb-sep">›</span>
+        <b>{$t('superadmin.registration_approvals.crumbs.approvals')}</b>
+      </div>
       <h1>{$t('superadmin.pending_approvals.title')}</h1>
-      <p class="subtitle">
-        {$t('superadmin.pending_approvals.subtitle')}
-      </p>
+      <p class="subtitle">{$t('superadmin.pending_approvals.subtitle')}</p>
     </div>
-    <button
-      class="btn-refresh"
-      onclick={loadPendingUsers}
-      disabled={loading}
-      title={$t('common.refresh')}
-      aria-label={$t('common.refresh')}
-    >
-      <Icon name="refresh-cw" size={18} />
-    </button>
+    <div class="head-actions">
+      <button class="btn ghost" onclick={loadPendingUsers} disabled={loading}><Icon name="refresh-cw" size={14} /></button>
+    </div>
   </div>
 
-  <div class="glass-card" in:fly={{ y: 20, delay: 60 }}>
+  <!-- ── Approval list ── -->
+  <div class="panel-mock" in:fly={{ y: 20, delay: 60 }}>
     <div class="card-header">
       <div>
         <h3>{$t('superadmin.pending_approvals.queue_title')}</h3>

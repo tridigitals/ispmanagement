@@ -283,7 +283,32 @@
   }
 </script>
 
-<div class="superadmin-content fade-in">
+<div class="sa-plans fade-in">
+  <!-- ── Page header ── -->
+  <div class="page-head">
+    <div>
+      <div class="crumbs">
+        {$t('superadmin.plans.crumbs.root')}
+        <span class="crumb-sep">›</span>
+        <b>{$t('superadmin.plans.crumbs.plans')}</b>
+      </div>
+      <h1>{$t('superadmin.plans.title')}</h1>
+      <p class="subtitle">{$t('superadmin.plans.subtitle')}</p>
+    </div>
+    <div class="head-actions">
+      {#if isRefreshing}
+        <span class="refresh-pill" title={$t('superadmin.plans.refreshing_title')}>
+          <span class="spinner-xs"></span>
+          {$t('superadmin.plans.refreshing')}
+        </span>
+      {/if}
+      <button class="btn ghost" onclick={() => loadData()} type="button"><Icon name="refresh-cw" size={14} /> {$t('common.refresh')}</button>
+      <button class="btn primary" onclick={createPlan} type="button">
+        <Icon name="plus" size={18} />
+        <span>{$t('superadmin.plans.actions.create')}</span>
+      </button>
+    </div>
+  </div>
   <div class="stats-row" aria-label={$t('superadmin.plans.aria.stats')}>
     <button
       class="stat-btn"
@@ -342,33 +367,7 @@
     </button>
   </div>
 
-  <div class="glass-card">
-    <div class="card-header glass">
-      <div>
-        <h3>{$t('superadmin.plans.title')}</h3>
-        <span class="muted">
-          {$t('superadmin.plans.subtitle')}
-        </span>
-      </div>
-      <div class="header-actions">
-        {#if isRefreshing}
-          <span
-            class="refresh-pill"
-            title={$t('superadmin.plans.refreshing_title')}
-          >
-            <span class="spinner-sm"></span>
-            {$t('superadmin.plans.refreshing')}
-          </span>
-        {/if}
-        <button class="btn btn-primary" onclick={createPlan} type="button">
-          <Icon name="plus" size={18} />
-          <span>
-            {$t('superadmin.plans.actions.create')}
-          </span>
-        </button>
-      </div>
-    </div>
-
+  <div class="panel">
     {#if loading}
       <div class="loading-state">
         <div class="spinner"></div>
@@ -631,14 +630,103 @@
 />
 
 <style>
-  .superadmin-content {
+  .sa-plans {
     padding: clamp(16px, 3vw, 32px);
     max-width: 1400px;
     margin: 0 auto;
     color: var(--text-primary);
-    --glass: rgba(255, 255, 255, 0.04);
-    --glass-border: rgba(255, 255, 255, 0.08);
   }
+
+  /* ── Page header (shared across all superadmin pages) ── */
+  .page-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+
+  .crumbs {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    opacity: 0.75;
+    margin-bottom: 6px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .crumbs b { font-weight: 500; opacity: 1; }
+
+  .page-head h1 {
+    font-size: 1.45rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  .subtitle {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 2px 0 0;
+  }
+
+  .head-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    transition: all 0.15s;
+  }
+
+  .btn:hover { border-color: var(--color-primary); }
+
+  .btn.primary {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #0b0d14;
+  }
+
+  .btn.primary:hover { filter: brightness(1.1); }
+  .btn.ghost { background: transparent; }
+
+  .refresh-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 99px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-weight: 750;
+    font-size: 0.82rem;
+  }
+
+  .spinner-xs {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--color-primary);
+    animation: spin 0.9s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .stats-row {
     display: grid;
@@ -671,101 +759,12 @@
     box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25);
   }
 
-  .glass-card {
+  /* ── Panel (replaces glass-card) ── */
+  .panel {
     background: var(--bg-surface);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: var(--shadow-md);
-  }
-
-  :global([data-theme='light']) .glass-card {
-    background: var(--bg-surface);
-    border-color: rgba(0, 0, 0, 0.06);
-    box-shadow:
-      0 12px 28px rgba(0, 0, 0, 0.06),
-      0 0 0 1px rgba(255, 255, 255, 0.85);
-  }
-
-  .card-header {
-    padding: 1.25rem 1.25rem 1rem 1.25rem;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  }
-
-  .header-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  .refresh-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--text-secondary);
-    font-weight: 750;
-    font-size: 0.85rem;
-    user-select: none;
-  }
-
-  .spinner-sm {
-    width: 14px;
-    height: 14px;
-    border-radius: 999px;
-    border: 2px solid rgba(255, 255, 255, 0.14);
-    border-top-color: rgba(99, 102, 241, 0.95);
-    animation: spin 0.9s linear infinite;
-  }
-
-  :global([data-theme='light']) .card-header {
-    border-bottom-color: rgba(0, 0, 0, 0.06);
-  }
-
-  .card-header h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: var(--text-primary);
-    letter-spacing: -0.01em;
-  }
-
-  .muted {
-    display: block;
-    margin-top: 0.25rem;
-    color: var(--text-secondary);
-    font-size: 0.92rem;
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.25rem;
-    border-radius: var(--radius-md);
-    font-weight: 650;
-    font-size: 0.9rem;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-
-  .btn-primary {
-    background: var(--color-primary);
-    color: white;
-  }
-
-  .btn-primary:hover {
-    background: var(--color-primary-hover);
   }
 
   .toolbar-wrapper {
@@ -1101,6 +1100,10 @@
     color: #10b981;
   }
 
+  @media (max-width: 768px) {
+    .page-head { align-items: flex-start; flex-direction: column; }
+  }
+
   @media (max-width: 1024px) {
     .stats-row {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1115,20 +1118,6 @@
     .plans-grid {
       grid-template-columns: 1fr;
       padding-top: 0.25rem;
-    }
-
-    .card-header {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .header-actions {
-      width: 100%;
-    }
-
-    .btn-primary {
-      width: 100%;
-      justify-content: center;
     }
 
     .table-wrapper {

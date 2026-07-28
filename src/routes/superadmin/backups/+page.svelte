@@ -155,52 +155,29 @@
   onMount(loadBackups);
 </script>
 
-<div class="superadmin-content fade-in">
-  <div class="header-section">
+<div class="sa-backups fade-in">
+  <div class="page-head">
     <div>
-      <h1 class="page-title">{$t('superadmin.backups.title')}</h1>
-      <p class="muted">
-        {$t('superadmin.backups.subtitle')}
-      </p>
+      <div class="crumbs">
+        {$t('superadmin.backups.crumbs.root')}
+        <span class="crumb-sep">›</span>
+        <b>{$t('superadmin.backups.crumbs.backups')}</b>
+      </div>
+      <h1>{$t('superadmin.backups.title')}</h1>
+      <p class="subtitle">{$t('superadmin.backups.subtitle')}</p>
     </div>
-    <div class="header-buttons">
-      <input
-        type="file"
-        accept=".zip"
-        class="hidden"
-        bind:this={fileInput}
-        onchange={handleRestore}
-      />
-      <button
-        class="btn btn-secondary"
-        disabled={restoring}
-        onclick={() => {
-          // @ts-ignore
-          const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
-          if (isTauri) requestRestoreUpload();
-          else fileInput?.click();
-        }}
-      >
-        {#if restoring}
-          <span class="spinner-xs"></span>
-          <span>{$t('superadmin.backups.restoring')}</span>
-        {:else}
-          <Icon name="refresh-cw" size={18} />
-          <span>{$t('superadmin.backups.restore_from_file')}</span>
-        {/if}
+    <div class="head-actions">
+      <input type="file" accept=".zip" class="hidden" bind:this={fileInput} onchange={handleRestore} />
+      <button class="btn ghost" disabled={restoring} onclick={() => { const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__; if (isTauri) requestRestoreUpload(); else fileInput?.click(); }}>
+        <Icon name="refresh-cw" size={14} /> {$t('superadmin.backups.restore_from_file')}
       </button>
-      <button class="btn btn-primary" disabled={creating} onclick={createBackup}>
-        {#if creating}
-          <span class="spinner-xs"></span>
-        {:else}
-          <Icon name="plus" size={18} />
-        {/if}
-        <span>{$t('superadmin.backups.create_global')}</span>
+      <button class="btn primary" disabled={creating} onclick={createBackup}>
+        <Icon name="plus" size={14} /> {$t('superadmin.backups.create_global')}
       </button>
     </div>
   </div>
 
-  <div class="glass-card" in:fly={{ y: 20, delay: 80 }}>
+  <div class="panel" in:fly={{ y: 20, delay: 80 }}>
     <div class="card-header glass">
       <div>
         <h3>{$t('superadmin.backups.available_title')}</h3>
