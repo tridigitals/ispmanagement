@@ -6121,6 +6121,7 @@ dependencies = [
  "dotenvy",
  "flate2",
  "futures",
+ "http-body-util",
  "jsonwebtoken",
  "lettre",
  "log",
