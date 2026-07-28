@@ -143,6 +143,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         notification_service.clone(),
         pppoe_service.clone(),
         user_service.clone(),
+        Some(ws_hub.clone()),
     );
     customer_service.start_installation_sla_scheduler();
     let payment_service = PaymentService::new(

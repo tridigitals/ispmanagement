@@ -6,9 +6,10 @@
  */
 import { writable, get } from 'svelte/store';
 import { logApiError } from '$lib/api/core';
-import { checkAuth, authVersion, token, isSuperAdmin, user } from './auth';
+import { checkAuth, authVersion, token, isSuperAdmin, user, logout } from './auth';
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
+import { toast } from '$lib/stores/toast';
 import {
   handleNotificationReceived,
   handleUnreadCountUpdated,
@@ -17,6 +18,26 @@ import {
   loadNotifications,
 } from './notifications';
 import { getApiBaseUrl } from '$lib/utils/apiUrl';
+
+/**
+ * Map server-side `session_invalidated.reason` codes to user-facing
+ * strings. Keep the code block here in sync with the matching block in
+ * src-tauri/src/http/websocket.rs.
+ */
+function describeSessionInvalidationReason(reason: string): string {
+  switch (reason) {
+    case 'customer_deleted':
+      return 'Your customer account has been removed. Please contact your ISP for assistance.';
+    case 'user_deactivated':
+      return 'Your account has been deactivated. Please contact your administrator.';
+    case 'tenant_locked':
+      return 'Your tenant has been locked. Please contact your administrator.';
+    case 'forced_password_reset':
+      return 'Your password was reset. Please log in again.';
+    default:
+      return 'Your session has ended. Please log in again.';
+  }
+}
 
 // WebSocket connection state
 export const wsConnected = writable(false);
@@ -32,6 +53,8 @@ type WsEvent =
   | { type: 'maintenance_mode_changed'; enabled: boolean; message?: string }
   | { type: 'connected'; message: string }
   | { type: 'ping' }
+  // Force-logout signal from the backend.
+  | { type: 'session_invalidated'; user_id: string; reason: string }
   // Notification Events
   | {
       type: 'notification_received';
@@ -330,6 +353,39 @@ async function handleWsEvent(event: WsEvent) {
     case 'ping':
       // Keep-alive ping, ignore
       break;
+
+    case 'session_invalidated': {
+      // Server-side force-logout signal (e.g. customer deleted, user
+      // deactivated, tenant locked). If the event targets this tab's user,
+      // wipe local auth state and bounce to /login.
+      const uid = currentUserId();
+      if (!uid || uid !== event.user_id) {
+        if (DEV)
+          console.debug('[WS] session_invalidated ignored (other user)', {
+            uid,
+            event,
+          });
+        return;
+      }
+      const reasonMsg = describeSessionInvalidationReason(event.reason);
+      console.warn('[auth] session invalidated by server:', event.reason);
+      await logout({ silent: true });
+      toast.warning(reasonMsg);
+      // Record the reason so /login can show a banner.
+      try {
+        if (typeof window !== 'undefined') {
+          window.history.replaceState(
+            {},
+            '',
+            '/login?reason=' + encodeURIComponent(event.reason),
+          );
+        }
+      } catch {
+        /* ignore */
+      }
+      goto('/login');
+      break;
+    }
 
     // Notification Events
     case 'notification_received':

@@ -176,18 +176,30 @@
     loading = true;
 
     try {
-    const response = await registerCustomerByDomain(
-      email,
-      password,
-      name,
-      hasInviteToken ? inviteToken : null,
-      phone || null,
-    );
-      // Check for pending approval status first
+      const response = await registerCustomerByDomain(
+        email,
+        password,
+        name,
+        hasInviteToken ? inviteToken : null,
+        phone || null,
+      );
+      // Pending-approval branch — show toast with pending message and bounce
+      // to /login so the user does not see a half-redirect flow.
       if (response.user?.registration_status === 'pending') {
-        pendingApproval = true;
+        toast.success(
+          $t('auth.register.pending_approval_message') ||
+            'Registration successful. Your account is pending admin approval.',
+        );
+        setTimeout(() => goto('/login'), 800);
         return;
       }
+      // Always show a success toast on positive outcome. The branch below
+      // chooses where the user lands next (dashboard vs login).
+      const successMessage =
+        response.message ||
+        $t('auth.register.success_message') ||
+        'Registration successful — please log in.';
+      toast.success(successMessage);
       if (response.token) {
         if (response.user?.is_super_admin) {
           goto('/superadmin');
@@ -195,14 +207,11 @@
         }
         goto('/dashboard');
         return;
-      } else if (response.message) {
-        toast.success(response.message);
-        goto('/login');
-        return;
-      } else {
-        error =
-          'Registration succeeded, but login session was not created. Please continue via login page.';
       }
+      // No session token was returned (e.g. require_email_verification path
+      // is on). UX-wise this is still a successful registration — bounce to
+      // /login so the user can verify their email and sign in.
+      setTimeout(() => goto('/login'), 800);
     } catch (err) {
       error = extractApiErrorMessage(err, 'Failed to register. Please try again.');
     } finally {

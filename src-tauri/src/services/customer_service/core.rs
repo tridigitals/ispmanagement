@@ -2,6 +2,60 @@ use super::*;
 use crate::security::secret::encrypt_secret_for;
 
 impl CustomerService {
+    /// Resolve user_ids of every Owner/Admin in a given tenant. Used to
+    /// fan-out in-app notifications for new self-registrations and other
+    /// tenant-scoped events.
+    async fn fetch_tenant_admin_user_ids_for_notification(
+        &self,
+        tenant_id: &str,
+    ) -> AppResult<Vec<String>> {
+        // Pull tenant_members linked to roles that should see registration alerts
+        // (Owner/Admin). Falls back to `tm.role = 'owner'/'admin'` strings in case
+        // role_id is NULL on legacy rows.
+        #[cfg(feature = "postgres")]
+        let ids: Vec<String> = sqlx::query_scalar(
+            r#"
+            SELECT tm.user_id
+            FROM tenant_members tm
+            LEFT JOIN roles r ON r.id = tm.role_id
+            WHERE tm.tenant_id = $1
+              AND tm.deleted_at IS NULL
+              AND (
+                r.name IN ('Owner', 'Admin')
+                OR lower(tm.role) IN ('owner', 'admin')
+              )
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        #[cfg(not(feature = "postgres"))]
+        let ids: Vec<String> = sqlx::query_scalar(
+            r#"
+            SELECT tm.user_id
+            FROM tenant_members tm
+            LEFT JOIN roles r ON r.id = tm.role_id
+            WHERE tm.tenant_id = ?
+              AND tm.deleted_at IS NULL
+              AND (
+                r.name IN ('Owner', 'Admin')
+                OR lower(tm.role) IN ('owner', 'admin')
+              )
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        // De-duplicate (a user may appear via both role_id and tm.role).
+        let mut seen = std::collections::HashSet::<String>::new();
+        Ok(ids
+            .into_iter()
+            .filter(|id| seen.insert(id.clone()))
+            .collect())
+    }
+
     pub async fn run_installation_sla_reminders_for_all_tenants(&self) -> AppResult<u64> {
         if !self.resolve_installation_sla_reminder_enabled().await {
             return Ok(0);
@@ -1524,6 +1578,71 @@ impl CustomerService {
             )
             .await;
 
+        // Notify tenant Owner/Admin users (in-app) about the new
+        // registration so they can review/approve from the dashboard.
+        // Email fan-out (if any) is handled separately in
+        // auth_service::register_with_email_verification_policy.
+        let via_invite_signup = registration_invite_id.is_some();
+        match self
+            .fetch_tenant_admin_user_ids_for_notification(tenant_id)
+            .await
+        {
+            Ok(admin_ids) => {
+                for admin_user_id in admin_ids {
+                    if admin_user_id == user_id {
+                        continue; // don't notify the user about themselves
+                    }
+                    let (title, level) = if via_invite_signup {
+                        (
+                            format!("New customer (via invite): {}", customer.name),
+                            "info".to_string(),
+                        )
+                    } else {
+                        (
+                            format!(
+                                "New customer registered (pending approval): {}",
+                                customer.name
+                            ),
+                            "warning".to_string(),
+                        )
+                    };
+                    let message = format!(
+                        "{name} ({email}) just registered on the customer portal.\nStatus: {status}.\nCustomer #: {custno}.",
+                        name = customer.name,
+                        email = customer.email.as_deref().unwrap_or("-"),
+                        status = if via_invite_signup {
+                            "active (invite)"
+                        } else {
+                            "pending approval"
+                        },
+                        custno = customer.customer_number.as_deref().unwrap_or("-"),
+                    );
+                    if let Err(e) = self
+                        .notification_service
+                        .create_notification(
+                            admin_user_id.clone(),
+                            Some(tenant_id.to_string()),
+                            title,
+                            message,
+                            level,
+                            "customers".to_string(),
+                            Some("/admin/customers".to_string()),
+                        )
+                        .await
+                    {
+                        warn!(
+                            "Failed to notify tenant admin {} about new customer {}: {}",
+                            admin_user_id, customer.id, e
+                        );
+                    }
+                }
+            }
+            Err(e) => warn!(
+                "Failed to fetch tenant admins for new-customer notification: {}",
+                e
+            ),
+        }
+
         Ok(customer)
     }
 
@@ -1813,23 +1932,91 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "customers", "manage")
             .await?;
 
+        // Pre-fetch linked portal user_ids BEFORE the cascade so we can
+        // invalidate their sessions and broadcast a SessionInvalidated
+        // event. Customer record alone does not delete the user (FK is on
+        // customer_users), so without this the deleted customer's tab
+        // would keep living on until JWT expiry.
+        #[cfg(feature = "postgres")]
+        let linked_user_ids: Vec<String> = sqlx::query_scalar(
+            "SELECT user_id FROM customer_users WHERE tenant_id = $1 AND customer_id = $2",
+        )
+        .bind(tenant_id)
+        .bind(customer_id)
+        .fetch_all(&self.pool)
+        .await?;
+        #[cfg(not(feature = "postgres"))]
+        let linked_user_ids: Vec<String> = sqlx::query_scalar(
+            "SELECT user_id FROM customer_users WHERE tenant_id = ? AND customer_id = ?",
+        )
+        .bind(tenant_id)
+        .bind(customer_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut tx = self.pool.begin().await?;
+        self.auth_service
+            .apply_rls_context_tx_values(&mut tx, Some(tenant_id), Some(actor_id), false)
+            .await?;
+
+        // Invalidate every session for the linked portal users so any
+        // currently-logged-in customer tab immediately fails auth checks.
+        for user_id in &linked_user_ids {
+            #[cfg(feature = "postgres")]
+            let _ = sqlx::query("DELETE FROM sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&mut *tx)
+                .await?;
+            #[cfg(not(feature = "postgres"))]
+            let _ = sqlx::query("DELETE FROM sessions WHERE user_id = ?")
+                .bind(user_id)
+                .execute(&mut *tx)
+                .await?;
+        }
+
+        // Drop the customer_users link row(s).
+        #[cfg(feature = "postgres")]
+        let cust_user_res = sqlx::query(
+            "DELETE FROM customer_users WHERE tenant_id = $1 AND customer_id = $2",
+        )
+        .bind(tenant_id)
+        .bind(customer_id)
+        .execute(&mut *tx)
+        .await?;
+        #[cfg(not(feature = "postgres"))]
+        let cust_user_res = sqlx::query(
+            "DELETE FROM customer_users WHERE tenant_id = ? AND customer_id = ?",
+        )
+        .bind(tenant_id)
+        .bind(customer_id)
+        .execute(&mut *tx)
+        .await?;
+        if cust_user_res.rows_affected() == 0 {
+            warn!(
+                "delete_customer called for {}/{} but no customer_users rows were linked",
+                tenant_id, customer_id
+            );
+        }
+
+        // Active customer row.
         #[cfg(feature = "postgres")]
         let res = sqlx::query("DELETE FROM customers WHERE tenant_id = $1 AND id = $2")
             .bind(tenant_id)
             .bind(customer_id)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await?;
-
-        #[cfg(feature = "sqlite")]
+        #[cfg(not(feature = "postgres"))]
         let res = sqlx::query("DELETE FROM customers WHERE tenant_id = ? AND id = ?")
             .bind(tenant_id)
             .bind(customer_id)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await?;
 
         if res.rows_affected() == 0 {
             return Err(AppError::NotFound("Customer not found".to_string()));
         }
+
+        tx.commit().await?;
 
         self.audit_service
             .log(
@@ -1838,10 +2025,58 @@ impl CustomerService {
                 "CUSTOMER_DELETE",
                 "customers",
                 Some(customer_id),
-                Some("Deleted customer"),
+                Some(&format!(
+                    "Deleted customer and invalidated {} portal session(s)",
+                    linked_user_ids.len()
+                )),
                 ip_address,
             )
             .await;
+
+        // Broadcast SessionInvalidated so connected FEs can re-logout in real
+        // time instead of waiting for the next JWT check. We do this AFTER
+        // commit so the broadcast never references a state we rolled back.
+        for user_id in &linked_user_ids {
+            let event = crate::http::WsEvent::SessionInvalidated {
+                user_id: user_id.clone(),
+                reason: "customer_deleted".to_string(),
+            };
+            let _ = self
+                .ws_hub
+                .as_ref()
+                .map(|hub| hub.broadcast(event));
+        }
+
+        // Best-effort: also notify tenant admins that the customer was deleted
+        // so they have an audit trail in their notification inbox.
+        if let Ok(admin_ids) = self
+            .fetch_tenant_admin_user_ids_for_notification(tenant_id)
+            .await
+        {
+            for admin_user_id in admin_ids {
+                if let Err(e) = self
+                    .notification_service
+                    .create_notification(
+                        admin_user_id.clone(),
+                        Some(tenant_id.to_string()),
+                        format!("Customer deleted: {}", customer_id),
+                        format!(
+                            "Customer record {} was removed. Linked portal users have been logged out.",
+                            customer_id
+                        ),
+                        "warning".to_string(),
+                        "customers".to_string(),
+                        Some("/admin/customers".to_string()),
+                    )
+                    .await
+                {
+                    warn!(
+                        "Failed to notify tenant admin {} about customer deletion: {}",
+                        admin_user_id, e
+                    );
+                }
+            }
+        }
 
         Ok(())
     }

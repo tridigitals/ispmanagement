@@ -107,6 +107,24 @@
         $t('auth.init_failed_message') ||
           'Could not start the app. Please log in again — if the problem persists, contact your administrator.',
       );
+    } else if (reasonParam === 'customer_deleted') {
+      toast.warning(
+        'Your customer account has been removed. Please contact your ISP for assistance.',
+      );
+    } else if (reasonParam === 'user_deactivated') {
+      toast.warning(
+        'Your account has been deactivated. Please contact your administrator.',
+      );
+    } else if (reasonParam === 'tenant_locked') {
+      toast.warning(
+        'Your tenant has been locked. Please contact your administrator.',
+      );
+    } else if (reasonParam === 'forced_password_reset') {
+      toast.warning('Your password was reset. Please log in again.');
+    } else if (reasonParam) {
+      toast.warning(
+        'Your session has ended. Please log in again.',
+      );
     }
     if (reasonParam) {
       // Strip the reason so refreshes won't keep firing the toast.

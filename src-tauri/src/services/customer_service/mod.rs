@@ -75,6 +75,7 @@ pub struct CustomerService {
     notification_service: NotificationService,
     pppoe_service: PppoeService,
     user_service: UserService,
+    ws_hub: Option<std::sync::Arc<crate::http::WsHub>>,
 }
 
 impl CustomerService {
@@ -85,6 +86,7 @@ impl CustomerService {
         notification_service: NotificationService,
         pppoe_service: PppoeService,
         user_service: UserService,
+        ws_hub: Option<std::sync::Arc<crate::http::WsHub>>,
     ) -> Self {
         Self {
             pool,
@@ -93,6 +95,7 @@ impl CustomerService {
             notification_service,
             pppoe_service,
             user_service,
+            ws_hub,
         }
     }
 

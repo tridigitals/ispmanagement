@@ -254,9 +254,12 @@ export function setAuthData(
   lastCheckAuthResult = true;
 }
 
-export function logout(): void {
-  // Call server logout to clear httpOnly cookie (fire-and-forget)
-  if (typeof window !== 'undefined') {
+export async function logout(opts?: { silent?: boolean }): Promise<void> {
+  const silent = opts?.silent === true;
+  // Call server logout to clear httpOnly cookie (fire-and-forget) — skip
+  // when invoked from a server-initiated session invalidation where the
+  // cookie was already wiped at the BE side.
+  if (!silent && typeof window !== 'undefined') {
     fetch(`${window.location.origin}/api/auth/logout`, {
       method: 'POST',
       credentials: 'include',
