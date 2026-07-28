@@ -824,6 +824,7 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
 
       const contentType = response.headers.get('content-type') || '';
       const isJson = contentType.toLowerCase().includes('application/json');
+      const isHtml = contentType.toLowerCase().includes('text/html');
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -841,9 +842,12 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
           error.status = response.status;
           throw error;
         }
-        const errorText = (await response.text().catch(() => '')).trim();
-        const error = new Error(errorText || `HTTP Error ${response.status}`) as Error & {
+        // Non-JSON body: never leak raw HTML / debug pages into the UI.
+        const rawText = (await response.text().catch(() => '')).trim();
+        const cleanedMessage = sanitizeNonJsonError(rawText, response.status, command);
+        const error = new Error(cleanedMessage) as Error & {
           status?: number;
+          __htmlBody?: boolean;
         };
         error.status = response.status;
         throw error;
@@ -853,13 +857,29 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
 
       const raw = await response.text();
       if (!raw || !raw.trim()) return undefined as T;
-      if (!isJson && raw.includes('<!doctype html')) {
+
+      // Detect "stale build" / "proxy not configured" / "BE dead" leak:
+      //   - status was 200 but body is HTML — typical when /api/* falls
+      //     through to SvelteKit dev or static-vite and the user mistakes
+      //     the SPA index for a JSON response.
+      //   - status was 200 but body is plain text but we expected JSON —
+      //     usually means the BE errored mid-stream without injecting a
+      //     proper Content-Type.
+      const looksLikeHtml =
+        !isJson &&
+        (raw.includes('<!doctype') ||
+          raw.includes('<!DOCTYPE') ||
+          raw.startsWith('<html') ||
+          /^\s*<\/?[a-z][^>]*>/i.test(raw.slice(0, 256)));
+
+      if (looksLikeHtml) {
         throw new Error(
-          `API route ${path} returned HTML instead of JSON. This usually means /api is not proxied to the backend yet.`,
+          `API route ${path} returned HTML instead of JSON — the backend is likely down, or /api is not reverse-proxied to the Rust backend on port 3000.`,
         );
       }
       if (isJson) return JSON.parse(raw) as T;
 
+      // Non-JSON non-HTML fallthrough. Treat it as plain text result.
       return raw as T;
     }
 
@@ -932,6 +952,40 @@ export function extractApiErrorMessage(err: unknown, fallback = 'Unknown error')
   } catch {
     return fallback;
   }
+}
+
+/**
+ * Convert raw non-JSON backend / upstream error bodies into a message
+ * safe to surface in the UI. We never want to leak SvelteKit dev source,
+ * nginx error pages, or HTML shells into the user's error toast.
+ */
+export function sanitizeNonJsonError(
+  raw: string,
+  status: number,
+  command: string,
+): string {
+  const text = (raw || '').trim();
+  if (!text) return `Backend error ${status} (no JSON body) for ${command}`;
+
+  const htmlShape =
+    text.startsWith('<!') ||
+    text.startsWith('<html') ||
+    text.toLowerCase().includes('<!doctype') ||
+    /<\/?[a-z][^>]*>/i.test(text.slice(0, 1024));
+
+  if (htmlShape) {
+    if (status === 502 || status === 503 || status === 504) {
+      return `Upstream backend unavailable (HTTP ${status}). The Rust/Tauri server may have crashed or is still booting — try again in a few seconds.`;
+    }
+    if (status === 404) {
+      return `API endpoint for "${command}" not found (HTTP 404). The backend may be running an older build than the FE.`;
+    }
+    return `Unexpected HTML response from the backend (HTTP ${status}). The server is likely down, served by a proxy error page, or running a stale build.`;
+  }
+
+  // Snippet the body but cap to 240 chars so nothing egregious gets through.
+  const snippet = text.length > 240 ? `${text.slice(0, 240)}…` : text;
+  return `HTTP ${status}: ${snippet}`;
 }
 
 export function getTokenOrThrow(): string {
