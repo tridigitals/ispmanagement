@@ -245,7 +245,9 @@
       },
       "placeholders": {
         "label": "Home / Office",
-        "address": "Street address"
+        "address": "Street address",
+        "country": "Choose country",
+        "country_search": "Search country…"
       }
     },
     "status": {

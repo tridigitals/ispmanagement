@@ -5,8 +5,10 @@
   import { get } from 'svelte/store';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import Select2 from '$lib/components/ui/Select2.svelte';
   import { api, type CustomerLocation, type IspPackage } from '$lib/api/client';
   import { getVisibleInternetOrderPackages } from '$lib/utils/internetOrderPackages';
+  import { buildCountryOptions } from '$lib/utils/countryOptions';
   import { appSettings } from '$lib/stores/settings';
   import { toast } from '$lib/stores/toast';
 
@@ -46,6 +48,12 @@
   let newLocationLatitude = $state('');
   let newLocationLongitude = $state('');
   let newLocationNotes = $state('');
+
+  // Shared country picker catalog (Indonesia first, then ASEAN + Asia +
+  // a handful of Western/Southern-Hemisphere destinations commonly
+  // requested by expatriate / overseas-customer flows). Reused across
+  // any feature page that takes an address.
+  const countryOptions = buildCountryOptions();
 
   // ── Map picker state ──────────────────────────────────────────────
   // Replaces the old latitude/longitude text inputs with a click-to-pick
@@ -845,7 +853,17 @@
       </label>
       <label class="form-field">
         <span>{$t('dashboard.internet_order.modal.fields.country')}</span>
-        <input class="input" bind:value={newLocationCountry} />
+        <Select2
+          bind:value={newLocationCountry}
+          options={countryOptions}
+          placeholder={$t('dashboard.internet_order.modal.placeholders.country') ||
+            'Pilih negara'}
+          searchPlaceholder={$t('dashboard.internet_order.modal.placeholders.country_search') ||
+            'Cari negara…'}
+          noResultsText={$t('admin.network.installations.no_country_found') ||
+            'Negara tidak ditemukan'}
+          maxItems={50}
+        />
       </label>
     </div>
     <label class="form-field">

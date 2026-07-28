@@ -245,7 +245,9 @@
       },
       "placeholders": {
         "label": "Rumah / Kantor",
-        "address": "Alamat jalan"
+        "address": "Alamat jalan",
+        "country": "Pilih negara",
+        "country_search": "Cari negara…"
       }
     },
     "status": {
