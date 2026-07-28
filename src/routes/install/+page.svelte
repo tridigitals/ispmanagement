@@ -5,6 +5,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
+  import { extractApiErrorMessage } from '$lib/api/core';
 
   let appName = 'SaaS App';
   let appUrl = '';
@@ -29,7 +30,7 @@
           goto('/login');
         }
       } catch (e) {
-        console.error(e);
+        console.warn('[install] status check failed:', extractApiErrorMessage(e, 'unknown error'));
       }
     };
 
@@ -70,7 +71,7 @@
         goto('/login');
       }, 2000);
     } catch (e: any) {
-      error = e.message || get(t)('install.errors.failed') || 'Installation failed';
+      error = extractApiErrorMessage(e, get(t)('install.errors.failed') || 'Installation failed');
     } finally {
       loading = false;
     }

@@ -94,15 +94,22 @@
     isTauriApp = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
     await Promise.all([appSettings.init(), appLogo.init()]);
 
-    // Surface "you were logged out" via a banner-style toast so the user
-    // understands the redirect instead of being dumped on /login silently.
+    // Surface the redirect reason via a toast so the user understands the
+    // forced jump to /login instead of being dumped there silently.
     const reasonParam = new URLSearchParams($page.url?.search || '').get('reason');
     if (reasonParam === 'expired') {
       toast.warning(
         $t('auth.session_expired_message') ||
           'Your session has expired. Please log in again to continue.',
       );
-      // Strip the reason from the URL so it does not keep firing on refresh.
+    } else if (reasonParam === 'init_error') {
+      toast.error(
+        $t('auth.init_failed_message') ||
+          'Could not start the app. Please log in again — if the problem persists, contact your administrator.',
+      );
+    }
+    if (reasonParam) {
+      // Strip the reason so refreshes won't keep firing the toast.
       try {
         const url = new URL(window.location.href);
         url.searchParams.delete('reason');

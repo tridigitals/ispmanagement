@@ -23,6 +23,7 @@
   import { normalizeLegacyBasePath, shouldLookupCustomDomain } from '$lib/utils/appBoot';
   import { formatDocumentTitle, isTenantScopedPath, resolvePageTitle } from '$lib/utils/pageTitle';
   import { initTauriStore } from '$lib/utils/tauri-store';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import type { Component } from 'svelte';
 
   let loading = $state(true);
@@ -325,8 +326,8 @@
         if (applyMaintenanceRedirect(currentPath)) return;
       }
     } catch (e) {
-      console.error('Critical Error during app initialization in +layout.svelte:', e);
-      const msg = (e instanceof Error ? e.message : String(e));
+      console.warn('[layout] app init error:', extractApiErrorMessage(e, 'unknown error'));
+      const msg = extractApiErrorMessage(e, '');
       // If the error is a Svelte runtime DOM failure, force logout instead of white screen
       if (msg.includes('reading') && msg.includes('call')) {
         forceLogoutOnInitFailure(msg);
