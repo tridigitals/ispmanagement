@@ -3,7 +3,7 @@
 use crate::http::{middleware::CorrelationId, AppState};
 use crate::models::{
     BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice,
-    InvoiceReminderLogView, PaginatedResponse,
+    InvoiceListResponse, InvoiceReminderLogView, PaginatedResponse,
 };
 use crate::services::{BillingCollectionRunResult, BulkGenerateInvoicesResult, Claims};
 use axum::{
@@ -20,6 +20,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/invoices", get(list_invoices))
         .route("/invoices/all", get(list_all_invoices))
+        .route("/invoices/all/page", get(list_all_invoices_page))
         .route("/fx-rate", get(get_fx_rate))
         .route("/invoices/plan", post(create_invoice_for_plan))
         .route(
@@ -397,6 +398,33 @@ async fn list_all_invoices(
                 }),
             )
         })
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ListAllInvoicesPageQuery {
+    page: Option<u32>,
+    per_page: Option<u32>,
+    search: Option<String>,
+    status: Option<String>,
+}
+
+async fn list_all_invoices_page(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<ListAllInvoicesPageQuery>,
+) -> Result<Json<InvoiceListResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    require_superadmin(&claims)?;
+    state.payment_service.list_all_invoices_page(
+        query.page.unwrap_or(1),
+        query.per_page.unwrap_or(25),
+        query.search.as_deref(),
+        query.status.as_deref(),
+    ).await.map(Json).map_err(|e| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: e.to_string() }),
+    ))
 }
 
 #[derive(Deserialize)]

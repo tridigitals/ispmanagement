@@ -14,6 +14,14 @@ import type {
   PaginatedResponse,
 } from './types';
 
+export type InvoiceListResponse = PaginatedResponse<Invoice> & {
+  pending_total: number;
+  paid_total: number;
+  failed_total: number;
+  overdue_total: number;
+  overdue_amount: number;
+};
+
 export const payment = {
   listBanks: (tenantId?: string): Promise<BankAccount[]> =>
     safeInvoke('list_bank_accounts', { token: getTokenOrThrow(), tenant_id: tenantId }),
@@ -123,6 +131,20 @@ export const payment = {
 
   listAllInvoices: (): Promise<Invoice[]> =>
     safeInvoke('list_all_invoices', { token: getTokenOrThrow() }),
+
+  listAllInvoicesPage: (params?: {
+    page?: number;
+    per_page?: number;
+    search?: string;
+    status?: string;
+  }): Promise<InvoiceListResponse> =>
+    safeInvoke('list_all_invoices_page', {
+      token: getTokenOrThrow(),
+      page: params?.page,
+      per_page: params?.per_page,
+      search: params?.search,
+      status: params?.status,
+    }),
 
   getFxRate: (baseCurrency: string, quoteCurrency: string): Promise<FxRate> =>
     safeInvoke('get_fx_rate', { token: getTokenOrThrow(), baseCurrency, quoteCurrency }),

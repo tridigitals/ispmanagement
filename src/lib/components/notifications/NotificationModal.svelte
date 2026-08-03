@@ -238,6 +238,7 @@
       role="dialog"
       aria-modal="true"
       aria-labelledby="notif-modal-title"
+      tabindex="-1"
       onclick={(e) => e.stopPropagation()}
       onkeydown={handleDialogKeydown}
     >
@@ -401,38 +402,38 @@
 {/if}
 
 <ConfirmDialog
-  open={showDeleteModal}
+  bind:show={showDeleteModal}
   title={$t('notifications_page.delete_confirm.title')}
   message={$t('notifications_page.delete_confirm.message')}
   confirmText={$t('common.delete')}
-  variant="danger"
+  type="danger"
   loading={deleting}
-  on:confirm={confirmDelete}
-  on:cancel={() => {
+  onconfirm={confirmDelete}
+  oncancel={() => {
     showDeleteModal = false;
     deleteTarget = null;
   }}
 />
 
 <ConfirmDialog
-  open={showMarkAllModal}
+  bind:show={showMarkAllModal}
   title={$t('notifications_page.mark_all_confirm.title')}
   message={$t('notifications_page.mark_all_confirm.message')}
   confirmText={$t('topbar.notifications_menu.mark_all_read')}
   loading={markingAll}
-  on:confirm={confirmMarkAll}
-  on:cancel={() => (showMarkAllModal = false)}
+  onconfirm={confirmMarkAll}
+  oncancel={() => (showMarkAllModal = false)}
 />
 
 <ConfirmDialog
-  open={showClearAllModal}
+  bind:show={showClearAllModal}
   title={$t('notifications_page.confirm_clear_all.title')}
   message={$t('notifications_page.confirm_clear_all.message')}
   confirmText={$t('topbar.notifications_menu.clear_all')}
-  variant="danger"
+  type="danger"
   loading={clearingAll}
-  on:confirm={confirmClearAll}
-  on:cancel={() => (showClearAllModal = false)}
+  onconfirm={confirmClearAll}
+  oncancel={() => (showClearAllModal = false)}
 />
 
 <style>

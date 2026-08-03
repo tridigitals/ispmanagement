@@ -21,6 +21,7 @@
     label: string;
     icon: string;
     href: string;
+    exact?: boolean;
     show?: boolean;
   };
 

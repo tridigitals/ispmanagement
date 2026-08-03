@@ -347,6 +347,23 @@ pub async fn list_all_invoices(
 }
 
 #[tauri::command]
+pub async fn list_all_invoices_page(
+    token: String,
+    page: Option<u32>,
+    per_page: Option<u32>,
+    search: Option<String>,
+    status: Option<String>,
+    auth_service: State<'_, AuthService>,
+    payment_service: State<'_, PaymentService>,
+) -> Result<crate::models::InvoiceListResponse, String> {
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if !claims.is_super_admin { return Err("Unauthorized".to_string()); }
+    payment_service.list_all_invoices_page(
+        page.unwrap_or(1), per_page.unwrap_or(25), search.as_deref(), status.as_deref()
+    ).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn pay_invoice_midtrans(
     token: String,
     id: String,

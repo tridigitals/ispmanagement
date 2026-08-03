@@ -2,6 +2,7 @@ import { writable } from 'svelte/store';
 import { settings as settingsApi } from '$lib/api/settings';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Image } from '@tauri-apps/api/image';
+import { logApiError } from '$lib/api/core';
 
 const LOGO_STORAGE_KEY = 'app_logo_cached';
 

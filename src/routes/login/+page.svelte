@@ -668,7 +668,7 @@
               <div class="spinner" style="margin: 0 auto 1rem;"></div>
               <span>{$t('auth.2fa.preparing')}</span>
             </div>
-          {:else if setupMethod === 'totp'}
+          {:else if setupMethod === 'totp' || setupMethod === 'email'}
             <div class="method-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
               <button
                 class="btn {setupMethod === 'totp' ? 'btn-primary' : 'btn-outline'} btn-sm"

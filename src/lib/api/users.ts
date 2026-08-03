@@ -1,9 +1,26 @@
 import { getTokenOrThrow, safeInvoke } from './core';
 import type { PaginatedResponse, User, UserAddress } from './types';
 
+export type UserListResponse = PaginatedResponse<User> & {
+  active_total: number;
+  inactive_total: number;
+  superadmin_total: number;
+};
+
 export const users = {
-  list: (page?: number, perPage?: number): Promise<PaginatedResponse<User>> =>
-    safeInvoke('list_users', { token: getTokenOrThrow(), page, perPage }),
+  list: (
+    page?: number,
+    perPage?: number,
+    filters?: { search?: string; status?: string; role?: string },
+  ): Promise<UserListResponse> =>
+    safeInvoke('list_users', {
+      token: getTokenOrThrow(),
+      page,
+      perPage,
+      search: filters?.search,
+      status: filters?.status,
+      role: filters?.role,
+    }),
 
   get: (id: string): Promise<User> => safeInvoke('get_user', { token: getTokenOrThrow(), id }),
 

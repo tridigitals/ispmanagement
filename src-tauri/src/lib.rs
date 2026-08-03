@@ -390,6 +390,7 @@ pub fn run() {
                                     list_invoices,
                                     list_customer_package_invoices,
                                     list_all_invoices,
+                                    list_all_invoices_page,
                                     submit_payment_proof,
                                     verify_payment,
                                     verify_customer_package_payment,

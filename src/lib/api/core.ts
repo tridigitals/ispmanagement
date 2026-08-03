@@ -322,6 +322,7 @@ const commandMap: Record<string, { method: string; path: string }> = {
   },
   verify_payment: { method: 'POST', path: '/payment/invoices/:invoiceId/verify' },
   list_all_invoices: { method: 'GET', path: '/payment/invoices/all' },
+  list_all_invoices_page: { method: 'GET', path: '/payment/invoices/all/page' },
   change_subscription_package: { method: 'POST', path: '/payment/billing/change-package' },
   get_fx_rate: { method: 'GET', path: '/payment/fx-rate' },
   pay_invoice_midtrans: { method: 'POST', path: '/payment/invoices/:id/midtrans' },

@@ -1,8 +1,8 @@
 use super::AppState;
 use crate::http::auth::extract_ip;
 use crate::models::{
-    CreateUserAddressDto, CreateUserDto, PaginatedResponse, UpdateUserAddressDto, UpdateUserDto,
-    UserAddress, UserResponse,
+    CreateUserAddressDto, CreateUserDto, UpdateUserAddressDto, UpdateUserDto, UserAddress,
+    UserListResponse, UserResponse,
 };
 use crate::security::access_rules;
 use axum::{
@@ -20,6 +20,9 @@ pub struct ListUsersQuery {
     page: Option<u32>,
     #[serde(rename = "perPage", alias = "per_page")]
     per_page: Option<u32>,
+    search: Option<String>,
+    status: Option<String>,
+    role: Option<String>,
 }
 
 fn extract_token(headers: &HeaderMap) -> Result<String, crate::error::AppError> {
@@ -30,7 +33,7 @@ pub async fn list_users(
     State(state): State<AppState>,
     headers: HeaderMap,
     Query(query): Query<ListUsersQuery>,
-) -> Result<Json<PaginatedResponse<UserResponse>>, crate::error::AppError> {
+) -> Result<Json<UserListResponse>, crate::error::AppError> {
     let token = extract_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
     if !access_rules::can_access_global_user_management(claims.is_super_admin) {
@@ -40,13 +43,25 @@ pub async fn list_users(
     let page = query.page.unwrap_or(1);
     let per_page = query.per_page.unwrap_or(10);
 
-    let (users, total) = state.user_service.list(page, per_page).await?;
+    let (users, total, active_total, inactive_total, superadmin_total) = state
+        .user_service
+        .list_with_filters(
+            page,
+            per_page,
+            query.search.as_deref(),
+            query.status.as_deref(),
+            query.role.as_deref(),
+        )
+        .await?;
 
-    Ok(Json(PaginatedResponse {
+    Ok(Json(UserListResponse {
         data: users,
         total,
         page,
         per_page,
+        active_total,
+        inactive_total,
+        superadmin_total,
     }))
 }
 

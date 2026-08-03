@@ -756,6 +756,82 @@ impl PaymentService {
         Ok(invoices)
     }
 
+    pub async fn list_all_invoices_page(
+        &self,
+        page: u32,
+        per_page: u32,
+        search: Option<&str>,
+        status: Option<&str>,
+    ) -> AppResult<crate::models::InvoiceListResponse> {
+        let page = page.max(1);
+        let per_page = per_page.clamp(1, 100);
+        let offset = ((page - 1) * per_page) as i64;
+        let search = search.map(str::trim).filter(|value| !value.is_empty());
+        let status = status.map(str::trim).filter(|value| !value.is_empty() && *value != "all");
+
+        #[cfg(feature = "postgres")]
+        let (total, invoices) = {
+            use sqlx::{Postgres, QueryBuilder};
+            let base = " FROM invoices WHERE (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%')";
+            let mut count = QueryBuilder::<Postgres>::new("SELECT COUNT(*)");
+            let mut rows = QueryBuilder::<Postgres>::new("SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, currency_code, base_currency_code, COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at");
+            for builder in [&mut count, &mut rows] {
+                builder.push(base);
+                if let Some(value) = search {
+                    let pattern = format!("%{value}%");
+                    builder.push(" AND (invoice_number ILIKE ").push_bind(pattern.clone())
+                        .push(" OR description ILIKE ").push_bind(pattern).push(')');
+                }
+                if let Some(value) = status {
+                    builder.push(" AND status = ").push_bind(value);
+                }
+            }
+            let total: i64 = count.build_query_scalar().fetch_one(&self.pool).await?;
+            rows.push(" ORDER BY created_at DESC LIMIT ").push_bind(per_page as i64)
+                .push(" OFFSET ").push_bind(offset);
+            let invoices = rows.build_query_as().fetch_all(&self.pool).await?;
+            (total, invoices)
+        };
+
+        #[cfg(feature = "sqlite")]
+        let (total, invoices) = {
+            use sqlx::{QueryBuilder, Sqlite};
+            let base = " FROM invoices WHERE (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%')";
+            let mut count = QueryBuilder::<Sqlite>::new("SELECT COUNT(*)");
+            let mut rows = QueryBuilder::<Sqlite>::new("SELECT *");
+            for builder in [&mut count, &mut rows] {
+                builder.push(base);
+                if let Some(value) = search {
+                    let pattern = format!("%{value}%");
+                    builder.push(" AND (LOWER(invoice_number) LIKE LOWER(").push_bind(pattern.clone())
+                        .push(") OR LOWER(description) LIKE LOWER(").push_bind(pattern).push("))");
+                }
+                if let Some(value) = status {
+                    builder.push(" AND status = ").push_bind(value);
+                }
+            }
+            let total: i64 = count.build_query_scalar().fetch_one(&self.pool).await?;
+            rows.push(" ORDER BY created_at DESC LIMIT ").push_bind(per_page as i64)
+                .push(" OFFSET ").push_bind(offset);
+            let invoices = rows.build_query_as().fetch_all(&self.pool).await?;
+            (total, invoices)
+        };
+
+        let pending_total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM invoices WHERE status IN ('pending', 'verification_pending') AND (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%')")
+            .fetch_one(&self.pool).await?;
+        let paid_total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM invoices WHERE status = 'paid' AND (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%')")
+            .fetch_one(&self.pool).await?;
+        let failed_total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM invoices WHERE status = 'failed' AND (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%')")
+            .fetch_one(&self.pool).await?;
+        #[cfg(feature = "postgres")]
+        let (overdue_total, overdue_amount): (i64, f64) = sqlx::query_as("SELECT COUNT(*), COALESCE(SUM(amount::FLOAT8), 0) FROM invoices WHERE status IN ('pending', 'verification_pending') AND due_date < NOW() AND (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%')")
+            .fetch_one(&self.pool).await?;
+        #[cfg(feature = "sqlite")]
+        let (overdue_total, overdue_amount): (i64, f64) = sqlx::query_as("SELECT COUNT(*), COALESCE(SUM(amount), 0) FROM invoices WHERE status IN ('pending', 'verification_pending') AND due_date < CURRENT_TIMESTAMP AND (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%')")
+            .fetch_one(&self.pool).await?;
+        Ok(crate::models::InvoiceListResponse { data: invoices, total, page, per_page, pending_total, paid_total, failed_total, overdue_total, overdue_amount })
+    }
+
     pub async fn list_customer_package_invoices(
         &self,
         tenant_id: &str,

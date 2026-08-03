@@ -1,8 +1,8 @@
 //! User Management Commands
 
 use crate::models::{
-    CreateUserAddressDto, CreateUserDto, PaginatedResponse, UpdateUserAddressDto, UpdateUserDto,
-    UserAddress, UserResponse,
+    CreateUserAddressDto, CreateUserDto, UpdateUserAddressDto, UpdateUserDto, UserAddress,
+    UserListResponse, UserResponse,
 };
 use crate::security::access_rules;
 use crate::services::{AuthService, UserService};
@@ -16,9 +16,12 @@ pub async fn list_users(
     token: String,
     page: Option<u32>,
     per_page: Option<u32>,
+    search: Option<String>,
+    status: Option<String>,
+    role: Option<String>,
     user_service: State<'_, UserService>,
     auth_service: State<'_, AuthService>,
-) -> Result<PaginatedResponse<UserResponse>, String> {
+) -> Result<UserListResponse, String> {
     let claims = auth_service
         .validate_token(&token)
         .await
@@ -32,16 +35,25 @@ pub async fn list_users(
     let page = page.unwrap_or(1);
     let per_page = per_page.unwrap_or(10);
 
-    let (users, total) = user_service
-        .list(page, per_page)
+    let (users, total, active_total, inactive_total, superadmin_total) = user_service
+        .list_with_filters(
+            page,
+            per_page,
+            search.as_deref(),
+            status.as_deref(),
+            role.as_deref(),
+        )
         .await
         .map_err(|e| e.to_string())?;
 
-    Ok(PaginatedResponse {
+    Ok(UserListResponse {
         data: users,
         total,
         page,
         per_page,
+        active_total,
+        inactive_total,
+        superadmin_total,
     })
 }
 

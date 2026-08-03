@@ -150,7 +150,7 @@ export async function deleteAllNotifications() {
   // Optimistic clear
   notifications.set([]);
   unreadCount.set(0);
-  pagination.set({ page: 1, perPage: 20, total: 0, totalPages: 0, hasMore: false });
+  pagination.set({ page: 1, perPage: 20, total: 0, hasMore: false });
 
   try {
     await api.deleteAll();

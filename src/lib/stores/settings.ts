@@ -4,6 +4,7 @@ import { settings as settingsApi } from '$lib/api/settings';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { can } from '$lib/stores/auth';
 import '../i18n'; // Initialize i18n
+import { logApiError } from '$lib/api/core';
 
 const SETTINGS_BOOTSTRAP_TTL_MS = 60_000;
 

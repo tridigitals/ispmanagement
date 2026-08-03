@@ -17,6 +17,11 @@
   let overdueInvoices = $state(0);
   let overdueInvoiceAmount = $state(0);
   let lastBackupAt = $state<string | null>(null);
+  let widgetErrors = $state<Record<string, string>>({});
+
+  function widgetError(key: string) {
+    return widgetErrors[key] || '';
+  }
 
   // ── Loaders ────────────────────────────────────────────────────────
   onMount(async () => {
@@ -26,15 +31,24 @@
   async function loadDashboard() {
     loading = true;
     try {
-      const [tenantsRes, usersRes, approvalsRes, invoicesRes, backupsRes, healthRes] =
-        await Promise.all([
-          api.superadmin.listTenants().catch(() => null),
-          api.users.list(1, 1).catch(() => null),
-          api.superadmin.listPendingApprovals().catch(() => null),
-          api.payment.listAllInvoices().catch(() => null),
-          api.backup.list({ scope: 'all' }).catch(() => null),
-          api.superadmin.getSystemHealth().catch(() => null),
-        ]);
+      widgetErrors = {};
+      const results = await Promise.allSettled([
+        api.superadmin.listTenants(),
+        api.users.list(1, 1),
+        api.superadmin.listPendingApprovals(),
+        api.payment.listAllInvoicesPage({ page: 1, per_page: 1 }),
+        api.backup.list({ scope: 'all' }),
+        api.superadmin.getSystemHealth(),
+      ]);
+      const [tenantsResult, usersResult, approvalsResult, invoicesResult, backupsResult, healthResult] = results;
+      const tenantsRes = tenantsResult.status === 'fulfilled' ? tenantsResult.value : null;
+      const usersRes = usersResult.status === 'fulfilled' ? usersResult.value : null;
+      const approvalsRes = approvalsResult.status === 'fulfilled' ? approvalsResult.value : null;
+      const invoicesRes = invoicesResult.status === 'fulfilled' ? invoicesResult.value : null;
+      const backupsRes = backupsResult.status === 'fulfilled' ? backupsResult.value : null;
+      const healthRes = healthResult.status === 'fulfilled' ? healthResult.value : null;
+      const failed = results.flatMap((result, index) => result.status === 'rejected' ? [['tenants', 'users', 'approvals', 'invoices', 'backups', 'health'][index]] : []);
+      widgetErrors = Object.fromEntries(failed.map((key) => [key, 'Unable to load data']));
 
       const tenants = tenantsRes?.data || [];
       tenantTotal = tenantsRes?.total ?? tenants.length;
@@ -43,17 +57,8 @@
       userTotal = usersRes?.total ?? 0;
       pendingApprovals = approvalsRes?.total ?? 0;
 
-      const now = Date.now();
-      const overdue = (invoicesRes || []).filter((inv: any) => {
-        if (inv.status !== 'pending') return false;
-        const due = new Date(inv.due_date || inv.created_at).getTime();
-        return Number.isFinite(due) && due < now;
-      });
-      overdueInvoices = overdue.length;
-      overdueInvoiceAmount = overdue.reduce(
-        (sum: number, inv: any) => sum + (Number(inv.amount) || 0),
-        0,
-      );
+      overdueInvoices = invoicesRes?.overdue_total ?? 0;
+      overdueInvoiceAmount = invoicesRes?.overdue_amount ?? 0;
 
       const latestBackup = (backupsRes || [])
         .map((b: any) => new Date(b.created_at || 0).getTime())

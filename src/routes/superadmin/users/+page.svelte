@@ -17,6 +17,13 @@
 
   let allUsers = $state<User[]>([]);
   let totalUsers = $state(0);
+  let filteredTotalUsers = $state(0);
+  let activeUsers = $state(0);
+  let inactiveUsers = $state(0);
+  let superadminUsers = $state(0);
+  let page = $state(1);
+  let pageSize = $state(25);
+  let filterTimer: ReturnType<typeof setTimeout> | undefined;
   let loading = $state(true);
   let error = $state('');
 
@@ -34,18 +41,27 @@
   let UserActionModalsComponent = $state<any>(null);
   let modalModulesLoading = $state(false);
 
-  async function loadData() {
+  async function loadData(targetPage = page) {
     loading = true;
     error = '';
 
     try {
       const [usersRes, tenantsRes] = await Promise.all([
-        api.users.list(1, 200),
+        api.users.list(targetPage, pageSize, {
+          search: searchQuery.trim() || undefined,
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          role: roleFilter === 'all' ? undefined : roleFilter,
+        }),
         api.superadmin.listTenants().catch(() => null),
       ]);
 
+      page = targetPage;
       allUsers = usersRes.data || [];
-      totalUsers = usersRes.total ?? allUsers.length;
+      totalUsers = usersRes.total ?? 0;
+      filteredTotalUsers = totalUsers;
+      activeUsers = (usersRes as any).active_total ?? activeUsers;
+      inactiveUsers = (usersRes as any).inactive_total ?? inactiveUsers;
+      superadminUsers = (usersRes as any).superadmin_total ?? superadminUsers;
 
       const tenants: any[] = (tenantsRes as any)?.data || [];
       const byId: Record<string, string> = {};
@@ -121,36 +137,14 @@
   }
 
   let stats = $derived({
-    total: allUsers.length,
-    active: allUsers.filter((u: any) => u.is_active).length,
-    inactive: allUsers.filter((u: any) => !u.is_active).length,
-    superadmins: allUsers.filter((u: any) => u.is_super_admin).length,
+    total: totalUsers,
+    active: activeUsers,
+    inactive: inactiveUsers,
+    superadmins: superadminUsers,
   });
 
-  let filteredUsers = $derived(
-    allUsers.filter((u: any) => {
-      const q = searchQuery.trim().toLowerCase();
-      const matchesSearch =
-        !q ||
-        String(u.name || '')
-          .toLowerCase()
-          .includes(q) ||
-        String(u.email || '')
-          .toLowerCase()
-          .includes(q) ||
-        String(getTenantName(u) || u.tenant_slug || u.tenant_id || '')
-          .toLowerCase()
-          .includes(q);
-
-      const matchesStatus =
-        statusFilter === 'all' || (statusFilter === 'active' ? u.is_active : !u.is_active);
-
-      const roleKey = getRoleKey(u);
-      const matchesRole = roleFilter === 'all' || roleKey === roleFilter;
-
-      return matchesSearch && matchesStatus && matchesRole;
-    }),
-  );
+  // Filtering is performed by the API so the table never filters a truncated page locally.
+  let filteredUsers = $derived(allUsers);
 
   $effect(() => {
     if (isMobile) viewMode = 'cards';
@@ -402,7 +396,17 @@
         </button>
       </div>
     </div>
-    <UserFilters bind:searchQuery bind:roleFilter bind:statusFilter bind:viewMode {isMobile} />
+    <UserFilters
+      bind:searchQuery
+      bind:roleFilter
+      bind:statusFilter
+      bind:viewMode
+      {isMobile}
+      onFiltersChange={() => {
+        if (filterTimer) clearTimeout(filterTimer);
+        filterTimer = setTimeout(() => { page = 1; void loadData(1); }, 300);
+      }}
+    />
 
     {#if error}
       <div class="error-state">
@@ -421,6 +425,11 @@
         onDelete={confirmDeleteUser}
         {getTenantName}
         {getInitials}
+        {page}
+        {pageSize}
+        totalCount={filteredTotalUsers}
+        onPageChange={(nextPage) => void loadData(nextPage)}
+        onPageSizeChange={(nextSize) => { pageSize = nextSize; void loadData(1); }}
       />
     {/if}
   </div>

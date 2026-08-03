@@ -53,40 +53,22 @@ impl UserService {
         Ok(())
     }
 
-    /// List all users with pagination (optimized single query with window function)
+    /// List all users with pagination and optional superadmin filters.
     pub async fn list(&self, page: u32, per_page: u32) -> AppResult<(Vec<UserResponse>, i64)> {
+        let (users, total, _, _, _) =
+            self.list_with_filters(page, per_page, None, None, None).await?;
+        Ok((users, total))
+    }
+
+    pub async fn list_with_filters(
+        &self,
+        page: u32,
+        per_page: u32,
+        search: Option<&str>,
+        status: Option<&str>,
+        role: Option<&str>,
+    ) -> AppResult<(Vec<UserResponse>, i64, i64, i64, i64)> {
         let offset = (page.saturating_sub(1)) * per_page;
-
-        // Optimized query: fetch users with tenant info AND total count in single query
-        #[cfg(feature = "postgres")]
-        let query = r#"
-            SELECT 
-                u.*, 
-                t.slug as tenant_slug,
-                r.name as tenant_role_name,
-                COUNT(*) OVER() as total_count
-            FROM users u
-            LEFT JOIN tenant_members tm ON u.id = tm.user_id
-            LEFT JOIN tenants t ON tm.tenant_id = t.id
-            LEFT JOIN roles r ON tm.role_id = r.id
-            ORDER BY u.created_at DESC 
-            LIMIT $1 OFFSET $2
-        "#;
-
-        #[cfg(feature = "sqlite")]
-        let query = r#"
-            SELECT 
-                u.*, 
-                t.slug as tenant_slug,
-                r.name as tenant_role_name,
-                (SELECT COUNT(*) FROM users) as total_count
-            FROM users u
-            LEFT JOIN tenant_members tm ON u.id = tm.user_id
-            LEFT JOIN tenants t ON tm.tenant_id = t.id
-            LEFT JOIN roles r ON tm.role_id = r.id
-            ORDER BY u.created_at DESC 
-            LIMIT ? OFFSET ?
-        "#;
 
         // Custom struct to handle the projection with count
         #[derive(sqlx::FromRow)]
@@ -98,10 +80,90 @@ impl UserService {
             total_count: i64,
         }
 
-        let rows: Vec<UserRow> = sqlx::query_as(query)
-            .bind(per_page as i32)
-            .bind(offset as i32)
-            .fetch_all(&self.pool)
+        let search = search.map(str::trim).filter(|value| !value.is_empty());
+        let status = status.filter(|value| matches!(*value, "active" | "inactive"));
+        let role = role.filter(|value| matches!(*value, "superadmin" | "admin" | "user"));
+
+        #[cfg(feature = "postgres")]
+        let rows: Vec<UserRow> = {
+            use sqlx::{Postgres, QueryBuilder};
+            let mut qb = QueryBuilder::<Postgres>::new(
+                "SELECT u.*, t.slug as tenant_slug, r.name as tenant_role_name, COUNT(*) OVER() as total_count \
+                 FROM users u \
+                 LEFT JOIN tenant_members tm ON u.id = tm.user_id \
+                 LEFT JOIN tenants t ON tm.tenant_id = t.id \
+                 LEFT JOIN roles r ON tm.role_id = r.id WHERE 1=1",
+            );
+            if let Some(value) = search {
+                let pattern = format!("%{value}%");
+                qb.push(" AND (u.name ILIKE ").push_bind(pattern.clone())
+                    .push(" OR u.email ILIKE ").push_bind(pattern.clone())
+                    .push(" OR t.slug ILIKE ").push_bind(pattern).push(')');
+            }
+            if let Some(value) = status {
+                qb.push(" AND u.is_active = ").push_bind(value == "active");
+            }
+            if let Some(value) = role {
+                match value {
+                    "superadmin" => qb.push(" AND u.is_super_admin = TRUE"),
+                    "admin" => qb.push(" AND (u.role = 'admin' OR r.name = 'admin')"),
+                    _ => qb.push(" AND u.is_super_admin = FALSE AND u.role = 'user'"),
+                };
+            }
+            qb.push(" ORDER BY u.created_at DESC LIMIT ")
+                .push_bind(per_page as i64)
+                .push(" OFFSET ")
+                .push_bind(offset as i64);
+            qb.build_query_as().fetch_all(&self.pool).await?
+        };
+
+        #[cfg(feature = "sqlite")]
+        let rows: Vec<UserRow> = {
+            use sqlx::{QueryBuilder, Sqlite};
+            let mut qb = QueryBuilder::<Sqlite>::new(
+                "SELECT u.*, t.slug as tenant_slug, r.name as tenant_role_name, COUNT(*) OVER() as total_count \
+                 FROM users u \
+                 LEFT JOIN tenant_members tm ON u.id = tm.user_id \
+                 LEFT JOIN tenants t ON tm.tenant_id = t.id \
+                 LEFT JOIN roles r ON tm.role_id = r.id WHERE 1=1",
+            );
+            if let Some(value) = search {
+                let pattern = format!("%{value}%");
+                qb.push(" AND (LOWER(u.name) LIKE LOWER(").push_bind(&pattern)
+                    .push(") OR LOWER(u.email) LIKE LOWER(").push_bind(&pattern)
+                    .push(") OR LOWER(t.slug) LIKE LOWER(").push_bind(&pattern).push("))");
+            }
+            if let Some(value) = status {
+                qb.push(" AND u.is_active = ").push_bind(value == "active");
+            }
+            if let Some(value) = role {
+                match value {
+                    "superadmin" => qb.push(" AND u.is_super_admin = 1"),
+                    "admin" => qb.push(" AND (u.role = 'admin' OR r.name = 'admin')"),
+                    _ => qb.push(" AND u.is_super_admin = 0 AND u.role = 'user'"),
+                };
+            }
+            qb.push(" ORDER BY u.created_at DESC LIMIT ")
+                .push_bind(per_page as i64)
+                .push(" OFFSET ")
+                .push_bind(offset as i64);
+            qb.build_query_as().fetch_all(&self.pool).await?
+        };
+
+        #[cfg(feature = "postgres")]
+        let (active_total, inactive_total, superadmin_total): (i64, i64, i64) =
+            sqlx::query_as(
+                "SELECT COUNT(*) FILTER (WHERE is_active), COUNT(*) FILTER (WHERE NOT is_active), COUNT(*) FILTER (WHERE is_super_admin) FROM users",
+            )
+            .fetch_one(&self.pool)
+            .await?;
+
+        #[cfg(feature = "sqlite")]
+        let (active_total, inactive_total, superadmin_total): (i64, i64, i64) =
+            sqlx::query_as(
+                "SELECT SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END), SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END), SUM(CASE WHEN is_super_admin = 1 THEN 1 ELSE 0 END) FROM users",
+            )
+            .fetch_one(&self.pool)
             .await?;
 
         // Extract total count from first row (same for all rows due to window function)
@@ -117,7 +179,7 @@ impl UserService {
             })
             .collect();
 
-        Ok((response, total_count))
+        Ok((response, total_count, active_total, inactive_total, superadmin_total))
     }
 
     /// Get user by ID

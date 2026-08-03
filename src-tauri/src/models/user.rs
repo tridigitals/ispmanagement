@@ -134,6 +134,17 @@ pub struct UserResponse {
     pub enforce_2fa: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserListResponse {
+    pub data: Vec<UserResponse>,
+    pub total: i64,
+    pub page: u32,
+    pub per_page: u32,
+    pub active_total: i64,
+    pub inactive_total: i64,
+    pub superadmin_total: i64,
+}
+
 impl From<User> for UserResponse {
     fn from(user: User) -> Self {
         Self {

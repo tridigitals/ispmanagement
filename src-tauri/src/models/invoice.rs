@@ -28,6 +28,19 @@ pub struct Invoice {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InvoiceListResponse {
+    pub data: Vec<Invoice>,
+    pub total: i64,
+    pub page: u32,
+    pub per_page: u32,
+    pub pending_total: i64,
+    pub paid_total: i64,
+    pub failed_total: i64,
+    pub overdue_total: i64,
+    pub overdue_amount: f64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct BankAccount {
     pub id: String,

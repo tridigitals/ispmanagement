@@ -160,6 +160,7 @@
             name: u.name || u.email || 'Customer',
             email: u.email || null,
             phone: u.phone || null,
+            customer_number: null,
             notes: null,
             is_active: true,
             created_at: '',

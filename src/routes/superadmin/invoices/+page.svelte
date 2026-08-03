@@ -4,6 +4,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import CompactFilterToolbar from '$lib/components/superadmin/shared/CompactFilterToolbar.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import Pagination from '$lib/components/ui/Pagination.svelte';
   import { toast } from '$lib/stores/toast';
   import { appSettings } from '$lib/stores/settings';
   import { formatMoney } from '$lib/utils/money';
@@ -17,6 +18,13 @@
   type InvoiceStatus = 'all' | 'pending' | 'paid' | 'failed' | 'verification_pending' | 'expired';
 
   let invoices = $state<Invoice[]>([]);
+  let totalInvoices = $state(0);
+  let pendingInvoices = $state(0);
+  let paidInvoices = $state(0);
+  let failedInvoices = $state(0);
+  let page = $state(1);
+  let pageSize = $state(25);
+  let searchTimer: ReturnType<typeof setTimeout> | undefined;
   let loading = $state(true);
   let error = $state('');
 
@@ -67,14 +75,16 @@
   ]);
 
   const stats = $derived({
-    total: invoices.length,
-    pending: invoices.filter((i) => i.status === 'pending' || i.status === 'verification_pending')
-      .length,
-    paid: invoices.filter((i) => i.status === 'paid').length,
-    failed: invoices.filter((i) => i.status === 'failed').length,
+    total: totalInvoices,
+    pending: pendingInvoices,
+    paid: paidInvoices,
+    failed: failedInvoices,
   });
 
-  const filteredInvoices = $derived(
+  const filteredInvoices = $derived(invoices);
+
+  /* Server-side search/status filtering is applied in loadInvoices. */
+  const legacyFilteredInvoices = $derived(
     invoices.filter((inv) => {
       const q = search.trim().toLowerCase();
       const tenant =
@@ -122,18 +132,28 @@
     if (isMobile && viewMode === 'table') viewMode = 'cards';
   });
 
-  async function loadInvoices() {
+  async function loadInvoices(targetPage = page) {
     loading = true;
     try {
       error = '';
       const [invoicesRes, tenantsRes] = await Promise.all([
-        api.payment.listAllInvoices(),
+        api.payment.listAllInvoicesPage({
+          page: targetPage,
+          per_page: pageSize,
+          search: search.trim() || undefined,
+          status: statusFilter === 'all' ? undefined : statusFilter,
+        }),
         getTenantsCached()
           .then((data) => ({ data, total: data.length }))
           .catch(() => ({ data: [], total: 0 })),
       ]);
 
-      invoices = invoicesRes || [];
+      page = targetPage;
+      invoices = invoicesRes?.data || [];
+      totalInvoices = invoicesRes?.total ?? 0;
+      pendingInvoices = invoicesRes?.pending_total ?? 0;
+      paidInvoices = invoicesRes?.paid_total ?? 0;
+      failedInvoices = invoicesRes?.failed_total ?? 0;
       tenantNameById = Object.fromEntries(
         (tenantsRes.data || []).map((t: any) => [t.id, { name: t.name, slug: t.slug }]),
       );
@@ -159,6 +179,8 @@
   function resetFilters() {
     search = '';
     statusFilter = 'all';
+    page = 1;
+    void loadInvoices(1);
   }
 
   async function checkStatus(id: string) {
@@ -190,7 +212,7 @@
       <p class="subtitle">{$t('superadmin.invoices.list.subtitle')}</p>
     </div>
     <div class="head-actions">
-      <button class="btn ghost" onclick={loadInvoices}><Icon name="refresh-cw" size={14} /> {$t('common.refresh')}</button>
+      <button class="btn ghost" type="button" onclick={() => loadInvoices(1)}><Icon name="refresh-cw" size={14} /> {$t('common.refresh')}</button>
     </div>
   </div>
 
@@ -255,13 +277,17 @@
         onReset={resetFilters}
         {isMobile}
         bind:viewMode
+        onSearchChange={() => {
+          if (searchTimer) clearTimeout(searchTimer);
+          searchTimer = setTimeout(() => { page = 1; void loadInvoices(1); }, 300);
+        }}
       >
         {#snippet advancedFilters()}
           <div class="toolbar-field">
             <label for="invoice-status-filter">
               {$t('superadmin.invoices.list.filters.status')}
             </label>
-            <select id="invoice-status-filter" bind:value={statusFilter}>
+            <select id="invoice-status-filter" bind:value={statusFilter} onchange={() => { page = 1; void loadInvoices(1); }}>
               <option value="all">{$t('superadmin.invoices.list.filters.all') || $t('common.all') || 'All'}</option>
               <option value="pending">{$t('superadmin.invoices.list.filters.pending')}</option>
               <option value="paid">{$t('superadmin.invoices.list.filters.paid')}</option>
@@ -364,6 +390,13 @@
             </div>
           {/each}
         </div>
+        <Pagination
+          count={totalInvoices}
+          page={page - 1}
+          pageSize={pageSize}
+          onchange={(p: number) => void loadInvoices(p + 1)}
+          onpageSizeChange={(s: number) => { pageSize = s; void loadInvoices(1); }}
+        />
       {/if}
 
       {#if viewMode === 'table' && !isMobile}
@@ -377,7 +410,11 @@
             loading={false}
             keyField="id"
             pagination={true}
-            pageSize={10}
+            serverSide={true}
+            count={totalInvoices}
+            pageSize={pageSize}
+            onchange={(p: number) => void loadInvoices(p + 1)}
+            onpageSizeChange={(s: number) => { pageSize = s; void loadInvoices(1); }}
             mobileView="scroll"
           >
             {#snippet cell({ item, column, key })}

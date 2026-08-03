@@ -19,6 +19,11 @@
     onDelete,
     getTenantName,
     getInitials,
+    page = 1,
+    pageSize = 25,
+    totalCount = 0,
+    onPageChange,
+    onPageSizeChange,
   } = $props<{
     users: User[];
     loading: boolean;
@@ -31,22 +36,14 @@
     onDelete?: (u: User) => void;
     getTenantName: (u: any) => string;
     getInitials: (name: string) => string;
+    page?: number;
+    pageSize?: number;
+    totalCount?: number;
+    onPageChange: (page: number) => void;
+    onPageSizeChange: (pageSize: number) => void;
   }>();
 
-  let cardPage = $state(0);
-  let cardPageSize = $state(10);
-
-  let pagedUsers = $derived.by((): User[] => {
-    const start = cardPage * cardPageSize;
-    const end = start + cardPageSize;
-    return users.slice(start, end);
-  });
-
-  // Reset card page when users change (filtering)
-  $effect(() => {
-    users;
-    cardPage = 0;
-  });
+  let pagedUsers = $derived(users);
 
   const columns = $derived.by(() => [
     { key: 'user', label: $t('superadmin.users.columns.user') || 'User' },
@@ -227,11 +224,11 @@
 
       <div class="cards-pagination">
         <Pagination
-          count={users.length}
-          page={cardPage}
-          pageSize={cardPageSize}
-          onchange={(p: number) => (cardPage = p)}
-          onpageSizeChange={(s: number) => (cardPageSize = s)}
+          count={totalCount}
+          page={page - 1}
+          pageSize={pageSize}
+          onchange={(p: number) => onPageChange(p + 1)}
+          onpageSizeChange={onPageSizeChange}
         />
       </div>
     {/if}
@@ -240,6 +237,11 @@
   <div class="table-wrapper">
     <Table
       pagination={true}
+      serverSide={true}
+      count={totalCount}
+      pageSize={pageSize}
+      onchange={(p: number) => onPageChange(p + 1)}
+      onpageSizeChange={onPageSizeChange}
       {columns}
       data={users}
       {loading}

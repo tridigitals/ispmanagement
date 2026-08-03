@@ -55,6 +55,7 @@
     empty?: import('svelte').Snippet;
     cell?: import('svelte').Snippet<[any]>; // { item, column, key }
     serverSide?: boolean;
+    totalCount?: number;
   } = $props();
 
   let currentPage = $state(0);

@@ -8,12 +8,14 @@
     statusFilter = $bindable(),
     viewMode = $bindable(),
     isMobile,
+    onFiltersChange,
   } = $props<{
     searchQuery: string;
     roleFilter: 'all' | 'superadmin' | 'admin' | 'user';
     statusFilter: 'all' | 'active' | 'inactive';
     viewMode: 'table' | 'cards';
     isMobile: boolean;
+    onFiltersChange?: () => void;
   }>();
 
   let filtersOpen = $state(false);
@@ -29,6 +31,7 @@
     roleFilter = 'all';
     statusFilter = 'all';
     searchQuery = '';
+    onFiltersChange?.();
   }
 </script>
 
@@ -40,12 +43,13 @@
   onReset={resetFilters}
   {isMobile}
   bind:viewMode
+  onSearchChange={onFiltersChange}
 >
   {#snippet advancedFilters()}
     <div class="field-grid">
       <div class="field">
         <label for="user-role-filter">{$t('common.role')}</label>
-        <select id="user-role-filter" bind:value={roleFilter}>
+        <select id="user-role-filter" bind:value={roleFilter} onchange={() => onFiltersChange?.()}>
           <option value="all">{$t('superadmin.users.filters.all_roles')}</option>
           <option value="admin">{$t('superadmin.users.filters.admin')}</option>
           <option value="user">{$t('superadmin.users.filters.user')}</option>
@@ -55,7 +59,7 @@
 
       <div class="field">
         <label for="user-status-filter">{$t('common.status')}</label>
-        <select id="user-status-filter" bind:value={statusFilter}>
+        <select id="user-status-filter" bind:value={statusFilter} onchange={() => onFiltersChange?.()}>
           <option value="all">{$t('common.all')}</option>
           <option value="active">{$t('superadmin.users.filters.active')}</option>
           <option value="inactive">{$t('superadmin.users.filters.inactive')}</option>

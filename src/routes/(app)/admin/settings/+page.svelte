@@ -1361,11 +1361,11 @@
                         <span class="p-name">{option.label}</span>
                         <span class="p-desc">
                           {#if option.value === 's3'}
-                            {$t('admin.settings.storage.desc_s3', 'Scalable object storage by AWS.')}
+                            {$t('admin.settings.storage.desc_s3') || 'Scalable object storage by AWS.'}
                           {:else if option.value === 'r2'}
-                            {$t('admin.settings.storage.desc_r2', 'Zero egress fee storage by Cloudflare.')}
+                            {$t('admin.settings.storage.desc_r2') || 'Zero egress fee storage by Cloudflare.'}
                           {:else}
-                            {$t('admin.settings.storage.desc_system', 'Local disk storage (Default).')}
+                            {$t('admin.settings.storage.desc_system') || 'Local disk storage (Default).'}
                           {/if}
                         </span>
                       </div>

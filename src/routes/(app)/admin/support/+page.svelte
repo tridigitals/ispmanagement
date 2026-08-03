@@ -167,7 +167,7 @@
       toast.success($t('support.toasts.claimed'));
       await load(true);
     } catch (e: any) {
-      toast.error($t('support.toasts.claim_failed', { message: extractApiErrorMessage(e, '') }));
+      toast.error($t('support.toasts.claim_failed', { values: { message: extractApiErrorMessage(e, '') } }));
     }
   }
 </script>

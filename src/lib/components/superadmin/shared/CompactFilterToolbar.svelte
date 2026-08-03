@@ -13,6 +13,7 @@
     showViewToggle = true,
     advancedFilters,
     actions,
+    onSearchChange,
   } = $props<{
     searchQuery?: string;
     placeholder?: string;
@@ -24,6 +25,7 @@
     showViewToggle?: boolean;
     advancedFilters?: import('svelte').Snippet;
     actions?: import('svelte').Snippet;
+    onSearchChange?: () => void;
   }>();
 
   function clearSearch() {
@@ -37,7 +39,7 @@
       <span class="search-icon">
         <Icon name="search" size={18} />
       </span>
-      <input type="text" bind:value={searchQuery} {placeholder} />
+      <input type="text" bind:value={searchQuery} {placeholder} oninput={() => onSearchChange?.()} />
       {#if searchQuery}
         <button class="clear-btn" type="button" onclick={clearSearch}>
           <Icon name="x" size={14} />

@@ -98,8 +98,10 @@
   // Sorted ONU data (client-side since we load all at once)
   const sortedOnus = $derived.by(() => {
     if (!onuSortKey || !onuSortDir) return onus;
+    const sortKey = onuSortKey;
+    const sortDir = onuSortDir;
     return [...onus].sort((a: any, b: any) => {
-      let va = a[onuSortKey], vb = b[onuSortKey];
+      let va = a[sortKey], vb = b[sortKey];
       // Map compound columns to real fields
       if (onuSortKey === 'onu') { va = a.name || a.onu_id; vb = b.name || b.onu_id; }
       if (onuSortKey === 'port') { va = a.pon; vb = b.pon; }
@@ -109,7 +111,7 @@
       if (typeof va === 'string') va = va.toLowerCase();
       if (typeof vb === 'string') vb = vb.toLowerCase();
       const cmp = va < vb ? -1 : va > vb ? 1 : 0;
-      return onuSortDir === 'asc' ? cmp : -cmp;
+      return sortDir === 'asc' ? cmp : -cmp;
     });
   });
   let forceRefresh = $state(false);

@@ -6,6 +6,7 @@ export type MoneyFormatOptions = {
   locale?: string;
   maximumFractionDigits?: number;
   minimumFractionDigits?: number;
+  compact?: boolean;
 };
 
 export function formatMoney(amount: number, options: MoneyFormatOptions = {}): string {
