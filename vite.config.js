@@ -104,7 +104,14 @@ export default defineConfig(async ({ mode }) => {
   );
   // Load env file based on `mode` in the current working directory.
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
-  const env = loadEnv(mode, process.cwd(), '');
+  const loadedEnv = loadEnv(mode, process.cwd(), '');
+  const env = mode === 'test'
+    ? {
+        ...loadedEnv,
+        VITE_ALLOWED_HOSTS: process.env.VITE_ALLOWED_HOSTS ?? '',
+        ALLOW_UNSAFE_PUBLIC_DEV: process.env.ALLOW_UNSAFE_PUBLIC_DEV ?? '',
+      }
+    : loadedEnv;
 
   // Extract hostnames from CORS_ALLOWED_ORIGINS for allowedHosts
   const corsOrigins = csvList(env.CORS_ALLOWED_ORIGINS);

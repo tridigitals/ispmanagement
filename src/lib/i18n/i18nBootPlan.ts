@@ -33,8 +33,6 @@ const BASE_NAMESPACES: I18nNamespace[] = [
   'payment',
   'components',
   'utils',
-  'network',
-  'mixradius',
 ];
 
 export function normalizeAppLocale(input: string | null | undefined): AppLocale {
