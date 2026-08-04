@@ -46,10 +46,12 @@
     "created": "Ticket created",
     "create_failed": "Create failed: {message}",
     "replied": "Reply sent",
-    "reply_failed": "Reply failed: {message}",
+    "reply_failed": "Failed to send reply",
     "ticket_closed": "Ticket is closed",
     "claimed": "Ticket claimed successfully",
-    "claim_failed": "Failed to claim ticket: {message}"
+    "claim_failed": "Failed to claim ticket",
+    "load_failed": "Failed to load support tickets",
+    "subscription_load_failed": "Failed to load linked subscription"
   },
   "status": {
     "open": "Open",

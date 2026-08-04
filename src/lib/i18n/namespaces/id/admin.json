@@ -2534,7 +2534,8 @@
       "assign": "Penanggung jawab menggunakan user_id anggota tim. Kosongkan jika tidak ditugaskan."
     },
     "toasts": {
-      "updated": "Tiket diperbarui"
+      "updated": "Tiket diperbarui",
+      "update_failed": "Gagal memperbarui tiket"
     },
     "unassigned": "Belum Assign"
   },

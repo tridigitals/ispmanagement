@@ -2807,7 +2807,8 @@
       "assign": "Assignee expects a team member user_id. Leave empty to keep unassigned."
     },
     "toasts": {
-      "updated": "Ticket updated"
+      "updated": "Ticket updated",
+      "update_failed": "Failed to update ticket"
     },
     "unassigned": "Unassigned"
   },

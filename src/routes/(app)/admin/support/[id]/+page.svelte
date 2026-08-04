@@ -26,6 +26,7 @@
   let saving = $state(false);
   let sending = $state(false);
   let claiming = $state(false);
+  const supportBusy = $derived(saving || sending || claiming);
   let detail = $state<SupportTicketDetail | null>(null);
   const isClosed = $derived(detail?.ticket?.status === 'closed');
 
@@ -116,15 +117,15 @@
       priority = (detail.ticket.priority as any) || 'normal';
       category = (detail.ticket.category as any) || null;
       assignedTo = detail.ticket.assigned_to || null;
-    } catch (e: any) {
-      toast.error(e?.message || e);
+    } catch {
+      toast.error($t('support.toasts.load_failed'));
     } finally {
       loading = false;
     }
   }
 
   async function saveTicket() {
-    if (!detail) return;
+    if (!detail || supportBusy) return;
     saving = true;
     try {
       if (!id) return;
@@ -136,29 +137,30 @@
       });
       detail = { ...detail, ticket: updated as any };
       toast.success(get(t)('admin.support.toasts.updated') || 'Ticket updated');
-    } catch (e: any) {
-      toast.error(e?.message || e);
+    } catch {
+      toast.error($t('admin.support.toasts.update_failed'));
     } finally {
       saving = false;
     }
   }
 
   async function claimTicket() {
-    if (!detail?.ticket) return;
+    if (!detail?.ticket || supportBusy) return;
     claiming = true;
     try {
       const updated = await api.support.claim(detail.ticket.id);
       detail = { ...detail, ticket: updated as any };
       assignedTo = updated.assigned_to || null;
       toast.success($t('support.toasts.claimed'));
-    } catch (e: any) {
-      toast.error(e?.message || e);
+    } catch {
+      toast.error($t('support.toasts.claim_failed'));
     } finally {
       claiming = false;
     }
   }
 
   async function sendReply() {
+    if (supportBusy) return;
     if (isClosed) {
       toast.error(get(t)('support.toasts.ticket_closed') || 'Ticket is closed');
       return;
@@ -180,11 +182,8 @@
       attachments = [];
       toast.success(get(t)('support.toasts.replied') || 'Reply sent');
       await load();
-    } catch (e: any) {
-      toast.error(
-        get(t)('support.toasts.reply_failed', { values: { message: e?.message || e } }) ||
-          `Reply failed: ${e?.message || e}`,
-      );
+    } catch {
+      toast.error(get(t)('support.toasts.reply_failed'));
     } finally {
       sending = false;
     }
@@ -211,8 +210,8 @@
       if (sub?.customer_id) {
         goto(`/admin/customers/${sub.customer_id}`);
       }
-    } catch (e: any) {
-      toast.error(e?.message || e);
+    } catch {
+      toast.error($t('support.toasts.subscription_load_failed'));
     }
   }
 </script>
@@ -224,11 +223,11 @@
       {$t('common.back')}
     </button>
     <div class="right">
-      <button class="btn" type="button" onclick={load}>
+      <button class="btn" type="button" onclick={load} disabled={supportBusy || loading}>
         <Icon name="refresh-cw" size={16} />
         {$t('common.refresh')}
       </button>
-      <button class="btn-primary" type="button" onclick={saveTicket} disabled={saving || loading}>
+      <button class="btn-primary" type="button" onclick={saveTicket} disabled={saving || loading || supportBusy}>
         <Icon name="save" size={16} />
         {saving ? $t('common.saving') || 'Saving...' : $t('common.save') || 'Save'}
       </button>
@@ -283,7 +282,7 @@
               class="btn-primary"
               type="button"
               onclick={saveTicket}
-              disabled={saving}
+              disabled={supportBusy}
               title={$t('common.save')}
             >
               <Icon name="save" size={16} />
@@ -295,29 +294,33 @@
               label={$t('admin.support.fields.status')}
               bind:value={status}
               options={statusOptions}
+              disabled={supportBusy}
             />
             <Select
               label={$t('admin.support.fields.priority')}
               bind:value={priority}
               options={priorityOptions}
+              disabled={supportBusy}
             />
             <Select
               label={$t('admin.support.fields.category')}
               bind:value={category}
               options={categoryOptions}
+              disabled={supportBusy}
             />
             {#if canChangeAssignee}
               <Select
                 label={$t('admin.support.fields.assignee')}
                 bind:value={assignedTo}
                 options={memberOptions}
+                disabled={supportBusy}
               />
             {/if}
             {#if !detail.ticket.assigned_to && !isClosed}
               <button
                 class="btn primary claim-btn"
                 onclick={claimTicket}
-                disabled={claiming}
+                disabled={supportBusy}
               >
                 {claiming ? $t('support.actions.claiming') : $t('support.actions.claim')}
               </button>
@@ -364,7 +367,7 @@
             rows="5"
             bind:value={reply}
             placeholder={$t('support.fields.reply_placeholder')}
-            disabled={isClosed}
+            disabled={isClosed || supportBusy}
           ></textarea>
           <div class="reply-row">
             <div class="file-col">
@@ -377,7 +380,7 @@
                 type="file"
                 multiple
                 onchange={onPickFiles}
-                disabled={isClosed}
+                disabled={isClosed || supportBusy}
               />
               {#if attachments.length}
                 <div class="file-picked">
@@ -390,7 +393,7 @@
 
             {#if $can('internal', 'support')}
               <label class="check">
-                <input type="checkbox" bind:checked={internalNote} disabled={isClosed} />
+                <input type="checkbox" bind:checked={internalNote} disabled={isClosed || supportBusy} />
                 <span>{$t('admin.support.fields.internal')}</span>
               </label>
             {/if}
@@ -398,7 +401,7 @@
               class="btn-primary"
               type="button"
               onclick={sendReply}
-              disabled={sending || isClosed}
+              disabled={sending || isClosed || supportBusy}
             >
               <Icon name="send" size={16} />
               {sending

@@ -46,10 +46,12 @@
     "created": "Tiket dibuat",
     "create_failed": "Gagal membuat: {message}",
     "replied": "Balasan terkirim",
-    "reply_failed": "Gagal membalas: {message}",
+    "reply_failed": "Gagal mengirim balasan",
     "ticket_closed": "Tiket sudah ditutup",
     "claimed": "Tiket berhasil diambil",
-    "claim_failed": "Gagal mengambil tiket: {message}"
+    "claim_failed": "Gagal mengambil tiket",
+    "load_failed": "Gagal memuat tiket support",
+    "subscription_load_failed": "Gagal memuat langganan terkait"
   },
   "status": {
     "open": "Buka",

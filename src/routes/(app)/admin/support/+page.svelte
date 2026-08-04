@@ -14,7 +14,6 @@
   import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
   import { toast } from '$lib/stores/toast';
   import { t } from 'svelte-i18n';
-  import { extractApiErrorMessage } from '$lib/api/core';
   import { get } from 'svelte/store';
   import { formatDateTime } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
@@ -31,6 +30,8 @@
   let pageNum = $state(1);
   const perPage = 20;
   let ready = $state(false);
+  let loadSequence = 0;
+  let claimingIds = $state<Set<string>>(new Set());
 
   let hasMore = $derived(tickets.length < total);
 
@@ -81,6 +82,7 @@
   }
 
   async function load(reset: boolean) {
+    const requestSequence = ++loadSequence;
     loading = true;
     if (reset) {
       pageNum = 1;
@@ -96,12 +98,13 @@
         perPage,
         assigned: assignedFilter === 'all' ? undefined : assignedFilter,
       });
+      if (requestSequence !== loadSequence) return;
       total = res.total || 0;
       tickets = reset ? res.data : [...tickets, ...res.data];
-    } catch (e: any) {
-      toast.error(e?.message || e);
+    } catch {
+      if (requestSequence === loadSequence) toast.error($t('support.toasts.load_failed'));
     } finally {
-      loading = false;
+      if (requestSequence === loadSequence) loading = false;
     }
   }
 
@@ -162,12 +165,18 @@
   }
 
   async function quickClaim(item: any) {
+    if (claimingIds.has(item.id)) return;
+    claimingIds = new Set(claimingIds).add(item.id);
     try {
       await api.support.claim(item.id);
       toast.success($t('support.toasts.claimed'));
       await load(true);
-    } catch (e: any) {
-      toast.error($t('support.toasts.claim_failed', { values: { message: extractApiErrorMessage(e, '') } }));
+    } catch {
+      toast.error($t('support.toasts.claim_failed'));
+    } finally {
+      const next = new Set(claimingIds);
+      next.delete(item.id);
+      claimingIds = next;
     }
   }
 </script>
