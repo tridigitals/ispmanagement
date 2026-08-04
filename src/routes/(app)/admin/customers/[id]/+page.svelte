@@ -141,6 +141,9 @@
   let changePackageNewId = $state('');
   let changePackageLoading = $state(false);
   let changePackageResult = $state<any>(null);
+  const subscriptionMutationBusy = $derived(
+    Boolean(savingSubscription || deletingSubscription || togglingSubscription || generatingInvoiceFor || changePackageLoading),
+  );
 
   // PPPoE
   let pppoeAccounts = $state<PppoeAccountPublic[]>([]);
@@ -1233,7 +1236,7 @@
   }
 
   async function generateInvoiceForSubscription(subscriptionId: string) {
-    if (!subscriptionId || generatingInvoiceFor) return;
+    if (!subscriptionId || subscriptionMutationBusy) return;
     generatingInvoiceFor = subscriptionId;
     try {
       await api.payment.createInvoiceForCustomerSubscription(subscriptionId);
@@ -1369,6 +1372,7 @@
   }
 
   async function submitCreateSubscription() {
+    if (subscriptionMutationBusy) return;
     const price = Number(subPrice);
     if (!subLocationId || !subPackageId || !Number.isFinite(price) || price < 0) return;
     savingSubscription = true;
@@ -1397,7 +1401,7 @@
   }
 
   async function submitUpdateSubscription() {
-    if (!editingSubscription) return;
+    if (!editingSubscription || subscriptionMutationBusy) return;
     const price = Number(subPrice);
     if (!subLocationId || !subPackageId || !Number.isFinite(price) || price < 0) return;
     savingSubscription = true;
@@ -1433,7 +1437,7 @@
 
   async function confirmDeleteSubscription() {
     const id = subToDeleteId;
-    if (!id) return;
+    if (!id || subscriptionMutationBusy) return;
     deletingSubscription = id;
     showSubDeleteConfirm = false;
     try {
@@ -1451,6 +1455,7 @@
     row: CustomerSubscriptionView,
     nextStatus: 'active' | 'suspended',
   ) {
+    if (subscriptionMutationBusy) return;
     togglingSubscription = row.id;
     try {
       await api.customers.subscriptions.update(row.id, { status: nextStatus });
@@ -1470,6 +1475,7 @@
   }
 
   function openChangePackage(row: CustomerSubscriptionView) {
+    if (subscriptionMutationBusy) return;
     changePackageSubscription = row;
     changePackageNewId = '';
     changePackageResult = null;
@@ -1481,7 +1487,7 @@
   }
 
   async function submitChangePackage() {
-    if (!changePackageSubscription || !changePackageNewId) return;
+    if (!changePackageSubscription || !changePackageNewId || subscriptionMutationBusy) return;
     changePackageLoading = true;
     changePackageResult = null;
     try {
@@ -2215,6 +2221,7 @@
           onEditSubscription={openEditSubscription}
           onDeleteSubscription={deleteSubscription}
           onChangePackage={openChangePackage}
+          {subscriptionMutationBusy}
         />
       {:else if activeDeferredTabLoading === 'subscriptions'}
         <div class="card loading-card">

@@ -24,6 +24,7 @@
     onEditSubscription,
     onDeleteSubscription,
     onChangePackage,
+    subscriptionMutationBusy = false,
   } = $props();
 </script>
 
@@ -141,7 +142,7 @@
               class="btn-icon"
               title={$t('admin.customers.billing.actions.generate_from_subscription')}
               onclick={() => onGenerateInvoice(row.id)}
-              disabled={generatingInvoiceFor === row.id || deletingSubscription === row.id}
+              disabled={subscriptionMutationBusy}
             >
               <Icon name="file-text" size={16} />
             </button>
@@ -150,7 +151,7 @@
                 class="btn-icon"
                 title={$t('admin.customers.subscriptions.change_package.title')}
                 onclick={() => onChangePackage(row)}
-                disabled={togglingSubscription === row.id || deletingSubscription === row.id}
+                disabled={subscriptionMutationBusy}
               >
                 <Icon name="repeat" size={16} />
               </button>
@@ -160,7 +161,7 @@
                 class="btn-icon"
                 title={$t('common.suspend')}
                 onclick={() => onSetSubscriptionStatus(row, 'suspended')}
-                disabled={togglingSubscription === row.id || deletingSubscription === row.id}
+                disabled={subscriptionMutationBusy}
               >
                 <Icon name="pause" size={16} />
               </button>
@@ -169,19 +170,19 @@
                 class="btn-icon"
                 title={$t('common.activate')}
                 onclick={() => onSetSubscriptionStatus(row, 'active')}
-                disabled={togglingSubscription === row.id || deletingSubscription === row.id}
+                disabled={subscriptionMutationBusy}
               >
                 <Icon name="play" size={16} />
               </button>
             {/if}
-            <button class="btn-icon" title={$t('common.edit')} onclick={() => onEditSubscription(row)}>
+            <button class="btn-icon" title={$t('common.edit')} onclick={() => onEditSubscription(row)} disabled={subscriptionMutationBusy}>
               <Icon name="edit-3" size={16} />
             </button>
             <button
               class="btn-icon danger"
               title={$t('common.delete')}
               onclick={() => onDeleteSubscription(row.id)}
-              disabled={deletingSubscription === row.id}
+              disabled={subscriptionMutationBusy}
             >
               <Icon name="trash-2" size={16} />
             </button>

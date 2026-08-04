@@ -40,15 +40,20 @@ export function createCustomerDetailResourceLoader<T>() {
         return { status: 'cached' };
       }
 
-      if (inFlight?.key === key) {
+      if (!options.force && inFlight?.key === key) {
         return inFlight.promise;
       }
 
       const requestId = ++lastRequestId;
+      if (options.force && inFlight?.key === key) {
+        inFlight = null;
+      }
       const promise = (async () => {
         try {
           const value = await fetcher();
-          loadedKey = key;
+          if (inFlight?.key === key && inFlight.requestId === requestId) {
+            loadedKey = key;
+          }
           return { status: 'loaded', value } as const;
         } finally {
           if (inFlight?.key === key && inFlight.requestId === requestId) {
