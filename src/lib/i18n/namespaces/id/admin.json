@@ -565,6 +565,17 @@
       "edit": {
         "title": "Edit langganan"
       },
+      "toasts": {
+        "created": "Langganan dibuat",
+        "create_failed": "Gagal membuat langganan: {message}",
+        "updated": "Langganan diperbarui",
+        "update_failed": "Gagal memperbarui langganan: {message}",
+        "deleted": "Langganan dihapus",
+        "delete_failed": "Gagal menghapus langganan: {message}",
+        "suspended": "Langganan disuspend",
+        "resumed": "Langganan diaktifkan kembali",
+        "status_failed": "Gagal memperbarui status langganan: {message}"
+      },
       "fields": {
         "location": "Lokasi",
         "package": "Paket",

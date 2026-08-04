@@ -838,6 +838,17 @@
       "edit": {
         "title": "Edit subscription"
       },
+      "toasts": {
+        "created": "Subscription created",
+        "create_failed": "Failed to create subscription: {message}",
+        "updated": "Subscription updated",
+        "update_failed": "Failed to update subscription: {message}",
+        "deleted": "Subscription deleted",
+        "delete_failed": "Failed to delete subscription: {message}",
+        "suspended": "Subscription suspended",
+        "resumed": "Subscription resumed",
+        "status_failed": "Failed to update subscription status: {message}"
+      },
       "fields": {
         "location": "Location",
         "package": "Package",

@@ -1383,11 +1383,12 @@
         ends_at: subEndsAt || null,
         notes: subNotes.trim() || null,
       });
-      toast.success('Subscription created');
+      toast.success(get(t)('admin.customers.subscriptions.toasts.created'));
       showAddSubscription = false;
+      selectCustomerTab('subscriptions');
       await loadSubscriptions({ force: true });
     } catch (e: any) {
-      toast.error(`Failed to create subscription: ${e?.message || e}`);
+      toast.error(get(t)('admin.customers.subscriptions.toasts.create_failed', { values: { message: e?.message || e } }));
     } finally {
       savingSubscription = false;
     }
@@ -1411,12 +1412,13 @@
         ends_at: subEndsAt || null,
         notes: subNotes.trim() || null,
       });
-      toast.success('Subscription updated');
+      toast.success(get(t)('admin.customers.subscriptions.toasts.updated'));
       showEditSubscription = false;
       editingSubscription = null;
+      selectCustomerTab('subscriptions');
       await loadSubscriptions({ force: true });
     } catch (e: any) {
-      toast.error(`Failed to update subscription: ${e?.message || e}`);
+      toast.error(get(t)('admin.customers.subscriptions.toasts.update_failed', { values: { message: e?.message || e } }));
     } finally {
       savingSubscription = false;
     }
@@ -1434,10 +1436,10 @@
     showSubDeleteConfirm = false;
     try {
       await api.customers.subscriptions.delete(id);
-      toast.success('Subscription deleted');
+      toast.success(get(t)('admin.customers.subscriptions.toasts.deleted'));
       await loadSubscriptions({ force: true });
     } catch (e: any) {
-      toast.error(`Failed to delete subscription: ${e?.message || e}`);
+      toast.error(get(t)('admin.customers.subscriptions.toasts.delete_failed', { values: { message: e?.message || e } }));
     } finally {
       deletingSubscription = null;
     }
@@ -1450,10 +1452,16 @@
     togglingSubscription = row.id;
     try {
       await api.customers.subscriptions.update(row.id, { status: nextStatus });
-      toast.success(nextStatus === 'suspended' ? 'Subscription suspended' : 'Subscription resumed');
+      toast.success(
+        get(t)(
+          nextStatus === 'suspended'
+            ? 'admin.customers.subscriptions.toasts.suspended'
+            : 'admin.customers.subscriptions.toasts.resumed',
+        ),
+      );
       await loadSubscriptions({ force: true });
     } catch (e: any) {
-      toast.error(`Failed to update status: ${e?.message || e}`);
+      toast.error(get(t)('admin.customers.subscriptions.toasts.status_failed', { values: { message: e?.message || e } }));
     } finally {
       togglingSubscription = null;
     }
@@ -1486,7 +1494,7 @@
           : ($t('admin.customers.subscriptions.change_package.toasts.success_no_charge') || 'Paket diganti! Tidak ada tagihan tambahan'),
       );
       await loadSubscriptions({ force: true });
-      await loadBillingInvoices();
+      await loadBillingInvoices({ force: true });
     } catch (e: any) {
       toast.error(`${$t('admin.customers.subscriptions.change_package.toasts.error')} ${e?.message || e}`);
     } finally {
