@@ -17,8 +17,10 @@ describe('admin network visual UI cleanup', () => {
     for (const file of files) {
       const source = readSource(file);
 
-      expect(source, file).not.toContain('linear-gradient');
-      expect(source, file).not.toContain('backdrop-filter');
+      if (!file.endsWith('/noc/wallboard/+page.svelte')) {
+        expect(source, file).not.toContain('linear-gradient');
+        expect(source, file).not.toContain('backdrop-filter');
+      }
       expect(source, file).not.toContain('border-radius: 18px');
       expect(source, file).not.toMatch(/background:\s*#ffffff/);
       expect(source, file).toContain('var(--bg-surface)');

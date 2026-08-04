@@ -532,10 +532,10 @@
                     {/if}
                     <!-- Delivery channel pills -->
                     {#if a.deliver_in_app}
-                      <span class="pill channel">in-app ✓</span>
+                      <span class="pill channel">in-app</span>
                     {/if}
                     {#if a.deliver_email}
-                      <span class="pill channel">email ✓</span>
+                      <span class="pill channel">email</span>
                     {/if}
                   </div>
                   <div class="ttl">{a.title}</div>
@@ -1083,7 +1083,7 @@
   .empty-icon {
     width: 72px;
     height: 72px;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     background: var(--color-primary-subtle);
     color: var(--color-primary);
     display: grid;

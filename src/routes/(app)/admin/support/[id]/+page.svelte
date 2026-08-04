@@ -336,7 +336,9 @@
           <div class="satisfaction-display">
             <div class="rating-stars">
               {#each [1,2,3,4,5] as star}
-                <span class="star" class:filled={star <= (detail.ticket.satisfaction_rating ?? 0)}>★</span>
+                <span class="star" class:filled={star <= (detail.ticket.satisfaction_rating ?? 0)}>
+                  <Icon name="star" size={14} />
+                </span>
               {/each}
               <span class="rating-num">{detail.ticket.satisfaction_rating}/5</span>
             </div>
@@ -691,7 +693,7 @@
   .claim-btn {
     width: 100%;
     margin-top: 0.5rem;
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    background: var(--color-primary);
     border: none;
     color: white;
     padding: 0.6rem 1rem;
@@ -703,7 +705,7 @@
   }
 
   .claim-btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    background: color-mix(in srgb, var(--color-primary) 88%, black);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   }

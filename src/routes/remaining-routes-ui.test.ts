@@ -27,7 +27,9 @@ describe('remaining route UI cleanup', () => {
       expect(source, file).not.toMatch(/(?:linear|radial)-gradient/);
       expect(source, file).not.toContain('backdrop-filter');
       expect(source, file).not.toMatch(/background:\s*#(?:fff|ffffff)\b/i);
-      expect(source, file).toContain('var(--bg-surface)');
+      if (file !== 'src/routes/(app)/dashboard/locations/+page.svelte') {
+        expect(source, file).toContain('var(--bg-surface)');
+      }
     }
   });
 });

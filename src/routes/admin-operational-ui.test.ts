@@ -105,7 +105,7 @@ describe('admin operational UI cleanup', () => {
     expect(existsSync(resolve(process.cwd(), path))).toBe(true);
 
     const source = readSource(path);
-    expect(source).toContain('Buat Invoice Awal');
+    expect(source).toContain('bootstrap_missing_invoices');
     expect(source).toContain('Belum ada invoice awal');
     expect(source).toContain('invalid_active_lifecycle');
     expect(source).toContain('repair-result-card');
@@ -121,7 +121,7 @@ describe('admin operational UI cleanup', () => {
   it('keeps the customer invite modal operational and easy to scan', () => {
     const source = readSource('src/routes/(app)/admin/customers/+page.svelte');
 
-    expect(source).toContain('Customer Invite Link');
+    expect(source).toContain("admin.customers.invite.title");
     expect(source).toContain('invite-modal-shell');
     expect(source).toContain('invite-overview-grid');
     expect(source).toContain('invite-generate-card');

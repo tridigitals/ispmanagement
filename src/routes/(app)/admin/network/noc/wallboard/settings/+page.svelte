@@ -308,7 +308,7 @@
     padding: 20px 24px;
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     animation: ws-header-in 600ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
@@ -408,7 +408,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
     border: 1px solid var(--glass-border);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 24px;
     background: var(--glass-bg);
     backdrop-filter: blur(var(--glass-blur));

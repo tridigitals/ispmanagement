@@ -491,6 +491,10 @@
   }
 
   @media (max-width: 900px) {
+    .topbar-user-menu {
+      display: none;
+    }
+
     .topbar {
       gap: 0.5rem;
       padding: 0.16rem clamp(10px, 3.5vw, 16px) 0.38rem;

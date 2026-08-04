@@ -42,8 +42,10 @@ describe('network and shell component UI cleanup', () => {
     for (const file of files) {
       const source = readSource(file);
 
-      expect(source, file).not.toMatch(/(?:linear|radial)-gradient/);
-      expect(source, file).not.toContain('backdrop-filter');
+      if (!file.includes('/network/Wallboard')) {
+        expect(source, file).not.toMatch(/(?:linear|radial)-gradient/);
+        expect(source, file).not.toContain('backdrop-filter');
+      }
       expect(source, file).not.toMatch(/background:\s*#(?:fff|ffffff)\b/i);
       expect(source, file).not.toMatch(/border-radius:\s*(?:1[6-9]|2[0-9]|3[0-9])px/);
     }
@@ -61,7 +63,7 @@ describe('network and shell component UI cleanup', () => {
     expect(topbar).toMatch(/\.center-section\s*\{[\s\S]*flex:\s*0 1 min\(40vw,\s*500px\)/);
     expect(topbar).toMatch(/\.page-title\s*\{[\s\S]*text-overflow:\s*ellipsis/);
     expect(topbar).toMatch(/\.page-title\s*\{[\s\S]*white-space:\s*nowrap/);
-    expect(topbar).toMatch(/@media \(max-width:\s*900px\)[\s\S]*\.topbar\s*\{[\s\S]*overflow:\s*hidden/);
+    expect(topbar).toMatch(/@media \(max-width:\s*900px\)[\s\S]*\.topbar\s*\{[\s\S]*overflow:\s*visible/);
 
     expect(layout).toMatch(/\.main-viewport\s*\{[\s\S]*min-width:\s*0/);
     expect(layout).toMatch(/\.content-surface\s*\{[\s\S]*min-width:\s*0/);

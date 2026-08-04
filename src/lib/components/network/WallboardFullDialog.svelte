@@ -415,7 +415,7 @@
     width: min(1100px, calc(100vw - 24px));
     max-height: min(860px, calc(100vh - 24px));
     overflow: auto;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     border: 1px solid transparent;
     background-clip: padding-box;
     background-color: color-mix(in srgb, var(--bg-surface) 82%, rgba(12, 18, 32, 0.6));
@@ -432,7 +432,7 @@
     content: '';
     position: absolute;
     inset: -1px;
-    border-radius: 21px;
+    border-radius: var(--radius-lg);
     padding: 1px;
     background: linear-gradient(
       135deg,
@@ -681,7 +681,7 @@
   }
   .stat-big {
     border: 1px solid color-mix(in srgb, var(--border-color) 45%, transparent);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 14px;
     background: color-mix(in srgb, var(--accent) 4%, var(--bg-surface) 55%);
     transition: border-color 250ms ease, box-shadow 250ms ease;

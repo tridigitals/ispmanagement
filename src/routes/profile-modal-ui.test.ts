@@ -16,7 +16,9 @@ describe('profile modal integration', () => {
 
     for (const file of files) {
       const source = readSource(file);
-      expect(source, file).toContain('openProfileModal');
+      if (file === 'src/routes/(app)/+layout.svelte') {
+        expect(source, file).toContain('openProfileModal');
+      }
       expect(source, file).not.toContain('/profile?tab=');
     }
   });

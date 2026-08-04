@@ -360,7 +360,7 @@
   }
 
   .panel {
-    background: rgba(255, 255, 255, 0.015);
+    background: var(--bg-surface);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: var(--radius-lg, 12px);
   }

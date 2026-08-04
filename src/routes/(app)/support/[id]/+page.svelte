@@ -228,7 +228,9 @@
               <div class="satisfaction-display">
                 <div class="rating-stars">
                   {#each [1,2,3,4,5] as star}
-                    <span class="star" class:filled={star <= (detail.ticket.satisfaction_rating ?? 0)}>★</span>
+                    <span class="star" class:filled={star <= (detail.ticket.satisfaction_rating ?? 0)}>
+                      <Icon name="star" size={14} />
+                    </span>
                   {/each}
                   <span class="rating-num">{detail.ticket.satisfaction_rating}/5</span>
                 </div>

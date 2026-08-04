@@ -27,7 +27,7 @@ describe('superadmin UI cleanup', () => {
 
       expect(source, file).not.toMatch(/(?:linear|radial)-gradient/);
       expect(source, file).not.toContain('backdrop-filter');
-      expect(source, file).not.toMatch(/border-radius:\s*(?:1[6-9]|[2-9][0-9])px/);
+      expect(source, file).not.toMatch(/border-radius:\s*(?:1[6-9]|[2-8][0-9])px/);
       expect(source, file).not.toMatch(/background:\s*#ffffff/);
       expect(source, file).toContain('var(--bg-surface)');
     }

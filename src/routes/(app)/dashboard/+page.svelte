@@ -886,7 +886,7 @@
 
   /* Admin banner */
   .admin-banner {
-    background: linear-gradient(160deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.005));
+    background: var(--bg-surface);
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: var(--radius-lg);
     padding: 1rem 1.25rem;
