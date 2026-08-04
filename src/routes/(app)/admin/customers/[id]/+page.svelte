@@ -258,6 +258,12 @@
   // Portal Users
   let portalUsers = $state<CustomerPortalUser[]>([]);
   let loadingPortalUsers = $state(false);
+  let showAddPortalUser = $state(false);
+  let portalUserEmail = $state('');
+  let portalUserName = $state('');
+  let portalUserPassword = $state('');
+  let portalUserPasswordConfirm = $state('');
+  let addingPortalUser = $state(false);
 
   let showResetPasswordConfirm = $state(false);
   let portalUserToReset = $state<CustomerPortalUser | null>(null);
@@ -269,6 +275,7 @@
   let showRemovePortalUserConfirm = $state(false);
   let portalUserToRemove = $state<CustomerPortalUser | null>(null);
   let removingPortalUser = $state(false);
+  const portalMutationBusy = $derived(Boolean(addingPortalUser || removingPortalUser || resettingPassword));
 
   const locationsResourceLoader = createCustomerDetailResourceLoader<CustomerLocation[]>();
   const subscriptionsResourceLoader = createCustomerDetailResourceLoader<{
@@ -778,14 +785,49 @@
     try {
       portalUsers = await api.customers.portalUsers.list(customerId);
     } catch (e: any) {
-      toast.error(`Failed to load portal users: ${e?.message || e}`);
+      toast.error(get(t)('admin.customers.portal.toasts.load_failed', { values: { message: e?.message || e } }));
     } finally {
       loadingPortalUsers = false;
     }
   }
 
+  function openAddPortalUser() {
+    portalUserEmail = customer?.email || '';
+    portalUserName = customer?.name || '';
+    portalUserPassword = '';
+    portalUserPasswordConfirm = '';
+    showAddPortalUser = true;
+  }
+
+  async function addPortalUser() {
+    const email = portalUserEmail.trim();
+    const name = portalUserName.trim();
+    if (!email || !name || portalUserPassword.length < 6 || portalUserPassword !== portalUserPasswordConfirm) return;
+    if (addingPortalUser || removingPortalUser || resettingPassword) return;
+    addingPortalUser = true;
+    try {
+      await api.customers.portalUsers.createNew({
+        customer_id: customerId,
+        email,
+        name,
+        password: portalUserPassword,
+      });
+      toast.success(get(t)('admin.customers.portal.toasts.created'));
+      showAddPortalUser = false;
+      portalUserEmail = '';
+      portalUserName = '';
+      portalUserPassword = '';
+      portalUserPasswordConfirm = '';
+      await loadPortalUsers();
+    } catch (e: any) {
+      toast.error(get(t)('admin.customers.portal.toasts.create_failed', { values: { message: e?.message || e } }));
+    } finally {
+      addingPortalUser = false;
+    }
+  }
+
   async function confirmRemovePortalUser() {
-    if (!portalUserToRemove) return;
+    if (!portalUserToRemove || addingPortalUser || removingPortalUser || resettingPassword) return;
     removingPortalUser = true;
     try {
       await api.customers.portalUsers.remove(portalUserToRemove.customer_user_id);
@@ -801,7 +843,7 @@
   }
 
   async function confirmResetPassword() {
-    if (!portalUserToReset) return;
+    if (!portalUserToReset || addingPortalUser || removingPortalUser || resettingPassword) return;
     resettingPassword = true;
     try {
       const res = await api.customers.portalUsers.resetPassword(
@@ -877,7 +919,7 @@
     } catch (e: any) {
       whatsappTemplateOptions = [];
       emailTemplateOptions = [];
-      toast.error(e?.message || 'Failed to load message templates');
+      toast.error(get(t)('admin.customers.communication.load_templates_failed'));
     }
   }
 
@@ -2072,6 +2114,12 @@
             <h3>{get(t)('admin.customers.portal.title')}</h3>
             <p class="subtitle">{get(t)('admin.customers.portal.subtitle')}</p>
           </div>
+          {#if canManageCustomers}
+            <button class="btn btn-primary" type="button" onclick={openAddPortalUser} disabled={portalMutationBusy}>
+              <Icon name="plus" size={16} />
+              {get(t)('admin.customers.portal.actions.add')}
+            </button>
+          {/if}
         </div>
 
         {#if loadingPortalUsers}
@@ -2110,14 +2158,14 @@
                             manualResetPassword = '';
                             manualResetPasswordConfirm = '';
                             showResetPasswordConfirm = true;
-                          }}>
+                          }} disabled={portalMutationBusy}>
                             <Icon name="key" size={14} style="margin-right: 4px;" />
                             {$t('common.reset_password')}
                           </button>
                           <button class="btn btn-danger btn-sm" onclick={() => {
                             portalUserToRemove = user;
                             showRemovePortalUserConfirm = true;
-                          }}>
+                          }} disabled={portalMutationBusy}>
                             <Icon name="trash" size={14} />
                           </button>
                         </div>
@@ -2729,6 +2777,44 @@
       </button>
     </div>
   {/if}
+</Modal>
+
+<Modal bind:show={showAddPortalUser} title={get(t)('admin.customers.portal.new.title')}>
+  <div class="form" style="padding: 1rem 0;">
+    <p class="field-hint">{get(t)('admin.customers.portal.new.hint')}</p>
+    <label>
+      <span>{get(t)('admin.customers.portal.new.fields.email')}</span>
+      <input class="input" type="email" bind:value={portalUserEmail} autocomplete="email" />
+    </label>
+    <label>
+      <span>{get(t)('admin.customers.portal.new.fields.name')}</span>
+      <input class="input" bind:value={portalUserName} autocomplete="name" />
+    </label>
+    <label>
+      <span>{get(t)('admin.customers.portal.new.fields.password')}</span>
+      <input class="input" type="password" bind:value={portalUserPassword} autocomplete="new-password" />
+    </label>
+    <label>
+      <span>{get(t)('admin.customers.portal.reset_password.confirm_password_label')}</span>
+      <input class="input" type="password" bind:value={portalUserPasswordConfirm} autocomplete="new-password" />
+    </label>
+    {#if portalUserPasswordConfirm && portalUserPassword !== portalUserPasswordConfirm}
+      <p class="field-error">{get(t)('admin.customers.portal.reset_password.mismatch')}</p>
+    {/if}
+    <div class="modal-actions">
+      <button class="btn btn-secondary" type="button" onclick={() => (showAddPortalUser = false)} disabled={addingPortalUser}>
+        {$t('common.cancel')}
+      </button>
+      <button
+        class="btn btn-primary"
+        type="button"
+        onclick={addPortalUser}
+        disabled={addingPortalUser || !portalUserEmail.trim() || !portalUserName.trim() || portalUserPassword.length < 6 || portalUserPassword !== portalUserPasswordConfirm}
+      >
+        {addingPortalUser ? $t('common.saving') : $t('common.create')}
+      </button>
+    </div>
+  </div>
 </Modal>
 
 <ConfirmDialog
@@ -3392,6 +3478,19 @@
     color: var(--text-secondary);
     font-size: 0.8rem;
     line-height: 1.35;
+  }
+
+  .field-error {
+    margin: 0;
+    color: var(--color-danger);
+    font-size: 0.8rem;
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
   }
 
   .mono {

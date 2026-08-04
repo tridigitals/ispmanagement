@@ -602,6 +602,7 @@
       "title_email": "Send Email",
       "title_whatsapp": "Send WhatsApp",
       "whatsapp_body_required": "WhatsApp message is required",
+      "load_templates_failed": "Failed to load message templates",
       "whatsapp_failed": "WhatsApp gateway failed to send message",
       "whatsapp_send_failed": "Failed to send WhatsApp message",
       "whatsapp_sent": "WhatsApp message sent"
@@ -828,7 +829,7 @@
         "done": "Done"
       },
       "toasts": {
-        "load_failed": "Failed to load portal users",
+        "load_failed": "Failed to load portal users: {message}",
         "created": "Portal user added",
         "create_failed": "Failed to add portal user: {message}",
         "removed": "Portal user removed",
