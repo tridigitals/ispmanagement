@@ -113,6 +113,7 @@
   let timelineLogs = $state<AuditLog[]>([]);
   let timelineType = $state<'all' | 'customer' | 'location' | 'subscription'>('all');
   let loadingTimeline = $state(false);
+  let timelineLoadSequence = 0;
   let showAddSubscription = $state(false);
   let showEditSubscription = $state(false);
   let editingSubscription = $state<CustomerSubscriptionView | null>(null);
@@ -149,8 +150,11 @@
   // PPPoE
   let pppoeAccounts = $state<PppoeAccountPublic[]>([]);
   let dhcpStaticServices = $state<DhcpStaticServicePublic[]>([]);
+  let loadingDhcpStatic = $state(false);
   let customerAssets = $state<NetworkAssetListItem[]>([]);
   let loadingCustomerAssets = $state(false);
+  let assetsLoadSequence = 0;
+  let dhcpStaticLoadSequence = 0;
   let loadingPppoe = $state(false);
   let pppoeQuery = $state('');
   let pppoeRouters = $state<any[]>([]);
@@ -1316,10 +1320,8 @@
   async function loadTimeline(options: { force?: boolean } = {}) {
     if (!canReadAudit) return;
     const key = getCustomerResourceKey();
-    if (!options.force && timelineResourceLoader.hasLoaded(key)) {
-      timelineType = 'all';
-      return;
-    }
+    if (!options.force && timelineResourceLoader.hasLoaded(key)) return;
+    const loadSequence = ++timelineLoadSequence;
     loadingTimeline = true;
     try {
       const result = await timelineResourceLoader.load(
@@ -1358,11 +1360,10 @@
       if (result.status === 'loaded') {
         timelineLogs = result.value;
       }
-      timelineType = 'all';
     } catch (e: any) {
-      toast.error(`Failed to load timeline: ${e?.message || e}`);
+      toast.error(get(t)('admin.customers.timeline.toasts.load_failed'));
     } finally {
-      loadingTimeline = false;
+      if (loadSequence === timelineLoadSequence) loadingTimeline = false;
     }
   }
 
@@ -1606,6 +1607,8 @@
   async function loadDhcpStaticServices(options: { force?: boolean } = {}) {
     const key = `${customerId}:${activeTab}:dhcp_static`;
     if (!options.force && dhcpStaticResourceLoader.hasLoaded(key)) return;
+    const loadSequence = ++dhcpStaticLoadSequence;
+    loadingDhcpStatic = true;
     try {
       const result = await dhcpStaticResourceLoader.load(
         key,
@@ -1619,17 +1622,20 @@
         },
         options,
       );
-      if (result.status === 'loaded') {
+      if (result.status === 'loaded' && loadSequence === dhcpStaticLoadSequence) {
         dhcpStaticServices = result.value;
       }
     } catch (e: any) {
-      toast.error(`Failed to load DHCP static services: ${e?.message || e}`);
+      toast.error(get(t)('admin.customers.dhcp_static.toasts.load_failed'));
+    } finally {
+      if (loadSequence === dhcpStaticLoadSequence) loadingDhcpStatic = false;
     }
   }
 
   async function loadCustomerAssets(options: { force?: boolean } = {}) {
     const key = `${customerId}:${activeTab}:assets`;
     if (!options.force && customerAssetsResourceLoader.hasLoaded(key)) return;
+    const loadSequence = ++assetsLoadSequence;
     loadingCustomerAssets = true;
     try {
       const result = await customerAssetsResourceLoader.load(
@@ -1637,13 +1643,13 @@
         async () => await api.networkAssets.listCustomerAssets(customerId),
         options,
       );
-      if (result.status === 'loaded') {
+      if (result.status === 'loaded' && loadSequence === assetsLoadSequence) {
         customerAssets = result.value;
       }
     } catch (e: any) {
-      toast.error(`Failed to load FTTH assets: ${e?.message || e}`);
+      toast.error(get(t)('admin.customers.assets.toasts.load_failed'));
     } finally {
-      loadingCustomerAssets = false;
+      if (loadSequence === assetsLoadSequence) loadingCustomerAssets = false;
     }
   }
 
@@ -2351,11 +2357,13 @@
               {$t('admin.customers.dhcp_static.subtitle')}
             </p>
           </div>
-          <button class="btn ghost" onclick={() => loadDhcpStaticServices({ force: true })}>
+          <button class="btn ghost" onclick={() => loadDhcpStaticServices({ force: true })} disabled={loadingDhcpStatic}>
             {$t('common.refresh')}
           </button>
         </div>
-        {#if dhcpStaticServices.length === 0}
+        {#if loadingDhcpStatic}
+          <p class="muted">{$t('common.loading')}</p>
+        {:else if dhcpStaticServices.length === 0}
           <p class="muted">
             {$t('admin.customers.dhcp_static.empty')}
           </p>

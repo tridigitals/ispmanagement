@@ -721,6 +721,9 @@
     },
     "assets": {
       "subtitle": "FTTH devices connected to this customer.",
+      "toasts": {
+        "load_failed": "Failed to load FTTH assets"
+      },
       "open_registry": "Open registry",
       "empty": "No FTTH assets are linked to this customer yet.",
       "columns": {
@@ -1035,6 +1038,9 @@
         "present": "Present",
         "missing": "Missing",
         "none": "None"
+      },
+      "toasts": {
+        "load_failed": "Failed to load DHCP static services"
       }
     },
     "toasts": {
@@ -1092,7 +1098,10 @@
       "subtitle": "Customer activity.",
       "empty": "No timeline yet.",
       "search_placeholder": "Search timeline...",
-      "search": "Search"
+      "search": "Search",
+      "toasts": {
+        "load_failed": "Failed to load customer timeline"
+      }
     },
     "search_placeholder": "Name, email, phone",
     "filters": {

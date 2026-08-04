@@ -448,6 +448,9 @@
     },
     "assets": {
       "subtitle": "Perangkat FTTH yang terhubung ke pelanggan ini.",
+      "toasts": {
+        "load_failed": "Gagal memuat aset FTTH"
+      },
       "open_registry": "Buka registri",
       "empty": "Belum ada aset FTTH yang ditautkan ke pelanggan ini.",
       "columns": {
@@ -762,6 +765,9 @@
         "present": "Ada",
         "missing": "Tidak ada",
         "none": "Tidak ada"
+      },
+      "toasts": {
+        "load_failed": "Gagal memuat layanan DHCP static"
       }
     },
     "toasts": {
@@ -819,7 +825,10 @@
       "subtitle": "Aktivitas pelanggan.",
       "empty": "Belum ada timeline.",
       "search_placeholder": "Cari timeline...",
-      "search": "Cari"
+      "search": "Cari",
+      "toasts": {
+        "load_failed": "Gagal memuat timeline pelanggan"
+      }
     },
     "search_placeholder": "Nama, email, telepon",
     "filters": {

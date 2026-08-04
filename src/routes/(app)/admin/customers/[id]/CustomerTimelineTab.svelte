@@ -21,10 +21,10 @@
     </div>
     <div class="timeline-toolbar">
       <div class="timeline-filters">
-        <button class:active={timelineType === 'all'} onclick={() => (timelineType = 'all')}>{$t('common.all')}</button>
-        <button class:active={timelineType === 'customer'} onclick={() => (timelineType = 'customer')}>{$t('common.profile')}</button>
-        <button class:active={timelineType === 'location'} onclick={() => (timelineType = 'location')}>{$t('common.location')}</button>
-        <button class:active={timelineType === 'subscription'} onclick={() => (timelineType = 'subscription')}>{$t('common.subscription')}</button>
+        <button type="button" aria-pressed={timelineType === 'all'} class:active={timelineType === 'all'} onclick={() => (timelineType = 'all')}>{$t('common.all')}</button>
+        <button type="button" aria-pressed={timelineType === 'customer'} class:active={timelineType === 'customer'} onclick={() => (timelineType = 'customer')}>{$t('common.profile')}</button>
+        <button type="button" aria-pressed={timelineType === 'location'} class:active={timelineType === 'location'} onclick={() => (timelineType = 'location')}>{$t('common.location')}</button>
+        <button type="button" aria-pressed={timelineType === 'subscription'} class:active={timelineType === 'subscription'} onclick={() => (timelineType = 'subscription')}>{$t('common.subscription')}</button>
       </div>
       <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingTimeline}>
         <Icon name="refresh-cw" size={16} />
