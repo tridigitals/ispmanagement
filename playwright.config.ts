@@ -9,7 +9,7 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: process.env.BASE_URL ?? 'http://localhost:3100',
+    baseURL: process.env.BASE_URL ?? 'http://localhost:1420',
     trace: 'on-first-retry',
   },
   projects: [
