@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -6,6 +6,12 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.resetModules();
   process.env = { ...ORIGINAL_ENV };
+});
+
+beforeEach(() => {
+  // Keep repository `.env` tunnel defaults out of unit-test configuration.
+  process.env.VITE_ALLOWED_HOSTS = '';
+  process.env.ALLOW_UNSAFE_PUBLIC_DEV = '';
 });
 
 describe('vite dev proxy', () => {

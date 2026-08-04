@@ -172,6 +172,7 @@ export default defineConfig(async ({ mode }) => {
         '**/.specify/**',
         '**/.worktrees/**',
         '**/.playwright-mcp/**',
+        '**/e2e/**',
         '**/src-tauri/**',
       ],
     },
