@@ -602,7 +602,6 @@
       "title_email": "Send Email",
       "title_whatsapp": "Send WhatsApp",
       "whatsapp_body_required": "WhatsApp message is required",
-      "load_templates_failed": "Failed to load message templates",
       "whatsapp_failed": "WhatsApp gateway failed to send message",
       "whatsapp_send_failed": "Failed to send WhatsApp message",
       "whatsapp_sent": "WhatsApp message sent"

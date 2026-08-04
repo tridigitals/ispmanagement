@@ -786,7 +786,7 @@
     try {
       portalUsers = await api.customers.portalUsers.list(customerId);
     } catch (e: any) {
-      toast.error(get(t)('admin.customers.portal.toasts.load_failed', { values: { message: e?.message || e } }));
+      toast.error(get(t)('admin.customers.portal.toasts.load_failed'));
     } finally {
       loadingPortalUsers = false;
     }
@@ -803,6 +803,7 @@
   async function addPortalUser() {
     const email = portalUserEmail.trim();
     const name = portalUserName.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
     if (!email || !name || portalUserPassword.length < 6 || portalUserPassword !== portalUserPasswordConfirm) return;
     if (addingPortalUser || removingPortalUser || resettingPassword) return;
     addingPortalUser = true;
@@ -821,7 +822,7 @@
       portalUserPasswordConfirm = '';
       await loadPortalUsers();
     } catch (e: any) {
-      toast.error(get(t)('admin.customers.portal.toasts.create_failed', { values: { message: e?.message || e } }));
+      toast.error(get(t)('admin.customers.portal.toasts.create_failed'));
     } finally {
       addingPortalUser = false;
     }
@@ -837,7 +838,7 @@
       portalUserToRemove = null;
       await loadPortalUsers();
     } catch (e: any) {
-      toast.error(get(t)('admin.customers.portal.toasts.remove_failed', { values: { message: e?.message || e } }) || `Failed: ${e?.message || e}`);
+      toast.error(get(t)('admin.customers.portal.toasts.remove_failed'));
     } finally {
       removingPortalUser = false;
     }
@@ -862,7 +863,7 @@
         manualResetPasswordConfirm = '';
       }
     } catch (e: any) {
-      toast.error(get(t)('admin.customers.portal.toasts.reset_failed', { values: { message: e?.message || e } }) || `Failed: ${e?.message || e}`);
+      toast.error(get(t)('admin.customers.portal.toasts.reset_failed'));
     } finally {
       resettingPassword = false;
     }
@@ -2166,7 +2167,7 @@
                             <Icon name="key" size={14} style="margin-right: 4px;" />
                             {$t('common.reset_password')}
                           </button>
-                          <button class="btn btn-danger btn-sm" onclick={() => {
+                          <button class="btn btn-danger btn-sm" type="button" title={$t('common.delete')} aria-label={$t('common.delete')} onclick={() => {
                             portalUserToRemove = user;
                             showRemovePortalUserConfirm = true;
                           }} disabled={portalMutationBusy}>
@@ -2762,12 +2763,12 @@
       </p>
       <label>
         <span style="font-weight: 500; font-size: 0.875rem; margin-bottom: 0.25rem; display: block;">{get(t)('admin.customers.portal.reset_password.new_password_label')}</span>
-        <input class="input" type="text" bind:value={manualResetPassword} placeholder={get(t)('admin.customers.portal.reset_password.placeholder')} />
+        <input class="input" type="password" autocomplete="new-password" bind:value={manualResetPassword} placeholder={get(t)('admin.customers.portal.reset_password.placeholder')} />
       </label>
       {#if manualResetPassword.trim()}
         <label style="margin-top: 1rem; display: block;">
           <span style="font-weight: 500; font-size: 0.875rem; margin-bottom: 0.25rem; display: block;">{get(t)('admin.customers.portal.reset_password.confirm_password_label')}</span>
-          <input class="input" type="text" bind:value={manualResetPasswordConfirm} placeholder={get(t)('admin.customers.portal.reset_password.confirm_placeholder')} />
+          <input class="input" type="password" autocomplete="new-password" bind:value={manualResetPasswordConfirm} placeholder={get(t)('admin.customers.portal.reset_password.confirm_placeholder')} />
           {#if manualResetPasswordConfirm && manualResetPassword !== manualResetPasswordConfirm}
             <p style="color: var(--color-danger); font-size: 0.8rem; margin-top: 0.3rem;">{get(t)('admin.customers.portal.reset_password.mismatch')}</p>
           {/if}
@@ -2828,6 +2829,7 @@
   confirmText={$t('common.delete')}
   cancelText={$t('common.cancel')}
   type="danger"
+  loading={removingPortalUser}
   confirmationKeyword="DELETE"
   onconfirm={confirmRemovePortalUser}
   oncancel={() => { portalUserToRemove = null; }}

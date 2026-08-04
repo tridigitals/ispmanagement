@@ -328,7 +328,6 @@
       "title_email": "Kirim Email",
       "title_whatsapp": "Kirim WhatsApp",
       "whatsapp_body_required": "Pesan WhatsApp wajib diisi",
-      "load_templates_failed": "Gagal memuat template pesan",
       "whatsapp_failed": "Gateway WhatsApp gagal mengirim pesan",
       "whatsapp_send_failed": "Gagal mengirim pesan WhatsApp",
       "whatsapp_sent": "Pesan WhatsApp terkirim"
