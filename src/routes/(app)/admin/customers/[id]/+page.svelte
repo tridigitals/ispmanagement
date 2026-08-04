@@ -419,35 +419,38 @@
     return items;
   });
   const customerTabItems = $derived.by(() => {
-    const items: Array<{ id: CustomerDetailTab; label: string }> = [
-      { id: 'overview', label: $t('admin.customers.tabs.overview') || 'Overview' },
+    const panelId = 'customer-detail-panel';
+    const items: Array<{ id: CustomerDetailTab; label: string; panelId: string }> = [
+      { id: 'overview', label: $t('admin.customers.tabs.overview') || 'Overview', panelId },
     ];
     if (visibleTabs.includes('billing')) {
-      items.push({ id: 'billing', label: $t('admin.customers.tabs.billing') || 'Billing' });
+      items.push({ id: 'billing', label: $t('admin.customers.tabs.billing') || 'Billing', panelId });
     }
     if (visibleTabs.includes('subscriptions')) {
       items.push({
         id: 'subscriptions',
         label: $t('admin.customers.tabs.subscriptions') || 'Subscriptions',
+        panelId,
       });
     }
     if (visibleTabs.includes('locations')) {
-      items.push({ id: 'locations', label: $t('admin.customers.tabs.locations') || 'Locations' });
+      items.push({ id: 'locations', label: $t('admin.customers.tabs.locations') || 'Locations', panelId });
     }
     if (visibleTabs.includes('assets')) {
-      items.push({ id: 'assets', label: $t('admin.customers.tabs.assets') || 'FTTH Assets' });
+      items.push({ id: 'assets', label: $t('admin.customers.tabs.assets') || 'FTTH Assets', panelId });
     }
     if (visibleTabs.includes('pppoe')) {
-      items.push({ id: 'pppoe', label: $t('admin.customers.tabs.pppoe') || 'PPPoE' });
+      items.push({ id: 'pppoe', label: $t('admin.customers.tabs.pppoe') || 'PPPoE', panelId });
     }
     if (visibleTabs.includes('dhcp_static')) {
       items.push({
         id: 'dhcp_static',
         label: $t('admin.customers.tabs.dhcp_static') || 'DHCP Static',
+        panelId,
       });
     }
     if (visibleTabs.includes('timeline')) {
-      items.push({ id: 'timeline', label: $t('admin.customers.tabs.timeline') || 'Timeline' });
+      items.push({ id: 'timeline', label: $t('admin.customers.tabs.timeline') || 'Timeline', panelId });
     }
     return items;
   });
@@ -1168,6 +1171,15 @@
       canReadFtthAssets,
       canReadAudit,
     });
+  }
+
+  function selectCustomerTab(event: CustomEvent<string>) {
+    const next = normalizeCustomerDetailTab(event.detail, customerDetailAccess);
+    activeTab = next;
+    const url = new URL($page.url);
+    if (next === 'overview') url.searchParams.delete('tab');
+    else url.searchParams.set('tab', next);
+    void goto(url, { replaceState: true, keepFocus: true, noScroll: true });
   }
 
   function getSubscriptionIdFromInvoice(inv: Invoice): string | null {
@@ -1894,7 +1906,14 @@
 <div class="page-content fade-in">
   <div class="customer-hero card">
     <div class="hero-top">
-      <button class="btn btn-secondary" onclick={() => goto(customerBackTarget)}>
+      <div class="breadcrumbs" aria-label={$t('admin.customers.detail.title') || 'Customer breadcrumbs'}>
+        <button type="button" onclick={() => goto(customersPath)}>
+          {$t('admin.customers.title') || 'Customers'}
+        </button>
+        <span aria-hidden="true">›</span>
+        <b>{customer?.name || $t('admin.customers.detail.title') || 'Customer'}</b>
+      </div>
+      <button class="btn btn-secondary back-button" type="button" onclick={() => goto(customerBackTarget)}>
         <Icon name="arrow-left" size={16} />
         {$t('common.back')}
       </button>
@@ -1944,6 +1963,7 @@
     {isMobile}
     priorityCount={2}
     ariaLabel={$t('admin.customers.detail.title')}
+    on:change={selectCustomerTab}
   />
 
   {#if loadingCustomer}
@@ -1952,6 +1972,12 @@
       <p>{$t('common.loading')}</p>
     </div>
   {:else if customer}
+    <div
+      id="customer-detail-panel"
+      role="tabpanel"
+      aria-labelledby={`tab-${activeTab}`}
+      class="customer-detail-panel"
+    >
     {#if activeTab === 'overview'}
       <div class="card section">
         <div class="section-head">
@@ -2315,6 +2341,7 @@
         </div>
       {/if}
     {/if}
+    </div>
   {/if}
 </div>
 
@@ -2706,6 +2733,34 @@
     align-items: flex-start;
     gap: 0.75rem;
     margin-bottom: 0.75rem;
+  }
+
+  .breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+  }
+
+  .breadcrumbs button {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .breadcrumbs button:hover {
+    color: var(--text-primary);
+  }
+
+  .breadcrumbs b {
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .hero-main {
@@ -3390,6 +3445,9 @@
     }
     .hero-main {
       align-items: flex-start;
+    }
+    .back-button {
+      align-self: flex-start;
     }
     .page-header {
       flex-direction: column;
