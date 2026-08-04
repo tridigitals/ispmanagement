@@ -69,6 +69,9 @@
 
   let loading = $state(true);
   let busyId = $state<string | null>(null);
+  let workOrderMutationBusy = $state(false);
+  let loadSequence = 0;
+  let detailContextSequence = 0;
   let creatingInvoiceId = $state<string | null>(null);
   let rows = $state<InstallationWorkOrderView[]>([]);
   let team = $state<TeamMember[]>([]);
@@ -185,6 +188,18 @@
   const CANCEL_REASON_MIN = 10;
   const INSTALLATION_REFRESH_SIGNAL_KEY = 'nm_installation_work_order_refresh';
   let lastHandledRefreshSignalTs = $state(0);
+  const installationMutationBusy = $derived(
+    Boolean(
+      workOrderMutationBusy ||
+        creatingInvoiceId ||
+        uploadingPhotos ||
+        savingInstallationPppoe ||
+        savingInstallationDhcp ||
+        savingInstallationAssets ||
+        creatingInstallationQuickAsset ||
+        rescheduleDecisionBusy,
+    ),
+  );
 
   const filteredRows = $derived.by(() => {
     return filterAndSortInstallationRows(rows, {
@@ -332,12 +347,14 @@
   }
 
   async function loadAll() {
+    const requestSequence = ++loadSequence;
     loading = true;
     try {
       const [workOrders, members] = await Promise.all([
         api.workOrders.list({ include_closed: true, limit: 300 }),
         canManageWorkOrders ? api.workOrders.assignees().catch(() => [] as TeamMember[]) : Promise.resolve([] as TeamMember[]),
       ]);
+      if (requestSequence !== loadSequence) return;
       rows = workOrders;
       team = members;
 
@@ -353,10 +370,12 @@
           rescheduleRequest = null;
         }
       }
-    } catch (e: any) {
-      toast.error(e?.message || tr('admin.network.installations.toasts.load_failed', 'Failed to load installation work orders'));
+    } catch {
+      if (requestSequence === loadSequence) {
+        toast.error(tr('admin.network.installations.toasts.load_failed', 'Failed to load installation work orders'));
+      }
     } finally {
-      loading = false;
+      if (requestSequence === loadSequence) loading = false;
     }
   }
 
@@ -422,8 +441,9 @@
   }
 
   async function claimWorkOrder(row: InstallationWorkOrderView) {
-    if (!canTakeRow(row)) return;
+    if (!canTakeRow(row) || installationMutationBusy) return;
     busyId = row.id;
+    workOrderMutationBusy = true;
     try {
       await api.workOrders.claim(row.id);
       toast.success(tr('admin.network.installations.claim_ok', 'Work order taken'));
@@ -436,12 +456,14 @@
       toast.error(e?.message || tr('admin.network.installations.claim_fail', 'Failed to take work order'));
     } finally {
       busyId = null;
+      workOrderMutationBusy = false;
     }
   }
 
   async function releaseWorkOrder(row: InstallationWorkOrderView) {
-    if (!canReleaseRow(row)) return;
+    if (!canReleaseRow(row) || installationMutationBusy) return;
     busyId = row.id;
+    workOrderMutationBusy = true;
     try {
       await api.workOrders.release(row.id);
       toast.success(tr('admin.network.installations.release_ok', 'Assignee released'));
@@ -456,6 +478,7 @@
       );
     } finally {
       busyId = null;
+      workOrderMutationBusy = false;
     }
   }
 
@@ -468,6 +491,7 @@
     action: 'start' | 'complete' | 'cancel' | 'reopen',
     notes?: string,
   ): Promise<boolean> {
+    if (installationMutationBusy) return false;
     if (action === 'start' && !isPlanReady(row.assigned_to || '', row.scheduled_at || '')) {
       toast.error(tr('admin.network.installations.plan_required', 'Set assignee and schedule before starting.'));
       return false;
@@ -482,6 +506,7 @@
       return false;
     }
     busyId = row.id;
+    workOrderMutationBusy = true;
     try {
       if (action === 'start') await api.workOrders.start(row.id, notes);
       if (action === 'complete') {
@@ -512,10 +537,12 @@
       return false;
     } finally {
       busyId = null;
+      workOrderMutationBusy = false;
     }
   }
 
   function openCancelDialog(row: InstallationWorkOrderView) {
+    if (installationMutationBusy) return;
     void ensureInstallationDetailModules();
     cancelTarget = row;
     cancelReason = buildDefaultInstallationCancelReason();
@@ -523,6 +550,7 @@
   }
 
   function openQuickAssignDialog(row: InstallationWorkOrderView) {
+    if (installationMutationBusy) return;
     quickAssignTarget = row;
     quickAssignAssignee = row.assigned_to || '';
     quickAssignOpen = true;
@@ -535,7 +563,7 @@
   }
 
   async function confirmQuickAssign() {
-    if (!quickAssignTarget) return;
+    if (!quickAssignTarget || installationMutationBusy) return;
     const target = quickAssignTarget;
     const assignedTo = quickAssignAssignee.trim();
     if (!assignedTo) {
@@ -544,6 +572,7 @@
     }
 
     busyId = target.id;
+    workOrderMutationBusy = true;
     try {
       await api.workOrders.assign(target.id, {
         assigned_to: assignedTo,
@@ -559,6 +588,7 @@
       toast.error(e?.message || tr('admin.network.installations.toasts.assign_failed', 'Assign failed'));
     } finally {
       busyId = null;
+      workOrderMutationBusy = false;
     }
   }
 
@@ -583,6 +613,7 @@
   }
 
   function openDetail(row: InstallationWorkOrderView) {
+    detailContextSequence += 1;
     activeRow = row;
     formAssignee = row.assigned_to || '';
     formSchedule = row.scheduled_at ? toLocalInputValue(row.scheduled_at) : '';
@@ -687,19 +718,21 @@
       timelineRows = [];
       return;
     }
+    const contextSequence = detailContextSequence;
     timelineLoading = true;
     try {
       const res = await api.audit.listTenant(1, 30, {
         resource: 'installation_work_orders',
         resource_id: workOrderId,
       });
+      if (contextSequence !== detailContextSequence || activeRow?.id !== workOrderId) return;
       timelineRows = (res?.data || []).filter((log) =>
         `${log.action || ''}`.toUpperCase().startsWith('WORK_ORDER_'),
       );
     } catch {
-      timelineRows = [];
+      if (contextSequence === detailContextSequence) timelineRows = [];
     } finally {
-      timelineLoading = false;
+      if (contextSequence === detailContextSequence) timelineLoading = false;
     }
   }
 
@@ -708,14 +741,17 @@
       rescheduleRequest = null;
       return;
     }
+    const contextSequence = detailContextSequence;
     rescheduleLoading = true;
     try {
-      rescheduleRequest = await api.workOrders.getRescheduleRequest(workOrderId);
-      rescheduleOverrideAt = toLocalInputValue(rescheduleRequest?.requested_schedule_at || '');
+      const request = await api.workOrders.getRescheduleRequest(workOrderId);
+      if (contextSequence !== detailContextSequence || activeRow?.id !== workOrderId) return;
+      rescheduleRequest = request;
+      rescheduleOverrideAt = toLocalInputValue(request?.requested_schedule_at || '');
     } catch {
-      rescheduleRequest = null;
+      if (contextSequence === detailContextSequence) rescheduleRequest = null;
     } finally {
-      rescheduleLoading = false;
+      if (contextSequence === detailContextSequence) rescheduleLoading = false;
     }
   }
 
@@ -776,6 +812,7 @@
   }
 
   async function loadInstallationPppoeContext(row: InstallationWorkOrderView) {
+    const contextSequence = detailContextSequence;
     loadingInstallationPppoe = true;
     loadingInstallationDhcp = true;
     installationSubscription = null;
@@ -822,6 +859,7 @@
           })
           .catch(() => ({ data: [] as DhcpStaticServicePublic[] })),
       ]);
+      if (contextSequence !== detailContextSequence || activeRow?.id !== row.id) return;
       const subscription =
         ((subRes?.data || []) as CustomerSubscriptionView[]).find((item) => item.id === row.subscription_id) ||
         fallbackSubscription;
@@ -840,11 +878,15 @@
       const packageId = subscription?.package_id || row.package_id || installationPppoeAccount?.package_id || '';
       let routerId = explicitRouterId;
       if (routerId) {
-        installationPppoeMappings = await api.ispPackages.routerMappings.list({
+        const mappings = await api.ispPackages.routerMappings.list({
           router_id: routerId,
         });
+        if (contextSequence !== detailContextSequence || activeRow?.id !== row.id) return;
+        installationPppoeMappings = mappings;
       } else if (packageId) {
-        installationPppoeMappings = await api.ispPackages.routerMappings.list();
+        const mappings = await api.ispPackages.routerMappings.list();
+        if (contextSequence !== detailContextSequence || activeRow?.id !== row.id) return;
+        installationPppoeMappings = mappings;
         routerId = resolveInstallationInternetTestRouterId({
           explicitRouterId,
           packageId,
@@ -854,9 +896,12 @@
 
       if (routerId) {
         try {
-          installationManagedRadiusSetup = await api.mikrotik.routers.managedRadiusSetup(routerId);
+          const setup = await api.mikrotik.routers.managedRadiusSetup(routerId);
+          if (contextSequence !== detailContextSequence || activeRow?.id !== row.id) return;
+          installationManagedRadiusSetup = setup;
           installationManagedRadiusLoadError = '';
         } catch {
+          if (contextSequence !== detailContextSequence || activeRow?.id !== row.id) return;
           installationManagedRadiusSetup = null;
           installationManagedRadiusLoadError = tr(
             'admin.network.installations.managed_radius_load_failed',
@@ -892,15 +937,20 @@
         installationPppoeAccount?.account_source === 'managed_radius' ? 'managed_radius' : 'router',
         nextTargetOptions,
       );
-    } catch (e: any) {
-      toast.error(e?.message || tr('admin.network.installations.toasts.pppoe_form_prepare_failed', 'Failed to prepare PPPoE installation form'));
+    } catch {
+      if (contextSequence === detailContextSequence) {
+        toast.error(tr('admin.network.installations.toasts.pppoe_form_prepare_failed', 'Failed to prepare PPPoE installation form'));
+      }
     } finally {
-      loadingInstallationPppoe = false;
-      loadingInstallationDhcp = false;
+      if (contextSequence === detailContextSequence) {
+        loadingInstallationPppoe = false;
+        loadingInstallationDhcp = false;
+      }
     }
   }
 
   async function loadInstallationAssetContext(row: InstallationWorkOrderView) {
+    const contextSequence = detailContextSequence;
     loadingInstallationAssets = true;
     installationAssetRows = [];
     installationTerminalAssetId = '';
@@ -908,6 +958,7 @@
     installationAssetStepComplete = false;
     try {
       const result = await api.networkAssets.list({ page: 1, per_page: 500 });
+      if (contextSequence !== detailContextSequence || activeRow?.id !== row.id) return;
       installationAssetRows = result.data || [];
       const binding = resolveInstallationAssetBinding(installationAssetRows, row.id);
       installationTerminalAssetId = binding.terminal_asset_id;
@@ -917,10 +968,12 @@
           terminal_asset_id: binding.terminal_asset_id,
           parent_asset_id: binding.parent_asset_id,
         });
-    } catch (e: any) {
-      toast.error(e?.message || tr('admin.network.installations.toasts.asset_registry_load_failed', 'Failed to load installation asset registry'));
+    } catch {
+      if (contextSequence === detailContextSequence) {
+        toast.error(tr('admin.network.installations.toasts.asset_registry_load_failed', 'Failed to load installation asset registry'));
+      }
     } finally {
-      loadingInstallationAssets = false;
+      if (contextSequence === detailContextSequence) loadingInstallationAssets = false;
     }
   }
 
@@ -980,7 +1033,7 @@
   }
 
   async function createInstallationQuickAsset() {
-    if (!activeRow) return;
+    if (!activeRow || installationMutationBusy) return;
     const validationError = validateInstallationQuickAssetDraft(installationQuickAssetDraft);
     if (validationError) {
       toast.error(validationError);
@@ -1008,8 +1061,8 @@
       installationAssetStepComplete = false;
       installationQuickAssetOpen = false;
       toast.success(tr('admin.network.installations.toasts.terminal_asset_created', 'Terminal asset created'));
-    } catch (e: any) {
-      toast.error(e?.message || tr('admin.network.installations.toasts.terminal_asset_create_failed', 'Failed to create terminal asset'));
+    } catch {
+      toast.error(tr('admin.network.installations.toasts.terminal_asset_create_failed', 'Failed to create terminal asset'));
     } finally {
       creatingInstallationQuickAsset = false;
     }
@@ -1153,6 +1206,7 @@
   });
 
   async function saveInstallationPppoe() {
+    if (installationMutationBusy) return;
     const row = activeRow;
     const subscription = installationSubscription;
     const mapping = installationPppoeMapping;
@@ -1248,15 +1302,15 @@
             )
           : tr('admin.network.installations.pppoe_applied', 'PPPoE account applied to router'),
       );
-    } catch (e: any) {
-      toast.error(e?.message || tr('admin.network.installations.toasts.test_account_save_failed', 'Failed to save test account'));
+    } catch {
+      toast.error(tr('admin.network.installations.toasts.test_account_save_failed', 'Failed to save test account'));
     } finally {
       savingInstallationPppoe = false;
     }
   }
 
   async function applyInstallationPppoe() {
-    if (!installationPppoeAccount || !activeRow) return;
+    if (!installationPppoeAccount || !activeRow || installationMutationBusy) return;
     savingInstallationPppoe = true;
     try {
       const applied = await api.pppoe.accounts.apply(installationPppoeAccount.id, {
@@ -1273,14 +1327,15 @@
             )
           : tr('admin.network.installations.pppoe_applied', 'PPPoE account applied to router'),
       );
-    } catch (e: any) {
-      toast.error(e?.message || tr('admin.network.installations.toasts.pppoe_apply_failed', 'Failed to apply PPPoE account'));
+    } catch {
+      toast.error(tr('admin.network.installations.toasts.pppoe_apply_failed', 'Failed to apply PPPoE account'));
     } finally {
       savingInstallationPppoe = false;
     }
   }
 
   async function saveInstallationDhcp() {
+    if (installationMutationBusy) return;
     const row = activeRow;
     const subscription = installationSubscription;
     const routerId =
@@ -1397,15 +1452,15 @@
       checkPppoe = true;
       await savePlan();
       toast.success(tr('admin.network.installations.toasts.dhcp_applied', 'DHCP static lease applied to router'));
-    } catch (e: any) {
-      toast.error(e?.message || tr('admin.network.installations.toasts.dhcp_save_failed', 'Failed to save DHCP static service'));
+    } catch {
+      toast.error(tr('admin.network.installations.toasts.dhcp_save_failed', 'Failed to save DHCP static service'));
     } finally {
       savingInstallationDhcp = false;
     }
   }
 
   async function applyInstallationDhcp() {
-    if (!installationDhcpService || !activeRow) return;
+    if (!installationDhcpService || !activeRow || installationMutationBusy) return;
     savingInstallationDhcp = true;
     try {
       const applied = await api.dhcpStatic.services.apply(installationDhcpService.id, {
@@ -1415,8 +1470,8 @@
       checkPppoe = true;
       await savePlan();
       toast.success(tr('admin.network.installations.toasts.dhcp_applied', 'DHCP static lease applied to router'));
-    } catch (e: any) {
-      toast.error(e?.message || tr('admin.network.installations.toasts.dhcp_apply_failed', 'Failed to apply DHCP static lease'));
+    } catch {
+      toast.error(tr('admin.network.installations.toasts.dhcp_apply_failed', 'Failed to apply DHCP static lease'));
     } finally {
       savingInstallationDhcp = false;
     }
@@ -1500,6 +1555,7 @@
   }
 
   async function uploadInstallationPhotos(event: Event) {
+    if (installationMutationBusy) return;
     const input = event.currentTarget as HTMLInputElement;
     const files = Array.from(input.files || []);
     if (files.length === 0) return;
@@ -1516,13 +1572,12 @@
       toast.success(
         tr('admin.network.installations.photos_uploaded', 'Installation photos uploaded'),
       );
-    } catch (e: any) {
+    } catch {
       toast.error(
-        e?.message ||
-          tr(
-            'admin.network.installations.photos_upload_failed',
-            'Failed to upload installation photos',
-          ),
+        tr(
+          'admin.network.installations.photos_upload_failed',
+          'Failed to upload installation photos',
+        ),
       );
     } finally {
       uploadingPhotos = false;
@@ -1531,6 +1586,7 @@
   }
 
   function removeInstallationPhoto(fileId: string) {
+    if (installationMutationBusy) return;
     installationPhotos = installationPhotos.filter((x) => x.id !== fileId);
   }
 
@@ -1563,15 +1619,16 @@
     else checkSpeed = checked;
   }
 
-  async function savePlan() {
+  async function savePlan(): Promise<boolean> {
     const row = activeRow;
-    if (!row) return;
+    if (!row || workOrderMutationBusy) return false;
     const assigned_to = formAssignee.trim();
     if (!assigned_to) {
       toast.error(tr('admin.network.installations.assign_required', 'Choose assignee first'));
-      return;
+      return false;
     }
     busyId = row.id;
+    workOrderMutationBusy = true;
     try {
       const note = buildPersistedInstallationNotes();
       await api.workOrders.assign(row.id, {
@@ -1583,10 +1640,13 @@
       await loadAll();
       const refreshed = rows.find((x) => x.id === row.id);
       if (refreshed) openDetail(refreshed);
-    } catch (e: any) {
-      toast.error(e?.message || tr('admin.network.installations.toasts.assign_failed', 'Assign failed'));
+      return true;
+    } catch {
+      toast.error(tr('admin.network.installations.toasts.assign_failed', 'Assign failed'));
+      return false;
     } finally {
       busyId = null;
+      workOrderMutationBusy = false;
     }
   }
 
@@ -1745,7 +1805,7 @@
   }
 
   async function continueToFinishStep() {
-    if (!activeRow || savingInstallationAssets) return;
+    if (!activeRow || savingInstallationAssets || installationMutationBusy) return;
     if (installationAssetBindingError) {
       toast.error(installationAssetBindingError);
       return;
@@ -1870,7 +1930,7 @@
   }
 
   async function createInvoiceFromDetail() {
-    if (!activeRow || creatingInvoiceId) return;
+    if (!activeRow || creatingInvoiceId || installationMutationBusy) return;
     creatingInvoiceId = activeRow.id;
     try {
       const invoice = await api.payment.createInvoiceForInstallationWorkOrder(activeRow.id);
@@ -1885,17 +1945,15 @@
       if (refreshed) {
         openDetail(refreshed);
       }
-    } catch (e: any) {
-      toast.error(
-        e?.message || tr('admin.network.installations.invoice_create_failed', 'Failed to create invoice'),
-      );
+    } catch {
+      toast.error(tr('admin.network.installations.invoice_create_failed', 'Failed to create invoice'));
     } finally {
       creatingInvoiceId = null;
     }
   }
 
   async function approveRescheduleFromDetail() {
-    if (!activeRow || !rescheduleRequest || !canReviewReschedule || rescheduleDecisionBusy) return;
+    if (!activeRow || !rescheduleRequest || !canReviewReschedule || installationMutationBusy) return;
     const rowId = activeRow.id;
     rescheduleDecisionBusy = true;
     try {
@@ -1914,15 +1972,15 @@
       await loadAll();
       const refreshed = rows.find((x) => x.id === rowId);
       if (refreshed) openDetail(refreshed);
-    } catch (e: any) {
-      toast.error(e?.message || tr('admin.network.installations.toasts.reschedule_approve_failed', 'Failed to approve reschedule request'));
+    } catch {
+      toast.error(tr('admin.network.installations.toasts.reschedule_approve_failed', 'Failed to approve reschedule request'));
     } finally {
       rescheduleDecisionBusy = false;
     }
   }
 
   async function rejectRescheduleFromDetail() {
-    if (!activeRow || !rescheduleRequest || !canReviewReschedule || rescheduleDecisionBusy) return;
+    if (!activeRow || !rescheduleRequest || !canReviewReschedule || installationMutationBusy) return;
     const rowId = activeRow.id;
     const notes = rescheduleDecisionNotes.trim();
     if (notes.length < 5) {
@@ -1946,8 +2004,8 @@
       await loadAll();
       const refreshed = rows.find((x) => x.id === rowId);
       if (refreshed) openDetail(refreshed);
-    } catch (e: any) {
-      toast.error(e?.message || tr('admin.network.installations.toasts.reschedule_reject_failed', 'Failed to reject reschedule request'));
+    } catch {
+      toast.error(tr('admin.network.installations.toasts.reschedule_reject_failed', 'Failed to reject reschedule request'));
     } finally {
       rescheduleDecisionBusy = false;
     }
@@ -1966,7 +2024,7 @@
           {tr('admin.network.installations.visibility_settings', 'Work Order Visibility')}
         </button>
       {/if}
-      <button class="btn ghost" type="button" onclick={() => void loadAll()}>
+      <button class="btn ghost" type="button" onclick={() => void loadAll()} disabled={loading || installationMutationBusy}>
         <Icon name="refresh-cw" size={14} />
         {tr('common.refresh', 'Refresh')}
       </button>
@@ -2181,13 +2239,13 @@
                     e.stopPropagation();
                     openQuickAssignDialog(row);
                   }}
-                  disabled={busyId === row.id}
+                  disabled={installationMutationBusy}
                 >
                   {row.assigned_to ? tr('common.reassign', 'Reassign') : tr('common.assign', 'Assign')}
                 </button>
               {/if}
               {#if $can('manage', 'work_orders') && isAdminOwner && row.status !== 'completed' && row.status !== 'cancelled'}
-                <button class="btn danger" onclick={(e) => { e.stopPropagation(); openCancelDialog(row); }} disabled={busyId === row.id}>
+                <button class="btn danger" onclick={(e) => { e.stopPropagation(); openCancelDialog(row); }} disabled={installationMutationBusy}>
                   {tr('common.cancel', 'Cancel')}
                 </button>
               {/if}
@@ -2198,7 +2256,7 @@
                     e.stopPropagation();
                     setStatus(row, 'reopen');
                   }}
-                  disabled={busyId === row.id}
+                  disabled={installationMutationBusy}
                 >
                   {tr('common.reopen', 'Reopen')}
                 </button>
@@ -2240,7 +2298,7 @@
           searchPlaceholder={tr('common.search', 'Search')}
           noResultsText={tr('common.no_results', 'No results')}
           width="100%"
-          disabled={busyId === quickAssignTarget.id}
+          disabled={installationMutationBusy}
           maxItems={500}
         />
       </label>
@@ -2252,11 +2310,11 @@
       {/if}
 
       <div class="modal-actions">
-        <button class="btn ghost" type="button" onclick={closeQuickAssignDialog} disabled={busyId === quickAssignTarget.id}>
+        <button class="btn ghost" type="button" onclick={closeQuickAssignDialog} disabled={installationMutationBusy}>
           {tr('common.cancel', 'Cancel')}
         </button>
-        <button class="btn" type="button" onclick={confirmQuickAssign} disabled={busyId === quickAssignTarget.id || !quickAssignAssignee.trim()}>
-          {busyId === quickAssignTarget.id ? tr('common.saving', 'Saving...') : tr('common.assign', 'Assign')}
+        <button class="btn" type="button" onclick={confirmQuickAssign} disabled={installationMutationBusy || !quickAssignAssignee.trim()}>
+          {installationMutationBusy ? tr('common.saving', 'Saving...') : tr('common.assign', 'Assign')}
         </button>
       </div>
     {/if}
@@ -2282,6 +2340,7 @@
       bind:formAssignee
       {assigneeOptions}
       {busyId}
+      {installationMutationBusy}
       bind:formSchedule
       bind:formNotes
       {canReleaseRow}

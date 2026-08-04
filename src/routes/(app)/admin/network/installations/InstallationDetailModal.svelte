@@ -20,6 +20,7 @@
     formAssignee = $bindable(),
     assigneeOptions,
     busyId,
+    installationMutationBusy = false,
     formSchedule = $bindable(),
     formNotes = $bindable(),
     canReleaseRow,
@@ -200,14 +201,14 @@
                 <h3>{tr('admin.network.installations.step_assign', 'Assign Technician')}</h3>
                 <p class="step-help">{tr('admin.network.installations.step_assign_help', 'Pilih teknisi dulu, lalu lanjut ke jadwal.')}</p>
                 {#if isAdminOwner}
-                  <label>{tr('common.assignee', 'Assignee')}<select class="input" bind:value={formAssignee} disabled={busyId === activeRow.id}><option value="">{tr('admin.network.installations.assignee_placeholder', 'Select assignee')}</option>{#each assigneeOptions as opt}<option value={opt.value}>{opt.label}</option>{/each}</select></label>
+                  <label>{tr('common.assignee', 'Assignee')}<select class="input" bind:value={formAssignee} disabled={installationMutationBusy}><option value="">{tr('admin.network.installations.assignee_placeholder', 'Select assignee')}</option>{#each assigneeOptions as opt}<option value={opt.value}>{opt.label}</option>{/each}</select></label>
                   <label class="notes">{tr('common.notes', 'Notes')}<textarea rows="3" bind:value={formNotes} class="input" placeholder={tr('admin.network.installations.notes_placeholder', '...')}></textarea></label>
                   <div class="modal-actions">
-                    {#if canReleaseRow(activeRow)}<button class="btn ghost" onclick={() => activeRow && releaseWorkOrder(activeRow)} disabled={busyId === activeRow.id}>{tr('admin.network.installations.release', 'Release')}</button>{/if}
-                    <button class="btn" onclick={saveAssignStep} disabled={busyId === activeRow.id || !canSaveAssignStep}>{tr('admin.network.installations.save_assign', 'Save & Lanjut ke Jadwal')}</button>
+                    {#if canReleaseRow(activeRow)}<button class="btn ghost" onclick={() => activeRow && releaseWorkOrder(activeRow)} disabled={installationMutationBusy}>{tr('admin.network.installations.release', 'Release')}</button>{/if}
+                    <button class="btn" onclick={saveAssignStep} disabled={installationMutationBusy || !canSaveAssignStep}>{tr('admin.network.installations.save_assign', 'Save & Lanjut ke Jadwal')}</button>
                   </div>
                 {:else}
-                  {#if isUnassigned(activeRow)}<button class="btn ghost" onclick={() => activeRow && claimWorkOrder(activeRow)} disabled={busyId === activeRow.id}>{tr('admin.network.installations.claim_work_order', 'Claim')}</button>
+                  {#if isUnassigned(activeRow)}<button class="btn ghost" onclick={() => activeRow && claimWorkOrder(activeRow)} disabled={installationMutationBusy}>{tr('admin.network.installations.claim_work_order', 'Claim')}</button>
                   {:else if isAssignedToCurrentUser(activeRow)}<p class="helper-text">{tr('admin.network.installations.already_taken_by_you', 'You took this WO.')}</p>
                   {:else}<p class="helper-text">{tr('admin.network.installations.taken_by_other', 'Taken by another technician.')}</p>{/if}
                 {/if}
@@ -215,10 +216,10 @@
                 <h3>{tr('admin.network.installations.step_schedule', 'Atur Jadwal')}</h3>
                 <p class="step-help">{tr('admin.network.installations.step_schedule_help', 'Set installation date/time, then start work order.')}</p>
                 <div class="assigned-summary"><span class="summary-label">{tr('common.assignee', 'Assignee')}</span><strong>{assigneeLabel(formAssignee)}</strong>{#if isAdminOwner}<button class="btn ghost mini" type="button" onclick={resetToAssignStep}>{tr('common.change', 'Change')}</button>{/if}</div>
-                <label>{tr('common.schedule', 'Schedule')}<input type="datetime-local" bind:value={formSchedule} disabled={busyId === activeRow.id} class="input" /></label>
+                <label>{tr('common.schedule', 'Schedule')}<input type="datetime-local" bind:value={formSchedule} disabled={installationMutationBusy} class="input" /></label>
                 <div class="modal-actions">
-                  <button class="btn ghost" onclick={saveScheduleStep} disabled={busyId === activeRow.id || !canSaveScheduleStep}>{tr('admin.network.installations.save_schedule', 'Save Schedule')}</button>
-                  <button class="btn" onclick={startFromDetail} disabled={busyId === activeRow.id || !canStartActive}>{tr('common.start', 'Start')}</button>
+                  <button class="btn ghost" onclick={saveScheduleStep} disabled={installationMutationBusy || !canSaveScheduleStep}>{tr('admin.network.installations.save_schedule', 'Save Schedule')}</button>
+                  <button class="btn" onclick={startFromDetail} disabled={installationMutationBusy || !canStartActive}>{tr('common.start', 'Start')}</button>
                 </div>
               {:else if activeRow.status === 'in_progress'}
                 <h3>{tr('admin.network.installations.in_progress', 'Work Order In Progress')}</h3>
@@ -233,8 +234,8 @@
                 <h3>{activeRow.status === 'completed' ? tr('common.complete', 'Completed') : tr('common.cancelled', 'Cancelled')}</h3>
                 <p class="step-help">{activeRow.status === 'completed' ? (isAwaitingFirstPayment ? tr('admin.network.installations.final_waiting_payment', 'Waiting first payment.') : tr('admin.network.installations.final_completed', 'Completed and active.')) : tr('admin.network.installations.final_cancelled', 'Cancelled.')}</p>
                 {#if selectedTerminalAssetLabel}<div class="activation-ready"><div>{tr('admin.network.installations.terminal_asset_selected', 'Terminal')}: <strong>{selectedTerminalAssetLabel}</strong></div></div>{/if}
-                {#if canCreateMissingInvoice}<button class="btn ghost" type="button" onclick={createInvoiceFromDetail} disabled={creatingInvoiceId === activeRow.id}><Icon name="file-plus" size={14} /> {tr('admin.network.installations.create_invoice', 'Create invoice')}</button>{/if}
-                {#if activeRow.status === 'cancelled'}<label class="notes"><textarea rows="2" bind:value={formNotes} class="input" placeholder="Reopen reason"></textarea></label><button class="btn ghost" onclick={() => activeRow && setStatus(activeRow, 'reopen', formNotes)} disabled={busyId === activeRow.id}>{tr('common.reopen', 'Reopen')}</button>{/if}
+                {#if canCreateMissingInvoice}<button class="btn ghost" type="button" onclick={createInvoiceFromDetail} disabled={installationMutationBusy}><Icon name="file-plus" size={14} /> {tr('admin.network.installations.create_invoice', 'Create invoice')}</button>{/if}
+                {#if activeRow.status === 'cancelled'}<label class="notes"><textarea rows="2" bind:value={formNotes} class="input" placeholder="Reopen reason"></textarea></label><button class="btn ghost" onclick={() => activeRow && setStatus(activeRow, 'reopen', formNotes)} disabled={installationMutationBusy}>{tr('common.reopen', 'Reopen')}</button>{/if}
               {/if}
             </div>
           {/if}
@@ -249,11 +250,11 @@
                 {/each}
               </fieldset>
               <div class="cable-designer-card"><div><strong>{tr('admin.network.installations.cable_route_title', 'Cable Route')}</strong><p>{tr('admin.network.installations.cable_route_desc', 'Draw in Topology Map.')}</p></div><button class="btn ghost" type="button" onclick={openCableDesigner}><Icon name="map-pin" size={14} />{tr('admin.network.installations.open_cable_designer', 'Draw')}</button></div>
-              <section class="photos-card"><div class="photos-head"><strong>{tr('admin.network.installations.photos_title', 'Photos')}</strong><label class="btn ghost upload-btn"><Icon name="image" size={14} />{uploadingPhotos ? tr('common.loading', '...') : tr('admin.network.installations.photos_add', 'Add')}<input type="file" accept="image/*" multiple onchange={uploadInstallationPhotos} disabled={uploadingPhotos} class="hidden-input" /></label></div>
+              <section class="photos-card"><div class="photos-head"><strong>{tr('admin.network.installations.photos_title', 'Photos')}</strong><label class="btn ghost upload-btn"><Icon name="image" size={14} />{uploadingPhotos ? tr('common.loading', '...') : tr('admin.network.installations.photos_add', 'Add')}<input type="file" accept="image/*" multiple onchange={uploadInstallationPhotos} disabled={installationMutationBusy} class="hidden-input" /></label></div>
                 {#if installationPhotos.length > 0}<div class="photo-grid">{#each installationPhotos as file}<article class="photo-item"><img src={getStorageContentUrl(file.id)} alt={file.original_name || 'Photo'} loading="lazy" /><div class="photo-meta"><button class="btn danger mini" type="button" onclick={() => removeInstallationPhoto(file.id)}><Icon name="trash" size={12} /></button></div></article>{/each}</div>{:else}<p class="helper-text">{tr('admin.network.installations.photos_empty', 'No photos yet.')}</p>{/if}
               </section>
               <label class="notes">{tr('common.notes', 'Notes')}<textarea rows="3" bind:value={formNotes} class="input" placeholder={tr('admin.network.installations.notes_on_site_placeholder', '...')}></textarea></label>
-              <div class="modal-actions"><button class="btn ghost" onclick={savePlan} disabled={busyId === activeRow.id}>{tr('admin.network.installations.save_plan', 'Save Plan')}</button></div>
+              <div class="modal-actions"><button class="btn ghost" onclick={savePlan} disabled={installationMutationBusy}>{tr('admin.network.installations.save_plan', 'Save Plan')}</button></div>
             </div>
           {/if}
 
@@ -265,14 +266,14 @@
               <div class="form-grid two-col compact"><label><span class="summary-label">{tr('admin.network.installations.dhcp_server', 'DHCP Server')}</span><input class="input" class:error={!!installationDhcpServerNameError} bind:value={installationDhcpServerName} /></label><label><span class="summary-label">{tr('admin.network.installations.mac_address', 'MAC Address')}</span><input class="input" class:error={!!installationDhcpMacAddressError} bind:value={installationDhcpMacAddress} /></label><label><span class="summary-label">{tr('admin.network.installations.ip_address', 'IP Address')}</span><input class="input" class:error={!!installationDhcpIpAddressError} bind:value={installationDhcpIpAddress} /></label><label><span class="summary-label">{tr('admin.network.installations.queue_mode', 'Queue')}</span><select class="input" bind:value={installationDhcpQueueMode}><option value="none">No queue</option><option value="simple_queue">Simple queue</option></select></label></div>
               {#if installationDhcpQueueMode === 'simple_queue'}<label><span class="summary-label">{tr('admin.network.installations.queue_rate_limit', 'Rate Limit')}</span><input class="input" bind:value={installationDhcpQueueRateLimit} placeholder="20M/20M" /></label>{/if}
               <label><span class="summary-label">{tr('common.comment', 'Comment')}</span><input class="input" bind:value={installationDhcpComment} /></label>
-              <div class="modal-actions"><button class="btn ghost" onclick={saveInstallationDhcp} disabled={savingInstallationDhcp}>{savingInstallationDhcp ? '...' : installationDhcpService ? tr('admin.network.installations.save_reapply', 'Save & Reapply') : tr('admin.network.installations.save_activate', 'Save & Activate')}</button>{#if installationDhcpService}<button class="btn ghost" onclick={applyInstallationDhcp} disabled={savingInstallationDhcp}>{tr('admin.network.installations.reapply', 'Reapply')}</button>{/if}</div>
+              <div class="modal-actions"><button class="btn ghost" onclick={saveInstallationDhcp} disabled={installationMutationBusy}>{savingInstallationDhcp ? '...' : installationDhcpService ? tr('admin.network.installations.save_reapply', 'Save & Reapply') : tr('admin.network.installations.save_activate', 'Save & Activate')}</button>{#if installationDhcpService}<button class="btn ghost" onclick={applyInstallationDhcp} disabled={installationMutationBusy}>{tr('admin.network.installations.reapply', 'Reapply')}</button>{/if}</div>
             {:else}
               <h4>PPPoE</h4>
               <div class="form-grid two-col compact"><label><span class="summary-label">{tr('admin.network.installations.pppoe_username', 'Username')}</span><input class="input" bind:value={installationPppoeUsername} placeholder="pppoe username" /></label><label><span class="summary-label">{tr('admin.network.installations.pppoe_password', 'Password')}</span><input class="input" type="password" bind:value={installationPppoePassword} placeholder="pppoe password" /></label></div>
               {#if installationPppoeTargetOptions.length > 1}<label><span class="summary-label">{tr('admin.network.installations.provision_to', 'Provision to')}</span><select class="input" bind:value={installationPppoeTarget}>{#each installationPppoeTargetOptions as option (option.value)}<option value={option.value} disabled={option.disabled}>{option.label}</option>{/each}</select></label>{/if}
               <label><span class="summary-label">{tr('common.comment', 'Comment')}</span><input class="input" bind:value={installationPppoeComment} /></label>
               {#if installationPppoeAccount}<div class="pppoe-existing"><span>{tr('admin.network.installations.pppoe_existing', 'Existing:')}</span><strong>{installationPppoeAccount.username}</strong></div>{/if}
-              <div class="modal-actions"><button class="btn ghost" onclick={saveInstallationPppoe} disabled={savingInstallationPppoe}>{savingInstallationPppoe ? '...' : installationPppoeAccount ? tr('admin.network.installations.save_reapply', 'Save & Reapply') : tr('admin.network.installations.save_activate', 'Save & Activate')}</button>{#if installationPppoeAccount}<button class="btn ghost" onclick={applyInstallationPppoe} disabled={savingInstallationPppoe}>{tr('admin.network.installations.reapply', 'Reapply')}</button>{/if}</div>
+              <div class="modal-actions"><button class="btn ghost" onclick={saveInstallationPppoe} disabled={installationMutationBusy}>{savingInstallationPppoe ? '...' : installationPppoeAccount ? tr('admin.network.installations.save_reapply', 'Save & Reapply') : tr('admin.network.installations.save_activate', 'Save & Activate')}</button>{#if installationPppoeAccount}<button class="btn ghost" onclick={applyInstallationPppoe} disabled={installationMutationBusy}>{tr('admin.network.installations.reapply', 'Reapply')}</button>{/if}</div>
             {/if}
             <h4 class="mt">{tr('admin.network.installations.step_assets', 'Asset Binding')}</h4>
             {#if loadingInstallationAssets}<p class="helper-text">Loading...</p>
@@ -283,11 +284,11 @@
               {#if installationQuickAssetOpen}
                 <section class="quick-asset-card"><div class="quick-asset-head"><strong>{tr('admin.network.installations.quick_create_title', 'Quick Create')}</strong><button class="btn ghost mini" type="button" onclick={closeInstallationQuickAsset}>{tr('common.close', 'Close')}</button></div>
                   <div class="form-grid two-col compact"><label class="summary-field">{tr('admin.network.installations.quick_asset_type', 'Type')}<select class="input" value={installationQuickAssetDraft.asset_type} onchange={(event) => updateInstallationQuickAssetField('asset_type', (event.currentTarget as HTMLSelectElement).value)}><option value="ont">ONT</option><option value="onu">ONU</option></select></label><label class="summary-field">{tr('admin.network.installations.quick_asset_name', 'Name')}<input class="input" value={installationQuickAssetDraft.name} oninput={(event) => updateInstallationQuickAssetField('name', (event.currentTarget as HTMLInputElement).value)} /></label><label class="summary-field">{tr('admin.network.installations.quick_asset_serial', 'Serial')}<input class="input" value={installationQuickAssetDraft.serial_number} oninput={(event) => updateInstallationQuickAssetField('serial_number', (event.currentTarget as HTMLInputElement).value)} /></label><label class="summary-field">{tr('admin.network.installations.quick_asset_code', 'Code')}<input class="input" value={installationQuickAssetDraft.code} oninput={(event) => updateInstallationQuickAssetField('code', (event.currentTarget as HTMLInputElement).value)} /></label></div>
-                  <div class="modal-actions"><button class="btn ghost" type="button" onclick={closeInstallationQuickAsset}>{tr('common.cancel', 'Cancel')}</button><button class="btn" type="button" onclick={createInstallationQuickAsset} disabled={!installationQuickAssetCanSubmit}>{creatingInstallationQuickAsset ? '...' : tr('admin.network.installations.quick_create_submit', 'Create')}</button></div>
+                  <div class="modal-actions"><button class="btn ghost" type="button" onclick={closeInstallationQuickAsset}>{tr('common.cancel', 'Cancel')}</button><button class="btn" type="button" onclick={createInstallationQuickAsset} disabled={installationMutationBusy || !installationQuickAssetCanSubmit}>{creatingInstallationQuickAsset ? '...' : tr('admin.network.installations.quick_create_submit', 'Create')}</button></div>
                 </section>
               {/if}
             {/if}
-            {#if activeRow.status === 'in_progress'}<div class="modal-actions"><button class="btn success" onclick={completeFromDetail} disabled={busyId === activeRow.id || !canCompleteActive}>{tr('common.complete', 'Complete')}</button></div>{/if}
+            {#if activeRow.status === 'in_progress'}<div class="modal-actions"><button class="btn success" onclick={completeFromDetail} disabled={installationMutationBusy || !canCompleteActive}>{tr('common.complete', 'Complete')}</button></div>{/if}
           </div>
 
         {:else if activeTab === 'timeline'}
@@ -295,7 +296,7 @@
             <div class="wizard-card"><h3>{tr('admin.network.installations.reschedule_pending_title', 'Reschedule Request')}</h3>
               <div class="reschedule-request-card"><div class="reschedule-request-head"><strong>Pending</strong><span>{formatDateTime(rescheduleRequest.created_at)}</span></div><div><strong>{tr('common.requested_by', 'By')}:</strong> {rescheduleRequest.requested_by_name || '-'}</div><div><strong>{tr('common.schedule', 'New')}:</strong> {formatDateTime(rescheduleRequest.requested_schedule)}</div>
                 {#if rescheduleRequest.reason}<p>{rescheduleRequest.reason}</p>{/if}
-                {#if canReviewReschedule}<label><span class="summary-label">{tr('admin.network.installations.override_schedule_optional', 'Override (optional)')}</span><input type="datetime-local" class="input" bind:value={rescheduleOverrideAt} disabled={rescheduleDecisionBusy} /></label><label><span class="summary-label">{tr('common.notes', 'Notes')}</span><textarea rows="2" class="input" bind:value={rescheduleDecisionNotes} disabled={rescheduleDecisionBusy}></textarea></label><div class="modal-actions"><button class="btn ghost" onclick={approveRescheduleFromDetail} disabled={rescheduleDecisionBusy}>{tr('common.approve', 'Approve')}</button><button class="btn danger" onclick={rejectRescheduleFromDetail} disabled={rescheduleDecisionBusy}>{tr('common.reject', 'Reject')}</button></div>{/if}
+                {#if canReviewReschedule}<label><span class="summary-label">{tr('admin.network.installations.override_schedule_optional', 'Override (optional)')}</span><input type="datetime-local" class="input" bind:value={rescheduleOverrideAt} disabled={installationMutationBusy} /></label><label><span class="summary-label">{tr('common.notes', 'Notes')}</span><textarea rows="2" class="input" bind:value={rescheduleDecisionNotes} disabled={installationMutationBusy}></textarea></label><div class="modal-actions"><button class="btn ghost" onclick={approveRescheduleFromDetail} disabled={installationMutationBusy}>{tr('common.approve', 'Approve')}</button><button class="btn danger" onclick={rejectRescheduleFromDetail} disabled={installationMutationBusy}>{tr('common.reject', 'Reject')}</button></div>{/if}
               </div>
             </div>
           {/if}
