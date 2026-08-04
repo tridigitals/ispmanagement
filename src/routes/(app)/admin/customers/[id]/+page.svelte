@@ -107,6 +107,7 @@
   // Subscriptions
   let subscriptions = $state<CustomerSubscriptionView[]>([]);
   let loadingSubscriptions = $state(false);
+  let subscriptionsLoadSequence = 0;
   let lifecycleObservability = $state<CustomerLifecycleObservability | null>(null);
   let loadingLifecycleObservability = $state(false);
   let timelineLogs = $state<AuditLog[]>([]);
@@ -1109,6 +1110,7 @@
   async function loadSubscriptions(options: { force?: boolean } = {}) {
     const key = getCustomerResourceKey();
     if (!options.force && subscriptionsResourceLoader.hasLoaded(key)) return;
+    const loadSequence = ++subscriptionsLoadSequence;
     loadingSubscriptions = true;
     loadingLifecycleObservability = true;
     try {
@@ -1132,10 +1134,12 @@
         lifecycleObservability = result.value.lifecycle;
       }
     } catch (e: any) {
-      toast.error(`Failed to load subscriptions: ${e?.message || e}`);
+      toast.error(e?.message || 'Failed to load subscriptions');
     } finally {
-      loadingSubscriptions = false;
-      loadingLifecycleObservability = false;
+      if (loadSequence === subscriptionsLoadSequence) {
+        loadingSubscriptions = false;
+        loadingLifecycleObservability = false;
+      }
     }
   }
 

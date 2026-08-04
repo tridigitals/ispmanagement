@@ -1,6 +1,7 @@
 export type CustomerDetailResourceLoadResult<T> =
   | { status: 'cached' }
-  | { status: 'loaded'; value: T };
+  | { status: 'loaded'; value: T }
+  | { status: 'stale' };
 
 type LoadOptions = {
   force?: boolean;
@@ -45,6 +46,9 @@ export function createCustomerDetailResourceLoader<T>() {
       }
 
       const requestId = ++lastRequestId;
+      if (options.force && loadedKey === key) {
+        loadedKey = null;
+      }
       if (options.force && inFlight?.key === key) {
         inFlight = null;
       }
@@ -53,8 +57,9 @@ export function createCustomerDetailResourceLoader<T>() {
           const value = await fetcher();
           if (inFlight?.key === key && inFlight.requestId === requestId) {
             loadedKey = key;
+            return { status: 'loaded', value } as const;
           }
-          return { status: 'loaded', value } as const;
+          return { status: 'stale' } as const;
         } finally {
           if (inFlight?.key === key && inFlight.requestId === requestId) {
             inFlight = null;

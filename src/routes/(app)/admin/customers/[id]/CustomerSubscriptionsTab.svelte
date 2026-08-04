@@ -35,12 +35,12 @@
       <p class="subtitle">{$t('admin.customers.subscriptions.subtitle')}</p>
     </div>
     <div class="header-actions">
-      <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingSubscriptions}>
+      <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingSubscriptions || subscriptionMutationBusy}>
         <Icon name="refresh-cw" size={16} />
         {$t('common.refresh')}
       </button>
       {#if canManageCustomers}
-        <button class="btn btn-primary" onclick={onAdd}>
+        <button class="btn btn-primary" onclick={onAdd} disabled={subscriptionMutationBusy}>
           <Icon name="plus" size={16} />
           {$t('common.add')}
         </button>

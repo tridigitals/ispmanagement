@@ -62,8 +62,22 @@ describe('customer detail resource loader', () => {
     resolveFirst(1);
 
     await expect(freshRequest).resolves.toEqual({ status: 'loaded', value: 2 });
-    await expect(staleRequest).resolves.toEqual({ status: 'loaded', value: 1 });
+    await expect(staleRequest).resolves.toEqual({ status: 'stale' });
     expect(await loader.load('cust-1', fetcher)).toEqual({ status: 'cached' });
     expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it('clears cache before forced fetch so failure can be retried', async () => {
+    const loader = createCustomerDetailResourceLoader<number>();
+    const fetcher = vi
+      .fn<() => Promise<number>>()
+      .mockResolvedValueOnce(1)
+      .mockRejectedValueOnce(new Error('refresh failed'))
+      .mockResolvedValueOnce(3);
+
+    await loader.load('cust-1', fetcher);
+    await expect(loader.load('cust-1', fetcher, { force: true })).rejects.toThrow('refresh failed');
+    await expect(loader.load('cust-1', fetcher)).resolves.toEqual({ status: 'loaded', value: 3 });
+    expect(fetcher).toHaveBeenCalledTimes(3);
   });
 });
