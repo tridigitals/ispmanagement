@@ -93,7 +93,9 @@
               <button
                 type="button"
                 role="menuitemradio"
+                id={`tab-${item.id}`}
                 aria-checked={activeId === item.id}
+                aria-controls={item.panelId}
                 class={`menu-item ${activeId === item.id ? 'active' : ''}`.trim()}
                 disabled={item.disabled}
                 onclick={() => selectTab(item.id, item.disabled)}

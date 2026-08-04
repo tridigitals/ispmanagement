@@ -1173,8 +1173,8 @@
     });
   }
 
-  function selectCustomerTab(event: CustomEvent<string>) {
-    const next = normalizeCustomerDetailTab(event.detail, customerDetailAccess);
+  function selectCustomerTab(tab: string) {
+    const next = normalizeCustomerDetailTab(tab, customerDetailAccess);
     activeTab = next;
     const url = new URL($page.url);
     if (next === 'overview') url.searchParams.delete('tab');
@@ -1238,7 +1238,7 @@
       toast.success(
         get(t)('admin.customers.billing.toasts.generated') || 'Invoice generated successfully',
       );
-      activeTab = 'billing';
+      selectCustomerTab('billing');
       await loadBillingInvoices({ force: true });
     } catch (e: any) {
       toast.error(
@@ -1963,7 +1963,7 @@
     {isMobile}
     priorityCount={2}
     ariaLabel={$t('admin.customers.detail.title')}
-    on:change={selectCustomerTab}
+    on:change={(event) => selectCustomerTab(event.detail)}
   />
 
   {#if loadingCustomer}
