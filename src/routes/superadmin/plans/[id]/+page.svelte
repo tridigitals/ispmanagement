@@ -36,8 +36,8 @@
 
   let activeTab = $state('general');
   const planEditorTabs = $derived.by(() => [
-    { id: 'general', label: $t('superadmin.plans.editor.tabs.general') || 'General' },
-    { id: 'features', label: $t('superadmin.plans.editor.tabs.features') || 'Features & Limits' },
+    { id: 'general', label: $t('superadmin.plans.editor.tabs.general') || 'General', panelId: 'plan-editor-panel' },
+    { id: 'features', label: $t('superadmin.plans.editor.tabs.features') || 'Features & Limits', panelId: 'plan-editor-panel' },
   ]);
 
   $effect(() => {
@@ -181,7 +181,7 @@
   <div class="page-head">
     <div class="page-head-copy">
       <div class="crumbs">
-        <button type="button" onclick={() => goto('/superadmin/plans')}>
+        <button type="button" onclick={() => goto('/superadmin')}>
           {$t('superadmin.plans.crumbs.root') || 'Superadmin'}
         </button>
         <span aria-hidden="true">›</span>
@@ -230,7 +230,13 @@
       ariaLabel={$t('superadmin.plans.editor.aria.tabs')}
     />
 
-    <div class="detail-panel" role="tabpanel" aria-label={$t('superadmin.plans.editor.aria.tabs')}>
+    <div
+      id="plan-editor-panel"
+      class="detail-panel"
+      role="tabpanel"
+      aria-labelledby={`tab-${activeTab}`}
+      aria-label={$t('superadmin.plans.editor.aria.tabs')}
+    >
       {#if activeTab === 'general'}
         <div class="form-grid fade-in">
           <div class="form-group">

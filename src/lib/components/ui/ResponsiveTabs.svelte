@@ -8,6 +8,7 @@
     label: string;
     count?: string | number | null;
     disabled?: boolean;
+    panelId?: string;
   };
 
   let {
@@ -58,8 +59,10 @@
         <button
           type="button"
           role="tab"
+          id={`tab-${item.id}`}
           class={`tab-chip ${activeId === item.id ? 'active' : ''}`.trim()}
           aria-selected={activeId === item.id}
+          aria-controls={item.panelId}
           disabled={item.disabled}
           onclick={() => selectTab(item.id, item.disabled)}
         >

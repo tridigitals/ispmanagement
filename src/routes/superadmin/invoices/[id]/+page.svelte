@@ -160,7 +160,7 @@
   <div class="page-head">
     <div class="page-head-copy">
       <div class="crumbs">
-        <button type="button" onclick={() => goto('/superadmin/invoices')}>
+        <button type="button" onclick={() => goto('/superadmin')}>
           {$t('superadmin.invoices.crumbs.root') || 'Superadmin'}
         </button>
         <span aria-hidden="true">›</span>
