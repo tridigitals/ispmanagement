@@ -80,4 +80,23 @@ describe('customer detail resource loader', () => {
     await expect(loader.load('cust-1', fetcher)).resolves.toEqual({ status: 'loaded', value: 3 });
     expect(fetcher).toHaveBeenCalledTimes(3);
   });
+
+  it('suppresses rejection from a superseded request', async () => {
+    const loader = createCustomerDetailResourceLoader<number>();
+    let rejectFirst!: (error: Error) => void;
+    const first = new Promise<number>((_resolve, reject) => {
+      rejectFirst = reject;
+    });
+    const fetcher = vi
+      .fn<() => Promise<number>>()
+      .mockReturnValueOnce(first)
+      .mockResolvedValueOnce(2);
+
+    const staleRequest = loader.load('cust-1', fetcher);
+    const freshRequest = loader.load('cust-1', fetcher, { force: true });
+    rejectFirst(new Error('stale failure'));
+
+    await expect(freshRequest).resolves.toEqual({ status: 'loaded', value: 2 });
+    await expect(staleRequest).resolves.toEqual({ status: 'stale' });
+  });
 });

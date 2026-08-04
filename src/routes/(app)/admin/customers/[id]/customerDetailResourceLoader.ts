@@ -60,6 +60,11 @@ export function createCustomerDetailResourceLoader<T>() {
             return { status: 'loaded', value } as const;
           }
           return { status: 'stale' } as const;
+        } catch (error) {
+          if (inFlight?.key === key && inFlight.requestId === requestId) {
+            throw error;
+          }
+          return { status: 'stale' } as const;
         } finally {
           if (inFlight?.key === key && inFlight.requestId === requestId) {
             inFlight = null;
