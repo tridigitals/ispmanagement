@@ -44,12 +44,13 @@
             class="pppoe-search-input"
             bind:value={pppoeQuery}
             placeholder={$t('admin.customers.pppoe.search')}
+            disabled={Boolean(applyingPppoe || deletingPppoe || savingPppoe)}
             oninput={() => void onRefresh()}
           />
         </label>
       {/if}
       {#if pppoeToolbar.showRefresh}
-        <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingPppoe}>
+        <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingPppoe || Boolean(applyingPppoe || deletingPppoe || savingPppoe)}>
           <Icon name="refresh-cw" size={16} />
           {$t('common.refresh')}
         </button>
