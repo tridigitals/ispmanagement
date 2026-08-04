@@ -1238,14 +1238,23 @@
         "name": "Plan Name",
         "slug": "Slug (Code)",
         "description": "Description",
-        "sort_order": "Sort Order"
+        "sort_order": "Sort Order",
+        "monthly_price": "Monthly Price",
+        "yearly_price": "Yearly Price",
+        "active": "Active (Visible to users)",
+        "default_plan": "Default Plan (for new tenants)"
       },
       "placeholders": {
         "name": "e.g. Pro Plan",
         "slug": "e.g. pro-plan"
       },
       "help": {
-        "slug": "Unique identifier used in code/API."
+        "slug": "Unique identifier used in code/API.",
+        "preview": "Preview",
+        "month": "mo",
+        "year": "yr",
+        "base_currency_prefix": "Plan prices are stored in the base currency",
+        "fx_conversion": "If a tenant uses a different currency, invoices will be auto-converted using the configured FX provider."
       },
       "toasts": {
         "created": "Plan created successfully",

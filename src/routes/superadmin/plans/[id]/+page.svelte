@@ -177,9 +177,20 @@
   const baseLocale = $derived.by(() => String($appSettings?.default_locale || 'en-US'));
 </script>
 
-<div class="plan-detail-page">
-  <div class="page-header">
-    <div class="header-content">
+<div class="sa-plan-detail fade-in">
+  <div class="page-head">
+    <div class="page-head-copy">
+      <div class="crumbs">
+        <button type="button" onclick={() => goto('/superadmin/plans')}>
+          {$t('superadmin.plans.crumbs.root') || 'Superadmin'}
+        </button>
+        <span aria-hidden="true">›</span>
+        <button type="button" onclick={() => goto('/superadmin/plans')}>
+          {$t('superadmin.plans.crumbs.plans') || 'Plans'}
+        </button>
+        <span aria-hidden="true">›</span>
+        <b>{isNew ? ($t('superadmin.plans.editor.head.new') || 'New Plan') : planData.name}</b>
+      </div>
       <h1>
         {isNew
           ? $t('superadmin.plans.editor.header.create_title') || 'Create New Plan'
@@ -187,21 +198,24 @@
               values: { name: planData.name },
             }) || `Edit ${planData.name}`}
       </h1>
-      <div
-        class="actions"
-        aria-label={$t('superadmin.plans.editor.aria.actions')}
-      >
-        <button class="btn btn-secondary" type="button" onclick={() => goto('/superadmin/plans')}>
-          {$t('common.cancel')}
-        </button>
-        <button class="btn btn-primary" onclick={savePlan} disabled={saving} type="button">
-          {#if saving}
-            {$t('common.saving')}
-          {:else}
-            {$t('superadmin.plans.editor.actions.save')}
-          {/if}
-        </button>
-      </div>
+      <p class="page-sub">
+        {$t('superadmin.plans.subtitle') || 'Manage pricing tiers and plan status'}
+      </p>
+    </div>
+    <div class="head-actions" aria-label={$t('superadmin.plans.editor.aria.actions')}>
+      <button class="btn btn-secondary" type="button" onclick={() => goto('/superadmin/plans')}>
+        <Icon name="arrow-left" size={16} />
+        {$t('common.cancel')}
+      </button>
+      <button class="btn btn-primary" onclick={savePlan} disabled={saving} type="button">
+        {#if saving}
+          <Icon name="loader" size={16} />
+          {$t('common.saving')}
+        {:else}
+          <Icon name="save" size={16} />
+          {$t('superadmin.plans.editor.actions.save')}
+        {/if}
+      </button>
     </div>
   </div>
 
@@ -216,7 +230,7 @@
       ariaLabel={$t('superadmin.plans.editor.aria.tabs')}
     />
 
-    <div class="glass-card" role="tabpanel">
+    <div class="detail-panel" role="tabpanel" aria-label={$t('superadmin.plans.editor.aria.tabs')}>
       {#if activeTab === 'general'}
         <div class="form-grid fade-in">
           <div class="form-group">
@@ -257,7 +271,7 @@
 
           <div class="form-group">
             <label for="price_m">
-              Monthly Price ({baseCurrencyCode})
+              {$t('superadmin.plans.editor.fields.monthly_price') || 'Monthly Price'} ({baseCurrencyCode})
             </label>
             <div class="money-input">
               <input
@@ -269,17 +283,17 @@
               <span class="money-suffix">{baseCurrencyCode}</span>
             </div>
             <small class="hint"
-              >Preview: {formatMoney(planData.price_monthly, {
+              >{$t('superadmin.plans.editor.help.preview') || 'Preview'}: {formatMoney(planData.price_monthly, {
                 currency: baseCurrencyCode,
                 locale: baseLocale,
               })}
-              /mo</small
+              /{$t('superadmin.plans.editor.help.month') || 'mo'}</small
             >
           </div>
 
           <div class="form-group">
             <label for="price_y">
-              Yearly Price ({baseCurrencyCode})
+              {$t('superadmin.plans.editor.fields.yearly_price') || 'Yearly Price'} ({baseCurrencyCode})
             </label>
             <div class="money-input">
               <input
@@ -291,11 +305,11 @@
               <span class="money-suffix">{baseCurrencyCode}</span>
             </div>
             <small class="hint"
-              >Preview: {formatMoney(planData.price_yearly, {
+              >{$t('superadmin.plans.editor.help.preview') || 'Preview'}: {formatMoney(planData.price_yearly, {
                 currency: baseCurrencyCode,
                 locale: baseLocale,
               })}
-              /yr</small
+              /{$t('superadmin.plans.editor.help.year') || 'yr'}</small
             >
           </div>
 
@@ -309,20 +323,19 @@
           <div class="form-group toggle-group">
             <label class="toggle-label">
               <input type="checkbox" bind:checked={planData.is_active} />
-              Active (Visible to users)
+              {$t('superadmin.plans.editor.fields.active') || 'Active (Visible to users)'}
             </label>
             <label class="toggle-label">
               <input type="checkbox" bind:checked={planData.is_default} />
-              Default Plan (for new tenants)
+              {$t('superadmin.plans.editor.fields.default_plan') || 'Default Plan (for new tenants)'}
             </label>
           </div>
 
           <div class="form-group full-width note" role="note">
             <Icon name="info" size={16} />
             <span>
-              Plan prices are stored in the base currency (
-              {baseCurrencyCode}). If a tenant uses a different currency, invoices will be
-              auto-converted using the configured FX provider.
+              {$t('superadmin.plans.editor.help.base_currency_prefix') || 'Plan prices are stored in the base currency'} (
+              {baseCurrencyCode}). {$t('superadmin.plans.editor.help.fx_conversion') || 'If a tenant uses a different currency, invoices will be auto-converted using the configured FX provider.'}
             </span>
           </div>
         </div>
@@ -371,49 +384,81 @@
 </div>
 
 <style>
-  .plan-detail-page {
-    padding: 2rem;
-    max-width: 1000px;
+  .sa-plan-detail {
+    padding: clamp(1rem, 3vw, 2rem);
+    max-width: 1280px;
     margin: 0 auto;
-  }
-
-  .page-header {
-    margin-bottom: 2rem;
-  }
-
-  .header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  h1 {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin: 0;
     color: var(--text-primary);
   }
 
-  .actions {
+  .page-head {
     display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
     gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
   }
 
-  .glass-card {
+  .page-head-copy {
+    min-width: 0;
+  }
+
+  .crumbs {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.35rem;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+  }
+
+  .crumbs button {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .crumbs button:hover {
+    color: var(--text-primary);
+  }
+
+  .crumbs b {
+    color: var(--text-primary);
+    font-weight: 650;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .page-head h1 {
+    margin: 0;
+    font-size: clamp(1.25rem, 2.4vw, 1.55rem);
+    font-weight: 750;
+    letter-spacing: -0.02em;
+  }
+
+  .page-sub {
+    margin: 0.25rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+  }
+
+  .head-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .detail-panel {
     background: var(--bg-surface);
     border-radius: var(--radius-lg);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 2rem;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
-  }
-
-  :global([data-theme='light']) .glass-card {
-    background: var(--bg-surface);
-    border-color: rgba(0, 0, 0, 0.06);
-    box-shadow:
-      0 12px 32px rgba(0, 0, 0, 0.08),
-      0 0 0 1px rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--border-color);
+    padding: clamp(1rem, 2.5vw, 1.75rem);
+    box-shadow: var(--shadow-sm);
   }
 
   .form-grid {
@@ -536,35 +581,22 @@
   }
 
   @media (max-width: 720px) {
-    .plan-detail-page {
+    .sa-plan-detail {
       padding: 1rem;
     }
 
-    .page-header {
-      margin-bottom: 1.25rem;
-    }
-
-    .header-content {
+    .page-head {
       flex-direction: column;
       align-items: flex-start;
     }
 
-    h1 {
-      font-size: 1.35rem;
-    }
-
-    .actions {
+    .head-actions {
       width: 100%;
     }
 
-    .actions :global(.btn) {
+    .head-actions :global(.btn) {
       flex: 1;
       width: 100%;
-    }
-
-    .glass-card {
-      padding: 1.25rem;
-      border-radius: 14px;
     }
 
     .form-grid {

@@ -156,17 +156,31 @@
   }
 </script>
 
-<div class="page-container fade-in">
-  <div class="page-header">
-    <button class="back-btn" onclick={() => goto('/superadmin/invoices')}>
-      <Icon name="arrow-left" size={20} />
+<div class="sa-invoice-detail fade-in">
+  <div class="page-head">
+    <div class="page-head-copy">
+      <div class="crumbs">
+        <button type="button" onclick={() => goto('/superadmin/invoices')}>
+          {$t('superadmin.invoices.crumbs.root') || 'Superadmin'}
+        </button>
+        <span aria-hidden="true">›</span>
+        <button type="button" onclick={() => goto('/superadmin/invoices')}>
+          {$t('superadmin.invoices.crumbs.invoices') || 'Invoices'}
+        </button>
+        <span aria-hidden="true">›</span>
+        <b>{invoice?.invoice_number || invoiceId}</b>
+      </div>
+      <h1>{$t('superadmin.invoices.detail.title')}</h1>
+      <p class="page-sub">{$t('superadmin.invoices.list.subtitle')}</p>
+    </div>
+    <button class="back-btn" type="button" onclick={() => goto('/superadmin/invoices')}>
+      <Icon name="arrow-left" size={16} />
       {$t('superadmin.invoices.detail.back')}
     </button>
-    <h1>{$t('superadmin.invoices.detail.title')}</h1>
   </div>
 
   {#if loading}
-    <div class="loading">
+    <div class="loading" role="status" aria-live="polite">
       {$t('superadmin.invoices.detail.loading')}
     </div>
   {:else if invoice}
@@ -264,14 +278,18 @@
         </h2>
         {#if invoice.proof_attachment}
           <div class="proof-wrapper">
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-            <img
-              src={getProofUrl(invoice.proof_attachment)}
-              alt={$t('superadmin.invoices.payment_proof')}
-              class="proof-img"
+            <button
+              class="proof-button"
+              type="button"
+              aria-label={$t('superadmin.invoices.detail.click_enlarge')}
               onclick={() => openLightbox(invoice!.proof_attachment!)}
-            />
+            >
+              <img
+                src={getProofUrl(invoice.proof_attachment)}
+                alt={$t('superadmin.invoices.payment_proof')}
+                class="proof-img"
+              />
+            </button>
             <p class="hint">
               {$t('superadmin.invoices.detail.click_enlarge')}
             </p>
@@ -308,33 +326,86 @@
 {/if}
 
 <style>
-  .page-container {
-    padding: 2rem;
-    max-width: 1200px;
+  .sa-invoice-detail {
+    padding: clamp(1rem, 3vw, 2rem);
+    max-width: 1280px;
     margin: 0 auto;
+    color: var(--text-primary);
   }
-  .page-header {
-    margin-bottom: 2rem;
+
+  .page-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
   }
+
+  .page-head-copy {
+    min-width: 0;
+  }
+
+  .crumbs {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.35rem;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+  }
+
+  .crumbs button {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .crumbs button:hover,
+  .back-btn:hover {
+    color: var(--text-primary);
+  }
+
+  .crumbs b {
+    color: var(--text-primary);
+    font-weight: 650;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .page-head h1 {
+    margin: 0;
+    font-size: clamp(1.25rem, 2.4vw, 1.55rem);
+    font-weight: 750;
+    letter-spacing: -0.02em;
+  }
+
+  .page-sub {
+    margin: 0.25rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+  }
+
   .back-btn {
-    background: none;
-    border: none;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     gap: 0.5rem;
     color: var(--text-secondary);
     cursor: pointer;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-  }
-  .back-btn:hover {
-    color: var(--text-primary);
+    font-weight: 650;
+    padding: 0.55rem 0.75rem;
+    border-radius: var(--radius-md);
   }
 
   .details-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 2rem;
+    gap: 1rem;
   }
   @media (max-width: 768px) {
     .details-grid {
@@ -346,7 +417,7 @@
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    padding: 1.5rem;
+    padding: clamp(1rem, 2.5vw, 1.5rem);
     box-shadow: var(--shadow-sm);
   }
 
@@ -475,13 +546,28 @@
   .proof-img {
     max-width: 100%;
     max-height: 500px;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     border: 1px solid var(--border-color);
-    cursor: zoom-in;
-    transition: transform 0.2s;
   }
-  .proof-img:hover {
+
+  .proof-button {
+    display: block;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: zoom-in;
+  }
+
+  .proof-button:hover .proof-img,
+  .proof-button:focus-visible .proof-img {
     transform: scale(1.02);
+  }
+
+  .proof-button:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 4px;
+    border-radius: var(--radius-md);
   }
   .hint {
     margin-top: 0.5rem;
@@ -495,5 +581,27 @@
     align-items: center;
     gap: 1rem;
     color: var(--text-tertiary);
+  }
+
+  @media (max-width: 768px) {
+    .page-head {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .back-btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .row {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .btn-group {
+      flex-direction: column;
+    }
   }
 </style>

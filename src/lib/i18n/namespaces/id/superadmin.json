@@ -1238,14 +1238,23 @@
         "name": "Nama Paket",
         "slug": "Slug (Kode)",
         "description": "Deskripsi",
-        "sort_order": "Urutan"
+        "sort_order": "Urutan",
+        "monthly_price": "Harga Bulanan",
+        "yearly_price": "Harga Tahunan",
+        "active": "Aktif (Terlihat oleh pengguna)",
+        "default_plan": "Paket Default (untuk tenant baru)"
       },
       "placeholders": {
         "name": "contoh: Pro Plan",
         "slug": "contoh: pro-plan"
       },
       "help": {
-        "slug": "Identifier unik untuk kode/API."
+        "slug": "Identifier unik untuk kode/API.",
+        "preview": "Pratinjau",
+        "month": "bln",
+        "year": "thn",
+        "base_currency_prefix": "Harga paket disimpan dalam mata uang dasar",
+        "fx_conversion": "Jika tenant menggunakan mata uang berbeda, invoice akan dikonversi otomatis menggunakan provider FX yang dikonfigurasi."
       },
       "toasts": {
         "created": "Paket berhasil dibuat",
