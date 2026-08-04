@@ -154,6 +154,8 @@
   let showEditPppoe = $state(false);
   let editingPppoe = $state<PppoeAccountPublic | null>(null);
   let savingPppoe = $state(false);
+  let applyingPppoe = $state<string | null>(null);
+  let deletingPppoe = $state<string | null>(null);
 
   let pppoeRouterId = $state('');
   let pppoeUsername = $state('');
@@ -1670,6 +1672,8 @@
   }
 
   async function applyPppoe(row: PppoeAccountPublic) {
+    if (applyingPppoe || deletingPppoe || savingPppoe) return;
+    applyingPppoe = row.id;
     try {
       await api.pppoe.accounts.apply(row.id);
       toast.success(get(t)('admin.customers.pppoe.toasts.applied') || 'Applied to router');
@@ -1680,6 +1684,8 @@
           values: { message: e?.message || e },
         }) || `Failed: ${e?.message || e}`,
       );
+    } finally {
+      applyingPppoe = null;
     }
   }
 
@@ -1690,8 +1696,9 @@
 
   async function confirmDeletePppoe() {
     const id = pppoeToDeleteId;
-    if (!id) return;
+    if (!id || applyingPppoe || deletingPppoe || savingPppoe) return;
     showPppoeDeleteConfirm = false;
+    deletingPppoe = id;
     try {
       await api.pppoe.accounts.delete(id);
       toast.success(get(t)('admin.customers.pppoe.toasts.deleted') || 'Deleted');
@@ -1702,6 +1709,8 @@
           values: { message: e?.message || e },
         }) || `Failed: ${e?.message || e}`,
       );
+    } finally {
+      deletingPppoe = null;
     }
   }
 
@@ -1733,13 +1742,13 @@
     const parsedCoordinates = validateOptionalCoordinates(locLatitude, locLongitude);
     if (parsedCoordinates.error) {
       if (parsedCoordinates.error === 'both_required') {
-        toast.error('Latitude dan longitude harus diisi berpasangan');
+        toast.error(get(t)('admin.customers.locations.toasts.coordinates_both_required'));
       } else if (parsedCoordinates.error === 'invalid_number') {
-        toast.error('Koordinat lokasi tidak valid');
+        toast.error(get(t)('admin.customers.locations.toasts.coordinates_invalid'));
       } else if (parsedCoordinates.error === 'latitude_range') {
-        toast.error('Latitude harus di antara -90 hingga 90');
+        toast.error(get(t)('admin.customers.locations.toasts.latitude_range'));
       } else if (parsedCoordinates.error === 'longitude_range') {
-        toast.error('Longitude harus di antara -180 hingga 180');
+        toast.error(get(t)('admin.customers.locations.toasts.longitude_range'));
       }
       return;
     }
@@ -1829,13 +1838,13 @@
     const parsedCoordinates = validateOptionalCoordinates(locLatitude, locLongitude);
     if (parsedCoordinates.error) {
       if (parsedCoordinates.error === 'both_required') {
-        toast.error('Latitude dan longitude harus diisi berpasangan');
+        toast.error(get(t)('admin.customers.locations.toasts.coordinates_both_required'));
       } else if (parsedCoordinates.error === 'invalid_number') {
-        toast.error('Koordinat lokasi tidak valid');
+        toast.error(get(t)('admin.customers.locations.toasts.coordinates_invalid'));
       } else if (parsedCoordinates.error === 'latitude_range') {
-        toast.error('Latitude harus di antara -90 hingga 90');
+        toast.error(get(t)('admin.customers.locations.toasts.latitude_range'));
       } else if (parsedCoordinates.error === 'longitude_range') {
-        toast.error('Longitude harus di antara -180 hingga 180');
+        toast.error(get(t)('admin.customers.locations.toasts.longitude_range'));
       }
       return;
     }
@@ -1855,10 +1864,10 @@
       });
       showEditLocation = false;
       editingLocation = null;
-      toast.success('Location updated');
+      toast.success(get(t)('admin.customers.locations.toasts.updated'));
       await loadLocations({ force: true });
     } catch (e: any) {
-      toast.error(`Failed to update location: ${e?.message || e}`);
+      toast.error(get(t)('admin.customers.locations.toasts.update_failed', { values: { message: e?.message || e } }));
     } finally {
       updatingLocation = false;
     }
@@ -1883,10 +1892,10 @@
       await api.customers.locations.delete(row.id);
       showDeleteLocation = false;
       locationToDelete = null;
-      toast.success('Location deleted');
-      await loadLocations();
+      toast.success(get(t)('admin.customers.locations.toasts.deleted'));
+      await loadLocations({ force: true });
     } catch (e: any) {
-      toast.error(`Failed to delete location: ${e?.message || e}`);
+      toast.error(get(t)('admin.customers.locations.toasts.delete_failed', { values: { message: e?.message || e } }));
     } finally {
       deletingLocation = false;
     }
@@ -2260,6 +2269,9 @@
           getPppoeAccessState={getPppoeAccessState}
           timeAgo={timeAgo}
           canManagePppoe={$can('manage', 'pppoe')}
+          {applyingPppoe}
+          {deletingPppoe}
+          {savingPppoe}
           onApplyPppoe={applyPppoe}
           onEditPppoe={openEditPppoe}
           onDeletePppoe={deletePppoe}

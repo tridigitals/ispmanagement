@@ -503,7 +503,15 @@
       "toasts": {
         "load_failed": "Gagal memuat lokasi",
         "created": "Lokasi ditambahkan",
-        "create_failed": "Gagal menambahkan lokasi: {message}"
+        "create_failed": "Gagal menambahkan lokasi: {message}",
+        "updated": "Lokasi diperbarui",
+        "update_failed": "Gagal memperbarui lokasi: {message}",
+        "deleted": "Lokasi dihapus",
+        "delete_failed": "Gagal menghapus lokasi: {message}",
+        "coordinates_both_required": "Latitude dan longitude harus diisi berpasangan",
+        "coordinates_invalid": "Koordinat lokasi tidak valid",
+        "latitude_range": "Latitude harus antara -90 dan 90",
+        "longitude_range": "Longitude harus antara -180 dan 180"
       }
     },
     "portal": {

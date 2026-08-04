@@ -776,7 +776,15 @@
       "toasts": {
         "load_failed": "Failed to load locations",
         "created": "Location added",
-        "create_failed": "Failed to add location: {message}"
+        "create_failed": "Failed to add location: {message}",
+        "updated": "Location updated",
+        "update_failed": "Failed to update location: {message}",
+        "deleted": "Location deleted",
+        "delete_failed": "Failed to delete location: {message}",
+        "coordinates_both_required": "Latitude and longitude must be provided together",
+        "coordinates_invalid": "Location coordinates are invalid",
+        "latitude_range": "Latitude must be between -90 and 90",
+        "longitude_range": "Longitude must be between -180 and 180"
       }
     },
     "portal": {

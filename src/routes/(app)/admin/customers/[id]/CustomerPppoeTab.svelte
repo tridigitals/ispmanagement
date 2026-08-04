@@ -20,6 +20,9 @@
     timeAgo,
     canManagePppoe,
     onApplyPppoe,
+    applyingPppoe,
+    deletingPppoe,
+    savingPppoe,
     onEditPppoe,
     onDeletePppoe,
   } = $props();
@@ -102,13 +105,15 @@
       {:else if key === 'actions'}
         <div class="row-actions">
           {#if canManagePppoe}
-            <button class="btn-icon" title={$t('admin.customers.pppoe.actions.apply') || getPppoeApplyActionFallback(row.account_source)} onclick={() => onApplyPppoe(row)}>
+            <button class="btn-icon" title={$t('admin.customers.pppoe.actions.apply') || getPppoeApplyActionFallback(row.account_source)} onclick={() => onApplyPppoe(row)}
+              disabled={Boolean(applyingPppoe || deletingPppoe || savingPppoe)}
+            >
               <Icon name="send" size={16} />
             </button>
-            <button class="btn-icon" title={$t('common.edit')} onclick={() => onEditPppoe(row)}>
+            <button class="btn-icon" title={$t('common.edit')} onclick={() => onEditPppoe(row)} disabled={Boolean(applyingPppoe || deletingPppoe || savingPppoe)}>
               <Icon name="edit" size={16} />
             </button>
-            <button class="btn-icon danger" title={$t('common.delete')} onclick={() => onDeletePppoe(row)}>
+            <button class="btn-icon danger" title={$t('common.delete')} onclick={() => onDeletePppoe(row)} disabled={Boolean(applyingPppoe || deletingPppoe || savingPppoe)}>
               <Icon name="trash-2" size={16} />
             </button>
           {/if}
