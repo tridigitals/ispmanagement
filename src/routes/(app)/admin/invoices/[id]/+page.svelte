@@ -26,6 +26,7 @@
   let loading = $state(true);
   let checking = $state(false);
   let processing = $state(false);
+  let loadSequence = 0;
   let error = $state('');
   let showConfirm = $state(false);
   let pendingVerifyStatus = $state<'paid' | 'failed'>('paid');
@@ -53,6 +54,8 @@
   let printSubscription = $state<CustomerSubscriptionView | null>(null);
   let printBankAccounts = $state<BankAccount[]>([]);
   let printPreparing = $state(false);
+  const paymentMutationBusy = $derived(checking || processing || printPreparing);
+  const canManageBilling = $derived($can('manage', 'billing'));
 
   const billingNav = $derived.by(() =>
     getAdminBillingNavigation({
@@ -84,6 +87,7 @@
 
   async function loadInvoice() {
     if (!invoiceId) return;
+    const requestSequence = ++loadSequence;
     loading = true;
     error = '';
     try {
@@ -94,19 +98,19 @@
             'Invoice is not a customer service invoice',
         );
       }
+      if (requestSequence !== loadSequence) return;
       invoice = row;
-      relatedCustomerId = await resolveRelatedCustomerId(row);
-    } catch (e: any) {
-      error = e?.message || String(e);
-      toast.error(
-        error ||
-          get(t)('admin.package_invoices.detail.errors.load_failed') ||
-          'Failed to load invoice',
-      );
+      const relatedId = await resolveRelatedCustomerId(row);
+      if (requestSequence !== loadSequence) return;
+      relatedCustomerId = relatedId;
+    } catch {
+      if (requestSequence !== loadSequence) return;
+      error = get(t)('admin.package_invoices.detail.errors.load_failed') || 'Failed to load invoice';
+      toast.error(error);
       invoice = null;
       relatedCustomerId = null;
     } finally {
-      loading = false;
+      if (requestSequence === loadSequence) loading = false;
     }
   }
 
@@ -131,7 +135,7 @@
   }
 
   async function checkStatus() {
-    if (!invoice) return;
+    if (!invoice || paymentMutationBusy) return;
     checking = true;
     try {
       await api.payment.checkStatus(invoice.id);
@@ -139,12 +143,8 @@
       toast.success(
         get(t)('admin.package_invoices.detail.toasts.status_updated') || 'Status updated',
       );
-    } catch (e: any) {
-      toast.error(
-        e?.message ||
-          get(t)('admin.package_invoices.detail.errors.check_failed') ||
-          'Failed to check status',
-      );
+    } catch {
+      toast.error(get(t)('admin.package_invoices.detail.errors.check_failed') || 'Failed to check status');
     } finally {
       checking = false;
     }
@@ -232,8 +232,8 @@
     showLightbox = true;
   }
 
-  async function markPayment(status: 'paid' | 'failed', rejectionReason?: string) {
-    if (!invoice || processing) return;
+  async function markPayment(status: 'paid' | 'failed', rejectionReason?: string): Promise<boolean> {
+    if (!canManageBilling || !invoice || paymentMutationBusy) return false;
     processing = true;
     try {
       await api.payment.verifyCustomerPackagePayment(invoice.id, status, rejectionReason);
@@ -242,18 +242,17 @@
         (get(t)('admin.package_invoices.detail.toasts.marked') || 'Invoice marked as') +
           ` ${status}`,
       );
-    } catch (e: any) {
-      toast.error(
-        e?.message ||
-          get(t)('admin.package_invoices.detail.errors.verify_failed') ||
-          'Failed to verify invoice',
-      );
+      return true;
+    } catch {
+      toast.error(get(t)('admin.package_invoices.detail.errors.verify_failed') || 'Failed to verify invoice');
+      return false;
     } finally {
       processing = false;
     }
   }
 
   function requestMarkPayment(status: 'paid' | 'failed') {
+    if (!canManageBilling || !invoice || paymentMutationBusy) return;
     if (status === 'failed') {
       rejectReason = '';
       showRejectModal = true;
@@ -264,8 +263,7 @@
   }
 
   async function confirmMarkPayment() {
-    await markPayment(pendingVerifyStatus);
-    showConfirm = false;
+    if (await markPayment(pendingVerifyStatus)) showConfirm = false;
   }
 
   async function submitRejectPayment() {
@@ -277,16 +275,14 @@
       );
       return;
     }
-    await markPayment('failed', reason);
-    if (!processing) {
+    if (await markPayment('failed', reason)) {
       showRejectModal = false;
       rejectReason = '';
     }
   }
 
   async function openPrintModal() {
-    if (!invoice) return;
-    if (printPreparing) return;
+    if (!invoice || paymentMutationBusy) return;
     printPreparing = true;
     try {
       // Best-effort: fetch related customer + subscription + tenant bank
@@ -319,12 +315,8 @@
       }
 
       showPrintModal = true;
-    } catch (e: any) {
-      toast.error(
-        e?.message ||
-          get(t)('admin.package_invoices.detail.errors.print_failed') ||
-          'Failed to prepare invoice for print',
-      );
+    } catch {
+      toast.error(get(t)('admin.package_invoices.detail.errors.print_failed') || 'Failed to prepare invoice for print');
     } finally {
       printPreparing = false;
     }
@@ -361,14 +353,14 @@
         <Icon name="activity" size={16} />
         <span>{$t('admin.package_invoices.list.actions.billing_logs')}</span>
       </button>
-      <button class="btn btn-secondary" onclick={loadInvoice} disabled={loading}>
+      <button class="btn btn-secondary" onclick={loadInvoice} disabled={loading || paymentMutationBusy}>
         <Icon name="refresh-cw" size={16} />
         <span>{$t('common.refresh')}</span>
       </button>
       <button
         class="btn btn-secondary"
         onclick={openPrintModal}
-        disabled={loading || printPreparing || !invoice}
+        disabled={loading || paymentMutationBusy || !invoice}
       >
         <Icon name="printer" size={16} />
         <span>
@@ -377,7 +369,7 @@
             : $t('admin.package_invoices.detail.actions.print_pdf') || 'Cetak / PDF'}
         </span>
       </button>
-      {#if invoice && invoice.status === 'pending'}
+      {#if canManageBilling && invoice && invoice.status === 'pending'}
         <button class="btn btn-primary" onclick={() => goto(`/pay/${invoice?.id}`)}>
           <Icon name="credit-card" size={16} />
           <span>{$t('admin.package_invoices.detail.actions.pay_now')}</span>
@@ -477,7 +469,7 @@
 
       <div class="actions">
         {#if isOnlinePaymentInvoice(invoice)}
-          <button class="btn btn-secondary" onclick={checkStatus} disabled={checking}>
+          <button class="btn btn-secondary" onclick={checkStatus} disabled={paymentMutationBusy}>
             <Icon name="rotate-cw" size={16} />
             <span
               >{checking
@@ -486,11 +478,11 @@
             >
           </button>
         {/if}
-        {#if invoice.status === 'pending' || invoice.status === 'verification_pending'}
+        {#if canManageBilling && (invoice.status === 'pending' || invoice.status === 'verification_pending')}
           <button
             class="btn btn-success"
             onclick={() => requestMarkPayment('paid')}
-            disabled={processing}
+            disabled={paymentMutationBusy}
           >
             <Icon name="check" size={16} />
             <span
@@ -502,7 +494,7 @@
           <button
             class="btn btn-danger"
             onclick={() => requestMarkPayment('failed')}
-            disabled={processing}
+            disabled={paymentMutationBusy}
           >
             <Icon name="x" size={16} />
             <span
@@ -566,7 +558,7 @@
           class="btn btn-danger"
           type="button"
           onclick={submitRejectPayment}
-          disabled={processing}
+          disabled={!canManageBilling || paymentMutationBusy}
         >
           {#if processing}
             {$t('admin.package_invoices.detail.actions.processing')}

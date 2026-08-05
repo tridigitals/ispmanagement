@@ -101,6 +101,9 @@ struct FxRateResponse {
 struct ListCustomerPackageInvoicesQuery {
     sort_by: Option<String>,
     sort_dir: Option<String>,
+    status: Option<String>,
+    created_from: Option<String>,
+    created_to: Option<String>,
     page: Option<u32>,
     per_page: Option<u32>,
 }
@@ -687,10 +690,21 @@ async fn list_customer_package_invoices(
             }),
         ));
     };
+    let created_from = parse_utc_datetime_query(q.created_from, "created_from")?;
+    let created_to = parse_utc_datetime_query(q.created_to, "created_to")?;
 
     state
         .payment_service
-        .list_customer_package_invoices(tenant_id, q.sort_by, q.sort_dir, q.page.unwrap_or(1), q.per_page.unwrap_or(25))
+        .list_customer_package_invoices(
+            tenant_id,
+            q.sort_by,
+            q.sort_dir,
+            q.status,
+            created_from,
+            created_to,
+            q.page.unwrap_or(1),
+            q.per_page.unwrap_or(25),
+        )
         .await
         .map(Json)
         .map_err(|e| {

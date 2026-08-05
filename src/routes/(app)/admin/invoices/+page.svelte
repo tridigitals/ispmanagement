@@ -45,6 +45,9 @@
   let customers = $state<Array<{ id: string; name: string }>>([]);
   let currentPage = $state(0);
   let perPage = $state(25);
+  let loadSequence = 0;
+  const listMutationBusy = $derived(creating || bulkGenerating || bulkSending);
+  const canManageBilling = $derived($can('manage', 'billing'));
   const billingNav = $derived.by(() =>
     getAdminBillingNavigation({
       hostname: $page.url.hostname,
@@ -142,29 +145,42 @@
       goto('/unauthorized');
       return;
     }
-    Promise.all([loadSubscriptionOptions()]);
+    void loadSubscriptionOptions();
   });
 
   async function loadInvoices() {
+    const requestSequence = ++loadSequence;
     loading = true;
+    error = '';
     try {
       const res = await api.payment.listCustomerPackageInvoices({
         sort_by: invoiceSortBy,
         sort_dir: invoiceSortDirection,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        created_from: toInvoiceDateBoundary(dateFrom),
+        created_to: toInvoiceDateBoundary(dateTo, true),
         page: currentPage + 1,
         per_page: perPage,
       });
+      if (requestSequence !== loadSequence) return;
       invoices = res.data;
       total = res.total;
-    } catch (e: any) {
-      error = e.toString();
+    } catch {
+      if (requestSequence !== loadSequence) return;
+      error = get(t)('admin.package_invoices.list.toasts.load_failed') ||
+        'Failed to load customer service invoices';
       toast.error(
-        get(t)('admin.package_invoices.list.toasts.load_failed') ||
-          'Failed to load customer service invoices',
+        error,
       );
     } finally {
-      loading = false;
+      if (requestSequence === loadSequence) loading = false;
     }
+  }
+
+  function toInvoiceDateBoundary(value: string, endOfDay = false): string | undefined {
+    if (!value) return undefined;
+    const parsed = new Date(`${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}`);
+    return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : undefined;
   }
 
   async function loadSubscriptionOptions() {
@@ -179,17 +195,16 @@
         status: sub.status,
         label: `${sub.customer_name || 'Customer'} - ${sub.package_name || 'Package'} (${sub.billing_cycle})`,
       }));
-    } catch (e: any) {
+    } catch {
       toast.error(
-        e?.message ||
-          get(t)('admin.package_invoices.list.toasts.load_subscriptions_failed') ||
+        get(t)('admin.package_invoices.list.toasts.load_subscriptions_failed') ||
           'Failed to load customer subscriptions',
       );
     }
   }
 
   async function createInvoiceFromSubscription() {
-    if (!selectedSubscriptionId || creating) return;
+    if (!canManageBilling || !selectedSubscriptionId || listMutationBusy) return;
     creating = true;
     try {
       const inv = await api.payment.createInvoiceForCustomerSubscription(selectedSubscriptionId);
@@ -199,10 +214,9 @@
       selectedSubscriptionId = '';
       await loadInvoices();
       await goto(`/pay/${inv.id}`);
-    } catch (e: any) {
+    } catch {
       toast.error(
-        e?.message ||
-          get(t)('admin.package_invoices.list.toasts.create_failed') ||
+        get(t)('admin.package_invoices.list.toasts.create_failed') ||
           'Failed to create invoice',
       );
     } finally {
@@ -211,7 +225,7 @@
   }
 
   async function generateDueInvoicesBulk() {
-    if (bulkGenerating) return;
+    if (!canManageBilling || listMutationBusy) return;
     bulkGenerating = true;
     try {
       const res = await api.payment.generateDueCustomerPackageInvoices();
@@ -220,10 +234,9 @@
           `: ${res.created_count} created, ${res.skipped_count} skipped, ${res.failed_count} failed`,
       );
       await loadInvoices();
-    } catch (e: any) {
+    } catch {
       toast.error(
-        e?.message ||
-          get(t)('admin.package_invoices.list.toasts.bulk_generate_failed') ||
+        get(t)('admin.package_invoices.list.toasts.bulk_generate_failed') ||
           'Failed to generate due invoices',
       );
     } finally {
@@ -236,6 +249,7 @@
   }
 
   function toggleSelected(id: string) {
+    if (!canManageBilling) return;
     const invoice = filteredInvoices.find((item) => item.id === id);
     if (!invoice || !isBulkSendableInvoice(invoice)) return;
     const next = new Set(selectedIds);
@@ -245,13 +259,14 @@
   }
 
   function toggleSelectAllVisible() {
+    if (!canManageBilling) return;
     const ids = filteredInvoices.filter(isBulkSendableInvoice).map((i: Invoice) => i.id);
     const allSelected = ids.length > 0 && ids.every((id: string) => selectedIds.has(id));
     selectedIds = allSelected ? new Set() : new Set(ids);
   }
 
   function openBulkSendModal() {
-    if (bulkSending) return;
+    if (!canManageBilling || bulkSending) return;
     const ids = Array.from(selectedIds).filter((id) => {
       const invoice = filteredInvoices.find((item) => item.id === id);
       return invoice ? isBulkSendableInvoice(invoice) : false;
@@ -272,7 +287,7 @@
   }
 
   async function confirmBulkSend() {
-    if (bulkSending) return;
+    if (!canManageBilling || listMutationBusy) return;
     const ids = Array.from(selectedIds).filter((id) => {
       const invoice = filteredInvoices.find((item) => item.id === id);
       return invoice ? isBulkSendableInvoice(invoice) : false;
@@ -316,17 +331,16 @@
       const summary = `${summaryHeader}: ${summaryStats}`;
       if (res.failed_count > 0) {
         const firstFail = res.items.find((it) => it.status === 'failed');
-        const detail = firstFail?.error || firstFail?.reason || '';
+        const detail = firstFail?.reason || '';
         toast.error(`${summary}${detail ? ` — ${detail}` : ''}`);
       } else {
         toast.success(summary);
       }
       selectedIds = new Set();
       showBulkSendModal = false;
-    } catch (e: any) {
+    } catch {
       toast.error(
-        e?.message ||
-          get(t)('admin.package_invoices.list.toasts.bulk_send_failed') ||
+        get(t)('admin.package_invoices.list.toasts.bulk_send_failed') ||
           'Gagal mengirim faktur',
       );
     } finally {
@@ -416,7 +430,7 @@
         <Icon name="activity" size={16} />
         <span>{$t('sidebar.collections')}</span>
       </button>
-      {#if selectedIds.size === 0 && filteredInvoices.length > 0}
+      {#if canManageBilling && selectedIds.size === 0 && filteredInvoices.length > 0}
         <button
           class="btn btn-secondary"
           onclick={toggleSelectAllVisible}
@@ -426,11 +440,11 @@
           <span>{$t('admin.package_invoices.list.actions.select_all_visible')}</span>
         </button>
       {/if}
-      {#if selectedIds.size > 0}
+      {#if canManageBilling && selectedIds.size > 0}
         <button
           class="btn btn-secondary"
           onclick={() => (selectedIds = new Set())}
-          disabled={bulkSending}
+          disabled={listMutationBusy}
           title={$t('admin.package_invoices.list.actions.clear_selection')}
         >
           <Icon name="x" size={16} />
@@ -439,7 +453,7 @@
         <button
           class="btn btn-primary"
           onclick={openBulkSendModal}
-          disabled={bulkSending}
+          disabled={listMutationBusy}
           title={$t('admin.package_invoices.list.actions.bulk_send_title')}
         >
           <Icon name="send" size={16} />
@@ -453,16 +467,18 @@
           </span>
         </button>
       {/if}
-      <button class="btn btn-primary" onclick={generateDueInvoicesBulk} disabled={bulkGenerating}>
-        <Icon name="layers" size={16} />
-        <span
-          >{bulkGenerating
-            ? $t('admin.package_invoices.list.actions.bulk_generating') || 'Generating...'
-            : $t('admin.package_invoices.list.actions.generate_due_bulk') ||
-              'Generate Due Invoices'}</span
-        >
-      </button>
-      <button class="btn btn-secondary" onclick={loadInvoices}>
+      {#if canManageBilling}
+        <button class="btn btn-primary" onclick={generateDueInvoicesBulk} disabled={listMutationBusy}>
+          <Icon name="layers" size={16} />
+          <span
+            >{bulkGenerating
+              ? $t('admin.package_invoices.list.actions.bulk_generating') || 'Generating...'
+              : $t('admin.package_invoices.list.actions.generate_due_bulk') ||
+                'Generate Due Invoices'}</span
+          >
+        </button>
+      {/if}
+      <button class="btn btn-secondary" onclick={loadInvoices} disabled={loading || listMutationBusy}>
         <Icon name="refresh-cw" size={18} />
         <span>{$t('common.refresh')}</span>
       </button>
@@ -497,54 +513,56 @@
     </article>
   </div>
 
-  <section class="section-block">
-    <div class="section-heading">
-      <div>
-        <h2>
-          {$t('admin.package_invoices.list.sections.manual_title')}
-        </h2>
-        <p>{$t('admin.package_invoices.list.subtitle_manual')}</p>
+  {#if canManageBilling}
+    <section class="section-block">
+      <div class="section-heading">
+        <div>
+          <h2>
+            {$t('admin.package_invoices.list.sections.manual_title')}
+          </h2>
+          <p>{$t('admin.package_invoices.list.subtitle_manual')}</p>
+        </div>
       </div>
-    </div>
 
-    <div class="create-row">
-      <select bind:value={selectedCustomerId} class="select-input">
-        <option value="">
-          {$t('admin.package_invoices.list.fields.select_customer')}
-        </option>
-        {#each customers as customer}
-          <option value={customer.id}>{customer.name}</option>
-        {/each}
-      </select>
+      <div class="create-row">
+        <select bind:value={selectedCustomerId} class="select-input">
+          <option value="">
+            {$t('admin.package_invoices.list.fields.select_customer')}
+          </option>
+          {#each customers as customer}
+            <option value={customer.id}>{customer.name}</option>
+          {/each}
+        </select>
 
-      <select
-        bind:value={selectedSubscriptionId}
-        class="select-input"
-        disabled={!selectedCustomerId}
-      >
-        <option value="">
-          {$t('admin.package_invoices.list.fields.select_subscription')}
-        </option>
-        {#each filteredSubscriptions as sub}
-          <option value={sub.id}>{sub.label} - {sub.status}</option>
-        {/each}
-      </select>
-
-      <button
-        class="btn btn-primary"
-        onclick={createInvoiceFromSubscription}
-        disabled={!selectedSubscriptionId || creating}
-      >
-        <Icon name="plus" size={16} />
-        <span
-          >{creating
-            ? $t('admin.package_invoices.list.actions.creating') || 'Creating...'
-            : $t('admin.package_invoices.list.actions.generate_invoice') ||
-              'Generate Invoice'}</span
+        <select
+          bind:value={selectedSubscriptionId}
+          class="select-input"
+          disabled={!selectedCustomerId}
         >
-      </button>
-    </div>
-  </section>
+          <option value="">
+            {$t('admin.package_invoices.list.fields.select_subscription')}
+          </option>
+          {#each filteredSubscriptions as sub}
+            <option value={sub.id}>{sub.label} - {sub.status}</option>
+          {/each}
+        </select>
+
+        <button
+          class="btn btn-primary"
+          onclick={createInvoiceFromSubscription}
+          disabled={!selectedSubscriptionId || listMutationBusy}
+        >
+          <Icon name="plus" size={16} />
+          <span
+            >{creating
+              ? $t('admin.package_invoices.list.actions.creating') || 'Creating...'
+              : $t('admin.package_invoices.list.actions.generate_invoice') ||
+                'Generate Invoice'}</span
+          >
+        </button>
+      </div>
+    </section>
+  {/if}
 
   <section class="section-block">
     <div class="section-heading">
@@ -653,19 +671,19 @@
       >
         {#snippet cell({ item, column })}
           {#if column.key === 'select'}
-            <input
-              type="checkbox"
-              checked={selectedIds.has(item.id)}
-              onchange={() => toggleSelected(item.id)}
-              disabled={!isBulkSendableInvoice(item)}
-              title={
-                isBulkSendableInvoice(item)
+            {#if canManageBilling}
+              <input
+                type="checkbox"
+                checked={selectedIds.has(item.id)}
+                onchange={() => toggleSelected(item.id)}
+                disabled={!isBulkSendableInvoice(item)}
+                title={isBulkSendableInvoice(item)
                   ? $t('admin.package_invoices.list.actions.select_invoice') || 'Pilih invoice'
                   : $t('admin.package_invoices.list.actions.invoice_not_sendable') ||
-                    'Invoice sudah settled dan tidak bisa dikirim'
-              }
-              aria-label={$t('admin.package_invoices.list.actions.select_invoice')}
-            />
+                    'Invoice sudah settled dan tidak bisa dikirim'}
+                aria-label={$t('admin.package_invoices.list.actions.select_invoice')}
+              />
+            {/if}
           {:else if column.key === 'amount'}
             {formatCurrency(item.amount, item.currency_code)}
           {:else if column.key === 'status'}
@@ -753,10 +771,10 @@
   </div>
 
   {#snippet footer()}
-    <button class="btn btn-secondary" onclick={() => (showBulkSendModal = false)} disabled={bulkSending}>
+    <button class="btn btn-secondary" onclick={() => (showBulkSendModal = false)} disabled={listMutationBusy}>
       {$t('common.cancel')}
     </button>
-    <button class="btn btn-primary" onclick={confirmBulkSend} disabled={bulkSending}>
+    <button class="btn btn-primary" onclick={confirmBulkSend} disabled={listMutationBusy}>
       <Icon name="send" size={16} />
       <span>
         {bulkSending

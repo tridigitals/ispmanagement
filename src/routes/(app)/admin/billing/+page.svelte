@@ -13,6 +13,7 @@
   let analytics = $state<BillingAnalytics | null>(null);
   let loading = $state(true);
   let error = $state('');
+  let loadSequence = 0;
 
   onMount(() => {
     if (!$can('read', 'billing') && !$can('manage', 'billing')) {
@@ -23,15 +24,19 @@
   });
 
   async function loadAnalytics() {
+    const requestSequence = ++loadSequence;
     loading = true;
     error = '';
     try {
-      analytics = await api.payment.getBillingAnalytics();
-    } catch (e: any) {
-      error = e.toString();
-      toast.error(get(t)('admin.billing.analytics.load_error') || 'Failed to load analytics');
+      const nextAnalytics = await api.payment.getBillingAnalytics();
+      if (requestSequence === loadSequence) analytics = nextAnalytics;
+    } catch {
+      if (requestSequence === loadSequence) {
+        error = get(t)('admin.billing.analytics.load_error') || 'Failed to load analytics';
+        toast.error(error);
+      }
     } finally {
-      loading = false;
+      if (requestSequence === loadSequence) loading = false;
     }
   }
 

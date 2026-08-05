@@ -33,6 +33,9 @@
   let collectionRows = $state<BillingCollectionLogView[]>([]);
   let reminderRows = $state<InvoiceReminderLogView[]>([]);
   let lastRunResult = $state<BillingCollectionRunResult | null>(null);
+  let collectionLoadSequence = 0;
+  let reminderLoadSequence = 0;
+  const canManageBilling = $derived($can('manage', 'billing'));
 
   let collectionPage = $state(0);
   let collectionTotal = $state(0);
@@ -239,9 +242,10 @@
   }
 
   async function loadCollection() {
+    const requestSequence = ++collectionLoadSequence;
     loadingCollection = true;
     try {
-      collectionRows = await api.payment.listBillingCollectionLogs({
+      const rows = await api.payment.listBillingCollectionLogs({
         action: collectionAction === 'all' ? undefined : collectionAction,
         result: collectionResult === 'all' ? undefined : collectionResult,
         search: collectionSearch.trim() || undefined,
@@ -249,21 +253,24 @@
         to: toIsoUtc(collectionTo),
         limit: collectionLimit,
       });
-    } catch (e: any) {
-      toast.error(
-        e?.message ||
+      if (requestSequence === collectionLoadSequence) collectionRows = rows;
+    } catch {
+      if (requestSequence === collectionLoadSequence) {
+        toast.error(
           get(t)('admin.billing_collection.toasts.load_collection_failed') ||
-          'Failed to load billing collection logs',
-      );
+            'Failed to load billing collection logs',
+        );
+      }
     } finally {
-      loadingCollection = false;
+      if (requestSequence === collectionLoadSequence) loadingCollection = false;
     }
   }
 
   async function loadReminders() {
+    const requestSequence = ++reminderLoadSequence;
     loadingReminders = true;
     try {
-      reminderRows = await api.payment.listInvoiceReminderLogs({
+      const rows = await api.payment.listInvoiceReminderLogs({
         reminderCode: reminderCode === 'all' ? undefined : reminderCode,
         status: reminderStatus === 'all' ? undefined : reminderStatus,
         search: reminderSearch.trim() || undefined,
@@ -271,24 +278,27 @@
         to: toIsoUtc(reminderTo),
         limit: reminderLimit,
       });
-    } catch (e: any) {
-      toast.error(
-        e?.message ||
+      if (requestSequence === reminderLoadSequence) reminderRows = rows;
+    } catch {
+      if (requestSequence === reminderLoadSequence) {
+        toast.error(
           get(t)('admin.billing_collection.toasts.load_reminders_failed') ||
-          'Failed to load reminder logs',
-      );
+            'Failed to load reminder logs',
+        );
+      }
     } finally {
-      loadingReminders = false;
+      if (requestSequence === reminderLoadSequence) loadingReminders = false;
     }
   }
 
   async function refreshCurrent() {
+    if (runningNow) return;
     if (activeTab === 'collection') await loadCollection();
     else await loadReminders();
   }
 
   async function runCollectionNow() {
-    if (runningNow) return;
+    if (!canManageBilling || runningNow || loadingCollection || loadingReminders) return;
     runningNow = true;
     try {
       lastRunResult = await api.payment.runBillingCollectionNow();
@@ -296,10 +306,9 @@
         get(t)('admin.billing_collection.toasts.run_ok') || 'Billing collection run completed',
       );
       await Promise.all([loadCollection(), loadReminders()]);
-    } catch (e: any) {
+    } catch {
       toast.error(
-        e?.message ||
-          get(t)('admin.billing_collection.toasts.run_failed') ||
+        get(t)('admin.billing_collection.toasts.run_failed') ||
           'Failed to run billing collection',
       );
     } finally {
@@ -470,21 +479,23 @@
       </p>
     </div>
     <div class="header-actions">
-      <button class="btn btn-secondary" type="button" onclick={refreshCurrent}>
+      <button class="btn btn-secondary" type="button" onclick={refreshCurrent} disabled={currentLoading || runningNow}>
         <Icon name="refresh-cw" size={16} />
         {$t('common.refresh')}
       </button>
-      <button
-        class="btn btn-primary"
-        type="button"
-        onclick={runCollectionNow}
-        disabled={runningNow}
-      >
-        <Icon name="play" size={16} />
-        {runningNow
-          ? $t('admin.billing_collection.actions.running') || 'Running...'
-          : $t('admin.billing_collection.actions.run_now') || 'Run Now'}
-      </button>
+      {#if canManageBilling}
+        <button
+          class="btn btn-primary"
+          type="button"
+          onclick={runCollectionNow}
+          disabled={runningNow || currentLoading}
+        >
+          <Icon name="play" size={16} />
+          {runningNow
+            ? $t('admin.billing_collection.actions.running') || 'Running...'
+            : $t('admin.billing_collection.actions.run_now') || 'Run Now'}
+        </button>
+      {/if}
       <div class="export-wrap">
         <button class="btn btn-secondary" type="button" onclick={toggleExportMenu}>
           <Icon name="download" size={16} />

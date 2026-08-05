@@ -15,7 +15,7 @@ use crate::models::{
     InvoiceReminderLogView, PaginatedResponse,
 };
 use base64::{engine::general_purpose, Engine as _};
-use chrono::{Datelike, Duration, Months, Utc};
+use chrono::{DateTime, Datelike, Duration, Months, Utc};
 use reqwest::Client;
 use serde::Serialize;
 use serde_json::json;
@@ -837,6 +837,9 @@ impl PaymentService {
         tenant_id: &str,
         sort_by: Option<String>,
         sort_dir: Option<String>,
+        status: Option<String>,
+        created_from: Option<DateTime<Utc>>,
+        created_to: Option<DateTime<Utc>>,
         page: u32,
         per_page: u32,
     ) -> AppResult<PaginatedResponse<Invoice>> {
@@ -868,13 +871,22 @@ impl PaymentService {
             _ => "DESC",
         };
         let prefix = format!("{}%", core::CUSTOMER_PACKAGE_INVOICE_PREFIX);
+        let status = status
+            .map(|value| value.trim().to_ascii_lowercase())
+            .filter(|value| !value.is_empty() && value != "all");
 
         #[cfg(feature = "postgres")]
         let total: i64 = sqlx::query_scalar(
-            r#"SELECT COUNT(*) FROM invoices WHERE tenant_id = $1 AND external_id LIKE $2"#,
+            r#"SELECT COUNT(*) FROM invoices WHERE tenant_id = $1 AND external_id LIKE $2
+                AND ($3::text IS NULL OR status = $3)
+                AND ($4::timestamptz IS NULL OR created_at >= $4)
+                AND ($5::timestamptz IS NULL OR created_at <= $5)"#,
         )
         .bind(tenant_id)
         .bind(&prefix)
+        .bind(status.as_deref())
+        .bind(created_from.as_ref())
+        .bind(created_to.as_ref())
         .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
@@ -889,13 +901,19 @@ impl PaymentService {
                 COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
                 status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at
             FROM invoices
-            WHERE tenant_id = $1 AND external_id LIKE $2
+                WHERE tenant_id = $1 AND external_id LIKE $2
+                AND ($3::text IS NULL OR status = $3)
+                AND ($4::timestamptz IS NULL OR created_at >= $4)
+                AND ($5::timestamptz IS NULL OR created_at <= $5)
             ORDER BY {sort_column} {sort_direction}
-            LIMIT $3 OFFSET $4
+            LIMIT $6 OFFSET $7
             "#,
         ))
         .bind(tenant_id)
         .bind(&prefix)
+        .bind(status.as_deref())
+        .bind(created_from.as_ref())
+        .bind(created_to.as_ref())
         .bind(per_page_i64)
         .bind(offset)
         .fetch_all(&self.pool)
@@ -904,20 +922,39 @@ impl PaymentService {
 
         #[cfg(feature = "sqlite")]
         let total: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM invoices WHERE tenant_id = ? AND external_id LIKE ?",
+            "SELECT COUNT(*) FROM invoices WHERE tenant_id = ? AND external_id LIKE ?
+                AND (? IS NULL OR status = ?)
+                AND (? IS NULL OR created_at >= ?)
+                AND (? IS NULL OR created_at <= ?)",
         )
         .bind(tenant_id)
         .bind(&prefix)
+        .bind(status.as_deref())
+        .bind(status.as_deref())
+        .bind(created_from.as_ref())
+        .bind(created_from.as_ref())
+        .bind(created_to.as_ref())
+        .bind(created_to.as_ref())
         .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         #[cfg(feature = "sqlite")]
         let invoices = sqlx::query_as::<_, Invoice>(&format!(
-            "SELECT * FROM invoices WHERE tenant_id = ? AND external_id LIKE ? ORDER BY {sort_column} {sort_direction} LIMIT ? OFFSET ?"
+            "SELECT * FROM invoices WHERE tenant_id = ? AND external_id LIKE ?
+                AND (? IS NULL OR status = ?)
+                AND (? IS NULL OR created_at >= ?)
+                AND (? IS NULL OR created_at <= ?)
+                ORDER BY {sort_column} {sort_direction} LIMIT ? OFFSET ?"
         ))
         .bind(tenant_id)
         .bind(&prefix)
+        .bind(status.as_deref())
+        .bind(status.as_deref())
+        .bind(created_from.as_ref())
+        .bind(created_from.as_ref())
+        .bind(created_to.as_ref())
+        .bind(created_to.as_ref())
         .bind(per_page_i64)
         .bind(offset)
         .fetch_all(&self.pool)

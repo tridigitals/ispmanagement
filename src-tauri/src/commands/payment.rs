@@ -140,6 +140,9 @@ pub async fn list_customer_package_invoices(
     token: String,
     sort_by: Option<String>,
     sort_dir: Option<String>,
+    status: Option<String>,
+    created_from: Option<String>,
+    created_to: Option<String>,
     page: Option<u32>,
     per_page: Option<u32>,
     auth_service: State<'_, AuthService>,
@@ -151,9 +154,20 @@ pub async fn list_customer_package_invoices(
         .map_err(|e| e.to_string())?;
     require_payment_read_access(&auth_service, &claims).await?;
     let tenant_id = claims.tenant_id.ok_or("No tenant context")?;
+    let created_from = parse_datetime_opt(created_from, "created_from")?;
+    let created_to = parse_datetime_opt(created_to, "created_to")?;
 
     payment_service
-        .list_customer_package_invoices(&tenant_id, sort_by, sort_dir, page.unwrap_or(1), per_page.unwrap_or(25))
+        .list_customer_package_invoices(
+            &tenant_id,
+            sort_by,
+            sort_dir,
+            status,
+            created_from,
+            created_to,
+            page.unwrap_or(1),
+            per_page.unwrap_or(25),
+        )
         .await
         .map_err(|e| e.to_string())
 }

@@ -64,6 +64,9 @@ export const payment = {
   listCustomerPackageInvoices: (params?: {
     sort_by?: 'invoice_number' | 'description' | 'amount' | 'status' | 'due_date' | 'created_at';
     sort_dir?: 'asc' | 'desc';
+    status?: 'pending' | 'verification_pending' | 'paid' | 'failed';
+    created_from?: string;
+    created_to?: string;
     page?: number;
     per_page?: number;
   }): Promise<PaginatedResponse<Invoice>> =>
@@ -71,6 +74,9 @@ export const payment = {
       token: getTokenOrThrow(),
       sort_by: params?.sort_by ?? null,
       sort_dir: params?.sort_dir ?? null,
+      status: params?.status ?? null,
+      created_from: params?.created_from ?? null,
+      created_to: params?.created_to ?? null,
       page: params?.page ?? null,
       per_page: params?.per_page ?? null,
     }),

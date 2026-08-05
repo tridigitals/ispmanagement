@@ -90,3 +90,4 @@ Thumbs.db
 **/keystore.properties
 dev.db
 sketches/
+graphify-out/
