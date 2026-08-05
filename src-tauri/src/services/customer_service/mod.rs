@@ -121,5 +121,48 @@ impl CustomerService {
     // =========================
 }
 
+fn validate_installation_asset_selection(
+    terminal_asset_type: &str,
+    terminal_asset_status: &str,
+    terminal_customer_id: Option<&str>,
+    work_order_customer_id: &str,
+    parent_asset_type: Option<&str>,
+    parent_asset_status: Option<&str>,
+) -> AppResult<()> {
+    if !matches!(terminal_asset_type, "ont" | "onu") {
+        return Err(AppError::Validation(
+            "Terminal asset must be ONT or ONU".into(),
+        ));
+    }
+    if matches!(terminal_asset_status, "faulty" | "retired") {
+        return Err(AppError::Validation(
+            "Selected terminal asset is not usable".into(),
+        ));
+    }
+    if terminal_customer_id.is_some() && terminal_customer_id != Some(work_order_customer_id) {
+        return Err(AppError::Conflict(
+            "Selected terminal asset is already assigned to another customer".into(),
+        ));
+    }
+
+    if let Some(parent_asset_type) = parent_asset_type {
+        if !matches!(
+            parent_asset_type,
+            "olt" | "odc" | "odp" | "splitter" | "fat" | "nap" | "odf"
+        ) {
+            return Err(AppError::Validation(
+                "Parent asset must be an FTTH upstream asset".into(),
+            ));
+        }
+        if matches!(parent_asset_status, Some("faulty" | "retired")) {
+            return Err(AppError::Validation(
+                "Selected parent asset is not usable".into(),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests;

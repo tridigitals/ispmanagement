@@ -1,4 +1,4 @@
-use super::{CustomerService, InstallationSlaBreachType};
+use super::{validate_installation_asset_selection, CustomerService, InstallationSlaBreachType};
 use crate::error::AppError;
 use crate::models::CustomerLifecycleObservability;
 use chrono::{Duration, Utc};
@@ -258,6 +258,57 @@ fn installation_completion_auto_invoice_only_runs_for_unpaid_grace_activation() 
             true,
         )
     );
+}
+
+#[test]
+fn installation_asset_selection_rejects_invalid_or_conflicting_assets() {
+    validate_installation_asset_selection(
+        "ont",
+        "available",
+        None,
+        "customer-1",
+        Some("odp"),
+        Some("available"),
+    )
+    .expect("valid ONT and ODP should pass");
+
+    assert!(matches!(
+        validate_installation_asset_selection(
+            "router",
+            "available",
+            None,
+            "customer-1",
+            None,
+            None,
+        ),
+        Err(AppError::Validation(_))
+    ));
+    assert!(matches!(
+        validate_installation_asset_selection("ont", "retired", None, "customer-1", None, None,),
+        Err(AppError::Validation(_))
+    ));
+    assert!(matches!(
+        validate_installation_asset_selection(
+            "ont",
+            "available",
+            Some("customer-2"),
+            "customer-1",
+            None,
+            None,
+        ),
+        Err(AppError::Conflict(_))
+    ));
+    assert!(matches!(
+        validate_installation_asset_selection(
+            "ont",
+            "available",
+            None,
+            "customer-1",
+            Some("router"),
+            Some("available"),
+        ),
+        Err(AppError::Validation(_))
+    ));
 }
 
 #[test]

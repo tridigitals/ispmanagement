@@ -46,7 +46,9 @@ use self::core::{
 };
 use self::dto::{AssignmentCandidateNodeRow, AssignmentSubscriptionRef};
 #[cfg(test)]
-use self::validation::is_owner_admin_or_technician_role;
+use self::mapper::{filter_installation_request_user_ids, filter_owner_admin_user_ids};
+#[cfg(test)]
+use self::validation::{is_owner_admin_or_technician_role, is_owner_or_admin_role};
 
 fn md5_hex(input: &str) -> String {
     format!("{:x}", md5::compute(input.as_bytes()))

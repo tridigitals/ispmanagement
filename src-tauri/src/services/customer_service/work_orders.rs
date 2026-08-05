@@ -51,7 +51,8 @@ impl CustomerService {
         let query = r#"
             SELECT
               id, tenant_id, asset_group, asset_type, name, code, vendor, model, serial_number, status,
-              customer_id, location_id, work_order_id, parent_asset_id, notes, metadata, created_at, updated_at
+              customer_id, location_id, work_order_id, parent_asset_id, olt_id, pon_port, latitude, longitude,
+              notes, metadata, created_at, updated_at
             FROM network_assets
             WHERE tenant_id = $1 AND id = $2
             LIMIT 1
@@ -61,7 +62,8 @@ impl CustomerService {
         let query = r#"
             SELECT
               id, tenant_id, asset_group, asset_type, name, code, vendor, model, serial_number, status,
-              customer_id, location_id, work_order_id, parent_asset_id, notes, metadata, created_at, updated_at
+              customer_id, location_id, work_order_id, parent_asset_id, olt_id, pon_port, latitude, longitude,
+              notes, metadata, created_at, updated_at
             FROM network_assets
             WHERE tenant_id = ?1 AND id = ?2
             LIMIT 1
@@ -75,7 +77,7 @@ impl CustomerService {
             .ok_or_else(|| AppError::NotFound("Network asset not found".into()))
     }
 
-    async fn bind_assets_to_completed_installation(
+    async fn validate_installation_assets(
         &self,
         tenant_id: &str,
         work_order: &InstallationWorkOrder,
@@ -85,40 +87,37 @@ impl CustomerService {
         let terminal_asset = self
             .load_network_asset(tenant_id, terminal_asset_id)
             .await?;
-        if !matches!(terminal_asset.asset_type.as_str(), "ont" | "onu") {
-            return Err(AppError::Validation(
-                "Terminal asset must be ONT or ONU".into(),
-            ));
-        }
-        if matches!(terminal_asset.status.as_str(), "faulty" | "retired") {
-            return Err(AppError::Validation(
-                "Selected terminal asset is not usable".into(),
-            ));
-        }
-        if terminal_asset.customer_id.as_deref().is_some()
-            && terminal_asset.customer_id.as_deref() != Some(work_order.customer_id.as_str())
-        {
-            return Err(AppError::Conflict(
-                "Selected terminal asset is already assigned to another customer".into(),
-            ));
-        }
+        let parent_asset = match parent_asset_id {
+            Some(parent_asset_id) => {
+                Some(self.load_network_asset(tenant_id, parent_asset_id).await?)
+            }
+            None => None,
+        };
 
-        if let Some(parent_asset_id) = parent_asset_id {
-            let parent_asset = self.load_network_asset(tenant_id, parent_asset_id).await?;
-            if !matches!(
-                parent_asset.asset_type.as_str(),
-                "olt" | "odc" | "odp" | "splitter" | "fat" | "nap" | "odf"
-            ) {
-                return Err(AppError::Validation(
-                    "Parent asset must be an FTTH upstream asset".into(),
-                ));
-            }
-            if matches!(parent_asset.status.as_str(), "faulty" | "retired") {
-                return Err(AppError::Validation(
-                    "Selected parent asset is not usable".into(),
-                ));
-            }
-        }
+        super::validate_installation_asset_selection(
+            &terminal_asset.asset_type,
+            &terminal_asset.status,
+            terminal_asset.customer_id.as_deref(),
+            &work_order.customer_id,
+            parent_asset.as_ref().map(|asset| asset.asset_type.as_str()),
+            parent_asset.as_ref().map(|asset| asset.status.as_str()),
+        )
+    }
+
+    async fn bind_assets_to_completed_installation(
+        &self,
+        tenant_id: &str,
+        work_order: &InstallationWorkOrder,
+        terminal_asset_id: &str,
+        parent_asset_id: Option<&str>,
+    ) -> AppResult<()> {
+        self.validate_installation_assets(
+            tenant_id,
+            work_order,
+            terminal_asset_id,
+            parent_asset_id,
+        )
+        .await?;
 
         #[cfg(feature = "postgres")]
         {
@@ -1023,6 +1022,19 @@ impl CustomerService {
         let parent_asset_id = parent_asset_id
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty());
+
+        // Validate assets before changing the work-order lifecycle. A bad or
+        // conflicting asset must not leave this order falsely completed.
+        let current = self
+            .get_installation_work_order_row(tenant_id, work_order_id)
+            .await?;
+        self.validate_installation_assets(
+            tenant_id,
+            &current,
+            &terminal_asset_id,
+            parent_asset_id.as_deref(),
+        )
+        .await?;
 
         let row = self
             .set_installation_work_order_status_internal(
