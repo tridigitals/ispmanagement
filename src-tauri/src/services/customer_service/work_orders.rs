@@ -104,6 +104,116 @@ impl CustomerService {
         )
     }
 
+    async fn validate_installation_provisioning(
+        &self,
+        tenant_id: &str,
+        work_order: &InstallationWorkOrder,
+    ) -> AppResult<()> {
+        #[cfg(feature = "postgres")]
+        let scope: Option<(Option<String>, String, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT p.provisioning_type, cs.package_id,
+                   COALESCE(wo.router_id, cs.router_id) AS router_id
+            FROM installation_work_orders wo
+            JOIN customer_subscriptions cs
+              ON cs.tenant_id = wo.tenant_id AND cs.id = wo.subscription_id
+            LEFT JOIN isp_packages p
+              ON p.tenant_id = cs.tenant_id AND p.id = cs.package_id
+            WHERE wo.tenant_id = $1 AND wo.id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&work_order.id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let scope: Option<(Option<String>, String, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT p.provisioning_type, cs.package_id,
+                   COALESCE(wo.router_id, cs.router_id) AS router_id
+            FROM installation_work_orders wo
+            JOIN customer_subscriptions cs
+              ON cs.tenant_id = wo.tenant_id AND cs.id = wo.subscription_id
+            LEFT JOIN isp_packages p
+              ON p.tenant_id = cs.tenant_id AND p.id = cs.package_id
+            WHERE wo.tenant_id = ? AND wo.id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&work_order.id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let Some((provisioning_type, expected_package_id, expected_router_id)) = scope else {
+            return Err(AppError::NotFound(
+                "Installation subscription not found".into(),
+            ));
+        };
+        if provisioning_type.as_deref().map(str::trim) != Some("dhcp_static") {
+            return Ok(());
+        }
+
+        #[cfg(feature = "postgres")]
+        let service: Option<(String, String, bool, bool, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT package_id, router_id, disabled, lease_present, lease_last_error
+            FROM dhcp_static_services
+            WHERE tenant_id = $1
+              AND subscription_id = $2
+              AND customer_id = $3
+              AND location_id = $4
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&work_order.subscription_id)
+        .bind(&work_order.customer_id)
+        .bind(&work_order.location_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let service: Option<(String, String, bool, bool, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT package_id, router_id, disabled, lease_present, lease_last_error
+            FROM dhcp_static_services
+            WHERE tenant_id = ?
+              AND subscription_id = ?
+              AND customer_id = ?
+              AND location_id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&work_order.subscription_id)
+        .bind(&work_order.customer_id)
+        .bind(&work_order.location_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let service =
+            service
+                .as_ref()
+                .map(|(package_id, router_id, disabled, lease_present, error)| {
+                    (
+                        package_id.as_str(),
+                        router_id.as_str(),
+                        *disabled,
+                        *lease_present,
+                        error.as_deref(),
+                    )
+                });
+        super::validate_installation_provisioning_state(
+            provisioning_type.as_deref(),
+            Some(expected_package_id.as_str()),
+            expected_router_id.as_deref(),
+            service,
+        )
+    }
+
     async fn bind_assets_to_completed_installation(
         &self,
         tenant_id: &str,
@@ -1035,6 +1145,8 @@ impl CustomerService {
             parent_asset_id.as_deref(),
         )
         .await?;
+        self.validate_installation_provisioning(tenant_id, &current)
+            .await?;
 
         let row = self
             .set_installation_work_order_status_internal(

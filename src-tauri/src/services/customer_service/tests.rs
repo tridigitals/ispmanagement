@@ -1,4 +1,7 @@
-use super::{validate_installation_asset_selection, CustomerService, InstallationSlaBreachType};
+use super::{
+    validate_installation_asset_selection, validate_installation_provisioning_state,
+    CustomerService, InstallationSlaBreachType,
+};
 use crate::error::AppError;
 use crate::models::CustomerLifecycleObservability;
 use chrono::{Duration, Utc};
@@ -309,6 +312,74 @@ fn installation_asset_selection_rejects_invalid_or_conflicting_assets() {
         ),
         Err(AppError::Validation(_))
     ));
+}
+
+#[test]
+fn installation_completion_requires_applied_dhcp_static_service_only() {
+    validate_installation_provisioning_state(Some("pppoe"), None, None, None)
+        .expect("PPPoE legacy completion contract should remain unchanged");
+
+    assert!(matches!(
+        validate_installation_provisioning_state(
+            Some("dhcp_static"),
+            Some("package-1"),
+            Some("router-1"),
+            None,
+        ),
+        Err(AppError::Validation(_))
+    ));
+    assert!(matches!(
+        validate_installation_provisioning_state(
+            Some("dhcp_static"),
+            Some("package-1"),
+            Some("router-1"),
+            Some(("package-2", "router-1", false, true, None)),
+        ),
+        Err(AppError::Validation(_))
+    ));
+    assert!(matches!(
+        validate_installation_provisioning_state(
+            Some("dhcp_static"),
+            Some("package-1"),
+            Some("router-1"),
+            Some(("package-1", "router-1", true, true, None)),
+        ),
+        Err(AppError::Validation(_))
+    ));
+    assert!(matches!(
+        validate_installation_provisioning_state(
+            Some("dhcp_static"),
+            Some("package-1"),
+            Some("router-1"),
+            Some(("package-1", "router-2", false, true, None)),
+        ),
+        Err(AppError::Validation(_))
+    ));
+    assert!(matches!(
+        validate_installation_provisioning_state(
+            Some("dhcp_static"),
+            Some("package-1"),
+            Some("router-1"),
+            Some(("package-1", "router-1", false, false, None)),
+        ),
+        Err(AppError::Validation(_))
+    ));
+    assert!(matches!(
+        validate_installation_provisioning_state(
+            Some("dhcp_static"),
+            Some("package-1"),
+            Some("router-1"),
+            Some(("package-1", "router-1", false, true, Some("apply failed"))),
+        ),
+        Err(AppError::Validation(_))
+    ));
+    validate_installation_provisioning_state(
+        Some("dhcp_static"),
+        Some("package-1"),
+        Some("router-1"),
+        Some(("package-1", "router-1", false, true, None)),
+    )
+    .expect("applied enabled DHCP static service should pass");
 }
 
 #[test]

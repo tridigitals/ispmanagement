@@ -831,6 +831,13 @@ impl DhcpStaticServiceManager {
         } else {
             None
         };
+        service.lease_present = false;
+        service.lease_router_ref = None;
+        service.lease_last_sync_at = None;
+        service.lease_last_error = None;
+        service.queue_present = false;
+        service.queue_last_sync_at = None;
+        service.queue_last_error = None;
         service.updated_at = Utc::now();
 
         sqlx::query(
@@ -847,6 +854,13 @@ impl DhcpStaticServiceManager {
                 queue_name = $9,
                 queue_target = $10,
                 queue_rate_limit = $11,
+                lease_present = false,
+                lease_router_ref = NULL,
+                lease_last_sync_at = NULL,
+                lease_last_error = NULL,
+                queue_present = false,
+                queue_last_sync_at = NULL,
+                queue_last_error = NULL,
                 updated_at = $12
             WHERE tenant_id = $13 AND id = $14
             "#,

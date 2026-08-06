@@ -164,5 +164,63 @@ fn validate_installation_asset_selection(
     Ok(())
 }
 
+fn validate_installation_provisioning_state(
+    provisioning_type: Option<&str>,
+    expected_package_id: Option<&str>,
+    expected_router_id: Option<&str>,
+    service: Option<(&str, &str, bool, bool, Option<&str>)>,
+) -> AppResult<()> {
+    if provisioning_type.map(str::trim) != Some("dhcp_static") {
+        return Ok(());
+    }
+
+    let Some((service_package_id, service_router_id, disabled, lease_present, lease_last_error)) =
+        service
+    else {
+        return Err(AppError::Validation(
+            "DHCP static service is required before installation completion".into(),
+        ));
+    };
+
+    if let Some(expected_package_id) = expected_package_id
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        if service_package_id.trim() != expected_package_id {
+            return Err(AppError::Validation(
+                "DHCP static service package does not match installation package".into(),
+            ));
+        }
+    }
+
+    if let Some(expected_router_id) = expected_router_id
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        if service_router_id.trim() != expected_router_id {
+            return Err(AppError::Validation(
+                "DHCP static service router does not match installation router".into(),
+            ));
+        }
+    }
+    if disabled {
+        return Err(AppError::Validation(
+            "DHCP static service must be enabled before installation completion".into(),
+        ));
+    }
+    if !lease_present
+        || lease_last_error
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .is_some()
+    {
+        return Err(AppError::Validation(
+            "DHCP static lease must be applied successfully before installation completion".into(),
+        ));
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests;
