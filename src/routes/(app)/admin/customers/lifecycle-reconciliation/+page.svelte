@@ -73,7 +73,7 @@
   }
 
   function openCustomer(issue: CustomerServiceLifecycleIssue) {
-    goto(`${adminBasePath()}/customers/${issue.customer_id}#subscriptions`);
+    goto(`${adminBasePath()}/customers/${issue.customer_id}?tab=subscriptions`);
   }
 
   async function loadReport() {
