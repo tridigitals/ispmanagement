@@ -55,4 +55,16 @@ describe('dhcpStaticProvisioning', () => {
     expect(getDhcpStaticProvisioningError(queueFailure)).toBe('queue rejected');
     expect(isDhcpStaticProvisioningReady(queueFailure)).toBe(true);
   });
+
+  it('keeps lease failure blocking even when queue sync succeeds', () => {
+    const service = {
+      ...base,
+      lease_last_error: 'router rejected lease',
+      queue_mode: 'simple_queue',
+      queue_present: true,
+    };
+
+    expect(getDhcpStaticProvisioningStatus(service)).toBe('apply_failed');
+    expect(isDhcpStaticProvisioningReady(service)).toBe(false);
+  });
 });

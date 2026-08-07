@@ -61,7 +61,9 @@ describe('admin network UI cleanup', () => {
 
   it('reuses DHCP static validation helpers in admin and installation flows', () => {
     const adminSource = readSource('src/routes/(app)/admin/network/dhcp-static/+page.svelte');
-    const installationSource = readSource('src/routes/(app)/admin/network/installations/+page.svelte');
+    const installationSource = readSource(
+      'src/routes/(app)/admin/network/installations/+page.svelte',
+    );
 
     for (const source of [adminSource, installationSource]) {
       expect(source).toContain('normalizeDhcpStaticMacAddress');
@@ -72,7 +74,9 @@ describe('admin network UI cleanup', () => {
 
   it('derives DHCP static queue presets from package context', () => {
     const adminSource = readSource('src/routes/(app)/admin/network/dhcp-static/+page.svelte');
-    const installationSource = readSource('src/routes/(app)/admin/network/installations/+page.svelte');
+    const installationSource = readSource(
+      'src/routes/(app)/admin/network/installations/+page.svelte',
+    );
 
     expect(adminSource).toContain('buildDhcpStaticQueueRateLimitPresets');
     expect(installationSource).toContain('buildDhcpStaticQueueRateLimitPresets');
@@ -81,14 +85,20 @@ describe('admin network UI cleanup', () => {
   });
 
   it('shows DHCP provisioning state and blocks completion until the lease is ready', () => {
-    const installationSource = readSource('src/routes/(app)/admin/network/installations/+page.svelte');
-    const modalSource = readSource('src/routes/(app)/admin/network/installations/InstallationDetailModal.svelte');
+    const installationSource = readSource(
+      'src/routes/(app)/admin/network/installations/+page.svelte',
+    );
+    const modalSource = readSource(
+      'src/routes/(app)/admin/network/installations/InstallationDetailModal.svelte',
+    );
 
     expect(installationSource).toContain('getDhcpStaticProvisioningStatus');
     expect(installationSource).toContain('isDhcpStaticProvisioningReady');
     expect(installationSource).toContain('refreshInstallationDhcpService');
     expect(modalSource).toContain('provisioning_completion_blocked');
     expect(modalSource).toContain('installationDhcpProvisioningError');
+    expect(modalSource).toContain('!installationDhcpProvisioningReady');
+    expect(modalSource).toContain('disabled={installationMutationBusy || !canCompleteActive}');
   });
 
   it('exposes installation visibility controls on the installations page', () => {
