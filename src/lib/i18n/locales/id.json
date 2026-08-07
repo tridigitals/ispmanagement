@@ -374,6 +374,11 @@
           "missing_bootstrap_invoice": "Belum ada invoice awal",
           "invalid_active_lifecycle": "Lifecycle aktif tidak valid"
         },
+        "confirm": {
+          "title": "Konfirmasi perbaikan massal",
+          "bootstrap_invoice": "Buat invoice awal untuk semua layanan yang cocok? Ini mengubah data billing.",
+          "invalid_lifecycle": "Suspend semua layanan invalid yang cocok? Ini mengubah akses pelanggan."
+        },
         "repair_result": {
           "title": "Hasil perbaikan",
           "subtitle": "Ringkasan hasil eksekusi mass action terakhir.",
@@ -3518,6 +3523,7 @@
   "common": {
     "back": "Kembali",
     "cancel": "Batal",
+    "confirm": "Konfirmasi",
     "clear": "Bersihkan",
     "close": "Tutup",
     "copied": "Tersalin",

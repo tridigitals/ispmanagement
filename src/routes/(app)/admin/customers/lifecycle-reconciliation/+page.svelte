@@ -12,6 +12,7 @@
     type CustomerServiceLifecycleReport,
   } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
@@ -45,6 +46,8 @@
     data: [],
   });
   let repairResult = $state<CustomerServiceLifecycleRepairResult | null>(null);
+  let repairConfirmOpen = $state(false);
+  let pendingRepairType = $state<'missing_bootstrap_invoice' | 'invalid_active_lifecycle' | null>(null);
   let loading = $state(true);
   let repairing = $state(false);
   let error = $state('');
@@ -96,6 +99,12 @@
     } finally {
       loading = false;
     }
+  }
+
+  function requestRepair(issueType: 'missing_bootstrap_invoice' | 'invalid_active_lifecycle') {
+    if (repairing) return;
+    pendingRepairType = issueType;
+    repairConfirmOpen = true;
   }
 
   async function repairIssues(issueType: 'missing_bootstrap_invoice' | 'invalid_active_lifecycle') {
@@ -227,7 +236,7 @@
       {#if canRepairLifecycle}
         <button
           class="btn primary"
-          onclick={() => repairIssues('missing_bootstrap_invoice')}
+          onclick={() => requestRepair('missing_bootstrap_invoice')}
           disabled={repairing || loading || report.missing_bootstrap_invoice === 0}
         >
           <Icon name="receipt" size={16} />
@@ -237,7 +246,7 @@
         </button>
         <button
           class="btn ghost danger"
-          onclick={() => repairIssues('invalid_active_lifecycle')}
+          onclick={() => requestRepair('invalid_active_lifecycle')}
           disabled={repairing || loading || report.invalid_active_lifecycle === 0}
         >
           <Icon name="alert-triangle" size={16} />
@@ -428,6 +437,23 @@
     </Table>
   </div>
 </div>
+
+<ConfirmDialog
+  bind:show={repairConfirmOpen}
+  title={$t('admin.customers.reconciliation.confirm.title')}
+  message={pendingRepairType === 'invalid_active_lifecycle'
+    ? $t('admin.customers.reconciliation.confirm.invalid_lifecycle')
+    : $t('admin.customers.reconciliation.confirm.bootstrap_invoice')}
+  confirmText={$t('common.confirm') || 'Confirm'}
+  cancelText={$t('common.cancel') || 'Cancel'}
+  type={pendingRepairType === 'invalid_active_lifecycle' ? 'danger' : 'warning'}
+  loading={repairing}
+  onconfirm={() => {
+    repairConfirmOpen = false;
+    if (pendingRepairType) void repairIssues(pendingRepairType);
+  }}
+  oncancel={() => (pendingRepairType = null)}
+/>
 
 <style>
   .lifecycle-page {

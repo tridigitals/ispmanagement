@@ -648,6 +648,11 @@
           "missing_bootstrap_invoice": "Missing initial invoice",
           "invalid_active_lifecycle": "Invalid active lifecycle"
         },
+        "confirm": {
+          "title": "Confirm mass repair",
+          "bootstrap_invoice": "Create initial invoices for every matching service? This changes billing data.",
+          "invalid_lifecycle": "Suspend every matching invalid service? This changes customer access."
+        },
         "repair_result": {
           "title": "Repair result",
           "subtitle": "Summary of the latest mass action execution.",
@@ -3517,6 +3522,7 @@
   "common": {
     "back": "Back",
     "cancel": "Cancel",
+    "confirm": "Confirm",
     "clear": "Clear",
     "close": "Close",
     "copied": "Copied",

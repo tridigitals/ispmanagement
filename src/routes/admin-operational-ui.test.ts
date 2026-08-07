@@ -116,6 +116,9 @@ describe('admin operational UI cleanup', () => {
     expect(source).toContain('reconciliation-filter-select');
     expect(source).toContain('api.customers.reconciliation.report');
     expect(source).toContain('api.customers.reconciliation.repair');
+    expect(source).toContain('ConfirmDialog');
+    expect(source).toContain('requestRepair');
+    expect(source).toContain('repairConfirmOpen');
     expect(source).toContain('?tab=subscriptions');
     expect(source).not.toContain('#subscriptions');
   });
