@@ -831,6 +831,22 @@ impl CustomerService {
                     }
                 }
 
+                let details = format!(
+                    "Lifecycle repair summary: issue_type={}, matched={}, repaired={}, skipped={}, failed={}",
+                    issue_type, matched_count, repaired_count, skipped_count, failed_count
+                );
+                self.audit_service
+                    .log(
+                        Some(actor_id),
+                        Some(tenant_id),
+                        "CUSTOMER_SERVICE_LIFECYCLE_REPAIR",
+                        "customer_service_lifecycle",
+                        None,
+                        Some(&details),
+                        None,
+                    )
+                    .await;
+
                 Ok(CustomerServiceLifecycleRepairResult {
                     issue_type: issue_type.to_string(),
                     matched_count,
@@ -923,6 +939,22 @@ impl CustomerService {
                         }
                     }
                 }
+
+                let details = format!(
+                    "Lifecycle repair summary: issue_type={}, matched={}, repaired={}, skipped={}, failed={}",
+                    issue_type, matched_count, repaired_count, skipped_count, failed_count
+                );
+                self.audit_service
+                    .log(
+                        Some(actor_id),
+                        Some(tenant_id),
+                        "CUSTOMER_SERVICE_LIFECYCLE_REPAIR",
+                        "customer_service_lifecycle",
+                        None,
+                        Some(&details),
+                        None,
+                    )
+                    .await;
 
                 Ok(CustomerServiceLifecycleRepairResult {
                     issue_type: issue_type.to_string(),
