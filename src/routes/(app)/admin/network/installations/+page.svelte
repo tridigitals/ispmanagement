@@ -35,6 +35,11 @@
     validateDhcpStaticQueueRateLimit,
   } from '$lib/utils/dhcpStaticValidation';
   import { buildDhcpStaticQueueRateLimitPresets } from '$lib/utils/dhcpStaticQueuePresets';
+  import {
+    getDhcpStaticProvisioningError,
+    getDhcpStaticProvisioningStatus,
+    isDhcpStaticProvisioningReady,
+  } from '$lib/utils/dhcpStaticProvisioning';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
   import Select2 from '$lib/components/ui/Select2.svelte';
@@ -173,6 +178,15 @@
       description: null,
       features: [],
     }),
+  );
+  const installationDhcpProvisioningStatus = $derived(
+    getDhcpStaticProvisioningStatus(installationDhcpService),
+  );
+  const installationDhcpProvisioningError = $derived(
+    getDhcpStaticProvisioningError(installationDhcpService),
+  );
+  const installationDhcpProvisioningReady = $derived(
+    isDhcpStaticProvisioningReady(installationDhcpService),
   );
   const installationQuickAssetDuplicates = $derived.by(() =>
     findInstallationQuickAssetDuplicates(installationQuickAssetDraft, installationAssetRows),
@@ -1334,6 +1348,15 @@
     }
   }
 
+  async function refreshInstallationDhcpService(rowId: string, serviceId: string) {
+    try {
+      const refreshed = await api.dhcpStatic.services.get(serviceId);
+      if (activeRow?.id === rowId) installationDhcpService = refreshed;
+    } catch {
+      // Keep the last known state when the follow-up read cannot complete.
+    }
+  }
+
   async function saveInstallationDhcp() {
     if (installationMutationBusy) return;
     const row = activeRow;
@@ -1449,10 +1472,14 @@
       installationDhcpService = service;
       const applied = await api.dhcpStatic.services.apply(service.id, { work_order_id: row.id });
       installationDhcpService = applied;
+      await refreshInstallationDhcpService(row.id, service.id);
       checkPppoe = true;
       await savePlan();
       toast.success(tr('admin.network.installations.toasts.dhcp_applied', 'DHCP static lease applied to router'));
     } catch {
+      if (row && installationDhcpService) {
+        await refreshInstallationDhcpService(row.id, installationDhcpService.id);
+      }
       toast.error(tr('admin.network.installations.toasts.dhcp_save_failed', 'Failed to save DHCP static service'));
     } finally {
       savingInstallationDhcp = false;
@@ -1467,10 +1494,14 @@
         work_order_id: activeRow.id,
       });
       installationDhcpService = applied;
+      await refreshInstallationDhcpService(activeRow.id, installationDhcpService.id);
       checkPppoe = true;
       await savePlan();
       toast.success(tr('admin.network.installations.toasts.dhcp_applied', 'DHCP static lease applied to router'));
     } catch {
+      if (activeRow && installationDhcpService) {
+        await refreshInstallationDhcpService(activeRow.id, installationDhcpService.id);
+      }
       toast.error(tr('admin.network.installations.toasts.dhcp_apply_failed', 'Failed to apply DHCP static lease'));
     } finally {
       savingInstallationDhcp = false;
@@ -1676,7 +1707,9 @@
     activeRow?.status === 'in_progress' &&
       checklistDoneCount === checklistTotal &&
       installationAssetStepComplete &&
-      !installationAssetBindingError,
+      !installationAssetBindingError &&
+      (activeRow.package_provisioning_type !== 'dhcp_static' ||
+        isDhcpStaticProvisioningReady(installationDhcpService)),
   );
   const canSaveAssignStep = $derived(activeRow?.status === 'pending' && hasAssignee(formAssignee));
   const canSaveScheduleStep = $derived(activeRow?.status === 'pending' && isPlanReady(formAssignee, formSchedule));
@@ -2390,6 +2423,9 @@
       bind:installationDhcpQueueMode
       bind:installationDhcpQueueRateLimit
       {installationDhcpService}
+      {installationDhcpProvisioningStatus}
+      {installationDhcpProvisioningError}
+      {installationDhcpProvisioningReady}
       {savingInstallationDhcp}
       {saveInstallationDhcp}
       {applyInstallationDhcp}

@@ -80,6 +80,17 @@ describe('admin network UI cleanup', () => {
     expect(installationSource).toContain('installationDhcpQueueRateLimitPresets[0]');
   });
 
+  it('shows DHCP provisioning state and blocks completion until the lease is ready', () => {
+    const installationSource = readSource('src/routes/(app)/admin/network/installations/+page.svelte');
+    const modalSource = readSource('src/routes/(app)/admin/network/installations/InstallationDetailModal.svelte');
+
+    expect(installationSource).toContain('getDhcpStaticProvisioningStatus');
+    expect(installationSource).toContain('isDhcpStaticProvisioningReady');
+    expect(installationSource).toContain('refreshInstallationDhcpService');
+    expect(modalSource).toContain('provisioning_completion_blocked');
+    expect(modalSource).toContain('installationDhcpProvisioningError');
+  });
+
   it('exposes installation visibility controls on the installations page', () => {
     const source = readSource('src/routes/(app)/admin/network/installations/+page.svelte');
 

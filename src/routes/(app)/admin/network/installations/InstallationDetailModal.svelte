@@ -70,6 +70,9 @@
     installationDhcpQueueMode = $bindable(),
     installationDhcpQueueRateLimit = $bindable(),
     installationDhcpService,
+    installationDhcpProvisioningStatus = 'draft',
+    installationDhcpProvisioningError = null,
+    installationDhcpProvisioningReady = false,
     savingInstallationDhcp,
     saveInstallationDhcp,
     applyInstallationDhcp,
@@ -262,7 +265,19 @@
           <div class="wizard-card">
             <h3>{tr('admin.network.installations.network_config', 'Network Configuration')}</h3>
             {#if activeRow?.package_provisioning_type === 'dhcp_static'}
-              <h4>DHCP Static</h4>
+              <h4>{tr('admin.network.installations.dhcp_static_title', 'DHCP Static')}</h4>
+              <div class="provisioning-status-row">
+                <span class="meta-label">{tr('admin.network.installations.provisioning_status', 'Provisioning status')}</span>
+                <span class={`status provisioning-${installationDhcpProvisioningStatus}`}>
+                  {tr(
+                    `admin.network.installations.provisioning_${installationDhcpProvisioningStatus}`,
+                    installationDhcpProvisioningStatus,
+                  )}
+                </span>
+              </div>
+              {#if installationDhcpProvisioningError}
+                <p class="field-error provisioning-error">{installationDhcpProvisioningError}</p>
+              {/if}
               <div class="form-grid two-col compact"><label><span class="summary-label">{tr('admin.network.installations.dhcp_server', 'DHCP Server')}</span><input class="input" class:error={!!installationDhcpServerNameError} bind:value={installationDhcpServerName} /></label><label><span class="summary-label">{tr('admin.network.installations.mac_address', 'MAC Address')}</span><input class="input" class:error={!!installationDhcpMacAddressError} bind:value={installationDhcpMacAddress} /></label><label><span class="summary-label">{tr('admin.network.installations.ip_address', 'IP Address')}</span><input class="input" class:error={!!installationDhcpIpAddressError} bind:value={installationDhcpIpAddress} /></label><label><span class="summary-label">{tr('admin.network.installations.queue_mode', 'Queue')}</span><select class="input" bind:value={installationDhcpQueueMode}><option value="none">No queue</option><option value="simple_queue">Simple queue</option></select></label></div>
               {#if installationDhcpQueueMode === 'simple_queue'}<label><span class="summary-label">{tr('admin.network.installations.queue_rate_limit', 'Rate Limit')}</span><input class="input" bind:value={installationDhcpQueueRateLimit} placeholder="20M/20M" /></label>{/if}
               <label><span class="summary-label">{tr('common.comment', 'Comment')}</span><input class="input" bind:value={installationDhcpComment} /></label>
@@ -288,7 +303,12 @@
                 </section>
               {/if}
             {/if}
-            {#if activeRow.status === 'in_progress'}<div class="modal-actions"><button class="btn success" onclick={completeFromDetail} disabled={installationMutationBusy || !canCompleteActive}>{tr('common.complete', 'Complete')}</button></div>{/if}
+            {#if activeRow.status === 'in_progress'}
+              {#if activeRow.package_provisioning_type === 'dhcp_static' && !installationDhcpProvisioningReady}
+                <p class="helper-text">{tr('admin.network.installations.provisioning_completion_blocked', 'Apply the DHCP static lease successfully before completing this installation.')}</p>
+              {/if}
+              <div class="modal-actions"><button class="btn success" onclick={completeFromDetail} disabled={installationMutationBusy || !canCompleteActive}>{tr('common.complete', 'Complete')}</button></div>
+            {/if}
           </div>
 
         {:else if activeTab === 'timeline'}
@@ -381,6 +401,13 @@
   .photo-meta { display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding: 6px 8px; }
   .pppoe-existing { border: 1px solid color-mix(in srgb, var(--color-success) 28%, var(--border-color)); border-radius: 10px; padding: 8px 12px; display: flex; gap: 8px; align-items: center; background: var(--bg-success); }
   .pppoe-existing span:first-child { color: var(--text-success); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+  .provisioning-status-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-primary); }
+  .provisioning-status-row .meta-label { margin: 0; }
+  .status.provisioning-draft { border-color: color-mix(in srgb, var(--color-warning) 42%, var(--border-color)); color: var(--color-warning); }
+  .status.provisioning-apply_failed { border-color: color-mix(in srgb, var(--color-danger) 42%, var(--border-color)); color: var(--color-danger); }
+  .status.provisioning-applied, .status.provisioning-applied_queue { border-color: color-mix(in srgb, var(--color-success) 42%, var(--border-color)); color: var(--text-success); }
+  .provisioning-error { color: var(--color-danger); white-space: pre-wrap; word-break: break-word; }
+  .field-error { color: var(--color-danger); font-size: 0.78rem; }
   .quick-asset-card { border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-surface); padding: 12px; display: grid; gap: 10px; }
   .quick-asset-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .activation-ready { border: 1px dashed var(--border-color); border-radius: 12px; padding: 12px; display: grid; gap: 6px; }
