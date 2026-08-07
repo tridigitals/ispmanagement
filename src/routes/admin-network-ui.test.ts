@@ -101,6 +101,20 @@ describe('admin network UI cleanup', () => {
     expect(modalSource).toContain('disabled={installationMutationBusy || !canCompleteActive}');
   });
 
+  it('supports opening an installation from a subscription deep link', () => {
+    const subscriptionSource = readSource(
+      'src/routes/(app)/admin/customers/[id]/CustomerSubscriptionsTab.svelte',
+    );
+    const installationSource = readSource(
+      'src/routes/(app)/admin/network/installations/+page.svelte',
+    );
+
+    expect(subscriptionSource).toContain('latest_work_order_id');
+    expect(subscriptionSource).toContain('work_order_id=');
+    expect(installationSource).toContain("searchParams.get('work_order_id')");
+    expect(installationSource).toContain('openDetail(requested)');
+  });
+
   it('exposes installation visibility controls on the installations page', () => {
     const source = readSource('src/routes/(app)/admin/network/installations/+page.svelte');
 

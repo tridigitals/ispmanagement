@@ -309,6 +309,7 @@
     { key: 'billing', label: $t('admin.customers.tabs.billing') || 'Billing' },
     { key: 'location', label: $t('common.location') || 'Location' },
     { key: 'router', label: 'Router' },
+    { key: 'installation', label: $t('admin.customers.subscriptions.installation') || 'Installation' },
     { key: 'lifecycle', label: 'Lifecycle' },
     { key: 'actions', label: '', align: 'right' as const },
   ]);

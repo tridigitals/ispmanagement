@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { t } from 'svelte-i18n';
   import { can, token, user } from '$lib/stores/auth';
   import { getApiBaseUrl } from '$lib/utils/apiUrl';
@@ -94,6 +95,7 @@
 
   let detailOpen = $state(false);
   let activeRow = $state<InstallationWorkOrderView | null>(null);
+  let pendingWorkOrderId = $state<string | null>(null);
   let quickAssignOpen = $state(false);
   let quickAssignTarget = $state<InstallationWorkOrderView | null>(null);
   let quickAssignAssignee = $state('');
@@ -298,6 +300,9 @@
     if (isAdminOwner) {
       void loadVisibilityMode();
     }
+    const requestedWorkOrderId =
+      $page.url.searchParams.get('work_order_id') || $page.url.searchParams.get('workOrderId');
+    pendingWorkOrderId = requestedWorkOrderId?.trim() || null;
     void loadAll();
 
     const onStorage = (event: StorageEvent) => {
@@ -371,6 +376,13 @@
       if (requestSequence !== loadSequence) return;
       rows = workOrders;
       team = members;
+      if (pendingWorkOrderId) {
+        const requested = workOrders.find((row) => row.id === pendingWorkOrderId);
+        if (requested) {
+          pendingWorkOrderId = null;
+          openDetail(requested);
+        }
+      }
 
       // Keep detail modal in sync with latest server state (including reschedule requests)
       if (detailOpen && activeRow) {

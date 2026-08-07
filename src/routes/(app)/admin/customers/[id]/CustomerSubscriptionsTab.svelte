@@ -101,6 +101,14 @@
         <div>{row.location_label || '-'}</div>
       {:else if key === 'router'}
         <div>{row.router_name || '-'}</div>
+      {:else if key === 'installation'}
+        {#if row.latest_work_order_id}
+          <a class="installation-link" href={`/admin/network/installations?work_order_id=${encodeURIComponent(row.latest_work_order_id)}`}>
+            {row.latest_work_order_status || $t('admin.customers.subscriptions.installation_link') || 'View installation'}
+          </a>
+        {:else}
+          <span class="subtle">{$t('admin.customers.subscriptions.no_installation') || 'No installation'}</span>
+        {/if}
       {:else if key === 'lifecycle'}
         {@const summary = getSubscriptionPolicySummary(row)}
         {@const accessState = getSubscriptionAccessState(row)}
@@ -315,6 +323,21 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
     color: var(--text-secondary);
     font-size: 0.9rem;
+  }
+
+  .installation-link {
+    color: var(--color-primary);
+    font-weight: 650;
+    text-decoration: none;
+  }
+
+  .installation-link:hover,
+  .installation-link:focus-visible {
+    text-decoration: underline;
+  }
+
+  .subtle {
+    color: var(--text-secondary);
   }
 
   .status-chip,
