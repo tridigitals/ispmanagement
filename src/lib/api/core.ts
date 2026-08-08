@@ -839,8 +839,9 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             errorBody?.detail ||
             errorBody?.details ||
             `HTTP Error ${response.status}`;
-          const error = new Error(message) as Error & { status?: number };
+          const error = new Error(message) as Error & { status?: number; code?: string };
           error.status = response.status;
+          error.code = extractApiErrorCode(message);
           throw error;
         }
         // Non-JSON body: never leak raw HTML / debug pages into the UI.
@@ -952,6 +953,12 @@ export function logApiError(scope: string, err: unknown, fallback = 'request fai
  * backend may return. Falls back gracefully when none of the well-known
  * fields are present so the FE never logs `[object Object]`.
  */
+export function extractApiErrorCode(err: unknown): string | undefined {
+  const message = extractApiErrorMessage(err, '');
+  const match = message.match(/^([A-Z][A-Z0-9_]*):/);
+  return match?.[1];
+}
+
 export function extractApiErrorMessage(err: unknown, fallback = 'Unknown error'): string {
   if (!err) return fallback;
   if (typeof err === 'string') return err;

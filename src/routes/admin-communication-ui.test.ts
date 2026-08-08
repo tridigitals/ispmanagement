@@ -39,4 +39,10 @@ describe('admin communication UI cleanup', () => {
     expect(source).not.toMatch(/(?:linear|radial)-gradient/);
     expect(source).not.toContain('backdrop-filter');
   });
+
+  it('keeps audit entitlement errors structured for upgrade state', () => {
+    const source = readSource('src/routes/(app)/admin/audit-logs/+page.svelte');
+    expect(source).toContain("errorCode === 'PLAN_FEATURE_REQUIRED'");
+    expect(source).toContain("errorMessage.toLowerCase().includes('upgrade')");
+  });
 });

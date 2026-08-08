@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
+  import { extractApiErrorCode } from '$lib/api/core';
   import { can, isAdmin } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import type { AuditLog } from '$lib/api/client';
@@ -18,6 +19,7 @@
   let isMobile = $state(false);
   let viewMode = $state<'table' | 'cards'>('table');
   let errorMessage = $state<string | null>(null);
+  let errorCode = $state<string | undefined>();
 
   // Filters
   let searchQuery = $state('');
@@ -52,6 +54,7 @@
 
     loading = true;
     errorMessage = null;
+    errorCode = undefined;
     try {
       const activeFilters: any = {};
       if (searchQuery) activeFilters.search = searchQuery;
@@ -65,6 +68,7 @@
       total = res.total;
     } catch (err: any) {
       const msg = String(err?.message || err || 'Failed to load audit logs');
+      errorCode = err?.code || extractApiErrorCode(err);
       errorMessage = msg;
       logs = [];
       total = 0;
@@ -157,7 +161,7 @@
               {$t('superadmin.audit_logs.title')}
             </div>
             <div class="error-msg">{errorMessage}</div>
-            {#if errorMessage.toLowerCase().includes('upgrade')}
+            {#if errorCode === 'PLAN_FEATURE_REQUIRED' || errorMessage.toLowerCase().includes('upgrade')}
               <button class="btn btn-primary" onclick={() => goto('../subscription')}>
                 {$t('admin.subscription.title')}
               </button>
