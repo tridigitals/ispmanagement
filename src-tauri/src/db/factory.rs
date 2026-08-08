@@ -13,6 +13,20 @@ impl<'a> DbFactory<'a> {
         Self { pool }
     }
 
+    fn canonical_role_name(role: &str) -> String {
+        match role.trim().to_ascii_lowercase().as_str() {
+            "owner" => "Owner".to_string(),
+            "admin" => "Admin".to_string(),
+            "noc" => "NOC".to_string(),
+            "planner" => "Planner".to_string(),
+            "customer service" => "Customer Service".to_string(),
+            "technician" => "Technician".to_string(),
+            "viewer" => "Viewer".to_string(),
+            "customer" => "Customer".to_string(),
+            _ => role.trim().to_string(),
+        }
+    }
+
     pub async fn ensure_global_setting(
         &self,
         key: &str,
@@ -214,18 +228,40 @@ impl<'a> DbFactory<'a> {
         #[cfg(feature = "sqlite")]
         let q = "SELECT id FROM tenant_members WHERE tenant_id = ? AND user_id = ?";
 
-        if sqlx::query_scalar::<_, String>(q)
+        if let Some(member_id) = sqlx::query_scalar::<_, String>(q)
             .bind(tenant_id)
             .bind(user_id)
             .fetch_optional(self.pool)
             .await
             .context("ensure_tenant_member select failed")?
-            .is_some()
         {
+            #[cfg(feature = "postgres")]
+            sqlx::query(
+                "UPDATE tenant_members SET role = $1, role_id = (SELECT id FROM roles WHERE name = $2 AND tenant_id IS NULL LIMIT 1) WHERE id = $3 AND role_id IS NULL",
+            )
+            .bind(role)
+            .bind(Self::canonical_role_name(role))
+            .bind(&member_id)
+            .execute(self.pool)
+            .await
+            .context("ensure_tenant_member role repair failed")?;
+
+            #[cfg(feature = "sqlite")]
+            sqlx::query(
+                "UPDATE tenant_members SET role = ?, role_id = (SELECT id FROM roles WHERE name = ? AND tenant_id IS NULL LIMIT 1) WHERE id = ? AND role_id IS NULL",
+            )
+            .bind(role)
+            .bind(Self::canonical_role_name(role))
+            .bind(&member_id)
+            .execute(self.pool)
+            .await
+            .context("ensure_tenant_member role repair failed")?;
+
             return Ok(());
         }
 
         let now = Utc::now();
+        let canonical_role = Self::canonical_role_name(role);
         let id = uuid::Uuid::new_v4().to_string();
 
         #[cfg(feature = "postgres")]
@@ -233,13 +269,14 @@ impl<'a> DbFactory<'a> {
             sqlx::query(
                 r#"
                 INSERT INTO tenant_members (id, tenant_id, user_id, role, role_id, created_at)
-                VALUES ($1,$2,$3,$4,NULL,$5)
+                VALUES ($1,$2,$3,$4,(SELECT id FROM roles WHERE name = $5 AND tenant_id IS NULL LIMIT 1),$6)
             "#,
             )
             .bind(&id)
             .bind(tenant_id)
             .bind(user_id)
             .bind(role)
+            .bind(&canonical_role)
             .bind(now)
             .execute(self.pool)
             .await
@@ -252,13 +289,14 @@ impl<'a> DbFactory<'a> {
             sqlx::query(
                 r#"
                 INSERT INTO tenant_members (id, tenant_id, user_id, role, role_id, created_at)
-                VALUES (?,?,?,?,NULL,?)
+                VALUES (?,?,?,?,(SELECT id FROM roles WHERE name = ? AND tenant_id IS NULL LIMIT 1),?)
             "#,
             )
             .bind(&id)
             .bind(tenant_id)
             .bind(user_id)
             .bind(role)
+            .bind(&canonical_role)
             .bind(&now_str)
             .execute(self.pool)
             .await
