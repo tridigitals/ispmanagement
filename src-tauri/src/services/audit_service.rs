@@ -103,8 +103,9 @@ impl AuditService {
                     .unwrap_or(false); // If check fails (e.g. no plan), deny access
 
                 if !has_access {
-                    return Err(AppError::Validation(
-                        "Upgrade your plan to access Audit Logs.".to_string(),
+                    return Err(AppError::Forbidden(
+                        "PLAN_FEATURE_REQUIRED:audit_logs: Upgrade your plan to access Audit Logs."
+                            .to_string(),
                     ));
                 }
             }
@@ -449,5 +450,16 @@ impl AuditService {
 
             Ok((logs, count))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn audit_plan_gate_uses_forbidden_contract() {
+        let source = include_str!("audit_service.rs");
+        assert!(source.contains("AppError::Forbidden"));
+        assert!(source.contains("PLAN_FEATURE_REQUIRED:audit_logs:"));
+        assert!(!source.contains("AppError::Validation(\n                        \"Upgrade your plan"));
     }
 }
