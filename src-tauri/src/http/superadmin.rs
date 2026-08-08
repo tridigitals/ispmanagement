@@ -381,6 +381,12 @@ mod tests {
 
         assert_eq!(next.0, CUSTOM_DOMAIN_STATUS_NONE);
     }
+
+    #[test]
+    fn superadmin_custom_domain_plan_gate_has_stable_error_code() {
+        let source = include_str!("superadmin.rs");
+        assert!(source.contains("PLAN_FEATURE_REQUIRED:custom_domain:"));
+    }
 }
 
 pub async fn list_managed_radius_servers(
@@ -1454,7 +1460,8 @@ pub async fn update_tenant(
             .map_err(|e| crate::error::AppError::Internal(e.to_string()))?;
         if !access.has_access {
             return Err(crate::error::AppError::Forbidden(
-                "This tenant plan does not support Custom Domains".to_string(),
+                "PLAN_FEATURE_REQUIRED:custom_domain: This tenant plan does not support Custom Domains. Please upgrade."
+                    .to_string(),
             ));
         }
     }

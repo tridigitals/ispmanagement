@@ -113,7 +113,8 @@ pub async fn update_current_tenant(
                 .map_err(|e| AppError::Internal(e.to_string()))?;
             if !access.has_access {
                 return Err(AppError::Forbidden(
-                    "Your plan does not support Custom Domains. Please upgrade.".to_string(),
+                    "PLAN_FEATURE_REQUIRED:custom_domain: Your plan does not support Custom Domains. Please upgrade."
+                        .to_string(),
                 ));
             }
         }
@@ -275,5 +276,11 @@ mod tests {
         );
 
         assert_eq!(next.0, CUSTOM_DOMAIN_STATUS_PENDING);
+    }
+
+    #[test]
+    fn tenant_custom_domain_plan_gate_has_stable_error_code() {
+        let source = include_str!("tenant.rs");
+        assert!(source.contains("PLAN_FEATURE_REQUIRED:custom_domain:"));
     }
 }
