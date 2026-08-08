@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_invoices_tenant_customer_package_external_id;

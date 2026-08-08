@@ -548,20 +548,44 @@ impl PaymentService {
                         // `None`, that's an unexpected error condition
                         // (different unique constraint, or sqlx behavior
                         // change) — surface it instead of papering over.
-                        let is_invoice_unique_conflict = err
+                        let conflict_constraint = err
                             .as_database_error()
-                            .map(|db| {
-                                db.code().as_deref() == Some("23505")
-                                    && db
-                                        .constraint()
-                                        .map(|c| {
-                                            c == "idx_invoices_tenant_invoice_number"
-                                                || c == "invoices_invoice_number_key"
-                                        })
-                                        .unwrap_or(false)
+                            .filter(|db| db.code().as_deref() == Some("23505"))
+                            .and_then(|db| db.constraint());
+                        if conflict_constraint
+                            == Some("idx_invoices_tenant_customer_package_external_id")
+                        {
+                            let existing = sqlx::query_as::<_, Invoice>(
+                                r#"
+                                SELECT
+                                    id, tenant_id, invoice_number,
+                                    amount::FLOAT8 as amount,
+                                    currency_code, base_currency_code,
+                                    COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
+                                    status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at
+                                FROM invoices
+                                WHERE tenant_id = $1 AND external_id = $2
+                                ORDER BY created_at DESC
+                                LIMIT 1
+                                "#,
+                            )
+                            .bind(tenant_id)
+                            .bind(&external_id)
+                            .fetch_optional(&self.pool)
+                            .await
+                            .map_err(|e| AppError::Internal(e.to_string()))?;
+                            if let Some(existing) = existing {
+                                inserted = Some(existing);
+                                break;
+                            }
+                        }
+                        let is_invoice_number_unique_conflict = conflict_constraint
+                            .map(|c| {
+                                c == "idx_invoices_tenant_invoice_number"
+                                    || c == "invoices_invoice_number_key"
                             })
                             .unwrap_or(false);
-                        if is_invoice_unique_conflict && attempt + 1 < MAX_ATTEMPTS {
+                        if is_invoice_number_unique_conflict && attempt + 1 < MAX_ATTEMPTS {
                             tracing::warn!(
                                 tenant_id = %tenant_id,
                                 attempt = attempt + 1,
