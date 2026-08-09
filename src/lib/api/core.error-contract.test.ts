@@ -7,7 +7,7 @@ describe('API error contract', () => {
       extractApiErrorCode({
         message: 'PLAN_FEATURE_REQUIRED:audit_logs: Upgrade your plan to access Audit Logs.',
       }),
-    ).toBe('PLAN_FEATURE_REQUIRED');
+    ).toBe('PLAN_FEATURE_REQUIRED:audit_logs');
   });
 
   it('does not classify ordinary forbidden errors as plan entitlement errors', () => {

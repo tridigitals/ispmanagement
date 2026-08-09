@@ -955,7 +955,7 @@ export function logApiError(scope: string, err: unknown, fallback = 'request fai
  */
 export function extractApiErrorCode(err: unknown): string | undefined {
   const message = extractApiErrorMessage(err, '');
-  const match = message.match(/^([A-Z][A-Z0-9_]*):/);
+  const match = message.match(/^([A-Z][A-Z0-9_]*(?::[a-z0-9_]+)?):/);
   return match?.[1];
 }
 

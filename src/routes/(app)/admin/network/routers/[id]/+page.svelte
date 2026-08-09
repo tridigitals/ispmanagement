@@ -7,6 +7,7 @@
   import { can } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { api } from '$lib/api/client';
+  import { extractApiErrorCode } from '$lib/api/core';
   import type { ManagedRadiusRouterSetup as ManagedRadiusRouterSetupResponse } from '$lib/api/types';
   import { toast } from '$lib/stores/toast';
   import { resolveBackTarget } from '$lib/utils/backNavigation';
@@ -445,6 +446,15 @@
     showManagedRadiusSecret = false;
   }
 
+  function showManagedRadiusError(error: any) {
+    const errorCode = extractApiErrorCode(error);
+    if (errorCode === 'PLAN_FEATURE_REQUIRED:managed_radius') {
+      toast.warning('Plan upgrade required: ' + (error?.message || 'Upgrade required'));
+    } else {
+      toast.error(error?.message || error);
+    }
+  }
+
   async function assignManagedRadiusDefault() {
     const id = $page.params.id || router?.id || '';
     if (!id || assigningManagedRadiusDefault) return;
@@ -461,7 +471,7 @@
           'Default Managed RADIUS assigned',
       );
     } catch (e: any) {
-      toast.error(e?.message || e);
+      showManagedRadiusError(e);
     } finally {
       assigningManagedRadiusDefault = false;
     }
@@ -483,7 +493,7 @@
           'Managed RADIUS NAS mapping created',
       );
     } catch (e: any) {
-      toast.error(e?.message || e);
+      showManagedRadiusError(e);
     } finally {
       creatingManagedRadiusMapping = false;
     }
@@ -505,7 +515,7 @@
           'Managed RADIUS applied to router',
       );
     } catch (e: any) {
-      toast.error(e?.message || e);
+      showManagedRadiusError(e);
     } finally {
       applyingManagedRadius = false;
     }

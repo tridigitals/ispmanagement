@@ -820,8 +820,9 @@ async fn assign_managed_radius_default(
         .unwrap_or(false);
 
     if !plan_allows_managed_radius {
-        return Err(AppError::Validation(
-            "Managed RADIUS is not included in the current plan".into(),
+        return Err(AppError::Forbidden(
+            "PLAN_FEATURE_REQUIRED:managed_radius: Managed RADIUS is not included in the current plan. Please upgrade."
+                .into(),
         ));
     }
 
@@ -911,8 +912,9 @@ async fn create_managed_radius_mapping(
         .unwrap_or(false);
 
     if !plan_allows_managed_radius {
-        return Err(AppError::Validation(
-            "Managed RADIUS is not included in the current plan".into(),
+        return Err(AppError::Forbidden(
+            "PLAN_FEATURE_REQUIRED:managed_radius: Managed RADIUS is not included in the current plan. Please upgrade."
+                .into(),
         ));
     }
 
@@ -983,6 +985,13 @@ async fn apply_managed_radius_setup(
         .await
         .map(|access| access.has_access)
         .unwrap_or(false);
+
+    if !plan_allows_managed_radius {
+        return Err(AppError::Forbidden(
+            "PLAN_FEATURE_REQUIRED:managed_radius: Managed RADIUS is not included in the current plan. Please upgrade."
+                .into(),
+        ));
+    }
 
     let setup = state
         .managed_radius_service
@@ -1317,4 +1326,16 @@ async fn get_snapshot(
 
     let snap = state.mikrotik_service.get_snapshot(&tenant_id, &id).await?;
     Ok(Json(snap))
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn managed_radius_mutation_plan_gates_use_stable_error_code() {
+        let source = include_str!("mikrotik.rs");
+        assert!(source.contains("PLAN_FEATURE_REQUIRED:managed_radius:"));
+        assert!(!source.contains(
+            "AppError::Validation(\n            \"Managed RADIUS is not included in the current plan\""
+        ));
+    }
 }
