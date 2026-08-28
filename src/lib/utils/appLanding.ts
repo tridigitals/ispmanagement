@@ -1,5 +1,6 @@
 export type LandingUserLike = {
   role?: string | null;
+  tenant_role?: string | null;
   is_super_admin?: boolean | null;
   permissions?: string[] | null;
 };
@@ -31,8 +32,11 @@ const PORTAL_ONLY_PERMISSIONS = new Set(['customers:read_own']);
 export function hasInternalAppAccess(user: LandingUserLike | null | undefined): boolean {
   if (!user) return false;
 
-  const role = String(user.role || '').toLowerCase();
+  const role = String(user.tenant_role || user.role || '').trim().toLowerCase();
   if (user.is_super_admin) return true;
+  // Customer portal users stay on the customer dashboard even if stale
+  // internal permissions remain on their role in the database.
+  if (role === 'customer' || role === 'pelanggan') return false;
   if (role === 'owner' || role === 'admin') return true;
 
   const permissions = Array.isArray(user.permissions) ? user.permissions : [];
@@ -42,9 +46,7 @@ export function hasInternalAppAccess(user: LandingUserLike | null | undefined): 
     if (PORTAL_ONLY_PERMISSIONS.has(permission)) return false;
     return INTERNAL_PERMISSION_PREFIXES.some((prefix) => permission.startsWith(prefix));
   });
-  if (hasPermission) return true;
-  if (role === 'customer' || role === 'pelanggan') return false;
-  return false;
+  return hasPermission;
 }
 
 export function getDefaultTenantLandingPath(
@@ -56,7 +58,7 @@ export function getDefaultTenantLandingPath(
 
 export function canAccessCustomerDashboard(user: LandingUserLike | null | undefined): boolean {
   if (!user) return false;
-  const role = String(user.role || '').toLowerCase();
+  const role = String(user.tenant_role || user.role || '').trim().toLowerCase();
   // Explicit internal access wins over a broad customer role from legacy payloads.
   if (hasInternalAppAccess(user)) return false;
   if (role === 'customer' || role === 'pelanggan') return true;

@@ -28,6 +28,7 @@ describe('app landing helpers', () => {
 
   it('treats admin access permission as internal landing access', () => {
     const user = makeUser({
+      role: 'admin',
       permissions: ['admin:access'],
     });
 
@@ -38,6 +39,7 @@ describe('app landing helpers', () => {
 
   it('treats granular internal permissions like technician access as admin landing access', () => {
     const user = makeUser({
+      role: 'technician',
       permissions: ['work_orders:read', 'pppoe:manage'],
     });
 
@@ -62,5 +64,48 @@ describe('app landing helpers', () => {
     });
 
     expect(canAccessCustomerDashboard(user)).toBe(true);
+  });
+
+  it('ignores stale internal permissions for customer landing decisions', () => {
+    const user = makeUser({
+      permissions: ['customers:read_own', 'storage_console:read'],
+    });
+
+    expect(hasInternalAppAccess(user)).toBe(false);
+    expect(canAccessCustomerDashboard(user)).toBe(true);
+    expect(getDefaultTenantLandingPath(user, '')).toBe('/dashboard');
+  });
+
+  it('keeps pelanggan portal users on the dashboard despite stale internal permissions', () => {
+    const user = makeUser({
+      role: 'pelanggan',
+      permissions: ['customers:read_own', 'storage_console:read'],
+    });
+
+    expect(hasInternalAppAccess(user)).toBe(false);
+    expect(canAccessCustomerDashboard(user)).toBe(true);
+    expect(getDefaultTenantLandingPath(user, '')).toBe('/dashboard');
+  });
+
+  it('normalizes whitespace around legacy portal roles', () => {
+    const user = makeUser({
+      role: ' Pelanggan ',
+      permissions: ['storage_console:read'],
+    });
+
+    expect(hasInternalAppAccess(user)).toBe(false);
+    expect(getDefaultTenantLandingPath(user, '')).toBe('/dashboard');
+  });
+
+  it('uses the tenant role when the global role is stale', () => {
+    const user = makeUser({
+      role: 'admin',
+      tenant_role: 'customer',
+      permissions: ['storage_console:read'],
+    });
+
+    expect(hasInternalAppAccess(user)).toBe(false);
+    expect(canAccessCustomerDashboard(user)).toBe(true);
+    expect(getDefaultTenantLandingPath(user, '')).toBe('/dashboard');
   });
 });

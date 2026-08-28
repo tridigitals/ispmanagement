@@ -48,7 +48,7 @@ class DashboardScreen extends ConsumerWidget {
                 separatorBuilder: (_, __) => const Divider(height: 1),
                 itemBuilder: (context, index) => ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: Colors.orange.withValues(alpha: 0.15),
+                    backgroundColor: Colors.orange.withOpacity(0.15),
                     child: const Icon(Icons.support_agent, color: Colors.orange, size: 20),
                   ),
                   title: Text('Tiket #${index + 1}'),
@@ -71,7 +71,7 @@ class DashboardScreen extends ConsumerWidget {
                 separatorBuilder: (_, __) => const Divider(height: 1),
                 itemBuilder: (context, index) => ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: Colors.green.withValues(alpha: 0.15),
+                    backgroundColor: Colors.green.withOpacity(0.15),
                     child: const Icon(Icons.check_circle, color: Colors.green, size: 20),
                   ),
                   title: Text('Pembayaran #${index + 1}'),

@@ -78,10 +78,12 @@
 
   function canAccessAdminPath(path: string) {
     if (!path.startsWith('/admin')) return true;
-    // Customer/portal users NEVER access admin routes
-    const role = String($user?.role || '').toLowerCase();
-    if (role === 'customer') return false;
     if ($isSuperAdmin) return true;
+
+    // Customer/portal users NEVER access admin routes.
+    // Prefer the tenant role because the global user role can be stale in multi-tenant sessions.
+    const role = String(($user?.tenant_role || $user?.role || '')).trim().toLowerCase();
+    if (role === 'customer' || role === 'pelanggan') return false;
 
     // /admin home
     if (path === '/admin' || path === '/admin/') {

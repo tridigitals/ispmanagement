@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app_config.dart';
@@ -25,14 +26,14 @@ class AuthState {
     return AuthState(
       token: token ?? this.token,
       user: user ?? this.user,
-      isLoading: isLoading,
+      isLoading: isLoading ?? this.isLoading,
       error: error,
     );
   }
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  final ApiClient _api;
+  final Dio _api;
   final Ref _ref;
 
   AuthNotifier(this._api, this._ref) : super(const AuthState());
@@ -51,7 +52,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // it up on subsequent requests. Failure here is non-fatal —
       // admin is still authenticated for this session.
       try {
-        await _ref.read(tokenStorageProvider).saveToken(token);
+        await _ref.read(tokenStorageProvider).save(token: token);
       } catch (_) {/* secure storage may fail on emulator */}
 
       state = AuthState(token: token, user: user);
@@ -62,16 +63,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   void logout() {
     try {
-      _ref.read(tokenStorageProvider).deleteToken();
+      _ref.read(tokenStorageProvider).clear();
     } catch (_) {}
     state = const AuthState();
   }
 }
 
-final apiClientProvider = Provider<ApiClient>((ref) {
-  final config = ref.watch(appConfigProvider);
-  return ApiClient(baseUrl: config.apiBaseUrl);
-});
+final apiClientProvider = Provider<Dio>((ref) => ref.watch(dioProvider));
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final api = ref.watch(apiClientProvider);

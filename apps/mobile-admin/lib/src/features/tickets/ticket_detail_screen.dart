@@ -24,7 +24,7 @@ final _ticketMessagesProvider =
   final svc = ref.watch(ticketServiceProvider);
   final userId = ref.watch(_currentUserIdProvider);
   final result = await svc.listMessages(id, currentUserId: userId);
-  return result.getOrThrow().data;
+  return result.getOrThrow();
 });
 
 final _currentUserIdProvider = Provider<String?>((ref) {

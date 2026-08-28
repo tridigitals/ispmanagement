@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app_config.dart';

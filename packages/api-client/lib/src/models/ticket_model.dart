@@ -120,32 +120,32 @@ class TicketModel extends Equatable {
   String statusLabel() {
     switch (status) {
       case TicketStatus.open:
-        return 'open';
+        return 'Terbuka';
       case TicketStatus.inProgress:
-        return 'inProgress';
+        return 'Ditangani';
       case TicketStatus.waitingCustomer:
-        return 'waitingCustomer';
+        return 'Menunggu Pelanggan';
       case TicketStatus.waitingStaff:
-        return 'waitingStaff';
+        return 'Menunggu Petugas';
       case TicketStatus.resolved:
-        return 'resolved';
+        return 'Selesai';
       case TicketStatus.closed:
-        return 'closed';
+        return 'Ditutup';
       case TicketStatus.cancelled:
-        return 'cancelled';
+        return 'Dibatalkan';
     }
   }
 
   String priorityLabel() {
     switch (priority) {
       case TicketPriority.low:
-        return 'low';
+        return 'Rendah';
       case TicketPriority.normal:
-        return 'normal';
+        return 'Normal';
       case TicketPriority.high:
-        return 'high';
+        return 'Tinggi';
       case TicketPriority.urgent:
-        return 'urgent';
+        return 'Mendesak';
     }
   }
 

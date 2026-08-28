@@ -14,7 +14,7 @@ class AnnouncementListScreen extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: Colors.blue.withValues(alpha: 0.15),
+              backgroundColor: Colors.blue.withOpacity(0.15),
               child: const Icon(Icons.campaign, color: Colors.blue, size: 20),
             ),
             title: Text('Pengumuman #\$index'),

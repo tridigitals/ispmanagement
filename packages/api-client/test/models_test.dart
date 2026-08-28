@@ -111,13 +111,9 @@ void main() {
   });
 
   group('ApiEndpoints', () {
-    test('withParam substitutes correctly', () {
-      final out = ApiEndpoints.withParam(
-        ApiEndpoints.mySubscriptionById,
-        'id',
-        'abc',
-      );
-      expect(out, '/api/portal/subscriptions/abc');
+    test('mySubscriptionById builds the portal endpoint', () {
+      final out = ApiEndpoints.mySubscriptionById('abc');
+      expect(out, '/api/customers/portal/my-subscriptions/abc');
     });
   });
 }

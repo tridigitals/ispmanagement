@@ -7,20 +7,49 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// In-memory FlutterSecureStorage for unit tests.
 class _InMemoryStorage implements FlutterSecureStorage {
   final Map<String, String> _data = {};
+
   @override
-  Future<String?> read({required String key, IOSOptions? iOptions, AndroidOptions? aOptions, LinuxOptions? lOptions}) async => _data[key];
+  Future<String?> read({
+    required String key,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+    WebOptions? webOptions,
+  }) async => _data[key];
+
   @override
-  Future<void> write({required String key, required String? value, IOSOptions? iOptions, AndroidOptions? aOptions, LinuxOptions? lOptions}) async {
+  Future<void> write({
+    required String key,
+    required String? value,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+    WebOptions? webOptions,
+  }) async {
     if (value == null) {
       _data.remove(key);
     } else {
       _data[key] = value;
     }
   }
+
   @override
-  Future<void> delete({required String key, IOSOptions? iOptions, AndroidOptions? aOptions, LinuxOptions? lOptions}) async {
+  Future<void> delete({
+    required String key,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+    WebOptions? webOptions,
+  }) async {
     _data.remove(key);
   }
+
   @override
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -60,15 +89,17 @@ void main() {
 
   group('ApiException.fromDio', () {
     test('extracts message from response data', () {
-      final e = ApiException.fromDio(DioException(
-        requestOptions: RequestOptions(path: '/x'),
-        response: Response(
+      final e = ApiException.fromDio(
+        DioException(
           requestOptions: RequestOptions(path: '/x'),
-          statusCode: 400,
-          data: {'message': 'Bad email'},
+          response: Response(
+            requestOptions: RequestOptions(path: '/x'),
+            statusCode: 400,
+            data: {'message': 'Bad email'},
+          ),
+          type: DioExceptionType.badResponse,
         ),
-        type: DioExceptionType.badResponse,
-      ));
+      );
       expect(e.message, 'Bad email');
       expect(e.statusCode, 400);
     });

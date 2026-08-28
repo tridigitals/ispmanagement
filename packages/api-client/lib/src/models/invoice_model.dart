@@ -96,7 +96,7 @@ class InvoiceModel extends Equatable {
   final DateTime? paidAt;
   final String? notes;
 
-  double get amountRemaining => (amount - amountPaid).clamp(0, double.infinity);
+  double get amountRemaining => isPaid ? 0 : (amount - amountPaid).clamp(0, double.infinity);
 
   bool get isPaid => status == InvoiceStatus.paid;
   bool get isUnpaid => status == InvoiceStatus.unpaid;

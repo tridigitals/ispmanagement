@@ -57,7 +57,7 @@
     const role = String(($user as any)?.tenant_role || $user?.role || '')
       .trim()
       .toLowerCase();
-    return role === 'customer';
+    return role === 'customer' || role === 'pelanggan';
   }
 
   async function refreshPackageOverdueAlert() {

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ui_kit/ui_kit.dart';
 import 'package:api_client/api_client.dart';
-import '../../services/network_status_providers.dart';
+import 'package:mobile_customer/src/services/network_status_providers.dart';
 
 /// Pill-shaped status chips — matches mockup `.status-pill` style.
 class NetworkStatusPill extends ConsumerWidget {
@@ -51,7 +51,7 @@ class NetworkStatusPill extends ConsumerWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: isp.surfaceSecondary,
+            color: isp.surfaceTertiary,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(color: isp.border, width: 1),
           ),
