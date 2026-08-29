@@ -263,6 +263,25 @@ fn into_rate_limited_response(info: RateLimitInfo) -> Response {
     response
 }
 
+/// Resolve whether a session is restricted to the customer portal.
+///
+/// The JWT `role` claim carries the user's GLOBAL role, which can differ from
+/// the role they hold inside the token's tenant (for example Admin in tenant A
+/// but Customer in tenant B). Callers guarding admin surfaces must prefer the
+/// tenant-scoped role, falling back to the claim when the session has no
+/// tenant binding.
+pub fn is_customer_portal_role(global_role: &str, tenant_role: Option<&str>) -> bool {
+    // A blank tenant role means "not resolved" — fall back to the global claim
+    // rather than treating it as an empty (internal) role.
+    let effective = match tenant_role {
+        Some(role) if !role.trim().is_empty() => role,
+        _ => global_role,
+    };
+
+    let role = effective.trim().to_lowercase();
+    role == "customer" || role == "pelanggan"
+}
+
 pub async fn security_enforcer_middleware(
     State(state): State<AppState>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
@@ -272,12 +291,25 @@ pub async fn security_enforcer_middleware(
     let path = request.uri().path().to_string();
 
     // ── Customer portal guard: deny /api/admin/* ──
+    // See `is_customer_portal_role` — the tenant role wins over the global claim
+    // so a privileged global role cannot unlock admin endpoints in a tenant
+    // where the user is only a portal customer.
     if path.starts_with("/api/admin/") {
         let auth_header = crate::http::extract_token(request.headers()).ok();
         if let Some(tok) = auth_header {
             if let Ok(claims) = state.auth_service.validate_token(&tok).await {
-                let role = claims.role.to_lowercase();
-                if role == "customer" || role == "pelanggan" {
+                let mut tenant_role: Option<String> = None;
+
+                if let Some(ref tid) = claims.tenant_id {
+                    tenant_role = state
+                        .auth_service
+                        .get_tenant_role_name(&claims.sub, tid)
+                        .await
+                        .ok()
+                        .flatten();
+                }
+
+                if is_customer_portal_role(&claims.role, tenant_role.as_deref()) {
                     let body = Json(json!({
                         "error": "Forbidden",
                         "message": "Customer portal users cannot access admin endpoints"
@@ -501,8 +533,8 @@ pub async fn security_headers_middleware(request: Request<Body>, next: Next) -> 
 #[cfg(test)]
 mod tests {
     use super::{
-        correlation_id_middleware, policy_for_path, rate_limit_scope, should_bypass_rate_limit,
-        should_rate_limit_by_ip, CorrelationId,
+        correlation_id_middleware, is_customer_portal_role, policy_for_path, rate_limit_scope,
+        should_bypass_rate_limit, should_rate_limit_by_ip, CorrelationId,
     };
     use axum::{
         body::Body,
@@ -667,6 +699,35 @@ mod tests {
         assert!(should_bypass_rate_limit("/api/users"));
         assert!(!should_bypass_rate_limit("/api/public/customer-register"));
         assert!(!should_bypass_rate_limit("/api/auth/login"));
+    }
+
+    #[test]
+    fn portal_role_guard_prefers_tenant_role_over_global_claim() {
+        // Global Admin, but only a portal customer inside this tenant → denied.
+        assert!(is_customer_portal_role("Admin", Some("Customer")));
+        assert!(is_customer_portal_role("admin", Some("customer")));
+        assert!(is_customer_portal_role("Admin", Some("Pelanggan")));
+
+        // Tenant role is internal → global claim must not re-trigger the guard.
+        assert!(!is_customer_portal_role("Customer", Some("Admin")));
+        assert!(!is_customer_portal_role("customer", Some("Technician")));
+    }
+
+    #[test]
+    fn portal_role_guard_falls_back_to_global_claim_without_tenant() {
+        assert!(is_customer_portal_role("Customer", None));
+        assert!(is_customer_portal_role("pelanggan", None));
+        assert!(!is_customer_portal_role("Owner", None));
+        assert!(!is_customer_portal_role("Admin", None));
+        assert!(!is_customer_portal_role("Technician", None));
+    }
+
+    #[test]
+    fn portal_role_guard_normalizes_case_and_surrounding_whitespace() {
+        assert!(is_customer_portal_role("  Customer  ", None));
+        assert!(is_customer_portal_role("Admin", Some("  PELANGGAN ")));
+        // Blank tenant role must fall back to the global claim, not to "no role".
+        assert!(!is_customer_portal_role("Owner", Some("  ")));
     }
 }
 

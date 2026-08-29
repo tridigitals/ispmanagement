@@ -1509,6 +1509,7 @@ impl AuthService {
 
             // Get tenant role
             if let Ok(Some(tenant_role)) = self.get_tenant_role_name(user_id, &tid).await {
+                user_response.tenant_role = Some(tenant_role.clone());
                 user_response.role = tenant_role;
             } else if permissions.contains(&"*".to_string()) {
                 // Fallback: user has wildcard permission → treat as Owner
@@ -1999,6 +2000,7 @@ impl AuthService {
         // Override role with tenant role if available
         if let Some(tid) = &tenant_id {
             if let Ok(Some(tenant_role)) = self.get_tenant_role_name(&user_response.id, tid).await {
+                user_response.tenant_role = Some(tenant_role.clone());
                 user_response.role = tenant_role;
             }
         }
