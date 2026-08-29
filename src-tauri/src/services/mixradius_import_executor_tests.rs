@@ -3,6 +3,7 @@ mod mixradius_import_executor_tests {
     use crate::models::{MixradiusImportMappingOverride, MixradiusImportPppoeProvisioningTarget};
     use crate::security::secret::decrypt_secret_for;
     use crate::services::mixradius_import_executor::MixradiusImportExecutor;
+    use chrono::{Duration, Utc};
     use sqlx::Row;
     use uuid::Uuid;
 
@@ -1694,7 +1695,14 @@ mod mixradius_import_executor_tests {
             "Paket 30 Mbps",
             350_000.0,
             "UNPAID",
-            "2026-05-01 00:00:00+00",
+            // Must stay in the future: UNPAID maps to `suspended` once
+            // expired_on is in the past, and this case covers an unpaid
+            // subscription whose active period has NOT ended yet.
+            &Utc::now()
+                .checked_add_signed(Duration::days(30))
+                .expect("future expiry should be representable")
+                .format("%Y-%m-%d %H:%M:%S+00")
+                .to_string(),
         )
         .await;
         import_customer_package_and_location_fixture(
