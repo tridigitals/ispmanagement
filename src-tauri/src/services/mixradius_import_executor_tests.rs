@@ -55,6 +55,16 @@ mod mixradius_import_executor_tests {
             .await
             .expect("mixradius import migration should apply for executor tests");
 
+        // Invoice numbering lives in its own migration
+        // (20260529082913_invoice_number_uniqueness), which is not applied here
+        // — this suite only applies the mixradius foundation. The executor
+        // bootstraps a first invoice, so create the sequence explicitly to keep
+        // the test independent of migration ordering.
+        sqlx::raw_sql("CREATE SEQUENCE IF NOT EXISTS invoice_number_seq;")
+            .execute(&pool)
+            .await
+            .expect("invoice number sequence should be creatable");
+
         (pool, db_name)
     }
 
