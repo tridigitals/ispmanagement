@@ -35,6 +35,16 @@ async fn isolated_pool() -> (sqlx::PgPool, String) {
         .await
         .expect("temporary migration smoke test database should be connectable");
 
+    // Invoice numbering lives in its own migration
+    // (20260529082913_invoice_number_uniqueness), which this suite never
+    // applies. Importing an active subscription bootstraps a first invoice and
+    // reads from this sequence, so create it explicitly to keep the fixture
+    // self-contained.
+    sqlx::raw_sql("CREATE SEQUENCE IF NOT EXISTS invoice_number_seq;")
+        .execute(&pool)
+        .await
+        .expect("invoice number sequence should be creatable");
+
     sqlx::raw_sql(
         r#"
         CREATE TABLE public.tenants (
@@ -205,7 +215,17 @@ async fn create_subscription_tables(pool: &sqlx::PgPool) {
             payment_method text,
             external_id text,
             created_at timestamp with time zone NOT NULL,
-            updated_at timestamp with time zone NOT NULL
+            updated_at timestamp with time zone NOT NULL,
+            -- Present in the baseline migration and read while bootstrapping the
+            -- first invoice for an imported subscription.
+            currency_code text NOT NULL DEFAULT 'IDR',
+            base_currency_code text NOT NULL DEFAULT 'IDR',
+            fx_rate numeric(18,8),
+            fx_source text,
+            fx_fetched_at timestamp with time zone,
+            merchant_id text,
+            proof_attachment text,
+            rejection_reason text
         );
         "#,
     )
