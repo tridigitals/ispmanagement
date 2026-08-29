@@ -5,6 +5,27 @@ use super::{
 use crate::error::AppError;
 use crate::models::CustomerLifecycleObservability;
 use chrono::{Duration, Utc};
+use std::sync::Mutex;
+
+/// Guards process-wide `APP_SECRET` mutation.
+///
+/// `std::env::set_var` is process-global and not thread-safe, so tests that set
+/// it must serialise against each other (cargo runs tests in parallel threads).
+static APP_SECRET_ENV_LOCK: Mutex<()> = Mutex::new(());
+
+/// Sets `APP_SECRET` for the duration of `body`.
+///
+/// The lock is held across the whole body so no other test can observe (or
+/// clobber) the value while encryption helpers are running.
+fn with_app_secret<T>(body: impl FnOnce() -> T) -> T {
+    let _guard = APP_SECRET_ENV_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    std::env::set_var("APP_SECRET", "customer-service-test-secret");
+    let result = body();
+    std::env::remove_var("APP_SECRET");
+    result
+}
 
 fn lifecycle_count(metrics: &CustomerLifecycleObservability, stage: &str) -> i64 {
     metrics
@@ -194,13 +215,15 @@ fn registration_invite_url_helpers_preserve_domain_and_encryption_contract() {
         "https://billing.example.com/register?invite=invite-token"
     );
 
-    let encrypted = CustomerService::encrypt_registration_invite_token("invite-token")
-        .expect("invite token should encrypt");
-    assert_ne!(encrypted, "invite-token");
+    with_app_secret(|| {
+        let encrypted = CustomerService::encrypt_registration_invite_token("invite-token")
+            .expect("invite token should encrypt");
+        assert_ne!(encrypted, "invite-token");
 
-    let decrypted = CustomerService::decrypt_registration_invite_token(&encrypted)
-        .expect("invite token should decrypt");
-    assert_eq!(decrypted.as_deref(), Some("invite-token"));
+        let decrypted = CustomerService::decrypt_registration_invite_token(&encrypted)
+            .expect("invite token should decrypt");
+        assert_eq!(decrypted.as_deref(), Some("invite-token"));
+    });
 
     let empty = CustomerService::decrypt_registration_invite_token("")
         .expect("empty invite token should be accepted");

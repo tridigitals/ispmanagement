@@ -98,6 +98,7 @@ struct FxRateResponse {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ListCustomerPackageInvoicesQuery {
     sort_by: Option<String>,
     sort_dir: Option<String>,
