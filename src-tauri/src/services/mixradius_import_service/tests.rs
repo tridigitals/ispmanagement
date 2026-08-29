@@ -2130,12 +2130,36 @@ async fn mixradius_import_end_to_end_safe_execute_is_idempotent_and_keeps_legacy
         subscription_count_after_first,
         subscription_count_after_second
     );
-    assert_eq!(invoice_count_after_first, 0);
-    assert_eq!(invoice_count_after_second, 0);
+    // Legacy MixRadius transactions are staged for reference only and must never
+    // be replayed into production billing. Importing an active subscription does
+    // bootstrap its first invoice, but only for rows that were actually imported
+    // in this run, and re-running the same batch must not duplicate them.
+    let legacy_replayed: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM public.invoices
+         WHERE tenant_id = $1 AND (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%')",
+    )
+    .bind("tenant-stage")
+    .fetch_one(&pool)
+    .await
+    .expect("legacy replay check should query");
+    assert_eq!(
+        legacy_replayed, 0,
+        "legacy MixRadius transactions must never be replayed as production invoices"
+    );
+    assert_eq!(
+        invoice_count_after_first, invoice_count_after_second,
+        "re-running the same batch must not duplicate bootstrapped invoices"
+    );
     assert_eq!(first.batch.summary_json["legacyTransactionCount"], 1902);
-    assert_eq!(first.batch.summary_json["productionInvoiceCount"], 0);
     assert_eq!(second.batch.summary_json["legacyTransactionCount"], 1902);
-    assert_eq!(second.batch.summary_json["productionInvoiceCount"], 0);
+    // `productionInvoiceCount` is a pre-execution snapshot, so the first run
+    // starts from an empty billing table and the second run observes exactly the
+    // invoices bootstrapped by the first one.
+    assert_eq!(first.batch.summary_json["productionInvoiceCount"], 0);
+    assert_eq!(
+        second.batch.summary_json["productionInvoiceCount"],
+        invoice_count_after_first
+    );
 
     let tenant_b_access = service.get_batch("tenant-b", &batch.id).await;
     assert!(tenant_b_access.is_err());
