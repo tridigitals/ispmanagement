@@ -1,4 +1,4 @@
-
+use crate::models::tenant::CUSTOM_DOMAIN_STATUS_ACTIVE;
 use crate::services::{
     AuditService, AuthService, CustomerService, DhcpStaticServiceManager, EmailService,
     IspPackageService, ManagedRadiusService, MessageTemplateService, MikrotikService,
@@ -46,7 +46,13 @@ fn build_runtime_cors_origins(
 ) -> std::collections::HashSet<String> {
     let mut origins = static_origins.clone();
 
-    for (domain, _status) in custom_domains {
+    for (domain, status) in custom_domains {
+        // Only domains whose custom_domain_status is ACTIVE are trusted origins.
+        // Pending/failed verification (and a missing status) must never widen the
+        // CORS allow-list — an unverified domain could be pointed at us by anyone.
+        if status.as_deref() != Some(CUSTOM_DOMAIN_STATUS_ACTIVE) {
+            continue;
+        }
 
         let clean = domain.trim().trim_end_matches('/');
         if clean.is_empty() {
@@ -1029,6 +1035,32 @@ mod tests {
         assert!(origins.contains("https://portal.customer.net"));
         assert!(!origins.contains("https://pending.customer.net"));
         assert!(!origins.contains("https://failed.customer.net"));
+    }
+
+    #[test]
+    fn cors_domain_rejects_blank_and_unverified_statuses() {
+        let static_origins = HashSet::new();
+
+        // A tenant row that has a domain but no verification status yet must not
+        // be treated as trusted.
+        let origins = build_runtime_cors_origins(
+            &static_origins,
+            "",
+            &[("unverified.customer.net".to_string(), None)],
+        );
+        assert!(!origins.contains("https://unverified.customer.net"));
+
+        // Whitespace-padded and wrongly-cased statuses are not "active" either.
+        let origins = build_runtime_cors_origins(
+            &static_origins,
+            "",
+            &[
+                ("pad.customer.net".to_string(), Some(" active ".to_string())),
+                ("case.customer.net".to_string(), Some("Active".to_string())),
+            ],
+        );
+        assert!(!origins.contains("https://pad.customer.net"));
+        assert!(!origins.contains("https://case.customer.net"));
     }
 
     #[test]
