@@ -1157,7 +1157,19 @@ async fn fixed_day_suspend_waits_until_threshold_day() {
     let fixture = BillingFixture::new().await;
     let service = fixture.service().await;
     let today = Utc::now().date_naive();
-    assert!(today.day() < 28, "test expects a day-of-month below 28");
+    // `billing_auto_suspend_fixed_day` is clamped to 1..=28, and this scenario
+    // needs "tomorrow's" day-of-month to still be a legal fixed day. On the
+    // 28th–31st there is no valid value that lands in the future, so the case
+    // is simply not expressible — skip instead of failing the suite.
+    if today.day() >= 28 {
+        eprintln!(
+            "skipping fixed_day_suspend_waits_until_threshold_day: \
+             day-of-month {} leaves no future fixed day (clamped to 1..=28)",
+            today.day()
+        );
+        fixture.cleanup().await;
+        return;
+    }
 
     upsert_setting(
         &fixture.pool,
