@@ -346,9 +346,10 @@ impl NetworkAssetService {
         refresh_port_usage_cache_for_tenant(&self.pool, tenant_id).await?;
 
         let q = params.q.unwrap_or_default().trim().to_string();
-        let page = params.page.unwrap_or(1).max(1);
-        let per_page = params.per_page.unwrap_or(25).clamp(1, 200);
-        let offset = (page - 1) * per_page;
+        let pg = crate::services::pagination::normalize_opt(params.page, params.per_page);
+        let page = pg.page;
+        let per_page = pg.per_page;
+        let offset = pg.offset;
 
         #[cfg(feature = "postgres")]
         let total: i64 = sqlx::query_scalar(
@@ -452,7 +453,7 @@ impl NetworkAssetService {
         .bind(&params.location_id)
         .bind(&params.parent_asset_id)
         .bind(per_page as i64)
-        .bind(offset as i64)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await
         .map_err(AppError::Database)?;
@@ -509,7 +510,7 @@ impl NetworkAssetService {
         .bind(&params.location_id)
         .bind(&params.parent_asset_id)
         .bind(per_page as i64)
-        .bind(offset as i64)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await
         .map_err(AppError::Database)?;

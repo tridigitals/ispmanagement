@@ -428,9 +428,10 @@ pub async fn list_recent_announcements(
         use sqlx::Postgres;
         use sqlx::QueryBuilder;
 
-        let page = page.unwrap_or(1).max(1);
-        let per_page = per_page.unwrap_or(20).clamp(1, 100);
-        let offset: i64 = ((page - 1) * per_page) as i64;
+        let pg = crate::services::pagination::normalize(page.unwrap_or(1), per_page.unwrap_or(20));
+        let page = pg.page;
+        let per_page = pg.per_page;
+        let offset: i64 = pg.offset;
 
         let search = search.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty());
         let severity = severity
@@ -533,8 +534,10 @@ pub async fn list_recent_announcements(
     #[cfg(not(feature = "postgres"))]
     let (rows, total): (Vec<Announcement>, i64) = (Vec::new(), 0);
 
-    let page = page.unwrap_or(1).max(1);
-    let per_page = per_page.unwrap_or(20).clamp(1, 100);
+    // Metadata respons harus cocok dengan normalisasi query di atas.
+    let pg = crate::services::pagination::normalize(page.unwrap_or(1), per_page.unwrap_or(20));
+    let page = pg.page;
+    let per_page = pg.per_page;
 
     Ok(PaginatedResponse {
         data: rows,
@@ -722,9 +725,10 @@ pub async fn list_announcements_admin(
         use sqlx::Postgres;
         use sqlx::QueryBuilder;
 
-        let page = page.unwrap_or(1).max(1);
-        let per_page = per_page.unwrap_or(20).clamp(1, 100);
-        let offset: i64 = ((page - 1) * per_page) as i64;
+        let pg = crate::services::pagination::normalize(page.unwrap_or(1), per_page.unwrap_or(20));
+        let page = pg.page;
+        let per_page = pg.per_page;
+        let offset: i64 = pg.offset;
 
         let search = search.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty());
         let severity = severity
@@ -844,8 +848,10 @@ pub async fn list_announcements_admin(
     #[cfg(not(feature = "postgres"))]
     let (rows, total): (Vec<Announcement>, i64) = (Vec::new(), 0);
 
-    let page = page.unwrap_or(1).max(1);
-    let per_page = per_page.unwrap_or(20).clamp(1, 100);
+    // Metadata respons harus cocok dengan normalisasi query di atas.
+    let pg = crate::services::pagination::normalize(page.unwrap_or(1), per_page.unwrap_or(20));
+    let page = pg.page;
+    let per_page = pg.per_page;
 
     Ok(PaginatedResponse {
         data: rows,

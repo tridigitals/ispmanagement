@@ -1268,9 +1268,11 @@
       const result = await billingResourceLoader.load(
         key,
         /* Harus menarik SEMUA halaman, bukan `listCustomerPackageInvoices()`
-           telanjang. Backend memakai `per_page.unwrap_or(25)` lalu
-           `clamp(1, 100)`, jadi panggilan tanpa argumen hanya mengembalikan 25
-           invoice TERBARU se-tenant — bukan 25 invoice milik pelanggan ini.
+           telanjang. Backend memakai `per_page.unwrap_or(25)`, jadi panggilan
+           tanpa argumen hanya mengembalikan 25 invoice TERBARU se-tenant —
+           bukan 25 invoice milik pelanggan ini. (Batas atas per permintaan
+           sekarang 1.000, lihat src-tauri/src/services/pagination.rs, tapi
+           default 25 tetap berlaku bila per_page tidak disebut.)
            Baris lalu difilter client-side ke langganan pelanggan yang dibuka,
            sehingga tab Tagihan tampak kosong padahal datanya ada.
            Terukur di DB produksi: 485 invoice paket milik 482 langganan,

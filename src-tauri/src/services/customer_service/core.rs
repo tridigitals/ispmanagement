@@ -132,7 +132,9 @@ impl CustomerService {
             "pending" => "pending".to_string(),
             _ => String::new(),
         };
-        let offset = (page.saturating_sub(1)) * per_page;
+        let pg = crate::services::pagination::normalize(page, per_page);
+        let per_page = pg.per_page;
+        let offset = pg.offset;
 
         #[cfg(feature = "postgres")]
         let query = r#"
@@ -231,7 +233,7 @@ impl CustomerService {
             .bind(&service)
             .bind(&installation)
             .bind(per_page as i64)
-            .bind(offset as i64)
+            .bind(offset)
             .fetch_all(&self.pool)
             .await?;
 
@@ -252,7 +254,7 @@ impl CustomerService {
             .bind(&installation)
             .bind(&installation)
             .bind(per_page as i64)
-            .bind(offset as i64)
+            .bind(offset)
             .fetch_all(&self.pool)
             .await?;
 
@@ -338,7 +340,9 @@ impl CustomerService {
                 .await?;
         }
 
-        let offset = (page.saturating_sub(1)) * per_page;
+        let pg = crate::services::pagination::normalize(page, per_page);
+        let per_page = pg.per_page;
+        let offset = pg.offset;
         let q = q.unwrap_or_default().trim().to_string();
         let issue_type = issue_type
             .unwrap_or_else(|| "all".to_string())
@@ -459,7 +463,7 @@ impl CustomerService {
         .bind(&issue_type)
         .bind(&q)
         .bind(per_page as i64)
-        .bind(offset as i64)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await?;
 
@@ -580,7 +584,7 @@ impl CustomerService {
         .bind(&q)
         .bind(&q)
         .bind(per_page as i64)
-        .bind(offset as i64)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await?;
 
@@ -2927,7 +2931,9 @@ impl CustomerService {
             }
         }
 
-        let offset = (page.saturating_sub(1)) * per_page;
+        let pg = crate::services::pagination::normalize(page, per_page);
+        let per_page = pg.per_page;
+        let offset = pg.offset;
 
         #[cfg(feature = "postgres")]
         let total: i64 = sqlx::query_scalar(
@@ -3051,7 +3057,7 @@ impl CustomerService {
         .bind(tenant_id)
         .bind(customer_id)
         .bind(per_page as i64)
-        .bind(offset as i64)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await?;
 
@@ -3160,7 +3166,7 @@ impl CustomerService {
         .bind(tenant_id)
         .bind(customer_id)
         .bind(per_page as i64)
-        .bind(offset as i64)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await?;
 

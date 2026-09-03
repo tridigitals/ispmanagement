@@ -16,6 +16,7 @@ pub mod mixradius_import_mapper;
 pub mod mixradius_import_service;
 pub mod mixradius_sql_parser;
 pub mod network_asset_port_cache;
+pub mod pagination;
 pub mod network_asset_service;
 pub mod network_mapping_service;
 pub mod radius_service;

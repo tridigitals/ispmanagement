@@ -7,7 +7,8 @@
 
     1. TAGIHAN DIAMBIL LENGKAP. Versi lama memanggil
        `listCustomerPackageInvoices()` tanpa argumen, dan backend memakai
-       `per_page.unwrap_or(25)` lalu `clamp(1, 100)`. Jadi yang datang adalah
+       `per_page.unwrap_or(25)` lalu memotongnya di 100 (batas itu kini 1.000,
+       lihat src-tauri/src/services/pagination.rs). Jadi yang datang adalah
        25 invoice TERBARU SE-TENANT, lalu difilter client-side ke langganan
        pelanggan yang sedang dibuka. Terukur di DB: 485 invoice paket milik 482
        langganan, sementara 25 terbaru hanya menyentuh 24 langganan — 453

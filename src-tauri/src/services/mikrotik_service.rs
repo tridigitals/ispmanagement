@@ -823,7 +823,9 @@ impl MikrotikService {
     ) -> AppResult<PaginatedResponse<MikrotikLogEntry>> {
         validate_log_calendar_filters(month, year)?;
         let q = q.unwrap_or_default().trim().to_string();
-        let offset = (page.saturating_sub(1)) * per_page;
+        let pg = crate::services::pagination::normalize(page, per_page);
+        let per_page = pg.per_page;
+        let offset = pg.offset;
         let month_i32 = month.map(|v| v as i32);
 
         let data: Vec<MikrotikLogEntry> = sqlx::query_as(mikrotik_log_list_sql())
@@ -835,7 +837,7 @@ impl MikrotikService {
             .bind(month_i32)
             .bind(year)
             .bind(per_page as i64)
-            .bind(offset as i64)
+            .bind(offset)
             .fetch_all(&self.pool)
             .await
             .map_err(AppError::Database)?;
@@ -7000,12 +7002,21 @@ mod tests {
         let level_filter: Option<String> = None;
         let topic_filter: Option<String> = None;
         let search = String::new();
+        /* Query ini punya 9 parameter: $1..$7 filter, $8 LIMIT, $9 OFFSET.
+           Filter bulan/tahun ($6/$7) pernah ditambahkan tanpa memperbarui tes ini,
+           jadi bind-nya kurang 2 dan Postgres menolak dengan 08P01. Kegagalan itu
+           lama tersembunyi karena tes ini panik lebih dulu di PoolTimedOut ketika
+           DATABASE_URL tidak diset. */
+        let month_filter: Option<i32> = None;
+        let year_filter: Option<i32> = None;
         let list_plan_rows: Vec<String> = sqlx::query_scalar(list_explain_sql.as_str())
             .bind(&tenant_id)
             .bind(&router_filter)
             .bind(&level_filter)
             .bind(&topic_filter)
             .bind(&search)
+            .bind(month_filter)
+            .bind(year_filter)
             .bind(25_i64)
             .bind(0_i64)
             .fetch_all(&mut *tx)

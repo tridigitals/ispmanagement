@@ -135,9 +135,11 @@
 
   onMount(async () => {
     try {
-      /* Semua akun ditarik sekali (backend clamp per_page ke 100, jadi ~11
-         permintaan) supaya hitungan chip dan tile benar untuk seluruh tenant,
-         bukan hanya 25 baris pertama seperti versi lama. */
+      /* Semua akun ditarik sekali supaya hitungan chip dan tile benar untuk
+         seluruh tenant, bukan hanya 25 baris pertama seperti versi lama.
+         Batas backend 1.000/permintaan (src-tauri/src/services/pagination.rs),
+         jadi 1.010 akun selesai dalam 2 permintaan — sebelum batasnya dinaikkan
+         ini butuh 11. */
       const [accounts, customers, routerList] = await Promise.all([
         fetchAllPages<PppoeAccountPublic>((p, per_page) =>
           api.pppoe.accounts.list({ page: p, per_page }),

@@ -544,7 +544,9 @@ impl StorageService {
         per_page: u32,
         search: Option<String>,
     ) -> AppResult<(Vec<crate::models::FileRecord>, i64)> {
-        let offset = (page.saturating_sub(1)) * per_page;
+        let pg = crate::services::pagination::normalize(page, per_page);
+        let per_page = pg.per_page;
+        let offset = pg.offset;
 
         #[cfg(feature = "postgres")]
         {
@@ -579,7 +581,7 @@ impl StorageService {
             qb.push(" ORDER BY created_at DESC LIMIT ");
             qb.push_bind(per_page as i64);
             qb.push(" OFFSET ");
-            qb.push_bind(offset as i64);
+            qb.push_bind(offset);
 
             let files = qb
                 .build_query_as::<crate::models::FileRecord>()
@@ -623,7 +625,7 @@ impl StorageService {
             qb.push(" ORDER BY created_at DESC LIMIT ");
             qb.push_bind(per_page as i64);
             qb.push(" OFFSET ");
-            qb.push_bind(offset as i64);
+            qb.push_bind(offset);
 
             let files = qb
                 .build_query_as::<crate::models::FileRecord>()
@@ -643,7 +645,9 @@ impl StorageService {
         per_page: u32,
         search: Option<String>,
     ) -> AppResult<(Vec<crate::models::FileRecord>, i64)> {
-        let offset = (page.saturating_sub(1)) * per_page;
+        let pg = crate::services::pagination::normalize(page, per_page);
+        let per_page = pg.per_page;
+        let offset = pg.offset;
 
         #[cfg(feature = "postgres")]
         {
@@ -676,7 +680,7 @@ impl StorageService {
                 .bind(&pattern)
                 .bind(&pattern)
                 .bind(per_page as i64)
-                .bind(offset as i64)
+                .bind(offset)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| AppError::Internal(format!("Data query failed: {}", e)))?
@@ -686,7 +690,7 @@ impl StorageService {
                 )
                 .bind(tenant_id)
                 .bind(per_page as i64)
-                .bind(offset as i64)
+                .bind(offset)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| AppError::Internal(format!("Data query failed: {}", e)))?
@@ -771,7 +775,7 @@ impl StorageService {
             qb.push(" ORDER BY created_at DESC LIMIT ");
             qb.push_bind(per_page as i64);
             qb.push(" OFFSET ");
-            qb.push_bind(offset as i64);
+            qb.push_bind(offset);
 
             let files = qb
                 .build_query_as::<crate::models::FileRecord>()

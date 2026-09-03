@@ -178,9 +178,10 @@ impl NetworkMappingService {
     ) -> AppResult<PaginatedResponse<NetworkNode>> {
         self.require_installation_read(actor_id, tenant_id).await?;
         let search = Self::cleaned_query(q.q);
-        let page = q.page.max(1);
-        let per_page = q.per_page.clamp(1, 200);
-        let offset = (page - 1) * per_page;
+        let pg = crate::services::pagination::normalize(q.page, q.per_page);
+        let page = pg.page;
+        let per_page = pg.per_page;
+        let offset = pg.offset;
         let (min_lng, min_lat, max_lng, max_lat) = q.bbox.unwrap_or((0.0, 0.0, 0.0, 0.0));
         let has_bbox = q.bbox.is_some();
         let include_legacy_ftth = q.include_legacy_ftth;
@@ -260,7 +261,7 @@ impl NetworkMappingService {
         .bind(max_lat)
         .bind(include_legacy_ftth)
         .bind(per_page as i64)
-        .bind(offset as i64)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await
         .map_err(AppError::Database)?;
@@ -409,9 +410,10 @@ impl NetworkMappingService {
         self.require_installation_read(actor_id, tenant_id).await?;
         let search = Self::cleaned_query(q.q);
         let status_filter = q.status.as_deref().map(Self::normalize_link_status);
-        let page = q.page.max(1);
-        let per_page = q.per_page.clamp(1, 200);
-        let offset = (page - 1) * per_page;
+        let pg = crate::services::pagination::normalize(q.page, q.per_page);
+        let page = pg.page;
+        let per_page = pg.per_page;
+        let offset = pg.offset;
         let (min_lng, min_lat, max_lng, max_lat) = q.bbox.unwrap_or((0.0, 0.0, 0.0, 0.0));
         let has_bbox = q.bbox.is_some();
 
@@ -484,7 +486,7 @@ impl NetworkMappingService {
         .bind(max_lng)
         .bind(max_lat)
         .bind(per_page as i64)
-        .bind(offset as i64)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await
         .map_err(AppError::Database)?;
@@ -867,9 +869,10 @@ impl NetworkMappingService {
     ) -> AppResult<PaginatedResponse<ServiceZone>> {
         self.require_zones_read(actor_id, tenant_id).await?;
         let search = Self::cleaned_query(q.q);
-        let page = q.page.max(1);
-        let per_page = q.per_page.clamp(1, 200);
-        let offset = (page - 1) * per_page;
+        let pg = crate::services::pagination::normalize(q.page, q.per_page);
+        let page = pg.page;
+        let per_page = pg.per_page;
+        let offset = pg.offset;
         let (min_lng, min_lat, max_lng, max_lat) = q.bbox.unwrap_or((0.0, 0.0, 0.0, 0.0));
         let has_bbox = q.bbox.is_some();
 
@@ -936,7 +939,7 @@ impl NetworkMappingService {
         .bind(max_lng)
         .bind(max_lat)
         .bind(per_page as i64)
-        .bind(offset as i64)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await
         .map_err(AppError::Database)?;

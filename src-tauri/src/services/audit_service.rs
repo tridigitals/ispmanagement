@@ -111,9 +111,10 @@ impl AuditService {
             }
         }
 
-        let page = filter.page.unwrap_or(1);
-        let per_page = filter.per_page.unwrap_or(20);
-        let offset = (page.saturating_sub(1)) * per_page;
+        let pg = crate::services::pagination::normalize_opt(filter.page, filter.per_page);
+        let page = pg.page;
+        let per_page = pg.per_page;
+        let offset = pg.offset;
 
         // --- Postgres Implementation ---
         #[cfg(feature = "postgres")]
@@ -275,7 +276,7 @@ impl AuditService {
             qb.push(" ORDER BY l.created_at DESC LIMIT ");
             qb.push_bind(per_page as i64);
             qb.push(" OFFSET ");
-            qb.push_bind(offset as i64);
+            qb.push_bind(offset);
 
             let logs = qb
                 .build_query_as::<crate::models::AuditLogResponse>()
@@ -437,7 +438,7 @@ impl AuditService {
             qb.push(" ORDER BY l.created_at DESC LIMIT ");
             qb.push_bind(per_page as i64);
             qb.push(" OFFSET ");
-            qb.push_bind(offset as i64);
+            qb.push_bind(offset);
 
             let logs = qb
                 .build_query_as::<crate::models::AuditLogResponse>()

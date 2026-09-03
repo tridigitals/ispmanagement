@@ -190,7 +190,9 @@ impl IspPackageService {
         }
 
         let q = q.unwrap_or_default().trim().to_string();
-        let offset = (page.saturating_sub(1)) * per_page;
+        let pg = crate::services::pagination::normalize(page, per_page);
+        let per_page = pg.per_page;
+        let offset = pg.offset;
         let sort_column = match sort_by
             .unwrap_or_else(|| "updated_at".to_string())
             .trim()
@@ -258,7 +260,7 @@ impl IspPackageService {
             .bind(tenant_id)
             .bind(&q)
             .bind(per_page as i64)
-            .bind(offset as i64)
+            .bind(offset)
             .fetch_all(&self.pool)
             .await
             .map_err(AppError::Database)?;

@@ -282,7 +282,10 @@
 
   async function loadCustomers() {
     try {
-      // We only need id+name for mapping. For now, load first 1000.
+      /* Hanya butuh id+name untuk pemetaan. Permintaan 1000 ini dulu dipotong
+         jadi 100 oleh backend, sehingga akun PPPoE milik pelanggan di luar 100
+         teratas tampil tanpa nama. Batas backend sekarang 1.000
+         (src-tauri/src/services/pagination.rs), jadi 548 pelanggan masuk semua. */
       const res = await api.customers.list({ page: 1, perPage: 1000 });
       customers = (res.data || []).map((c) => ({ id: c.id, name: c.name }));
     } catch (e: any) {

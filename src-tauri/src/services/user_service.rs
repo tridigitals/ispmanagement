@@ -68,7 +68,9 @@ impl UserService {
         status: Option<&str>,
         role: Option<&str>,
     ) -> AppResult<(Vec<UserResponse>, i64, i64, i64, i64)> {
-        let offset = (page.saturating_sub(1)) * per_page;
+        let pg = crate::services::pagination::normalize(page, per_page);
+        let per_page = pg.per_page;
+        let offset = pg.offset;
 
         // Custom struct to handle the projection with count
         #[derive(sqlx::FromRow)]
@@ -113,7 +115,7 @@ impl UserService {
             qb.push(" ORDER BY u.created_at DESC LIMIT ")
                 .push_bind(per_page as i64)
                 .push(" OFFSET ")
-                .push_bind(offset as i64);
+                .push_bind(offset);
             qb.build_query_as().fetch_all(&self.pool).await?
         };
 
@@ -146,7 +148,7 @@ impl UserService {
             qb.push(" ORDER BY u.created_at DESC LIMIT ")
                 .push_bind(per_page as i64)
                 .push(" OFFSET ")
-                .push_bind(offset as i64);
+                .push_bind(offset);
             qb.build_query_as().fetch_all(&self.pool).await?
         };
 

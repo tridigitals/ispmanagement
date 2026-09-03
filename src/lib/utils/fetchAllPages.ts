@@ -8,8 +8,12 @@
  * total tenant. Untuk tenant isp-management yang punya 489 invoice, angka
  * "tertunggak" di dashboard hanya mewakili 25 baris pertama.
  *
- * Menaikkan `per_page` saja tidak cukup: payment_service melakukan
+ * Dulu menaikkan `per_page` saja tidak cukup: payment_service melakukan
  * `per_page.clamp(1, 100)`, jadi permintaan 1000 tetap dipotong jadi 100.
+ * Batas itu sekarang sudah dinaikkan ke 1.000 di backend
+ * (`src-tauri/src/services/pagination.rs`), tapi helper ini TETAP diperlukan:
+ * batas atas tetap ada, jadi tabel yang tumbuh melewati 1.000 baris masih
+ * butuh beberapa permintaan, dan helper ini yang menjamin agregatnya utuh.
  *
  * Helper ini membaca `total` dari respons halaman pertama lalu mengambil sisa
  * halaman sampai lengkap, sehingga agregat dihitung atas seluruh baris.
@@ -36,7 +40,10 @@ export async function fetchAllPages<T>(
   fetchPage: (page: number, perPage: number) => Promise<Paginated<T>>,
   options: FetchAllOptions = {},
 ): Promise<{ rows: T[]; total: number; complete: boolean }> {
-  const requested = options.perPage ?? 100;
+  /* 1.000 = MAX_PER_PAGE di backend. Meminta tepat sebesar batas membuat tabel
+     terbesar yang ada sekarang (pppoe_accounts, 1.010 baris) selesai dalam 2
+     permintaan, bukan 11 seperti saat batasnya masih 100. */
+  const requested = options.perPage ?? 1000;
   const maxPages = options.maxPages ?? 25;
 
   const first = await fetchPage(1, requested);

@@ -25,7 +25,9 @@ impl CustomerService {
         sort_dir: Option<String>,
     ) -> AppResult<PaginatedResponse<CustomerSubscriptionView>> {
         let customer_id = self.get_portal_customer_id(actor_id, tenant_id).await?;
-        let offset = (page.saturating_sub(1)) * per_page;
+        let pg = crate::services::pagination::normalize(page, per_page);
+        let per_page = pg.per_page;
+        let offset = pg.offset;
         let status_filter = status
             .map(|v| v.trim().to_lowercase())
             .filter(|v| !v.is_empty());
@@ -229,7 +231,7 @@ impl CustomerService {
         .bind(&customer_id)
         .bind(&status_filter)
         .bind(per_page as i64)
-        .bind(offset as i64)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await?;
 
@@ -343,7 +345,7 @@ impl CustomerService {
         .bind(status_filter.clone())
         .bind(status_filter.clone())
         .bind(per_page as i64)
-        .bind(offset as i64)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await?;
 

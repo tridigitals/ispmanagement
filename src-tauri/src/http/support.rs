@@ -318,9 +318,10 @@ pub async fn list_support_tickets(
 
     let st = normalize_status(params.status);
 
-    let page = params.page.unwrap_or(1).max(1);
-    let per_page = params.per_page.unwrap_or(20).clamp(1, 100);
-    let offset = (page.saturating_sub(1) * per_page) as i64;
+    let pg = crate::services::pagination::normalize(params.page.unwrap_or(1), params.per_page.unwrap_or(20));
+    let page = pg.page;
+    let per_page = pg.per_page;
+    let offset = pg.offset;
 
     let search = params
         .search

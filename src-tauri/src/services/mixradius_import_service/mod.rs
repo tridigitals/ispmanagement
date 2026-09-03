@@ -179,9 +179,10 @@ impl MixradiusImportService {
         per_page: u32,
         status: Option<&str>,
     ) -> Result<PaginatedResponse<MixradiusImportBatch>> {
-        let page = page.max(1);
-        let per_page = per_page.max(1);
-        let offset = ((page - 1) * per_page) as i64;
+        let pg = crate::services::pagination::normalize(page, per_page);
+        let page = pg.page;
+        let per_page = pg.per_page;
+        let offset = pg.offset;
         let status = status
             .map(str::trim)
             .filter(|value| !value.is_empty())

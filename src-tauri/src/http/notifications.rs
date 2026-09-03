@@ -245,9 +245,12 @@ fn paginate_notifications(
     page: u32,
     per_page: u32,
 ) -> PaginatedResponse<Notification> {
-    let safe_page = page.max(1);
-    let safe_per_page = per_page.max(1);
-    let offset = ((safe_page - 1) * safe_per_page) as usize;
+    /* Paginasi in-memory (bukan SQL), tapi batasnya tetap dipakai supaya
+       permintaan per_page raksasa tidak memaksa alokasi Vec sebesar itu. */
+    let pg = crate::services::pagination::normalize(page, per_page);
+    let safe_page = pg.page;
+    let safe_per_page = pg.per_page;
+    let offset = pg.offset as usize;
     let data = notifications
         .iter()
         .skip(offset)

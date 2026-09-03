@@ -789,9 +789,10 @@ impl PaymentService {
         search: Option<&str>,
         status: Option<&str>,
     ) -> AppResult<crate::models::InvoiceListResponse> {
-        let page = page.max(1);
-        let per_page = per_page.clamp(1, 100);
-        let offset = ((page - 1) * per_page) as i64;
+        let pg = crate::services::pagination::normalize(page, per_page);
+        let page = pg.page;
+        let per_page = pg.per_page;
+        let offset = pg.offset;
         let search = search.map(str::trim).filter(|value| !value.is_empty());
         let status = status.map(str::trim).filter(|value| !value.is_empty() && *value != "all");
 
@@ -869,10 +870,11 @@ impl PaymentService {
         page: u32,
         per_page: u32,
     ) -> AppResult<PaginatedResponse<Invoice>> {
-        let page = page.max(1);
-        let per_page = per_page.clamp(1, 100);
-        let offset = ((page - 1) * per_page) as i64;
-        let per_page_i64 = per_page as i64;
+        let pg = crate::services::pagination::normalize(page, per_page);
+        let page = pg.page;
+        let per_page = pg.per_page;
+        let offset = pg.offset;
+        let per_page_i64 = pg.limit();
         let sort_column = match sort_by
             .unwrap_or_else(|| "created_at".to_string())
             .trim()

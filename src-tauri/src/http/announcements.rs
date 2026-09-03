@@ -254,9 +254,10 @@ pub async fn list_recent(
         use sqlx::Postgres;
         use sqlx::QueryBuilder;
 
-        let page = params.page.unwrap_or(1).max(1);
-        let per_page = params.per_page.unwrap_or(20).clamp(1, 100);
-        let offset: i64 = ((page - 1) * per_page) as i64;
+        let pg = crate::services::pagination::normalize(params.page.unwrap_or(1), params.per_page.unwrap_or(20));
+        let page = pg.page;
+        let per_page = pg.per_page;
+        let offset: i64 = pg.offset;
 
         let search = params
             .search
@@ -364,8 +365,10 @@ pub async fn list_recent(
     #[cfg(not(feature = "postgres"))]
     let (rows, total): (Vec<Announcement>, i64) = (Vec::new(), 0);
 
-    let page = params.page.unwrap_or(1).max(1);
-    let per_page = params.per_page.unwrap_or(20).clamp(1, 100);
+    // Metadata respons harus cocok dengan normalisasi query di atas.
+    let pg = crate::services::pagination::normalize(params.page.unwrap_or(1), params.per_page.unwrap_or(20));
+    let page = pg.page;
+    let per_page = pg.per_page;
 
     if is_admin {
         let data: Vec<serde_json::Value> = rows.into_iter()
@@ -435,9 +438,10 @@ pub async fn list_admin(
         use sqlx::Postgres;
         use sqlx::QueryBuilder;
 
-        let page = params.page.unwrap_or(1).max(1);
-        let per_page = params.per_page.unwrap_or(20).clamp(1, 100);
-        let offset: i64 = ((page - 1) * per_page) as i64;
+        let pg = crate::services::pagination::normalize(params.page.unwrap_or(1), params.per_page.unwrap_or(20));
+        let page = pg.page;
+        let per_page = pg.per_page;
+        let offset: i64 = pg.offset;
 
         let search = params
             .search
@@ -562,8 +566,10 @@ pub async fn list_admin(
     #[cfg(not(feature = "postgres"))]
     let (rows, total): (Vec<Announcement>, i64) = (Vec::new(), 0);
 
-    let page = params.page.unwrap_or(1).max(1);
-    let per_page = params.per_page.unwrap_or(20).clamp(1, 100);
+    // Metadata respons harus cocok dengan normalisasi query di atas.
+    let pg = crate::services::pagination::normalize(params.page.unwrap_or(1), params.per_page.unwrap_or(20));
+    let page = pg.page;
+    let per_page = pg.per_page;
 
     Ok(Json(PaginatedResponse {
         data: rows,

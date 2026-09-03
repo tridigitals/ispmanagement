@@ -587,7 +587,9 @@ impl DhcpStaticServiceManager {
     ) -> AppResult<PaginatedResponse<DhcpStaticServicePublic>> {
         self.require_read_or_installation_manage(actor_id, tenant_id)
             .await?;
-        let offset = (page.saturating_sub(1)) * per_page;
+        let pg = crate::services::pagination::normalize(page, per_page);
+        let per_page = pg.per_page;
+        let offset = pg.offset;
         let q = q.unwrap_or_default();
         let customer_id = customer_id.unwrap_or_default();
         let location_id = location_id.unwrap_or_default();
@@ -642,7 +644,7 @@ impl DhcpStaticServiceManager {
         .bind(&dhcp_server_name)
         .bind(&q)
         .bind(per_page as i64)
-        .bind(offset as i64)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await
         .map_err(AppError::Database)?;

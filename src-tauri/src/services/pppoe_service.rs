@@ -1205,7 +1205,9 @@ impl PppoeService {
             .await?;
 
         let q = q.unwrap_or_default().trim().to_string();
-        let offset = (page.saturating_sub(1)) * per_page;
+        let pg = crate::services::pagination::normalize(page, per_page);
+        let per_page = pg.per_page;
+        let offset = pg.offset;
 
         // Keep query simple: optional filters via OR params.
         #[cfg(feature = "postgres")]
@@ -1235,7 +1237,7 @@ impl PppoeService {
             .bind(router_id)
             .bind(&q)
             .bind(per_page as i64)
-            .bind(offset as i64)
+            .bind(offset)
             .fetch_all(&self.pool)
             .await
             .map_err(AppError::Database)?;

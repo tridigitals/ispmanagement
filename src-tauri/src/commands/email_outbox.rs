@@ -44,9 +44,10 @@ pub async fn list_email_outbox(
         use sqlx::Postgres;
         use sqlx::QueryBuilder;
 
-        let page = page.unwrap_or(1).max(1);
-        let per_page = per_page.unwrap_or(25).clamp(1, 100);
-        let offset: i64 = ((page - 1) * per_page) as i64;
+        let pg = crate::services::pagination::normalize(page.unwrap_or(1), per_page.unwrap_or(25));
+        let page = pg.page;
+        let per_page = pg.per_page;
+        let offset: i64 = pg.offset;
 
         let status = status
             .as_ref()
@@ -144,8 +145,12 @@ pub async fn list_email_outbox(
     #[cfg(not(feature = "postgres"))]
     let (rows, total): (Vec<EmailOutboxItem>, i64) = (Vec::new(), 0);
 
-    let page = page.unwrap_or(1).max(1);
-    let per_page = per_page.unwrap_or(25).clamp(1, 100);
+    /* Metadata respons WAJIB memakai normalisasi yang sama dengan query di atas.
+       Kalau berbeda, frontend menghitung jumlah halaman dari per_page yang salah
+       (`Math.ceil(total / per_page)`) dan berhenti sebelum data habis. */
+    let pg = crate::services::pagination::normalize(page.unwrap_or(1), per_page.unwrap_or(25));
+    let page = pg.page;
+    let per_page = pg.per_page;
 
     Ok(PaginatedResponse {
         data: rows,

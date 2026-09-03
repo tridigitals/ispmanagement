@@ -242,7 +242,9 @@ impl NotificationService {
         page: u32,
         per_page: u32,
     ) -> AppResult<PaginatedResponse<Notification>> {
-        let offset = (page - 1) * per_page;
+        let pg = crate::services::pagination::normalize(page, per_page);
+        let per_page = pg.per_page;
+        let offset = pg.offset;
 
         let notifications = sqlx::query_as::<_, Notification>(
             r#"
@@ -254,7 +256,7 @@ impl NotificationService {
         )
         .bind(user_id)
         .bind(per_page as i64)
-        .bind(offset as i64)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await
         .map_err(AppError::Database)?;
