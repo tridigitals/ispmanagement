@@ -1,6 +1,6 @@
   <script lang="ts">
   // cache-bust: 20260623-2300
-  import '$lib/styles/global.css';
+  import '$lib/styles/design-system.css';
   import '$lib/i18n'; // Init i18n
   import {
     loadInstallModule,

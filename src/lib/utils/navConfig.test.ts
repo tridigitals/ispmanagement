@@ -1,0 +1,110 @@
+import { describe, expect, it } from 'vitest';
+import { buildAdminNav } from './navConfig';
+import { badgeClass, toneOf } from '$lib/components/ds/tokens';
+
+/** Checker izin yang hanya mengizinkan pasangan yang didaftarkan. */
+function allow(...pairs: string[]) {
+  const set = new Set(pairs);
+  return (action: string, resource: string) => set.has(`${action}:${resource}`);
+}
+
+const owner = { role: 'owner', tenant_role: 'owner', is_super_admin: false };
+
+describe('buildAdminNav', () => {
+  it('tidak pernah mengembalikan grup kosong', () => {
+    const groups = buildAdminNav(allow(), null);
+    for (const g of groups) {
+      expect(g.items.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('menyembunyikan Tagihan ketika izin billing tidak ada', () => {
+    const groups = buildAdminNav(allow('read:customers'), owner);
+    const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
+
+    expect(hrefs).toContain('/admin/customers');
+    expect(hrefs).not.toContain('/admin/invoices');
+    expect(hrefs).not.toContain('/admin/billing');
+  });
+
+  it('menampilkan Tagihan beserta badge tertunggak ketika izin billing ada', () => {
+    const groups = buildAdminNav(allow('read:billing'), owner, { invoicesOverdue: 473 });
+    const invoices = groups.flatMap((g) => g.items).find((i) => i.href === '/admin/invoices');
+
+    expect(invoices).toBeDefined();
+    expect(invoices?.badge).toBe(473);
+  });
+
+  it('menghilangkan badge ketika hitungannya nol, bukan menampilkan angka 0', () => {
+    const groups = buildAdminNav(allow('read:billing'), owner, { invoicesOverdue: 0 });
+    const invoices = groups.flatMap((g) => g.items).find((i) => i.href === '/admin/invoices');
+
+    expect(invoices?.badge).toBeUndefined();
+  });
+
+  it('hanya menampilkan Paket untuk peran yang boleh mengakses katalog layanan', () => {
+    const can = allow('read:isp_packages');
+
+    const asOwner = buildAdminNav(can, owner)
+      .flatMap((g) => g.items)
+      .map((i) => i.href);
+    const asCustomer = buildAdminNav(can, { role: 'customer', tenant_role: 'customer' })
+      .flatMap((g) => g.items)
+      .map((i) => i.href);
+
+    expect(asOwner).toContain('/admin/services');
+    expect(asCustomer).not.toContain('/admin/services');
+  });
+
+  it('selalu menyertakan beranda admin', () => {
+    const hrefs = buildAdminNav(allow(), null).flatMap((g) => g.items.map((i) => i.href));
+    expect(hrefs).toContain('/admin');
+  });
+
+  it('tidak menghasilkan href duplikat', () => {
+    const hrefs = buildAdminNav(
+      allow(
+        'read:billing',
+        'read:customers',
+        'read:network_noc',
+        'read:network_incidents',
+        'read:pppoe',
+        'read:router_inventory',
+        'read:work_orders',
+        'read:support',
+        'read:team',
+        'read:roles',
+        'read:audit_logs',
+        'read:settings',
+        'read:isp_packages',
+        'read:network_topology',
+      ),
+      owner,
+    ).flatMap((g) => g.items.map((i) => i.href));
+
+    expect(new Set(hrefs).size).toBe(hrefs.length);
+  });
+});
+
+describe('token status', () => {
+  it('memetakan status domain ISP ke tone yang benar', () => {
+    expect(toneOf('paid')).toBe('positive');
+    expect(toneOf('suspended')).toBe('negative');
+    expect(toneOf('pending')).toBe('warning');
+    expect(toneOf('PENDING')).toBe('warning');
+    expect(toneOf('pending_installation')).toBe('info');
+  });
+
+  it('mengembalikan neutral untuk status kosong atau tak dikenal', () => {
+    expect(toneOf(null)).toBe('neutral');
+    expect(toneOf('')).toBe('neutral');
+    expect(toneOf('status-yang-belum-ada')).toBe('neutral');
+  });
+
+  it('badge selalu punya warna teks eksplisit, tidak mewarisi', () => {
+    for (const tone of ['positive', 'negative', 'warning', 'info', 'neutral'] as const) {
+      expect(badgeClass(tone, 'light')).toMatch(/text-/);
+      expect(badgeClass(tone, 'dark')).toMatch(/text-/);
+    }
+  });
+});

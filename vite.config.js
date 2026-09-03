@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 // @ts-nocheck
 import { sveltekit } from '@sveltejs/kit/vite';
+import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -145,7 +146,7 @@ export default defineConfig(async ({ mode }) => {
   ];
 
   return {
-    plugins: [await sveltekit()],
+    plugins: [tailwindcss(), await sveltekit()],
     optimizeDeps: {
       esbuildOptions: {
         inject: [publicFieldInjectPath],
