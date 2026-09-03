@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildAdminNav } from './navConfig';
+import { buildAdminNav, v2Href, V2_MIGRATED } from './navConfig';
 import { badgeClass, toneOf } from '$lib/components/ds/tokens';
 
 /** Checker izin yang hanya mengizinkan pasangan yang didaftarkan. */
@@ -83,6 +83,58 @@ describe('buildAdminNav', () => {
     ).flatMap((g) => g.items.map((i) => i.href));
 
     expect(new Set(hrefs).size).toBe(hrefs.length);
+  });
+});
+
+describe('pemetaan href v2 selama migrasi bertahap', () => {
+  const all = allow(
+    'read:billing',
+    'read:customers',
+    'read:network_noc',
+    'read:pppoe',
+    'read:settings',
+  );
+
+  it('mengarahkan halaman yang sudah dimigrasi ke /v2 saat opsi v2 aktif', () => {
+    const hrefs = buildAdminNav(all, owner, {}, { v2: true }).flatMap((g) =>
+      g.items.map((i) => i.href),
+    );
+
+    expect(hrefs).toContain('/v2/admin');
+    expect(hrefs).toContain('/v2/admin/customers');
+    expect(hrefs).toContain('/v2/admin/invoices');
+    expect(hrefs).toContain('/v2/admin/network/pppoe');
+  });
+
+  it('membiarkan halaman yang BELUM dimigrasi tetap menunjuk ke rute lama', () => {
+    const hrefs = buildAdminNav(all, owner, {}, { v2: true }).flatMap((g) =>
+      g.items.map((i) => i.href),
+    );
+
+    // Belum ada versi v2-nya: harus tetap legacy supaya tidak 404.
+    expect(hrefs).toContain('/admin/settings');
+    expect(hrefs).not.toContain('/v2/admin/settings');
+  });
+
+  it('tidak mengubah href sama sekali di shell lama (opsi v2 mati)', () => {
+    const hrefs = buildAdminNav(all, owner).flatMap((g) => g.items.map((i) => i.href));
+
+    expect(hrefs).toContain('/admin/invoices');
+    expect(hrefs.some((h) => h.startsWith('/v2'))).toBe(false);
+  });
+
+  it('v2Href hanya menyentuh path yang terdaftar', () => {
+    expect(v2Href('/admin/invoices')).toBe('/v2/admin/invoices');
+    expect(v2Href('/admin/team')).toBe('/admin/team');
+    // Tidak boleh menumpuk prefix kalau dipanggil dua kali.
+    expect(v2Href(v2Href('/admin/invoices'))).toBe('/v2/admin/invoices');
+  });
+
+  it('setiap entri V2_MIGRATED memang muncul di nav (mencegah daftar basi)', () => {
+    const legacy = buildAdminNav(all, owner).flatMap((g) => g.items.map((i) => i.href));
+    for (const path of V2_MIGRATED) {
+      expect(legacy).toContain(path);
+    }
   });
 });
 

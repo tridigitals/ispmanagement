@@ -60,3 +60,19 @@ export async function fetchAllPages<T>(
 
   return { rows, total, complete: rows.length >= total };
 }
+
+/**
+ * Versi ringkas untuk pemanggil yang cuma butuh barisnya.
+ *
+ * Dipakai di tempat yang sebelumnya menulis `.then((r) => r.data)`: bentuk
+ * kembaliannya sama-sama `T[]`, jadi penggantiannya satu baris tanpa mengubah
+ * logika di bawahnya. Pemanggil yang perlu tahu apakah datanya utuh (mis.
+ * menandai "minimal N") harus tetap memakai `fetchAllPages`.
+ */
+export async function fetchAllRows<T>(
+  fetchPage: (page: number, perPage: number) => Promise<Paginated<T>>,
+  options: FetchAllOptions = {},
+): Promise<T[]> {
+  const { rows } = await fetchAllPages(fetchPage, options);
+  return rows;
+}

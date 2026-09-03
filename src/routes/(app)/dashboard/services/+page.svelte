@@ -16,6 +16,7 @@
   } from '$lib/api/client';
   import { appSettings } from '$lib/stores/settings';
   import { toast } from '$lib/stores/toast';
+  import { fetchAllRows } from '$lib/utils/fetchAllPages';
   import { loadDashboardServicesTrackerModal } from './dashboardServicesPageModules';
 
   type StatusFilter = 'all' | 'active' | 'pending_installation' | 'needs_attention';
@@ -406,8 +407,12 @@
 
   async function openSubscriptionInvoice(subscriptionId: string) {
     try {
-      const res = await api.payment.listCustomerPackageInvoices();
-      const invoices = res.data;
+      /* Sama seperti di admin: panggilan tanpa argumen hanya memberi 25 invoice
+         terbaru se-tenant, sehingga invoice instalasi milik langganan ini bisa
+         tidak ikut terbawa dan pelanggan dibuang ke daftar tagihan umum. */
+      const invoices = await fetchAllRows<Invoice>((page, per_page) =>
+        api.payment.listCustomerPackageInvoices({ page, per_page }),
+      );
       const invoice = installationInvoiceForSubscription(invoices, subscriptionId);
       if (invoice?.id) {
         await goto(`/pay/${invoice.id}`);
@@ -435,12 +440,13 @@
           await loadDashboardServicesTrackerModal();
         TrackerModalComponent = DashboardServicesTrackerModalComponent;
       }
-      const [res, invoicesRes] = await Promise.all([
+      const [res, invoices] = await Promise.all([
         api.customers.portal.installationTracker(sub.id),
-        api.payment.listCustomerPackageInvoices().catch(() => ({ data: [] as Invoice[], total: 0, page: 1, per_page: 25 })),
+        fetchAllRows<Invoice>((page, per_page) =>
+          api.payment.listCustomerPackageInvoices({ page, per_page }),
+        ).catch(() => [] as Invoice[]),
       ]);
       const trackerRes = res as CustomerPortalInstallationTrackerResponse;
-      const invoices = invoicesRes.data;
       trackerInvoice = installationInvoiceForSubscription(invoices, sub.id);
       trackerSub = trackerRes.subscription;
       trackerWo = trackerRes.work_order;

@@ -267,7 +267,7 @@
                       primary={{
                         label: 'Buka',
                         icon: 'chevronRight',
-                        onclick: () => goto(`/admin/customers/${c.id}`),
+                        onclick: () => goto(`/v2/admin/customers/${c.id}`),
                       }}
                       rest={canManage
                         ? [

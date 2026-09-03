@@ -9,6 +9,7 @@
   import { can } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { secureGetItem } from '$lib/utils/tauri-store';
+  import { fetchAllRows } from '$lib/utils/fetchAllPages';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import {
     api,
@@ -1266,7 +1267,18 @@
     try {
       const result = await billingResourceLoader.load(
         key,
-        () => api.payment.listCustomerPackageInvoices().then(r => r.data),
+        /* Harus menarik SEMUA halaman, bukan `listCustomerPackageInvoices()`
+           telanjang. Backend memakai `per_page.unwrap_or(25)` lalu
+           `clamp(1, 100)`, jadi panggilan tanpa argumen hanya mengembalikan 25
+           invoice TERBARU se-tenant — bukan 25 invoice milik pelanggan ini.
+           Baris lalu difilter client-side ke langganan pelanggan yang dibuka,
+           sehingga tab Tagihan tampak kosong padahal datanya ada.
+           Terukur di DB produksi: 485 invoice paket milik 482 langganan,
+           sementara 25 terbaru hanya menyentuh 24 langganan — 453 pelanggan
+           kehilangan riwayat tagihannya. */
+        () => fetchAllRows<Invoice>((page, per_page) =>
+          api.payment.listCustomerPackageInvoices({ page, per_page }),
+        ),
         options,
       );
       if (result.status === 'loaded') {

@@ -30,7 +30,7 @@
 
   let mobileOpen = $state(false);
 
-  const groups = $derived(buildAdminNav($can, $user, badges));
+  const groups = $derived(buildAdminNav($can, $user, badges, { v2: true }));
   const current = $derived($page.url.pathname);
   const tenant = $derived($user?.tenant_slug ?? undefined);
 </script>

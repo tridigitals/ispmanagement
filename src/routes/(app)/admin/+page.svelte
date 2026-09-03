@@ -3,6 +3,8 @@
   import { page } from '$app/stores';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { api } from '$lib/api/client';
+  import type { Invoice } from '$lib/api/types';
+  import { fetchAllRows } from '$lib/utils/fetchAllPages';
   import type { AdminDashboardSummary } from '$lib/utils/adminDashboard';
   import {
     buildAdminDashboardModel,
@@ -188,10 +190,19 @@
 
     if (requirements.invoices) {
       tasks.push(
-        api.payment
-          .listCustomerPackageInvoices({ sort_by: 'due_date', sort_dir: 'asc' })
-          .then((res) => {
-            nextSummary.invoice = summarizeInvoices(res.data);
+        /* `per_page` WAJIB diisi. Backend memakai `per_page.unwrap_or(25)` lalu
+           `clamp(1, 100)`, jadi tanpa argumen ringkasan tagihan tenant dihitung
+           dari 25 baris pertama saja. Di DB produksi bedanya 25 vs 485 invoice. */
+        fetchAllRows<Invoice>((page, per_page) =>
+          api.payment.listCustomerPackageInvoices({
+            sort_by: 'due_date',
+            sort_dir: 'asc',
+            page,
+            per_page,
+          }),
+        )
+          .then((rows) => {
+            nextSummary.invoice = summarizeInvoices(rows);
           })
           .catch((error) =>
             console.warn('Failed to load billing summary for admin dashboard', error),

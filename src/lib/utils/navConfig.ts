@@ -29,7 +29,34 @@ export type NavBadges = {
   supportOpen?: number;
 };
 
-export function buildAdminNav(can: Can, user: NavUser, badges: NavBadges = {}): RailGroup[] {
+/**
+ * Halaman yang SUDAH dimigrasi ke shell v2.
+ *
+ * Selama migrasi bertahap, rail di shell v2 harus menunjuk ke versi v2 untuk
+ * halaman yang sudah ada, dan tetap menunjuk ke halaman lama untuk sisanya —
+ * kalau tidak, pengguna yang mengklik menu akan terlempar keluar dari shell
+ * baru tanpa penjelasan, atau lebih buruk, mendarat di 404.
+ *
+ * Tambahkan path ke daftar ini SETIAP KALI sebuah halaman selesai dimigrasi.
+ */
+export const V2_MIGRATED: readonly string[] = [
+  '/admin',
+  '/admin/customers',
+  '/admin/invoices',
+  '/admin/network/pppoe',
+];
+
+/** Ubah href legacy ke padanan v2 bila halaman itu sudah dimigrasi. */
+export function v2Href(href: string): string {
+  return V2_MIGRATED.includes(href) ? `/v2${href}` : href;
+}
+
+export function buildAdminNav(
+  can: Can,
+  user: NavUser,
+  badges: NavBadges = {},
+  options: { v2?: boolean } = {},
+): RailGroup[] {
   const billing = can('read', 'billing') || can('manage', 'billing');
   const customers = can('read', 'customers') || can('manage', 'customers');
   const workOrders = can('read', 'work_orders') || can('manage', 'work_orders');
@@ -134,5 +161,14 @@ export function buildAdminNav(can: Can, user: NavUser, badges: NavBadges = {}): 
   ];
 
   // Buang grup kosong supaya rail tidak menampilkan pemisah menggantung.
-  return groups.filter((g) => g.items.length > 0);
+  const nonEmpty = groups.filter((g) => g.items.length > 0);
+
+  /* Di shell v2, href halaman yang sudah dimigrasi diarahkan ke /v2/... supaya
+     navigasi tidak melompat keluar dari shell baru di tengah pekerjaan. */
+  if (!options.v2) return nonEmpty;
+
+  return nonEmpty.map((g) => ({
+    ...g,
+    items: g.items.map((i) => ({ ...i, href: v2Href(i.href) })),
+  }));
 }
