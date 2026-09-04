@@ -17,8 +17,9 @@ use uuid::Uuid;
 
 use super::announcements_support_common::{
     active_subscriber_portal_user_ids, ann_changed_fields, ann_snapshot_json,
-    can_access_admin_audience, customer_portal_user_ids, is_internal_tenant_member, norm_audience,
-    norm_format, norm_mode, norm_severity, package_subscriber_portal_user_ids, strip_html_tags,
+    can_access_admin_audience, customer_portal_user_ids, global_recipient_ids,
+    is_internal_tenant_member, norm_audience, norm_format, norm_mode, norm_severity,
+    package_subscriber_portal_user_ids, should_reschedule_delivery, strip_html_tags,
     suspended_subscriber_portal_user_ids, tenant_admin_user_ids, tenant_user_ids,
 };
 
@@ -42,6 +43,11 @@ pub struct ListAdminParams {
 }
 
 #[derive(Deserialize)]
+pub struct ReachParams {
+    pub scope: Option<String>, // "tenant" | "global"
+}
+
+#[derive(Deserialize)]
 pub struct ListRecentParams {
     pub page: Option<u32>,
     pub per_page: Option<u32>,
@@ -61,6 +67,92 @@ pub fn router() -> Router<AppState> {
             "/admin/{id}",
             put(update_announcement).delete(delete_announcement),
         )
+        .route("/admin/reach", get(audience_reach))
+}
+
+/// Jumlah penerima NYATA per pilihan audiens, untuk dropdown halaman admin.
+///
+/// Alasan endpoint ini ada: di tenant produksi 548 pelanggan hanya punya 2
+/// akun portal, sehingga pilihan "Pelanggan berlangganan aktif" menjangkau
+/// NOL orang dan tampil identik dengan pilihan lain di dropdown lama. UI tidak
+/// boleh menawarkan pilihan tanpa memberi tahu siapa yang menerima.
+async fn audience_reach(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(params): Query<ReachParams>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let claims = auth_claims(&state, &headers).await?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or(crate::error::AppError::Validation(
+            "Tenant context required".to_string(),
+        ))?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "announcements", "manage")
+        .await?;
+
+    let scope = params.scope.unwrap_or_else(|| "tenant".to_string());
+    let pool = &state.auth_service.pool;
+
+    let mut counts = serde_json::Map::new();
+    #[cfg(feature = "postgres")]
+    {
+        if scope == "global" && claims.is_super_admin {
+            for a in [
+                "all",
+                "admins",
+                "customers",
+                "active_subscribers",
+                "suspended_subscribers",
+            ] {
+                let n = global_recipient_ids(pool, a).await.unwrap_or_default().len();
+                counts.insert(a.to_string(), serde_json::json!(n));
+            }
+        } else {
+            let admins = tenant_admin_user_ids(pool, &tenant_id).await.unwrap_or_default().len();
+            let customers = customer_portal_user_ids(pool, &tenant_id)
+                .await
+                .unwrap_or_default()
+                .len();
+            let aktif = active_subscriber_portal_user_ids(pool, &tenant_id)
+                .await
+                .unwrap_or_default()
+                .len();
+            let susp = suspended_subscriber_portal_user_ids(pool, &tenant_id)
+                .await
+                .unwrap_or_default()
+                .len();
+            // `all` = gabungan staf tenant + akun portal pelanggan (dedup via
+            // HashSet, sama seperti jalur pengirim).
+            let mut set: HashSet<String> = tenant_user_ids(pool, &tenant_id)
+                .await
+                .unwrap_or_default()
+                .into_iter()
+                .collect();
+            set.extend(customer_portal_user_ids(pool, &tenant_id).await.unwrap_or_default());
+            counts.insert("all".into(), serde_json::json!(set.len()));
+            counts.insert("admins".into(), serde_json::json!(admins));
+            counts.insert("customers".into(), serde_json::json!(customers));
+            counts.insert("active_subscribers".into(), serde_json::json!(aktif));
+            counts.insert("suspended_subscribers".into(), serde_json::json!(susp));
+
+            // Kesenjangan cakupan portal: jumlah pelanggan vs yang punya akun.
+            let total_customers: i64 = sqlx::query_scalar(
+                "SELECT COUNT(*) FROM customers WHERE tenant_id = $1 AND is_active = true",
+            )
+            .bind(&tenant_id)
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0);
+            counts.insert("total_customers".into(), serde_json::json!(total_customers));
+            counts.insert("portal_accounts".into(), serde_json::json!(customers));
+        }
+    }
+    let _ = scope;
+
+    Ok(Json(serde_json::Value::Object(counts)))
 }
 
 pub async fn get_one(
@@ -655,10 +747,12 @@ async fn send_announcement_notifications(
                 recipients.retain(|u| pkg_users.contains(u));
             }
         } else {
-            // Global: notify all users (simple baseline)
+            // Global: hormati `audience` juga. Sebelumnya baris ini
+            // `SELECT id FROM users WHERE is_active = true` tanpa melihat
+            // audiens, jadi "hanya admin" pada pengumuman global tetap terkirim
+            // ke seluruh user aktif lintas tenant.
             let ids: Vec<String> =
-                sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")
-                    .fetch_all(&state.auth_service.pool)
+                global_recipient_ids(&state.auth_service.pool, announcement.audience.as_str())
                     .await
                     .unwrap_or_default();
             recipients.extend(ids);
@@ -740,10 +834,12 @@ async fn send_announcement_emails(
             recipients.retain(|u| pkg_users.contains(u));
         }
     } else {
-        let ids: Vec<String> = sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")
-            .fetch_all(&state.auth_service.pool)
-            .await
-            .unwrap_or_default();
+        // Jalur email global: audiens juga wajib dihormati di sini, bukan hanya
+        // pada notifikasi in-app.
+        let ids: Vec<String> =
+            global_recipient_ids(&state.auth_service.pool, announcement.audience.as_str())
+                .await
+                .unwrap_or_default();
         recipients.extend(ids);
     }
 
@@ -1181,6 +1277,19 @@ pub async fn update_announcement(
         }
     }
 
+    // Jadwalkan ulang pengiriman bila admin memindahkan `starts_at` ke masa
+    // depan pada pengumuman yang sudah terkirim. Tanpa ini `notified_at` tetap
+    // terisi selamanya dan penjadwal (`process_due`, yang hanya memilih
+    // `notified_at IS NULL`) tidak akan pernah menyentuh baris itu lagi —
+    // menggeser jadwal jadi tanpa efek sama sekali.
+    let jadwalkan_ulang =
+        should_reschedule_delivery(existing.notified_at, existing.starts_at, starts_at, now);
+    let notified_at = if jadwalkan_ulang {
+        None
+    } else {
+        existing.notified_at
+    };
+
     #[cfg(feature = "postgres")]
     let ann: Announcement = sqlx::query_as(
         r#"
@@ -1197,8 +1306,9 @@ pub async fn update_announcement(
             deliver_email_force = $10,
             starts_at = $11,
             ends_at = $12,
-            updated_at = $13
-        WHERE id = $14
+            notified_at = $13,
+            updated_at = $14
+        WHERE id = $15
         RETURNING *
     "#,
     )
@@ -1214,6 +1324,7 @@ pub async fn update_announcement(
     .bind(deliver_email_force)
     .bind(starts_at)
     .bind(ends_at)
+    .bind(notified_at)
     .bind(now)
     .bind(&id)
     .fetch_one(&state.auth_service.pool)

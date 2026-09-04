@@ -321,11 +321,13 @@ impl AnnouncementScheduler {
                     recipients.retain(|u| pkg_users.contains(u));
                 }
             } else {
-                let ids: Vec<String> =
-                    sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")
-                        .fetch_all(pool)
-                        .await
-                        .unwrap_or_default();
+                // Global: hormati `audience` (dulu diabaikan → semua user aktif).
+                let ids: Vec<String> = crate::http::announcements_support_common::global_recipient_ids(
+                    pool,
+                    announcement.audience.as_str(),
+                )
+                .await
+                .unwrap_or_default();
                 recipients.extend(ids);
             }
         }
@@ -420,11 +422,14 @@ impl AnnouncementScheduler {
                 recipients.retain(|u| pkg_users.contains(u));
             }
         } else {
+            // Jalur email global: audiens juga dihormati di sini.
             let ids: Vec<String> =
-                sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")
-                    .fetch_all(pool)
-                    .await
-                    .unwrap_or_default();
+                crate::http::announcements_support_common::global_recipient_ids(
+                    pool,
+                    announcement.audience.as_str(),
+                )
+                .await
+                .unwrap_or_default();
             recipients.extend(ids);
         }
 

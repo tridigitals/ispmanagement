@@ -269,6 +269,115 @@ pub(crate) async fn package_subscriber_portal_user_ids(
     .await
 }
 
+/// Penerima untuk pengumuman GLOBAL (tenant_id IS NULL), menghormati `audience`.
+///
+/// Sebelumnya ketiga pemanggil (`http/announcements.rs`,
+/// `services/announcement_service.rs`, `commands/announcements.rs`) sama-sama
+/// menjalankan `SELECT id FROM users WHERE is_active = true` untuk pengumuman
+/// global — nilai `audience` tidak pernah dibaca. Efeknya di data produksi:
+/// memilih "hanya admin" pada pengumuman global tetap mengirim ke seluruh 18
+/// user aktif lintas 6 tenant, termasuk akun portal pelanggan. Pilihan audiens
+/// di UI menjadi hiasan yang menyesatkan.
+///
+/// Fungsi ini menerjemahkan audiens yang sama seperti jalur tenant, hanya tanpa
+/// batas tenant. `all` tetap berarti semua user aktif — itu perilaku lama dan
+/// memang yang dimaksud oleh pilihan itu.
+#[cfg(feature = "postgres")]
+pub(crate) async fn global_recipient_ids(
+    pool: &sqlx::Pool<sqlx::Postgres>,
+    audience: &str,
+) -> Result<Vec<String>, sqlx::Error> {
+    match audience {
+        // Staf: super admin, atau pemilik/admin di tenant mana pun, atau
+        // pemegang izin announcements:manage.
+        "admins" => {
+            sqlx::query_scalar(
+                r#"
+                SELECT DISTINCT u.id
+                FROM users u
+                LEFT JOIN tenant_members tm
+                       ON tm.user_id = u.id AND tm.deleted_at IS NULL
+                LEFT JOIN roles r ON r.id = tm.role_id
+                LEFT JOIN role_permissions rp ON rp.role_id = tm.role_id
+                WHERE u.is_active = true
+                  AND (
+                    u.is_super_admin = true
+                    OR lower(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin')
+                    OR rp.permission_id = 'announcements:manage'
+                  )
+            "#,
+            )
+            .fetch_all(pool)
+            .await
+        }
+        "customers" => {
+            sqlx::query_scalar(
+                r#"
+                SELECT DISTINCT cu.user_id
+                FROM customer_users cu
+                JOIN customers c ON c.id = cu.customer_id
+                JOIN users u ON u.id = cu.user_id
+                WHERE c.is_active = true AND u.is_active = true
+            "#,
+            )
+            .fetch_all(pool)
+            .await
+        }
+        "active_subscribers" | "suspended_subscribers" => {
+            let status = if audience == "active_subscribers" {
+                "active"
+            } else {
+                "suspended"
+            };
+            sqlx::query_scalar(
+                r#"
+                SELECT DISTINCT cu.user_id
+                FROM customer_users cu
+                JOIN customer_subscriptions cs
+                       ON cs.customer_id = cu.customer_id AND cs.tenant_id = cu.tenant_id
+                JOIN users u ON u.id = cu.user_id
+                WHERE cs.status = $1 AND u.is_active = true
+            "#,
+            )
+            .bind(status)
+            .fetch_all(pool)
+            .await
+        }
+        // "all" dan nilai tak dikenal: semua user aktif (perilaku lama).
+        _ => {
+            sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")
+                .fetch_all(pool)
+                .await
+        }
+    }
+}
+
+/// Apakah pengiriman perlu dijadwalkan ulang setelah pengumuman disunting.
+///
+/// Penjadwal (`AnnouncementService::process_due`) hanya memilih baris dengan
+/// `notified_at IS NULL`. `UPDATE announcements` menulis 13 kolom dan
+/// `notified_at` bukan salah satunya, jadi begitu sebuah pengumuman terkirim,
+/// menggeser jadwalnya tidak pernah berpengaruh lagi. Diuji langsung di
+/// database (BEGIN/ROLLBACK): menggeser `starts_at` pengumuman yang sudah
+/// `notified_at` ke masa depan lalu kembali ke masa kini tetap menghasilkan 0
+/// baris terpilih. Seluruh 16 pengumuman di tenant produksi sudah `notified_at`.
+///
+/// Aturannya: reset hanya bila pengumuman SUDAH terkirim DAN admin memindahkan
+/// `starts_at` ke masa depan. Itu satu-satunya tafsir yang jelas dari
+/// "jadwalkan ulang". Menggeser ke masa lalu, atau menyunting isi tanpa
+/// menyentuh jadwal, tidak boleh memicu notifikasi kedua ke orang yang sama.
+pub(crate) fn should_reschedule_delivery(
+    notified_at: Option<chrono::DateTime<chrono::Utc>>,
+    starts_at_lama: chrono::DateTime<chrono::Utc>,
+    starts_at_baru: chrono::DateTime<chrono::Utc>,
+    now: chrono::DateTime<chrono::Utc>,
+) -> bool {
+    if notified_at.is_none() {
+        return false;
+    }
+    starts_at_baru != starts_at_lama && starts_at_baru > now
+}
+
 /// Status tiket yang boleh dipakai sebagai filter.
 ///
 /// `resolved` DULU tidak ada di daftar ini, padahal kolom `status` memang
@@ -308,7 +417,44 @@ pub(crate) fn can_access_admin_audience(
 
 #[cfg(test)]
 mod tests {
-    use super::can_access_admin_audience;
+    use super::{can_access_admin_audience, should_reschedule_delivery};
+    use chrono::{TimeZone, Utc};
+
+    fn t(hari: u32) -> chrono::DateTime<chrono::Utc> {
+        Utc.with_ymd_and_hms(2026, 9, hari, 12, 0, 0).unwrap()
+    }
+
+    #[test]
+    fn tidak_menjadwalkan_ulang_bila_belum_pernah_terkirim() {
+        // notified_at kosong: penjadwal masih akan mengambil baris ini sendiri.
+        assert!(!should_reschedule_delivery(None, t(1), t(10), t(4)));
+    }
+
+    #[test]
+    fn menjadwalkan_ulang_bila_terkirim_dan_digeser_ke_masa_depan() {
+        // Inti bug: tanpa reset, notified_at tetap terisi dan process_due
+        // (WHERE notified_at IS NULL) tidak akan pernah memilih baris ini.
+        assert!(should_reschedule_delivery(Some(t(1)), t(1), t(10), t(4)));
+    }
+
+    #[test]
+    fn tidak_menjadwalkan_ulang_bila_jadwal_tidak_berubah() {
+        // Menyunting judul/isi saja tidak boleh memicu notifikasi kedua.
+        assert!(!should_reschedule_delivery(Some(t(1)), t(1), t(1), t(4)));
+    }
+
+    #[test]
+    fn tidak_menjadwalkan_ulang_bila_digeser_ke_masa_lalu() {
+        // Jadwal di masa lalu berarti "sudah waktunya"; pengumuman sudah
+        // terkirim, jadi mengirim ulang hanya menggandakan notifikasi.
+        assert!(!should_reschedule_delivery(Some(t(10)), t(10), t(2), t(4)));
+    }
+
+    #[test]
+    fn tidak_menjadwalkan_ulang_bila_jadwal_baru_tepat_sekarang() {
+        // Batas: harus benar-benar LEBIH BESAR dari now.
+        assert!(!should_reschedule_delivery(Some(t(1)), t(1), t(4), t(4)));
+    }
 
     #[test]
     fn admin_audience_is_visible_to_internal_members() {

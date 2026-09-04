@@ -1,5 +1,15 @@
 use crate::models::Announcement;
 
+/// Satu implementasi dipakai bersama dengan jalur HTTP.
+///
+/// Berkas ini dan `http/announcements_support_common.rs` sudah lama merupakan
+/// dua salinan yang saling menyimpang. Untuk perbaikan audiens global dan
+/// penjadwalan ulang pengiriman, salinan ketiga tidak dibuat — keduanya
+/// menunjuk implementasi yang sama supaya tidak bisa menyimpang lagi.
+pub(crate) use crate::http::announcements_support_common::{
+    global_recipient_ids, should_reschedule_delivery,
+};
+
 pub(crate) fn strip_html_tags(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
     let mut in_tag = false;

@@ -50,6 +50,7 @@ export const V2_MIGRATED: readonly string[] = [
   '/admin/team',
   '/admin/roles',
   '/admin/billing',
+  '/admin/announcements',
 ];
 
 /** Ubah href legacy ke padanan v2 bila halaman itu sudah dimigrasi. */
@@ -161,6 +162,11 @@ export function buildAdminNav(
           : []),
         ...(can('read', 'settings')
           ? [{ label: 'Setelan', icon: 'cog' as const, href: '/admin/settings' }]
+          : []),
+        // Gerbangnya `manage`, bukan `read` — sama seperti Sidebar legacy
+        // (`Sidebar.svelte:495`) dan check_permission di server.
+        ...(can('manage', 'announcements')
+          ? [{ label: 'Pengumuman', icon: 'megaphone' as const, href: '/admin/announcements' }]
           : []),
       ],
     },

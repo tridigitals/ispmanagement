@@ -375,6 +375,7 @@ const commandMap: Record<string, { method: string; path: string }> = {
   create_announcement_admin: { method: 'POST', path: '/announcements/admin' },
   update_announcement_admin: { method: 'PUT', path: '/announcements/admin/:id' },
   delete_announcement_admin: { method: 'DELETE', path: '/announcements/admin/:id' },
+  announcements_reach: { method: 'GET', path: '/announcements/admin/reach' },
   get_current_tenant: { method: 'GET', path: '/tenant/me' },
   update_current_tenant: { method: 'PUT', path: '/tenant/me' },
   list_tenant_audit_logs: { method: 'GET', path: '/admin/audit-logs' },

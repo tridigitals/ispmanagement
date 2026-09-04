@@ -12,8 +12,9 @@ use uuid::Uuid;
 
 use super::announcements_support_common::{
     active_subscriber_portal_user_ids, ann_changed_fields, ann_snapshot_json,
-    can_access_admin_audience, customer_portal_user_ids, is_internal_tenant_member, norm_audience,
-    norm_format, norm_mode, norm_severity, package_subscriber_portal_user_ids, strip_html_tags,
+    can_access_admin_audience, customer_portal_user_ids, global_recipient_ids,
+    is_internal_tenant_member, norm_audience, norm_format, norm_mode, norm_severity,
+    package_subscriber_portal_user_ids, should_reschedule_delivery, strip_html_tags,
     suspended_subscriber_portal_user_ids, tenant_admin_user_ids, tenant_user_ids,
 };
 
@@ -78,11 +79,11 @@ async fn send_announcement_notifications(
                 recipients.retain(|u| pkg_users.contains(u));
             }
         } else {
-            let ids: Vec<String> =
-                sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")
-                    .fetch_all(pool)
-                    .await
-                    .unwrap_or_default();
+            // Global: hormati `audience`. Lihat `global_recipient_ids` — dulu
+            // baris ini mengirim ke semua user aktif dan mengabaikan audiens.
+            let ids: Vec<String> = global_recipient_ids(pool, announcement.audience.as_str())
+                .await
+                .unwrap_or_default();
             recipients.extend(ids);
         }
     }
@@ -172,8 +173,8 @@ async fn send_announcement_emails(
             recipients.retain(|u| pkg_users.contains(u));
         }
     } else {
-        let ids: Vec<String> = sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")
-            .fetch_all(pool)
+        // Jalur email global: audiens juga dihormati di sini.
+        let ids: Vec<String> = global_recipient_ids(pool, announcement.audience.as_str())
             .await
             .unwrap_or_default();
         recipients.extend(ids);
@@ -1119,6 +1120,16 @@ pub async fn update_announcement_admin(
         }
     }
 
+    // Jadwalkan ulang pengiriman bila `starts_at` digeser ke masa depan pada
+    // pengumuman yang sudah terkirim; lihat `should_reschedule_delivery`.
+    let jadwalkan_ulang =
+        should_reschedule_delivery(existing.notified_at, existing.starts_at, starts_at, now);
+    let notified_at = if jadwalkan_ulang {
+        None
+    } else {
+        existing.notified_at
+    };
+
     #[cfg(feature = "postgres")]
     let ann: Announcement = sqlx::query_as(
         r#"
@@ -1135,8 +1146,9 @@ pub async fn update_announcement_admin(
             deliver_email_force = $10,
             starts_at = $11,
             ends_at = $12,
-            updated_at = $13
-        WHERE id = $14
+            notified_at = $13,
+            updated_at = $14
+        WHERE id = $15
         RETURNING *
     "#,
     )
@@ -1152,6 +1164,7 @@ pub async fn update_announcement_admin(
     .bind(deliver_email_force)
     .bind(starts_at)
     .bind(ends_at)
+    .bind(notified_at)
     .bind(now)
     .bind(&id)
     .fetch_one(&auth_service.pool)

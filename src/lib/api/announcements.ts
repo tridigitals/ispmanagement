@@ -44,4 +44,8 @@ export const announcements = {
 
   deleteAdmin: (id: string): Promise<void> =>
     safeInvoke('delete_announcement_admin', { token: getTokenOrThrow(), id }),
+
+  /** Jumlah penerima nyata per audiens; dipakai dropdown halaman admin. */
+  reach: (scope: 'tenant' | 'global' = 'tenant'): Promise<Record<string, number>> =>
+    safeInvoke('announcements_reach', { token: getTokenOrThrow(), scope }),
 };
