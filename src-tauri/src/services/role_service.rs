@@ -89,6 +89,19 @@ impl RoleService {
         ]
     }
 
+    /// True when a permission key is only an *alias*: saving it stores different keys,
+    /// so the key itself can never come back out of the database.
+    ///
+    /// `legacy_permission_keys()` is NOT the right test for this — `pppoe:read` is listed
+    /// there but normalizes to a set that still contains `pppoe:read`, so it round-trips
+    /// fine. Only keys that normalization maps *away from* are unsavable
+    /// (`network_routers:*`, `storage:*`). Deriving the answer from
+    /// `map_legacy_permission_key` keeps this correct if the alias table ever changes.
+    pub fn is_alias_permission_key(key: &str) -> bool {
+        let normalized = Self::map_legacy_permission_key(key);
+        !normalized.iter().any(|k| k == key)
+    }
+
     pub fn new(pool: DbPool, audit_service: AuditService) -> Self {
         Self {
             pool,
@@ -965,7 +978,17 @@ impl RoleService {
             sqlx::query_as("SELECT * FROM permissions ORDER BY resource, action")
                 .fetch_all(&self.pool)
                 .await?;
-        Ok(perms)
+
+        // Hide alias-only rows. `seed_permissions()` still inserts them (they exist so old
+        // role_permissions rows keep resolving), but a caller who ticks `storage:upload`
+        // gets `storage_files:upload` written instead — the box then renders unticked on
+        // reload and looks like a save failure. Probed on live data: sending all 83
+        // catalogue keys stored only 77. Offering a checkbox that cannot hold its value
+        // is worse than not offering it.
+        Ok(perms
+            .into_iter()
+            .filter(|p| !Self::is_alias_permission_key(&format!("{}:{}", p.resource, p.action)))
+            .collect())
     }
 
     /// Create a new role
@@ -975,9 +998,58 @@ impl RoleService {
         dto: CreateRoleDto,
         actor_id: Option<&str>,
         ip_address: Option<&str>,
-    ) -> Result<RoleWithPermissions, sqlx::Error> {
+    ) -> Result<RoleWithPermissions, crate::error::AppError> {
         let now = Utc::now();
         let role_id = Uuid::new_v4().to_string();
+
+        let name = dto.name.trim();
+        if name.is_empty() {
+            return Err(crate::error::AppError::Validation(
+                "Role name is required".to_string(),
+            ));
+        }
+
+        // Reject names that collide with a global system role.
+        //
+        // `idx_roles_name_global` is UNIQUE only WHERE tenant_id IS NULL, so a tenant was
+        // free to create its own role literally named "Owner". Several permission paths
+        // keyed off `roles.name = 'Owner'`; those are now scoped to the global role, but a
+        // duplicate name still renders two indistinguishable "Owner" rows in the roles
+        // table and in every role dropdown. Refuse the name instead.
+        #[cfg(feature = "postgres")]
+        let name_conflict: Option<(String,)> = sqlx::query_as(
+            r#"
+            SELECT id FROM roles
+            WHERE lower(name) = lower($1)
+              AND (tenant_id IS NULL OR tenant_id IS NOT DISTINCT FROM $2)
+            LIMIT 1
+            "#,
+        )
+        .bind(name)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let name_conflict: Option<(String,)> = sqlx::query_as(
+            r#"
+            SELECT id FROM roles
+            WHERE lower(name) = lower(?)
+              AND (tenant_id IS NULL OR tenant_id IS ?)
+            LIMIT 1
+            "#,
+        )
+        .bind(name)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if name_conflict.is_some() {
+            return Err(crate::error::AppError::Conflict(format!(
+                "A role named \"{}\" already exists",
+                name
+            )));
+        }
 
         #[cfg(feature = "postgres")]
         {
@@ -987,7 +1059,7 @@ impl RoleService {
             "#)
             .bind(&role_id)
             .bind(tenant_id)
-            .bind(&dto.name)
+            .bind(name)
             .bind(&dto.description)
             .bind(dto.level.unwrap_or(0))
             .bind(now)
@@ -1005,7 +1077,7 @@ impl RoleService {
             "#)
             .bind(&role_id)
             .bind(tenant_id)
-            .bind(&dto.name)
+            .bind(name)
             .bind(&dto.description)
             .bind(dto.level.unwrap_or(0))
             .bind(&now_str)
@@ -1071,7 +1143,7 @@ impl RoleService {
         let role = self
             .get_role_by_id(&role_id)
             .await?
-            .ok_or_else(|| sqlx::Error::RowNotFound)?;
+            .ok_or_else(|| crate::error::AppError::NotFound("Role not found".to_string()))?;
 
         Ok(role)
     }
@@ -1110,7 +1182,7 @@ impl RoleService {
         is_super_admin: bool,
         actor_id: Option<&str>,
         ip_address: Option<&str>,
-    ) -> Result<RoleWithPermissions, sqlx::Error> {
+    ) -> Result<RoleWithPermissions, crate::error::AppError> {
         let now = Utc::now();
 
         // Check if role is system role
@@ -1126,7 +1198,10 @@ impl RoleService {
             .fetch_optional(&self.pool)
             .await?;
 
-        let role = role.ok_or_else(|| sqlx::Error::RowNotFound)?;
+        // Used to be `sqlx::Error::RowNotFound`, which the HTTP layer maps to a blanket
+        // 500 "A database error occurred." A missing role is a client-side 404.
+        let role = role
+            .ok_or_else(|| crate::error::AppError::NotFound("Role not found".to_string()))?;
         let role_name_before = role.name.clone();
         let role_description_before = role.description.clone();
         let role_level_before = role.level;
@@ -1138,10 +1213,12 @@ impl RoleService {
             vec![]
         };
 
-        // Only Superadmins can modify system roles
+        // Only Superadmins can modify system roles.
+        // Was `sqlx::Error::Protocol`, which `AppError::Database` swallows into a generic
+        // HTTP 500 — an authorization refusal must not look like a server fault.
         if role.is_system && !is_super_admin {
-            return Err(sqlx::Error::Protocol(
-                "System roles can only be modified by Super Admin".to_string(),
+            return Err(crate::error::AppError::Forbidden(
+                "System roles can only be modified by a Super Admin".to_string(),
             ));
         }
 
@@ -1315,7 +1392,7 @@ impl RoleService {
 
         self.get_role_by_id(role_id)
             .await?
-            .ok_or_else(|| sqlx::Error::RowNotFound)
+            .ok_or_else(|| crate::error::AppError::NotFound("Role not found".to_string()))
     }
 
     /// Delete a role (system roles can only be deleted by Superadmins)
@@ -1325,7 +1402,7 @@ impl RoleService {
         is_super_admin: bool,
         actor_id: Option<&str>,
         ip_address: Option<&str>,
-    ) -> Result<bool, sqlx::Error> {
+    ) -> Result<bool, crate::error::AppError> {
         // Check if system role
         #[cfg(feature = "postgres")]
         let role_info: Option<(bool, Option<String>)> =
@@ -1341,44 +1418,72 @@ impl RoleService {
                 .fetch_optional(&self.pool)
                 .await?;
 
-        if let Some((is_system_role, tid)) = role_info {
-            // Only Superadmins can delete system roles
-            if is_system_role && !is_super_admin {
-                return Ok(false); // Cannot delete system role
-            }
+        // A missing role used to return Ok(true), which the UI reported as
+        // "Role deleted successfully" — deleting a stale id from a second tab printed a
+        // success toast and removed the row from the table. Say what actually happened.
+        let (is_system_role, tid) = role_info
+            .ok_or_else(|| crate::error::AppError::NotFound("Role not found".to_string()))?;
 
-            let tenant_id_str = tid.map(|t| t.to_string());
-
-            #[cfg(feature = "postgres")]
-            sqlx::query("DELETE FROM roles WHERE id = $1")
-                .bind(role_id)
-                .execute(&self.pool)
-                .await?;
-
-            #[cfg(feature = "sqlite")]
-            sqlx::query("DELETE FROM roles WHERE id = ?")
-                .bind(role_id)
-                .execute(&self.pool)
-                .await?;
-
-            // Audit
-            self.audit_service
-                .log(
-                    actor_id,
-                    tenant_id_str.as_deref(),
-                    "ROLE_DELETE",
-                    "roles",
-                    Some(role_id),
-                    Some("Deleted role"),
-                    ip_address,
-                )
-                .await;
-
-            Ok(true)
-        } else {
-            // Role not found, treat as success or error?
-            Ok(true)
+        // Only Superadmins can delete system roles. This used to return Ok(false), which
+        // the caller could not distinguish from success either.
+        if is_system_role && !is_super_admin {
+            return Err(crate::error::AppError::Forbidden(
+                "System roles can only be deleted by a Super Admin".to_string(),
+            ));
         }
+
+        // `tenant_members.role_id` has no ON DELETE clause, so Postgres raises a foreign
+        // key violation that surfaced as a bare HTTP 500 "A database error occurred."
+        // Check first and name the blocker instead.
+        #[cfg(feature = "postgres")]
+        let members_using: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM tenant_members WHERE role_id = $1")
+                .bind(role_id)
+                .fetch_one(&self.pool)
+                .await?;
+
+        #[cfg(feature = "sqlite")]
+        let members_using: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM tenant_members WHERE role_id = ?")
+                .bind(role_id)
+                .fetch_one(&self.pool)
+                .await?;
+
+        if members_using > 0 {
+            return Err(crate::error::AppError::Conflict(format!(
+                "Role is still assigned to {} member(s). Move them to another role first.",
+                members_using
+            )));
+        }
+
+        let tenant_id_str = tid.map(|t| t.to_string());
+
+        #[cfg(feature = "postgres")]
+        sqlx::query("DELETE FROM roles WHERE id = $1")
+            .bind(role_id)
+            .execute(&self.pool)
+            .await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query("DELETE FROM roles WHERE id = ?")
+            .bind(role_id)
+            .execute(&self.pool)
+            .await?;
+
+        // Audit
+        self.audit_service
+            .log(
+                actor_id,
+                tenant_id_str.as_deref(),
+                "ROLE_DELETE",
+                "roles",
+                Some(role_id),
+                Some("Deleted role"),
+                ip_address,
+            )
+            .await;
+
+        Ok(true)
     }
 }
 
@@ -1486,5 +1591,38 @@ mod tests {
         assert!(legacy.contains("pppoe:read"));
         assert!(legacy.contains("pppoe:manage"));
         assert_eq!(legacy.len(), 8);
+    }
+
+    /// Locks the distinction the roles page depends on: some legacy keys still round-trip
+    /// (they normalize to a set containing themselves) while others are pure aliases that
+    /// can never be read back. Only the pure aliases may be hidden from the catalogue.
+    #[test]
+    fn only_keys_that_normalization_maps_away_count_as_aliases() {
+        // Pure aliases: saving these writes different keys, so a ticked box reloads unticked.
+        assert!(RoleService::is_alias_permission_key("network_routers:read"));
+        assert!(RoleService::is_alias_permission_key("network_routers:manage"));
+        assert!(RoleService::is_alias_permission_key(
+            "network_routers:manage_radius_secret"
+        ));
+        assert!(RoleService::is_alias_permission_key("storage:read"));
+        assert!(RoleService::is_alias_permission_key("storage:upload"));
+        assert!(RoleService::is_alias_permission_key("storage:delete"));
+
+        // Legacy but self-preserving: normalization ADDS granular keys and keeps these,
+        // so they still round-trip and must stay visible.
+        assert!(!RoleService::is_alias_permission_key("pppoe:read"));
+        assert!(!RoleService::is_alias_permission_key("pppoe:manage"));
+
+        // Ordinary keys are never aliases.
+        assert!(!RoleService::is_alias_permission_key("customers:read"));
+        assert!(!RoleService::is_alias_permission_key("billing:manage"));
+
+        // Exactly 6 of the 8 legacy keys are unsavable — the number of checkboxes the
+        // roles catalogue must drop (83 rows in the table, 77 offered).
+        let alias_count = RoleService::legacy_permission_keys()
+            .iter()
+            .filter(|k| RoleService::is_alias_permission_key(k))
+            .count();
+        assert_eq!(alias_count, 6);
     }
 }

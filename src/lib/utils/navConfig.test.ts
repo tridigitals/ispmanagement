@@ -92,6 +92,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     'read:customers',
     'read:network_noc',
     'read:pppoe',
+    'read:roles',
     'read:router_inventory',
     'read:settings',
     'read:support',
@@ -135,7 +136,9 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
   it('v2Href hanya menyentuh path yang terdaftar', () => {
     expect(v2Href('/admin/invoices')).toBe('/v2/admin/invoices');
     expect(v2Href('/admin/team')).toBe('/v2/admin/team');
-    expect(v2Href('/admin/roles')).toBe('/admin/roles');
+    expect(v2Href('/admin/roles')).toBe('/v2/admin/roles');
+    // Rute yang BELUM dimigrasi harus lewat tanpa perubahan.
+    expect(v2Href('/admin/announcements')).toBe('/admin/announcements');
     // Tidak boleh menumpuk prefix kalau dipanggil dua kali.
     expect(v2Href(v2Href('/admin/invoices'))).toBe('/v2/admin/invoices');
   });

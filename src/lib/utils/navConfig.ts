@@ -48,6 +48,7 @@ export const V2_MIGRATED: readonly string[] = [
   '/admin/network/routers',
   '/admin/support',
   '/admin/team',
+  '/admin/roles',
 ];
 
 /** Ubah href legacy ke padanan v2 bila halaman itu sudah dimigrasi. */

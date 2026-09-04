@@ -1388,7 +1388,8 @@ impl AuthService {
             r#"
             SELECT COUNT(*) > 0 FROM tenant_members tm
             JOIN roles r ON tm.role_id = r.id
-            WHERE tm.user_id = $1 AND tm.tenant_id = $2 AND r.name = 'Owner'
+            WHERE tm.user_id = $1 AND tm.tenant_id = $2
+              AND r.name = 'Owner' AND r.tenant_id IS NULL
         "#,
         )
         .bind(user_id)
@@ -1402,7 +1403,8 @@ impl AuthService {
             r#"
             SELECT COUNT(*) > 0 FROM tenant_members tm
             JOIN roles r ON tm.role_id = r.id
-            WHERE tm.user_id = ? AND tm.tenant_id = ? AND r.name = 'Owner'
+            WHERE tm.user_id = ? AND tm.tenant_id = ?
+              AND r.name = 'Owner' AND r.tenant_id IS NULL
         "#,
         )
         .bind(user_id)
@@ -1461,21 +1463,30 @@ impl AuthService {
             return Ok(vec!["*".to_string()]);
         }
 
+        // Same id-convention trap as `has_permission`: the frontend `can(action, resource)`
+        // helper looks for the string "resource:action" in this list, but
+        // `role_permissions.permission_id` only happens to look like that for rows created
+        // by `seed_permissions()`. Rows added by migrations can use any id
+        // (e.g. 'perm_communication_templates_read'), which would be shipped verbatim and
+        // never match. Resolve resource/action from `permissions` so the wire format is
+        // always "resource:action".
         #[cfg(feature = "postgres")]
         let query = r#"
-            SELECT DISTINCT rp.permission_id
+            SELECT DISTINCT p.resource || ':' || p.action
             FROM tenant_members tm
             JOIN roles r ON tm.role_id = r.id
             JOIN role_permissions rp ON r.id = rp.role_id
+            JOIN permissions p ON p.id = rp.permission_id
             WHERE tm.user_id = $1 AND tm.tenant_id = $2
         "#;
 
         #[cfg(feature = "sqlite")]
         let query = r#"
-            SELECT DISTINCT rp.permission_id
+            SELECT DISTINCT p.resource || ':' || p.action
             FROM tenant_members tm
             JOIN roles r ON tm.role_id = r.id
             JOIN role_permissions rp ON r.id = rp.role_id
+            JOIN permissions p ON p.id = rp.permission_id
             WHERE tm.user_id = ? AND tm.tenant_id = ?
         "#;
 
@@ -1602,15 +1613,28 @@ impl AuthService {
         let perm_id = format!("{}:{}", resource, action);
 
         // Check 1: Is user Owner? Owners generally bypass or have all permissions.
+        //
+        // CRITICAL: `role_permissions.permission_id` is a foreign key to `permissions.id`,
+        // and `permissions.id` is NOT guaranteed to equal "resource:action".
+        // `seed_permissions()` happens to build ids that way, but migrations may not:
+        // 20260504143000_add_message_templates.up.sql inserts
+        // ('perm_communication_templates_read', 'communication_templates', 'read', ...).
+        // Comparing the raw permission_id against "resource:action" therefore silently
+        // denies every permission whose row was created by such a migration — the role
+        // page shows the box ticked (it resolves resource/action via JOIN) while this
+        // check says no. Resolve resource/action through the permissions table so both
+        // id conventions match.
         #[cfg(feature = "postgres")]
         let query = r#"
             SELECT COUNT(*) FROM tenant_members tm
             JOIN roles r ON tm.role_id = r.id
             LEFT JOIN role_permissions rp ON r.id = rp.role_id
+            LEFT JOIN permissions p ON p.id = rp.permission_id
             WHERE tm.user_id = $1 AND tm.tenant_id = $2
             AND (
-                r.name = 'Owner'
+                (r.name = 'Owner' AND r.tenant_id IS NULL)
                 OR rp.permission_id = $3
+                OR p.resource || ':' || p.action = $4
             )
         "#;
 
@@ -1619,16 +1643,21 @@ impl AuthService {
             SELECT COUNT(*) FROM tenant_members tm
             JOIN roles r ON tm.role_id = r.id
             LEFT JOIN role_permissions rp ON r.id = rp.role_id
+            LEFT JOIN permissions p ON p.id = rp.permission_id
             WHERE tm.user_id = ? AND tm.tenant_id = ?
             AND (
-                r.name = 'Owner'
+                (r.name = 'Owner' AND r.tenant_id IS NULL)
                 OR rp.permission_id = ?
+                OR p.resource || ':' || p.action = ?
             )
         "#;
 
+        // perm_id is bound twice: once for the raw `permission_id` comparison and once
+        // for the resolved `resource:action` form. Both dialects therefore take 4 binds.
         let count: i64 = sqlx::query_scalar(query)
             .bind(user_id)
             .bind(tenant_id)
+            .bind(&perm_id)
             .bind(&perm_id)
             .fetch_one(&self.pool)
             .await?;

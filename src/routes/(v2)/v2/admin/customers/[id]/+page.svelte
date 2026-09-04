@@ -66,7 +66,9 @@
   let active = $state('ringkasan');
 
   const canManage = $derived($can('manage', 'customers'));
-  const canReadBilling = $derived($can('read', 'payments'));
+  /* 'payments' bukan resource yang ada; pakai 'billing' seperti halaman legacy, dan
+     terima 'manage' sebagai implikasi 'read' (manage tanpa read tidak masuk akal). */
+  const canReadBilling = $derived($can('read', 'billing') || $can('manage', 'billing'));
 
   const activeSubs = $derived(subs.filter((s) => s.status === 'active'));
   const pendingInstall = $derived(subs.filter((s) => s.status === 'pending_installation'));

@@ -65,7 +65,11 @@
   let generating = $state(false);
   let notice = $state('');
 
-  const canManage = $derived($can('manage', 'payments'));
+  /* Resource-nya 'billing', bukan 'payments' — tabel permissions tidak punya baris
+     'payments' sama sekali, jadi versi lama silently false untuk semua non-Owner dan
+     menyembunyikan tombol aksi dari Admin yang berhak. Halaman legacy memakai
+     can('manage','billing'). */
+  const canManage = $derived($can('manage', 'billing'));
   const lastPage = $derived(Math.max(1, Math.ceil(total / perPage)));
   const from = $derived(total === 0 ? 0 : (page - 1) * perPage + 1);
   const to = $derived(Math.min(page * perPage, total));

@@ -244,6 +244,10 @@ export interface Role {
   is_system: boolean;
   level: number;
   permissions?: string[];
+  /** null = role sistem global; berisi id tenant untuk role buatan tenant. */
+  tenant_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Permission {
