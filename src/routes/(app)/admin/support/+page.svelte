@@ -25,7 +25,14 @@
   let statusFilter = $state<'all' | 'open' | 'pending' | 'closed'>('all');
   let assignedFilter = $state<'all' | 'assigned' | 'unassigned'>('all');
   let categoryFilter = $state<'all' | 'general' | 'billing' | 'technical' | 'installation'>('all');
-  let stats = $state<SupportTicketStats>({ all: 0, open: 0, pending: 0, closed: 0 });
+  let stats = $state<SupportTicketStats>({
+    all: 0,
+    open: 0,
+    pending: 0,
+    closed: 0,
+    resolved: 0,
+    unassigned: 0,
+  });
   let total = $state(0);
   let pageNum = $state(1);
   const perPage = 20;
@@ -259,7 +266,8 @@
         <span class="stat-label">{$t('admin.support.unassigned')}</span>
         <Icon name="user" size={14} />
       </div>
-      <div class="stat-value">—</div>
+      <!-- Dulu em-dash hardcode; backend sekarang menghitung angkanya. -->
+      <div class="stat-value">{stats.unassigned}</div>
     </button>
   </div>
 

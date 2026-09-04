@@ -20,7 +20,14 @@
   import { appSettings } from '$lib/stores/settings';
 
   let tickets = $state<SupportTicketListItem[]>([]);
-  let stats = $state<SupportTicketStats>({ all: 0, open: 0, pending: 0, closed: 0 });
+  let stats = $state<SupportTicketStats>({
+    all: 0,
+    open: 0,
+    pending: 0,
+    closed: 0,
+    resolved: 0,
+    unassigned: 0,
+  });
   let total = $state(0);
   let pageNum = $state(1);
   const perPage = 20;

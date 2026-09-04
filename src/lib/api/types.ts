@@ -302,10 +302,13 @@ export interface SupportTicketListItem {
   created_by: string | null;
   created_by_name?: string | null;
   subject: string;
-  status: 'open' | 'pending' | 'closed' | string;
+  // 'resolved' ditulis backend oleh resolve_support_ticket tapi dulu tidak
+  // tercantum di sini, jadi TS tidak pernah memaksa UI menanganinya.
+  status: 'open' | 'pending' | 'resolved' | 'closed' | string;
   priority: 'low' | 'normal' | 'high' | 'urgent' | string;
   category: 'general' | 'billing' | 'technical' | 'installation' | null;
   assigned_to: string | null;
+  assigned_to_name?: string | null;
   subscription_id: string | null;
   created_at: string;
   updated_at: string;
@@ -319,6 +322,14 @@ export interface SupportTicketStats {
   open: number;
   pending: number;
   closed: number;
+  /**
+   * Tiket berstatus 'resolved'. Dulu tidak ada di sini padahal backend
+   * menulis status itu (`resolve_support_ticket`), sehingga
+   * open + pending + closed tidak menjumlah ke `all`.
+   */
+  resolved: number;
+  /** Belum ditugaskan DAN masih aktif. UI lama menampilkan em-dash hardcode. */
+  unassigned: number;
 }
 
 export interface SupportTicketMessage {

@@ -44,6 +44,10 @@ pub struct SupportTicketListItem {
     pub category: Option<String>,
     pub subscription_id: Option<String>,
     pub assigned_to: Option<String>,
+    /// Nama penerima tugas, dari `users.name`. Sebelumnya hanya UUID
+    /// `assigned_to` yang tersedia, jadi UI tidak bisa menampilkan siapa yang
+    /// menangani tiket — hanya "sudah/belum ditugaskan".
+    pub assigned_to_name: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub closed_at: Option<DateTime<Utc>>,

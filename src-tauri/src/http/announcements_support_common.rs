@@ -266,9 +266,15 @@ pub(crate) async fn package_subscriber_portal_user_ids(
     .await
 }
 
+/// Status tiket yang boleh dipakai sebagai filter.
+///
+/// `resolved` DULU tidak ada di daftar ini, padahal kolom `status` memang
+/// menyimpannya (`resolve_support_ticket` menulis `status = 'resolved'`).
+/// Akibatnya filter `status=resolved` jatuh ke `None` = tidak ada filter, jadi
+/// permintaan "tampilkan yang resolved" balas SEMUA tiket tanpa pesan galat.
 pub(crate) fn normalize_status(s: Option<String>) -> Option<String> {
     match s.as_deref() {
-        Some("open") | Some("pending") | Some("closed") => s,
+        Some("open") | Some("pending") | Some("closed") | Some("resolved") => s,
         _ => None,
     }
 }

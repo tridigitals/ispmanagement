@@ -94,6 +94,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     'read:pppoe',
     'read:router_inventory',
     'read:settings',
+    'read:support',
   );
 
   it('mengarahkan halaman yang sudah dimigrasi ke /v2 saat opsi v2 aktif', () => {
@@ -107,6 +108,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     expect(hrefs).toContain('/v2/admin/network/pppoe');
     expect(hrefs).toContain('/v2/admin/settings');
     expect(hrefs).toContain('/v2/admin/network/routers');
+    expect(hrefs).toContain('/v2/admin/support');
   });
 
   it('membiarkan halaman yang BELUM dimigrasi tetap menunjuk ke rute lama', () => {

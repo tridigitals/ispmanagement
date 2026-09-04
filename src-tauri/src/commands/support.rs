@@ -187,12 +187,24 @@ async fn broadcast_support_ticket_message_created(
     }
 }
 
+/// Ringkasan tiket dukungan.
+///
+/// `resolved` dan `unassigned` ditambahkan karena empat ember lama tidak
+/// menjumlah ke `all`: `resolve_support_ticket` menulis `status = 'resolved'`
+/// tapi tidak ada SUM untuk status itu, jadi tiket yang sudah diselesaikan
+/// hilang dari semua ember. Di tenant "ISP Management": all 20 tapi
+/// open 18 + pending 0 + closed 1 = 19.
+///
+/// `unassigned` ada karena UI menampilkan kartu "Belum ditugaskan" dengan nilai
+/// em-dash hardcode — angkanya memang tidak pernah dihitung backend.
 #[derive(serde::Serialize)]
 pub struct SupportTicketStats {
     pub all: i64,
     pub open: i64,
     pub pending: i64,
     pub closed: i64,
+    pub resolved: i64,
+    pub unassigned: i64,
 }
 
 #[tauri::command]
@@ -284,10 +296,12 @@ pub async fn list_support_tickets(
             SELECT
                 t.*,
                 u.name AS created_by_name,
+                au.name AS assigned_to_name,
                 (SELECT COUNT(*) FROM support_ticket_messages m WHERE m.ticket_id = t.id) AS message_count,
                 (SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id) AS last_message_at
             FROM support_tickets t
             LEFT JOIN users u ON u.id = t.created_by
+            LEFT JOIN users au ON au.id = t.assigned_to
             WHERE t.tenant_id = $1
               AND ($2::text IS NULL OR t.status = $2)
               AND ($4::text IS NULL OR t.category = $4)
@@ -351,10 +365,12 @@ pub async fn list_support_tickets(
             SELECT
                 t.*,
                 u.name AS created_by_name,
+                au.name AS assigned_to_name,
                 (SELECT COUNT(*) FROM support_ticket_messages m WHERE m.ticket_id = t.id) AS message_count,
                 (SELECT MAX(created_at) FROM support_ticket_messages m WHERE m.ticket_id = t.id) AS last_message_at
             FROM support_tickets t
             LEFT JOIN users u ON u.id = t.created_by
+            LEFT JOIN users au ON au.id = t.assigned_to
             WHERE t.tenant_id = $1
               AND ($2::text IS NULL OR t.status = $2)
               AND ($4::text IS NULL OR t.category = $4)
@@ -424,6 +440,10 @@ pub async fn get_support_ticket_stats(
         open: i64,
         pending: i64,
         closed: i64,
+        resolved: i64,
+        /// Belum ditugaskan DAN masih aktif — itu yang bisa ditindaklanjuti.
+        /// Tiket closed/resolved tanpa penerima tugas bukan pekerjaan tertunda.
+        unassigned: i64,
     }
 
     let row: Row = if can_all {
@@ -433,7 +453,9 @@ pub async fn get_support_ticket_stats(
               COUNT(*) AS all,
               COALESCE(SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END), 0) AS open,
               COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) AS pending,
-              COALESCE(SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END), 0) AS closed
+              COALESCE(SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END), 0) AS closed,
+              COALESCE(SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END), 0) AS resolved,
+              COALESCE(SUM(CASE WHEN assigned_to IS NULL AND status NOT IN ('closed', 'resolved') THEN 1 ELSE 0 END), 0) AS unassigned
             FROM support_tickets
             WHERE tenant_id = $1
         "#,
@@ -450,7 +472,9 @@ pub async fn get_support_ticket_stats(
               COUNT(*) AS all,
               COALESCE(SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END), 0) AS open,
               COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) AS pending,
-              COALESCE(SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END), 0) AS closed
+              COALESCE(SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END), 0) AS closed,
+              COALESCE(SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END), 0) AS resolved,
+              COALESCE(SUM(CASE WHEN assigned_to IS NULL AND status NOT IN ('closed', 'resolved') THEN 1 ELSE 0 END), 0) AS unassigned
             FROM support_tickets
             WHERE tenant_id = $1 AND (assigned_to = $2 OR assigned_to IS NULL)
         "#,
@@ -467,7 +491,9 @@ pub async fn get_support_ticket_stats(
               COUNT(*) AS all,
               COALESCE(SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END), 0) AS open,
               COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) AS pending,
-              COALESCE(SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END), 0) AS closed
+              COALESCE(SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END), 0) AS closed,
+              COALESCE(SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END), 0) AS resolved,
+              COALESCE(SUM(CASE WHEN assigned_to IS NULL AND status NOT IN ('closed', 'resolved') THEN 1 ELSE 0 END), 0) AS unassigned
             FROM support_tickets
             WHERE tenant_id = $1 AND created_by = $2
         "#,
@@ -484,6 +510,8 @@ pub async fn get_support_ticket_stats(
         open: row.open,
         pending: row.pending,
         closed: row.closed,
+        resolved: row.resolved,
+        unassigned: row.unassigned,
     })
 }
 
@@ -1771,6 +1799,17 @@ mod tests {
         assert_eq!(
             normalize_status(Some("pending".to_string())),
             Some("pending".to_string())
+        );
+        assert_eq!(
+            normalize_status(Some("closed".to_string())),
+            Some("closed".to_string())
+        );
+        // 'resolved' DULU ditolak di sini walau resolve_support_ticket
+        // menulisnya ke kolom status. Filter status=resolved jatuh ke None =
+        // tanpa filter, jadi permintaan itu balas SEMUA tiket tanpa galat.
+        assert_eq!(
+            normalize_status(Some("resolved".to_string())),
+            Some("resolved".to_string())
         );
         assert_eq!(normalize_status(Some("other".to_string())), None);
         assert_eq!(normalize_status(None), None);
