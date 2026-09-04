@@ -232,9 +232,9 @@ impl CustomerService {
         }
 
         let billing_cycle = Self::normalize_billing_cycle(&dto.billing_cycle)?;
-        let customer_id = dto.customer_id.ok_or_else(|| {
-            AppError::Validation("customer_id is required".to_string())
-        })?;
+        let customer_id = dto
+            .customer_id
+            .ok_or_else(|| AppError::Validation("customer_id is required".to_string()))?;
         let status =
             Self::normalize_subscription_status(dto.status.as_deref().unwrap_or("active"))?;
         let starts_at = Self::parse_optional_datetime(dto.starts_at)?;

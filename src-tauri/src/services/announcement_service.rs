@@ -301,7 +301,8 @@ impl AnnouncementScheduler {
                         );
                     }
                     _ => {
-                        recipients.extend(Self::tenant_user_ids(pool, tid).await.unwrap_or_default());
+                        recipients
+                            .extend(Self::tenant_user_ids(pool, tid).await.unwrap_or_default());
                         recipients.extend(
                             Self::customer_portal_user_ids(pool, tid)
                                 .await
@@ -311,13 +312,12 @@ impl AnnouncementScheduler {
                 }
 
                 if let Some(pkg_id) = announcement.target_package_id.as_deref() {
-                    let pkg_users: HashSet<String> = Self::package_subscriber_portal_user_ids(
-                        pool, tid, pkg_id,
-                    )
-                    .await
-                    .unwrap_or_default()
-                    .into_iter()
-                    .collect();
+                    let pkg_users: HashSet<String> =
+                        Self::package_subscriber_portal_user_ids(pool, tid, pkg_id)
+                            .await
+                            .unwrap_or_default()
+                            .into_iter()
+                            .collect();
                     recipients.retain(|u| pkg_users.contains(u));
                 }
             } else {
@@ -411,13 +411,12 @@ impl AnnouncementScheduler {
             }
 
             if let Some(pkg_id) = announcement.target_package_id.as_deref() {
-                let pkg_users: HashSet<String> = Self::package_subscriber_portal_user_ids(
-                    pool, tid, pkg_id,
-                )
-                .await
-                .unwrap_or_default()
-                .into_iter()
-                .collect();
+                let pkg_users: HashSet<String> =
+                    Self::package_subscriber_portal_user_ids(pool, tid, pkg_id)
+                        .await
+                        .unwrap_or_default()
+                        .into_iter()
+                        .collect();
                 recipients.retain(|u| pkg_users.contains(u));
             }
         } else {

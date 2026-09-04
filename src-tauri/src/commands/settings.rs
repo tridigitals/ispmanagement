@@ -139,7 +139,9 @@ pub async fn get_public_settings(
     // Resolve tenant from domain when on custom domain (register/login unauthenticated)
     let mut tenant_id_from_domain: Option<String> = None;
     if let Some(raw) = domain.as_deref().filter(|s| !s.is_empty()) {
-        use crate::http::domain_resolver::{normalize_host, resolve_request_domain, ResolvedDomainContext};
+        use crate::http::domain_resolver::{
+            normalize_host, resolve_request_domain, ResolvedDomainContext,
+        };
         if let Some(host) = normalize_host(raw) {
             let auth_settings = auth_service.get_auth_settings().await;
             match resolve_request_domain(

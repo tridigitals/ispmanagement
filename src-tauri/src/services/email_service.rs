@@ -581,7 +581,9 @@ impl EmailService {
     ) -> AppResult<()> {
         if attachments.is_empty() {
             return self
-                .send_email_with_optional_html_for_tenant(tenant_id, to, subject, body_text, body_html)
+                .send_email_with_optional_html_for_tenant(
+                    tenant_id, to, subject, body_text, body_html,
+                )
                 .await;
         }
 
@@ -595,20 +597,48 @@ impl EmailService {
 
         match config.provider.as_str() {
             "resend" => {
-                self.send_via_resend_with_attachments(&config, to, subject, body_text, body_html, attachments)
-                    .await
+                self.send_via_resend_with_attachments(
+                    &config,
+                    to,
+                    subject,
+                    body_text,
+                    body_html,
+                    attachments,
+                )
+                .await
             }
             "smtp" => {
-                self.send_via_smtp_with_attachments(&config, to, subject, body_text, body_html, attachments)
-                    .await
+                self.send_via_smtp_with_attachments(
+                    &config,
+                    to,
+                    subject,
+                    body_text,
+                    body_html,
+                    attachments,
+                )
+                .await
             }
             "sendgrid" => {
-                self.send_via_sendgrid_with_attachments(&config, to, subject, body_text, body_html, attachments)
-                    .await
+                self.send_via_sendgrid_with_attachments(
+                    &config,
+                    to,
+                    subject,
+                    body_text,
+                    body_html,
+                    attachments,
+                )
+                .await
             }
             "webhook" => {
-                self.send_via_webhook_with_attachments(&config, to, subject, body_text, body_html, attachments)
-                    .await
+                self.send_via_webhook_with_attachments(
+                    &config,
+                    to,
+                    subject,
+                    body_text,
+                    body_html,
+                    attachments,
+                )
+                .await
             }
             _ => Err(AppError::Validation(format!(
                 "Unknown email provider: {}",
@@ -662,13 +692,14 @@ impl EmailService {
 
         let mut mixed = MultiPart::mixed().multipart(body_part);
         for att in attachments {
-            let ct = att
-                .content_type
-                .parse::<ContentType>()
-                .map_err(|e| AppError::Validation(format!("Invalid attachment content_type '{}': {}", att.content_type, e)))?;
-            mixed = mixed.singlepart(
-                Attachment::new(att.filename.clone()).body(att.content.clone(), ct),
-            );
+            let ct = att.content_type.parse::<ContentType>().map_err(|e| {
+                AppError::Validation(format!(
+                    "Invalid attachment content_type '{}': {}",
+                    att.content_type, e
+                ))
+            })?;
+            mixed = mixed
+                .singlepart(Attachment::new(att.filename.clone()).body(att.content.clone(), ct));
         }
 
         let email = builder

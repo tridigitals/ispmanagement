@@ -36,7 +36,10 @@ impl IntoResponse for crate::error::AppError {
             crate::error::AppError::Validation(msg) => (StatusCode::BAD_REQUEST, msg),
             crate::error::AppError::Database(err) => {
                 tracing::error!(error = ?err, "database error");
-                (StatusCode::INTERNAL_SERVER_ERROR, "A database error occurred.".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "A database error occurred.".to_string(),
+                )
             }
             crate::error::AppError::InvalidCredentials => {
                 (StatusCode::UNAUTHORIZED, "Invalid credentials".to_string())
@@ -53,33 +56,47 @@ impl IntoResponse for crate::error::AppError {
             crate::error::AppError::InvalidToken => {
                 (StatusCode::UNAUTHORIZED, "Invalid token".to_string())
             }
-            crate::error::AppError::TokenExpired => {
-                (StatusCode::UNAUTHORIZED, "Session expired, please log in again.".to_string())
-            }
+            crate::error::AppError::TokenExpired => (
+                StatusCode::UNAUTHORIZED,
+                "Session expired, please log in again.".to_string(),
+            ),
             crate::error::AppError::Internal(msg) => {
                 tracing::error!(internal = %msg, "internal error");
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                )
             }
             crate::error::AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             crate::error::AppError::Forbidden(msg) => {
                 // Log detailed permission info server-side, don't expose to client.
                 tracing::warn!(reason = %msg, "permission denied");
                 (StatusCode::FORBIDDEN, "Permission denied".to_string())
-            },
+            }
             crate::error::AppError::Cache(msg) => {
                 tracing::error!(cache = %msg, "cache error");
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                )
             }
             crate::error::AppError::RateLimited(msg) => (StatusCode::TOO_MANY_REQUESTS, msg),
             crate::error::AppError::ServiceUnavailable(msg) => {
                 tracing::warn!(reason = %msg, "service unavailable");
-                (StatusCode::SERVICE_UNAVAILABLE, "Service temporarily unavailable. Please try again in a few seconds.".to_string())
+                (
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "Service temporarily unavailable. Please try again in a few seconds."
+                        .to_string(),
+                )
             }
             crate::error::AppError::Conflict(msg) => (StatusCode::CONFLICT, msg),
             crate::error::AppError::Authentication(msg) => (StatusCode::UNAUTHORIZED, msg),
             crate::error::AppError::Configuration(msg) => {
                 tracing::error!(config = %msg, "server misconfigured");
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                )
             }
             crate::error::AppError::AccountPendingApproval => (
                 StatusCode::FORBIDDEN,
@@ -157,7 +174,8 @@ pub async fn login(
         .await?;
 
     // Build response with httpOnly cookie if token is present
-    let mut http_response = axum::response::Json(serde_json::to_value(&response).unwrap_or_default()).into_response();
+    let mut http_response =
+        axum::response::Json(serde_json::to_value(&response).unwrap_or_default()).into_response();
     if let Some(ref token) = response.token {
         let cookie = format!(
             "{}={}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age={}",
@@ -185,7 +203,8 @@ pub async fn logout(
     }
 
     // Clear the httpOnly cookie
-    let mut response = axum::response::Json(serde_json::json!({"message": "Logged out"})).into_response();
+    let mut response =
+        axum::response::Json(serde_json::json!({"message": "Logged out"})).into_response();
     let clear_cookie = format!(
         "{}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0",
         crate::http::AUTH_COOKIE
@@ -572,10 +591,7 @@ pub async fn disable_2fa(
         })));
     }
 
-    state
-        .auth_service
-        .disable_2fa(&claims.sub, code)
-        .await?;
+    state.auth_service.disable_2fa(&claims.sub, code).await?;
 
     Ok(Json(json!({
         "success": true
@@ -805,7 +821,11 @@ pub async fn change_password(
     let claims = state.auth_service.validate_token(auth_header).await?;
     state
         .auth_service
-        .change_password(&claims.sub, &payload.current_password, &payload.new_password)
+        .change_password(
+            &claims.sub,
+            &payload.current_password,
+            &payload.new_password,
+        )
         .await?;
 
     Ok(Json(json!({ "success": true })))
@@ -1002,7 +1022,9 @@ pub async fn serve_avatar(
 ) -> Result<Response, crate::error::AppError> {
     // Sanitize path components to prevent directory traversal
     if tenant_id.contains("..") || filename.contains("..") || filename.contains('/') {
-        return Err(crate::error::AppError::Validation("Invalid path".to_string()));
+        return Err(crate::error::AppError::Validation(
+            "Invalid path".to_string(),
+        ));
     }
 
     let file_path = state
@@ -1013,7 +1035,9 @@ pub async fn serve_avatar(
         .join(&filename);
 
     if !file_path.exists() {
-        return Err(crate::error::AppError::NotFound("Avatar not found".to_string()));
+        return Err(crate::error::AppError::NotFound(
+            "Avatar not found".to_string(),
+        ));
     }
 
     let bytes = tokio::fs::read(&file_path)
@@ -1030,10 +1054,5 @@ pub async fn serve_avatar(
         "application/octet-stream"
     };
 
-    Ok((
-        [(header::CONTENT_TYPE, content_type)],
-        bytes,
-    )
-        .into_response())
+    Ok(([(header::CONTENT_TYPE, content_type)], bytes).into_response())
 }
-

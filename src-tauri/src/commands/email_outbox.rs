@@ -146,8 +146,8 @@ pub async fn list_email_outbox(
     let (rows, total): (Vec<EmailOutboxItem>, i64) = (Vec::new(), 0);
 
     /* Metadata respons WAJIB memakai normalisasi yang sama dengan query di atas.
-       Kalau berbeda, frontend menghitung jumlah halaman dari per_page yang salah
-       (`Math.ceil(total / per_page)`) dan berhenti sebelum data habis. */
+    Kalau berbeda, frontend menghitung jumlah halaman dari per_page yang salah
+    (`Math.ceil(total / per_page)`) dan berhenti sebelum data habis. */
     let pg = crate::services::pagination::normalize(page.unwrap_or(1), per_page.unwrap_or(25));
     let page = pg.page;
     let per_page = pg.per_page;

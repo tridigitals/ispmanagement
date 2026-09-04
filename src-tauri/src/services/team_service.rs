@@ -652,21 +652,19 @@ impl TeamService {
             .map_err(|e| e.to_string())?;
 
         // Cleanup orphan user
-        let has_other_memberships: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM tenant_members WHERE user_id = $1)",
-        )
-        .bind(&user_id)
-        .fetch_one(&self.pool)
-        .await
-        .unwrap_or(false);
+        let has_other_memberships: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM tenant_members WHERE user_id = $1)")
+                .bind(&user_id)
+                .fetch_one(&self.pool)
+                .await
+                .unwrap_or(false);
 
-        let has_customer_links: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM customer_users WHERE user_id = $1)",
-        )
-        .bind(&user_id)
-        .fetch_one(&self.pool)
-        .await
-        .unwrap_or(false);
+        let has_customer_links: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM customer_users WHERE user_id = $1)")
+                .bind(&user_id)
+                .fetch_one(&self.pool)
+                .await
+                .unwrap_or(false);
 
         if !has_other_memberships && !has_customer_links {
             sqlx::query("DELETE FROM users WHERE id = $1")

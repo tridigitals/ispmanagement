@@ -155,13 +155,11 @@ pub async fn get_latest_technician_location(
     .fetch_optional(&state.auth_service.pool)
     .await?;
 
-    Ok(Json(row.map(
-        |(tid, lat, lng, acc, cap)| LatestLocation {
-            technician_id: tid,
-            latitude: lat,
-            longitude: lng,
-            accuracy: acc,
-            captured_at: cap,
-        },
-    )))
+    Ok(Json(row.map(|(tid, lat, lng, acc, cap)| LatestLocation {
+        technician_id: tid,
+        latitude: lat,
+        longitude: lng,
+        accuracy: acc,
+        captured_at: cap,
+    })))
 }

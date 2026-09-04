@@ -29,10 +29,7 @@ async fn tenant_and_claims(
 ) -> AppResult<(String, crate::services::auth_service::Claims)> {
     let token = bearer_token(headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
-    let tenant_id = claims
-        .tenant_id
-        .clone()
-        .ok_or(AppError::Unauthorized)?;
+    let tenant_id = claims.tenant_id.clone().ok_or(AppError::Unauthorized)?;
     Ok((tenant_id, claims))
 }
 
@@ -68,7 +65,9 @@ async fn list_olts(
         .await?;
 
     let olts = state.olt_service.list_olts(&tenant).await?;
-    Ok(Json(serde_json::json!({ "status": "success", "data": olts })))
+    Ok(Json(
+        serde_json::json!({ "status": "success", "data": olts }),
+    ))
 }
 
 /// GET /api/admin/olts/{id}
@@ -86,7 +85,9 @@ async fn get_olt(
     let olt = state.olt_service.get_olt(&id, &tenant).await?;
     // uplink_router_name already resolved via OltWithRouter JOIN
     let value = serde_json::to_value(&olt).unwrap_or_default();
-    Ok(Json(serde_json::json!({ "status": "success", "data": value })))
+    Ok(Json(
+        serde_json::json!({ "status": "success", "data": value }),
+    ))
 }
 
 /// POST /api/admin/olts
@@ -101,8 +102,13 @@ async fn create_olt(
         .check_permission(&claims.sub, &tenant, "olt", "manage")
         .await?;
 
-    let olt = state.olt_service.create_olt(&claims.sub, &tenant, payload).await?;
-    Ok(Json(serde_json::json!({ "status": "success", "data": olt })))
+    let olt = state
+        .olt_service
+        .create_olt(&claims.sub, &tenant, payload)
+        .await?;
+    Ok(Json(
+        serde_json::json!({ "status": "success", "data": olt }),
+    ))
 }
 
 /// PUT /api/admin/olts/{id}
@@ -118,8 +124,13 @@ async fn update_olt(
         .check_permission(&claims.sub, &tenant, "olt", "manage")
         .await?;
 
-    let olt = state.olt_service.update_olt(&claims.sub, &id, &tenant, payload).await?;
-    Ok(Json(serde_json::json!({ "status": "success", "data": olt })))
+    let olt = state
+        .olt_service
+        .update_olt(&claims.sub, &id, &tenant, payload)
+        .await?;
+    Ok(Json(
+        serde_json::json!({ "status": "success", "data": olt }),
+    ))
 }
 
 /// DELETE /api/admin/olts/{id}
@@ -134,7 +145,10 @@ async fn delete_olt(
         .check_permission(&claims.sub, &tenant, "olt", "manage")
         .await?;
 
-    state.olt_service.delete_olt(&claims.sub, &id, &tenant).await?;
+    state
+        .olt_service
+        .delete_olt(&claims.sub, &id, &tenant)
+        .await?;
     Ok(Json(serde_json::json!({ "status": "success" })))
 }
 
@@ -158,8 +172,7 @@ async fn get_olt_stats(
         .get_olt_stats(&id, &tenant, query.force_refresh)
         .await?;
     Ok(Json(
-        serde_json::to_value(stats)
-            .map_err(|e| AppError::Internal(e.to_string()))?,
+        serde_json::to_value(stats).map_err(|e| AppError::Internal(e.to_string()))?,
     ))
 }
 
@@ -177,8 +190,7 @@ async fn get_olt_all_details(
 
     let details = state.olt_service.get_olt_all_details(&id, &tenant).await?;
     Ok(Json(
-        serde_json::to_value(details)
-            .map_err(|e| AppError::Internal(e.to_string()))?,
+        serde_json::to_value(details).map_err(|e| AppError::Internal(e.to_string()))?,
     ))
 }
 
@@ -195,8 +207,7 @@ async fn get_all_onus(
 
     let onus = state.olt_service.get_all_onus(&tenant).await?;
     Ok(Json(
-        serde_json::to_value(onus)
-            .map_err(|e| AppError::Internal(e.to_string()))?,
+        serde_json::to_value(onus).map_err(|e| AppError::Internal(e.to_string()))?,
     ))
 }
 
@@ -267,8 +278,7 @@ async fn test_connection(
         )
         .await?;
     Ok(Json(
-        serde_json::to_value(result)
-            .map_err(|e| AppError::Internal(e.to_string()))?,
+        serde_json::to_value(result).map_err(|e| AppError::Internal(e.to_string()))?,
     ))
 }
 
@@ -291,7 +301,9 @@ async fn get_onu_history(
         .olt_service
         .get_onu_history(&olt_id, &tenant, query.limit)
         .await?;
-    Ok(Json(serde_json::json!({ "status": "success", "data": history })))
+    Ok(Json(
+        serde_json::json!({ "status": "success", "data": history }),
+    ))
 }
 
 // ── Token Management Handlers ────────────────────────────────
@@ -309,7 +321,9 @@ async fn list_public_tokens(
         .await?;
 
     let tokens = state.olt_service.list_public_tokens(&id, &tenant).await?;
-    Ok(Json(serde_json::json!({ "status": "success", "data": tokens })))
+    Ok(Json(
+        serde_json::json!({ "status": "success", "data": tokens }),
+    ))
 }
 
 /// POST /api/admin/olts/{id}/public-tokens
@@ -325,8 +339,13 @@ async fn create_public_token(
         .check_permission(&claims.sub, &tenant, "olt", "manage")
         .await?;
 
-    let token = state.olt_service.create_public_token(&id, &tenant, payload).await?;
-    Ok(Json(serde_json::json!({ "status": "success", "data": token })))
+    let token = state
+        .olt_service
+        .create_public_token(&id, &tenant, payload)
+        .await?;
+    Ok(Json(
+        serde_json::json!({ "status": "success", "data": token }),
+    ))
 }
 
 /// DELETE /api/admin/olts/{id}/public-tokens/{token_id}
@@ -341,7 +360,10 @@ async fn delete_public_token(
         .check_permission(&claims.sub, &tenant, "olt", "manage")
         .await?;
 
-    state.olt_service.delete_public_token(&token_id, &tenant).await?;
+    state
+        .olt_service
+        .delete_public_token(&token_id, &tenant)
+        .await?;
     Ok(Json(serde_json::json!({ "status": "success" })))
 }
 
@@ -363,7 +385,9 @@ async fn set_olt_uplink(
         .olt_service
         .set_uplink(&claims.sub, &id, &tenant, payload)
         .await?;
-    Ok(Json(serde_json::json!({ "status": "success", "data": result })))
+    Ok(Json(
+        serde_json::json!({ "status": "success", "data": result }),
+    ))
 }
 
 // ── Router ───────────────────────────────────────────────────
@@ -373,10 +397,7 @@ pub fn router() -> Router<AppState> {
         .route("/", get(list_olts).post(create_olt))
         .route("/all-onus", get(get_all_onus))
         .route("/test", post(test_connection))
-        .route(
-            "/{id}",
-            get(get_olt).put(update_olt).delete(delete_olt),
-        )
+        .route("/{id}", get(get_olt).put(update_olt).delete(delete_olt))
         .route("/{id}/stats", get(get_olt_stats))
         .route("/{id}/details", get(get_olt_all_details))
         .route("/{id}/reboot-onu", post(reboot_onu))

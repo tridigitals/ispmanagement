@@ -1449,7 +1449,9 @@ impl CustomerService {
             tenant_id.to_string(),
             name,
             Some(email),
-            phone.map(|p| p.trim().to_string()).filter(|p| !p.is_empty()),
+            phone
+                .map(|p| p.trim().to_string())
+                .filter(|p| !p.is_empty()),
             None,
             // Customers created via public registration start inactive. They become
             // active once the corresponding users.registration_status flips to
@@ -2012,21 +2014,19 @@ impl CustomerService {
 
         // Drop the customer_users link row(s).
         #[cfg(feature = "postgres")]
-        let cust_user_res = sqlx::query(
-            "DELETE FROM customer_users WHERE tenant_id = $1 AND customer_id = $2",
-        )
-        .bind(tenant_id)
-        .bind(customer_id)
-        .execute(&mut *tx)
-        .await?;
+        let cust_user_res =
+            sqlx::query("DELETE FROM customer_users WHERE tenant_id = $1 AND customer_id = $2")
+                .bind(tenant_id)
+                .bind(customer_id)
+                .execute(&mut *tx)
+                .await?;
         #[cfg(not(feature = "postgres"))]
-        let cust_user_res = sqlx::query(
-            "DELETE FROM customer_users WHERE tenant_id = ? AND customer_id = ?",
-        )
-        .bind(tenant_id)
-        .bind(customer_id)
-        .execute(&mut *tx)
-        .await?;
+        let cust_user_res =
+            sqlx::query("DELETE FROM customer_users WHERE tenant_id = ? AND customer_id = ?")
+                .bind(tenant_id)
+                .bind(customer_id)
+                .execute(&mut *tx)
+                .await?;
         if cust_user_res.rows_affected() == 0 {
             warn!(
                 "delete_customer called for {}/{} but no customer_users rows were linked",
@@ -2077,10 +2077,7 @@ impl CustomerService {
                 user_id: user_id.clone(),
                 reason: "customer_deleted".to_string(),
             };
-            let _ = self
-                .ws_hub
-                .as_ref()
-                .map(|hub| hub.broadcast(event));
+            let _ = self.ws_hub.as_ref().map(|hub| hub.broadcast(event));
         }
 
         // Best-effort: also notify tenant admins that the customer was deleted
@@ -2794,7 +2791,9 @@ impl CustomerService {
             _ => {
                 use rand::Rng;
                 let mut rng = rand::thread_rng();
-                (0..12).map(|_| rng.sample(rand::distributions::Alphanumeric) as char).collect()
+                (0..12)
+                    .map(|_| rng.sample(rand::distributions::Alphanumeric) as char)
+                    .collect()
             }
         };
 
@@ -2837,7 +2836,13 @@ impl CustomerService {
         Ok(ResetCustomerPortalPasswordResponse {
             customer_user_id: customer_user_id.to_string(),
             email,
-            generated_password: if new_password.is_none() || new_password.unwrap_or("").trim().is_empty() { Some(password) } else { None },
+            generated_password: if new_password.is_none()
+                || new_password.unwrap_or("").trim().is_empty()
+            {
+                Some(password)
+            } else {
+                None
+            },
         })
     }
 

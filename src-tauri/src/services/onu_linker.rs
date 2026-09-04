@@ -57,11 +57,7 @@ impl OnuLinker {
     /// Look up a network_asset by its MAC address.
     /// MAC is matched against the `serial_number` column.
     /// Returns `None` if no asset exists for this MAC.
-    pub async fn lookup_by_mac(
-        &self,
-        tenant_id: &str,
-        mac: &str,
-    ) -> AppResult<Option<OnuLink>> {
+    pub async fn lookup_by_mac(&self, tenant_id: &str, mac: &str) -> AppResult<Option<OnuLink>> {
         let mac_normalized = Self::normalize_mac(mac);
         let row = sqlx::query(
             "SELECT id, customer_id, serial_number, vendor, model

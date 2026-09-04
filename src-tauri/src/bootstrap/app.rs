@@ -1,6 +1,5 @@
 #[cfg(feature = "desktop")]
 use crate::db::connection::{init_db, seed_defaults};
-use std::sync::Arc;
 #[cfg(feature = "desktop")]
 use crate::services::backup::BackupScheduler;
 #[cfg(feature = "desktop")]
@@ -13,6 +12,7 @@ use crate::services::{
     NotificationService, PaymentService, PlanService, PppoeService, RadiusRuntimeConfig,
     RadiusService, RoleService, SettingsService, SystemService, TeamService, UserService,
 };
+use std::sync::Arc;
 #[cfg(feature = "desktop")]
 use tauri::Manager;
 #[cfg(feature = "desktop")]

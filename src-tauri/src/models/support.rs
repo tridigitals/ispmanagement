@@ -117,9 +117,9 @@ pub struct ReplySupportTicketDto {
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 pub struct UpdateSupportTicketDto {
-    pub status: Option<String>,    // open|pending|closed
-    pub priority: Option<String>,  // low|normal|high|urgent
-    pub category: Option<String>,  // general|billing|technical|installation
+    pub status: Option<String>,   // open|pending|closed
+    pub priority: Option<String>, // low|normal|high|urgent
+    pub category: Option<String>, // general|billing|technical|installation
     pub assigned_to: Option<String>,
 }
 

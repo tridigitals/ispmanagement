@@ -1196,6 +1196,8 @@ export interface WhatsAppEventPreference {
 // ── Billing Analytics ─────────────────────────────────────────────
 
 export interface AgingReport {
+  /** Piutang yang belum jatuh tempo. Dulu hilang total dari layar. */
+  not_due: number;
   current: number;
   days_31_60: number;
   days_61_90: number;
@@ -1207,17 +1209,45 @@ export interface RevenueTrendPoint {
   revenue: number;
 }
 
+/** Pembilang/penyebut di balik collection_rate, supaya 0% bisa dinilai. */
+export interface CollectionSample {
+  invoices_considered: number;
+  paid_on_time: number;
+  paid_total: number;
+  window_days: number;
+}
+
+export interface SubscriptionStatusCount {
+  status: string;
+  count: number;
+}
+
+/** Tagihan tenant ke platform. Arah uangnya berlawanan dengan piutang. */
+export interface PlatformDues {
+  outstanding_amount: number;
+  outstanding_count: number;
+}
+
 export interface BillingAnalytics {
   mrr: number;
   arr: number;
+  /** Khusus tagihan pelanggan (`pkgsub:%`); tagihan platform tidak dihitung. */
   total_revenue: number;
   collection_rate: number;
+  collection_sample: CollectionSample;
   avg_days_to_pay: number;
+  avg_days_sample: number;
   aging: AgingReport;
+  /** Total dari server; jangan jumlahkan bucket sendiri di klien. */
+  aging_total: number;
   churn_rate: number;
   active_subscriptions: number;
   total_customers: number;
+  /** Rincian status langganan; menjelaskan MRR nol. */
+  subscription_breakdown: SubscriptionStatusCount[];
+  /** Selalu 6 titik, termasuk bulan tanpa pemasukan. */
   revenue_trend: RevenueTrendPoint[];
+  platform_dues: PlatformDues;
 }
 
 export interface WhatsAppTestSendRequest {

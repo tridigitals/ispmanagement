@@ -10,8 +10,7 @@ use crate::models::{
     CustomerSubscriptionOption, CustomerSubscriptionView, CustomerSummary, InstallationWorkOrder,
     InstallationWorkOrderView, Invoice, IspPackage, PaginatedResponse,
     PortalCheckoutSubscriptionRequest, RepairCustomerServiceLifecycleRequest,
-    ResetCustomerPortalPasswordRequest, ResetCustomerPortalPasswordResponse,
-    TeamMemberWithUser,
+    ResetCustomerPortalPasswordRequest, ResetCustomerPortalPasswordResponse, TeamMemberWithUser,
     UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
     UpdateCustomerRequest, UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
 };

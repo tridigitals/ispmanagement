@@ -714,8 +714,7 @@ pub async fn upload_file_http(
 
         if name == "file" {
             let file_name = field.file_name().unwrap_or("upload.bin").to_string();
-            let content_type =
-                resolve_content_type(field.content_type(), &file_name);
+            let content_type = resolve_content_type(field.content_type(), &file_name);
 
             let ext = std::path::Path::new(&file_name)
                 .extension()

@@ -216,7 +216,11 @@ pub async fn get_public_settings(
 
     // Fetch active bank accounts for manual payment
     let bank_accounts: Vec<BankAccountResponse> = if payment_manual_enabled {
-        let mut accounts = state.payment_service.list_bank_accounts(tid).await.unwrap_or_default();
+        let mut accounts = state
+            .payment_service
+            .list_bank_accounts(tid)
+            .await
+            .unwrap_or_default();
 
         // Also read payment_manual_accounts setting (legacy JSON storage used by tenant admin settings page)
         // Merge with table results, deduplicating by account_number

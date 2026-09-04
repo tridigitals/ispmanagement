@@ -2,9 +2,9 @@ use crate::models::tenant::CUSTOM_DOMAIN_STATUS_ACTIVE;
 use crate::services::{
     AuditService, AuthService, CustomerService, DhcpStaticServiceManager, EmailService,
     IspPackageService, ManagedRadiusService, MessageTemplateService, MikrotikService,
-    MixradiusImportService, NetworkMappingService, NotificationService,
-    PaymentService, PlanService, PppoeService, RadiusService, RoleService, SettingsService,
-    StorageService, SystemService, TeamService, UserService,
+    MixradiusImportService, NetworkMappingService, NotificationService, PaymentService,
+    PlanService, PppoeService, RadiusService, RoleService, SettingsService, StorageService,
+    SystemService, TeamService, UserService,
 };
 use axum::{
     extract::DefaultBodyLimit,
@@ -31,8 +31,8 @@ use crate::http::{
     announcements, audit, auth, backup, customer_communication, customers, dhcp_static,
     email_outbox, install, isp_packages, message_templates, middleware, mikrotik, mixradius_import,
     network_assets, network_mapping, notifications, olt, payment, plans, pppoe, public,
-    registration_approvals, roles, settings, storage, superadmin, support, system,
-    technician_location, team, tenant, users, websocket, whatsapp, work_orders, AppState,
+    registration_approvals, roles, settings, storage, superadmin, support, system, team,
+    technician_location, tenant, users, websocket, whatsapp, work_orders, AppState,
     SecurityRuntimeConfig, WsHub,
 };
 
@@ -429,7 +429,10 @@ pub async fn start_server_impl(
         .route("/api/auth/change-password", post(auth::change_password))
         .route("/api/auth/me", put(auth::update_me))
         .route("/api/auth/avatar", post(auth::upload_avatar))
-        .route("/api/auth/avatar/{tenant_id}/{filename}", get(auth::serve_avatar))
+        .route(
+            "/api/auth/avatar/{tenant_id}/{filename}",
+            get(auth::serve_avatar),
+        )
         // User Routes
         .route(
             "/api/users",
@@ -682,10 +685,7 @@ pub async fn start_server_impl(
         )
         .route("/api/team/deleted", get(team::list_deleted_members))
         .route("/api/team/deleted/{id}/restore", post(team::restore_member))
-        .route(
-            "/api/team/deleted/{id}",
-            delete(team::hard_delete_member),
-        )
+        .route("/api/team/deleted/{id}", delete(team::hard_delete_member))
         // Tenant Routes
         .route(
             "/api/tenant/me",
@@ -777,7 +777,9 @@ pub async fn start_server_impl(
             #[allow(deprecated)]
             TimeoutLayer::new(Duration::from_secs(3600))
         }) // 1 Hour Timeout for large uploads
-        .layer(axum::middleware::from_fn(crate::http::middleware_panic::panic_recovery_middleware))
+        .layer(axum::middleware::from_fn(
+            crate::http::middleware_panic::panic_recovery_middleware,
+        ))
         .layer(axum::middleware::from_fn(middleware::metrics_middleware))
         .layer(axum::middleware::from_fn(
             middleware::correlation_id_middleware,

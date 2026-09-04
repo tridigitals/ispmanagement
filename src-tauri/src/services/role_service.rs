@@ -240,8 +240,16 @@ impl RoleService {
             ),
             // OLT Monitoring (tenant scoped)
             ("olt", "read", "View OLT devices and ONU status"),
-            ("olt", "manage", "Manage OLT inventory, reboot ONU, test connections"),
-            ("olt_onu_history", "read", "View ONU signal history and graphs"),
+            (
+                "olt",
+                "manage",
+                "Manage OLT inventory, reboot ONU, test connections",
+            ),
+            (
+                "olt_onu_history",
+                "read",
+                "View ONU signal history and graphs",
+            ),
         ]
     }
 
@@ -1200,8 +1208,8 @@ impl RoleService {
 
         // Used to be `sqlx::Error::RowNotFound`, which the HTTP layer maps to a blanket
         // 500 "A database error occurred." A missing role is a client-side 404.
-        let role = role
-            .ok_or_else(|| crate::error::AppError::NotFound("Role not found".to_string()))?;
+        let role =
+            role.ok_or_else(|| crate::error::AppError::NotFound("Role not found".to_string()))?;
         let role_name_before = role.name.clone();
         let role_description_before = role.description.clone();
         let role_level_before = role.level;
@@ -1600,7 +1608,9 @@ mod tests {
     fn only_keys_that_normalization_maps_away_count_as_aliases() {
         // Pure aliases: saving these writes different keys, so a ticked box reloads unticked.
         assert!(RoleService::is_alias_permission_key("network_routers:read"));
-        assert!(RoleService::is_alias_permission_key("network_routers:manage"));
+        assert!(RoleService::is_alias_permission_key(
+            "network_routers:manage"
+        ));
         assert!(RoleService::is_alias_permission_key(
             "network_routers:manage_radius_secret"
         ));

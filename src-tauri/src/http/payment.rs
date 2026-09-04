@@ -2,8 +2,8 @@
 
 use crate::http::{middleware::CorrelationId, AppState};
 use crate::models::{
-    BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice,
-    InvoiceListResponse, InvoiceReminderLogView, PaginatedResponse,
+    BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice, InvoiceListResponse,
+    InvoiceReminderLogView, PaginatedResponse,
 };
 use crate::services::{BillingCollectionRunResult, BulkGenerateInvoicesResult, Claims};
 use axum::{
@@ -420,15 +420,24 @@ async fn list_all_invoices_page(
 ) -> Result<Json<InvoiceListResponse>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
-    state.payment_service.list_all_invoices_page(
-        query.page.unwrap_or(1),
-        query.per_page.unwrap_or(25),
-        query.search.as_deref(),
-        query.status.as_deref(),
-    ).await.map(Json).map_err(|e| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: e.to_string() }),
-    ))
+    state
+        .payment_service
+        .list_all_invoices_page(
+            query.page.unwrap_or(1),
+            query.per_page.unwrap_or(25),
+            query.search.as_deref(),
+            query.status.as_deref(),
+        )
+        .await
+        .map(Json)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 #[derive(Deserialize)]

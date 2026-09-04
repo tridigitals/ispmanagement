@@ -62,12 +62,18 @@ pub async fn correlation_id_middleware(mut request: Request<Body>, next: Next) -
     // inject the cookie value as a Bearer Authorization header so all
     // downstream handlers work transparently with httpOnly cookies.
     if !request.headers().contains_key("Authorization") {
-        if let Some(cookie_header) = request.headers().get("cookie").and_then(|h| h.to_str().ok()) {
+        if let Some(cookie_header) = request
+            .headers()
+            .get("cookie")
+            .and_then(|h| h.to_str().ok())
+        {
             for pair in cookie_header.split(';') {
                 let pair = pair.trim();
                 if let Some((name, value)) = pair.split_once('=') {
                     if name.trim() == crate::http::AUTH_COOKIE && !value.trim().is_empty() {
-                        if let Ok(val) = axum::http::HeaderValue::from_str(&format!("Bearer {}", value.trim())) {
+                        if let Ok(val) =
+                            axum::http::HeaderValue::from_str(&format!("Bearer {}", value.trim()))
+                        {
                             request.headers_mut().insert("Authorization", val);
                         }
                         break;

@@ -12,8 +12,8 @@ pub use dto::{AuthResponse, AuthSettings, Claims, PasswordValidationResult};
 use crate::db::connection::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{LoginDto, RegisterDto, TrustedDevice, User};
-use crate::services::{AuditService, EmailService, SettingsService};
 use crate::services::whatsapp_gateway_service::normalize_phone;
+use crate::services::{AuditService, EmailService, SettingsService};
 use argon2::{
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
@@ -40,8 +40,7 @@ pub struct AuthService {
     /// Per-tenant effective auth settings cache, keyed by Option<&str> tenant_id.
     /// Used by every code path that resolves a user/session and needs the
     /// tenant-aware override for password / lockout / JWT / registration.
-    per_tenant_auth_settings_cache:
-        Arc<crate::services::cache::MemoryCache<AuthSettings>>,
+    per_tenant_auth_settings_cache: Arc<crate::services::cache::MemoryCache<AuthSettings>>,
 }
 
 impl AuthService {
@@ -60,9 +59,7 @@ impl AuthService {
             settings_service,
             // Initialize cache with 60 second TTL
             auth_settings_cache: Arc::new(crate::services::cache::SingleValueCache::new(60)),
-            per_tenant_auth_settings_cache: Arc::new(
-                crate::services::cache::MemoryCache::new(60),
-            ),
+            per_tenant_auth_settings_cache: Arc::new(crate::services::cache::MemoryCache::new(60)),
         }
     }
 
@@ -74,10 +71,7 @@ impl AuthService {
     /// precedence). Falls back to the cached global settings when the tenant
     /// has no override. Results are cached per-tenant for 60 seconds; calling
     /// `invalidate_auth_settings_cache` clears both caches.
-    pub async fn get_effective_auth_settings(
-        &self,
-        tenant_id: Option<&str>,
-    ) -> AuthSettings {
+    pub async fn get_effective_auth_settings(&self, tenant_id: Option<&str>) -> AuthSettings {
         let cache_key = tenant_id.unwrap_or("__global__").to_string();
         if let Some(cached) = self.per_tenant_auth_settings_cache.get(&cache_key) {
             return cached;
@@ -102,13 +96,19 @@ impl AuthService {
                     settings.password_min_length = n;
                 }
             }
-            if let Ok(Some(v)) = s.get_value(Some(tid), "auth_password_require_uppercase").await {
+            if let Ok(Some(v)) = s
+                .get_value(Some(tid), "auth_password_require_uppercase")
+                .await
+            {
                 settings.password_require_uppercase = v.trim().eq_ignore_ascii_case("true");
             }
             if let Ok(Some(v)) = s.get_value(Some(tid), "auth_password_require_number").await {
                 settings.password_require_number = v.trim().eq_ignore_ascii_case("true");
             }
-            if let Ok(Some(v)) = s.get_value(Some(tid), "auth_password_require_special").await {
+            if let Ok(Some(v)) = s
+                .get_value(Some(tid), "auth_password_require_special")
+                .await
+            {
                 settings.password_require_special = v.trim().eq_ignore_ascii_case("true");
             }
             if let Ok(Some(v)) = s.get_value(Some(tid), "auth_max_login_attempts").await {
@@ -116,7 +116,10 @@ impl AuthService {
                     settings.max_login_attempts = n;
                 }
             }
-            if let Ok(Some(v)) = s.get_value(Some(tid), "auth_lockout_duration_minutes").await {
+            if let Ok(Some(v)) = s
+                .get_value(Some(tid), "auth_lockout_duration_minutes")
+                .await
+            {
                 if let Ok(n) = v.trim().parse::<i64>() {
                     settings.lockout_duration_minutes = n;
                 }
@@ -190,35 +193,32 @@ impl AuthService {
     }
 
     /// Validate password
-        pub fn validate_password(
-            &self,
-            password: &str,
-            settings: &AuthSettings,
-        ) -> PasswordValidationResult {
-            validation::validate_password(password, settings)
-        }
+    pub fn validate_password(
+        &self,
+        password: &str,
+        settings: &AuthSettings,
+    ) -> PasswordValidationResult {
+        validation::validate_password(password, settings)
+    }
 
-        /// Look up the primary tenant id for a user (if any) and return the
-        /// tenant-aware auth settings. Falls back to global when the user has
-        /// no tenant or no per-tenant override for any of the auth_* keys.
-        pub async fn effective_auth_settings_for_user(&self, user_id: &str) -> AuthSettings {
-            if let Ok(Some(user)) = sqlx::query_as::<_, crate::models::User>(
-                "SELECT * FROM users WHERE id = $1",
-            )
-            .bind(user_id)
-            .fetch_optional(&self.pool)
-            .await
-            {
-                if !user.is_super_admin {
-                    if let Some(tenant_id) = self.get_primary_active_tenant_id(user_id).await {
-                        return self
-                            .get_effective_auth_settings(Some(&tenant_id))
-                            .await;
-                    }
+    /// Look up the primary tenant id for a user (if any) and return the
+    /// tenant-aware auth settings. Falls back to global when the user has
+    /// no tenant or no per-tenant override for any of the auth_* keys.
+    pub async fn effective_auth_settings_for_user(&self, user_id: &str) -> AuthSettings {
+        if let Ok(Some(user)) =
+            sqlx::query_as::<_, crate::models::User>("SELECT * FROM users WHERE id = $1")
+                .bind(user_id)
+                .fetch_optional(&self.pool)
+                .await
+        {
+            if !user.is_super_admin {
+                if let Some(tenant_id) = self.get_primary_active_tenant_id(user_id).await {
+                    return self.get_effective_auth_settings(Some(&tenant_id)).await;
                 }
             }
-            self.get_effective_auth_settings(None).await
         }
+        self.get_effective_auth_settings(None).await
+    }
 
     /// Hash password using Argon2
     pub fn hash_password(password: &str) -> AppResult<String> {
@@ -669,9 +669,7 @@ impl AuthService {
         // Approval gating:
         // - invite_token → trusted (admin/owner issued link) → auto-active
         // - manual        → pending admin approval before login
-        let via_invite = invite_token
-            .map(|t| !t.trim().is_empty())
-            .unwrap_or(false);
+        let via_invite = invite_token.map(|t| !t.trim().is_empty()).unwrap_or(false);
         if via_invite {
             user.registration_status = "active".to_string();
             user.is_active = true;
@@ -1020,13 +1018,11 @@ impl AuthService {
         } else if let Some(phone_val) = &query_phone {
             // Try both normalized (62...) and original (08...) values
             let original = identifier.to_string();
-            sqlx::query_as(
-                "SELECT * FROM users WHERE phone = $1 OR phone = $2",
-            )
-            .bind(phone_val)
-            .bind(original)
-            .fetch_optional(&self.pool)
-            .await?
+            sqlx::query_as("SELECT * FROM users WHERE phone = $1 OR phone = $2")
+                .bind(phone_val)
+                .bind(original)
+                .fetch_optional(&self.pool)
+                .await?
         } else {
             None
         };
@@ -2014,8 +2010,7 @@ impl AuthService {
         let mut user_response: crate::models::user::UserResponse = user.into();
         user_response.permissions = permissions;
         user_response.tenant_slug = tenant.as_ref().map(|t| t.slug.clone());
-        user_response.enforce_2fa =
-            tenant.as_ref().map(|t| t.enforce_2fa).unwrap_or(false);
+        user_response.enforce_2fa = tenant.as_ref().map(|t| t.enforce_2fa).unwrap_or(false);
         user_response.tenant_custom_domain = tenant.as_ref().and_then(|t| {
             if t.custom_domain_status.as_deref()
                 == Some(crate::models::tenant::CUSTOM_DOMAIN_STATUS_ACTIVE)

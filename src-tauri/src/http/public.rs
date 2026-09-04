@@ -191,13 +191,15 @@ pub async fn validate_customer_registration_invite_by_domain(
     // Invite tokens work from ANY domain — skip domain gate when token is global-valid
     let result = match domain_context {
         ResolvedDomainContext::TenantCustomDomain { ref tenant_id, .. } => {
-            state.customer_service
+            state
+                .customer_service
                 .validate_customer_registration_invite(tenant_id, token)
                 .await?
         }
         _ => {
             // Platform domain / localhost — try global token lookup
-            state.customer_service
+            state
+                .customer_service
                 .validate_customer_registration_invite_global(token)
                 .await?
         }
@@ -323,8 +325,7 @@ pub async fn register_customer_by_domain(
         // No invite → must be a tenant custom domain; otherwise reject.
         match &domain_context {
             ResolvedDomainContext::TenantCustomDomain { tenant_id, .. } => tenant_id.clone(),
-            ResolvedDomainContext::InvalidHost
-            | ResolvedDomainContext::LocalDevelopment { .. } => {
+            ResolvedDomainContext::InvalidHost | ResolvedDomainContext::LocalDevelopment { .. } => {
                 return Err(crate::error::AppError::Validation(
                     "Customer registration is only available from a tenant custom domain or via invitation link".to_string(),
                 ));

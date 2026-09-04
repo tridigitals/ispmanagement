@@ -212,12 +212,7 @@ impl OltDriver for MikrotikRosDriver {
         Ok(false)
     }
 
-    async fn update_onu_name(
-        &self,
-        _onu_id: &str,
-        _pon: &str,
-        _new_name: &str,
-    ) -> AppResult<()> {
+    async fn update_onu_name(&self, _onu_id: &str, _pon: &str, _new_name: &str) -> AppResult<()> {
         Err(AppError::Validation(
             "ONU rename not supported via MikroTik RouterOS".into(),
         ))
@@ -231,10 +226,7 @@ impl MikrotikRosDriver {
     /// Mirrors MiksTraffic's approach:
     ///   `/interface/monitor-traffic` → rx/tx-bits-per-second
     ///   `/interface/ethernet/monitor` → sfp-rx-power
-    async fn poll_interface_metrics(
-        &self,
-        iface_name: &str,
-    ) -> AppResult<(i64, i64, Option<f64>)> {
+    async fn poll_interface_metrics(&self, iface_name: &str) -> AppResult<(i64, i64, Option<f64>)> {
         let dev = self
             .device
             .as_ref()
@@ -257,7 +249,9 @@ impl MikrotikRosDriver {
             let mut rx_bps: i64 = 0;
             let mut tx_bps: i64 = 0;
             while let Some(res) = rx.recv().await {
-                if let Ok(CommandResponse::Reply(reply)) = res.map_err(|e| AppError::Internal(e.to_string())) {
+                if let Ok(CommandResponse::Reply(reply)) =
+                    res.map_err(|e| AppError::Internal(e.to_string()))
+                {
                     rx_bps = reply
                         .attributes
                         .get("rx-bits-per-second")
@@ -289,7 +283,9 @@ impl MikrotikRosDriver {
 
             let mut power: Option<f64> = None;
             while let Some(res) = rx.recv().await {
-                if let Ok(CommandResponse::Reply(reply)) = res.map_err(|e| AppError::Internal(e.to_string())) {
+                if let Ok(CommandResponse::Reply(reply)) =
+                    res.map_err(|e| AppError::Internal(e.to_string()))
+                {
                     power = reply
                         .attributes
                         .get("sfp-rx-power")

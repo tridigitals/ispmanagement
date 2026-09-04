@@ -1085,7 +1085,11 @@ async fn portal_get_contact_info(
 
     let mut contact = serde_json::Map::new();
     for key in &keys {
-        if let Ok(Some(val)) = state.settings_service.get_value(Some(&tenant_id), key).await {
+        if let Ok(Some(val)) = state
+            .settings_service
+            .get_value(Some(&tenant_id), key)
+            .await
+        {
             if !val.is_empty() {
                 contact.insert(key.to_string(), serde_json::Value::String(val));
             }

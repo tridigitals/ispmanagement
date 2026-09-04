@@ -643,8 +643,7 @@ impl EmailOutboxService {
                         .await
                 };
 
-                match send_result
-                {
+                match send_result {
                     Ok(_) => {
                         let _ = sqlx::query(
                             "UPDATE email_outbox SET status = 'sent', sent_at = $1, updated_at = $1, last_error = NULL WHERE id = $2",

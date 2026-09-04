@@ -1,6 +1,7 @@
 use super::AppState;
 use crate::models::{
-    Announcement, CreateAnnouncementDto, CustomerAnnouncement, PaginatedResponse, UpdateAnnouncementDto,
+    Announcement, CreateAnnouncementDto, CustomerAnnouncement, PaginatedResponse,
+    UpdateAnnouncementDto,
 };
 use crate::services::encode_unsubscribe_token;
 use axum::{
@@ -225,7 +226,9 @@ pub async fn list_active(
         Ok(Json(serde_json::to_value(rows).unwrap_or_default()))
     } else {
         let customer_rows: Vec<CustomerAnnouncement> = rows.into_iter().map(Into::into).collect();
-        Ok(Json(serde_json::to_value(customer_rows).unwrap_or_default()))
+        Ok(Json(
+            serde_json::to_value(customer_rows).unwrap_or_default(),
+        ))
     }
 }
 
@@ -254,7 +257,10 @@ pub async fn list_recent(
         use sqlx::Postgres;
         use sqlx::QueryBuilder;
 
-        let pg = crate::services::pagination::normalize(params.page.unwrap_or(1), params.per_page.unwrap_or(20));
+        let pg = crate::services::pagination::normalize(
+            params.page.unwrap_or(1),
+            params.per_page.unwrap_or(20),
+        );
         let page = pg.page;
         let per_page = pg.per_page;
         let offset: i64 = pg.offset;
@@ -366,20 +372,35 @@ pub async fn list_recent(
     let (rows, total): (Vec<Announcement>, i64) = (Vec::new(), 0);
 
     // Metadata respons harus cocok dengan normalisasi query di atas.
-    let pg = crate::services::pagination::normalize(params.page.unwrap_or(1), params.per_page.unwrap_or(20));
+    let pg = crate::services::pagination::normalize(
+        params.page.unwrap_or(1),
+        params.per_page.unwrap_or(20),
+    );
     let page = pg.page;
     let per_page = pg.per_page;
 
     if is_admin {
-        let data: Vec<serde_json::Value> = rows.into_iter()
+        let data: Vec<serde_json::Value> = rows
+            .into_iter()
             .map(|r| serde_json::to_value(r).unwrap_or_default())
             .collect();
-        Ok(Json(PaginatedResponse { data, total, page, per_page }))
+        Ok(Json(PaginatedResponse {
+            data,
+            total,
+            page,
+            per_page,
+        }))
     } else {
-        let data: Vec<serde_json::Value> = rows.into_iter()
+        let data: Vec<serde_json::Value> = rows
+            .into_iter()
             .map(|r| serde_json::to_value(CustomerAnnouncement::from(r)).unwrap_or_default())
             .collect();
-        Ok(Json(PaginatedResponse { data, total, page, per_page }))
+        Ok(Json(PaginatedResponse {
+            data,
+            total,
+            page,
+            per_page,
+        }))
     }
 }
 
@@ -438,7 +459,10 @@ pub async fn list_admin(
         use sqlx::Postgres;
         use sqlx::QueryBuilder;
 
-        let pg = crate::services::pagination::normalize(params.page.unwrap_or(1), params.per_page.unwrap_or(20));
+        let pg = crate::services::pagination::normalize(
+            params.page.unwrap_or(1),
+            params.per_page.unwrap_or(20),
+        );
         let page = pg.page;
         let per_page = pg.per_page;
         let offset: i64 = pg.offset;
@@ -567,7 +591,10 @@ pub async fn list_admin(
     let (rows, total): (Vec<Announcement>, i64) = (Vec::new(), 0);
 
     // Metadata respons harus cocok dengan normalisasi query di atas.
-    let pg = crate::services::pagination::normalize(params.page.unwrap_or(1), params.per_page.unwrap_or(20));
+    let pg = crate::services::pagination::normalize(
+        params.page.unwrap_or(1),
+        params.per_page.unwrap_or(20),
+    );
     let page = pg.page;
     let per_page = pg.per_page;
 
@@ -597,7 +624,8 @@ async fn send_announcement_notifications(
                     recipients.extend(tenant_admin_user_ids(&state.auth_service.pool, tid).await?);
                 }
                 "customers" => {
-                    recipients.extend(customer_portal_user_ids(&state.auth_service.pool, tid).await?);
+                    recipients
+                        .extend(customer_portal_user_ids(&state.auth_service.pool, tid).await?);
                 }
                 "active_subscribers" => {
                     recipients.extend(
@@ -612,7 +640,8 @@ async fn send_announcement_notifications(
                 _ => {
                     // "all" — tenant members + customer portal users
                     recipients.extend(tenant_user_ids(&state.auth_service.pool, tid).await?);
-                    recipients.extend(customer_portal_user_ids(&state.auth_service.pool, tid).await?);
+                    recipients
+                        .extend(customer_portal_user_ids(&state.auth_service.pool, tid).await?);
                 }
             }
 

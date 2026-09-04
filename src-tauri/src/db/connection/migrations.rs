@@ -461,7 +461,7 @@ pub(super) async fn run_migrations_sqlite(pool: &DbPool) -> Result<(), sqlx::Err
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
-    "#
+    "#,
     )
     .execute(pool)
     .await?;

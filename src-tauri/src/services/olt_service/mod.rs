@@ -60,12 +60,7 @@ impl OltService {
 
     /// Sprint C: best-effort sync to network_mapping_service. Failures are
     /// logged at warn but do not bubble up — the OLT CRUD has already succeeded.
-    async fn sync_to_topology(
-        &self,
-        actor_id: &str,
-        tenant_id: &str,
-        context: &str,
-    ) {
+    async fn sync_to_topology(&self, actor_id: &str, tenant_id: &str, context: &str) {
         match self
             .network_mapping_service
             .sync_topology_asset_nodes(actor_id, tenant_id)
@@ -73,12 +68,12 @@ impl OltService {
         {
             Ok(resp) => tracing::debug!(
                 "Sprint C: topology sync after {}: touched={} assets_created={} assets_updated={}",
-                context, resp.total_nodes_touched, resp.asset_nodes_created, resp.asset_nodes_updated
+                context,
+                resp.total_nodes_touched,
+                resp.asset_nodes_created,
+                resp.asset_nodes_updated
             ),
-            Err(e) => tracing::warn!(
-                "Sprint C: topology sync after {} failed: {}",
-                context, e
-            ),
+            Err(e) => tracing::warn!("Sprint C: topology sync after {} failed: {}", context, e),
         }
     }
 
@@ -207,20 +202,13 @@ impl OltService {
             .create_asset(actor_id, tenant_id, asset_input)
             .await
         {
-            Ok(asset) => tracing::info!(
-                "Created NetworkAsset {} for OLT {}",
-                asset.id,
-                olt.id
-            ),
-            Err(e) => tracing::warn!(
-                "Failed to create NetworkAsset for OLT {}: {}",
-                olt.id,
-                e
-            ),
+            Ok(asset) => tracing::info!("Created NetworkAsset {} for OLT {}", asset.id, olt.id),
+            Err(e) => tracing::warn!("Failed to create NetworkAsset for OLT {}: {}", olt.id, e),
         }
 
         // Sprint C: propagate OLT → network_nodes so it appears on the map.
-        self.sync_to_topology(actor_id, tenant_id, "olt_created").await;
+        self.sync_to_topology(actor_id, tenant_id, "olt_created")
+            .await;
 
         Ok(olt)
     }
@@ -339,17 +327,13 @@ impl OltService {
         }
 
         // Sprint C: propagate updated lat/lng to network_nodes so the map marker moves.
-        self.sync_to_topology(actor_id, tenant_id, "olt_updated").await;
+        self.sync_to_topology(actor_id, tenant_id, "olt_updated")
+            .await;
 
         self.get_olt(id, tenant_id).await
     }
 
-    pub async fn delete_olt(
-        &self,
-        actor_id: &str,
-        id: &str,
-        tenant_id: &str,
-    ) -> AppResult<()> {
+    pub async fn delete_olt(&self, actor_id: &str, id: &str, tenant_id: &str) -> AppResult<()> {
         let olt = self.get_olt(id, tenant_id).await?;
 
         sqlx::query("DELETE FROM public.olts WHERE id = $1 AND tenant_id = $2")
@@ -387,7 +371,8 @@ impl OltService {
         }
 
         // Sprint C: propagate OLT removal to network_nodes.
-        self.sync_to_topology(actor_id, tenant_id, "olt_deleted").await;
+        self.sync_to_topology(actor_id, tenant_id, "olt_deleted")
+            .await;
 
         Ok(())
     }
@@ -443,13 +428,17 @@ impl OltService {
                 "olt_uplink_set",
                 "olt",
                 Some(id),
-                Some(&format!("Set uplink router={} port={:?}", req.router_id, req.port)),
+                Some(&format!(
+                    "Set uplink router={} port={:?}",
+                    req.router_id, req.port
+                )),
                 None,
             )
             .await;
 
         // Sync topology to ensure both OLT and router have network nodes
-        self.sync_to_topology(actor_id, tenant_id, "olt_set_uplink").await;
+        self.sync_to_topology(actor_id, tenant_id, "olt_set_uplink")
+            .await;
 
         // Find network node for the OLT (via network_assets.metadata->>'olt_id')
         let olt_node: Option<(String,)> = sqlx::query_as(
@@ -552,10 +541,7 @@ impl OltService {
         };
 
         let mut driver = create_driver(olt_type)?;
-        match driver
-            .connect(host, port as u16, username, &password)
-            .await
-        {
+        match driver.connect(host, port as u16, username, &password).await {
             Ok(()) => {
                 let info = driver.get_system_info().await.ok();
                 driver.disconnect().await.ok();
@@ -849,9 +835,7 @@ impl OltService {
 
             Ok(serde_json::json!({"status": "success", "message": "Reboot command sent"}))
         } else {
-            Err(AppError::Internal(
-                "Failed to send reboot command".into(),
-            ))
+            Err(AppError::Internal("Failed to send reboot command".into()))
         }
     }
 
@@ -888,11 +872,7 @@ impl OltService {
                     }
                 }
                 Err(e) => {
-                    tracing::warn!(
-                        "OnuLinker batch failed for OLT {}: {}",
-                        olt_id,
-                        e
-                    );
+                    tracing::warn!("OnuLinker batch failed for OLT {}: {}", olt_id, e);
                 }
             }
         }
@@ -908,10 +888,7 @@ impl OltService {
                 .distance
                 .as_ref()
                 .and_then(|s| s.replace("km", "").trim().parse().ok());
-            let temp: Option<f32> = onu
-                .temperature
-                .as_ref()
-                .and_then(|s| s.trim().parse().ok());
+            let temp: Option<f32> = onu.temperature.as_ref().and_then(|s| s.trim().parse().ok());
 
             sqlx::query(
                 "INSERT INTO public.olt_onu_history (id, olt_id, tenant_id, onu_id, pon, mac, name, status, rx_power, tx_power, distance, temperature)
@@ -1038,10 +1015,7 @@ impl OltService {
     }
 
     /// Poll all OLTs across all tenants and push updates via WebSocket
-    async fn poll_all_olts(
-        &self,
-        ws_hub: &crate::http::WsHub,
-    ) -> AppResult<()> {
+    async fn poll_all_olts(&self, ws_hub: &crate::http::WsHub) -> AppResult<()> {
         // Query all tenants with OLTs
         let rows: Vec<(String,)> = sqlx::query_as(
             "SELECT DISTINCT tenant_id::text FROM public.olts WHERE tenant_id IS NOT NULL",
@@ -1146,18 +1120,13 @@ impl OltService {
     }
 
     /// Delete a public token
-    pub async fn delete_public_token(
-        &self,
-        token_id: &str,
-        tenant_id: &str,
-    ) -> AppResult<()> {
-        let result = sqlx::query(
-            "DELETE FROM public.olt_public_tokens WHERE id = $1 AND tenant_id = $2",
-        )
-        .bind(token_id)
-        .bind(tenant_id)
-        .execute(&self.pool)
-        .await?;
+    pub async fn delete_public_token(&self, token_id: &str, tenant_id: &str) -> AppResult<()> {
+        let result =
+            sqlx::query("DELETE FROM public.olt_public_tokens WHERE id = $1 AND tenant_id = $2")
+                .bind(token_id)
+                .bind(tenant_id)
+                .execute(&self.pool)
+                .await?;
 
         if result.rows_affected() == 0 {
             return Err(AppError::NotFound("Public token not found".into()));
@@ -1166,10 +1135,7 @@ impl OltService {
     }
 
     /// Get OLT stats by public token (no auth required)
-    pub async fn get_stats_by_token(
-        &self,
-        token: &str,
-    ) -> AppResult<serde_json::Value> {
+    pub async fn get_stats_by_token(&self, token: &str) -> AppResult<serde_json::Value> {
         // Lookup token
         let token_row = sqlx::query_as::<_, OltPublicToken>(
             "SELECT * FROM public.olt_public_tokens WHERE token = $1 AND enabled = true",
@@ -1187,13 +1153,11 @@ impl OltService {
         }
 
         // Get OLT info (without tenant check — public access)
-        let olt = sqlx::query_as::<_, Olt>(
-            "SELECT * FROM public.olts WHERE id = $1",
-        )
-        .bind(&token_row.olt_id)
-        .fetch_optional(&self.pool)
-        .await?
-        .ok_or_else(|| AppError::NotFound("OLT not found".into()))?;
+        let olt = sqlx::query_as::<_, Olt>("SELECT * FROM public.olts WHERE id = $1")
+            .bind(&token_row.olt_id)
+            .fetch_optional(&self.pool)
+            .await?
+            .ok_or_else(|| AppError::NotFound("OLT not found".into()))?;
 
         // Get stats via driver (with fallback to cached)
         let password = decrypt_secret_opt(&olt.password_enc.unwrap_or_default())
@@ -1207,20 +1171,18 @@ impl OltService {
             Ok(()) => {
                 let stats = driver.get_global_stats().await?;
                 driver.disconnect().await.ok();
-                let json = serde_json::to_value(&stats)
-                    .unwrap_or(serde_json::json!({}));
+                let json = serde_json::to_value(&stats).unwrap_or(serde_json::json!({}));
                 (true, json)
             }
             Err(_) => {
                 // Fallback to cached stats
-                let cached: Option<serde_json::Value> = sqlx::query_scalar(
-                    "SELECT last_stats FROM public.olts WHERE id = $1",
-                )
-                .bind(&olt.id)
-                .fetch_optional(&self.pool)
-                .await
-                .ok()
-                .flatten();
+                let cached: Option<serde_json::Value> =
+                    sqlx::query_scalar("SELECT last_stats FROM public.olts WHERE id = $1")
+                        .bind(&olt.id)
+                        .fetch_optional(&self.pool)
+                        .await
+                        .ok()
+                        .flatten();
                 (olt.is_online, cached.unwrap_or(serde_json::json!({})))
             }
         };
@@ -1235,10 +1197,7 @@ impl OltService {
     }
 
     /// Get OLT signal graph data by public token (no auth required)
-    pub async fn get_signal_by_token(
-        &self,
-        token: &str,
-    ) -> AppResult<serde_json::Value> {
+    pub async fn get_signal_by_token(&self, token: &str) -> AppResult<serde_json::Value> {
         // Lookup token
         let token_row = sqlx::query_as::<_, OltPublicToken>(
             "SELECT * FROM public.olt_public_tokens WHERE token = $1 AND enabled = true",
@@ -1256,13 +1215,11 @@ impl OltService {
         }
 
         // Get OLT
-        let olt = sqlx::query_as::<_, Olt>(
-            "SELECT * FROM public.olts WHERE id = $1",
-        )
-        .bind(&token_row.olt_id)
-        .fetch_optional(&self.pool)
-        .await?
-        .ok_or_else(|| AppError::NotFound("OLT not found".into()))?;
+        let olt = sqlx::query_as::<_, Olt>("SELECT * FROM public.olts WHERE id = $1")
+            .bind(&token_row.olt_id)
+            .fetch_optional(&self.pool)
+            .await?
+            .ok_or_else(|| AppError::NotFound("OLT not found".into()))?;
 
         // Get ONU details via driver
         let password = decrypt_secret_opt(&olt.password_enc.unwrap_or_default())
@@ -1292,17 +1249,24 @@ impl OltService {
 
         // Calculate signal distribution for charting
         let mut excellent = 0i32; // > -20 dBm
-        let mut good = 0i32;     // -20 to -24 dBm
-        let mut fair = 0i32;     // -24 to -27 dBm
-        let mut poor = 0i32;     // < -27 dBm
+        let mut good = 0i32; // -20 to -24 dBm
+        let mut fair = 0i32; // -24 to -27 dBm
+        let mut poor = 0i32; // < -27 dBm
 
         for onu in &details {
-            if onu.status != "Online" { continue; }
+            if onu.status != "Online" {
+                continue;
+            }
             let rx: f64 = onu.rx.replace("dBm", "").trim().parse().unwrap_or(-999.0);
-            if rx > -20.0 { excellent += 1; }
-            else if rx > -24.0 { good += 1; }
-            else if rx > -27.0 { fair += 1; }
-            else { poor += 1; }
+            if rx > -20.0 {
+                excellent += 1;
+            } else if rx > -24.0 {
+                good += 1;
+            } else if rx > -27.0 {
+                fair += 1;
+            } else {
+                poor += 1;
+            }
         }
 
         Ok(serde_json::json!({

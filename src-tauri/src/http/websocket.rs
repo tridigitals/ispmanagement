@@ -87,10 +87,7 @@ pub enum WsEvent {
     /// and redirect to /login when it sees this event. Reason is a short
     /// machine-readable code (e.g. "customer_deleted", "user_deactivated",
     /// "tenant_locked", "forced_password_reset").
-    SessionInvalidated {
-        user_id: String,
-        reason: String,
-    },
+    SessionInvalidated { user_id: String, reason: String },
 }
 
 /// WebSocket connection manager

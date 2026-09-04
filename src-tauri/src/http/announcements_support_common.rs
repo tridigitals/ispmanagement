@@ -86,7 +86,10 @@ pub(crate) fn norm_severity(s: Option<String>) -> String {
 
 pub(crate) fn norm_audience(a: Option<String>) -> String {
     match a.as_deref() {
-        Some("all") | Some("admins") | Some("customers") | Some("active_subscribers")
+        Some("all")
+        | Some("admins")
+        | Some("customers")
+        | Some("active_subscribers")
         | Some("suspended_subscribers") => a.unwrap(),
         _ => "all".to_string(),
     }

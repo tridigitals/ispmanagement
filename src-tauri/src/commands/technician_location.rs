@@ -48,7 +48,10 @@ pub async fn record_technician_location(
     // GPS endpoint is open to any authenticated technician/staff in the tenant.
     // We don't gate it on a permission because field workers may not have any
     // explicit role_permissions seeded yet — they're recognized by JWT role.
-    if !matches!(claims.role.as_str(), "technician" | "staff" | "admin" | "super_admin" | "owner") {
+    if !matches!(
+        claims.role.as_str(),
+        "technician" | "staff" | "admin" | "super_admin" | "owner"
+    ) {
         return Err("Only field workers and admins can submit GPS pings".to_string());
     }
 
@@ -122,7 +125,10 @@ pub async fn get_latest_technician_location(
         .ok_or_else(|| "Tenant context required".to_string())?;
 
     // Admin/Owner only — staff can see all technicians, but field workers can't.
-    if !matches!(claims.role.as_str(), "admin" | "super_admin" | "owner" | "staff") {
+    if !matches!(
+        claims.role.as_str(),
+        "admin" | "super_admin" | "owner" | "staff"
+    ) {
         return Err("Only admins can view technician locations".to_string());
     }
 

@@ -55,8 +55,9 @@ impl UserService {
 
     /// List all users with pagination and optional superadmin filters.
     pub async fn list(&self, page: u32, per_page: u32) -> AppResult<(Vec<UserResponse>, i64)> {
-        let (users, total, _, _, _) =
-            self.list_with_filters(page, per_page, None, None, None).await?;
+        let (users, total, _, _, _) = self
+            .list_with_filters(page, per_page, None, None, None)
+            .await?;
         Ok((users, total))
     }
 
@@ -98,9 +99,13 @@ impl UserService {
             );
             if let Some(value) = search {
                 let pattern = format!("%{value}%");
-                qb.push(" AND (u.name ILIKE ").push_bind(pattern.clone())
-                    .push(" OR u.email ILIKE ").push_bind(pattern.clone())
-                    .push(" OR t.slug ILIKE ").push_bind(pattern).push(')');
+                qb.push(" AND (u.name ILIKE ")
+                    .push_bind(pattern.clone())
+                    .push(" OR u.email ILIKE ")
+                    .push_bind(pattern.clone())
+                    .push(" OR t.slug ILIKE ")
+                    .push_bind(pattern)
+                    .push(')');
             }
             if let Some(value) = status {
                 qb.push(" AND u.is_active = ").push_bind(value == "active");
@@ -131,9 +136,13 @@ impl UserService {
             );
             if let Some(value) = search {
                 let pattern = format!("%{value}%");
-                qb.push(" AND (LOWER(u.name) LIKE LOWER(").push_bind(&pattern)
-                    .push(") OR LOWER(u.email) LIKE LOWER(").push_bind(&pattern)
-                    .push(") OR LOWER(t.slug) LIKE LOWER(").push_bind(&pattern).push("))");
+                qb.push(" AND (LOWER(u.name) LIKE LOWER(")
+                    .push_bind(&pattern)
+                    .push(") OR LOWER(u.email) LIKE LOWER(")
+                    .push_bind(&pattern)
+                    .push(") OR LOWER(t.slug) LIKE LOWER(")
+                    .push_bind(&pattern)
+                    .push("))");
             }
             if let Some(value) = status {
                 qb.push(" AND u.is_active = ").push_bind(value == "active");
@@ -181,7 +190,13 @@ impl UserService {
             })
             .collect();
 
-        Ok((response, total_count, active_total, inactive_total, superadmin_total))
+        Ok((
+            response,
+            total_count,
+            active_total,
+            inactive_total,
+            superadmin_total,
+        ))
     }
 
     /// Get user by ID
@@ -384,19 +399,17 @@ impl UserService {
         // this a single super-admin could lock the system out of all admin
         // operations.
         #[cfg(feature = "postgres")]
-        let target: Option<(bool, bool)> = sqlx::query_as(
-            "SELECT is_super_admin, is_active FROM users WHERE id = $1",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let target: Option<(bool, bool)> =
+            sqlx::query_as("SELECT is_super_admin, is_active FROM users WHERE id = $1")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?;
         #[cfg(not(feature = "postgres"))]
-        let target: Option<(bool, bool)> = sqlx::query_as(
-            "SELECT is_super_admin, is_active FROM users WHERE id = ?",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let target: Option<(bool, bool)> =
+            sqlx::query_as("SELECT is_super_admin, is_active FROM users WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?;
 
         let target = match target {
             Some(row) => row,

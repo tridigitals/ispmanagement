@@ -42,12 +42,7 @@ pub trait OltDriver: Send + Sync {
     async fn reboot_onu(&self, onu_id: &str, onu_name: &str) -> AppResult<bool>;
 
     /// Update ONU display name (vendor-specific support varies).
-    async fn update_onu_name(
-        &self,
-        onu_id: &str,
-        pon: &str,
-        new_name: &str,
-    ) -> AppResult<()>;
+    async fn update_onu_name(&self, onu_id: &str, pon: &str, new_name: &str) -> AppResult<()>;
 }
 
 use crate::error::AppError;

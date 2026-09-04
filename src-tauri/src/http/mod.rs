@@ -2,8 +2,9 @@ use crate::services::{
     AuditService, AuthService, CustomerService, DhcpStaticServiceManager, EmailService,
     IspPackageService, ManagedRadiusService, MessageTemplateService, MikrotikService,
     MixradiusImportService, NetworkAssetService, NetworkMappingService, NotificationService,
-    OltService, PaymentService, PlanService, PppoeService, RadiusService, RoleService, SettingsService,
-    StorageService, SystemService, TeamService, UserService, WhatsappGatewayService,
+    OltService, PaymentService, PlanService, PppoeService, RadiusService, RoleService,
+    SettingsService, StorageService, SystemService, TeamService, UserService,
+    WhatsappGatewayService,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -69,8 +70,8 @@ pub mod storage;
 pub mod superadmin;
 pub mod support;
 pub mod system;
-pub mod technician_location;
 pub mod team;
+pub mod technician_location;
 pub mod tenant;
 pub mod users;
 pub mod websocket;
@@ -194,7 +195,9 @@ pub(crate) async fn root_handler() -> &'static str {
     "SaaS API is running. Use the frontend to interact."
 }
 
-pub(crate) async fn get_app_version(headers: axum::http::HeaderMap) -> Result<axum::Json<serde_json::Value>, crate::error::AppError> {
+pub(crate) async fn get_app_version(
+    headers: axum::http::HeaderMap,
+) -> Result<axum::Json<serde_json::Value>, crate::error::AppError> {
     // Require auth — version info is internal
     let auth_header = headers
         .get("Authorization")

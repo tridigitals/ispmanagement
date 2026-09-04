@@ -19,11 +19,7 @@ use super::announcements_support_common::{
 /// Resolve tenant role name and check if user is a field worker
 /// (technician or staff). Uses tenant_members→roles lookup —
 /// NOT the `claims.role` which always equals `users.role` ("user").
-async fn is_field_worker(
-    auth_service: &AuthService,
-    user_id: &str,
-    tenant_id: &str,
-) -> bool {
+async fn is_field_worker(auth_service: &AuthService, user_id: &str, tenant_id: &str) -> bool {
     auth_service
         .get_tenant_role_name(user_id, tenant_id)
         .await
@@ -580,15 +576,13 @@ pub async fn create_support_ticket(
 
     // Resolve the creator's display name at create time so the first
     // message (which IS the ticket body) carries it for the UI.
-    let creator_name: Option<String> = sqlx::query_scalar(
-        "SELECT name FROM users WHERE id = $1",
-    )
-    .bind(&claims.sub)
-    .fetch_optional(&mut *tx)
-    .await
-    .ok()
-    .flatten()
-    .filter(|s: &String| !s.trim().is_empty());
+    let creator_name: Option<String> = sqlx::query_scalar("SELECT name FROM users WHERE id = $1")
+        .bind(&claims.sub)
+        .fetch_optional(&mut *tx)
+        .await
+        .ok()
+        .flatten()
+        .filter(|s: &String| !s.trim().is_empty());
 
     sqlx::query(
         r#"
@@ -877,15 +871,13 @@ pub async fn reply_support_ticket(
 
     // Resolve the author's display name at reply time so historical
     // messages keep their sender label even if the user renames/deletes.
-    let author_name: Option<String> = sqlx::query_scalar(
-        "SELECT name FROM users WHERE id = $1",
-    )
-    .bind(&claims.sub)
-    .fetch_optional(&mut *tx)
-    .await
-    .ok()
-    .flatten()
-    .filter(|s: &String| !s.trim().is_empty());
+    let author_name: Option<String> = sqlx::query_scalar("SELECT name FROM users WHERE id = $1")
+        .bind(&claims.sub)
+        .fetch_optional(&mut *tx)
+        .await
+        .ok()
+        .flatten()
+        .filter(|s: &String| !s.trim().is_empty());
 
     sqlx::query(
         r#"
@@ -1429,7 +1421,10 @@ pub async fn submit_ticket_satisfaction(
         .await
         .map_err(|e| e.to_string())?;
 
-    let tenant_id = claims.tenant_id.as_deref().ok_or("Tenant context required")?;
+    let tenant_id = claims
+        .tenant_id
+        .as_deref()
+        .ok_or("Tenant context required")?;
     let customer_id: String = sqlx::query_scalar(
         "SELECT customer_id FROM customer_users WHERE tenant_id = $1 AND user_id = $2 LIMIT 1",
     )

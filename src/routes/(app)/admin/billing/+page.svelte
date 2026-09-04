@@ -54,11 +54,10 @@
     return months[parseInt(m, 10) - 1] || yyyymm;
   }
 
-  const agingTotal = $derived(
-    analytics
-      ? analytics.aging.current + analytics.aging.days_31_60 + analytics.aging.days_61_90 + analytics.aging.over_90
-      : 0
-  );
+  // Halaman ini digantikan oleh /v2/admin/billing. Total tetap diambil dari
+  // server (`aging_total`) supaya penambahan bucket `not_due` tidak membuat
+  // angka di sini lebih kecil dari isinya.
+  const agingTotal = $derived(analytics ? analytics.aging_total : 0);
 
   const maxTrendRevenue = $derived(
     analytics?.revenue_trend?.length

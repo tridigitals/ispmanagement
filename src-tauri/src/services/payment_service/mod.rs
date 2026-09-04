@@ -1,7 +1,7 @@
 //! Payment Service - Manages invoices and bank accounts
 
-mod core;
 pub mod analytics;
+mod core;
 pub mod dto;
 mod integration;
 mod mapper;
@@ -794,28 +794,37 @@ impl PaymentService {
         let per_page = pg.per_page;
         let offset = pg.offset;
         let search = search.map(str::trim).filter(|value| !value.is_empty());
-        let status = status.map(str::trim).filter(|value| !value.is_empty() && *value != "all");
+        let status = status
+            .map(str::trim)
+            .filter(|value| !value.is_empty() && *value != "all");
 
         #[cfg(feature = "postgres")]
         let (total, invoices) = {
             use sqlx::{Postgres, QueryBuilder};
-            let base = " FROM invoices WHERE (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%')";
+            let base =
+                " FROM invoices WHERE (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%')";
             let mut count = QueryBuilder::<Postgres>::new("SELECT COUNT(*)");
             let mut rows = QueryBuilder::<Postgres>::new("SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, currency_code, base_currency_code, COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at");
             for builder in [&mut count, &mut rows] {
                 builder.push(base);
                 if let Some(value) = search {
                     let pattern = format!("%{value}%");
-                    builder.push(" AND (invoice_number ILIKE ").push_bind(pattern.clone())
-                        .push(" OR description ILIKE ").push_bind(pattern).push(')');
+                    builder
+                        .push(" AND (invoice_number ILIKE ")
+                        .push_bind(pattern.clone())
+                        .push(" OR description ILIKE ")
+                        .push_bind(pattern)
+                        .push(')');
                 }
                 if let Some(value) = status {
                     builder.push(" AND status = ").push_bind(value);
                 }
             }
             let total: i64 = count.build_query_scalar().fetch_one(&self.pool).await?;
-            rows.push(" ORDER BY created_at DESC LIMIT ").push_bind(per_page as i64)
-                .push(" OFFSET ").push_bind(offset);
+            rows.push(" ORDER BY created_at DESC LIMIT ")
+                .push_bind(per_page as i64)
+                .push(" OFFSET ")
+                .push_bind(offset);
             let invoices = rows.build_query_as().fetch_all(&self.pool).await?;
             (total, invoices)
         };
@@ -823,23 +832,30 @@ impl PaymentService {
         #[cfg(feature = "sqlite")]
         let (total, invoices) = {
             use sqlx::{QueryBuilder, Sqlite};
-            let base = " FROM invoices WHERE (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%')";
+            let base =
+                " FROM invoices WHERE (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%')";
             let mut count = QueryBuilder::<Sqlite>::new("SELECT COUNT(*)");
             let mut rows = QueryBuilder::<Sqlite>::new("SELECT *");
             for builder in [&mut count, &mut rows] {
                 builder.push(base);
                 if let Some(value) = search {
                     let pattern = format!("%{value}%");
-                    builder.push(" AND (LOWER(invoice_number) LIKE LOWER(").push_bind(pattern.clone())
-                        .push(") OR LOWER(description) LIKE LOWER(").push_bind(pattern).push("))");
+                    builder
+                        .push(" AND (LOWER(invoice_number) LIKE LOWER(")
+                        .push_bind(pattern.clone())
+                        .push(") OR LOWER(description) LIKE LOWER(")
+                        .push_bind(pattern)
+                        .push("))");
                 }
                 if let Some(value) = status {
                     builder.push(" AND status = ").push_bind(value);
                 }
             }
             let total: i64 = count.build_query_scalar().fetch_one(&self.pool).await?;
-            rows.push(" ORDER BY created_at DESC LIMIT ").push_bind(per_page as i64)
-                .push(" OFFSET ").push_bind(offset);
+            rows.push(" ORDER BY created_at DESC LIMIT ")
+                .push_bind(per_page as i64)
+                .push(" OFFSET ")
+                .push_bind(offset);
             let invoices = rows.build_query_as().fetch_all(&self.pool).await?;
             (total, invoices)
         };
@@ -856,7 +872,17 @@ impl PaymentService {
         #[cfg(feature = "sqlite")]
         let (overdue_total, overdue_amount): (i64, f64) = sqlx::query_as("SELECT COUNT(*), COALESCE(SUM(amount), 0) FROM invoices WHERE status IN ('pending', 'verification_pending') AND due_date < CURRENT_TIMESTAMP AND (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%')")
             .fetch_one(&self.pool).await?;
-        Ok(crate::models::InvoiceListResponse { data: invoices, total, page, per_page, pending_total, paid_total, failed_total, overdue_total, overdue_amount })
+        Ok(crate::models::InvoiceListResponse {
+            data: invoices,
+            total,
+            page,
+            per_page,
+            pending_total,
+            paid_total,
+            failed_total,
+            overdue_total,
+            overdue_amount,
+        })
     }
 
     pub async fn list_customer_package_invoices(
@@ -3206,13 +3232,18 @@ impl PaymentService {
     }
 
     /// List all bank accounts
-    pub async fn list_bank_accounts(&self, tenant_id: Option<&str>) -> Result<Vec<BankAccount>, sqlx::Error> {
+    pub async fn list_bank_accounts(
+        &self,
+        tenant_id: Option<&str>,
+    ) -> Result<Vec<BankAccount>, sqlx::Error> {
         #[cfg(feature = "postgres")]
         let accounts = if let Some(tid) = tenant_id {
-            sqlx::query_as("SELECT * FROM bank_accounts WHERE tenant_id = $1 ORDER BY created_at DESC")
-                .bind(tid)
-                .fetch_all(&self.pool)
-                .await?
+            sqlx::query_as(
+                "SELECT * FROM bank_accounts WHERE tenant_id = $1 ORDER BY created_at DESC",
+            )
+            .bind(tid)
+            .fetch_all(&self.pool)
+            .await?
         } else {
             sqlx::query_as("SELECT * FROM bank_accounts WHERE 1=0 ORDER BY created_at DESC")
                 .fetch_all(&self.pool)
@@ -3221,10 +3252,12 @@ impl PaymentService {
 
         #[cfg(feature = "sqlite")]
         let accounts = if let Some(tid) = tenant_id {
-            sqlx::query_as("SELECT * FROM bank_accounts WHERE tenant_id = ? ORDER BY created_at DESC")
-                .bind(tid)
-                .fetch_all(&self.pool)
-                .await?
+            sqlx::query_as(
+                "SELECT * FROM bank_accounts WHERE tenant_id = ? ORDER BY created_at DESC",
+            )
+            .bind(tid)
+            .fetch_all(&self.pool)
+            .await?
         } else {
             sqlx::query_as("SELECT * FROM bank_accounts WHERE 1=0 ORDER BY created_at DESC")
                 .fetch_all(&self.pool)
@@ -4145,13 +4178,12 @@ impl PaymentService {
 
             // Resolve tenant slug for correct invoice action URL
             let tenant_action_url: String = {
-                let slug: Option<String> = sqlx::query_scalar(
-                    "SELECT slug FROM tenants WHERE id = $1 LIMIT 1"
-                )
-                .bind(&invoice.tenant_id)
-                .fetch_optional(&self.pool)
-                .await
-                .unwrap_or(None);
+                let slug: Option<String> =
+                    sqlx::query_scalar("SELECT slug FROM tenants WHERE id = $1 LIMIT 1")
+                        .bind(&invoice.tenant_id)
+                        .fetch_optional(&self.pool)
+                        .await
+                        .unwrap_or(None);
                 slug.map(|s| format!("/{}/admin/invoices/{}", s, invoice.id))
                     .unwrap_or_else(|| format!("/superadmin/invoices/{}", invoice.id))
             };
@@ -6710,7 +6742,12 @@ impl PaymentService {
             .await
             .ok();
         let (subscription_id, customer_email, customer_name, customer_phone) = match link {
-            Some(l) => (l.subscription_id, l.customer_email, l.customer_name, l.customer_phone),
+            Some(l) => (
+                l.subscription_id,
+                l.customer_email,
+                l.customer_name,
+                l.customer_phone,
+            ),
             None => (None, None, None, None),
         };
 
@@ -6723,7 +6760,10 @@ impl PaymentService {
                 .map(str::trim)
                 .filter(|s| !s.is_empty());
             if let Some(to_email) = to {
-                let subject = format!("Invoice {} – please complete payment", invoice.invoice_number);
+                let subject = format!(
+                    "Invoice {} – please complete payment",
+                    invoice.invoice_number
+                );
                 let body_text = format!(
                     "Hi {customer},\n\n\
                      Your invoice {number} for {currency} {amount:.2} is ready.\n\
@@ -6741,7 +6781,11 @@ impl PaymentService {
                 // PDF attachment (best-effort: failure to render does not
                 // block the email — caller sees pdf_attached=false).
                 let attachments = if attach_pdf {
-                    match self.render_invoice_pdf_for_email(&invoice, customer_name.as_deref(), customer_email.as_deref()) {
+                    match self.render_invoice_pdf_for_email(
+                        &invoice,
+                        customer_name.as_deref(),
+                        customer_email.as_deref(),
+                    ) {
                         Ok(bytes) => {
                             pdf_attached = true;
                             vec![crate::services::email_service::EmailAttachment {
@@ -6778,7 +6822,8 @@ impl PaymentService {
                     Err(e) => {
                         tracing::warn!(
                             "bulk_send: email failed for invoice {}: {}",
-                            invoice.invoice_number, e
+                            invoice.invoice_number,
+                            e
                         );
                     }
                 }
@@ -6831,13 +6876,7 @@ impl PaymentService {
                 );
                 whatsapp_sent = self
                     .notification_service
-                    .force_send_whatsapp(
-                        Some(tenant_id),
-                        "customer_invoice_due",
-                        None,
-                        p,
-                        &msg,
-                    )
+                    .force_send_whatsapp(Some(tenant_id), "customer_invoice_due", None, p, &msg)
                     .await
                     .unwrap_or(false);
             }
@@ -6846,9 +6885,11 @@ impl PaymentService {
         // Resolve final status. If no channel produced a send AND there was no
         // recipient at all on every requested channel, mark skipped instead of
         // failed (we did nothing wrong — the customer simply has no contact path).
-        let no_email_target = want_email && customer_email.as_deref().unwrap_or("").trim().is_empty();
+        let no_email_target =
+            want_email && customer_email.as_deref().unwrap_or("").trim().is_empty();
         let no_notif_target = want_notification && subscription_id.is_none();
-        let no_wa_target = want_whatsapp && customer_phone.as_deref().unwrap_or("").trim().is_empty();
+        let no_wa_target =
+            want_whatsapp && customer_phone.as_deref().unwrap_or("").trim().is_empty();
         let status = if email_sent || notification_sent || whatsapp_sent {
             "sent".to_string()
         } else if no_email_target && no_notif_target && no_wa_target {
@@ -6890,9 +6931,14 @@ impl PaymentService {
         tenant_id: &str,
         invoice: &crate::models::invoice::Invoice,
     ) -> AppResult<InvoiceCustomerLink> {
-
         // --- Path 1: customer_service_assignments (existing) ---
-        let row: Option<(Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> = sqlx::query_as(
+        let row: Option<(
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+        )> = sqlx::query_as(
             r#"
             SELECT csa.subscription_id, csa.customer_id, c.email, c.name, c.phone
             FROM customer_service_assignments csa
@@ -6923,7 +6969,6 @@ impl PaymentService {
         // gets .ok()'d into None.
         if let Some(ref ext_id) = invoice.external_id {
             if let Some(subscription_id) = parse_subscription_id_from_external_id(ext_id) {
-
                 tracing::info!(
                     invoice_id = %invoice.id,
                     subscription_id = %subscription_id,
@@ -7156,7 +7201,8 @@ impl PaymentService {
             Err(e) => {
                 tracing::warn!(
                     "ensure_customer_service_assignment_for_invoice: failed for invoice {}: {}",
-                    invoice_id, e
+                    invoice_id,
+                    e
                 );
             }
         }

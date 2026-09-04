@@ -1,9 +1,8 @@
 use super::AppState;
 use crate::models::{
-    CreateSupportTicketDto, FileRecord, PaginatedResponse, ReplySupportTicketDto,
+    CreateSupportTicketDto, FileRecord, PaginatedResponse, ReplySupportTicketDto, SatisfactionDto,
     SupportTicket, SupportTicketDetail, SupportTicketListItem, SupportTicketMessage,
-    SupportTicketMessageWithAttachments, SatisfactionDto, TeamMemberWithUser,
-    UpdateSupportTicketDto,
+    SupportTicketMessageWithAttachments, TeamMemberWithUser, UpdateSupportTicketDto,
 };
 use axum::{
     extract::{Path, Query, State},
@@ -330,7 +329,10 @@ pub async fn list_support_tickets(
 
     let st = normalize_status(params.status);
 
-    let pg = crate::services::pagination::normalize(params.page.unwrap_or(1), params.per_page.unwrap_or(20));
+    let pg = crate::services::pagination::normalize(
+        params.page.unwrap_or(1),
+        params.per_page.unwrap_or(20),
+    );
     let page = pg.page;
     let per_page = pg.per_page;
     let offset = pg.offset;
@@ -701,15 +703,13 @@ pub async fn create_support_ticket(
 
     // Look up the creator's display name once so the very first message
     // (which IS the ticket body) carries it for the UI to render.
-    let creator_name: Option<String> = sqlx::query_scalar(
-        "SELECT name FROM users WHERE id = $1",
-    )
-    .bind(&claims.sub)
-    .fetch_optional(&mut *tx)
-    .await
-    .ok()
-    .flatten()
-    .filter(|s: &String| !s.trim().is_empty());
+    let creator_name: Option<String> = sqlx::query_scalar("SELECT name FROM users WHERE id = $1")
+        .bind(&claims.sub)
+        .fetch_optional(&mut *tx)
+        .await
+        .ok()
+        .flatten()
+        .filter(|s: &String| !s.trim().is_empty());
 
     sqlx::query(
         r#"
@@ -980,15 +980,13 @@ pub async fn reply_support_ticket(
     // Look up the author's display name at reply time. We snapshot the
     // name into the row so historical messages keep their sender label
     // even if the user later renames or is deleted.
-    let author_name: Option<String> = sqlx::query_scalar(
-        "SELECT name FROM users WHERE id = $1",
-    )
-    .bind(&claims.sub)
-    .fetch_optional(&state.auth_service.pool)
-    .await
-    .ok()
-    .flatten()
-    .filter(|s: &String| !s.trim().is_empty());
+    let author_name: Option<String> = sqlx::query_scalar("SELECT name FROM users WHERE id = $1")
+        .bind(&claims.sub)
+        .fetch_optional(&state.auth_service.pool)
+        .await
+        .ok()
+        .flatten()
+        .filter(|s: &String| !s.trim().is_empty());
 
     sqlx::query(
         r#"
@@ -1018,15 +1016,15 @@ pub async fn reply_support_ticket(
         .await?;
 
     // Auto-assign: first staff reply on unassigned ticket → claim it
-    if ticket.assigned_to.is_none() && is_field_worker(&state.auth_service, &claims.sub, &tenant_id).await {
-        sqlx::query(
-            "UPDATE support_tickets SET assigned_to = $1, updated_at = $2 WHERE id = $3",
-        )
-        .bind(&claims.sub)
-        .bind(now)
-        .bind(&id)
-        .execute(&mut *tx)
-        .await?;
+    if ticket.assigned_to.is_none()
+        && is_field_worker(&state.auth_service, &claims.sub, &tenant_id).await
+    {
+        sqlx::query("UPDATE support_tickets SET assigned_to = $1, updated_at = $2 WHERE id = $3")
+            .bind(&claims.sub)
+            .bind(now)
+            .bind(&id)
+            .execute(&mut *tx)
+            .await?;
     }
 
     let msg: SupportTicketMessage =
@@ -1645,11 +1643,13 @@ pub async fn start_support_ticket(
         }
     }
 
-    state.ws_hub.broadcast(crate::http::WsEvent::SupportTicketUpdated {
-        ticket_id: updated.id.clone(),
-        status: updated.status.clone(),
-        actor_id: claims.sub.clone(),
-    });
+    state
+        .ws_hub
+        .broadcast(crate::http::WsEvent::SupportTicketUpdated {
+            ticket_id: updated.id.clone(),
+            status: updated.status.clone(),
+            actor_id: claims.sub.clone(),
+        });
 
     Ok(Json(updated))
 }
@@ -1717,11 +1717,13 @@ pub async fn claim_support_ticket(
         .await;
 
     // Broadcast assignment change
-    state.ws_hub.broadcast(crate::http::WsEvent::SupportTicketUpdated {
-        ticket_id: updated.id.clone(),
-        status: updated.status.clone(),
-        actor_id: claims.sub.clone(),
-    });
+    state
+        .ws_hub
+        .broadcast(crate::http::WsEvent::SupportTicketUpdated {
+            ticket_id: updated.id.clone(),
+            status: updated.status.clone(),
+            actor_id: claims.sub.clone(),
+        });
 
     // Notify ticket owner
     if let Some(ref owner) = updated.created_by {
@@ -1867,11 +1869,13 @@ pub async fn resolve_support_ticket(
         }
     }
 
-    state.ws_hub.broadcast(crate::http::WsEvent::SupportTicketUpdated {
-        ticket_id: updated.id.clone(),
-        status: updated.status.clone(),
-        actor_id: claims.sub.clone(),
-    });
+    state
+        .ws_hub
+        .broadcast(crate::http::WsEvent::SupportTicketUpdated {
+            ticket_id: updated.id.clone(),
+            status: updated.status.clone(),
+            actor_id: claims.sub.clone(),
+        });
 
     Ok(Json(updated))
 }
@@ -1919,9 +1923,11 @@ pub async fn upload_ticket_photo(
     let mut content_type = "image/jpeg".to_string();
     let mut data: Option<Vec<u8>> = None;
 
-    while let Some(field) = multipart.next_field().await.map_err(|e| {
-        crate::error::AppError::Internal(format!("multipart read: {e}"))
-    })? {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| crate::error::AppError::Internal(format!("multipart read: {e}")))?
+    {
         let name = field.name().unwrap_or("").to_string();
         if name == "photo" || name == "file" {
             if let Some(fname) = field.file_name() {
@@ -1938,9 +1944,8 @@ pub async fn upload_ticket_photo(
         }
     }
 
-    let data = data.ok_or_else(|| {
-        crate::error::AppError::Validation("Missing 'photo' field".to_string())
-    })?;
+    let data = data
+        .ok_or_else(|| crate::error::AppError::Validation("Missing 'photo' field".to_string()))?;
     if data.is_empty() {
         return Err(crate::error::AppError::Validation(
             "Empty photo upload".to_string(),

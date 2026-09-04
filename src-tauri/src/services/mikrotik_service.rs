@@ -7003,10 +7003,10 @@ mod tests {
         let topic_filter: Option<String> = None;
         let search = String::new();
         /* Query ini punya 9 parameter: $1..$7 filter, $8 LIMIT, $9 OFFSET.
-           Filter bulan/tahun ($6/$7) pernah ditambahkan tanpa memperbarui tes ini,
-           jadi bind-nya kurang 2 dan Postgres menolak dengan 08P01. Kegagalan itu
-           lama tersembunyi karena tes ini panik lebih dulu di PoolTimedOut ketika
-           DATABASE_URL tidak diset. */
+        Filter bulan/tahun ($6/$7) pernah ditambahkan tanpa memperbarui tes ini,
+        jadi bind-nya kurang 2 dan Postgres menolak dengan 08P01. Kegagalan itu
+        lama tersembunyi karena tes ini panik lebih dulu di PoolTimedOut ketika
+        DATABASE_URL tidak diset. */
         let month_filter: Option<i32> = None;
         let year_filter: Option<i32> = None;
         let list_plan_rows: Vec<String> = sqlx::query_scalar(list_explain_sql.as_str())

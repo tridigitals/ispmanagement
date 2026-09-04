@@ -1237,7 +1237,7 @@ pub async fn create_tenant(
 
     #[cfg(feature = "postgres")]
     let role_id: String = sqlx::query_scalar(
-        "SELECT id FROM roles WHERE name = 'Owner' AND tenant_id IS NULL LIMIT 1"
+        "SELECT id FROM roles WHERE name = 'Owner' AND tenant_id IS NULL LIMIT 1",
     )
     .fetch_one(&mut *tx)
     .await
@@ -1245,7 +1245,7 @@ pub async fn create_tenant(
 
     #[cfg(feature = "sqlite")]
     let role_id: String = sqlx::query_scalar(
-        "SELECT id FROM roles WHERE name = 'Owner' AND tenant_id IS NULL LIMIT 1"
+        "SELECT id FROM roles WHERE name = 'Owner' AND tenant_id IS NULL LIMIT 1",
     )
     .fetch_one(&mut *tx)
     .await

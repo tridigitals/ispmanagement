@@ -284,9 +284,9 @@ pub async fn list_deleted_members(
 ) -> Result<Json<Vec<TeamMemberWithUser>>, AppError> {
     let token = extract_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
-    let tenant_id = claims.tenant_id.ok_or(AppError::Validation(
-        "No tenant ID in token".to_string(),
-    ))?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or(AppError::Validation("No tenant ID in token".to_string()))?;
 
     state
         .auth_service
@@ -311,9 +311,9 @@ pub async fn restore_member(
 ) -> Result<Json<serde_json::Value>, AppError> {
     let token = extract_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
-    let tenant_id = claims.tenant_id.ok_or(AppError::Validation(
-        "No tenant ID in token".to_string(),
-    ))?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or(AppError::Validation("No tenant ID in token".to_string()))?;
 
     state
         .auth_service
@@ -341,9 +341,9 @@ pub async fn hard_delete_member(
 ) -> Result<Json<serde_json::Value>, AppError> {
     let token = extract_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
-    let tenant_id = claims.tenant_id.ok_or(AppError::Validation(
-        "No tenant ID in token".to_string(),
-    ))?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or(AppError::Validation("No tenant ID in token".to_string()))?;
 
     state
         .auth_service

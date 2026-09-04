@@ -1315,7 +1315,7 @@ pub async fn create_tenant(
     // Look up global 'Owner' role (seeded, tenant_id IS NULL)
     let now = chrono::Utc::now();
     let owner_role_id: String = sqlx::query_scalar(
-        "SELECT id FROM roles WHERE name = 'Owner' AND tenant_id IS NULL LIMIT 1"
+        "SELECT id FROM roles WHERE name = 'Owner' AND tenant_id IS NULL LIMIT 1",
     )
     .fetch_one(&mut *tx)
     .await?;
@@ -1553,33 +1553,36 @@ pub async fn update_tenant(
     let domain_changed = before.custom_domain != tenant.custom_domain;
     if domain_changed {
         #[cfg(feature = "postgres")]
-        let super_admins: Vec<(String,)> =
-            match sqlx::query_as("SELECT id FROM users WHERE is_super_admin = true AND is_active = true")
-                .fetch_all(&state.auth_service.pool)
-                .await
-            {
-                Ok(rows) => rows,
-                Err(e) => {
-                    tracing::error!(error = %e, "failed to list superadmins for custom domain notif");
-                    Vec::new()
-                }
-            };
+        let super_admins: Vec<(String,)> = match sqlx::query_as(
+            "SELECT id FROM users WHERE is_super_admin = true AND is_active = true",
+        )
+        .fetch_all(&state.auth_service.pool)
+        .await
+        {
+            Ok(rows) => rows,
+            Err(e) => {
+                tracing::error!(error = %e, "failed to list superadmins for custom domain notif");
+                Vec::new()
+            }
+        };
 
         #[cfg(feature = "sqlite")]
-        let super_admins: Vec<(String,)> =
-            match sqlx::query_as("SELECT id FROM users WHERE is_super_admin = 1 AND is_active = 1")
-                .fetch_all(&state.auth_service.pool)
-                .await
-            {
-                Ok(rows) => rows,
-                Err(e) => {
-                    tracing::error!(error = %e, "failed to list superadmins for custom domain notif");
-                    Vec::new()
-                }
-            };
+        let super_admins: Vec<(String,)> = match sqlx::query_as(
+            "SELECT id FROM users WHERE is_super_admin = 1 AND is_active = 1",
+        )
+        .fetch_all(&state.auth_service.pool)
+        .await
+        {
+            Ok(rows) => rows,
+            Err(e) => {
+                tracing::error!(error = %e, "failed to list superadmins for custom domain notif");
+                Vec::new()
+            }
+        };
 
         let title = "Tenant Custom Domain Updated (by Superadmin)";
-        let msg = format!(
+        let msg =
+            format!(
             "{} updated tenant **{}** ({}) custom domain.\n• Before: {}\n• After: {}\n• Status: {}",
             claims.email,
             tenant.name,

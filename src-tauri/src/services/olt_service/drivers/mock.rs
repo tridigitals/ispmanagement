@@ -2,10 +2,10 @@
 //!
 //! Returns synthetic data with realistic-looking values.
 
+use super::OltDriver;
 use crate::error::AppResult;
 use crate::models::{OltGlobalStats, OltOnuDetail, OltSystemInfo, PonPortStats};
 use async_trait::async_trait;
-use super::OltDriver;
 
 pub struct MockOltDriver {
     connected: bool,
@@ -119,12 +119,7 @@ impl OltDriver for MockOltDriver {
         Ok(true)
     }
 
-    async fn update_onu_name(
-        &self,
-        _onu_id: &str,
-        _pon: &str,
-        _new_name: &str,
-    ) -> AppResult<()> {
+    async fn update_onu_name(&self, _onu_id: &str, _pon: &str, _new_name: &str) -> AppResult<()> {
         Ok(())
     }
 }

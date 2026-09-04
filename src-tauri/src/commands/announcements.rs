@@ -36,8 +36,11 @@ async fn send_announcement_notifications(
                     recipients.extend(tenant_admin_user_ids(pool, tid).await.unwrap_or_default());
                 }
                 "customers" => {
-                    recipients
-                        .extend(customer_portal_user_ids(pool, tid).await.unwrap_or_default());
+                    recipients.extend(
+                        customer_portal_user_ids(pool, tid)
+                            .await
+                            .unwrap_or_default(),
+                    );
                 }
                 "active_subscribers" => {
                     recipients.extend(
@@ -56,8 +59,11 @@ async fn send_announcement_notifications(
                 _ => {
                     // "all" — tenant members + customer portal users
                     recipients.extend(tenant_user_ids(pool, tid).await.unwrap_or_default());
-                    recipients
-                        .extend(customer_portal_user_ids(pool, tid).await.unwrap_or_default());
+                    recipients.extend(
+                        customer_portal_user_ids(pool, tid)
+                            .await
+                            .unwrap_or_default(),
+                    );
                 }
             }
 
@@ -127,8 +133,11 @@ async fn send_announcement_emails(
                 recipients.extend(tenant_admin_user_ids(pool, tid).await.unwrap_or_default());
             }
             "customers" => {
-                recipients
-                    .extend(customer_portal_user_ids(pool, tid).await.unwrap_or_default());
+                recipients.extend(
+                    customer_portal_user_ids(pool, tid)
+                        .await
+                        .unwrap_or_default(),
+                );
             }
             "active_subscribers" => {
                 recipients.extend(
@@ -146,18 +155,20 @@ async fn send_announcement_emails(
             }
             _ => {
                 recipients.extend(tenant_user_ids(pool, tid).await.unwrap_or_default());
-                recipients
-                    .extend(customer_portal_user_ids(pool, tid).await.unwrap_or_default());
+                recipients.extend(
+                    customer_portal_user_ids(pool, tid)
+                        .await
+                        .unwrap_or_default(),
+                );
             }
         }
 
         if let Some(pkg_id) = announcement.target_package_id.as_deref() {
-            let pkg_users: HashSet<String> =
-                package_subscriber_portal_user_ids(pool, tid, pkg_id)
-                    .await
-                    .unwrap_or_default()
-                    .into_iter()
-                    .collect();
+            let pkg_users: HashSet<String> = package_subscriber_portal_user_ids(pool, tid, pkg_id)
+                .await
+                .unwrap_or_default()
+                .into_iter()
+                .collect();
             recipients.retain(|u| pkg_users.contains(u));
         }
     } else {

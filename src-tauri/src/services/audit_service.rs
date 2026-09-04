@@ -461,6 +461,8 @@ mod tests {
         let source = include_str!("audit_service.rs");
         assert!(source.contains("AppError::Forbidden"));
         assert!(source.contains("PLAN_FEATURE_REQUIRED:audit_logs:"));
-        assert!(!source.contains("AppError::Validation(\n                        \"Upgrade your plan"));
+        assert!(
+            !source.contains("AppError::Validation(\n                        \"Upgrade your plan")
+        );
     }
 }

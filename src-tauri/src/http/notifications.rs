@@ -246,7 +246,7 @@ fn paginate_notifications(
     per_page: u32,
 ) -> PaginatedResponse<Notification> {
     /* Paginasi in-memory (bukan SQL), tapi batasnya tetap dipakai supaya
-       permintaan per_page raksasa tidak memaksa alokasi Vec sebesar itu. */
+    permintaan per_page raksasa tidak memaksa alokasi Vec sebesar itu. */
     let pg = crate::services::pagination::normalize(page, per_page);
     let safe_page = pg.page;
     let safe_per_page = pg.per_page;

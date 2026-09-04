@@ -137,6 +137,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     expect(v2Href('/admin/invoices')).toBe('/v2/admin/invoices');
     expect(v2Href('/admin/team')).toBe('/v2/admin/team');
     expect(v2Href('/admin/roles')).toBe('/v2/admin/roles');
+    expect(v2Href('/admin/billing')).toBe('/v2/admin/billing');
     // Rute yang BELUM dimigrasi harus lewat tanpa perubahan.
     expect(v2Href('/admin/announcements')).toBe('/admin/announcements');
     // Tidak boleh menumpuk prefix kalau dipanggil dua kali.

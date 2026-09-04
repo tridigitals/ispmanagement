@@ -540,11 +540,7 @@ impl NotificationService {
         Ok(())
     }
 
-    pub async fn send_fcm_push(
-        &self,
-        notif: &Notification,
-        user_id: &str,
-    ) -> AppResult<()> {
+    pub async fn send_fcm_push(&self, notif: &Notification, user_id: &str) -> AppResult<()> {
         // Firebase v1 API requires a service account JSON file
         let sa_path = match std::env::var("FIREBASE_SERVICE_ACCOUNT_PATH") {
             Ok(p) if !p.is_empty() => p,
@@ -554,13 +550,12 @@ impl NotificationService {
             }
         };
 
-        let devices = sqlx::query_as::<_, UserDevice>(
-            "SELECT * FROM user_devices WHERE user_id = $1",
-        )
-        .bind(user_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
+        let devices =
+            sqlx::query_as::<_, UserDevice>("SELECT * FROM user_devices WHERE user_id = $1")
+                .bind(user_id)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
 
         if devices.is_empty() {
             return Ok(());
@@ -632,7 +627,9 @@ impl NotificationService {
                                 // Parse JSON to check error code
                                 serde_json::from_str::<serde_json::Value>(&body)
                                     .ok()
-                                    .and_then(|v| v["error"]["status"].as_str().map(|s| s.to_string()))
+                                    .and_then(|v| {
+                                        v["error"]["status"].as_str().map(|s| s.to_string())
+                                    })
                                     .map(|s| s == "UNREGISTERED" || s == "NOT_FOUND")
                                     .unwrap_or(false)
                             }
@@ -643,12 +640,10 @@ impl NotificationService {
                                 "🗑️ FCM token unregistered — auto-deleting device {}",
                                 device.id
                             );
-                            let _ = sqlx::query(
-                                "DELETE FROM user_devices WHERE id = $1"
-                            )
-                            .bind(&device.id)
-                            .execute(&self.pool)
-                            .await;
+                            let _ = sqlx::query("DELETE FROM user_devices WHERE id = $1")
+                                .bind(&device.id)
+                                .execute(&self.pool)
+                                .await;
                         }
                     }
                 }
@@ -666,15 +661,13 @@ impl NotificationService {
     async fn get_firebase_access_token(sa_path: &str) -> Result<String, String> {
         use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 
-        let sa_str = std::fs::read_to_string(sa_path)
-            .map_err(|e| format!("read service account: {}", e))?;
-        let sa: serde_json::Value = serde_json::from_str(&sa_str)
-            .map_err(|e| format!("parse service account: {}", e))?;
+        let sa_str =
+            std::fs::read_to_string(sa_path).map_err(|e| format!("read service account: {}", e))?;
+        let sa: serde_json::Value =
+            serde_json::from_str(&sa_str).map_err(|e| format!("parse service account: {}", e))?;
 
-        let client_email = sa["client_email"].as_str()
-            .ok_or("missing client_email")?;
-        let private_key_pem = sa["private_key"].as_str()
-            .ok_or("missing private_key")?;
+        let client_email = sa["client_email"].as_str().ok_or("missing client_email")?;
+        let private_key_pem = sa["private_key"].as_str().ok_or("missing private_key")?;
 
         let now = chrono::Utc::now().timestamp();
 
@@ -699,8 +692,7 @@ impl NotificationService {
         let header = Header::new(Algorithm::RS256);
         let key = EncodingKey::from_rsa_pem(private_key_pem.as_bytes())
             .map_err(|e| format!("invalid RSA key: {}", e))?;
-        let jwt = encode(&header, &claims, &key)
-            .map_err(|e| format!("JWT encode: {}", e))?;
+        let jwt = encode(&header, &claims, &key).map_err(|e| format!("JWT encode: {}", e))?;
 
         // Exchange JWT for access token
         let client = reqwest::Client::new();
@@ -719,10 +711,13 @@ impl NotificationService {
             return Err(format!("token exchange failed: {}", body));
         }
 
-        let token_resp: serde_json::Value = resp.json().await
+        let token_resp: serde_json::Value = resp
+            .json()
+            .await
             .map_err(|e| format!("parse token response: {}", e))?;
 
-        token_resp["access_token"].as_str()
+        token_resp["access_token"]
+            .as_str()
             .map(|s| s.to_string())
             .ok_or_else(|| "no access_token in response".to_string())
     }

@@ -49,6 +49,7 @@ export const V2_MIGRATED: readonly string[] = [
   '/admin/support',
   '/admin/team',
   '/admin/roles',
+  '/admin/billing',
 ];
 
 /** Ubah href legacy ke padanan v2 bila halaman itu sudah dimigrasi. */

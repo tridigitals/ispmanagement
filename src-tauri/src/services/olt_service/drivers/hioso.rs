@@ -3,12 +3,12 @@
 //! Communicates with the HIOSO web interface by scraping JavaScript/ASP pages.
 //! Parses `var oltpontable = new Array(...)` and `var ponOnuTable = new Array(...)`.
 
+use super::OltDriver;
 use crate::error::{AppError, AppResult};
 use crate::models::{OltGlobalStats, OltOnuDetail, OltSystemInfo, PonPortStats};
 use async_trait::async_trait;
 use regex::Regex;
 use reqwest::Client;
-use super::OltDriver;
 
 const LOW_SIGNAL_THRESHOLD: f64 = -24.01;
 const LOW_SIGNAL_FLOOR: f64 = -50.0;
@@ -252,7 +252,7 @@ impl OltDriver for HiosoHa7302cstDriver {
                 resp.status()
             )))
         }
-        }
+    }
 
     async fn disconnect(&mut self) -> AppResult<()> {
         self.connected = false;
@@ -341,7 +341,10 @@ impl OltDriver for HiosoHa7302cstDriver {
             let mut off = 0;
             for part in stats_str.split(',') {
                 let part = part.trim();
-                if let Some(v) = part.strip_prefix("ONU Total=").or_else(|| part.strip_prefix("Total=")) {
+                if let Some(v) = part
+                    .strip_prefix("ONU Total=")
+                    .or_else(|| part.strip_prefix("Total="))
+                {
                     t = v.trim().parse().unwrap_or(0);
                 } else if let Some(v) = part.strip_prefix("Online=") {
                     on = v.trim().parse().unwrap_or(0);
@@ -394,7 +397,11 @@ impl OltDriver for HiosoHa7302cstDriver {
         );
 
         let tokens = Self::parse_js_array_tokens(&body, "ponOnuTable");
-        tracing::info!("[HIOSO] PON={} ponOnuTable tokens found: {}", pon, tokens.len());
+        tracing::info!(
+            "[HIOSO] PON={} ponOnuTable tokens found: {}",
+            pon,
+            tokens.len()
+        );
         let mut onus = Vec::new();
 
         // Tokens come in chunks of 13 per ONU

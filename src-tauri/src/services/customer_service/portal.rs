@@ -546,8 +546,7 @@ impl CustomerService {
               AND cs.id = ?3
             LIMIT 1
             "#,
-            subscription_columns =
-                Self::portal_subscription_view_select_columns("cs", "cs.price"),
+            subscription_columns = Self::portal_subscription_view_select_columns("cs", "cs.price"),
         ))
         .bind(tenant_id)
         .bind(&customer_id)
@@ -555,9 +554,7 @@ impl CustomerService {
         .fetch_optional(&self.pool)
         .await?;
 
-        row.ok_or_else(|| {
-            crate::error::AppError::NotFound("Subscription not found".to_string())
-        })
+        row.ok_or_else(|| crate::error::AppError::NotFound("Subscription not found".to_string()))
     }
 
     pub async fn get_my_subscription_stats(

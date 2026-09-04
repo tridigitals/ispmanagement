@@ -86,7 +86,10 @@ async fn list_email_outbox(
         use sqlx::Postgres;
         use sqlx::QueryBuilder;
 
-        let pg = crate::services::pagination::normalize(query.page.unwrap_or(1), query.per_page.unwrap_or(25));
+        let pg = crate::services::pagination::normalize(
+            query.page.unwrap_or(1),
+            query.per_page.unwrap_or(25),
+        );
         let page = pg.page;
         let per_page = pg.per_page;
         let offset: i64 = pg.offset;
@@ -193,7 +196,10 @@ async fn list_email_outbox(
     let (rows, total): (Vec<EmailOutboxItem>, i64) = (Vec::new(), 0);
 
     // Metadata respons harus cocok dengan normalisasi query di atas.
-    let pg = crate::services::pagination::normalize(query.page.unwrap_or(1), query.per_page.unwrap_or(25));
+    let pg = crate::services::pagination::normalize(
+        query.page.unwrap_or(1),
+        query.per_page.unwrap_or(25),
+    );
     let page = pg.page;
     let per_page = pg.per_page;
 
