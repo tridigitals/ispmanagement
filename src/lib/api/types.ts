@@ -265,6 +265,9 @@ export interface TeamMember {
   created_at: string;
   role_level?: number | null;
   deleted_at?: string | null;
+  /** null = kolom tidak di-SELECT oleh endpoint itu, bukan berarti 2FA mati. */
+  two_factor_enabled?: boolean | null;
+  email_verified_at?: string | null;
 }
 
 export interface AuditLog {

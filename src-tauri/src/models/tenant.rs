@@ -139,6 +139,15 @@ pub struct TeamMemberWithUser {
     pub created_at: DateTime<Utc>,
     /// Role level for filtering (e.g. only show users with role_level > 20 for ticket assignment)
     pub role_level: Option<i32>,
+    /// Apakah akun memakai 2FA. `None` = kueri pemanggil tidak menyertakan kolom
+    /// ini (beberapa SELECT hanya butuh nama/role), BUKAN berarti 2FA mati.
+    #[sqlx(default)]
+    pub two_factor_enabled: Option<bool>,
+    /// Kapan email diverifikasi. `None` di dalam Some(...) tidak dibedakan dari
+    /// kolom yang tidak di-SELECT, jadi frontend hanya menuduh saat field ini
+    /// benar-benar hadir bernilai null.
+    #[sqlx(default)]
+    pub email_verified_at: Option<DateTime<Utc>>,
     pub deleted_at: Option<DateTime<Utc>>,
 }
 

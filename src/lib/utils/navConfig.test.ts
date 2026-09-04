@@ -95,6 +95,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     'read:router_inventory',
     'read:settings',
     'read:support',
+    'read:team',
   );
 
   it('mengarahkan halaman yang sudah dimigrasi ke /v2 saat opsi v2 aktif', () => {
@@ -109,6 +110,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     expect(hrefs).toContain('/v2/admin/settings');
     expect(hrefs).toContain('/v2/admin/network/routers');
     expect(hrefs).toContain('/v2/admin/support');
+    expect(hrefs).toContain('/v2/admin/team');
   });
 
   it('membiarkan halaman yang BELUM dimigrasi tetap menunjuk ke rute lama', () => {
@@ -132,7 +134,8 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
 
   it('v2Href hanya menyentuh path yang terdaftar', () => {
     expect(v2Href('/admin/invoices')).toBe('/v2/admin/invoices');
-    expect(v2Href('/admin/team')).toBe('/admin/team');
+    expect(v2Href('/admin/team')).toBe('/v2/admin/team');
+    expect(v2Href('/admin/roles')).toBe('/admin/roles');
     // Tidak boleh menumpuk prefix kalau dipanggil dua kali.
     expect(v2Href(v2Href('/admin/invoices'))).toBe('/v2/admin/invoices');
   });

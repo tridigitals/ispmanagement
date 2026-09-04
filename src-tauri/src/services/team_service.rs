@@ -48,7 +48,9 @@ impl TeamService {
                 u.is_active, 
                 tm.created_at,
                 r.level as role_level,
-                tm.deleted_at
+                tm.deleted_at,
+                u.two_factor_enabled,
+                u.email_verified_at
             FROM tenant_members tm
             JOIN users u ON tm.user_id = u.id
             LEFT JOIN roles r ON tm.role_id = r.id
@@ -69,7 +71,9 @@ impl TeamService {
                 u.is_active, 
                 tm.created_at,
                 r.level as role_level,
-                tm.deleted_at
+                tm.deleted_at,
+                u.two_factor_enabled,
+                u.email_verified_at
             FROM tenant_members tm
             JOIN users u ON tm.user_id = u.id
             LEFT JOIN roles r ON tm.role_id = r.id
@@ -334,6 +338,9 @@ impl TeamService {
             created_at: now,
             role_level: None,
             deleted_at: None,
+            // Anggota baru: belum pernah menyiapkan 2FA, email belum diverifikasi.
+            two_factor_enabled: Some(false),
+            email_verified_at: None,
         })
     }
 
@@ -522,7 +529,9 @@ impl TeamService {
                 u.is_active, 
                 tm.created_at,
                 r.level as role_level,
-                tm.deleted_at
+                tm.deleted_at,
+                u.two_factor_enabled,
+                u.email_verified_at
             FROM tenant_members tm
             JOIN users u ON tm.user_id = u.id
             LEFT JOIN roles r ON tm.role_id = r.id
@@ -543,7 +552,9 @@ impl TeamService {
                 u.is_active, 
                 tm.created_at,
                 r.level as role_level,
-                tm.deleted_at
+                tm.deleted_at,
+                u.two_factor_enabled,
+                u.email_verified_at
             FROM tenant_members tm
             JOIN users u ON tm.user_id = u.id
             LEFT JOIN roles r ON tm.role_id = r.id

@@ -15,6 +15,18 @@
     danger?: boolean;
     onclick?: () => void;
     href?: string;
+    /**
+     * Nonaktifkan aksi yang pasti ditolak backend, misal mengubah anggota
+     * dengan level role sama atau lebih tinggi. Lebih jujur daripada
+     * membiarkan pengguna mengklik lalu menerima 403.
+     */
+    disabled?: boolean;
+    /**
+     * Alasan aksi dinonaktifkan. Wajib diisi bersama `disabled` — tombol mati
+     * tanpa penjelasan memaksa pengguna menebak. Dipakai sebagai title dan
+     * masuk ke aria-label supaya terbaca screen reader.
+     */
+    disabledReason?: string;
   }
 
   interface Props {
@@ -53,7 +65,12 @@
   {:else}
     <button
       onclick={() => run(primary)}
-      class="focus-ring inline-flex h-7 items-center gap-1 rounded-md px-2 text-sm font-medium text-ink-700 ring-1 ring-inset ring-ink-200 hover:bg-ink-50"
+      disabled={primary.disabled}
+      title={primary.disabled ? primary.disabledReason : undefined}
+      aria-label={primary.disabled && primary.disabledReason
+        ? `${primary.label} — ${primary.disabledReason}`
+        : undefined}
+      class="focus-ring inline-flex h-7 items-center gap-1 rounded-md px-2 text-sm font-medium text-ink-700 ring-1 ring-inset ring-ink-200 hover:bg-ink-50 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-400 disabled:hover:bg-ink-50"
     >
       {#if primary.icon}<Icon name={primary.icon} size={13} />{/if}
       {primary.label}
@@ -84,7 +101,9 @@
             <button
               role="menuitem"
               onclick={() => run(a)}
-              class="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-base hover:bg-ink-50 {a.danger
+              disabled={a.disabled}
+              title={a.disabled ? a.disabledReason : undefined}
+              class="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-base hover:bg-ink-50 disabled:cursor-not-allowed disabled:text-ink-400 disabled:hover:bg-transparent {a.danger
                 ? 'text-red-700'
                 : 'text-ink-700'}"
             >

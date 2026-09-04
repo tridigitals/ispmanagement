@@ -247,6 +247,14 @@ const commandMap: Record<string, { method: string; path: string }> = {
   add_team_member: { method: 'POST', path: '/team' },
   update_team_member_role: { method: 'PUT', path: '/team/:memberId' },
   remove_team_member: { method: 'DELETE', path: '/team/:memberId' },
+  // Tiga entri di bawah DULU tidak ada, padahal rutenya sudah hidup di
+  // bootstrap/http.rs:683-688 (diverifikasi: GET /api/team/deleted -> 200).
+  // Tanpa entri ini safeInvoke jatuh ke cabang mock dan melempar
+  // "Command '...' not implemented in HTTP API yet.", jadi restore dan
+  // hapus permanen anggota tim tidak pernah bisa jalan di luar Tauri.
+  list_deleted_team_members: { method: 'GET', path: '/team/deleted' },
+  restore_team_member: { method: 'POST', path: '/team/deleted/:memberId/restore' },
+  hard_delete_team_member: { method: 'DELETE', path: '/team/deleted/:memberId' },
   get_roles: { method: 'GET', path: '/roles' },
   get_role: { method: 'GET', path: '/roles/:id' },
   create_new_role: { method: 'POST', path: '/roles' },
