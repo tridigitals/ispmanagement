@@ -150,7 +150,37 @@
     color-scheme: light;
   }
 
-  .ds-scope :is(button, input, select, textarea) {
+  /*
+   * MODAL WARISAN DI ATAS SHELL TERANG.
+   *
+   * `ui/Modal.svelte` (dan RichTextEditor, Select, DateTimeLocalInput yang
+   * dipakai di dalamnya) membaca token legacy `--bg-surface`, `--text-primary`,
+   * `--border-color`, dst. yang di `:root` global.css bernilai gelap
+   * (#11141c / #f2f4f8). Modal v2 dirender sebagai SIBLING AppShell — di luar
+   * `.ds-scope` — jadi ikut gelap dan menabrak halaman terang (laporan Tri
+   * 2026-09-04: "modal detail kok masih hitam").
+   *
+   * Override dipasang di `.v2-light` pada layout v2 (bukan di .ds-scope) karena
+   * backdrop menempel di elemen itu. Halaman legacy tidak tersentuh.
+   * `--color-primary` ikut diterangi: tombol kirim RichTextEditor memakainya
+   * dengan teks putih (2,53:1 di atas ungu lama -> 7,0:1 di atas brand-600).
+   */
+  .v2-light {
+    --bg-surface: var(--color-ink-0);
+    --bg-tertiary: var(--color-ink-50);
+    --text-primary: var(--color-ink-900);
+    --text-secondary: var(--color-ink-500);
+    --text-muted: var(--color-ink-400);
+    --border-color: var(--color-ink-200);
+    --border-subtle: var(--color-ink-100);
+    --color-primary: var(--color-brand-600);
+    --color-primary-hover: var(--color-brand-700);
+    --color-primary-subtle: var(--color-brand-50);
+    --shadow-md: 0 12px 32px rgba(9, 12, 20, 0.18);
+  }
+
+  .ds-scope :is(button, input, select, textarea),
+  .v2-light :is(button, input, select, textarea) {
     appearance: none;
     -webkit-appearance: none;
     min-height: 0;
@@ -161,22 +191,26 @@
     letter-spacing: inherit;
   }
 
-  .ds-scope :is(button, [role='button']) {
+  .ds-scope :is(button, [role='button']),
+  .v2-light :is(button, [role='button']) {
     cursor: pointer;
   }
 
-  .ds-scope :is(button, input, select, textarea):disabled {
+  .ds-scope :is(button, input, select, textarea):disabled,
+  .v2-light :is(button, input, select, textarea):disabled {
     cursor: not-allowed;
   }
 
   /* Target sentuh: WCAG 2.2 AA (2.5.8) minta minimal 24x24px. Kontrol di
      dalam .ds-scope dijamin lewat batas itu tanpa memaksa 44px seperti
      aturan lama. */
-  .ds-scope :is(button, a[href], input, select, textarea) {
+  .ds-scope :is(button, a[href], input, select, textarea),
+  .v2-light :is(button, a[href], input, select, textarea) {
     min-width: 24px;
   }
 
-  .ds-scope a {
+  .ds-scope a,
+  .v2-light a {
     color: inherit;
   }
 

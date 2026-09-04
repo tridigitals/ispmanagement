@@ -49,7 +49,15 @@
 </script>
 
 {#if ready}
-  {@render children()}
+  <!--
+    `v2-light` meng-override token warna gelap legacy supaya komponen warisan
+    (ui/Modal, RichTextEditor, Select) yang dirender DI LUAR .ds-scope ikut
+    terang. `contents` = tidak membuat box, jadi layout h-dvh AppShell tidak
+    berubah; custom property tetap diwarisi lewat DOM.
+  -->
+  <div class="contents v2-light">
+    {@render children()}
+  </div>
 {:else}
   <div class="grid h-dvh place-items-center bg-ink-50">
     <div class="text-base text-ink-500">Memuat…</div>

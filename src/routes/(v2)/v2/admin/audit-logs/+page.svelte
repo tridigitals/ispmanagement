@@ -353,8 +353,8 @@
     margin-bottom: 16px;
   }
   .panel {
-    background: var(--ds-surface, #fff);
-    border: 1px solid var(--ds-border, #e4e4e7);
+    background: var(--color-ink-0);
+    border: 1px solid var(--color-ink-200);
     border-radius: 12px;
     padding: 14px 16px 10px;
     margin-bottom: 14px;
@@ -374,21 +374,21 @@
     display: block;
     font-size: 12px;
     font-weight: 600;
-    color: var(--ds-ink-500, #52525b);
+    color: var(--color-ink-500);
     margin-bottom: 4px;
   }
   .inp {
     width: 100%;
     height: 36px;
     border-radius: 8px;
-    border: 1px solid var(--ds-border, #e4e4e7);
+    border: 1px solid var(--color-ink-200);
     background: #fff;
     padding: 0 10px;
     font-size: 13px;
-    color: var(--ds-ink-900, #18181b);
+    color: var(--color-ink-900);
   }
   .inp:focus-visible {
-    outline: 2px solid var(--ds-brand-600, #4f46e5);
+    outline: 2px solid var(--color-brand-600);
     outline-offset: 1px;
   }
   .f-btn {
@@ -397,12 +397,12 @@
   .hint {
     margin: 10px 0 0;
     font-size: 12px;
-    color: var(--ds-ink-500, #52525b);
+    color: var(--color-ink-500);
   }
   .date-err {
     margin: 8px 0 0;
     font-size: 12px;
-    color: var(--ds-negative, #b91c1c);
+    color: #b91c1c;
   }
   .err {
     margin-bottom: 12px;
@@ -410,7 +410,7 @@
     border-radius: 10px;
     background: rgba(239, 68, 68, 0.08);
     border: 1px solid rgba(239, 68, 68, 0.25);
-    color: var(--ds-negative, #b91c1c);
+    color: #b91c1c;
     font-size: 13px;
   }
   .det {
@@ -420,10 +420,10 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 12.5px;
-    color: var(--ds-ink-500, #52525b);
+    color: var(--color-ink-500);
   }
   .muted {
-    color: var(--ds-ink-500, #52525b);
+    color: var(--color-ink-500);
   }
   .mono {
     font-family: ui-monospace, monospace;
@@ -456,23 +456,23 @@
   .detail dt {
     font-size: 12px;
     font-weight: 600;
-    color: var(--ds-ink-500, #52525b);
+    color: var(--color-ink-500);
   }
   .detail dd {
     margin: 0;
     font-size: 13px;
-    color: var(--ds-ink-900, #18181b);
+    color: var(--color-ink-900);
   }
   .det-block {
     margin-top: 14px;
-    border-top: 1px solid var(--ds-border, #e4e4e7);
+    border-top: 1px solid var(--color-ink-200);
     padding-top: 12px;
   }
   .det-title {
     margin: 0 0 8px;
     font-size: 12px;
     font-weight: 700;
-    color: var(--ds-ink-500, #52525b);
+    color: var(--color-ink-500);
   }
   .det-raw {
     margin: 0;
