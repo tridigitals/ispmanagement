@@ -6,25 +6,15 @@
   empty state, dan pembungkus scroll horizontal supaya tabel lebar tidak
   merusak layout halaman (masalah overflow 1.114px sebelumnya).
 -->
-<script lang="ts">
+<script lang="ts" generics="TRow extends object">
   import type { Snippet } from 'svelte';
   import TableSkeleton from './TableSkeleton.svelte';
   import Icon from './Icon.svelte';
-
-  export interface Column {
-    key: string;
-    label: string;
-    align?: 'left' | 'right';
-    /** Set true untuk kolom angka: mono + tabular-nums. */
-    num?: boolean;
-    /** Sembunyikan di bawah breakpoint md. */
-    hideSm?: boolean;
-    width?: string;
-  }
+  import type { Column } from './table-types';
 
   interface Props {
     columns: Column[];
-    rows: Record<string, unknown>[];
+    rows: TRow[];
     loading?: boolean;
     mode?: 'light' | 'dark';
     /** Tinggi maksimum area scroll; header tetap sticky. */
@@ -34,7 +24,7 @@
     /** Baris ringkasan di bawah tabel. */
     footNote?: string;
     /** Render sel kustom: dipanggil dengan (row, column). */
-    cell?: Snippet<[Record<string, unknown>, Column]>;
+    cell?: Snippet<[TRow, Column]>;
   }
 
   let {
@@ -86,7 +76,10 @@
                   {#if cell}
                     {@render cell(row, c)}
                   {:else}
-                    {row[c.key] ?? '—'}
+                    <!-- `TRow extends object` (bukan Record) supaya interface
+                         seperti RouterLike bisa dipakai: TS tidak memberi index
+                         signature implisit ke interface. Cast hanya di sini. -->
+                    {(row as Record<string, unknown>)[c.key] ?? '—'}
                   {/if}
                 </td>
               {/each}

@@ -26,6 +26,7 @@ export { default as AppShell } from './AppShell.svelte';
 
 export type { RailItem, RailGroup } from './nav-types';
 export type { FieldType, FieldOption } from './Field.svelte';
+export type { Column } from './table-types';
 
 export { icons, type IconName } from './icons';
 export {

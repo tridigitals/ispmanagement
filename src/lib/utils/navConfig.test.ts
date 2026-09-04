@@ -92,6 +92,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     'read:customers',
     'read:network_noc',
     'read:pppoe',
+    'read:router_inventory',
     'read:settings',
   );
 
@@ -105,6 +106,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     expect(hrefs).toContain('/v2/admin/invoices');
     expect(hrefs).toContain('/v2/admin/network/pppoe');
     expect(hrefs).toContain('/v2/admin/settings');
+    expect(hrefs).toContain('/v2/admin/network/routers');
   });
 
   it('membiarkan halaman yang BELUM dimigrasi tetap menunjuk ke rute lama', () => {
