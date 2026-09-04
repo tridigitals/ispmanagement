@@ -29,32 +29,29 @@ pub struct AuditLogQuery {
 }
 
 // Map Query to Filter
-impl From<AuditLogQuery> for crate::models::AuditLogFilter {
-    fn from(val: AuditLogQuery) -> Self {
-        let date_from = val.date_from.and_then(|d| {
-            chrono::DateTime::parse_from_rfc3339(&d)
-                .ok()
-                .map(|dt| dt.with_timezone(&chrono::Utc))
-        });
-        let date_to = val.date_to.and_then(|d| {
-            chrono::DateTime::parse_from_rfc3339(&d)
-                .ok()
-                .map(|dt| dt.with_timezone(&chrono::Utc))
-        });
-
-        crate::models::AuditLogFilter {
-            page: val.page,
-            per_page: val.per_page,
-            user_id: val.user_id,
-            tenant_id: val.tenant_id,
-            customer_id: val.customer_id,
-            resource: val.resource,
-            resource_id: val.resource_id,
-            action: val.action,
-            date_from,
-            date_to,
-            search: val.search,
-        }
+impl AuditLogQuery {
+    /// Dulu `From<..>` dengan `.ok()` yang membuang tanggal rusak tanpa
+    /// suara; sekarang error eksplisit supaya handler bisa balas 400.
+    fn into_filter(self) -> Result<crate::models::AuditLogFilter, String> {
+        Ok(crate::models::AuditLogFilter {
+            page: self.page,
+            per_page: self.per_page,
+            user_id: self.user_id,
+            tenant_id: self.tenant_id,
+            customer_id: self.customer_id,
+            resource: self.resource,
+            resource_id: self.resource_id,
+            action: self.action,
+            date_from: crate::services::audit_service::parse_date_param(
+                "date_from",
+                self.date_from.as_ref(),
+            )?,
+            date_to: crate::services::audit_service::parse_date_param(
+                "date_to",
+                self.date_to.as_ref(),
+            )?,
+            search: self.search,
+        })
     }
 }
 
@@ -102,7 +99,9 @@ pub async fn list_audit_logs(
         ));
     }
 
-    let filter: crate::models::AuditLogFilter = query.into();
+    let filter = query
+        .into_filter()
+        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, e))?;
     let page = filter.page.unwrap_or(1); // Keep for response
     let per_page = filter.per_page.unwrap_or(20);
 
@@ -153,7 +152,9 @@ pub async fn list_tenant_audit_logs(
     }
 
     // Force tenant scoping regardless of client-provided tenant_id.
-    let mut filter: crate::models::AuditLogFilter = query.into();
+    let mut filter = query
+        .into_filter()
+        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, e))?;
     filter.tenant_id = Some(tenant_id);
 
     let page = filter.page.unwrap_or(1);

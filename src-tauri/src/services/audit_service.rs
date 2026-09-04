@@ -8,6 +8,50 @@ use chrono::Utc;
 // If PlanService depends on nothing complex, it is fine.
 use crate::services::plan_service::PlanService;
 
+/// Escape karakter wildcard LIKE (`%`, `_`, `\`) supaya kata kunci pencarian
+/// diperlakukan literal. Tanpa ini, mencari "%" mencocokkan SELURUH tabel
+/// (dibuktikan di produksi 2026-09-04: pattern `%:%` tanpa escape -> 21.667
+/// baris dari 21.706). Backslash di-escape lebih dulu agar tidak
+/// double-escape hasil penggantian berikutnya.
+pub fn escape_like(term: &str) -> String {
+    term.replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
+}
+
+/// Pola ILIKE/LIKE terbungkus untuk satu kata kunci.
+pub fn like_pattern(term: &str) -> String {
+    format!("%{}%", escape_like(term))
+}
+
+/// Parse parameter tanggal dari klien. Dulu kedua pemanggil memakai
+/// `.ok()` yang membuang tanggal rusak DIEM-DIEM: filter tampak aktif di UI
+/// tapi server mengabaikannya. Sekarang error eksplisit (400 di HTTP).
+///
+/// Menerima tiga bentuk: RFC3339 penuh (yang dikirim `toISOString()`),
+/// `YYYY-MM-DDTHH:MM[:SS]` tanpa zona (datetime-local mentah, dianggap UTC),
+/// dan `YYYY-MM-DD` (awal hari UTC).
+pub fn parse_date_param(name: &str, raw: Option<&String>) -> Result<Option<chrono::DateTime<Utc>>, String> {
+    let Some(raw) = raw.map(|s| s.trim()).filter(|s| !s.is_empty()) else {
+        return Ok(None);
+    };
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(raw) {
+        return Ok(Some(dt.with_timezone(&Utc)));
+    }
+    if let Ok(ndt) = chrono::NaiveDateTime::parse_from_str(raw, "%Y-%m-%dT%H:%M:%S")
+        .or_else(|_| chrono::NaiveDateTime::parse_from_str(raw, "%Y-%m-%dT%H:%M"))
+    {
+        return Ok(Some(ndt.and_utc()));
+    }
+    if let Ok(nd) = chrono::NaiveDate::parse_from_str(raw, "%Y-%m-%d") {
+        return Ok(Some(nd.and_hms_opt(0, 0, 0).expect("00:00:00 valid").and_utc()));
+    }
+    Err(format!(
+        "Parameter '{name}' bukan tanggal yang sah: '{raw}'. \
+         Pakai format ISO 8601 (contoh: 2026-09-01T00:00:00Z)."
+    ))
+}
+
 #[derive(Clone)]
 pub struct AuditService {
     pub pool: DbPool,
@@ -195,8 +239,13 @@ impl AuditService {
             }
 
             if let Some(search) = &filter.search {
-                let pattern = format!("%{}%", search);
-                qb.push(" AND (l.resource ILIKE ");
+                // Kolom action ikut dicari: tanpa ini, kata "collection_run"
+                // menghasilkan NOL baris padahal 13.594 baris ber-action itu
+                // (dibuktikan di produksi 2026-09-04).
+                let pattern = like_pattern(search);
+                qb.push(" AND (l.action ILIKE ");
+                qb.push_bind(pattern.clone());
+                qb.push(" OR l.resource ILIKE ");
                 qb.push_bind(pattern.clone());
                 qb.push(" OR l.resource_id ILIKE ");
                 qb.push_bind(pattern.clone());
@@ -258,8 +307,10 @@ impl AuditService {
                 count_qb.push_bind(date_to);
             }
             if let Some(search) = &filter.search {
-                let pattern = format!("%{}%", search);
-                count_qb.push(" AND (l.resource ILIKE ");
+                let pattern = like_pattern(search);
+                count_qb.push(" AND (l.action ILIKE ");
+                count_qb.push_bind(pattern.clone());
+                count_qb.push(" OR l.resource ILIKE ");
                 count_qb.push_bind(pattern.clone());
                 count_qb.push(" OR l.resource_id ILIKE ");
                 count_qb.push_bind(pattern.clone());
@@ -361,16 +412,20 @@ impl AuditService {
                 qb.push_bind(date_to.to_rfc3339());
             }
             if let Some(search) = &filter.search {
-                let pattern = format!("%{}%", search);
-                qb.push(" AND (l.resource LIKE ");
+                let pattern = like_pattern(search);
+                // SQLite tidak punya ILIKE dan LIKE-nya butuh ESCAPE eksplisit
+                // untuk backslash (Postgres ILIKE sudah default backslash).
+                qb.push(" AND (l.action LIKE ");
                 qb.push_bind(pattern.clone());
-                qb.push(" OR l.resource_id LIKE ");
+                qb.push(" ESCAPE '\\' OR l.resource LIKE ");
                 qb.push_bind(pattern.clone());
-                qb.push(" OR l.details LIKE ");
+                qb.push(" ESCAPE '\\' OR l.resource_id LIKE ");
                 qb.push_bind(pattern.clone());
-                qb.push(" OR u.name LIKE ");
+                qb.push(" ESCAPE '\\' OR l.details LIKE ");
+                qb.push_bind(pattern.clone());
+                qb.push(" ESCAPE '\\' OR u.name LIKE ");
                 qb.push_bind(pattern);
-                qb.push(")");
+                qb.push(" ESCAPE '\\')");
             }
 
             // Count
@@ -420,16 +475,18 @@ impl AuditService {
                 count_qb.push_bind(date_to.to_rfc3339());
             }
             if let Some(search) = &filter.search {
-                let pattern = format!("%{}%", search);
-                count_qb.push(" AND (l.resource LIKE ");
+                let pattern = like_pattern(search);
+                count_qb.push(" AND (l.action LIKE ");
                 count_qb.push_bind(pattern.clone());
-                count_qb.push(" OR l.resource_id LIKE ");
+                count_qb.push(" ESCAPE '\\' OR l.resource LIKE ");
                 count_qb.push_bind(pattern.clone());
-                count_qb.push(" OR l.details LIKE ");
+                count_qb.push(" ESCAPE '\\' OR l.resource_id LIKE ");
                 count_qb.push_bind(pattern.clone());
-                count_qb.push(" OR u.name LIKE ");
+                count_qb.push(" ESCAPE '\\' OR l.details LIKE ");
+                count_qb.push_bind(pattern.clone());
+                count_qb.push(" ESCAPE '\\' OR u.name LIKE ");
                 count_qb.push_bind(pattern);
-                count_qb.push(")");
+                count_qb.push(" ESCAPE '\\')");
             }
 
             let count: i64 = count_qb.build().fetch_one(&self.pool).await?.try_get(0)?;
@@ -456,6 +513,51 @@ impl AuditService {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn escape_like_menetralkan_wildcard() {
+        // Regression: mencari "%" dulu mencocokkan seluruh tabel.
+        assert_eq!(escape_like("100%"), "100\\%");
+        assert_eq!(escape_like("a_b"), "a\\_b");
+        assert_eq!(escape_like("C:\\path"), "C:\\\\path");
+        // Backslash dulu, lalu % — urutan benar berarti tidak double-escape.
+        assert_eq!(escape_like("\\%"), "\\\\\\%");
+        assert_eq!(escape_like("teks biasa"), "teks biasa");
+    }
+
+    #[test]
+    fn like_pattern_membungkus_tanpa_wildcard_liar() {
+        assert_eq!(like_pattern("login"), "%login%");
+        assert_eq!(like_pattern("%"), "%\\%%"); // % literal di dalam pembungkus
+    }
+
+    #[test]
+    fn parse_date_menerima_tiga_bentuk_sah() {
+        let rfc = Some("2026-09-01T00:00:00Z".to_string());
+        assert!(parse_date_param("d", rfc.as_ref()).unwrap().is_some());
+        let lokal = Some("2026-09-01T07:30".to_string());
+        assert!(parse_date_param("d", lokal.as_ref()).unwrap().is_some());
+        let hari = Some("2026-09-01".to_string());
+        assert!(parse_date_param("d", hari.as_ref()).unwrap().is_some());
+    }
+
+    #[test]
+    fn parse_date_kosong_adalah_none_bukan_error() {
+        assert!(parse_date_param("d", None).unwrap().is_none());
+        let kosong = Some("   ".to_string());
+        assert!(parse_date_param("d", kosong.as_ref()).unwrap().is_none());
+    }
+
+    #[test]
+    fn parse_date_rusak_ditolak_eksplisit() {
+        // Regression: `.ok()` lama membuang ini diam-diam; filter tampak
+        // aktif di UI tapi server mengabaikannya.
+        let rusak = Some("kemarin".to_string());
+        let err = parse_date_param("date_from", rusak.as_ref()).unwrap_err();
+        assert!(err.contains("date_from"));
+    }
+
     #[test]
     fn audit_plan_gate_uses_forbidden_contract() {
         let source = include_str!("audit_service.rs");

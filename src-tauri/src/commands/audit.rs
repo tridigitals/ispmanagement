@@ -39,16 +39,12 @@ pub async fn list_audit_logs(
         return Err("Unauthorized".to_string());
     }
 
-    let date_from_parsed = date_from.and_then(|d| {
-        chrono::DateTime::parse_from_rfc3339(&d)
-            .ok()
-            .map(|dt| dt.with_timezone(&chrono::Utc))
-    });
-    let date_to_parsed = date_to.and_then(|d| {
-        chrono::DateTime::parse_from_rfc3339(&d)
-            .ok()
-            .map(|dt| dt.with_timezone(&chrono::Utc))
-    });
+    let date_from_parsed = crate::services::audit_service::parse_date_param(
+        "date_from",
+        date_from.as_ref(),
+    )?;
+    let date_to_parsed =
+        crate::services::audit_service::parse_date_param("date_to", date_to.as_ref())?;
 
     let filter = crate::models::AuditLogFilter {
         page,
@@ -111,16 +107,12 @@ pub async fn list_tenant_audit_logs(
         return Err("Missing permission audit_logs:read".to_string());
     }
 
-    let date_from_parsed = date_from.and_then(|d| {
-        chrono::DateTime::parse_from_rfc3339(&d)
-            .ok()
-            .map(|dt| dt.with_timezone(&chrono::Utc))
-    });
-    let date_to_parsed = date_to.and_then(|d| {
-        chrono::DateTime::parse_from_rfc3339(&d)
-            .ok()
-            .map(|dt| dt.with_timezone(&chrono::Utc))
-    });
+    let date_from_parsed = crate::services::audit_service::parse_date_param(
+        "date_from",
+        date_from.as_ref(),
+    )?;
+    let date_to_parsed =
+        crate::services::audit_service::parse_date_param("date_to", date_to.as_ref())?;
 
     let filter = crate::models::AuditLogFilter {
         page,
