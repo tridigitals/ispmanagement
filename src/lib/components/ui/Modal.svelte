@@ -98,6 +98,12 @@
 
   .modal-card {
     background: var(--bg-surface, #1e293b);
+    /* Teks EKSPLISIT, bukan warisan body: `body { color:
+       var(--text-primary) }` di global.css di-resolve terhadap :root gelap
+       (#f2f4f8), dan modal fixed di luar .v2-light mewarisinya -> teks
+       nyaris putih di atas kartu putih (input file cover, placeholder).
+       Di legacy: var = terang di atas kartu gelap, tetap benar. */
+    color: var(--text-primary, #f2f4f8);
     width: 100%;
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);

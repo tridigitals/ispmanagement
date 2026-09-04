@@ -58,9 +58,11 @@
   .label {
     display: grid;
     gap: 0.35rem;
+    /* Disamakan dengan ds/Field (13px/500) — dulu 14,4px/750 sehingga dua
+       bahasa visual dalam satu form (modal sunting pengumuman). */
     color: var(--text-secondary);
-    font-weight: 750;
-    font-size: 0.9rem;
+    font-weight: 500;
+    font-size: 0.8125rem;
   }
 
   .wrap {
@@ -74,9 +76,12 @@
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
-    border-radius: var(--radius-md);
-    padding: 0.65rem 2.6rem 0.65rem 0.85rem;
-    font-size: 0.95rem;
+    /* Tinggi 36px + radius 12px = ds/Field (h-9 rounded-lg); dulu 48px/8px
+       menjulang di samping input Field 36px. */
+    border-radius: var(--radius-lg);
+    height: 36px;
+    padding: 0 2.6rem 0 0.85rem;
+    font-size: 0.8125rem;
   }
 
   .input:focus {
@@ -102,11 +107,11 @@
 
   .icon-btn {
     position: absolute;
-    right: 0.55rem;
+    right: 0.4rem;
     top: 50%;
     transform: translateY(-50%);
-    width: 34px;
-    height: 34px;
+    width: 26px;
+    height: 26px;
     border-radius: 10px;
     border: 1px solid var(--border-color);
     background: var(--bg-tertiary);

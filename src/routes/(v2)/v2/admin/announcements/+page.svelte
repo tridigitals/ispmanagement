@@ -592,7 +592,7 @@
 
   <div class="space-y-3">
     {#if $isSuperAdmin && !editTarget}
-      <Field
+      <Field stacked
         id="f-scope"
         label="Cakupan"
         value={fScope}
@@ -603,7 +603,7 @@
       />
     {/if}
 
-    <Field
+    <Field stacked
       id="f-audience"
       label="Audiens"
       value={fAudience}
@@ -618,7 +618,7 @@
     />
 
     <div class="grid grid-cols-2 gap-3">
-      <Field
+      <Field stacked
         id="f-severity"
         label="Tingkat"
         value={fSeverity}
@@ -626,7 +626,7 @@
         options={severityOpts}
         onchange={(v) => (fSeverity = v)}
       />
-      <Field
+      <Field stacked
         id="f-mode"
         label="Mode tampil"
         value={fMode}
@@ -636,7 +636,7 @@
       />
     </div>
 
-    <Field
+    <Field stacked
       id="f-title"
       label="Judul"
       value={fTitle}
@@ -645,9 +645,9 @@
     />
 
     {#if Editor}
-      <Editor bind:value={fBody} label="Isi" placeholder="Tulis pesan…" />
+      <Editor bind:value={fBody} label="Isi" placeholder="Tulis pesan…" minHeight={200} />
     {:else}
-      <Field
+      <Field stacked
         id="f-body"
         label="Isi"
         value={fBody}
@@ -667,14 +667,14 @@
     {/each}
 
     <div class="grid grid-cols-2 gap-3">
-      <Field
+      <Field stacked
         id="f-inapp"
         label="Notifikasi aplikasi"
         value={String(fInApp)}
         type="toggle"
         onchange={(v) => (fInApp = v === 'true')}
       />
-      <Field
+      <Field stacked
         id="f-email"
         label="Email"
         value={String(fEmail)}
@@ -687,7 +687,7 @@
     {/if}
 
     {#if fEmail}
-      <Field
+      <Field stacked
         id="f-email-force"
         label="Kirim email walau nonaktif global"
         value={String(fEmailForce)}
@@ -699,7 +699,14 @@
 
     <div>
       <label class="mb-1 block text-sm font-medium text-ink-700" for="f-cover">Gambar cover (opsional)</label>
-      <input id="f-cover" type="file" accept="image/*" onchange={onPickCover} class="text-sm" />
+      <input
+        id="f-cover"
+        type="file"
+        accept="image/*"
+        onchange={onPickCover}
+        class="block w-full cursor-pointer rounded-lg border border-dashed border-ink-300 bg-white p-2 text-sm text-ink-700
+          file:mr-2 file:rounded-md file:border-0 file:bg-ink-100 file:px-2.5 file:py-1 file:text-sm file:text-ink-700"
+      />
       {#if fCoverPreview}
         <img src={fCoverPreview} alt="Pratinjau cover" class="mt-2 h-24 rounded-lg object-cover" />
       {/if}

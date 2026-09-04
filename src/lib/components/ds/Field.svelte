@@ -47,6 +47,13 @@
     disabled?: boolean;
     /** Tandai baris yang nilainya berbeda dari tersimpan. */
     dirty?: boolean;
+    /**
+     * Label di ATAS input (bukan kiri). Default false = layout 15rem kiri
+     * yang dirancang untuk form halaman penuh; di dalam modal 720px layout
+     * itu menyempitkan input grid 2-kolom sampai 69px (terukur, modal
+     * sunting pengumuman).
+     */
+    stacked?: boolean;
     onchange: (value: string) => void;
   }
 
@@ -65,6 +72,7 @@
     rows = 3,
     disabled = false,
     dirty = false,
+    stacked = false,
     onchange,
   }: Props = $props();
 
@@ -78,8 +86,12 @@
   const ring = $derived(error ? 'ring-red-400' : 'ring-ink-200 hover:ring-ink-300');
 </script>
 
-<div class="grid gap-1.5 py-3 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] sm:gap-x-6 sm:py-3.5">
-  <div class="flex min-w-0 items-start gap-1.5 sm:pt-1.5">
+<div
+  class="grid gap-1.5 py-3 {stacked
+    ? ''
+    : 'sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] sm:gap-x-6 sm:py-3.5'}"
+>
+  <div class="flex min-w-0 items-start gap-1.5 {stacked ? '' : 'sm:pt-1.5'}">
     <label for={id} class="text-base font-medium text-ink-800">{label}</label>
     {#if dirty}
       <!-- Titik kecil, bukan badge: menandai baris berubah tanpa menarik perhatian
