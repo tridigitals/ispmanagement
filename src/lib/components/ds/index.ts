@@ -18,11 +18,14 @@ export { default as DataTable } from './DataTable.svelte';
 export { default as Tabs } from './Tabs.svelte';
 export { default as DetailHeader } from './DetailHeader.svelte';
 export { default as FieldRow } from './FieldRow.svelte';
+export { default as Field } from './Field.svelte';
+export { default as SaveBar } from './SaveBar.svelte';
 export { default as NavRail } from './NavRail.svelte';
 export { default as Topbar } from './Topbar.svelte';
 export { default as AppShell } from './AppShell.svelte';
 
 export type { RailItem, RailGroup } from './nav-types';
+export type { FieldType, FieldOption } from './Field.svelte';
 
 export { icons, type IconName } from './icons';
 export {

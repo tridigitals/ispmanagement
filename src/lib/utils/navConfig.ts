@@ -44,6 +44,7 @@ export const V2_MIGRATED: readonly string[] = [
   '/admin/customers',
   '/admin/invoices',
   '/admin/network/pppoe',
+  '/admin/settings',
 ];
 
 /** Ubah href legacy ke padanan v2 bila halaman itu sudah dimigrasi. */

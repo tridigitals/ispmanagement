@@ -104,6 +104,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     expect(hrefs).toContain('/v2/admin/customers');
     expect(hrefs).toContain('/v2/admin/invoices');
     expect(hrefs).toContain('/v2/admin/network/pppoe');
+    expect(hrefs).toContain('/v2/admin/settings');
   });
 
   it('membiarkan halaman yang BELUM dimigrasi tetap menunjuk ke rute lama', () => {
@@ -112,8 +113,10 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     );
 
     // Belum ada versi v2-nya: harus tetap legacy supaya tidak 404.
-    expect(hrefs).toContain('/admin/settings');
-    expect(hrefs).not.toContain('/v2/admin/settings');
+    expect(hrefs).toContain('/admin/invoices/collection');
+    expect(hrefs).not.toContain('/v2/admin/invoices/collection');
+    expect(hrefs).toContain('/admin/network/olts');
+    expect(hrefs).not.toContain('/v2/admin/network/olts');
   });
 
   it('tidak mengubah href sama sekali di shell lama (opsi v2 mati)', () => {
