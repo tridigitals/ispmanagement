@@ -5,6 +5,7 @@ use crate::models::{
     PaginatedResponse, UpdateIspPackageRequest, UpsertIspPackageRouterMappingRequest,
 };
 use crate::services::{AuditService, AuthService};
+use crate::services::audit_service::like_pattern;
 use chrono::Utc;
 use std::collections::HashSet;
 use uuid::Uuid;
@@ -190,6 +191,10 @@ impl IspPackageService {
         }
 
         let q = q.unwrap_or_default().trim().to_string();
+        // Wildcard LIKE di-escape (bug yang sama dengan audit-logs: mencari
+        // "%" dulu mencocokkan SELURUH tabel). Description ikut dicari —
+        // paket sering dibedakan lewat catatan, bukan hanya nama.
+        let q_pattern = if q.is_empty() { String::new() } else { like_pattern(&q) };
         let pg = crate::services::pagination::normalize(page, per_page);
         let per_page = pg.per_page;
         let offset = pg.offset;
@@ -224,11 +229,12 @@ impl IspPackageService {
             r#"
             SELECT COUNT(*) FROM isp_packages
             WHERE tenant_id = $1
-              AND ($2 = '' OR name ILIKE '%' || $2 || '%')
+              AND ($2 = '' OR name ILIKE $3 OR description ILIKE $3)
             "#,
         )
         .bind(tenant_id)
         .bind(&q)
+        .bind(&q_pattern)
         .fetch_one(&self.pool)
         .await
         .map_err(AppError::Database)?;
@@ -250,15 +256,16 @@ impl IspPackageService {
               updated_at
             FROM isp_packages
             WHERE tenant_id = $1
-              AND ($2 = '' OR name ILIKE '%' || $2 || '%')
+              AND ($2 = '' OR name ILIKE $3 OR description ILIKE $3)
             ORDER BY {sort_column} {sort_direction}
-            LIMIT $3 OFFSET $4
+            LIMIT $4 OFFSET $5
             "#
         );
 
         let rows: Vec<IspPackage> = sqlx::query_as(&list_sql)
             .bind(tenant_id)
             .bind(&q)
+            .bind(&q_pattern)
             .bind(per_page as i64)
             .bind(offset)
             .fetch_all(&self.pool)
@@ -593,6 +600,39 @@ impl IspPackageService {
                 .fetch_optional(&self.pool)
                 .await
                 .map_err(AppError::Database)?;
+        let name = name.ok_or_else(|| AppError::NotFound("Package not found".into()))?;
+
+        // Guard referensi. Tanpa ini:
+        //  - customer_subscriptions/dhcp_static_services (FK RESTRICT) ->
+        //    error DB 23503 mentah bocor sebagai 500 ("violates RESTRICT
+        //    setting..." — dibuktikan di DB produksi 2026-09-04);
+        //  - pppoe_accounts (FK SET NULL) -> paket 546 akun terputus DIEM-DIEM;
+        //  - zone_offers (FK CASCADE) -> penawaran harga raib tanpa peringatan.
+        let refs: Vec<(String, i64)> = sqlx::query_as(
+            r#"
+            SELECT label, cnt FROM (
+              SELECT 'subscriptions' AS label, COUNT(*) AS cnt FROM customer_subscriptions WHERE package_id = $1
+              UNION ALL SELECT 'pppoe_accounts', COUNT(*) FROM pppoe_accounts WHERE package_id = $1
+              UNION ALL SELECT 'dhcp_services', COUNT(*) FROM dhcp_static_services WHERE package_id = $1
+              UNION ALL SELECT 'zone_offers', COUNT(*) FROM zone_offers WHERE package_id = $1
+            ) t WHERE cnt > 0 ORDER BY label
+            "#,
+        )
+        .bind(id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+        if !refs.is_empty() {
+            let parts: Vec<String> = refs
+                .iter()
+                .map(|(l, c)| format!("{c} {l}"))
+                .collect();
+            return Err(AppError::Validation(format!(
+                "Package '{}' is still in use: {}. Move or cancel the related records before deleting.",
+                name,
+                parts.join(", ")
+            )));
+        }
 
         sqlx::query("DELETE FROM isp_packages WHERE tenant_id = $1 AND id = $2")
             .bind(tenant_id)
@@ -608,10 +648,7 @@ impl IspPackageService {
                 "ISP_PACKAGE_DELETE",
                 "isp_packages",
                 Some(id),
-                Some(&format!(
-                    "Deleted ISP package {}",
-                    name.unwrap_or_else(|| id.to_string())
-                )),
+                Some(&format!("Deleted ISP package {name}")),
                 ip_address,
             )
             .await;

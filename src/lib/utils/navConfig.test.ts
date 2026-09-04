@@ -99,6 +99,8 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     'read:team',
     'read:audit_logs',
     'manage:announcements',
+    'read:isp_packages',
+    'manage:isp_packages',
   );
 
   it('mengarahkan halaman yang sudah dimigrasi ke /v2 saat opsi v2 aktif', () => {
@@ -142,6 +144,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     expect(v2Href('/admin/billing')).toBe('/v2/admin/billing');
     expect(v2Href('/admin/announcements')).toBe('/v2/admin/announcements');
     expect(v2Href('/admin/audit-logs')).toBe('/v2/admin/audit-logs');
+    expect(v2Href('/admin/services')).toBe('/v2/admin/services');
     // Rute yang BELUM dimigrasi harus lewat tanpa perubahan.
     expect(v2Href('/admin/olts')).toBe('/admin/olts');
     // Tidak boleh menumpuk prefix kalau dipanggil dua kali.
