@@ -5,6 +5,7 @@ use crate::models::{
     DhcpStaticServicePublic, PaginatedResponse, UpdateDhcpStaticServiceRequest,
 };
 use crate::security::secret::decrypt_secret_opt;
+use crate::services::audit_service::like_pattern;
 use crate::services::{AuditService, AuthService};
 use chrono::Utc;
 use mikrotik_rs::{protocol::command::CommandBuilder, protocol::CommandResponse, MikrotikDevice};
@@ -511,6 +512,61 @@ impl DhcpStaticServiceManager {
         self.router_find_queue_id(dev, queue_name).await
     }
 
+    async fn router_remove_lease(
+        &self,
+        dev: &MikrotikDevice,
+        service: &DhcpStaticService,
+    ) -> Result<bool, anyhow::Error> {
+        let existing = self
+            .router_find_lease_id(dev, &service.dhcp_server_name, &service.mac_address)
+            .await?;
+        let Some(id) = existing else {
+            return Ok(false);
+        };
+        let cmd = CommandBuilder::new()
+            .command("/ip/dhcp-server/lease/remove")
+            .attribute("numbers", Some(id.as_str()))
+            .build();
+        let mut rx = dev.send_command(cmd).await?;
+        while let Some(res) = rx.recv().await {
+            let reply = res?;
+            if let CommandResponse::Trap(trap) = reply {
+                return Err(anyhow::anyhow!(if trap.message.trim().is_empty() {
+                    "RouterOS trap".to_string()
+                } else {
+                    trap.message
+                }));
+            }
+        }
+        Ok(true)
+    }
+
+    async fn router_remove_queue(
+        &self,
+        dev: &MikrotikDevice,
+        queue_name: &str,
+    ) -> Result<bool, anyhow::Error> {
+        let Some(id) = self.router_find_queue_id(dev, queue_name).await? else {
+            return Ok(false);
+        };
+        let cmd = CommandBuilder::new()
+            .command("/queue/simple/remove")
+            .attribute("numbers", Some(id.as_str()))
+            .build();
+        let mut rx = dev.send_command(cmd).await?;
+        while let Some(res) = rx.recv().await {
+            let reply = res?;
+            if let CommandResponse::Trap(trap) = reply {
+                return Err(anyhow::anyhow!(if trap.message.trim().is_empty() {
+                    "RouterOS trap".to_string()
+                } else {
+                    trap.message
+                }));
+            }
+        }
+        Ok(true)
+    }
+
     async fn update_sync_state(
         &self,
         tenant_id: &str,
@@ -591,6 +647,8 @@ impl DhcpStaticServiceManager {
         let per_page = pg.per_page;
         let offset = pg.offset;
         let q = q.unwrap_or_default();
+        // Wildcard user di-escape: dulu cari "%" mencocokkan SELURUH tabel.
+        let q_pattern = if q.is_empty() { String::new() } else { like_pattern(&q) };
         let customer_id = customer_id.unwrap_or_default();
         let location_id = location_id.unwrap_or_default();
         let router_id = router_id.unwrap_or_default();
@@ -605,7 +663,7 @@ impl DhcpStaticServiceManager {
               AND ($3 = '' OR location_id = $3)
               AND ($4 = '' OR router_id = $4)
               AND ($5 = '' OR dhcp_server_name = $5)
-              AND ($6 = '' OR mac_address ILIKE '%' || $6 || '%' OR ip_address ILIKE '%' || $6 || '%' OR comment ILIKE '%' || $6 || '%')
+              AND ($6 = '' OR mac_address ILIKE $7 OR ip_address ILIKE $7 OR comment ILIKE $7)
             "#,
         )
         .bind(tenant_id)
@@ -614,6 +672,7 @@ impl DhcpStaticServiceManager {
         .bind(&router_id)
         .bind(&dhcp_server_name)
         .bind(&q)
+        .bind(&q_pattern)
         .fetch_one(&self.pool)
         .await
         .map_err(AppError::Database)?;
@@ -632,9 +691,9 @@ impl DhcpStaticServiceManager {
               AND ($3 = '' OR location_id = $3)
               AND ($4 = '' OR router_id = $4)
               AND ($5 = '' OR dhcp_server_name = $5)
-              AND ($6 = '' OR mac_address ILIKE '%' || $6 || '%' OR ip_address ILIKE '%' || $6 || '%' OR comment ILIKE '%' || $6 || '%')
+              AND ($6 = '' OR mac_address ILIKE $7 OR ip_address ILIKE $7 OR comment ILIKE $7)
             ORDER BY updated_at DESC
-            LIMIT $7 OFFSET $8
+            LIMIT $8 OFFSET $9
             "#,
         )
         .bind(tenant_id)
@@ -643,6 +702,7 @@ impl DhcpStaticServiceManager {
         .bind(&router_id)
         .bind(&dhcp_server_name)
         .bind(&q)
+        .bind(&q_pattern)
         .bind(per_page as i64)
         .bind(offset)
         .fetch_all(&self.pool)
@@ -910,6 +970,34 @@ impl DhcpStaticServiceManager {
         self.auth_service
             .check_permission(actor_id, tenant_id, "dhcp_static", "manage")
             .await?;
+        // Load dulu: id tak dikenal harus 404, bukan "sukses" hampa yang
+        // tetap menulis audit log seolah barisnya ada.
+        let service = self.load_service_row(tenant_id, id).await?;
+
+        // Bersihkan jejak di router SEBELUM baris DB hilang. Setelah baris
+        // terhapus, reconcile tidak lagi tahu lease/queue ini pernah ada —
+        // dulu DELETE sama sekali tidak menyentuh router sehingga entri
+        // statis tertinggal selamanya. Koneksi router mati bukan alasan
+        // membatalkan penghapusan (layanan bisa saja pindah router), tapi
+        // kegagalannya dilaporkan lewat pesan.
+        let mut router_note = String::new();
+        match self.connect_router(tenant_id, &service.router_id).await {
+            Ok(dev) => {
+                if let Err(e) = self.router_remove_lease(&dev, &service).await {
+                    router_note = format!(" (lease di router tidak terhapus: {e})");
+                } else if let Some(name) = service.queue_name.as_deref() {
+                    if !name.is_empty() {
+                        if let Err(e) = self.router_remove_queue(&dev, name).await {
+                            router_note = format!(" (queue {name} tidak terhapus: {e})");
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                router_note = format!(" (router tidak terjangkau: {e:?})");
+            }
+        }
+
         sqlx::query("DELETE FROM dhcp_static_services WHERE tenant_id = $1 AND id = $2")
             .bind(tenant_id)
             .bind(id)
@@ -923,7 +1011,10 @@ impl DhcpStaticServiceManager {
                 "DHCP_STATIC_DELETE",
                 "dhcp_static_services",
                 Some(id),
-                Some("Deleted DHCP static service"),
+                Some(&format!(
+                    "Deleted DHCP static service {} -> {}{}",
+                    service.mac_address, service.ip_address, router_note
+                )),
                 ip_address,
             )
             .await;
@@ -980,6 +1071,14 @@ impl DhcpStaticServiceManager {
         let updated = self.load_service_row(tenant_id, id).await?;
         if let Some(error) = updated.lease_last_error.clone() {
             return Err(AppError::Internal(error));
+        }
+        // Dulu error queue ditelan: HTTP 200 + toast "berhasil" padahal
+        // simple_queue gagal dibuat — bandwidth pelanggan tidak dibatasi
+        // tanpa ada yang tahu. Sekarang dilaporkan apa adanya.
+        if let Some(error) = updated.queue_last_error.clone() {
+            return Err(AppError::Internal(format!(
+                "Lease applied, but queue failed: {error}"
+            )));
         }
         Ok(updated.into())
     }

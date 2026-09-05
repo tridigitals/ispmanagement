@@ -78,6 +78,7 @@ describe('buildAdminNav', () => {
         'read:settings',
         'read:isp_packages',
         'read:network_topology',
+        'read:dhcp_static',
       ),
       owner,
     ).flatMap((g) => g.items.map((i) => i.href));
@@ -102,6 +103,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     'read:isp_packages',
     'manage:isp_packages',
     'read:email_outbox',
+    'read:dhcp_static',
   );
 
   it('mengarahkan halaman yang sudah dimigrasi ke /v2 saat opsi v2 aktif', () => {
@@ -119,6 +121,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     expect(hrefs).toContain('/v2/admin/team');
     expect(hrefs).toContain('/v2/admin/network/olts');
     expect(hrefs).toContain('/v2/admin/email-outbox');
+    expect(hrefs).toContain('/v2/admin/network/dhcp-static');
   });
 
   it('membiarkan halaman yang BELUM dimigrasi tetap menunjuk ke rute lama', () => {

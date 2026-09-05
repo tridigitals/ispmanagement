@@ -55,6 +55,7 @@ export const V2_MIGRATED: readonly string[] = [
   '/admin/services',
   '/admin/network/olts',
   '/admin/email-outbox',
+  '/admin/network/dhcp-static',
 ];
 
 /** Ubah href legacy ke padanan v2 bila halaman itu sudah dimigrasi. */
@@ -72,6 +73,7 @@ export function buildAdminNav(
   const customers = can('read', 'customers') || can('manage', 'customers');
   const workOrders = can('read', 'work_orders') || can('manage', 'work_orders');
   const pppoe = can('read', 'pppoe') || can('manage', 'pppoe');
+  const dhcp = can('read', 'dhcp_static') || can('manage', 'dhcp_static');
   const packages = canAccessServiceCatalog(
     user,
     can('read', 'isp_packages'),
@@ -130,6 +132,7 @@ export function buildAdminNav(
           ? [{ label: 'Router', icon: 'router' as const, href: '/admin/network/routers' }]
           : []),
         ...(pppoe ? [{ label: 'OLT', icon: 'radio' as const, href: '/admin/network/olts' }] : []),
+        ...(dhcp ? [{ label: 'DHCP Static', icon: 'server' as const, href: '/admin/network/dhcp-static' }] : []),
       ],
     },
     {
