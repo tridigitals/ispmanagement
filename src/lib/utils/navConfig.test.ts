@@ -92,6 +92,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     'read:billing',
     'read:customers',
     'read:network_noc',
+    'read:network_incidents',
     'read:pppoe',
     'read:roles',
     'read:router_inventory',
@@ -126,6 +127,10 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
 
   it('mengarahkan /admin/subscription ke /v2', () => {
     expect(v2Href('/admin/subscription')).toBe('/v2/admin/subscription');
+  });
+
+  it('mengarahkan /admin/network/incidents ke /v2', () => {
+    expect(v2Href('/admin/network/incidents')).toBe('/v2/admin/network/incidents');
   });
 
   it('membiarkan halaman yang BELUM dimigrasi tetap menunjuk ke rute lama', () => {

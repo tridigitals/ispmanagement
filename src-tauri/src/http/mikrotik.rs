@@ -224,13 +224,12 @@ async fn list_incidents(
         .check_permission(&claims.sub, &tenant_id, "network_incidents", "read")
         .await?;
 
+    // Gelombang 19: limit tak dibatasi — ?limit=999999 menarik seluruh
+    // tabel ke satu response. Clamp ke rentang waras.
+    let limit = q.limit.unwrap_or(200).clamp(1, 1000);
     let rows = state
         .mikrotik_service
-        .list_incidents(
-            &tenant_id,
-            q.active_only.unwrap_or(true),
-            q.limit.unwrap_or(200),
-        )
+        .list_incidents(&tenant_id, q.active_only.unwrap_or(true), limit)
         .await?;
     Ok(Json(rows))
 }

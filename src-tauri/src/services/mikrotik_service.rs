@@ -527,6 +527,30 @@ impl MikrotikService {
             }
         });
 
+        // Gelombang 19: owner_user_id tak divalidasi — assign ke user asing
+        // / terhapus lolos ke DB, notifikasi dilewati (guard is_member), dan
+        // kolom penanggung jawab jadi hantu. Sekarang ditolak di muka.
+        if let Some(owner) = &normalized_owner {
+            let is_member: bool = sqlx::query_scalar(
+                r#"
+                SELECT EXISTS(
+                  SELECT 1 FROM tenant_members
+                  WHERE tenant_id = $1 AND user_id = $2
+                )
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(owner)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+            if !is_member {
+                return Err(AppError::Validation(
+                    "owner_user_id is not a member of this tenant".to_string(),
+                ));
+            }
+        }
+
         let affected = sqlx::query(
             r#"
             UPDATE mikrotik_incidents
@@ -1268,6 +1292,16 @@ impl MikrotikService {
         .await
         .map_err(AppError::Database)?;
 
+        // Gelombang 19: ack id tak dikenal / sudah resolved dulu balas 200
+        // hampa — bulk ack melaporkan "berhasil" padahal tidak ada yang
+        // berubah. Kini jujur: 404 untuk id asing, 409 untuk resolved.
+        let target = target.ok_or_else(|| AppError::NotFound("Incident not found".to_string()))?;
+        if target.resolved_at.is_some() {
+            return Err(AppError::Conflict(
+                "Incident already resolved".to_string(),
+            ));
+        }
+
         sqlx::query(
             r#"
             UPDATE mikrotik_incidents
@@ -1287,29 +1321,41 @@ impl MikrotikService {
         .await
         .map_err(AppError::Database)?;
 
-        if let Some(incident) = target {
-            let _ = sqlx::query(
-                r#"
-                UPDATE mikrotik_alerts
-                SET status = 'ack',
-                    acked_at = $1,
-                    acked_by = $2,
-                    updated_at = $3
-                WHERE tenant_id = $4
-                  AND router_id = $5
-                  AND alert_type = $6
-                  AND resolved_at IS NULL
-                "#,
+        let _ = sqlx::query(
+            r#"
+            UPDATE mikrotik_alerts
+            SET status = 'ack',
+                acked_at = $1,
+                acked_by = $2,
+                updated_at = $3
+            WHERE tenant_id = $4
+              AND router_id = $5
+              AND alert_type = $6
+              AND resolved_at IS NULL
+            "#,
+        )
+        .bind(now)
+        .bind(user_id)
+        .bind(now)
+        .bind(tenant_id)
+        .bind(&target.router_id)
+        .bind(&target.incident_type)
+        .execute(&self.pool)
+        .await;
+
+        // Gelombang 19: ack tidak pernah tercatat di audit — jejak "siapa
+        // mengakui insiden ini" hilang. Resolve/update dicatat; ack tidak.
+        self.audit_service
+            .log(
+                Some(user_id),
+                Some(tenant_id),
+                "ack",
+                "mikrotik_incident",
+                Some(incident_id),
+                Some(&format!("Acknowledged incident {}", target.title)),
+                None,
             )
-            .bind(now)
-            .bind(user_id)
-            .bind(now)
-            .bind(tenant_id)
-            .bind(&incident.router_id)
-            .bind(&incident.incident_type)
-            .execute(&self.pool)
             .await;
-        }
         Ok(())
     }
 

@@ -57,6 +57,7 @@ export const V2_MIGRATED: readonly string[] = [
   '/admin/email-outbox',
   '/admin/network/dhcp-static',
   '/admin/subscription',
+  '/admin/network/incidents',
 ];
 
 /** Ubah href legacy ke padanan v2 bila halaman itu sudah dimigrasi. */
