@@ -689,3 +689,26 @@ impl EmailOutboxService {
         }
     }
 }
+
+/// Status yang boleh di-retry: queued (belum pernah terkirim) dan failed
+/// (gagal permanen). `sent` TIDAK boleh — email sudah sampai ke pelanggan;
+/// me-requeue-nya berarti mengirim ulang email yang sama. `sending` juga
+/// tidak (worker sedang memproses).
+pub fn retry_allowed_status(status: &str) -> bool {
+    matches!(status, "queued" | "failed")
+}
+
+#[cfg(all(test, feature = "postgres"))]
+mod retry_guard_tests {
+    use super::retry_allowed_status;
+
+    #[test]
+    fn only_queued_and_failed_are_retryable() {
+        assert!(retry_allowed_status("queued"));
+        assert!(retry_allowed_status("failed"));
+        assert!(!retry_allowed_status("sent"));
+        assert!(!retry_allowed_status("sending"));
+        assert!(!retry_allowed_status(""));
+        assert!(!retry_allowed_status("SENT"));
+    }
+}

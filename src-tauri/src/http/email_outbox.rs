@@ -1,4 +1,5 @@
 use crate::error::{AppError, AppResult};
+use crate::services::audit_service::like_pattern;
 use crate::http::AppState;
 use crate::models::{EmailOutboxItem, EmailOutboxStats, PaginatedResponse};
 use axum::{
@@ -154,7 +155,7 @@ async fn list_email_outbox(
         }
 
         if let Some(q) = search {
-            let like = format!("%{}%", q);
+            let like = like_pattern(q);
             qb_count.push(" AND (eo.to_email ILIKE ");
             qb_count.push_bind(like.clone());
             qb_count.push(" OR eo.subject ILIKE ");
@@ -474,7 +475,7 @@ async fn export_email_outbox_csv(
         }
 
         if let Some(q) = search {
-            let like = format!("%{}%", q);
+            let like = like_pattern(q);
             qb.push(" AND (eo.to_email ILIKE ");
             qb.push_bind(like.clone());
             qb.push(" OR eo.subject ILIKE ");
@@ -553,7 +554,7 @@ async fn retry_email_outbox(
                     sent_at = NULL,
                     updated_at = $1
                 WHERE id::text = $2
-                  AND status != 'sending'
+                  AND status IN ('queued', 'failed')
             "#,
             )
             .bind(now)
@@ -574,7 +575,7 @@ async fn retry_email_outbox(
                     updated_at = $1
                 WHERE id::text = $2
                   AND tenant_id::text = $3
-                  AND status != 'sending'
+                  AND status IN ('queued', 'failed')
             "#,
             )
             .bind(now)
@@ -587,7 +588,7 @@ async fn retry_email_outbox(
 
         if res.rows_affected() == 0 {
             return Err(AppError::NotFound(
-                "Outbox item not found (or currently sending)".into(),
+                "Item not found, already sent, or currently sending".into(),
             ));
         }
     }
@@ -659,7 +660,7 @@ async fn bulk_retry_email_outbox(
                     sent_at = NULL,
                     updated_at = $1
                 WHERE id::text = ANY($2)
-                  AND status != 'sending'
+                  AND status IN ('queued', 'failed')
             "#,
             )
             .bind(now)
@@ -679,7 +680,7 @@ async fn bulk_retry_email_outbox(
                     updated_at = $1
                 WHERE id::text = ANY($2)
                   AND tenant_id::text = $3
-                  AND status != 'sending'
+                  AND status IN ('queued', 'failed')
             "#,
             )
             .bind(now)

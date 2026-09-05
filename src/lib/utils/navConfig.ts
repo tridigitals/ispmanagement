@@ -54,6 +54,7 @@ export const V2_MIGRATED: readonly string[] = [
   '/admin/audit-logs',
   '/admin/services',
   '/admin/network/olts',
+  '/admin/email-outbox',
 ];
 
 /** Ubah href legacy ke padanan v2 bila halaman itu sudah dimigrasi. */
@@ -170,6 +171,9 @@ export function buildAdminNav(
         // (`Sidebar.svelte:495`) dan check_permission di server.
         ...(can('manage', 'announcements')
           ? [{ label: 'Pengumuman', icon: 'megaphone' as const, href: '/admin/announcements' }]
+          : []),
+        ...(can('read', 'email_outbox')
+          ? [{ label: 'Email Outbox', icon: 'mail' as const, href: '/admin/email-outbox' }]
           : []),
       ],
     },
