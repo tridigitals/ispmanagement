@@ -53,6 +53,7 @@ export const V2_MIGRATED: readonly string[] = [
   '/admin/announcements',
   '/admin/audit-logs',
   '/admin/services',
+  '/admin/network/olts',
 ];
 
 /** Ubah href legacy ke padanan v2 bila halaman itu sudah dimigrasi. */

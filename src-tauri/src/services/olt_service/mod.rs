@@ -30,6 +30,47 @@ pub fn pool_ref(pool: &DbPool) -> &DbPool {
     pool
 }
 
+// ── Pure validation helpers (unit-tested, no DB) ─────────────
+
+/// Reject OLT types the driver registry cannot serve. Without this, the
+/// legacy UI happily persisted `vsol_epon` (in its dropdown) and every
+/// later poll/test/details call failed with "Unsupported OLT type".
+pub fn ensure_supported_olt_type(olt_type: &str) -> AppResult<()> {
+    // create_driver is the single source of truth for what can be served.
+    create_driver(olt_type)?;
+    Ok(())
+}
+
+/// Empty/whitespace router ids must become None: the FK
+/// `fk_olts_uplink_router` rejects '' outright (raw 500 leaked to UI).
+pub fn normalize_uplink_router_id(raw: Option<String>) -> Option<String> {
+    raw.map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
+}
+
+/// Basic identity validation shared by create/update.
+pub fn validate_olt_identity(
+    name: &str,
+    host: &str,
+    port: i32,
+    username: &str,
+) -> AppResult<()> {
+    if name.trim().is_empty() {
+        return Err(AppError::Validation("OLT name is required".into()));
+    }
+    if host.trim().is_empty() {
+        return Err(AppError::Validation("OLT host is required".into()));
+    }
+    if !(1..=65535).contains(&port) {
+        return Err(AppError::Validation(format!(
+            "OLT port must be between 1 and 65535, got {port}"
+        )));
+    }
+    if username.trim().is_empty() {
+        return Err(AppError::Validation("OLT username is required".into()));
+    }
+    Ok(())
+}
+
 pub struct OltService {
     pool: DbPool,
     notification_service: NotificationService,
@@ -114,6 +155,9 @@ impl OltService {
         tenant_id: &str,
         req: CreateOltRequest,
     ) -> AppResult<Olt> {
+        validate_olt_identity(&req.name, &req.host, req.port, &req.username)?;
+        ensure_supported_olt_type(&req.olt_type)?;
+        let uplink_router_id = normalize_uplink_router_id(req.uplink_router_id);
         let olt = Olt::new(
             tenant_id.to_string(),
             req.name,
@@ -126,7 +170,7 @@ impl OltService {
             req.latitude,
             req.longitude,
             req.address_line,
-            req.uplink_router_id,
+            uplink_router_id,
             req.uplink_port,
         );
 
@@ -227,6 +271,7 @@ impl OltService {
         let host = req.host.unwrap_or(existing.host.clone());
         let port = req.port.unwrap_or(existing.port);
         let username = req.username.unwrap_or(existing.username.clone());
+        validate_olt_identity(&name, &host, port, &username)?;
         let password_enc = if let Some(ref pw) = req.password {
             Some(encrypt_secret(pw)?)
         } else {
@@ -247,8 +292,9 @@ impl OltService {
             None => existing.address_line.clone(),
         };
         // Sprint D: triple-state for uplink fields
+        // Some(Some("")) must mean "clear", not "FK violation on empty id".
         let uplink_router_id = match req.uplink_router_id {
-            Some(v) => v,
+            Some(v) => normalize_uplink_router_id(v),
             None => existing.uplink_router_id,
         };
         let uplink_port = match req.uplink_port {
@@ -409,11 +455,15 @@ impl OltService {
         // Verify OLT exists
         let _olt = self.get_olt(id, tenant_id).await?;
 
+        // Empty/whitespace router_id means "detach uplink". Binding '' straight
+        // into the FK column produced a raw 500 (fk_olts_uplink_router).
+        let router_id = normalize_uplink_router_id(Some(req.router_id.clone()));
+
         // Update OLT's uplink fields
         sqlx::query(
             "UPDATE public.olts SET uplink_router_id = $1, uplink_port = $2, updated_at = now() WHERE id = $3 AND tenant_id = $4",
         )
-        .bind(&req.router_id)
+        .bind(&router_id)
         .bind(&req.port)
         .bind(id)
         .bind(tenant_id)
@@ -429,8 +479,8 @@ impl OltService {
                 "olt",
                 Some(id),
                 Some(&format!(
-                    "Set uplink router={} port={:?}",
-                    req.router_id, req.port
+                    "Set uplink router={:?} port={:?}",
+                    router_id, req.port
                 )),
                 None,
             )
@@ -443,7 +493,7 @@ impl OltService {
         // Find network node for the OLT (via network_assets.metadata->>'olt_id')
         let olt_node: Option<(String,)> = sqlx::query_as(
             "SELECT n.id::text FROM network_nodes n
-             WHERE n.tenant_id = $1::text
+             WHERE n.tenant_id = $1::uuid
                AND n.metadata->>'asset_source' = 'network_asset'
                AND n.metadata->>'asset_type' = 'olt'
                AND EXISTS (
@@ -462,19 +512,19 @@ impl OltService {
         // Find network node for the MikroTik router (via metadata->>'router_id')
         let router_node: Option<(String,)> = sqlx::query_as(
             "SELECT id::text FROM network_nodes
-             WHERE tenant_id = $1::text
+             WHERE tenant_id = $1::uuid
                AND metadata->>'asset_source' = 'mikrotik_router'
                AND metadata->>'router_id' = $2
              LIMIT 1",
         )
         .bind(tenant_id)
-        .bind(&req.router_id)
+        .bind(&router_id)
         .fetch_optional(&self.pool)
         .await?;
 
         // Create NetworkLink if both nodes exist
         let link = if let (Some((from,)), Some((to,))) = (&olt_node, &router_node) {
-            let link_name = format!("{} → {}", _olt.name, req.router_id);
+            let link_name = format!("{} → {}", _olt.name, router_id.clone().unwrap_or_default());
             let geometry = serde_json::json!({"type": "LineString", "coordinates": []});
 
             let link_dto = CreateNetworkLinkRequest {
@@ -491,7 +541,7 @@ impl OltService {
                 geometry,
                 metadata: Some(serde_json::json!({
                     "olt_id": id,
-                    "router_id": req.router_id,
+                    "router_id": router_id,
                     "port": req.port,
                     "generated_by": "olt_set_uplink",
                 })),
@@ -1279,5 +1329,57 @@ impl OltService {
                 "poor": poor,
             }
         }))
+    }
+}
+
+#[cfg(test)]
+mod validation_tests {
+    use super::*;
+
+    #[test]
+    fn driver_backed_types_pass_and_vsol_is_rejected() {
+        // The legacy dropdown offered vsol_epon but create_driver() never had
+        // a VSOL driver — saves succeeded and monitoring silently failed.
+        assert!(ensure_supported_olt_type("hioso_ha7302cst").is_ok());
+        assert!(ensure_supported_olt_type("mikrotik_ros").is_ok());
+        let err = ensure_supported_olt_type("vsol_epon").unwrap_err();
+        assert!(matches!(err, AppError::Validation(_)));
+        assert!(err.to_string().contains("Unsupported OLT type"));
+    }
+
+    #[test]
+    fn blank_uplink_router_id_normalizes_to_none() {
+        assert_eq!(normalize_uplink_router_id(Some(String::new())), None);
+        assert_eq!(normalize_uplink_router_id(Some("   ".into())), None);
+        assert_eq!(normalize_uplink_router_id(None), None);
+        assert_eq!(
+            normalize_uplink_router_id(Some(" abc ".into())),
+            Some("abc".into())
+        );
+    }
+
+    #[test]
+    fn identity_validation_covers_required_fields_and_port_range() {
+        assert!(validate_olt_identity("OLT A", "10.0.0.1", 8021, "admin").is_ok());
+        assert!(matches!(
+            validate_olt_identity(" ", "10.0.0.1", 8021, "admin"),
+            Err(AppError::Validation(m)) if m.contains("name")
+        ));
+        assert!(matches!(
+            validate_olt_identity("OLT A", "", 8021, "admin"),
+            Err(AppError::Validation(m)) if m.contains("host")
+        ));
+        assert!(matches!(
+            validate_olt_identity("OLT A", "10.0.0.1", 0, "admin"),
+            Err(AppError::Validation(m)) if m.contains("port")
+        ));
+        assert!(matches!(
+            validate_olt_identity("OLT A", "10.0.0.1", 65536, "admin"),
+            Err(AppError::Validation(m)) if m.contains("port")
+        ));
+        assert!(matches!(
+            validate_olt_identity("OLT A", "10.0.0.1", 8021, " "),
+            Err(AppError::Validation(m)) if m.contains("username")
+        ));
     }
 }

@@ -116,6 +116,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     expect(hrefs).toContain('/v2/admin/network/routers');
     expect(hrefs).toContain('/v2/admin/support');
     expect(hrefs).toContain('/v2/admin/team');
+    expect(hrefs).toContain('/v2/admin/network/olts');
   });
 
   it('membiarkan halaman yang BELUM dimigrasi tetap menunjuk ke rute lama', () => {
@@ -126,8 +127,8 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     // Belum ada versi v2-nya: harus tetap legacy supaya tidak 404.
     expect(hrefs).toContain('/admin/invoices/collection');
     expect(hrefs).not.toContain('/v2/admin/invoices/collection');
-    expect(hrefs).toContain('/admin/network/olts');
-    expect(hrefs).not.toContain('/v2/admin/network/olts');
+    expect(hrefs).toContain('/admin/network/noc');
+    expect(hrefs).not.toContain('/v2/admin/network/noc');
   });
 
   it('tidak mengubah href sama sekali di shell lama (opsi v2 mati)', () => {
@@ -145,6 +146,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     expect(v2Href('/admin/announcements')).toBe('/v2/admin/announcements');
     expect(v2Href('/admin/audit-logs')).toBe('/v2/admin/audit-logs');
     expect(v2Href('/admin/services')).toBe('/v2/admin/services');
+    expect(v2Href('/admin/network/olts')).toBe('/v2/admin/network/olts');
     // Rute yang BELUM dimigrasi harus lewat tanpa perubahan.
     expect(v2Href('/admin/olts')).toBe('/admin/olts');
     // Tidak boleh menumpuk prefix kalau dipanggil dua kali.
