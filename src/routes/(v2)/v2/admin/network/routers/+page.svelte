@@ -81,7 +81,7 @@
         title: `${x.row.name} — ${x.status.label.toLowerCase()}`,
         detail: x.status.reason,
         action: 'Buka',
-        href: `/admin/network/routers/${x.row.id}`,
+        href: `/v2/admin/network/routers/${x.row.id}`,
         severity: (x.status.state === 'stale' ? 'high' : 'medium') as 'high' | 'medium',
       })),
   );
@@ -171,7 +171,7 @@
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" onclick={load}>Muat ulang</Button>
       {#if $can('manage', 'router_inventory')}
-        <Button icon="plus" href="/admin/network/routers?new=1">Tambah router</Button>
+        <Button icon="plus" href="/v2/admin/network/routers?new=1">Tambah router</Button>
       {/if}
     {/snippet}
   </PageHeader>
@@ -273,7 +273,7 @@
             </span>
           {:else if c.key === 'actions'}
             <RowActions
-              primary={{ label: 'Buka', icon: 'chevronRight', href: `/admin/network/routers/${r.id}` }}
+              primary={{ label: 'Buka', icon: 'chevronRight', href: `/v2/admin/network/routers/${r.id}` }}
               rest={[
                 {
                   label: testing === r.id ? 'Menguji…' : 'Uji koneksi',
@@ -285,7 +285,7 @@
                       {
                         label: 'Ubah',
                         icon: 'cog' as const,
-                        onclick: () => goto(`/admin/network/routers?edit=${r.id}`),
+                        onclick: () => goto(`/v2/admin/network/routers?edit=${r.id}`),
                       },
                     ]
                   : []),

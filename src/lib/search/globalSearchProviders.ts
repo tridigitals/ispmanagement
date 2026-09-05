@@ -83,7 +83,7 @@ export function getGlobalSearchProviders(): GlobalSearchProvider[] {
           kind: 'customer',
           title: customer.name,
           subtitle: `${customer.email || customer.phone || 'No contact'} • ${customer.service_status}`,
-          href: tenantAdminBasePath(context, `/admin/customers/${customer.id}`),
+          href: tenantAdminBasePath(context, `/v2/admin/customers/${customer.id}`),
           groupKey: 'customers',
           groupLabel: 'Customers',
         }));
@@ -106,7 +106,7 @@ export function getGlobalSearchProviders(): GlobalSearchProvider[] {
             kind: 'router',
             title: row.name,
             subtitle: `${row.host}:${row.port} • ${row.is_online ? 'online' : 'offline'}`,
-            href: tenantAdminBasePath(context, `/admin/network/routers/${row.id}`),
+            href: tenantAdminBasePath(context, `/v2/admin/network/routers/${row.id}`),
             groupKey: 'routers',
             groupLabel: 'Routers',
           }));
