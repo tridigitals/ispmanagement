@@ -93,6 +93,7 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     'read:customers',
     'read:network_noc',
     'read:network_incidents',
+    'read:work_orders',
     'read:pppoe',
     'read:roles',
     'read:router_inventory',
@@ -131,6 +132,10 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
 
   it('mengarahkan /admin/network/incidents ke /v2', () => {
     expect(v2Href('/admin/network/incidents')).toBe('/v2/admin/network/incidents');
+  });
+
+  it('mengarahkan /admin/network/installations ke /v2', () => {
+    expect(v2Href('/admin/network/installations')).toBe('/v2/admin/network/installations');
   });
 
   it('membiarkan halaman yang BELUM dimigrasi tetap menunjuk ke rute lama', () => {

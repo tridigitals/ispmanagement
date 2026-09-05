@@ -1148,6 +1148,19 @@ impl CustomerService {
         self.validate_installation_provisioning(tenant_id, &current)
             .await?;
 
+        // Gelombang 20: bind aset DULU, baru ubah status. Urutan lama
+        // (status -> bind) meninggalkan WO tercatat "completed" tanpa aset
+        // ONT terikat ke pelanggan kalau bind gagal di tengah (race aset
+        // direbut WO lain). Kalau bind yang gagal, WO tetap in_progress dan
+        // bisa di-retry — tidak ada state bohong.
+        self.bind_assets_to_completed_installation(
+            tenant_id,
+            &current,
+            &terminal_asset_id,
+            parent_asset_id.as_deref(),
+        )
+        .await?;
+
         let row = self
             .set_installation_work_order_status_internal(
                 actor_id,
@@ -1163,14 +1176,6 @@ impl CustomerService {
                 "Completed installation work order",
             )
             .await?;
-
-        self.bind_assets_to_completed_installation(
-            tenant_id,
-            &row,
-            &terminal_asset_id,
-            parent_asset_id.as_deref(),
-        )
-        .await?;
 
         #[cfg(feature = "postgres")]
         let sub: Option<CustomerSubscription> = sqlx::query_as(
@@ -1379,6 +1384,17 @@ impl CustomerService {
         self.auth_service
             .check_permission(actor_id, tenant_id, "work_orders", "manage")
             .await?;
+
+        // Gelombang 20: reopen menghidupkan kembali siklus hidup langganan
+        // (event Reopen) — sama beratnya dengan cancel yang sudah sejak lama
+        // mensyaratkan admin/owner. FE sudah meng-gate tombolnya dengan
+        // isAdminOwner; backend harus memaksa hal yang sama supaya API tidak
+        // bisa dipanggil langsung oleh teknisi.
+        if !self.is_actor_admin_or_owner(tenant_id, actor_id).await? {
+            return Err(AppError::Forbidden(
+                "Only admin/owner can reopen installation work orders".to_string(),
+            ));
+        }
 
         let row = self
             .set_installation_work_order_status_internal(
