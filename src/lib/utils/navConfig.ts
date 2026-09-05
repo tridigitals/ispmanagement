@@ -56,6 +56,7 @@ export const V2_MIGRATED: readonly string[] = [
   '/admin/network/olts',
   '/admin/email-outbox',
   '/admin/network/dhcp-static',
+  '/admin/subscription',
 ];
 
 /** Ubah href legacy ke padanan v2 bila halaman itu sudah dimigrasi. */
@@ -102,6 +103,7 @@ export function buildAdminNav(
                 badge: badges.invoicesOverdue || undefined,
               },
               { label: 'Penagihan', icon: 'card' as const, href: '/admin/invoices/collection' },
+              { label: 'Langganan', icon: 'zap' as const, href: '/admin/subscription' },
               { label: 'Analitik', icon: 'chart' as const, href: '/admin/billing' },
             ]
           : []),

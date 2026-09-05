@@ -624,12 +624,22 @@ async fn create_invoice_for_plan(
         .get_plan(&body.plan_id)
         .await
         .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
+            // Plan tak dikenal dulu membalas 500 mentah; sekarang 404 jujur.
+            if matches!(e, sqlx::Error::RowNotFound) {
+                (
+                    StatusCode::NOT_FOUND,
+                    Json(ErrorResponse {
+                        error: "plan not found".to_string(),
+                    }),
+                )
+            } else {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        error: e.to_string(),
+                    }),
+                )
+            }
         })?;
 
     let billing_cycle = body.billing_cycle.trim().to_ascii_lowercase();
@@ -647,6 +657,16 @@ async fn create_invoice_for_plan(
     } else {
         plan.price_monthly
     };
+    if amount <= 0.0 {
+        // Plan gratis tidak butuh invoice — dulu membuat invoice Rp0 yang
+        // menggantung pending selamanya di daftar penagihan.
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "free plans do not require an invoice".to_string(),
+            }),
+        ));
+    }
 
     let desc = format!("{} Plan ({} billing)", plan.name, billing_cycle);
     let ext_id = format!("plan:{}:{}", body.plan_id, billing_cycle);

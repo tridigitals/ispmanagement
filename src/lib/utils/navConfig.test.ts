@@ -124,6 +124,10 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     expect(hrefs).toContain('/v2/admin/network/dhcp-static');
   });
 
+  it('mengarahkan /admin/subscription ke /v2', () => {
+    expect(v2Href('/admin/subscription')).toBe('/v2/admin/subscription');
+  });
+
   it('membiarkan halaman yang BELUM dimigrasi tetap menunjuk ke rute lama', () => {
     const hrefs = buildAdminNav(all, owner, {}, { v2: true }).flatMap((g) =>
       g.items.map((i) => i.href),

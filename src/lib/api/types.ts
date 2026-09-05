@@ -988,6 +988,15 @@ export interface TenantSubscriptionDetails {
   storage_limit: number | null;
   member_usage: number;
   member_limit: number | null;
+  /** Entitlement nyata plan dari DB (gelombang 18). */
+  features?: {
+    feature_id: string;
+    code: string;
+    name: string;
+    value_type: string;
+    value: string;
+    category: string;
+  }[];
 }
 
 export interface BankAccount {

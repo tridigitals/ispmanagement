@@ -186,6 +186,10 @@ pub struct TenantSubscriptionDetails {
     pub storage_limit: Option<i64>,
     pub member_usage: i64,
     pub member_limit: Option<i64>,
+    /// Entitlement nyata plan dari DB (features + nilai). Halaman
+    /// subscription lama menampilkan daftar HARDCODE per slug — pelanggan
+    /// melihat copy marketing, bukan batas sebenarnya.
+    pub features: Vec<PlanFeatureValue>,
 }
 
 #[cfg(test)]

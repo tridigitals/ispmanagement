@@ -1,6 +1,7 @@
 //! Plan Service - Manages subscription plans and features
 
 use crate::db::DbPool;
+use crate::error::{AppError, AppResult};
 use crate::models::{
     CreateFeatureRequest, CreatePlanRequest, FeatureAccess, FeatureDefinition, Plan, PlanFeature,
     PlanFeatureValue, PlanWithFeatures, TenantSubscription, UpdatePlanRequest,
@@ -10,6 +11,50 @@ use uuid::Uuid;
 
 #[cfg(feature = "postgres")]
 use sqlx::Postgres;
+
+/// Validasi slug plan: huruf kecil, angka, dash/underscore, 2-40 karakter.
+/// Slug masuk ke URL dan dipakai lookup `free`; dulu apa pun lolos dan
+/// tabrakan baru ketahuan sebagai 500 unique-violation mentah.
+pub fn validate_plan_slug(slug: &str) -> AppResult<()> {
+    let ok = slug.len() >= 2
+        && slug.len() <= 40
+        && slug
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_');
+    if ok {
+        Ok(())
+    } else {
+        Err(AppError::Validation(
+            "slug must be 2-40 chars, lowercase letters, digits, '-' or '_'".to_string(),
+        ))
+    }
+}
+
+/// Nama plan tidak boleh kosong dan harus masuk akal panjangnya.
+pub fn validate_plan_name(name: &str) -> AppResult<()> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() || trimmed.chars().count() > 80 {
+        return Err(AppError::Validation(
+            "plan name must be 1-80 characters".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+/// Harga tidak boleh negatif dan harus finite. Harga negatif dulu lolos ke
+/// DB dan menghasilkan invoice bernilai minus.
+pub fn validate_plan_prices(monthly: Option<f64>, yearly: Option<f64>) -> AppResult<()> {
+    for (label, v) in [("price_monthly", monthly), ("price_yearly", yearly)] {
+        if let Some(x) = v {
+            if !x.is_finite() || x < 0.0 {
+                return Err(AppError::Validation(format!(
+                    "{label} must be a finite non-negative number"
+                )));
+            }
+        }
+    }
+    Ok(())
+}
 
 #[derive(Clone)]
 pub struct PlanService {
@@ -161,7 +206,16 @@ impl PlanService {
     }
 
     /// Create a new plan
-    pub async fn create_plan(&self, req: CreatePlanRequest) -> Result<Plan, sqlx::Error> {
+    pub async fn create_plan(&self, req: CreatePlanRequest) -> AppResult<Plan> {
+        validate_plan_name(&req.name)?;
+        validate_plan_slug(&req.slug)?;
+        validate_plan_prices(req.price_monthly, req.price_yearly)?;
+        if self.find_plan_by_slug(&req.slug).await?.is_some() {
+            return Err(AppError::Conflict(format!(
+                "a plan with slug '{}' already exists",
+                req.slug
+            )));
+        }
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
 
@@ -208,7 +262,33 @@ impl PlanService {
         .await?;
 
         // Fetch and return
-        self.get_plan(&id).await
+        self.get_plan(&id).await.map_err(AppError::from)
+    }
+
+    /// Cari plan by slug (untuk guard duplikat sebelum INSERT).
+    async fn find_plan_by_slug(&self, slug: &str) -> AppResult<Option<Plan>> {
+        #[cfg(feature = "postgres")]
+        let plan: Option<Plan> = sqlx::query_as(
+            r#"
+            SELECT
+                id, name, slug, description,
+                price_monthly::FLOAT8 as price_monthly,
+                price_yearly::FLOAT8 as price_yearly,
+                is_active, is_default, sort_order, created_at, updated_at
+            FROM plans WHERE slug = $1
+            "#,
+        )
+        .bind(slug)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let plan: Option<Plan> = sqlx::query_as("SELECT * FROM plans WHERE slug = ?")
+            .bind(slug)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(plan)
     }
 
     /// Get plan by ID
@@ -243,7 +323,26 @@ impl PlanService {
         &self,
         plan_id: &str,
         req: UpdatePlanRequest,
-    ) -> Result<Plan, sqlx::Error> {
+    ) -> AppResult<Plan> {
+        if let Some(name) = &req.name {
+            validate_plan_name(name)?;
+        }
+        if let Some(slug) = &req.slug {
+            validate_plan_slug(slug)?;
+            if let Some(existing) = self.find_plan_by_slug(slug).await? {
+                if existing.id != plan_id {
+                    return Err(AppError::Conflict(format!(
+                        "a plan with slug '{slug}' already exists"
+                    )));
+                }
+            }
+        }
+        validate_plan_prices(req.price_monthly, req.price_yearly)?;
+        // Guard existence: UPDATE id tak dikenal dulu = sukses hampa lalu
+        // get_plan fetch_one -> 500 "no rows".
+        if self.get_plan_opt(plan_id).await?.is_none() {
+            return Err(AppError::NotFound("plan not found".to_string()));
+        }
         let now = Utc::now();
 
         #[cfg(feature = "postgres")]
@@ -301,11 +400,83 @@ impl PlanService {
             .await?;
         }
 
-        self.get_plan(plan_id).await
+        self.get_plan(plan_id).await.map_err(AppError::from)
     }
 
-    /// Delete a plan
-    pub async fn delete_plan(&self, plan_id: &str) -> Result<(), sqlx::Error> {
+    /// Ambil plan tanpa membingungkan "tidak ada" dengan error.
+    async fn get_plan_opt(&self, plan_id: &str) -> AppResult<Option<Plan>> {
+        #[cfg(feature = "postgres")]
+        let plan: Option<Plan> = sqlx::query_as(
+            r#"
+            SELECT
+                id, name, slug, description,
+                price_monthly::FLOAT8 as price_monthly,
+                price_yearly::FLOAT8 as price_yearly,
+                is_active, is_default, sort_order, created_at, updated_at
+            FROM plans WHERE id = $1
+            "#,
+        )
+        .bind(plan_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let plan: Option<Plan> = sqlx::query_as("SELECT * FROM plans WHERE id = ?")
+            .bind(plan_id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(plan)
+    }
+
+    /// Delete a plan.
+    ///
+    /// plans dirujuk tenant_subscriptions & plan_features dengan FK
+    /// NO ACTION — dulu hapus paket yang masih dipakai tenant membalas
+    /// 500 "Database error" mentah. Sekarang: guard existence (404 jujur)
+    /// + guard pemakaian (409 dengan daftar penyewa).
+    pub async fn delete_plan(&self, plan_id: &str) -> AppResult<()> {
+        let plan = self
+            .get_plan_opt(plan_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("plan not found".to_string()))?;
+
+        #[cfg(feature = "postgres")]
+        let used_by: Vec<String> = sqlx::query_scalar(
+            "SELECT t.slug FROM tenant_subscriptions ts JOIN tenants t ON t.id = ts.tenant_id WHERE ts.plan_id = $1 ORDER BY t.slug LIMIT 10",
+        )
+        .bind(plan_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let used_by: Vec<String> = sqlx::query_scalar(
+            "SELECT t.slug FROM tenant_subscriptions ts JOIN tenants t ON t.id = ts.tenant_id WHERE ts.plan_id = ? ORDER BY t.slug LIMIT 10",
+        )
+        .bind(plan_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        if !used_by.is_empty() {
+            return Err(AppError::Conflict(format!(
+                "plan '{}' is still used by: {}",
+                plan.slug,
+                used_by.join(", ")
+            )));
+        }
+
+        // Putuskan relasi plan_features (FK NO ACTION juga) sebelum DELETE.
+        #[cfg(feature = "postgres")]
+        sqlx::query("DELETE FROM plan_features WHERE plan_id = $1")
+            .bind(plan_id)
+            .execute(&self.pool)
+            .await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query("DELETE FROM plan_features WHERE plan_id = ?")
+            .bind(plan_id)
+            .execute(&self.pool)
+            .await?;
         #[cfg(feature = "postgres")]
         sqlx::query("DELETE FROM plans WHERE id = $1")
             .bind(plan_id)
@@ -648,7 +819,11 @@ impl PlanService {
         &self,
         tenant_id: &str,
         plan_id: &str,
-    ) -> Result<TenantSubscription, sqlx::Error> {
+    ) -> AppResult<TenantSubscription> {
+        // Guard plan: FK NO ACTION -> plan_id tak dikenal dulu = 500.
+        if self.get_plan_opt(plan_id).await?.is_none() {
+            return Err(AppError::NotFound("plan not found".to_string()));
+        }
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
 
@@ -695,8 +870,10 @@ impl PlanService {
         .await?;
 
         self.get_tenant_subscription(tenant_id)
-            .await
-            .map(|s| s.unwrap())
+            .await?
+            // .unwrap() dulu bisa panic kalau baris hilang di antara
+            // INSERT dan SELECT (race dengan penghapusan tenant).
+            .ok_or_else(|| AppError::NotFound("subscription not found".to_string()))
     }
 
     // ==================== FEATURE ACCESS CHECKING ====================
@@ -829,20 +1006,47 @@ impl PlanService {
     pub async fn get_tenant_subscription_details(
         &self,
         tenant_id: &str,
-    ) -> Result<crate::models::TenantSubscriptionDetails, sqlx::Error> {
+    ) -> AppResult<crate::models::TenantSubscriptionDetails> {
         // 1. Get Subscription & Plan
         let sub = self.get_tenant_subscription(tenant_id).await?;
 
-        let (plan_name, plan_slug, status, period_end) = if let Some(s) = sub {
-            let plan = self.get_plan(&s.plan_id).await?;
-            (plan.name, plan.slug, s.status, s.current_period_end)
+        let (plan_name, plan_slug, status, period_end, feature_plan_id) = if let Some(s) = sub {
+            // Subscription yatim (plan terhapus manual di DB) dulu membuat
+            // SELURUH halaman subscription balas 500 lewat fetch_one.
+            match self.get_plan_opt(&s.plan_id).await? {
+                Some(plan) => (
+                    plan.name.clone(),
+                    plan.slug.clone(),
+                    s.status,
+                    s.current_period_end,
+                    Some(plan.id.clone()),
+                ),
+                None => (
+                    "Free".to_string(),
+                    "free".to_string(),
+                    s.status,
+                    s.current_period_end,
+                    None,
+                ),
+            }
         } else {
             (
                 "Free".to_string(),
                 "free".to_string(),
                 "active".to_string(),
                 None,
+                None,
             )
+        };
+
+        // Entitlement nyata: pakai plan_id subscription; fallback ke slug
+        // 'free' kalau yatim/tanpa subscription.
+        let features = match feature_plan_id {
+            Some(pid) => self.get_plan_features(&pid).await?,
+            None => match self.find_plan_by_slug("free").await? {
+                Some(free) => self.get_plan_features(&free.id).await?,
+                None => Vec::new(),
+            },
         };
 
         // 2. Get Limits
@@ -886,6 +1090,7 @@ impl PlanService {
             plan_name,
             plan_slug,
             status,
+            features,
             current_period_end: period_end,
             storage_usage,
             storage_limit,
@@ -1121,5 +1326,42 @@ impl PlanService {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod plan_validation_tests {
+    use super::{validate_plan_name, validate_plan_prices, validate_plan_slug};
+
+    #[test]
+    fn slug_valid_diterima() {
+        assert!(validate_plan_slug("pro").is_ok());
+        assert!(validate_plan_slug("team-20").is_ok());
+        assert!(validate_plan_slug("biz_plan").is_ok());
+    }
+
+    #[test]
+    fn slug_ditolak() {
+        assert!(validate_plan_slug("a").is_err(), "terlalu pendek");
+        assert!(validate_plan_slug("Pro").is_err(), "huruf besar");
+        assert!(validate_plan_slug("pro!").is_err(), "karakter terlarang");
+        assert!(validate_plan_slug("").is_err());
+        assert!(validate_plan_slug(&"x".repeat(41)).is_err(), "terlalu panjang");
+    }
+
+    #[test]
+    fn nama_ditolak_kosong_atau_kepanjangan() {
+        assert!(validate_plan_name("Pro").is_ok());
+        assert!(validate_plan_name("   ").is_err());
+        assert!(validate_plan_name(&"n".repeat(81)).is_err());
+    }
+
+    #[test]
+    fn harga_negatif_dan_non_finite_ditolak() {
+        assert!(validate_plan_prices(Some(0.0), Some(1200.0)).is_ok());
+        assert!(validate_plan_prices(None, None).is_ok());
+        assert!(validate_plan_prices(Some(-1.0), None).is_err());
+        assert!(validate_plan_prices(None, Some(f64::NAN)).is_err());
+        assert!(validate_plan_prices(None, Some(f64::INFINITY)).is_err());
     }
 }

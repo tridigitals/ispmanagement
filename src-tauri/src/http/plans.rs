@@ -8,6 +8,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::error::{AppError, AppResult};
 use crate::http::AppState;
 use crate::models::{
     CreateFeatureRequest, CreatePlanRequest, FeatureAccess, FeatureDefinition, Plan,
@@ -37,82 +38,41 @@ pub fn plan_routes() -> Router<AppState> {
         .route("/access/{tenant_id}/{feature_code}", get(check_access))
 }
 
-#[derive(Serialize)]
-struct ErrorResponse {
-    error: String,
-}
-
 // Helper to extract and validate token from headers
-async fn authenticate(
-    state: &AppState,
-    headers: &HeaderMap,
-) -> Result<Claims, (StatusCode, Json<ErrorResponse>)> {
+async fn authenticate(state: &AppState, headers: &HeaderMap) -> AppResult<Claims> {
     let auth_header = headers
         .get("Authorization")
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer "))
-        .ok_or_else(|| {
-            (
-                StatusCode::UNAUTHORIZED,
-                Json(ErrorResponse {
-                    error: "Missing authorization header".to_string(),
-                }),
-            )
-        })?;
+        .ok_or_else(|| AppError::Unauthorized)?;
 
     state
         .auth_service
         .validate_token(auth_header)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::UNAUTHORIZED,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })
+        .map_err(|_| AppError::Unauthorized)
 }
 
-fn require_superadmin(claims: &Claims) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
+fn require_superadmin(claims: &Claims) -> AppResult<()> {
     if !claims.is_super_admin {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse {
-                error: "Superadmin access required".to_string(),
-            }),
-        ));
+        return Err(AppError::Forbidden("Superadmin access required".to_string()));
     }
     Ok(())
 }
 
-async fn require_plan_read_access(
-    state: &AppState,
-    claims: &Claims,
-) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
+async fn require_plan_read_access(state: &AppState, claims: &Claims) -> AppResult<()> {
     if claims.is_super_admin {
         return Ok(());
     }
-    let tenant_id = claims.tenant_id.as_deref().ok_or_else(|| {
-        (
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse {
-                error: "Tenant context required".to_string(),
-            }),
-        )
-    })?;
+    let tenant_id = claims
+        .tenant_id
+        .as_deref()
+        .ok_or_else(|| AppError::Forbidden("Tenant context required".to_string()))?;
     state
         .auth_service
         .check_permission(&claims.sub, tenant_id, "billing", "read")
         .await
-        .map_err(|e| {
-            (
-                StatusCode::FORBIDDEN,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })?;
+        .map_err(|_| AppError::Forbidden("Billing read access required".to_string()))?;
     Ok(())
 }
 
@@ -121,70 +81,46 @@ async fn require_plan_read_access(
 async fn list_plans(
     State(state): State<AppState>,
     headers: HeaderMap,
-) -> Result<Json<Vec<Plan>>, (StatusCode, Json<ErrorResponse>)> {
+) -> AppResult<Json<Vec<Plan>>> {
     let claims = authenticate(&state, &headers).await?;
     require_plan_read_access(&state, &claims).await?;
 
     let plans = if claims.is_super_admin {
-        state.plan_service.list_plans().await
+        state.plan_service.list_plans().await?
     } else {
-        state.plan_service.list_active_plans().await
+        state.plan_service.list_active_plans().await?
     };
 
-    plans.map(Json).map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: e.to_string(),
-            }),
-        )
-    })
+    Ok(Json(plans))
 }
 
 async fn get_plan(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(id): Path<String>,
-) -> Result<Json<Option<PlanWithFeatures>>, (StatusCode, Json<ErrorResponse>)> {
+) -> AppResult<Json<Option<PlanWithFeatures>>> {
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state
-        .plan_service
-        .get_plan_with_features(&id)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })
+    Ok(Json(
+state
+           .plan_service
+           .get_plan_with_features(&id)
+           .await?,
+    ))
 }
 
 async fn create_plan(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(req): Json<CreatePlanRequest>,
-) -> Result<Json<Plan>, (StatusCode, Json<ErrorResponse>)> {
+) -> AppResult<Json<Plan>> {
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state
-        .plan_service
-        .create_plan(req)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })
+    // Service membalas AppResult: Validation -> 400, Conflict (slug duplikat)
+    // -> 409, bukan 500 mentah.
+    Ok(Json(state.plan_service.create_plan(req).await?))
 }
 
 async fn update_plan(
@@ -192,46 +128,25 @@ async fn update_plan(
     headers: HeaderMap,
     Path(id): Path<String>,
     Json(req): Json<UpdatePlanRequest>,
-) -> Result<Json<Plan>, (StatusCode, Json<ErrorResponse>)> {
+) -> AppResult<Json<Plan>> {
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state
-        .plan_service
-        .update_plan(&id, req)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })
+    Ok(Json(state.plan_service.update_plan(&id, req).await?))
 }
 
 async fn delete_plan_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(id): Path<String>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+) -> AppResult<StatusCode> {
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state
-        .plan_service
-        .delete_plan(&id)
-        .await
-        .map(|_| StatusCode::NO_CONTENT)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })
+    // 404 jujur untuk id tak dikenal; 409 berisi daftar tenant pemakai
+    // kalau paket masih dipakai (FK NO ACTION).
+    state.plan_service.delete_plan(&id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 // ==================== FEATURES ====================
@@ -239,69 +154,47 @@ async fn delete_plan_handler(
 async fn list_features(
     State(state): State<AppState>,
     headers: HeaderMap,
-) -> Result<Json<Vec<FeatureDefinition>>, (StatusCode, Json<ErrorResponse>)> {
+) -> AppResult<Json<Vec<FeatureDefinition>>> {
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state
-        .plan_service
-        .list_feature_definitions()
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })
+    Ok(Json(
+state
+           .plan_service
+           .list_feature_definitions()
+           .await?,
+    ))
 }
 
 async fn create_feature(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(req): Json<CreateFeatureRequest>,
-) -> Result<Json<FeatureDefinition>, (StatusCode, Json<ErrorResponse>)> {
+) -> AppResult<Json<FeatureDefinition>> {
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state
-        .plan_service
-        .create_feature(req)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })
+    Ok(Json(
+state
+           .plan_service
+           .create_feature(req)
+           .await?,
+    ))
 }
 
 async fn delete_feature(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(id): Path<String>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+) -> AppResult<StatusCode> {
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
     state
-        .plan_service
-        .delete_feature(&id)
-        .await
-        .map(|_| StatusCode::NO_CONTENT)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })
+           .plan_service
+           .delete_feature(&id)
+           .await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 // ==================== PLAN FEATURES ====================
@@ -320,23 +213,15 @@ async fn set_plan_feature(
     headers: HeaderMap,
     Path(plan_id): Path<String>,
     Json(body): Json<SetPlanFeatureBody>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+) -> AppResult<StatusCode> {
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
     state
-        .plan_service
-        .set_plan_feature(&plan_id, &body.feature_id, &body.value)
-        .await
-        .map(|_| StatusCode::OK)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })
+           .plan_service
+           .set_plan_feature(&plan_id, &body.feature_id, &body.value)
+           .await?;
+    Ok(StatusCode::OK)
 }
 
 // ==================== SUBSCRIPTIONS ====================
@@ -351,7 +236,7 @@ async fn get_subscription_details(
     State(state): State<AppState>,
     headers: HeaderMap,
     Query(params): Query<SubscriptionDetailsParams>,
-) -> Result<Json<TenantSubscriptionDetails>, (StatusCode, Json<ErrorResponse>)> {
+) -> AppResult<Json<TenantSubscriptionDetails>> {
     let claims = authenticate(&state, &headers).await?;
     require_plan_read_access(&state, &claims).await?;
 
@@ -360,74 +245,45 @@ async fn get_subscription_details(
         Some(ref tid) => {
             // If specifying a tenant, must be superadmin or own tenant
             if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(tid) {
-                return Err((
-                    StatusCode::FORBIDDEN,
-                    Json(ErrorResponse {
-                        error: "Unauthorized".to_string(),
-                    }),
-                ));
+                return Err(AppError::Forbidden("Unauthorized".to_string()));
             }
             tid.clone()
         }
         None => {
             // Default to own tenant
-            claims.tenant_id.ok_or_else(|| {
-                (
-                    StatusCode::BAD_REQUEST,
-                    Json(ErrorResponse {
-                        error: "Tenant ID required".to_string(),
-                    }),
-                )
-            })?
+            claims
+                .tenant_id
+                .ok_or_else(|| AppError::Validation("Tenant ID required".to_string()))?
         }
     };
 
-    state
-        .plan_service
-        .get_tenant_subscription_details(&target_tenant_id)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })
+    Ok(Json(
+        state
+            .plan_service
+            .get_tenant_subscription_details(&target_tenant_id)
+            .await?,
+    ))
 }
 
 async fn get_subscription(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(tenant_id): Path<String>,
-) -> Result<Json<Option<TenantSubscription>>, (StatusCode, Json<ErrorResponse>)> {
+) -> AppResult<Json<Option<TenantSubscription>>> {
     let claims = authenticate(&state, &headers).await?;
     require_plan_read_access(&state, &claims).await?;
 
     // Allow superadmin or own tenant
     if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(tenant_id.as_str()) {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse {
-                error: "Unauthorized".to_string(),
-            }),
-        ));
+        return Err(AppError::Forbidden("Unauthorized".to_string()));
     }
 
-    state
-        .plan_service
-        .get_tenant_subscription(&tenant_id)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })
+    Ok(Json(
+state
+           .plan_service
+           .get_tenant_subscription(&tenant_id)
+           .await?,
+    ))
 }
 
 #[derive(Deserialize)]
@@ -443,23 +299,16 @@ async fn assign_plan(
     headers: HeaderMap,
     Path(tenant_id): Path<String>,
     Json(body): Json<AssignPlanBody>,
-) -> Result<Json<TenantSubscription>, (StatusCode, Json<ErrorResponse>)> {
+) -> AppResult<Json<TenantSubscription>> {
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state
-        .plan_service
-        .assign_plan_to_tenant(&tenant_id, &body.plan_id)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })
+    Ok(Json(
+        state
+            .plan_service
+            .assign_plan_to_tenant(&tenant_id, &body.plan_id)
+            .await?,
+    ))
 }
 
 // ==================== FEATURE ACCESS ====================
@@ -468,31 +317,19 @@ async fn check_access(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path((tenant_id, feature_code)): Path<(String, String)>,
-) -> Result<Json<FeatureAccess>, (StatusCode, Json<ErrorResponse>)> {
+) -> AppResult<Json<FeatureAccess>> {
     let claims = authenticate(&state, &headers).await?;
     require_plan_read_access(&state, &claims).await?;
 
     // Allow superadmin or own tenant
     if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(tenant_id.as_str()) {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse {
-                error: "Unauthorized".to_string(),
-            }),
-        ));
+        return Err(AppError::Forbidden("Unauthorized".to_string()));
     }
 
-    state
-        .plan_service
-        .check_feature_access(&tenant_id, &feature_code)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })
+    Ok(Json(
+state
+           .plan_service
+           .check_feature_access(&tenant_id, &feature_code)
+           .await?,
+    ))
 }
