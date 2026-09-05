@@ -846,12 +846,14 @@ pub async fn get_support_ticket(
             .await?;
     }
 
-    let ticket: SupportTicket =
-        sqlx::query_as("SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2")
-            .bind(&id)
-            .bind(&tenant_id)
-            .fetch_one(&state.auth_service.pool)
-            .await?;
+    let ticket: SupportTicket = sqlx::query_as(
+        "SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2",
+    )
+    .bind(&id)
+    .bind(&tenant_id)
+    .fetch_optional(&state.auth_service.pool)
+    .await?
+    .ok_or_else(|| crate::error::AppError::NotFound("Ticket not found".to_string()))?;
 
     let is_assignee = ticket.assigned_to.as_deref() == Some(claims.sub.as_str());
     if !can_all && ticket.created_by.as_deref() != Some(claims.sub.as_str()) && !is_assignee {
@@ -936,12 +938,14 @@ pub async fn reply_support_ticket(
         ));
     }
 
-    let ticket: SupportTicket =
-        sqlx::query_as("SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2")
-            .bind(&id)
-            .bind(&tenant_id)
-            .fetch_one(&state.auth_service.pool)
-            .await?;
+    let ticket: SupportTicket = sqlx::query_as(
+        "SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2",
+    )
+    .bind(&id)
+    .bind(&tenant_id)
+    .fetch_optional(&state.auth_service.pool)
+    .await?
+    .ok_or_else(|| crate::error::AppError::NotFound("Ticket not found".to_string()))?;
 
     if ticket.status == "closed" {
         return Err(crate::error::AppError::Validation(
@@ -1120,12 +1124,14 @@ pub async fn list_support_ticket_messages(
         .check_permission(&claims.sub, &tenant_id, "support", "read")
         .await?;
 
-    let ticket: SupportTicket =
-        sqlx::query_as("SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2")
-            .bind(&id)
-            .bind(&tenant_id)
-            .fetch_one(&state.auth_service.pool)
-            .await?;
+    let ticket: SupportTicket = sqlx::query_as(
+        "SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2",
+    )
+    .bind(&id)
+    .bind(&tenant_id)
+    .fetch_optional(&state.auth_service.pool)
+    .await?
+    .ok_or_else(|| crate::error::AppError::NotFound("Ticket not found".to_string()))?;
 
     let can_all = state
         .auth_service
@@ -1245,12 +1251,14 @@ pub async fn update_support_ticket(
             .await?;
     }
 
-    let existing: SupportTicket =
-        sqlx::query_as("SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2")
-            .bind(&id)
-            .bind(&tenant_id)
-            .fetch_one(&state.auth_service.pool)
-            .await?;
+    let existing: SupportTicket = sqlx::query_as(
+        "SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2",
+    )
+    .bind(&id)
+    .bind(&tenant_id)
+    .fetch_optional(&state.auth_service.pool)
+    .await?
+    .ok_or_else(|| crate::error::AppError::NotFound("Ticket not found".to_string()))?;
 
     let old_status = existing.status.clone();
     let old_priority = existing.priority.clone();
@@ -1579,12 +1587,14 @@ pub async fn start_support_ticket(
             "Tenant context required".to_string(),
         ))?;
 
-    let ticket: SupportTicket =
-        sqlx::query_as("SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2")
-            .bind(&id)
-            .bind(&tenant_id)
-            .fetch_one(&state.auth_service.pool)
-            .await?;
+    let ticket: SupportTicket = sqlx::query_as(
+        "SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2",
+    )
+    .bind(&id)
+    .bind(&tenant_id)
+    .fetch_optional(&state.auth_service.pool)
+    .await?
+    .ok_or_else(|| crate::error::AppError::NotFound("Ticket not found".to_string()))?;
 
     let can_all = state
         .auth_service
@@ -1770,12 +1780,14 @@ pub async fn resolve_support_ticket(
             "Tenant context required".to_string(),
         ))?;
 
-    let ticket: SupportTicket =
-        sqlx::query_as("SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2")
-            .bind(&id)
-            .bind(&tenant_id)
-            .fetch_one(&state.auth_service.pool)
-            .await?;
+    let ticket: SupportTicket = sqlx::query_as(
+        "SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2",
+    )
+    .bind(&id)
+    .bind(&tenant_id)
+    .fetch_optional(&state.auth_service.pool)
+    .await?
+    .ok_or_else(|| crate::error::AppError::NotFound("Ticket not found".to_string()))?;
 
     if ticket.status == "closed" {
         return Err(crate::error::AppError::Validation(
@@ -1899,12 +1911,14 @@ pub async fn upload_ticket_photo(
         ))?;
 
     // Verify ticket exists and belongs to tenant.
-    let ticket: SupportTicket =
-        sqlx::query_as("SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2")
-            .bind(&id)
-            .bind(&tenant_id)
-            .fetch_one(&state.auth_service.pool)
-            .await?;
+    let ticket: SupportTicket = sqlx::query_as(
+        "SELECT * FROM support_tickets WHERE id = $1 AND tenant_id = $2",
+    )
+    .bind(&id)
+    .bind(&tenant_id)
+    .fetch_optional(&state.auth_service.pool)
+    .await?
+    .ok_or_else(|| crate::error::AppError::NotFound("Ticket not found".to_string()))?;
 
     let can_all = state
         .auth_service

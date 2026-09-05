@@ -88,7 +88,7 @@
         title: t.subject,
         detail: `Menunggu ${waitingLabel(t.created_at, now)}${t.assigned_to ? '' : ' · belum ditugaskan'}`,
         action: 'Buka',
-        href: `/admin/support/${t.id}`,
+        href: `/v2/admin/support/${t.id}`,
         severity: 'high' as const,
       })),
   );
@@ -315,7 +315,7 @@
           {#if c.key === 'subject'}
             <div class="min-w-0">
               <a
-                href={`/admin/support/${t.id}`}
+                href={`/v2/admin/support/${t.id}`}
                 class="focus-ring block truncate font-medium text-ink-900 hover:underline"
               >
                 {t.subject}
@@ -347,7 +347,7 @@
             <span class="text-ink-700">{t.message_count ?? 0}</span>
           {:else if c.key === 'actions'}
             <RowActions
-              primary={{ label: 'Buka', icon: 'chevronRight', href: `/admin/support/${t.id}` }}
+              primary={{ label: 'Buka', icon: 'chevronRight', href: `/v2/admin/support/${t.id}` }}
               rest={!t.assigned_to && t.status !== 'closed' && t.status !== 'resolved'
                 ? [
                     {
