@@ -1992,6 +1992,17 @@ impl CustomerService {
         .fetch_all(&self.pool)
         .await?;
 
+        // FK guard: customers direferensikan RESTRICT oleh langganan, WO,
+        // PPPoE, DHCP statis, lokasi, dsb. Tanpa guard ini DELETE membalas
+        // 500 unique/FK-violation mentah. Hitung dulu, balas 400 deskriptif.
+        let blockers = customer_delete_blockers(&self.pool, tenant_id, customer_id).await?;
+        if !blockers.is_empty() {
+            return Err(AppError::Validation(format!(
+                "cannot delete: still referenced by {}",
+                blockers.join(", ")
+            )));
+        }
+
         let mut tx = self.pool.begin().await?;
         self.auth_service
             .apply_rls_context_tx_values(&mut tx, Some(tenant_id), Some(actor_id), false)
@@ -2445,6 +2456,14 @@ impl CustomerService {
         self.auth_service
             .check_permission(actor_id, tenant_id, "customer_locations", "manage")
             .await?;
+
+        let blockers = location_delete_blockers(&self.pool, tenant_id, location_id).await?;
+        if !blockers.is_empty() {
+            return Err(AppError::Validation(format!(
+                "cannot delete: still referenced by {}",
+                blockers.join(", ")
+            )));
+        }
 
         #[cfg(feature = "postgres")]
         let res = sqlx::query("DELETE FROM customer_locations WHERE tenant_id = $1 AND id = $2")
@@ -4248,4 +4267,87 @@ impl CustomerService {
 
         Ok(target)
     }
+}
+
+/// Count RESTRICT references that block deleting a customer. Returns a
+/// human list like `["3 subscriptions", "1 work orders"]`. Wave 21: tanpa
+/// ini, hapus pelanggan yang masih punya langganan membalas 500 FK-violation.
+pub(crate) async fn customer_delete_blockers(
+    pool: &DbPool,
+    tenant_id: &str,
+    customer_id: &str,
+) -> AppResult<Vec<String>> {
+    let mut out = Vec::new();
+    let checks: [(&str, &str); 5] = [
+        (
+            "subscriptions",
+            "SELECT count(*) FROM customer_subscriptions WHERE tenant_id = $1 AND customer_id = $2",
+        ),
+        (
+            "work orders",
+            "SELECT count(*) FROM installation_work_orders WHERE tenant_id = $1 AND customer_id = $2",
+        ),
+        (
+            "pppoe accounts",
+            "SELECT count(*) FROM pppoe_accounts WHERE tenant_id = $1 AND customer_id = $2",
+        ),
+        (
+            "dhcp services",
+            "SELECT count(*) FROM dhcp_static_services WHERE tenant_id = $1 AND customer_id = $2",
+        ),
+        (
+            "locations",
+            "SELECT count(*) FROM customer_locations WHERE tenant_id = $1 AND customer_id = $2",
+        ),
+    ];
+    for (label, sql) in checks {
+        let n: i64 = sqlx::query_scalar(sql)
+            .bind(tenant_id)
+            .bind(customer_id)
+            .fetch_one(pool)
+            .await?;
+        if n > 0 {
+            out.push(format!("{n} {label}"));
+        }
+    }
+    Ok(out)
+}
+
+/// Same idea for a single location (wave 21): subscriptions/WO/PPPoE/DHCP
+/// hold RESTRICT FKs to customer_locations.
+pub(crate) async fn location_delete_blockers(
+    pool: &DbPool,
+    tenant_id: &str,
+    location_id: &str,
+) -> AppResult<Vec<String>> {
+    let mut out = Vec::new();
+    let checks: [(&str, &str); 4] = [
+        (
+            "subscriptions",
+            "SELECT count(*) FROM customer_subscriptions WHERE tenant_id = $1 AND location_id = $2",
+        ),
+        (
+            "work orders",
+            "SELECT count(*) FROM installation_work_orders WHERE tenant_id = $1 AND location_id = $2",
+        ),
+        (
+            "pppoe accounts",
+            "SELECT count(*) FROM pppoe_accounts WHERE tenant_id = $1 AND location_id = $2",
+        ),
+        (
+            "dhcp services",
+            "SELECT count(*) FROM dhcp_static_services WHERE tenant_id = $1 AND location_id = $2",
+        ),
+    ];
+    for (label, sql) in checks {
+        let n: i64 = sqlx::query_scalar(sql)
+            .bind(tenant_id)
+            .bind(location_id)
+            .fetch_one(pool)
+            .await?;
+        if n > 0 {
+            out.push(format!("{n} {label}"));
+        }
+    }
+    Ok(out)
 }

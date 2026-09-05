@@ -1246,6 +1246,36 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "customers", "manage")
             .await?;
 
+        // Wave 21: dhcp_static_services / installation_work_orders /
+        // customer_service_assignments memegang FK RESTRICT ke subscription.
+        // Tanpa guard, hapus langganan terpakai membalas 500 mentah.
+        let mut blockers: Vec<String> = Vec::new();
+        for (label, sql) in [
+            (
+                "dhcp services",
+                "SELECT count(*) FROM dhcp_static_services WHERE tenant_id = $1 AND subscription_id = $2",
+            ),
+            (
+                "work orders",
+                "SELECT count(*) FROM installation_work_orders WHERE tenant_id = $1 AND subscription_id = $2",
+            ),
+        ] {
+            let n: i64 = sqlx::query_scalar(sql)
+                .bind(tenant_id)
+                .bind(subscription_id)
+                .fetch_one(&self.pool)
+                .await?;
+            if n > 0 {
+                blockers.push(format!("{n} {label}"));
+            }
+        }
+        if !blockers.is_empty() {
+            return Err(AppError::Validation(format!(
+                "cannot delete: still referenced by {}",
+                blockers.join(", ")
+            )));
+        }
+
         #[cfg(feature = "postgres")]
         let res =
             sqlx::query("DELETE FROM customer_subscriptions WHERE id = $1 AND tenant_id = $2")
