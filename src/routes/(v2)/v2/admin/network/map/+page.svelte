@@ -1,0 +1,3825 @@
+<script lang="ts">
+  /*
+    Peta jaringan v2 — gelombang 24d (batch C besar 2/2, terakhir).
+
+    Versi lama: (app)/admin/network/map/+page.svelte (3826 baris).
+    Peta MapLibre + layer topologi + modul networkMap* dipakai ulang penuh;
+    $t() → Indonesia, navigasi instalasi/router → /v2/admin/…
+  */
+  import type { Geometry } from 'geojson';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+  import { onDestroy, onMount, type Component } from 'svelte';
+  import { t } from 'svelte-i18n';
+  import { customers } from '$lib/api/customers';
+  import { mikrotik } from '$lib/api/mikrotik';
+  import { networkMapping } from '$lib/api/networkMapping';
+  import { networkAssets } from '$lib/api/networkAssets';
+  import type { NetworkAssetListItem } from '$lib/api/types';
+  import { can, tenant, user } from '$lib/stores/auth';
+  import { toast } from '$lib/stores/toast';
+  import {
+    buildNetworkMapAssetCreateState,
+    buildNetworkMapAssetEditorState,
+    type NetworkMapAssetDraft,
+  } from '$lib/components/network/networkMapAssetEditorState';
+  import {
+    buildTopologyAssetConnectionItems,
+    buildTopologyAssetCustomerDropItems,
+    type TopologyAssetCustomerDropItem,
+  } from '$lib/components/network/networkMapAssetConnections';
+  import {
+    buildLinkDraftForm,
+    buildZoneDraftForm,
+    createNetworkZoneBinding,
+    deleteNetworkLink,
+    deleteNetworkNode,
+    deleteNetworkZone,
+    deleteNetworkZoneBinding,
+    loadNetworkZoneBindings,
+    saveNetworkLink,
+    saveNetworkNode,
+    saveNetworkZone,
+  } from '$lib/components/network/networkMapActions';
+  import {
+    buildTopologyAssetAutoLinkFeatureCollection,
+    buildTopologyAssetPopupHtml,
+    buildTopologyAssetRows,
+    topologyAssetsToFeatureCollection,
+    type TopologyAssetRow,
+  } from '$lib/components/network/networkMapAssets';
+  import {
+    buildTopologyAssetConnectionOperations,
+    buildTopologyAssetConnectDraft,
+    canTopologyAssetAcceptConnection,
+    resolveTopologyAssetNodeId,
+  } from '$lib/components/network/networkMapAssetConnect';
+  import {
+    buildDefaultLineGeometry,
+    currentDraftPathCoords,
+    hasExistingLinkBetweenNodes,
+  } from '$lib/components/network/networkMapInteractionUtils';
+  import { snapshotMapFeature } from '$lib/components/network/networkMapEventSnapshot';
+  import {
+    removeCrud,
+    submitLinkCrud,
+    submitNodeCrud,
+    submitZoneCrud,
+  } from '$lib/components/network/networkMapCrud';
+  import {
+    applyPickedNodeMarker,
+    buildDefaultZoneGeometry,
+    buildLinkDraftPreviewCollections,
+    buildLinkGeometryDraftText,
+    clearDraftNodeMarker,
+  } from '$lib/components/network/networkMapDrafts';
+  import {
+    buildConnectFromNodeResult,
+    buildHandlePickedLinkNodeResult,
+    resolveCanonicalCustomerNodeId,
+    buildSetLinkDrawModeResult,
+    buildStraightLinkGeometryText,
+    buildToggleLinkPickResult,
+    createEditLinkForm,
+    createLinkForm,
+    resolveLinkGeometryTextForSubmit,
+    type LinkPickDrawMode,
+  } from '$lib/components/network/networkMapLinkPicking';
+  import { shouldShowManualEndpointSection } from '$lib/components/network/networkMapLinkModalState';
+  import { buildLinkLayerVisibilityState } from '$lib/components/network/networkMapLinkVisibility';
+  import { shouldSuppressPopupOnTargetPick } from '$lib/components/network/networkMapClickGuards';
+  import {
+    NETWORK_MAP_WORLD_BBOX,
+    applyCachedMapData,
+    applyFetchedMapData,
+    buildMapDataCacheKey,
+    fetchNetworkMapData,
+    fetchAllPaginatedRows,
+    getCachedMapData,
+    getTopologySyncStrategy,
+    resolveNetworkMapFetchBbox,
+    setCachedMapData,
+    shouldFetchRouterOverlay,
+    syncTopologyAssetsIfNeeded,
+    type NetworkMapCacheEntry,
+  } from '$lib/components/network/networkMapData';
+  import { replaceTopologyAssetSourceData } from '$lib/components/network/networkMapLayers';
+  import {
+    emitInstallationRefreshSignal,
+    emitWorkOrderUpdatedToParent,
+    resolveInstallationTargetMarker,
+  } from '$lib/components/network/networkMapInstallation';
+  import {
+    buildNetworkAssetMetadata,
+    createNetworkAssetDetailDraft,
+    validateNetworkAssetDetailDraft,
+    type NetworkAssetDetailDraft,
+  } from '$lib/utils/networkAssetDetails';
+  import { parseNetworkAssetMapTarget } from '../../../../../(app)/admin/network/assets/networkAssetMapNavigation';
+  import { loadNetworkAssetFormModal } from '../../../../../(app)/admin/network/assets/networkAssetsPageModules';
+  import { parseNetworkAssetCoordinates } from '../../../../../(app)/admin/network/assets/networkAssetCoordinates';
+  import { buildNetworkAssetSavePayload } from '../../../../../(app)/admin/network/assets/networkAssetsPageState';
+  import {
+    asNumber,
+    customersToFeatureCollection,
+    filterRoutersForOverlay,
+    getLinkFieldConfig,
+    hasServiceMetadata,
+    isCustomerNodeType,
+    isLegacyFtthDistributionNode,
+    isSystemManagedNode,
+    linkStatusOptions,
+    linkTypeOptions,
+    manualNodeTypeOptions,
+    nodesToFeatureCollection,
+    parseGeometryText,
+    prettyGeometry,
+    resolveRouterTopologyNodeId,
+    systemManagedNodeSourceLabel,
+    type LinkFieldConfig,
+    type NMLink,
+    type NMNode,
+    type NMRouter,
+    type NMZone,
+  } from '$lib/components/network/networkMapUtils';
+  import {
+    applyNetworkMapWorkspaceDefaults,
+    buildNetworkMapWorkspaceDefaults,
+    buildSelectedMapObject,
+    createNetworkMapWorkspaceState,
+    type NetworkMapWorkspaceState,
+    type NetworkMapWorkspaceCapabilities,
+  } from '$lib/components/network/networkMapWorkspaceState';
+  import { type NetworkMapSearchResultItem } from '$lib/components/network/networkMapInsights';
+  import {
+    buildNetworkMapOverviewSearchGroups,
+    countNetworkMapSearchResults,
+  } from '$lib/components/network/networkMapOverviewModel';
+  import {
+    loadNetworkMapChromeModules,
+    loadNetworkMapDialogModules,
+    loadNetworkMapInteractionModule,
+    loadNetworkMapPopupModule,
+    loadNetworkMapWorkspaceModule,
+    type NetworkMapInteractionModule,
+    type NetworkMapWorkspaceModule,
+  } from '$lib/components/network/networkMapUiModules';
+  import Icon from '$lib/components/ui/Icon.svelte';
+  import MapCanvasShell from '$lib/components/network/MapCanvasShell.svelte';
+  import NetworkMapSearchBar from '$lib/components/network/NetworkMapSearchBar.svelte';
+  import NetworkMapAssetCustomerDropModal from '$lib/components/network/NetworkMapAssetCustomerDropModal.svelte';
+  import { canAccessNetworkMap } from '$lib/utils/adminNetworkAccess';
+  import { appendBackParam } from '$lib/utils/backNavigation';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
+  import 'maplibre-gl/dist/maplibre-gl.css';
+
+  type MaplibreModule = typeof import('maplibre-gl');
+  type MapInstance = import('maplibre-gl').Map;
+  type NetworkMapQuickMode = 'all' | 'issues' | 'customers' | 'services' | 'topology' | 'field';
+
+  const SOURCE_NODES = 'nm-nodes';
+  const SOURCE_CUSTOMERS = 'nm-customers';
+  const SOURCE_LINKS = 'nm-links';
+  const SOURCE_ZONES = 'nm-zones';
+  const SOURCE_ROUTERS = 'nm-routers';
+  const SOURCE_TOPOLOGY_ASSETS = 'nm-topology-assets';
+  const SOURCE_TOPOLOGY_ASSET_LINKS = 'nm-topology-asset-links';
+  const SOURCE_LINK_DRAFT = 'nm-link-draft';
+  const SOURCE_LINK_DRAFT_POINTS = 'nm-link-draft-points';
+  const SOURCE_SELECTION_POINTS = 'nm-selection-points';
+  const SOURCE_SELECTION_LINES = 'nm-selection-lines';
+  const SOURCE_SELECTION_ZONES = 'nm-selection-zones';
+
+  let mapEl = $state<HTMLDivElement | null>(null);
+  let map = $state<MapInstance | null>(null);
+  let maplibre = $state<MaplibreModule | null>(null);
+  let interactionModule = $state<NetworkMapInteractionModule | null>(null);
+  let workspaceModule = $state<NetworkMapWorkspaceModule | null>(null);
+  let mapReady = $state(false);
+  let mapUnavailable = $state(false);
+  let mapErrorMessage = $state('');
+  let loading = $state(true);
+  let refreshing = $state(false);
+  let syncingAssetNodes = $state(false);
+  let OverviewComponent = $state<Component | null>(null);
+  let FloatingControlsComponent = $state<Component | null>(null);
+  let NodePanelComponent = $state<Component | null>(null);
+  let LinkModalComponent = $state<Component | null>(null);
+  let AssetFormModalComponent = $state<Component | null>(null);
+  let ZoneModalComponent = $state<Component | null>(null);
+  let ConfirmDialogComponent = $state<Component | null>(null);
+
+  let nodesVisible = $state(true);
+  let linksVisible = $state(true);
+  let zonesVisible = $state(true);
+  let routersVisible = $state(true);
+  let customersVisible = $state(true);
+  let topologyAssetsVisible = $state(true);
+  let viewMode = $state<'standard' | 'satellite'>('standard');
+  let controlsHidden = $state(true);
+
+  let q = $state('');
+  let workspaceSearchQuery = $state('');
+  let workspaceSearchOpen = $state(true);
+  let status = $state('');
+  let kind = $state('');
+  let quickMode = $state<NetworkMapQuickMode>('all');
+
+  let nodeCount = $state(0);
+  let linkCount = $state(0);
+  let zoneCount = $state(0);
+  let nodeRows = $state<NMNode[]>([]);
+  let linkRows = $state<NMLink[]>([]);
+  let zoneRows = $state<NMZone[]>([]);
+  let routerRows = $state<NMRouter[]>([]);
+  let topologyAssetRows = $state<TopologyAssetRow[]>([]);
+  let topologyAssetItems = $state<NetworkAssetListItem[]>([]);
+  let topologyAssetContextNodeRows = $state<NMNode[]>([]);
+  let topologyAssetContextLinkRows = $state<NMLink[]>([]);
+  let topologyAssetContextRouterRows = $state<NMRouter[]>([]);
+  let customerRows = $state<NMNode[]>([]);
+  let serviceRows = $state<NMNode[]>([]);
+  let savingNode = $state(false);
+  let savingLink = $state(false);
+  let savingZone = $state(false);
+  let deletingId = $state<string | null>(null);
+  let showDeleteConfirm = $state(false);
+  let deleteTargetType = $state<'node' | 'link' | 'zone' | 'binding' | null>(null);
+  let deleteTargetId = $state('');
+  let deleteConfirmTitle = $state('Delete');
+  let deleteConfirmMessage = $state('Are you sure?');
+
+  let showCreateNodePanel = $state(false);
+  let editingNodeId = $state<string | null>(null);
+  let nodePickMode = $state(false);
+  let draftNodeMarker: import('maplibre-gl').Marker | null = null;
+  let nodeForm = $state({
+    name: '',
+    node_type: 'router',
+    status: 'active',
+    lat: '',
+    lng: '',
+  });
+
+  let showLinkModal = $state(false);
+  let editingLinkId = $state<string | null>(null);
+  let linkPickMode = $state(false);
+  let linkPickStep = $state<'from' | 'to'>('from');
+  let linkPickDrawMode = $state<'quick' | 'path'>('quick');
+  let linkSnapToNodeEnabled = $state(true);
+  let linkPathBendPoints = $state<Array<[number, number]>>([]);
+  let linkForm = $state({
+    name: '',
+    link_type: 'fiber',
+    status: 'up',
+    from_node_id: '',
+    to_node_id: '',
+    priority: '100',
+    capacity_mbps: '',
+    utilization_pct: '',
+    loss_db: '',
+    latency_ms: '',
+    geometryText: '',
+  });
+
+  let showZoneModal = $state(false);
+  let editingZoneId = $state<string | null>(null);
+  let zoneForm = $state({
+    name: '',
+    zone_type: 'coverage',
+    status: 'active',
+    priority: '100',
+    geometryText: '',
+  });
+  let activeAssetConnectSourceId = $state<string | null>(null);
+  let assetCreatePickMode = $state(false);
+  let showAssetFormModal = $state(false);
+  let savingAssetForm = $state(false);
+  let editingAsset = $state<NetworkAssetListItem | null>(null);
+  let showAssetCustomerDropModal = $state(false);
+  let assetCustomerDropModalTitle = $state('');
+  let assetCustomerDropItems = $state<TopologyAssetCustomerDropItem[]>([]);
+  const initialAssetCreateState = buildNetworkMapAssetCreateState();
+  let assetDraft = $state<NetworkMapAssetDraft>(initialAssetCreateState.draft);
+  let assetDetailDraft = $state<NetworkAssetDetailDraft>(initialAssetCreateState.detailDraft);
+  const editingAssetConnectionItems = $derived.by(() =>
+    editingAsset
+      ? buildTopologyAssetConnectionItems({
+          asset: editingAsset,
+          topologyAssets: topologyAssetItems,
+          assetNodeIdsByAssetId: topologyAssetNodeIdCache,
+          nodeRows,
+          linkRows,
+          routerRows,
+        })
+      : [],
+  );
+  const activeAssetSourceCoordOverride = $derived.by<[number, number] | null>(() => {
+    if (!activeAssetConnectSourceId) return null;
+    const assetRow = topologyAssetRows.find((row) => row.id === activeAssetConnectSourceId);
+    if (!assetRow) return null;
+    if (!Number.isFinite(assetRow.longitude) || !Number.isFinite(assetRow.latitude)) return null;
+    return [assetRow.longitude, assetRow.latitude];
+  });
+
+  let workspaceState = $state<NetworkMapWorkspaceState>(
+    createNetworkMapWorkspaceState({
+      canManageTopology: false,
+      canReadCustomers: false,
+      canReadWorkOrders: false,
+      canReadNetworkNoc: false,
+      canReadRouterInventory: false,
+    }),
+  );
+
+  let refreshDebounce: ReturnType<typeof setTimeout> | null = null;
+  let freshnessTimer: ReturnType<typeof setInterval> | null = null;
+  let lastRequestId = 0;
+  let installationTargetMarker: import('maplibre-gl').Marker | null = null;
+  let installationTargetCoord: [number, number] | null = null;
+  let installationTargetResolved = false;
+  let activeNodePopup: import('maplibre-gl').Popup | null = null;
+  let activeDataAbortController: AbortController | null = null;
+  let backgroundAssetSyncPromise: Promise<boolean> | null = null;
+  const topologyAssetNodeIdCache = new Map<string, string>();
+  let didInitialFitToMarkers = false;
+  let initialExtentLoaded = false;
+  let assetFocusApplied = false;
+  let lastAssetSyncAt = 0;
+  let lastMapDataLoadedAt = $state(0);
+  let lastMapDataSource = $state<'live' | 'cache' | 'none'>('none');
+  let currentTimeMs = $state(Date.now());
+  const dataCache = new Map<string, NetworkMapCacheEntry>();
+  const dataCacheTtlMs = 20_000;
+  const dataCacheMaxEntries = 40;
+  const assetSyncTtlMs = 45_000;
+  const topologyAssetsCacheTtlMs = 60_000;
+  const topologyAssetContextCacheTtlMs = 60_000;
+  const mapTilerKey = (import.meta.env.VITE_MAPTILER_KEY as string | undefined)?.trim();
+  let lastTopologyAssetsLoadedAt = 0;
+  let lastTopologyAssetContextLoadedAt = 0;
+  let refreshingTopologyAssets = false;
+  const hasHiResSatellite = Boolean(mapTilerKey);
+  const standardMaxZoom = 19;
+  const satelliteMaxZoom = hasHiResSatellite ? 21 : 18;
+
+  const canManageTopology = $derived($can('manage', 'network_topology'));
+  const canManageFtthAssets = $derived($can('manage', 'ftth_assets'));
+  const canReadRouterInventory = $derived(
+    $can('read', 'router_inventory') || $can('manage', 'router_inventory'),
+  );
+  const workspaceCapabilities = $derived.by<NetworkMapWorkspaceCapabilities>(() => ({
+    canManageTopology,
+    canReadCustomers: $can('read', 'customers') || $can('manage', 'customers'),
+    canReadWorkOrders: $can('read', 'work_orders') || $can('manage', 'work_orders'),
+    canReadNetworkNoc: $can('read', 'network_noc') || $can('manage', 'network_noc'),
+    canReadRouterInventory,
+  }));
+  const workspaceDefaults = $derived.by(() =>
+    buildNetworkMapWorkspaceDefaults(workspaceCapabilities),
+  );
+  const mapDataFreshnessLabel = $derived.by(() => {
+    if (!lastMapDataLoadedAt) {
+      return (
+        'Data viewport belum dimuat.'
+      );
+    }
+    const diffMs = Math.max(0, currentTimeMs - lastMapDataLoadedAt);
+    let age = 'baru saja';
+    if (diffMs >= 3_600_000) {
+      age = `${Math.round(diffMs / 3_600_000)} jam lalu`;
+    } else if (diffMs >= 60_000) {
+      age = `${Math.round(diffMs / 60_000)} mnt lalu`;
+    } else if (diffMs >= 10_000) {
+      age = `${Math.round(diffMs / 1000)} dtk lalu`;
+    }
+    return (
+      (lastMapDataSource === 'cache'
+        ? `Data cache ${age}.`
+        : `Data live ${age}.`) ||
+      (lastMapDataSource === 'cache'
+        ? `Viewport data restored from cache ${age}.`
+        : `Viewport data updated ${age}.`)
+    );
+  });
+  const workspaceStatusNotes = $derived.by(() => {
+    const notes: string[] = [mapDataFreshnessLabel];
+    if (!workspaceCapabilities.canReadRouterInventory) {
+      notes.push(
+        'Overlay router tidak tersedia untuk peran ini.',
+      );
+    } else if (!routerRows.length) {
+      notes.push(
+        'Overlay router aktif, tapi belum ada marker router.',
+      );
+    }
+    if (!workspaceCapabilities.canReadCustomers && !workspaceCapabilities.canReadWorkOrders) {
+      notes.push(
+        'Konteks pelanggan dan lapangan terbatas untuk peran ini.',
+      );
+    }
+    return notes;
+  });
+  const workspaceSubtitle = $derived.by(() => {
+    const base =
+      'Visualisasikan node, link, zona layanan, dan konteks operasional.';
+    return `${base} ${workspaceStatusNotes[0] || ''}`.trim();
+  });
+  const visibleNodeRows = $derived.by(() =>
+    nodeRows.filter((row) => !isLegacyFtthDistributionNode(row)),
+  );
+  const workspaceSearchGroups = $derived.by(() =>
+    buildNetworkMapOverviewSearchGroups({
+      query: workspaceSearchQuery,
+      quickMode,
+      nodes: visibleNodeRows,
+      links: linkRows,
+      zones: zoneRows,
+      routers: routerRows,
+      customerRows,
+      serviceRows,
+    }),
+  );
+  const workspaceSearchSummary = $derived.by(() => {
+    const query = workspaceSearchQuery.trim();
+    if (!query) {
+      const total = visibleNodeRows.length + linkRows.length + zoneRows.length + routerRows.length;
+      return (
+        `${total} hasil siap dicari.` || `${total} assets loaded in this workspace`
+      );
+    }
+    const count = countNetworkMapSearchResults(workspaceSearchGroups);
+    return (
+      `${count} hasil dalam ${workspaceSearchGroups.length} grup.` || `${count} matching results across ${workspaceSearchGroups.length} sections`
+    );
+  });
+  const linkFieldConfig = $derived.by(() => getLinkFieldConfig(linkForm.link_type));
+
+  const tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
+  );
+  const tenantPrefix = $derived(tenantCtx.tenantPrefix);
+  const compactMode = $derived($page.url.searchParams.get('compact') === '1');
+  const fromInstallation = $derived($page.url.searchParams.get('from_installation') === '1');
+  const sourceWorkOrderId = $derived($page.url.searchParams.get('work_order_id') || '');
+  const sourceCustomerId = $derived($page.url.searchParams.get('customer_id') || '');
+  const sourceLocationId = $derived($page.url.searchParams.get('location_id') || '');
+  const assetMapTarget = $derived.by(() => parseNetworkAssetMapTarget($page.url.searchParams));
+  const installationReturnUrl = $derived.by(() => {
+    if (!fromInstallation) return '';
+    const params = new URLSearchParams();
+    if (sourceWorkOrderId) params.set('work_order_id', sourceWorkOrderId);
+    return '/v2/admin/network/installations' + (params.toString() ? `?${params.toString()}` : '');
+  });
+
+  onMount(() => {
+    if (!canAccessNetworkMap($can)) {
+      goto('/unauthorized');
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      freshnessTimer = setInterval(() => {
+        currentTimeMs = Date.now();
+      }, 15_000);
+    }
+    workspaceState = applyNetworkMapWorkspaceDefaults(workspaceState, workspaceDefaults);
+    void ensureChromeComponentsLoaded();
+    if (workspaceCapabilities.canManageTopology) {
+      applyQuickMode('all');
+    } else if (workspaceCapabilities.canReadNetworkNoc && !workspaceCapabilities.canReadCustomers) {
+      applyQuickMode('issues');
+    } else if (workspaceCapabilities.canReadCustomers || workspaceCapabilities.canReadWorkOrders) {
+      applyQuickMode('field');
+    }
+    ensureMaplibreCompatHelpers();
+    void initMap();
+  });
+
+  onDestroy(() => {
+    if (refreshDebounce) clearTimeout(refreshDebounce);
+    if (freshnessTimer) clearInterval(freshnessTimer);
+    activeDataAbortController?.abort();
+    installationTargetMarker?.remove();
+    draftNodeMarker?.remove();
+    map?.remove();
+  });
+
+  $effect(() => {
+    syncLayerVisibility();
+  });
+
+  $effect(() => {
+    syncBaseLayerVisibility();
+  });
+
+  $effect(() => {
+    syncWorkspaceHighlights();
+  });
+
+  $effect(() => {
+    if (!map) return;
+    const canvas = map.getCanvas?.();
+    if (!canvas) return;
+    canvas.style.cursor = assetCreatePickMode ? 'crosshair' : '';
+  });
+
+  $effect(() => {
+    if (showCreateNodePanel || showLinkModal || showZoneModal || showDeleteConfirm) {
+      void ensureDialogComponentsLoaded();
+    }
+  });
+
+  async function ensureChromeComponentsLoaded() {
+    if (OverviewComponent && FloatingControlsComponent) return;
+    const modules = await loadNetworkMapChromeModules();
+    OverviewComponent = modules.OverviewComponent;
+    FloatingControlsComponent = modules.FloatingControlsComponent;
+  }
+
+  async function ensureDialogComponentsLoaded() {
+    if (NodePanelComponent && LinkModalComponent && ZoneModalComponent && ConfirmDialogComponent) {
+      return;
+    }
+    const modules = await loadNetworkMapDialogModules();
+    NodePanelComponent = modules.NodePanelComponent;
+    LinkModalComponent = modules.LinkModalComponent;
+    ZoneModalComponent = modules.ZoneModalComponent;
+    ConfirmDialogComponent = modules.ConfirmDialogComponent;
+  }
+
+  function ensureMaplibreCompatHelpers() {
+    const g = globalThis as any;
+    if (typeof g.__publicField !== 'function') {
+      g.__publicField = (obj: any, key: PropertyKey, value: any) => {
+        Object.defineProperty(obj, key, {
+          value,
+          enumerable: true,
+          configurable: true,
+          writable: true,
+        });
+        return value;
+      };
+    }
+  }
+
+  async function updateWorkspaceSelection(
+    nextSelectedObject: ReturnType<typeof buildSelectedMapObject>,
+  ) {
+    const module = await getWorkspaceModule();
+    workspaceState = module.selectNetworkMapObject(workspaceState, nextSelectedObject);
+    if (workspaceDefaults.mode === 'investigate') {
+      workspaceState = module.enterInvestigationMode(
+        workspaceState,
+        workspaceDefaults.investigationKind,
+      );
+    }
+  }
+
+  async function clearMapPopupSelection() {
+    const module = await getWorkspaceModule();
+    workspaceState = module.clearWorkspaceSelection(workspaceState);
+  }
+
+  function focusMapOnCoordinates(lng: number, lat: number, zoomFloor = 13) {
+    if (!map || !Number.isFinite(lng) || !Number.isFinite(lat)) return;
+    const currentZoom = Number.isFinite(map.getZoom()) ? map.getZoom() : zoomFloor;
+    map.flyTo({
+      center: [lng, lat],
+      zoom: Math.max(currentZoom, zoomFloor),
+      essential: true,
+    });
+  }
+
+  function applyAssetMapTargetFocus() {
+    if (assetFocusApplied) return;
+    if (!assetMapTarget) return;
+
+    const matchedRow = topologyAssetRows.find((row) => row.id === assetMapTarget.assetId);
+    const lng = matchedRow?.longitude ?? assetMapTarget.longitude;
+    const lat = matchedRow?.latitude ?? assetMapTarget.latitude;
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+
+    focusMapOnCoordinates(lng, lat, 15);
+    assetFocusApplied = true;
+  }
+
+  function coordinateFromGeometry(geometry: Geometry | null | undefined): [number, number] | null {
+    if (!geometry) return null;
+    switch (geometry.type) {
+      case 'Point':
+        return geometry.coordinates as [number, number];
+      case 'LineString': {
+        const points = geometry.coordinates as Array<[number, number]>;
+        if (!points.length) return null;
+        return points[Math.floor(points.length / 2)] ?? points[0] ?? null;
+      }
+      case 'Polygon': {
+        const ring = (geometry.coordinates?.[0] || []) as Array<[number, number]>;
+        if (!ring.length) return null;
+        const [sumLng, sumLat] = ring.reduce(
+          (acc, [lng, lat]) => [acc[0] + lng, acc[1] + lat],
+          [0, 0],
+        );
+        return [sumLng / ring.length, sumLat / ring.length];
+      }
+      case 'MultiPoint':
+        return (geometry.coordinates?.[0] as [number, number]) ?? null;
+      case 'MultiLineString': {
+        const firstLine = (geometry.coordinates?.[0] || []) as Array<[number, number]>;
+        if (!firstLine.length) return null;
+        return firstLine[Math.floor(firstLine.length / 2)] ?? firstLine[0] ?? null;
+      }
+      case 'MultiPolygon': {
+        const firstRing = (geometry.coordinates?.[0]?.[0] || []) as Array<[number, number]>;
+        if (!firstRing.length) return null;
+        const [sumLng, sumLat] = firstRing.reduce(
+          (acc, [lng, lat]) => [acc[0] + lng, acc[1] + lat],
+          [0, 0],
+        );
+        return [sumLng / firstRing.length, sumLat / firstRing.length];
+      }
+      case 'GeometryCollection':
+        return coordinateFromGeometry(geometry.geometries?.[0]);
+      default:
+        return null;
+    }
+  }
+
+  function formatPopupStatusLabel(value: string) {
+    const normalized = String(value || '').trim();
+    if (!normalized) return '-';
+    return normalized
+      .replaceAll('_', ' ')
+      .split(/\s+/)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }
+
+  async function closeCustomerDropModalAndFocus(item: TopologyAssetCustomerDropItem) {
+    closeTopologyAssetCustomerDropModal();
+    if (!map || !maplibre) return;
+    if (!Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) return;
+
+    const targetRow =
+      customerRows.find((row) => row.id === item.nodeId) ||
+      serviceRows.find((row) => row.id === item.nodeId) ||
+      nodeRows.find((row) => row.id === item.nodeId) ||
+      topologyAssetContextNodeRows.find((row) => row.id === item.nodeId);
+    if (!targetRow) {
+      focusMapOnCoordinates(item.longitude, item.latitude, 16);
+      return;
+    }
+
+    const { focusMapForPopupViewport, openNodePopup } = await loadNetworkMapPopupModule();
+    await focusMapForPopupViewport(map, item.longitude, item.latitude, 16);
+    await updateWorkspaceSelection(
+      buildSelectedMapObject({
+        kind: hasServiceMetadata(targetRow) ? 'service' : 'customer',
+        id: targetRow.id,
+        label: targetRow.name,
+        nodeType: targetRow.node_type,
+      }),
+    );
+    openNodePopup({
+      map,
+      maplibre,
+      feature: {
+        properties: {
+          id: targetRow.id,
+          name: targetRow.name,
+          node_type: targetRow.node_type,
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [targetRow.lng, targetRow.lat],
+        } as Geometry,
+      },
+      nodeRows,
+      routerRows,
+      activePopup: activeNodePopup,
+      setActivePopup: (popup) => (activeNodePopup = popup),
+      onClose: clearMapPopupSelection,
+      onOpenCustomer: (customerId) =>
+        void goto(appendBackParam(`${tenantPrefix}/admin/customers/${customerId}`, $page.url)),
+      onOpenService: (customerId, serviceId) =>
+        void goto(
+          appendBackParam(
+            `${tenantPrefix}/admin/customers/${customerId}?tab=subscriptions&service_id=${encodeURIComponent(serviceId)}`,
+            $page.url,
+          ),
+        ),
+      onConnect: startConnectFromNode,
+      onEdit: openEditNodeModal,
+      onOpenRouter: (routerId) =>
+        void goto(appendBackParam('/v2/admin/network/routers/' + routerId, $page.url)),
+    });
+  }
+
+  async function openTopologyAssetCustomerDropModal(assetId: string) {
+    await refreshTopologyAssetContext();
+    const asset = topologyAssetItems.find((item) => item.id === assetId);
+    if (!asset) {
+      toast.error(
+        'Data aset FTTH tidak ditemukan.',
+      );
+      return;
+    }
+
+    const customerContextNodeRows = Array.from(
+      new Map(
+        [...topologyAssetContextNodeRows, ...customerRows, ...serviceRows].map(
+          (row) => [row.id, row] as const,
+        ),
+      ).values(),
+    );
+    const customerContextLinkRows = Array.from(
+      new Map(
+        [...topologyAssetContextLinkRows, ...linkRows].map((row) => [row.id, row] as const),
+      ).values(),
+    );
+
+    assetCustomerDropItems = buildTopologyAssetCustomerDropItems({
+      assetId,
+      assets: topologyAssetItems,
+      assetNodeIdsByAssetId: topologyAssetNodeIdCache,
+      nodeRows: customerContextNodeRows,
+      linkRows: customerContextLinkRows,
+    });
+    assetCustomerDropModalTitle =
+      asset.name || 'Pelanggan terhubung';
+    showAssetCustomerDropModal = true;
+  }
+
+  function closeTopologyAssetCustomerDropModal() {
+    showAssetCustomerDropModal = false;
+    assetCustomerDropModalTitle = '';
+    assetCustomerDropItems = [];
+  }
+
+  function applyQuickMode(nextMode: NetworkMapQuickMode) {
+    quickMode = nextMode;
+    if (nextMode === 'all') {
+      nodesVisible = true;
+      linksVisible = true;
+      zonesVisible = true;
+      routersVisible = true;
+      customersVisible = true;
+      topologyAssetsVisible = true;
+      return;
+    }
+
+    if (nextMode === 'issues') {
+      nodesVisible = true;
+      linksVisible = true;
+      zonesVisible = true;
+      routersVisible = canReadRouterInventory;
+      customersVisible = false;
+      topologyAssetsVisible = true;
+      return;
+    }
+
+    if (nextMode === 'customers') {
+      nodesVisible = false;
+      linksVisible = false;
+      zonesVisible = false;
+      routersVisible = false;
+      customersVisible = true;
+      topologyAssetsVisible = false;
+      return;
+    }
+
+    if (nextMode === 'services') {
+      nodesVisible = true;
+      linksVisible = false;
+      zonesVisible = false;
+      routersVisible = false;
+      customersVisible = true;
+      topologyAssetsVisible = true;
+      return;
+    }
+
+    if (nextMode === 'topology') {
+      nodesVisible = true;
+      linksVisible = true;
+      zonesVisible = true;
+      routersVisible = canReadRouterInventory;
+      customersVisible = false;
+      topologyAssetsVisible = true;
+      return;
+    }
+
+    nodesVisible = true;
+    linksVisible = false;
+    zonesVisible = true;
+    routersVisible = false;
+    customersVisible = true;
+    topologyAssetsVisible = true;
+  }
+
+  function handleWorkspaceSearchSelect(item: NetworkMapSearchResultItem) {
+    workspaceSearchQuery = item.label;
+    workspaceSearchOpen = false;
+
+    if (item.kind === 'customer' || item.kind === 'service' || item.kind === 'node') {
+      const row = nodeRows.find((candidate) => candidate.id === item.id);
+      if (!row) return;
+      focusMapOnCoordinates(row.lng, row.lat, 14);
+      void updateWorkspaceSelection(
+        buildSelectedMapObject({
+          kind: item.kind,
+          id: row.id,
+          label: row.name,
+          nodeType: row.node_type,
+        }),
+      );
+      return;
+    }
+
+    if (item.kind === 'link') {
+      const row = linkRows.find((candidate) => candidate.id === item.id);
+      if (!row) return;
+      const coord = coordinateFromGeometry(row.geometry);
+      if (coord) focusMapOnCoordinates(coord[0], coord[1], 13);
+      void updateWorkspaceSelection(
+        buildSelectedMapObject({
+          kind: 'link',
+          id: row.id,
+          label: row.name,
+          linkType: row.link_type,
+        }),
+      );
+      return;
+    }
+
+    if (item.kind === 'zone') {
+      const row = zoneRows.find((candidate) => candidate.id === item.id);
+      if (!row) return;
+      const coord = coordinateFromGeometry(row.geometry);
+      if (coord) focusMapOnCoordinates(coord[0], coord[1], 12);
+      void updateWorkspaceSelection(
+        buildSelectedMapObject({
+          kind: 'zone',
+          id: row.id,
+          label: row.name,
+          zoneType: row.zone_type,
+        }),
+      );
+      return;
+    }
+
+    const router = routerRows.find((candidate) => candidate.id === item.id);
+    if (!router) return;
+    if (router.longitude != null && router.latitude != null) {
+      focusMapOnCoordinates(Number(router.longitude), Number(router.latitude), 13);
+    }
+    void updateWorkspaceSelection(
+      buildSelectedMapObject({
+        kind: 'router',
+        id: router.id,
+        label: router.identity || router.name,
+      }),
+    );
+  }
+
+  async function handleNodeLayerClick(e: any) {
+    const clickedFeature = snapshotMapFeature(e.features?.[0]);
+    if (!map || !clickedFeature || !maplibre) return;
+    if (assetCreatePickMode && e.lngLat) {
+      await openCreateTopologyAssetModalAt(Number(e.lngLat.lng), Number(e.lngLat.lat));
+      return;
+    }
+    const props = clickedFeature.properties || {};
+    const nodeId = String(props.id || '');
+    if (shouldSuppressPopupOnTargetPick(linkPickMode, 'node')) {
+      handleLinkPickNode(nodeId);
+      return;
+    }
+    if (e.lngLat) {
+      const { focusMapForPopupViewport } = await loadNetworkMapPopupModule();
+      await focusMapForPopupViewport(map, Number(e.lngLat.lng), Number(e.lngLat.lat), 13);
+    }
+    await updateWorkspaceSelection(
+      buildSelectedMapObject({
+        kind: 'node',
+        id: nodeId,
+        label: String(props.name || props.label || nodeId),
+        nodeType: props.node_type || props.nodeType || undefined,
+      }),
+    );
+    const { openNodePopup } = await loadNetworkMapPopupModule();
+    openNodePopup({
+      map,
+      maplibre,
+      feature: clickedFeature.feature as any,
+      nodeRows,
+      routerRows,
+      activePopup: activeNodePopup,
+      setActivePopup: (popup) => (activeNodePopup = popup),
+      onClose: clearMapPopupSelection,
+      onOpenCustomer: (customerId) =>
+        void goto(appendBackParam(`${tenantPrefix}/admin/customers/${customerId}`, $page.url)),
+      onOpenService: (customerId, serviceId) =>
+        void goto(
+          appendBackParam(
+            `${tenantPrefix}/admin/customers/${customerId}?tab=subscriptions&service_id=${encodeURIComponent(serviceId)}`,
+            $page.url,
+          ),
+        ),
+      onConnect: startConnectFromNode,
+      onEdit: openEditNodeModal,
+      onOpenRouter: (routerId) =>
+        void goto(appendBackParam('/v2/admin/network/routers/' + routerId, $page.url)),
+    });
+  }
+
+  async function handleLinkLayerClick(e: any) {
+    const clickedFeature = snapshotMapFeature(e.features?.[0]);
+    if (!map || !clickedFeature || !maplibre || linkPickMode) return;
+    if (assetCreatePickMode && e.lngLat) {
+      await openCreateTopologyAssetModalAt(Number(e.lngLat.lng), Number(e.lngLat.lat));
+      return;
+    }
+    if (e.lngLat) {
+      const { focusMapForPopupViewport } = await loadNetworkMapPopupModule();
+      await focusMapForPopupViewport(map, Number(e.lngLat.lng), Number(e.lngLat.lat), 13);
+    }
+    const props = clickedFeature.properties || {};
+    const linkId = String(props.id || '');
+    await updateWorkspaceSelection(
+      buildSelectedMapObject({
+        kind: 'link',
+        id: linkId,
+        label: String(props.name || props.label || linkId),
+        linkType: props.link_type || props.linkType || undefined,
+      }),
+    );
+    const { openLinkPopup } = await loadNetworkMapPopupModule();
+    openLinkPopup({
+      map,
+      maplibre,
+      feature: clickedFeature.feature as any,
+      lngLat: e.lngLat,
+      linkRows,
+      onClose: clearMapPopupSelection,
+      onEdit: openEditLinkModal,
+      onDelete: (linkId, linkName) => openDeleteConfirm('link', linkId, linkName),
+    });
+  }
+
+  async function handleRouterLayerClick(e: any) {
+    const clickedFeature = snapshotMapFeature(e.features?.[0]);
+    if (!map || !clickedFeature || !maplibre) return;
+    if (assetCreatePickMode && e.lngLat) {
+      await openCreateTopologyAssetModalAt(Number(e.lngLat.lng), Number(e.lngLat.lat));
+      return;
+    }
+    const props = clickedFeature.properties || {};
+    const routerId = String(props.id || '');
+    if (shouldSuppressPopupOnTargetPick(linkPickMode, 'router')) {
+      handleLinkPickNode(
+        resolveRouterTopologyNodeId({
+          routerId,
+          routerName: String(props.name || ''),
+          routerIdentity: String(props.identity || ''),
+          nodeRows,
+        }),
+      );
+      return;
+    }
+    if (e.lngLat) {
+      const { focusMapForPopupViewport } = await loadNetworkMapPopupModule();
+      await focusMapForPopupViewport(map, Number(e.lngLat.lng), Number(e.lngLat.lat), 13);
+    }
+    await updateWorkspaceSelection(
+      buildSelectedMapObject({
+        kind: 'router',
+        id: routerId,
+        label: String(props.name || props.identity || routerId),
+      }),
+    );
+    const { openRouterPopup } = await loadNetworkMapPopupModule();
+    openRouterPopup({
+      map,
+      maplibre,
+      feature: clickedFeature.feature as any,
+      activePopup: activeNodePopup,
+      setActivePopup: (popup) => (activeNodePopup = popup),
+      onClose: clearMapPopupSelection,
+      onConnect: (routerId) =>
+        void startConnectFromNode(
+          resolveRouterTopologyNodeId({
+            routerId,
+            routerName: String(props.name || ''),
+            routerIdentity: String(props.identity || ''),
+            nodeRows,
+          }),
+        ),
+      onOpenRouter: (routerId) => void goto('/v2/admin/network/routers/' + routerId),
+    });
+  }
+
+  async function handleTopologyAssetLayerClick(e: any) {
+    const clickedFeature = snapshotMapFeature(e.features?.[0]);
+    if (!map || !clickedFeature || !maplibre) return;
+    if (assetCreatePickMode && e.lngLat) {
+      await openCreateTopologyAssetModalAt(Number(e.lngLat.lng), Number(e.lngLat.lat));
+      return;
+    }
+    const assetId = String(clickedFeature.properties?.id || '');
+    const row = topologyAssetRows.find((candidate) => candidate.id === assetId);
+    const coords = coordinateFromGeometry(clickedFeature.feature.geometry as Geometry);
+    if (!row || !coords) return;
+    if (shouldSuppressPopupOnTargetPick(linkPickMode, 'topology_asset')) {
+      if (
+        !canTopologyAssetAcceptConnection({
+          assetType: row.assetType,
+          portCapacity: row.portCapacity,
+          portsAvailable: row.portsAvailable,
+        })
+      ) {
+        toast.error(`${row.name} sudah penuh dan tidak bisa dipakai untuk koneksi baru.`);
+        return;
+      }
+      const nodeId = await ensureTopologyAssetNodeId(assetId);
+      if (!nodeId) {
+        toast.error(
+          'Node aset FTTH belum tersinkron ke peta topologi.',
+        );
+        return;
+      }
+      handleLinkPickNode(nodeId);
+      return;
+    }
+    const mapInstance = map;
+    const {
+      bindPopupNavigationDismiss,
+      focusMapForPopupViewport,
+      nudgePopupElementIntoView,
+      popupOptionsForMap,
+    } = await loadNetworkMapPopupModule();
+    await focusMapForPopupViewport(mapInstance, coords[0], coords[1], 14);
+
+    activeNodePopup?.remove();
+    const closeBtnId = `nm-topology-asset-close-${Math.random().toString(36).slice(2, 10)}`;
+    const connectBtnId = `nm-topology-asset-connect-${Math.random().toString(36).slice(2, 10)}`;
+    const editBtnId = `nm-topology-asset-edit-${Math.random().toString(36).slice(2, 10)}`;
+    const customerDropBtnId = `nm-topology-asset-customer-drop-${Math.random().toString(36).slice(2, 10)}`;
+    const popup = new maplibre.Popup(
+      popupOptionsForMap(mapInstance, coords, {
+        width: 296,
+        height: 280,
+      }),
+    )
+      .setLngLat(coords)
+      .setHTML(
+        buildTopologyAssetPopupHtml({
+          row,
+          buttonIds: { closeBtnId, connectBtnId, editBtnId, customerDropBtnId },
+          canManageFtthAssets,
+          translate: $t,
+        }),
+      );
+    let cleanupNavigationDismiss: (() => void) | null = null;
+
+    popup.on('open', () => {
+      requestAnimationFrame(() => {
+        const popupElement =
+          typeof (popup as any).getElement === 'function'
+            ? ((popup as any).getElement() as HTMLElement)
+            : null;
+        popupElement?.classList.add('nm-popup-link-shell');
+        nudgePopupElementIntoView({
+          popupElement,
+          mapElement: mapInstance.getContainer(),
+          padding: 18,
+        });
+      });
+      cleanupNavigationDismiss = bindPopupNavigationDismiss({
+        map: mapInstance,
+        popup,
+      });
+      const closeBtn = document.getElementById(closeBtnId) as HTMLButtonElement | null;
+      const connectBtn = document.getElementById(connectBtnId) as HTMLButtonElement | null;
+      const editBtn = document.getElementById(editBtnId) as HTMLButtonElement | null;
+      const customerDropBtn = document.getElementById(
+        customerDropBtnId,
+      ) as HTMLButtonElement | null;
+      connectBtn?.addEventListener('click', () => {
+        if (!row.canAcceptConnections) return;
+        popup.remove();
+        void startConnectFromTopologyAsset(assetId);
+      });
+      editBtn?.addEventListener('click', () => {
+        popup.remove();
+        void openEditTopologyAssetModal(assetId);
+      });
+      customerDropBtn?.addEventListener('click', () => {
+        popup.remove();
+        void openTopologyAssetCustomerDropModal(assetId);
+      });
+      closeBtn?.addEventListener('click', () => popup.remove());
+    });
+    popup.on('close', () => {
+      cleanupNavigationDismiss?.();
+      cleanupNavigationDismiss = null;
+      activeNodePopup = null;
+    });
+
+    activeNodePopup = popup;
+    popup.addTo(mapInstance);
+  }
+
+  async function refreshTopologyAssetContext(force = false) {
+    const now = Date.now();
+    const isStale = now - lastTopologyAssetContextLoadedAt >= topologyAssetContextCacheTtlMs;
+    if (
+      !force &&
+      !isStale &&
+      topologyAssetContextNodeRows.length &&
+      topologyAssetContextLinkRows.length
+    ) {
+      return;
+    }
+
+    const [nodeRowsAll, linkRowsAll, routersRes] = await Promise.all([
+      fetchAllPaginatedRows<NMNode>((page) =>
+        networkMapping.nodes.list({
+          bbox: NETWORK_MAP_WORLD_BBOX,
+          page,
+          per_page: 200,
+          include_legacy_ftth: true,
+        }),
+      ),
+      fetchAllPaginatedRows<NMLink>((page) =>
+        networkMapping.links.list({
+          bbox: NETWORK_MAP_WORLD_BBOX,
+          page,
+          per_page: 200,
+        }),
+      ),
+      shouldFetchRouterOverlay({
+        canReadRouterInventory,
+        routersVisible: true,
+      })
+        ? mikrotik.routers.list()
+        : Promise.resolve(routerRows),
+    ]);
+
+    topologyAssetContextNodeRows = nodeRowsAll;
+    topologyAssetContextLinkRows = linkRowsAll;
+    topologyAssetContextRouterRows = (routersRes || []) as NMRouter[];
+    lastTopologyAssetContextLoadedAt = Date.now();
+  }
+
+  async function refreshTopologyAssets(force = false) {
+    const now = Date.now();
+    const isStale = now - lastTopologyAssetsLoadedAt >= topologyAssetsCacheTtlMs;
+    if (!force && !topologyAssetsVisible && topologyAssetRows.length) {
+      return;
+    }
+    if (!force && !isStale && topologyAssetRows.length) {
+      replaceTopologyAssetOverlay(topologyAssetsToFeatureCollection(topologyAssetRows));
+      syncTopologyAssetLinkOverlay();
+      syncLayerVisibility();
+      return;
+    }
+    if (refreshingTopologyAssets) return;
+
+    refreshingTopologyAssets = true;
+    try {
+      await refreshTopologyAssetContext(force);
+      const response = await networkAssets.list({
+        page: 1,
+        per_page: 500,
+      });
+      topologyAssetItems = (response.data || []) as NetworkAssetListItem[];
+      topologyAssetRows = buildTopologyAssetRows(topologyAssetItems, {
+        assetNodeIdsByAssetId: topologyAssetNodeIdCache,
+        nodeRows: topologyAssetContextNodeRows,
+        linkRows: topologyAssetContextLinkRows,
+        routerRows: topologyAssetContextRouterRows,
+      });
+      lastTopologyAssetsLoadedAt = Date.now();
+      replaceTopologyAssetOverlay(topologyAssetsToFeatureCollection(topologyAssetRows));
+      syncTopologyAssetLinkOverlay();
+      syncLayerVisibility();
+      applyAssetMapTargetFocus();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      refreshingTopologyAssets = false;
+    }
+  }
+
+  async function ensureAssetFormModalLoaded() {
+    if (AssetFormModalComponent) return;
+    const module = await loadNetworkAssetFormModal();
+    AssetFormModalComponent = module.NetworkAssetFormModalComponent;
+  }
+
+  async function openEditTopologyAssetModal(assetId: string) {
+    if (!canManageFtthAssets) return;
+    assetCreatePickMode = false;
+    const asset = topologyAssetItems.find((item) => item.id === assetId);
+    if (!asset) {
+      toast.error(
+        'Data aset FTTH tidak ditemukan.',
+      );
+      return;
+    }
+    await ensureAssetFormModalLoaded();
+    editingAsset = asset;
+    const next = buildNetworkMapAssetEditorState(asset);
+    assetDraft = next.draft;
+    assetDetailDraft = next.detailDraft;
+    showAssetFormModal = true;
+  }
+
+  function closeAssetFormModal() {
+    showAssetFormModal = false;
+    editingAsset = null;
+    assetCreatePickMode = false;
+  }
+
+  function toggleAssetCreatePickMode() {
+    if (!canManageFtthAssets) return;
+    activeNodePopup?.remove();
+    if (assetCreatePickMode) {
+      assetCreatePickMode = false;
+      toast.info('Penambahan aset dibatalkan.');
+      return;
+    }
+    showAssetFormModal = false;
+    editingAsset = null;
+    assetCreatePickMode = true;
+    if (linkPickMode) {
+      activeAssetConnectSourceId = null;
+      linkPickMode = false;
+      linkPickStep = 'from';
+      linkPathBendPoints = [];
+      syncLinkDraftPreview();
+    }
+    toast.info(
+      'Klik titik di peta untuk menambah aset FTTH baru.',
+    );
+  }
+
+  async function openCreateTopologyAssetModalAt(lng: number, lat: number) {
+    if (!canManageFtthAssets) return;
+    await ensureAssetFormModalLoaded();
+    editingAsset = null;
+    const next = buildNetworkMapAssetCreateState({
+      latitude: Number(lat.toFixed(7)),
+      longitude: Number(lng.toFixed(7)),
+    });
+    assetDraft = next.draft;
+    assetDetailDraft = next.detailDraft;
+    assetCreatePickMode = false;
+    showAssetFormModal = true;
+  }
+
+  function handleAssetTypeChange(value: string) {
+    assetDraft.asset_type = value;
+    assetDetailDraft = createNetworkAssetDetailDraft(value, editingAsset?.metadata || {});
+  }
+
+  async function saveTopologyAssetForm() {
+    savingAssetForm = true;
+    try {
+      const wasEditing = Boolean(editingAsset);
+      const detailErrors = validateNetworkAssetDetailDraft(assetDraft.asset_type, assetDetailDraft);
+      if (detailErrors.length > 0) {
+        throw new Error(detailErrors[0]);
+      }
+      const parsedCoordinates = parseNetworkAssetCoordinates(
+        assetDraft.latitude,
+        assetDraft.longitude,
+      );
+      if (parsedCoordinates.error === 'pair') {
+        throw new Error(
+          'Lintang dan bujur wajib diisi bersamaan.',
+        );
+      }
+      if (parsedCoordinates.error === 'invalid') {
+        throw new Error(
+          'Lintang dan bujur harus angka valid.',
+        );
+      }
+      if (parsedCoordinates.error === 'latitude_range') {
+        throw new Error(
+          'Lintang harus antara -90 dan 90.',
+        );
+      }
+      if (parsedCoordinates.error === 'longitude_range') {
+        throw new Error(
+          'Bujur harus antara -180 dan 180.',
+        );
+      }
+
+      const payload = buildNetworkAssetSavePayload({
+        draft: {
+          ...assetDraft,
+          latitude: parsedCoordinates.latitude != null ? String(parsedCoordinates.latitude) : '',
+          longitude: parsedCoordinates.longitude != null ? String(parsedCoordinates.longitude) : '',
+        },
+        metadata: buildNetworkAssetMetadata(
+          assetDraft.asset_type,
+          assetDetailDraft,
+          editingAsset?.metadata || {},
+        ),
+        existingRelations: editingAsset
+          ? {
+              customer_id: editingAsset.customer_id,
+              location_id: editingAsset.location_id,
+              work_order_id: editingAsset.work_order_id,
+              parent_asset_id: editingAsset.parent_asset_id,
+            }
+          : undefined,
+      });
+
+      if (editingAsset) {
+        await networkAssets.update(editingAsset.id, payload);
+      } else {
+        await networkAssets.create(payload);
+      }
+      closeAssetFormModal();
+      await refreshTopologyAssets(true);
+      invalidateMapDataCache();
+      await refreshMapData(true);
+      toast.success(
+        wasEditing
+          ? 'Aset FTTH diperbarui.'
+          : 'Aset FTTH dibuat.',
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.message ||
+          'Gagal menyimpan aset FTTH.',
+      );
+    } finally {
+      savingAssetForm = false;
+    }
+  }
+
+  async function getInteractionModule() {
+    if (interactionModule) return interactionModule;
+    interactionModule = await loadNetworkMapInteractionModule();
+    return interactionModule;
+  }
+
+  async function getWorkspaceModule() {
+    if (workspaceModule) return workspaceModule;
+    workspaceModule = await loadNetworkMapWorkspaceModule();
+    return workspaceModule;
+  }
+
+  async function initMap() {
+    try {
+      const [loadedMaplibre, loadedInteractionModule] = await Promise.all([
+        import('maplibre-gl'),
+        getInteractionModule(),
+      ]);
+      maplibre = loadedMaplibre;
+      if (!mapEl || !maplibre) return;
+
+      map = new maplibre.Map({
+        container: mapEl,
+        style: loadedInteractionModule.buildBaseMapStyle({
+          hasHiResSatellite,
+          mapTilerKey,
+          standardMaxZoom,
+          satelliteMaxZoom,
+        }),
+        center: [110.48, -7.28],
+        zoom: 8,
+        maxZoom: standardMaxZoom,
+        minZoom: 3,
+      });
+
+      map.on('load', async () => {
+        if (!map) return;
+        loadedInteractionModule.ensureNodeTypeIconsRegistered(map);
+        loadedInteractionModule.registerMapSourcesAndLayers(map);
+        if (maplibre) try {
+          map.addControl(new maplibre.NavigationControl({ visualizePitch: false }), 'bottom-left');
+          map.addControl(new maplibre.ScaleControl({ maxWidth: 120 }), 'bottom-left');
+        } catch {
+          // kontrol bawaan opsional — abaikan bila gagal
+        }
+
+        loadedInteractionModule.registerPrimaryLayerClicks({
+          map,
+          onNodeClick: handleNodeLayerClick,
+          onRouterClick: handleRouterLayerClick,
+          onTopologyAssetClick: handleTopologyAssetLayerClick,
+          onLinkClick: handleLinkLayerClick,
+          onCustomerClusterClick: async (e) => {
+            if (!map || !maplibre || !e.features?.[0]) return;
+            try {
+              await loadedInteractionModule.expandCustomerCluster({
+                map,
+                feature: e.features[0],
+                sourceId: SOURCE_CUSTOMERS,
+              });
+            } catch (error) {
+              console.error(error);
+            }
+          },
+          onRouterClusterClick: async (e) => {
+            if (!map || !maplibre || !e.features?.[0]) return;
+            try {
+              await loadedInteractionModule.expandCustomerCluster({
+                map,
+                feature: e.features[0],
+                sourceId: SOURCE_ROUTERS,
+              });
+            } catch (error) {
+              console.error(error);
+            }
+          },
+          onTopologyAssetClusterClick: async (e) => {
+            if (!map || !maplibre || !e.features?.[0]) return;
+            try {
+              await loadedInteractionModule.expandCustomerCluster({
+                map,
+                feature: e.features[0],
+                sourceId: SOURCE_TOPOLOGY_ASSETS,
+              });
+            } catch (error) {
+              console.error(error);
+            }
+          },
+        });
+
+        map.on('click', (e) => {
+          if (!map) return;
+          const result = loadedInteractionModule.handleCanvasMapClick({
+            map,
+            event: e,
+            linkPickMode,
+            linkPickDrawMode,
+            linkForm,
+            linkSnapToNodeEnabled,
+            nodeRows,
+            nodePickMode,
+            onAddLinkPathPoint: (point) => {
+              linkPathBendPoints = [...linkPathBendPoints, point];
+              refreshLinkGeometryDraft();
+              syncLinkDraftPreview();
+            },
+            onApplyPickedNodeCoordinates: applyPickedNodeCoordinates,
+          });
+          if (result.handled) return;
+          if (assetCreatePickMode) {
+            void openCreateTopologyAssetModalAt(Number(e.lngLat.lng), Number(e.lngLat.lat));
+          }
+        });
+
+        loadedInteractionModule.registerInteractiveLayerHover(map);
+
+        map.on('moveend', scheduleRefresh);
+        mapReady = true;
+        syncLayerVisibility();
+        syncLinkDraftPreview();
+        await refreshMapData();
+        if (!installationTargetResolved) {
+          installationTargetResolved = true;
+          try {
+            const resolved = await resolveInstallationTargetMarker({
+              map,
+              maplibre,
+              fromInstallation,
+              sourceCustomerId,
+              sourceLocationId,
+              compactMode,
+              didInitialFitToMarkers,
+              existingMarker: installationTargetMarker,
+              loadCustomerLocations: (customerId) => customers.locations.list(customerId),
+            });
+            if (resolved) {
+              installationTargetMarker = resolved.marker;
+              installationTargetCoord = resolved.coord;
+            }
+          } catch (error) {
+            console.error(error);
+          }
+        }
+      });
+    } catch (e: any) {
+      console.error(e);
+      mapUnavailable = true;
+      mapErrorMessage =
+        e?.message ||
+        'Gagal inisialisasi peta WebGL.';
+      await refreshMapData();
+    } finally {
+      loading = false;
+    }
+  }
+
+  function currentBboxString(): string | null {
+    if (!map) return '-180,-85,180,85';
+    const b = map.getBounds();
+    if (!b) return '-180,-85,180,85';
+    // Keep bbox stable at very high zoom.
+    // With coarse rounding, west/east (or south/north) can collapse and cause empty backend results.
+    const minSpanLng = 0.0002;
+    const minSpanLat = 0.0002;
+    let west = b.getWest();
+    let east = b.getEast();
+    let south = b.getSouth();
+    let north = b.getNorth();
+
+    if (east - west < minSpanLng) {
+      const mid = (east + west) / 2;
+      west = mid - minSpanLng / 2;
+      east = mid + minSpanLng / 2;
+    }
+    if (north - south < minSpanLat) {
+      const mid = (north + south) / 2;
+      south = mid - minSpanLat / 2;
+      north = mid + minSpanLat / 2;
+    }
+
+    return `${west.toFixed(8)},${south.toFixed(8)},${east.toFixed(8)},${north.toFixed(8)}`;
+  }
+
+  function scheduleRefresh() {
+    if (refreshDebounce) clearTimeout(refreshDebounce);
+    refreshDebounce = setTimeout(() => {
+      void refreshMapData();
+    }, 280);
+  }
+
+  function invalidateMapDataCache() {
+    dataCache.clear();
+  }
+
+  async function syncTopologyAssets(manual = false) {
+    if (syncingAssetNodes) return false;
+    syncingAssetNodes = true;
+    try {
+      const result = await syncTopologyAssetsIfNeeded({
+        canManageTopology,
+        syncingAssetNodes: false,
+        manual,
+        lastAssetSyncAt,
+        assetSyncTtlMs,
+      });
+      lastAssetSyncAt = result.lastSyncedAt;
+      return result.changed;
+    } finally {
+      syncingAssetNodes = false;
+    }
+  }
+
+  async function refreshAfterTopologySync() {
+    invalidateMapDataCache();
+    await refreshTopologyAssetContext(true);
+    await refreshTopologyAssets(true);
+    await refreshMapData(true, { skipAutoSync: true });
+  }
+
+  function queueBackgroundTopologySync() {
+    if (backgroundAssetSyncPromise || syncingAssetNodes) return;
+    backgroundAssetSyncPromise = syncTopologyAssets(false)
+      .then(async (changed) => {
+        if (!changed) return false;
+        await refreshAfterTopologySync();
+        return true;
+      })
+      .finally(() => {
+        backgroundAssetSyncPromise = null;
+      });
+  }
+
+  function queueManualTopologySync() {
+    if (backgroundAssetSyncPromise || syncingAssetNodes) return;
+    backgroundAssetSyncPromise = syncTopologyAssets(true)
+      .then(async (changed) => {
+        if (!changed) return false;
+        await refreshAfterTopologySync();
+        return true;
+      })
+      .catch((error) => {
+        console.error(error);
+        return false;
+      })
+      .finally(() => {
+        backgroundAssetSyncPromise = null;
+      });
+  }
+
+  async function refreshMapData(force = false, options?: { skipAutoSync?: boolean }) {
+    if (map && !mapReady) return;
+    const requestId = ++lastRequestId;
+    const viewportBbox = currentBboxString();
+    if (!viewportBbox) return;
+
+    refreshing = true;
+
+    try {
+      let shouldBypassCache = force;
+      if (!options?.skipAutoSync) {
+        const syncStrategy = getTopologySyncStrategy({
+          canManageTopology,
+          syncingAssetNodes,
+          manual: force,
+          lastAssetSyncAt,
+          assetSyncTtlMs,
+        });
+        if (syncStrategy.shouldBlockRefresh) {
+          if (await syncTopologyAssets(force)) {
+            shouldBypassCache = true;
+            invalidateMapDataCache();
+          }
+        } else if (syncStrategy.shouldSync) {
+          queueBackgroundTopologySync();
+        }
+      }
+
+      const hasActiveFilters = !!(q.trim() || status || kind);
+      const bbox = resolveNetworkMapFetchBbox({
+        viewportBbox,
+        initialExtentLoaded,
+        hasActiveFilters,
+      });
+      const isInitialExtentRequest = bbox !== viewportBbox;
+
+      const params = {
+        q: q.trim() || undefined,
+        status: status || undefined,
+        kind: kind || undefined,
+        bbox,
+        page: 1,
+        per_page: 1000,
+      };
+
+      const zoomSig = map ? map.getZoom().toFixed(2) : '0.00';
+      const cacheKey = buildMapDataCacheKey(params, zoomSig);
+      const cached = shouldBypassCache
+        ? undefined
+        : getCachedMapData(dataCache, cacheKey, dataCacheTtlMs);
+      if (cached) {
+        if (requestId !== lastRequestId) return;
+        lastMapDataLoadedAt = cached.at;
+        lastMapDataSource = 'cache';
+        applyCachedMapData({
+          cached,
+          setRows: (rows) => {
+            nodeRows = rows.nodeRows;
+            linkRows = rows.linkRows;
+            zoneRows = rows.zoneRows;
+            routerRows = rows.routerRows;
+            customerRows = rows.customerRows;
+            serviceRows = rows.serviceRows;
+            nodeCount = rows.nodeCount;
+            linkCount = rows.linkCount;
+            zoneCount = rows.zoneCount;
+          },
+          setSourceData,
+          sourceIds: {
+            nodes: SOURCE_NODES,
+            customers: SOURCE_CUSTOMERS,
+            links: SOURCE_LINKS,
+            zones: SOURCE_ZONES,
+            routers: SOURCE_ROUTERS,
+          },
+          fitToMarkers: fitMapToAllMarkersOnFirstLoad,
+        });
+        await refreshTopologyAssets(force);
+        if (isInitialExtentRequest) initialExtentLoaded = true;
+        return;
+      }
+
+      activeDataAbortController?.abort();
+      const abortController = new AbortController();
+      activeDataAbortController = abortController;
+
+      const result = await fetchNetworkMapData(params, abortController.signal, {
+        includeRouters: shouldFetchRouterOverlay({
+          canReadRouterInventory,
+          routersVisible,
+        }),
+      });
+
+      // Drop stale responses when user moves map quickly.
+      if (requestId !== lastRequestId) return;
+      if (abortController.signal.aborted) return;
+
+      setCachedMapData(
+        dataCache,
+        cacheKey,
+        {
+          nodes: result.nodesRes,
+          links: result.linksRes,
+          zones: result.zonesRes,
+          routers: result.routersRes,
+        },
+        dataCacheMaxEntries,
+      );
+      lastMapDataLoadedAt = Date.now();
+      lastMapDataSource = 'live';
+
+      applyFetchedMapData({
+        result,
+        setRows: (nextRows) => {
+          nodeRows = nextRows.nodeRows;
+          linkRows = nextRows.linkRows;
+          zoneRows = nextRows.zoneRows;
+          routerRows = nextRows.routerRows;
+          customerRows = nextRows.customerRows;
+          serviceRows = nextRows.serviceRows;
+          nodeCount = nextRows.nodeCount;
+          linkCount = nextRows.linkCount;
+          zoneCount = nextRows.zoneCount;
+        },
+        setSourceData,
+        sourceIds: {
+          nodes: SOURCE_NODES,
+          customers: SOURCE_CUSTOMERS,
+          links: SOURCE_LINKS,
+          zones: SOURCE_ZONES,
+          routers: SOURCE_ROUTERS,
+        },
+        fitToMarkers: fitMapToAllMarkersOnFirstLoad,
+      });
+      if (topologyAssetItems.length) {
+        topologyAssetRows = buildTopologyAssetRows(topologyAssetItems, {
+          assetNodeIdsByAssetId: topologyAssetNodeIdCache,
+          nodeRows: topologyAssetContextNodeRows,
+          linkRows: topologyAssetContextLinkRows,
+          routerRows: topologyAssetContextRouterRows,
+        });
+      }
+      await refreshTopologyAssets(force);
+      syncTopologyAssetLinkOverlay();
+      if (isInitialExtentRequest) initialExtentLoaded = true;
+    } catch (e: any) {
+      if ((e?.message || '').includes('Request canceled')) return;
+      console.error(e);
+    } finally {
+      if (requestId === lastRequestId) activeDataAbortController = null;
+      refreshing = false;
+    }
+  }
+
+  function fitMapToAllMarkersOnFirstLoad(nodes: NMNode[], routers: NMRouter[]) {
+    if (!map || !maplibre || !interactionModule) return;
+    const visibleNodes = nodes.filter((row) => !isLegacyFtthDistributionNode(row));
+    const didFit = interactionModule.fitMapToMarkers({
+      map,
+      maplibre,
+      didInitialFitToMarkers,
+      nodes: visibleNodes,
+      routers,
+      topologyAssets: topologyAssetRows,
+      installationTargetCoord,
+    });
+    if (didFit) didInitialFitToMarkers = true;
+  }
+
+  function setSourceData(sourceId: string, data: GeoJSON.FeatureCollection) {
+    if (!map) return;
+    if (!map.getSource(sourceId)) return;
+    const source = map.getSource(sourceId) as import('maplibre-gl').GeoJSONSource | undefined;
+    source?.setData(data as any);
+  }
+
+  function syncTopologyAssetLinkOverlay() {
+    if (topologyAssetItems.length) {
+      topologyAssetRows = buildTopologyAssetRows(topologyAssetItems, {
+        assetNodeIdsByAssetId: topologyAssetNodeIdCache,
+        nodeRows: topologyAssetContextNodeRows,
+        linkRows: topologyAssetContextLinkRows,
+        routerRows: topologyAssetContextRouterRows,
+      });
+    }
+    setSourceData(
+      SOURCE_TOPOLOGY_ASSET_LINKS,
+      buildTopologyAssetAutoLinkFeatureCollection({
+        assets: topologyAssetItems,
+        topologyRows: topologyAssetRows,
+        customerNodes: customerRows,
+        nodeRows,
+        linkRows,
+      }),
+    );
+  }
+
+  function replaceTopologyAssetOverlay(data: GeoJSON.FeatureCollection) {
+    if (!map) return;
+    replaceTopologyAssetSourceData(map, data);
+  }
+
+  function syncWorkspaceHighlights() {
+    if (!map || !mapReady || !interactionModule) return;
+
+    const selectedObject =
+      workspaceState.investigationState?.selectedObject || workspaceState.selectedObject;
+
+    const { pointData, lineData, zoneData } = interactionModule.buildSelectionFeatureCollections({
+      selectedObject,
+      nodeRows,
+      linkRows,
+      zoneRows,
+      routerRows,
+    });
+
+    setSourceData(SOURCE_SELECTION_POINTS, pointData);
+    setSourceData(SOURCE_SELECTION_LINES, lineData);
+    setSourceData(SOURCE_SELECTION_ZONES, zoneData);
+  }
+
+  function setLayerVisibility(layerId: string, visible: boolean) {
+    if (!map || !map.getLayer(layerId)) return;
+    map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+  }
+
+  function syncLayerVisibility() {
+    if (!map || !mapReady) return;
+    const linkLayerVisibility = buildLinkLayerVisibilityState({
+      linksVisible,
+      topologyAssetsVisible,
+      linkPickMode,
+      activeAssetConnectSourceId,
+    });
+    setLayerVisibility('nm-zones-fill', zonesVisible);
+    setLayerVisibility('nm-zones-outline', zonesVisible);
+    setLayerVisibility('nm-links-line', linkLayerVisibility.mainLinksVisible);
+    setLayerVisibility('nm-links-line-dashed', linkLayerVisibility.mainLinksVisible);
+    setLayerVisibility(
+      'nm-topology-asset-links-parent',
+      linkLayerVisibility.topologyAssetLinksVisible,
+    );
+    setLayerVisibility(
+      'nm-topology-asset-links-customer',
+      linkLayerVisibility.topologyAssetLinksVisible,
+    );
+    setLayerVisibility('nm-nodes-circle', nodesVisible);
+    setLayerVisibility('nm-nodes-icons', nodesVisible);
+    setLayerVisibility('nm-routers-cluster-circle', routersVisible);
+    setLayerVisibility('nm-routers-cluster-count', routersVisible);
+    setLayerVisibility('nm-routers-circle', routersVisible);
+    setLayerVisibility('nm-routers-icon', routersVisible);
+    setLayerVisibility('nm-topology-assets-cluster-circle', topologyAssetsVisible);
+    setLayerVisibility('nm-topology-assets-cluster-count', topologyAssetsVisible);
+    setLayerVisibility('nm-topology-assets-halo', topologyAssetsVisible);
+    setLayerVisibility('nm-topology-assets-circle', topologyAssetsVisible);
+    setLayerVisibility('nm-topology-assets-icon', topologyAssetsVisible);
+    setLayerVisibility('nm-customers-cluster-circle', customersVisible);
+    setLayerVisibility('nm-customers-cluster-count', customersVisible);
+    setLayerVisibility('nm-customers-point', customersVisible);
+  }
+
+  function setNodesVisible(checked: boolean) {
+    nodesVisible = checked;
+    syncLayerVisibility();
+  }
+
+  function setLinksVisible(checked: boolean) {
+    linksVisible = checked;
+    syncLayerVisibility();
+  }
+
+  function setZonesVisible(checked: boolean) {
+    zonesVisible = checked;
+    syncLayerVisibility();
+  }
+
+  function setCustomersVisible(checked: boolean) {
+    customersVisible = checked;
+    syncLayerVisibility();
+  }
+
+  function setTopologyAssetsVisible(checked: boolean) {
+    topologyAssetsVisible = checked;
+    syncLayerVisibility();
+    if (checked) {
+      void refreshTopologyAssets();
+    }
+  }
+
+  function setRoutersVisible(checked: boolean) {
+    routersVisible = checked;
+    syncLayerVisibility();
+    if (checked && canReadRouterInventory && routerRows.length === 0) {
+      void refreshMapData(true);
+    }
+  }
+
+  function syncBaseLayerVisibility() {
+    if (!map || !mapReady) return;
+    setLayerVisibility('base-standard', viewMode === 'standard');
+    setLayerVisibility('base-satellite', viewMode === 'satellite');
+    const targetMaxZoom = viewMode === 'satellite' ? satelliteMaxZoom : standardMaxZoom;
+    map.setMaxZoom(targetMaxZoom);
+    if (map.getZoom() > targetMaxZoom) {
+      map.zoomTo(targetMaxZoom, { duration: 160 });
+    }
+  }
+
+  function defaultZoneGeometry() {
+    return buildDefaultZoneGeometry(map);
+  }
+
+  function refreshLinkGeometryDraft() {
+    linkForm.geometryText = buildLinkGeometryDraftText({
+      linkPickDrawMode,
+      nodeRows,
+      linkForm,
+      linkPathBendPoints,
+      sourceCoordOverride: activeAssetSourceCoordOverride,
+    });
+  }
+
+  function syncLinkDraftPreview() {
+    const { lineFc, pointsFc } = buildLinkDraftPreviewCollections({
+      linkPickMode,
+      linkPickDrawMode,
+      nodeRows,
+      linkForm,
+      linkPathBendPoints,
+      sourceCoordOverride: activeAssetSourceCoordOverride,
+    });
+
+    setSourceData(SOURCE_LINK_DRAFT, lineFc);
+    setSourceData(SOURCE_LINK_DRAFT_POINTS, pointsFc);
+    syncLayerVisibility();
+    setLayerVisibility('nm-link-draft-line', linkPickMode);
+    setLayerVisibility('nm-link-draft-points', linkPickMode);
+  }
+
+  function stopNodePickMode(removeMarker = false) {
+    nodePickMode = false;
+    draftNodeMarker = clearDraftNodeMarker(draftNodeMarker, removeMarker);
+  }
+
+  function applyPickedNodeCoordinates(lng: number, lat: number) {
+    nodeForm.lat = lat.toFixed(6);
+    nodeForm.lng = lng.toFixed(6);
+    if (!maplibre || !map) return;
+    draftNodeMarker = applyPickedNodeMarker({
+      map,
+      maplibre,
+      marker: draftNodeMarker,
+      lng,
+      lat,
+      onDrag: (nextLng, nextLat) => {
+        nodeForm.lat = nextLat.toFixed(6);
+        nodeForm.lng = nextLng.toFixed(6);
+      },
+    });
+  }
+
+  function openCreateNodeModal() {
+    editingNodeId = null;
+    nodeForm = { name: '', node_type: 'router', status: 'active', lat: '', lng: '' };
+    nodePickMode = true;
+    if (map) {
+      const center = map.getCenter();
+      applyPickedNodeCoordinates(center.lng, center.lat);
+    }
+    showCreateNodePanel = true;
+  }
+
+  function openEditNodeModal(row: NMNode) {
+    if (isSystemManagedNode(row)) {
+      toast.info(
+        `Node ini tersinkron dari ${systemManagedNodeSourceLabel(row) || 'asset map'}. Ubah dari sumbernya.`,
+      );
+      return;
+    }
+    nodePickMode = true;
+    applyPickedNodeCoordinates(row.lng, row.lat);
+    editingNodeId = row.id;
+    nodeForm = {
+      name: row.name || '',
+      node_type: row.node_type || 'router',
+      status: row.status || 'active',
+      lat: String(row.lat ?? ''),
+      lng: String(row.lng ?? ''),
+    };
+    showCreateNodePanel = true;
+  }
+
+  function closeNodeModal() {
+    showCreateNodePanel = false;
+    stopNodePickMode(true);
+    editingNodeId = null;
+  }
+
+  async function submitNode() {
+    savingNode = true;
+    try {
+      const ok = await submitNodeCrud({
+        editingNodeId,
+        nodeForm,
+      });
+      if (!ok) return;
+      closeNodeModal();
+      invalidateMapDataCache();
+      await refreshMapData(true);
+    } finally {
+      savingNode = false;
+    }
+  }
+
+  function openCreateLinkModal() {
+    activeAssetConnectSourceId = null;
+    editingLinkId = null;
+    linkPickMode = false;
+    linkPickStep = 'from';
+    linkPickDrawMode = 'quick';
+    linkPathBendPoints = [];
+    linkForm = createLinkForm(nodeRows);
+    showLinkModal = true;
+    syncLinkDraftPreview();
+  }
+
+  function openEditLinkModal(row: NMLink) {
+    activeAssetConnectSourceId = null;
+    linkPickMode = false;
+    linkPickStep = 'from';
+    linkPickDrawMode = 'quick';
+    linkPathBendPoints = [];
+    editingLinkId = row.id;
+    linkForm = createEditLinkForm(row, nodeRows);
+    showLinkModal = true;
+    syncLinkDraftPreview();
+  }
+
+  function toggleLinkPickMode() {
+    const next = buildToggleLinkPickResult({
+      currentEnabled: linkPickMode,
+      drawMode: linkPickDrawMode,
+      nodeRows,
+    });
+    linkPickMode = next.linkPickMode;
+    linkPickStep = next.linkPickStep;
+    linkPathBendPoints = next.linkPathBendPoints;
+    if (next.resetFromNodeId || next.resetToNodeId) {
+      linkForm = {
+        ...linkForm,
+        from_node_id: '',
+        to_node_id: '',
+        geometryText: next.geometryText,
+      };
+    }
+    if (next.toastMessage) toast.info(next.toastMessage);
+    syncLinkDraftPreview();
+  }
+
+  function closeLinkModal() {
+    showLinkModal = false;
+    activeAssetConnectSourceId = null;
+    linkPickMode = false;
+    linkPickStep = 'from';
+    linkPickDrawMode = 'quick';
+    linkPathBendPoints = [];
+    syncLinkDraftPreview();
+  }
+
+  function setLinkPickDrawMode(mode: LinkPickDrawMode) {
+    const next = buildSetLinkDrawModeResult({
+      mode,
+      linkPickMode,
+      nodeRows,
+    });
+    linkPickDrawMode = next.linkPickDrawMode;
+    linkPathBendPoints = next.linkPathBendPoints;
+    linkPickStep = next.linkPickStep;
+    linkForm = {
+      ...linkForm,
+      from_node_id: '',
+      to_node_id: '',
+      geometryText: next.geometryText,
+    };
+    if (next.toastMessage) toast.info(next.toastMessage);
+    syncLinkDraftPreview();
+  }
+
+  function undoLinkPathPoint() {
+    if (linkPathBendPoints.length === 0) return;
+    linkPathBendPoints = linkPathBendPoints.slice(0, -1);
+    refreshLinkGeometryDraft();
+    syncLinkDraftPreview();
+  }
+
+  function clearLinkPathPoints() {
+    linkPathBendPoints = [];
+    refreshLinkGeometryDraft();
+    syncLinkDraftPreview();
+  }
+
+  function cancelLinkPicking() {
+    if (!linkPickMode) return;
+    activeAssetConnectSourceId = null;
+    linkPickMode = false;
+    linkPickStep = 'from';
+    linkPathBendPoints = [];
+    syncLinkDraftPreview();
+    toast.info('Gambar link dibatalkan.');
+  }
+
+  function handleLinkPickNode(nodeId: string) {
+    const resolvedNodeId = resolveCanonicalCustomerNodeId(nodeId, nodeRows, customerRows);
+    const result = buildHandlePickedLinkNodeResult({
+      nodeId: resolvedNodeId,
+      linkPickMode,
+      linkPickStep,
+      linkPickDrawMode,
+      linkRows,
+      nodeRows,
+      linkForm,
+      editingLinkId,
+    });
+    if (result.kind === 'noop') return;
+    if (result.kind === 'error') {
+      toast.error(result.toastMessage);
+      return;
+    }
+
+    linkForm = result.linkForm;
+    if (result.kind === 'picked-from') {
+      linkPathBendPoints = result.linkPathBendPoints;
+      linkPickStep = result.linkPickStep;
+      if (linkPickDrawMode === 'path') {
+        refreshLinkGeometryDraft();
+      }
+      toast.info(result.toastMessage);
+      syncLinkDraftPreview();
+      return;
+    }
+
+    linkPickMode = result.linkPickMode;
+    linkPickStep = result.linkPickStep;
+    showLinkModal = result.showLinkModal;
+    if (linkPickDrawMode === 'quick') {
+      useLinkFromNodePoints();
+    } else {
+      refreshLinkGeometryDraft();
+    }
+    syncLinkDraftPreview();
+    toast.success(result.toastMessage);
+  }
+
+  async function startConnectFromNode(nodeId: string) {
+    activeNodePopup?.remove();
+    activeAssetConnectSourceId = null;
+    const next = buildConnectFromNodeResult(nodeId, nodeRows);
+    const nodeRow = nodeRows.find((row) => row.id === nodeId);
+    await updateWorkspaceSelection(
+      buildSelectedMapObject({
+        kind: 'node',
+        id: nodeId,
+        label: nodeRow?.name || nodeId,
+        nodeType: nodeRow?.node_type || undefined,
+      }),
+    );
+    editingLinkId = next.editingLinkId;
+    showLinkModal = next.showLinkModal;
+    linkPickDrawMode = next.linkPickDrawMode;
+    linkPickMode = next.linkPickMode;
+    linkPickStep = next.linkPickStep;
+    linkPathBendPoints = next.linkPathBendPoints;
+    linkForm = next.linkForm;
+    refreshLinkGeometryDraft();
+    syncLinkDraftPreview();
+    toast.info(next.toastMessage);
+  }
+
+  async function ensureTopologyAssetNodeId(assetId: string) {
+    const assetRow = topologyAssetRows.find((row) => row.id === assetId);
+    const nodeId = await resolveTopologyAssetNodeId({
+      assetId,
+      assetType: String(assetRow?.assetType || '').trim(),
+      latitude: assetRow?.latitude,
+      longitude: assetRow?.longitude,
+      nodeRows,
+      cachedNodeId: topologyAssetNodeIdCache.get(assetId) || '',
+      syncNodes: async () => {
+        await syncTopologyAssets(true);
+        invalidateMapDataCache();
+      },
+      refreshNodeRows: async () => {
+        await refreshMapData(true, { skipAutoSync: true });
+        return nodeRows;
+      },
+      fetchNearbyNodeRows: async ({ assetType, latitude, longitude }) => {
+        const delta = 0.0015;
+        const bbox = [
+          longitude - delta,
+          latitude - delta,
+          longitude + delta,
+          latitude + delta,
+        ].join(',');
+        const response = await networkMapping.nodes.list({
+          kind: assetType || undefined,
+          bbox,
+          page: 1,
+          per_page: 50,
+          include_legacy_ftth: true,
+        });
+        const fetchedRows = ((response.data || []) as NMNode[]).filter(
+          (row) =>
+            String(row.metadata?.asset_source || row.metadata?.asset_type || '').trim() ===
+            'network_asset',
+        );
+        if (fetchedRows.length) {
+          const nextById = new Map(nodeRows.map((row) => [row.id, row] as const));
+          for (const row of fetchedRows) {
+            nextById.set(row.id, row);
+            const fetchedAssetId = String(row.metadata?.asset_id || '').trim();
+            if (fetchedAssetId) topologyAssetNodeIdCache.set(fetchedAssetId, row.id);
+          }
+          nodeRows = Array.from(nextById.values());
+          setSourceData(SOURCE_NODES, nodesToFeatureCollection(nodeRows));
+        }
+        return fetchedRows;
+      },
+    });
+    if (nodeId) topologyAssetNodeIdCache.set(assetId, nodeId);
+    return nodeId;
+  }
+
+  async function startConnectFromTopologyAsset(assetId: string) {
+    activeNodePopup?.remove();
+    const nodeId = await ensureTopologyAssetNodeId(assetId);
+    if (!nodeId) {
+      toast.error(
+        'Node aset FTTH belum tersedia di peta topologi.',
+      );
+      return;
+    }
+    activeAssetConnectSourceId = assetId;
+    const next = buildConnectFromNodeResult(nodeId, nodeRows);
+    const assetRow = topologyAssetRows.find((row) => row.id === assetId);
+    await updateWorkspaceSelection(
+      buildSelectedMapObject({
+        kind: 'node',
+        id: nodeId,
+        label: assetRow?.name || assetId,
+        nodeType: assetRow?.assetType || undefined,
+      }),
+    );
+    editingLinkId = next.editingLinkId;
+    showLinkModal = next.showLinkModal;
+    linkPickDrawMode = next.linkPickDrawMode;
+    linkPickMode = next.linkPickMode;
+    linkPickStep = next.linkPickStep;
+    linkPathBendPoints = next.linkPathBendPoints;
+    linkForm = next.linkForm;
+    refreshLinkGeometryDraft();
+    syncLinkDraftPreview();
+    toast.info(next.toastMessage);
+  }
+
+  async function syncAssetRelationsFromSavedLink(sourceAssetId: string, targetNodeId: string) {
+    const sourceAsset = topologyAssetItems.find((item) => item.id === sourceAssetId);
+    const targetNode = nodeRows.find((row) => row.id === targetNodeId);
+    if (!sourceAsset || !targetNode) return;
+
+    const operations = buildTopologyAssetConnectionOperations({
+      sourceAsset,
+      targetNode,
+    });
+    for (const operation of operations) {
+      const currentAsset = topologyAssetItems.find((item) => item.id === operation.assetId);
+      if (!currentAsset) continue;
+      const currentDraft = buildTopologyAssetConnectDraft(currentAsset);
+      const nextParentAssetId =
+        operation.parentAssetId === undefined
+          ? currentDraft.parentAssetId
+          : String(operation.parentAssetId || '').trim();
+      const nextCustomerId =
+        operation.customerId === undefined
+          ? currentDraft.customerId
+          : String(operation.customerId || '').trim();
+      const nextLocationId =
+        operation.locationId === undefined
+          ? currentDraft.locationId
+          : String(operation.locationId || '').trim();
+
+      if (nextParentAssetId !== currentDraft.parentAssetId) {
+        await networkAssets.linkParentAsset(operation.assetId, nextParentAssetId || null);
+      }
+      if (nextCustomerId !== currentDraft.customerId) {
+        await networkAssets.assignCustomer(operation.assetId, nextCustomerId || null);
+      }
+      if (nextLocationId !== currentDraft.locationId) {
+        await networkAssets.assignLocation(operation.assetId, nextLocationId || null);
+      }
+    }
+  }
+
+  function useLinkFromNodePoints() {
+    linkForm.geometryText = buildStraightLinkGeometryText(
+      nodeRows,
+      linkForm.from_node_id,
+      linkForm.to_node_id,
+    );
+    syncLinkDraftPreview();
+  }
+
+  async function submitLink() {
+    savingLink = true;
+    try {
+      if (activeAssetConnectSourceId) {
+        const sourceNodeId = await ensureTopologyAssetNodeId(activeAssetConnectSourceId);
+        if (!sourceNodeId) {
+          toast.error(
+            'Node ODP sumber tidak tersedia di peta topologi.',
+          );
+          return;
+        }
+        linkForm = {
+          ...linkForm,
+          from_node_id: sourceNodeId,
+          to_node_id: resolveCanonicalCustomerNodeId(linkForm.to_node_id, nodeRows, customerRows),
+        };
+      }
+      linkForm.geometryText = resolveLinkGeometryTextForSubmit(linkForm, nodeRows);
+      const ok = await submitLinkCrud({
+        editingLinkId,
+        linkForm,
+        linkFieldConfig,
+        hasExistingLinkBetweenNodes: (fromNodeId, toNodeId, excludeLinkId) =>
+          hasExistingLinkBetweenNodes(linkRows, fromNodeId, toNodeId, excludeLinkId),
+      });
+      if (!ok) return;
+      if (activeAssetConnectSourceId) {
+        await syncAssetRelationsFromSavedLink(activeAssetConnectSourceId, linkForm.to_node_id);
+      }
+      emitInstallationRefreshSignal({
+        fromInstallation,
+        sourceWorkOrderId,
+      });
+      emitWorkOrderUpdatedToParent({
+        fromInstallation,
+        sourceWorkOrderId,
+      });
+      closeLinkModal();
+      invalidateMapDataCache();
+      await refreshMapData(true);
+    } finally {
+      savingLink = false;
+    }
+  }
+
+  function openCreateZoneModal() {
+    editingZoneId = null;
+    zoneForm = {
+      name: '',
+      zone_type: 'coverage',
+      status: 'active',
+      priority: '100',
+      geometryText: prettyGeometry(defaultZoneGeometry()),
+    };
+    showZoneModal = true;
+  }
+
+  function openEditZoneModal(row: NMZone) {
+    editingZoneId = row.id;
+    const draft = buildZoneDraftForm(row, defaultZoneGeometry());
+    zoneForm = {
+      ...draft,
+      geometryText: prettyGeometry(draft.geometry as GeoJSON.Geometry),
+    };
+    showZoneModal = true;
+  }
+
+  async function submitZone() {
+    savingZone = true;
+    try {
+      const ok = await submitZoneCrud({
+        editingZoneId,
+        zoneForm,
+      });
+      if (!ok) return;
+      showZoneModal = false;
+      invalidateMapDataCache();
+      await refreshMapData(true);
+    } finally {
+      savingZone = false;
+    }
+  }
+
+  async function removeNode(id: string) {
+    deletingId = id;
+    try {
+      const ok = await removeCrud({ type: 'node', id });
+      if (!ok) return;
+      invalidateMapDataCache();
+      await refreshMapData(true);
+    } finally {
+      deletingId = null;
+    }
+  }
+
+  async function removeLink(id: string) {
+    deletingId = id;
+    try {
+      const ok = await removeCrud({ type: 'link', id });
+      if (!ok) return;
+      invalidateMapDataCache();
+      await refreshMapData(true);
+    } finally {
+      deletingId = null;
+    }
+  }
+
+  async function removeZone(id: string) {
+    deletingId = id;
+    try {
+      const ok = await removeCrud({ type: 'zone', id });
+      if (!ok) return;
+      invalidateMapDataCache();
+      await refreshMapData(true);
+    } finally {
+      deletingId = null;
+    }
+  }
+
+  function openDeleteConfirm(targetType: 'node' | 'link' | 'zone', id: string, name?: string) {
+    deleteTargetType = targetType;
+    deleteTargetId = id;
+    const fallbackLabel = 'item ini';
+    const label = name?.trim() ? `"${name.trim()}"` : fallbackLabel;
+    if (targetType === 'node') {
+      deleteConfirmTitle = 'Hapus node';
+      deleteConfirmMessage =
+        `Hapus node ${label}?` ||
+        `Delete node ${label}? This action cannot be undone.`;
+    } else if (targetType === 'link') {
+      deleteConfirmTitle = 'Hapus link';
+      deleteConfirmMessage =
+        `Hapus link ${label}?` ||
+        `Delete link ${label}? This action cannot be undone.`;
+    } else {
+      deleteConfirmTitle = 'Hapus zona';
+      deleteConfirmMessage =
+        `Hapus zona ${label}?` ||
+        `Delete zone ${label}? This action cannot be undone.`;
+    }
+    showDeleteConfirm = true;
+  }
+
+  async function confirmDeleteAction() {
+    if (!deleteTargetType || !deleteTargetId) {
+      showDeleteConfirm = false;
+      return;
+    }
+    const type = deleteTargetType;
+    const id = deleteTargetId;
+    showDeleteConfirm = false;
+    if (type === 'node') {
+      await removeNode(id);
+    } else if (type === 'link') {
+      await removeLink(id);
+    } else {
+      await removeZone(id);
+    }
+    deleteTargetType = null;
+    deleteTargetId = '';
+  }
+</script>
+
+<div class="page-content fade-in" class:compact-mode={compactMode}>
+  {#if OverviewComponent}
+    <OverviewComponent
+      {compactMode}
+      {fromInstallation}
+      {installationReturnUrl}
+      {tenantPrefix}
+      {canManageTopology}
+      {syncingAssetNodes}
+      {refreshing}
+      {loading}
+      title={'Peta jaringan'}
+      subtitle={workspaceSubtitle}
+      labels={{
+        backToInstallation: 'Kembali ke instalasi',
+        backToNoc: 'Kembali ke NOC',
+        syncing: 'Menyinkron…',
+        sync: 'Sinkron',
+      }}
+      onSyncAssets={() => {
+        queueManualTopologySync();
+      }}
+    />
+  {/if}
+
+  <MapCanvasShell
+    bind:mapEl
+    bind:viewMode
+    showSearch={false}
+    showViewSwitch={false}
+    {loading}
+    {mapUnavailable}
+    {mapErrorMessage}
+    mapUnavailableTitle={'Peta tidak tersedia'}
+    mapUnavailableSubtitle={'Pratinjau peta tidak tersedia di perangkat ini.'}
+    height={compactMode ? 'min(82vh, 820px)' : 'calc(100vh - 150px)'}
+  >
+    <svelte:fragment slot="overlay">
+      <div class="map-workspace-search">
+        <button
+          class="map-workspace-search-toggle"
+          class:active={workspaceSearchOpen}
+          type="button"
+          aria-label={'Cari'}
+          title={'Cari'}
+          onclick={() => (workspaceSearchOpen = !workspaceSearchOpen)}
+        >
+          <Icon name="search" size={18} />
+        </button>
+        {#if workspaceSearchOpen}
+          <div class="map-workspace-search-panel">
+            <NetworkMapSearchBar
+              query={workspaceSearchQuery}
+              groups={workspaceSearchGroups}
+              summary=""
+              placeholder={'Cari node, pelanggan, alamat…'}
+              emptyTitle={'Tidak ada hasil'}
+              emptyHint={'Coba kata kunci lain.'}
+              onQueryChange={(value: string) => (workspaceSearchQuery = value)}
+              onSelect={handleWorkspaceSearchSelect}
+            />
+          </div>
+        {/if}
+      </div>
+
+      {#if FloatingControlsComponent || canManageFtthAssets}
+        <div class="map-controls-stack" class:controls-open={!controlsHidden}>
+          {#if FloatingControlsComponent}
+            <FloatingControlsComponent
+              labels={{
+                title: 'Kontrol peta',
+                layers: 'Lapisan',
+                view: 'Tampilan',
+                standard: 'Standar',
+                satellite: 'Satelit',
+                nodes: 'Node',
+                links: 'Link',
+                zones: 'Zona',
+                assets: 'Aset FTTH',
+                routers: 'Router',
+                customers: 'Pelanggan',
+              }}
+              hidden={controlsHidden}
+              {viewMode}
+              {nodesVisible}
+              {linksVisible}
+              {zonesVisible}
+              {routersVisible}
+              {customersVisible}
+              {topologyAssetsVisible}
+              canShowRouters={canReadRouterInventory}
+              onViewModeChange={(mode: 'standard' | 'satellite') => (viewMode = mode)}
+              onNodesVisibleChange={setNodesVisible}
+              onLinksVisibleChange={setLinksVisible}
+              onZonesVisibleChange={setZonesVisible}
+              onRoutersVisibleChange={setRoutersVisible}
+              onCustomersVisibleChange={setCustomersVisible}
+              onTopologyAssetsVisibleChange={setTopologyAssetsVisible}
+              onToggleHidden={() => (controlsHidden = !controlsHidden)}
+            />
+          {/if}
+
+          {#if canManageFtthAssets}
+            <button
+              type="button"
+              class="map-add-asset-btn"
+              class:active={assetCreatePickMode}
+              onclick={toggleAssetCreatePickMode}
+            >
+              <Icon name={assetCreatePickMode ? 'x-circle' : 'plus'} size={14} />
+              <span>
+                {assetCreatePickMode
+                  ? 'Batal tambah'
+                  : 'Tambah aset'}
+              </span>
+            </button>
+          {/if}
+        </div>
+      {/if}
+
+      {#if assetCreatePickMode}
+        <div class="map-asset-create-hint">
+          <Icon name="map-pin" size={14} />
+          <span
+            >{'Klik titik di peta untuk menambah aset FTTH baru.'}</span
+          >
+        </div>
+      {/if}
+
+      {#if NodePanelComponent}
+        <NodePanelComponent
+          show={showCreateNodePanel}
+          {editingNodeId}
+          {nodePickMode}
+          {savingNode}
+          {nodeForm}
+          nodeTypeOptions={manualNodeTypeOptions}
+          onClose={closeNodeModal}
+          onSubmit={() => void submitNode()}
+        />
+      {/if}
+
+      {#if linkPickMode}
+        <div class="map-link-draw-controls">
+          {#if linkPickDrawMode === 'path'}
+            <button
+              class="btn ghost btn-xs"
+              type="button"
+              onclick={undoLinkPathPoint}
+              disabled={linkPathBendPoints.length === 0}
+            >
+              <Icon name="arrow-left" size={14} />
+              {'Kembali'}
+            </button>
+          {/if}
+          <button class="btn ghost btn-xs danger" type="button" onclick={cancelLinkPicking}>
+            <Icon name="x-circle" size={14} />
+            {'Batal'}
+          </button>
+        </div>
+      {/if}
+    </svelte:fragment>
+  </MapCanvasShell>
+</div>
+
+{#if LinkModalComponent}
+  <LinkModalComponent
+    show={showLinkModal}
+    {editingLinkId}
+    {savingLink}
+    {linkPickDrawMode}
+    {linkSnapToNodeEnabled}
+    {linkPickMode}
+    {linkPickStep}
+    {linkPathBendPoints}
+    {linkForm}
+    {nodeRows}
+    {linkTypeOptions}
+    {linkStatusOptions}
+    {linkFieldConfig}
+    showManualEndpointSection={shouldShowManualEndpointSection(activeAssetConnectSourceId)}
+    hasExistingLinkBetweenNodes={(
+      fromNodeId: string,
+      toNodeId: string,
+      excludeLinkId?: string | null,
+    ) => hasExistingLinkBetweenNodes(linkRows, fromNodeId, toNodeId, excludeLinkId)}
+    onClose={closeLinkModal}
+    onSubmit={() => void submitLink()}
+    onTogglePickMode={toggleLinkPickMode}
+    onSetDrawMode={setLinkPickDrawMode}
+    onUndoPathPoint={undoLinkPathPoint}
+    onClearPathPoints={clearLinkPathPoints}
+    onUseStraightLine={useLinkFromNodePoints}
+    onToggleSnap={() => (linkSnapToNodeEnabled = !linkSnapToNodeEnabled)}
+  />
+{/if}
+
+{#if AssetFormModalComponent}
+  <AssetFormModalComponent
+    show={showAssetFormModal}
+    saving={savingAssetForm}
+    editing={editingAsset}
+    connectedItems={editingAssetConnectionItems}
+    draft={assetDraft}
+    detailDraft={assetDetailDraft}
+    onassettypechange={handleAssetTypeChange}
+    onclose={closeAssetFormModal}
+    onsave={() => void saveTopologyAssetForm()}
+  />
+{/if}
+
+{#if ZoneModalComponent}
+  <ZoneModalComponent
+    show={showZoneModal}
+    {editingZoneId}
+    {savingZone}
+    {zoneForm}
+    onClose={() => (showZoneModal = false)}
+    onSubmit={() => void submitZone()}
+  />
+{/if}
+
+<NetworkMapAssetCustomerDropModal
+  show={showAssetCustomerDropModal}
+  title={assetCustomerDropModalTitle}
+  items={assetCustomerDropItems}
+  onClose={closeTopologyAssetCustomerDropModal}
+  onView={(item) => void closeCustomerDropModalAndFocus(item)}
+/>
+
+{#if ConfirmDialogComponent}
+  <ConfirmDialogComponent
+    show={showDeleteConfirm}
+    title={deleteConfirmTitle}
+    message={deleteConfirmMessage}
+    confirmText={'Hapus'}
+    cancelText={'Batal'}
+    type="danger"
+    loading={Boolean(deletingId)}
+    onconfirm={() => void confirmDeleteAction()}
+    oncancel={() => {
+      showDeleteConfirm = false;
+      deleteTargetType = null;
+      deleteTargetId = '';
+    }}
+  />
+{/if}
+
+<style>
+  .page-content {
+    padding: 12px 14px 16px;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .page-content.compact-mode {
+    padding: 10px;
+    max-width: 100%;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--color-primary);
+    color: white;
+    font-weight: 800;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .btn.ghost {
+    background: transparent;
+    color: var(--text-primary);
+  }
+
+  .btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+
+  .btn-xs {
+    padding: 5px 9px;
+    font-size: 0.78rem;
+    border-radius: 8px;
+  }
+
+  .btn.danger {
+    color: #fca5a5;
+    border-color: color-mix(in srgb, #ef4444 55%, var(--border-color));
+  }
+
+  .map-workspace-search {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 9;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .map-workspace-search-toggle {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(15, 23, 42, 0.22);
+    border-radius: 10px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+  }
+
+  .map-workspace-search-toggle.active {
+    border-color: color-mix(in srgb, var(--color-primary) 54%, rgba(15, 23, 42, 0.22));
+    color: var(--color-primary);
+  }
+
+  .map-workspace-search-panel {
+    width: min(540px, calc(100vw - 92px));
+    padding: 7px;
+    border: 1px solid rgba(15, 23, 42, 0.14);
+    border-radius: 10px;
+    background: var(--bg-surface);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
+  }
+
+  .map-workspace-search-panel :global(.search-input-wrap) {
+    background: var(--bg-surface);
+    border-color: rgba(15, 23, 42, 0.2);
+    box-shadow: none;
+  }
+
+  .map-workspace-search-panel :global(.search-input) {
+    color: var(--text-primary);
+  }
+
+  .map-workspace-search-panel :global(.search-summary) {
+    display: none;
+  }
+
+  .map-workspace-search-panel :global(.search-summary),
+  .map-workspace-search-panel :global(.search-input::placeholder) {
+    color: var(--text-secondary);
+  }
+
+  .map-workspace-search :global(.search-results) {
+    z-index: 20;
+    gap: 5px;
+    max-height: min(50vh, 380px);
+    padding: 7px;
+    border-radius: 10px;
+    background: var(--bg-surface);
+    border-color: rgba(15, 23, 42, 0.16);
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+  }
+
+  .map-workspace-search :global(.search-group) {
+    gap: 6px;
+  }
+
+  .map-workspace-search :global(.search-group-label) {
+    padding: 0 4px;
+    color: var(--text-secondary);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+  }
+
+  .map-workspace-search :global(.search-group-items) {
+    gap: 5px;
+  }
+
+  .map-workspace-search :global(.search-item) {
+    gap: 3px;
+    min-height: 52px;
+    padding: 8px 10px;
+    border-color: rgba(15, 23, 42, 0.12);
+    border-radius: 10px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    box-shadow: inset 3px 0 0 #94a3b8;
+  }
+
+  .map-workspace-search :global(.search-item:hover),
+  .map-workspace-search :global(.search-item.active) {
+    border-color: color-mix(in srgb, var(--color-primary) 42%, rgba(15, 23, 42, 0.12));
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-surface));
+    box-shadow:
+      inset 3px 0 0 var(--color-primary),
+      0 6px 14px rgba(15, 23, 42, 0.06);
+  }
+
+  .map-workspace-search :global(.search-item-label) {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.88rem;
+    font-weight: 850;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .map-workspace-search :global(.search-item-kind) {
+    flex: 0 0 auto;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 0.62rem;
+    letter-spacing: 0;
+    text-transform: capitalize;
+  }
+
+  .map-workspace-search :global(.search-item-subtitle) {
+    overflow: hidden;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .map-workspace-search :global(.tone-ok) {
+    box-shadow: inset 3px 0 0 #10b981;
+  }
+
+  .map-workspace-search :global(.tone-warn) {
+    box-shadow: inset 3px 0 0 #f59e0b;
+  }
+
+  .map-workspace-search :global(.tone-muted) {
+    box-shadow: inset 3px 0 0 #64748b;
+  }
+
+  .map-link-draw-controls {
+    position: absolute;
+    top: 12px;
+    right: 58px;
+    z-index: 8;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 7px;
+    border-radius: 9px;
+    border: 1px solid var(--border-color, #24304a);
+    background: var(--panel-bg, #0f1422);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+  }
+
+  .map-controls-stack {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 7;
+    display: grid;
+    justify-items: end;
+    gap: 10px;
+    pointer-events: none;
+  }
+  .map-controls-stack > * {
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.18));
+  }
+
+  .map-controls-stack :global(.floating-controls),
+  .map-controls-stack :global(.floating-controls-toggle) {
+    position: static;
+    top: auto;
+    right: auto;
+    pointer-events: auto;
+  }
+
+  .map-add-asset-btn {
+    position: static;
+    z-index: 7;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 16px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.92);
+    color: #f8fafc;
+    font-size: 0.82rem;
+    font-weight: 800;
+    box-shadow: 0 14px 28px rgba(2, 6, 23, 0.24);
+    cursor: pointer;
+    white-space: nowrap;
+    pointer-events: auto;
+  }
+
+  .map-add-asset-btn.active {
+    border-color: color-mix(in srgb, var(--color-primary) 52%, rgba(255, 255, 255, 0.18));
+    background: color-mix(in srgb, var(--color-primary) 55%, #0f172a 45%);
+    color: #f8fafc;
+  }
+
+  .map-asset-create-hint {
+    position: absolute;
+    top: 12px;
+    left: 58px;
+    z-index: 8;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid rgba(14, 116, 144, 0.2);
+    border-radius: 12px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-size: 0.76rem;
+    font-weight: 760;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  :global(.my-location-dot) {
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: #2d7fff;
+    border: 2px solid #ffffff;
+    box-shadow:
+      0 0 0 4px rgba(45, 127, 255, 0.24),
+      0 4px 12px rgba(0, 0, 0, 0.35);
+  }
+
+  :global(.maplibregl-popup-content) {
+    background: #0f172a;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.36);
+    padding: 10px;
+    min-width: 0;
+    width: min(288px, calc(100vw - 44px));
+    max-width: min(288px, calc(100vw - 44px)) !important;
+    overflow: hidden;
+  }
+
+  :global(.maplibregl-popup.nm-popup-workflow-shell .maplibregl-popup-content) {
+    width: min(332px, calc(100vw - 44px));
+    max-width: min(332px, calc(100vw - 44px)) !important;
+  }
+
+  :global(.maplibregl-popup.nm-popup-link-shell .maplibregl-popup-content) {
+    width: min(252px, calc(100vw - 44px));
+    max-width: min(252px, calc(100vw - 44px)) !important;
+    padding: 8px;
+    border-color: rgba(59, 130, 246, 0.28);
+  }
+
+  :global(.maplibregl-popup-tip) {
+    border-top-color: #0f172a !important;
+    border-bottom-color: #0f172a !important;
+  }
+
+  :global(.maplibregl-popup-close-button) {
+    color: #cbd5e1;
+  }
+
+  :global(.maplibregl-popup-close-button:hover) {
+    background: #1e293b;
+    color: #f8fafc;
+  }
+
+  :global(.nm-popup-card) {
+    display: grid;
+    gap: 7px;
+    max-height: min(430px, calc(100vh - 180px));
+    overflow-y: auto;
+    padding-right: 2px;
+    padding-bottom: 2px;
+    overscroll-behavior: contain;
+  }
+
+  :global(.nm-popup-card-workflow) {
+    gap: 10px;
+  }
+
+  :global(.nm-popup-card-link) {
+    gap: 8px;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+    padding-bottom: 0;
+  }
+
+  :global(.nm-popup-head) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  :global(.nm-popup-kicker) {
+    color: #93c5fd;
+    font-size: 0.64rem;
+    font-weight: 900;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  :global(.nm-popup-title) {
+    margin-top: 2px;
+    font-size: 0.93rem;
+    font-weight: 900;
+    color: #f8fafc;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+  }
+
+  :global(.nm-popup-card-link .nm-popup-title) {
+    max-width: 160px;
+    overflow: hidden;
+    color: #f8fafc;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  :global(.nm-popup-subtitle) {
+    margin-top: 3px;
+    color: #cbd5e1;
+    font-size: 0.76rem;
+    line-height: 1.28;
+  }
+
+  :global(.nm-popup-card-link .nm-popup-subtitle) {
+    color: #93c5fd;
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: capitalize;
+  }
+
+  :global(.nm-popup-badge) {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 4px 9px;
+    font-size: 0.66rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+
+  :global(.nm-popup-badge.ok) {
+    color: #22c55e;
+    background: rgba(34, 197, 94, 0.14);
+    border-color: rgba(34, 197, 94, 0.35);
+  }
+
+  :global(.nm-popup-badge.warn) {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.14);
+    border-color: rgba(245, 158, 11, 0.35);
+  }
+
+  :global(.nm-popup-badge.muted) {
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.14);
+    border-color: rgba(148, 163, 184, 0.3);
+  }
+
+  :global(.nm-popup-badge.danger) {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.14);
+    border-color: rgba(248, 113, 113, 0.32);
+  }
+
+  :global(.nm-popup-usage-card) {
+    display: grid;
+    gap: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: var(--bg-surface);
+  }
+
+  :global(.nm-popup-usage-head) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  :global(.nm-popup-usage-label) {
+    color: #93c5fd;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  :global(.nm-popup-usage-value) {
+    margin-top: 2px;
+    color: #f8fafc;
+    font-size: 0.92rem;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  :global(.nm-popup-usage-bar) {
+    position: relative;
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(30, 41, 59, 0.9);
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+  }
+
+  :global(.nm-popup-usage-fill) {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    transition: width 0.2s ease;
+  }
+
+  :global(.nm-popup-usage-fill.ok) {
+    background: var(--color-success);
+  }
+
+  :global(.nm-popup-usage-fill.warn) {
+    background: var(--color-warning);
+  }
+
+  :global(.nm-popup-usage-fill.danger) {
+    background: var(--color-danger);
+  }
+
+  :global(.nm-popup-usage-fill.muted) {
+    background: #64748b;
+  }
+
+  :global(.nm-popup-usage-meta) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: #cbd5e1;
+    font-size: 0.74rem;
+    font-weight: 600;
+  }
+
+  :global(.nm-popup-relation-list) {
+    display: grid;
+    gap: 8px;
+    padding-top: 2px;
+  }
+
+  :global(.nm-popup-relation-action) {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    background: var(--bg-surface);
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      border-color 0.18s ease,
+      background 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  :global(.nm-popup-relation-action:hover) {
+    border-color: rgba(59, 130, 246, 0.34);
+    background: var(--bg-secondary);
+    transform: translateY(-1px);
+  }
+
+  :global(.nm-popup-relation-action:focus-visible) {
+    outline: none;
+    border-color: rgba(56, 189, 248, 0.58);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.16);
+  }
+
+  :global(.nm-popup-relation-copy) {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+  }
+
+  :global(.nm-popup-relation-hint) {
+    color: #cbd5e1;
+    font-size: 0.73rem;
+    line-height: 1.25;
+    font-weight: 500;
+  }
+
+  :global(.nm-popup-relation-arrow) {
+    flex: 0 0 auto;
+    color: #60a5fa;
+    font-size: 1.2rem;
+    line-height: 1;
+    font-weight: 700;
+  }
+
+  :global(.nm-popup-relation-row) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  :global(.nm-popup-relation-row .nm-popup-label) {
+    margin-bottom: 0;
+  }
+
+  :global(.nm-popup-grid) {
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 5px 10px;
+  }
+
+  :global(.nm-popup-context) {
+    border-radius: 12px;
+    padding: 8px 10px;
+    background: rgba(15, 23, 42, 0.78);
+    color: #e2e8f0;
+    font-size: 0.77rem;
+    line-height: 1.4;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+  }
+
+  :global(.nm-popup-context-workflow) {
+    background: rgba(8, 47, 73, 0.36);
+    border-color: rgba(56, 189, 248, 0.2);
+    color: #dbeafe;
+    font-weight: 600;
+  }
+
+  :global(.nm-popup-status-chips) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  :global(.nm-popup-status-chips-workflow) {
+    gap: 8px;
+  }
+
+  :global(.nm-popup-status-chip) {
+    border-radius: 12px;
+    padding: 8px 10px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(15, 23, 42, 0.74);
+  }
+
+  :global(.nm-popup-status-chip.ok) {
+    border-color: rgba(34, 197, 94, 0.3);
+    background: rgba(20, 83, 45, 0.26);
+  }
+
+  :global(.nm-popup-status-chip.warn) {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(120, 53, 15, 0.26);
+  }
+
+  :global(.nm-popup-status-chip.muted) {
+    border-color: rgba(100, 116, 139, 0.26);
+    background: rgba(15, 23, 42, 0.88);
+  }
+
+  :global(.nm-popup-status-chip.danger) {
+    border-color: rgba(248, 113, 113, 0.34);
+    background: rgba(127, 29, 29, 0.3);
+  }
+
+  :global(.nm-popup-status-chip-label) {
+    color: #94a3b8;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 800;
+  }
+
+  :global(.nm-popup-status-chip-value) {
+    margin-top: 3px;
+    color: #f8fafc;
+    font-size: 0.78rem;
+    font-weight: 900;
+    line-height: 1.2;
+  }
+
+  :global(.nm-popup-summary) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  :global(.nm-popup-summary-workflow) {
+    gap: 8px;
+  }
+
+  :global(.nm-popup-summary-link) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  :global(.nm-popup-summary-item) {
+    border-radius: 12px;
+    padding: 9px 10px;
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.14);
+  }
+
+  :global(.nm-popup-summary-item.ok) {
+    border-color: rgba(34, 197, 94, 0.28);
+    background: rgba(21, 128, 61, 0.14);
+  }
+
+  :global(.nm-popup-summary-item.warn) {
+    border-color: rgba(245, 158, 11, 0.28);
+    background: rgba(180, 83, 9, 0.14);
+  }
+
+  :global(.nm-popup-summary-item.danger) {
+    border-color: rgba(248, 113, 113, 0.3);
+    background: rgba(127, 29, 29, 0.18);
+  }
+
+  :global(.nm-popup-summary-label) {
+    color: #94a3b8;
+    font-size: 0.64rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 800;
+  }
+
+  :global(.nm-popup-summary-value) {
+    margin-top: 3px;
+    color: #f8fafc;
+    font-size: 0.84rem;
+    font-weight: 900;
+    line-height: 1.2;
+    word-break: break-word;
+  }
+
+  :global(.nm-popup-card-link .nm-popup-summary-item) {
+    min-height: 58px;
+    border-radius: 10px;
+    padding: 8px 9px;
+  }
+
+  :global(.nm-popup-card-link .nm-popup-summary-label) {
+    font-size: 0.62rem;
+  }
+
+  :global(.nm-popup-card-link .nm-popup-summary-value) {
+    font-size: 1rem;
+  }
+
+  :global(.nm-popup-label) {
+    color: #94a3b8;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 800;
+  }
+
+  :global(.nm-popup-value) {
+    color: #e2e8f0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  :global(.nm-popup-value.mono) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+  }
+
+  :global(.nm-popup-actions) {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 6px;
+    padding-top: 7px;
+    padding-bottom: 2px;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+  }
+
+  :global(.nm-popup-actions-workflow) {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 5px;
+  }
+
+  :global(.nm-popup-actions-workflow .nm-popup-btn.primary) {
+    flex: 1 1 auto;
+    min-width: 0;
+    order: -1;
+  }
+
+  :global(.nm-popup-actions-workflow .nm-popup-btn) {
+    min-height: 28px;
+    padding: 5px 7px;
+    font-size: 0.69rem;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  :global(.nm-popup-actions-workflow .nm-popup-btn:not(.primary)) {
+    flex: 0 0 auto;
+  }
+
+  :global(.nm-popup-actions-workflow .action-open-service) {
+    border-color: rgba(56, 189, 248, 0.34);
+    background: rgba(56, 189, 248, 0.1);
+    color: #dbeafe;
+  }
+
+  :global(.nm-popup-actions-workflow .action-connect) {
+    border-color: rgba(148, 163, 184, 0.26);
+    background: rgba(15, 23, 42, 0.72);
+    color: #cbd5e1;
+  }
+
+  :global(.nm-popup-actions-workflow .nm-popup-btn-close) {
+    margin-left: auto;
+    border-color: rgba(148, 163, 184, 0.18);
+    background: transparent;
+    color: #94a3b8;
+  }
+
+  :global(.nm-popup-actions-link) {
+    margin-top: 2px;
+    padding-top: 8px;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  :global(.nm-popup-actions-link .nm-popup-btn) {
+    min-height: 30px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 0.72rem;
+  }
+
+  :global(.nm-popup-actions-link .nm-popup-btn-close) {
+    border-color: rgba(148, 163, 184, 0.24);
+    background: transparent;
+    color: #cbd5e1;
+  }
+
+  :global(.nm-popup-btn) {
+    min-height: 32px;
+    padding: 6px 10px;
+    border-radius: 9px;
+    border: 1px solid #475569;
+    background: #0b1322;
+    color: #e2e8f0;
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  :global(.nm-popup-card::-webkit-scrollbar) {
+    width: 6px;
+  }
+
+  :global(.nm-popup-card::-webkit-scrollbar-thumb) {
+    background: rgba(148, 163, 184, 0.4);
+    border-radius: 999px;
+  }
+
+  :global(.nm-popup-btn:hover) {
+    background: #131d30;
+  }
+
+  :global(.nm-popup-btn:disabled) {
+    opacity: 0.55;
+    cursor: not-allowed;
+    background: #111827;
+    color: #94a3b8;
+  }
+
+  :global(.nm-popup-btn:disabled:hover) {
+    background: #111827;
+  }
+
+  :global(.nm-popup-btn.primary) {
+    border-color: color-mix(in srgb, var(--color-primary) 65%, #475569);
+    background: color-mix(in srgb, var(--color-primary) 22%, #0b1322);
+    color: #eef2ff;
+  }
+
+  :global(.nm-popup-btn.danger) {
+    border-color: color-mix(in srgb, #ef4444 58%, #7f1d1d);
+    background: color-mix(in srgb, #ef4444 18%, #0b1322);
+    color: #fecaca;
+  }
+
+  @media (max-width: 640px) {
+    :global(.maplibregl-popup-content) {
+      padding: 8px;
+      width: min(264px, calc(100vw - 28px));
+      max-width: min(264px, calc(100vw - 28px)) !important;
+      border-radius: 10px;
+    }
+
+    :global(.maplibregl-popup.nm-popup-workflow-shell .maplibregl-popup-content) {
+      width: min(264px, calc(100vw - 28px));
+      max-width: min(264px, calc(100vw - 28px)) !important;
+    }
+
+    :global(.nm-popup-card) {
+      gap: 6px;
+      max-height: min(68dvh, calc(100dvh - 108px));
+      padding-right: 0;
+      padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    }
+
+    :global(.nm-popup-card-workflow) {
+      gap: 7px;
+    }
+
+    :global(.nm-popup-head) {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+
+    :global(.nm-popup-badge) {
+      align-self: flex-start;
+      padding: 3px 8px;
+      font-size: 0.62rem;
+    }
+
+    :global(.nm-popup-title) {
+      font-size: 0.88rem;
+    }
+
+    :global(.nm-popup-subtitle) {
+      font-size: 0.72rem;
+    }
+
+    :global(.nm-popup-status-chips) {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 6px;
+    }
+
+    :global(.nm-popup-summary) {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 6px;
+    }
+
+    :global(.nm-popup-summary-item),
+    :global(.nm-popup-status-chip),
+    :global(.nm-popup-context) {
+      border-radius: 10px;
+      padding: 8px 9px;
+    }
+
+    :global(.nm-popup-grid) {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 3px;
+    }
+
+    :global(.nm-popup-label) {
+      margin-top: 2px;
+      font-size: 0.64rem;
+    }
+
+    :global(.nm-popup-value) {
+      margin-bottom: 2px;
+      font-size: 0.76rem;
+    }
+
+    :global(.nm-popup-actions) {
+      gap: 6px;
+      margin-top: 4px;
+      padding-top: 8px;
+      padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
+    }
+
+    :global(.nm-popup-actions-workflow) {
+      flex-wrap: wrap;
+      gap: 6px;
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
+      background: color-mix(in srgb, var(--bg-surface) 96%, transparent);
+    }
+
+    :global(.nm-popup-actions-workflow .action-connect) {
+      display: none;
+    }
+
+    :global(.nm-popup-actions-workflow .nm-popup-btn) {
+      min-height: 32px;
+      padding: 6px 9px;
+      font-size: 0.71rem;
+      white-space: normal;
+      text-align: center;
+      justify-content: center;
+    }
+
+    :global(.nm-popup-actions-workflow .nm-popup-btn.primary),
+    :global(.nm-popup-actions-workflow .action-open-service),
+    :global(.nm-popup-actions-workflow .action-open-customer) {
+      flex: 1 1 calc(50% - 3px);
+      min-width: 0;
+      order: 0;
+    }
+
+    :global(.nm-popup-actions-workflow .nm-popup-btn-close) {
+      flex: 1 1 100%;
+      margin-left: 0;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .page-content {
+      padding: 12px;
+    }
+
+    .map-workspace-search {
+      top: 12px;
+      right: 12px;
+    }
+
+    .map-workspace-search-panel {
+      width: calc(100vw - 82px);
+    }
+
+    .map-controls-stack {
+      top: max(12px, env(safe-area-inset-top, 0px));
+      right: 12px;
+      gap: 8px;
+    }
+
+    .map-add-asset-btn {
+      min-height: 38px;
+      padding: 0 14px;
+    }
+
+    .map-asset-create-hint {
+      top: 58px;
+      left: 12px;
+      right: 12px;
+      width: auto;
+      justify-content: center;
+    }
+
+    .page-content :global(.network-page-title) {
+      font-size: 1.35rem;
+    }
+
+    .page-content :global(.network-page-subtitle) {
+      font-size: 0.9rem;
+    }
+
+    .page-content :global(.network-page-actions) {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .page-content :global(.network-page-actions .btn) {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .page-content :global(.network-filter-panel) {
+      grid-template-columns: 1fr;
+      padding: 10px;
+    }
+
+    .page-content :global(.network-filter-panel .control-actions .label) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .page-content {
+      padding: 8px;
+    }
+
+    .page-content :global(.network-page-actions) {
+      grid-template-columns: 1fr;
+    }
+
+    .map-add-asset-btn {
+      min-height: 38px;
+      padding: 0 12px;
+      font-size: 0.74rem;
+    }
+
+    .map-asset-create-hint {
+      top: 56px;
+      left: 10px;
+      right: 10px;
+      font-size: 0.72rem;
+      padding: 9px 10px;
+    }
+  }
+
+  /* Popups and markers must render above all map controls + search overlays */
+  :global(.maplibregl-popup) {
+    z-index: 20;
+  }
+
+  :global(.maplibregl-marker) {
+    z-index: 15;
+  }
+
+  :global(.maplibregl-marker svg),
+  :global(.maplibregl-marker img) {
+    pointer-events: auto;
+  }
+</style>

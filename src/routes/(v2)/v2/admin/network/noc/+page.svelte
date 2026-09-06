@@ -80,6 +80,7 @@
   let cpuHot = $state(85);
   let latHot = $state(400);
   let refreshHandle: ReturnType<typeof setInterval> | null = null;
+  let lastRefreshAt = $state<number | null>(null);
 
   const th = $derived<NocThresholds>({ cpuRisk, cpuHot, latRisk, latHot });
   const canUseTenantSettings = $derived($can('read', 'settings') || $can('update', 'settings'));
@@ -200,6 +201,7 @@
     refreshing = true;
     try {
       rows = (await api.mikrotik.routers.noc()) as NocRowFull[];
+      lastRefreshAt = Date.now();
     } catch {
       // abaikan
     } finally {
@@ -242,6 +244,15 @@
   </Card>
 
   <Card title={`Router (${filtered.length})`} padded={false}>
+    {#snippet aside()}
+      <span class="flex items-center gap-1.5 text-xs text-ink-400">
+        <span class="relative flex h-2 w-2" aria-label="Auto-refresh aktif">
+          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60"></span>
+          <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+        </span>
+        {lastRefreshAt ? `Live · ${timeAgo(new Date(lastRefreshAt))}` : 'Live · memuat…'}
+      </span>
+    {/snippet}
     <DataTable
       {columns}
       rows={filtered}

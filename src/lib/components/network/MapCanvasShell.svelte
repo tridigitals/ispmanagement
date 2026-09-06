@@ -22,7 +22,7 @@
   export let viewMode: 'standard' | 'satellite' = 'standard';
   export let showViewSwitch = true;
   export let showSearch = true;
-  export let searchPlaceholder = 'Search city or address...';
+  export let searchPlaceholder = 'Cari kota atau alamat…';
   export let height = 'min(62vh, 700px)';
   export let mapEl: HTMLDivElement | null = null;
   export let hasAside = false;
@@ -70,10 +70,10 @@
       if (!res.ok) throw new Error(`Search failed (${res.status})`);
       const data = (await res.json()) as SearchResult[];
       results = Array.isArray(data) ? data : [];
-      if (!results.length) searchError = 'Location not found';
+      if (!results.length) searchError = 'Lokasi tidak ditemukan';
     } catch (err: any) {
       if (err?.name === 'AbortError') return;
-      searchError = err?.message || 'Failed to search location';
+      searchError = err?.message || 'Gagal mencari lokasi';
       results = [];
     } finally {
       if (activeSearchAbort === abort) activeSearchAbort = null;
@@ -564,5 +564,14 @@
       width: calc(100vw - 92px);
       max-width: none;
     }
+  }
+  :global(.maplibregl-ctrl-attrib) {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 6px 0 0 0;
+    background: rgba(255, 255, 255, 0.85);
+  }
+  :global(.maplibregl-ctrl-attrib a) {
+    color: #57534e;
   }
 </style>

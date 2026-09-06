@@ -89,7 +89,7 @@
   }
 
   function isWallboardPath(pathname: string) {
-    return pathname.includes('/admin/network/noc/wallboard');
+    return pathname.includes('/admin/network/noc/wallboard') || pathname.includes('/v2/admin/network/noc/wallboard');
   }
 
   async function keepSessionAliveIfActive() {

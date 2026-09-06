@@ -19,6 +19,7 @@
        di toolbar.
   */
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { api } from '$lib/api/client';
   import { can } from '$lib/stores/auth';
   import AppShell from '$lib/components/ds/AppShell.svelte';
@@ -404,12 +405,13 @@
                 <td class="px-4 py-2.5">
                   <RowActions
                     primary={{
-                      label: 'Buka',
+                      label: 'Detail',
                       icon: 'chevronRight',
-                      onclick: () => window.open(`/pay/${inv.id}`, '_blank'),
+                      onclick: () => goto(`/v2/admin/invoices/${inv.id}`),
                     }}
                     rest={canManage
                       ? [
+                          { label: 'Halaman bayar', icon: 'chevronRight', onclick: () => window.open(`/pay/${inv.id}`, '_blank') },
                           { label: 'Verifikasi bayar', icon: 'check' },
                           { label: 'Kirim ulang', icon: 'mail' },
                         ]
