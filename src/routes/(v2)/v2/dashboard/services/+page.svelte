@@ -339,7 +339,7 @@
       );
       const invoice = installationInvoiceForSubscription(invoices, subscriptionId);
       if (invoice?.id) {
-        await goto(`/v2/pay/${invoice.id}`);
+        await goto(`/pay/${invoice.id}`);
         return;
       }
       await goto('/v2/dashboard/invoices');
@@ -672,7 +672,7 @@
       onClose={closeTracker}
       onOpenTrackerInvoice={() =>
         trackerInvoice?.id
-          ? goto(`/v2/pay/${trackerInvoice.id}`)
+          ? goto(`/pay/${trackerInvoice.id}`)
           : openSubscriptionInvoice(trackerSub?.id || '')}
       onSubmitReschedule={submitReschedule}
     />
