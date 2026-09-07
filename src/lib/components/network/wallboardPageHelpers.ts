@@ -106,3 +106,26 @@ export function buildMetricsCsvRows(
 export function metricsCsvFilePrefix(iface: string, bucket: 'raw' | 'hour' | 'day') {
   return `metrics-${iface || 'interface'}-${bucket}`;
 }
+
+/**
+ * Bentuk grid pintar: pilih kolom (1..maxCols) dengan sel kosong paling sedikit;
+ * seri -> kolom terbesar (tile lebih lebar), dan baris tidak boleh melebihi
+ * maxRows preset (tinggi layar tetap). Contoh @4x3: 4 tile -> 4x1, 5 -> 3x2,
+ * 12 -> 4x3 penuh.
+ */
+export function gridShapeFor(n: number, maxCols: number, maxRows: number) {
+  if (n <= 0) return { cols: 1, rows: 1 };
+  let best: { cols: number; rows: number } | null = null;
+  let bestEmpty = Infinity;
+  for (let cols = 1; cols <= Math.min(maxCols, n); cols++) {
+    const rows = Math.ceil(n / cols);
+    if (rows > maxRows) continue;
+    const empty = rows * cols - n;
+    if (empty < bestEmpty || (empty === bestEmpty && best && cols > best.cols)) {
+      bestEmpty = empty;
+      best = { cols, rows };
+    }
+  }
+  if (!best) best = { cols: Math.min(maxCols, n), rows: Math.ceil(n / Math.min(maxCols, n)) };
+  return best;
+}

@@ -123,7 +123,7 @@
     ensureSlotsForLayout,
     formatWallboardBps,
     formatWallboardLatency,
-    globalSlotIndex,
+    gridShapeFor,
     metricsCsvFilePrefix,
     routerLabel as routerLabelValue,
     routerTitle as routerTitleValue,
@@ -289,8 +289,8 @@
   let slotsAll = $state<(Slot | null)[]>([]);
   let page = $state(0);
   let pageCount = $state(1);
-  // Visible page slice (always padded to layout capacity).
-  let slots = $state<(Slot | null)[]>([]);
+  // Visible page slice (tanpa padding null; gidx asli dipertahankan).
+  let visibleTiles = $state<{ slot: Slot; gidx: number }[]>([]);
   let pickerIndex = $state<number | null>(null);
   let pickerRouterSearch = $state('');
   let pickerRouterId = $state<string | null>(null);
@@ -452,6 +452,38 @@
   const topIssues = $derived.by(() => buildTopIssues({ activeIncidents, rows }));
 
   const insightsBadge = $derived.by(() => buildInsightsBadge(incidentStats));
+  // Grid pintar: kolom menyusut sesuai jumlah tile di halaman ini.
+  const gridShape = $derived(
+    gridShapeFor(visibleTiles.length, colsForLayout(layout), rowsForLayout(layout)),
+  );
+  // Slot tujuan tombol "Tambah tile": index null pertama, atau di akhir.
+  const addSlotIndex = $derived.by(() => {
+    const i = slotsAll.findIndex((s) => s == null);
+    return i >= 0 ? i : slotsAll.length;
+  });
+  // Agregat RX/TX semua tile pada halaman aktif (untuk header).
+  const pageTotals = $derived.by(() => {
+    let rx = 0;
+    let tx = 0;
+    let any = false;
+    for (const { slot } of visibleTiles) {
+      const lr = liveRates[slot.routerId]?.[slot.iface];
+      if (lr?.rx_bps != null || lr?.tx_bps != null) any = true;
+      rx += lr?.rx_bps ?? 0;
+      tx += lr?.tx_bps ?? 0;
+    }
+    return { rx, tx, any };
+  });
+
+  // Jam header — tick 1s, cleanup otomatis oleh $effect.
+  let wallClock = $state('');
+  $effect(() => {
+    const fmt = () =>
+      new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    wallClock = fmt();
+    const h = setInterval(() => (wallClock = fmt()), 1000);
+    return () => clearInterval(h);
+  });
 
   function trendBadgeText(ti: TrendInfo) {
     return trendBadgeTextHelper(
@@ -579,10 +611,6 @@
 
   function ensureSlotIndex(idx: number) {
     slotsAll = ensureSlotIndexValue(slotsAll, idx);
-  }
-
-  function globalIndex(localIdx: number) {
-    return globalSlotIndex(page, layout, localIdx);
   }
 
   function routerLabel(routerId: string) {
@@ -1229,9 +1257,12 @@
     if (page >= pages) page = pages - 1;
 
     const start = page * size;
-    let view = slotsAll.slice(start, start + size);
-    if (view.length < size) view = [...view, ...Array.from({ length: size - view.length }, () => null)];
-    slots = view;
+    // Grid pintar: jangan padding slot kosong — tile yang ada mengisi penuh.
+    // Index asli (gidx) ikut disimpan supaya drag/picker tetap benar.
+    visibleTiles = slotsAll
+      .slice(start, start + size)
+      .map((slot, i) => ({ slot, gidx: start + i }))
+      .filter((t) => t.slot != null) as { slot: Slot; gidx: number }[];
   });
 
   $effect(() => {
@@ -1299,6 +1330,10 @@
           <Icon name="arrow-left" size={16} />
         </button>
         <WallboardTopPager bind:page {pageCount} />
+        <div class="wb-title">
+          <Icon name="activity" size={15} />
+          {'NOC Wallboard'}
+        </div>
         <button
           class="settings-btn"
           class:has-critical={insightsBadge.level === 'critical'}
@@ -1315,6 +1350,23 @@
               {insightsBadge.total > 99 ? '99+' : insightsBadge.total}
             </span>
           {/if}
+        </button>
+      </div>
+
+      <div class="toolbar-right">
+        {#if pageTotals.any}
+          <div class="wb-total" title={'Total RX semua tile di halaman ini'}>
+            <span class="wb-total-k">RX</span>
+            <span class="wb-total-v rx">{formatBps(pageTotals.rx)}</span>
+          </div>
+          <div class="wb-total" title={'Total TX semua tile di halaman ini'}>
+            <span class="wb-total-k">TX</span>
+            <span class="wb-total-v tx">{formatBps(pageTotals.tx)}</span>
+          </div>
+        {/if}
+        <div class="wb-clock" aria-live="off">{wallClock}</div>
+        <button class="icon-x" type="button" onclick={toggleFullscreen} title={'Layar penuh'}>
+          <Icon name="maximize" size={15} />
         </button>
       </div>
 
@@ -1416,29 +1468,12 @@
       {'Memuat…'}
     </div>
   {:else}
-    <div class="grid" class:compact={layout === '4x3'} style={`--cols:${colsForLayout(layout)}; --rows:${rowsForLayout(layout)};`}>
-      {#each slots as slot, idx (idx)}
-        {@const gidx = globalIndex(idx)}
+    <div class="grid" class:compact={layout === '4x3'} style={`--cols:${gridShape.cols}; --rows:${gridShape.rows};`}>
+      {#each visibleTiles as vt (vt.gidx)}
+        {@const slot = vt.slot}
+        {@const gidx = vt.gidx}
         {@const r = slot ? routerById(slot.routerId) : null}
-        {#if !slot}
-          <button
-            class="tile add"
-            class:drag-over={dragOver === gidx}
-            data-wall-slot={gidx}
-            type="button"
-            onclick={() => openPicker(gidx)}
-          >
-            <div class="add-inner">
-              <div class="plus">+</div>
-              <div class="add-title">
-                {'Tambah tile'}
-              </div>
-              <div class="add-sub">
-                {'Pilih router + interface'}
-              </div>
-            </div>
-          </button>
-        {:else}
+        {#if slot}
           <WallboardInterfaceTile
             {gidx}
             {slot}
@@ -1478,6 +1513,22 @@
           />
         {/if}
       {/each}
+      <!-- Satu slot tambah kecil di akhir grid (bukan 8 placeholder penuh). -->
+      {#if $can('manage', 'network_noc')}
+      <button
+        class="tile add add-compact"
+        class:drag-over={dragOver === addSlotIndex}
+        data-wall-slot={addSlotIndex}
+        type="button"
+        onclick={() => openPicker(addSlotIndex)}
+        title={'Tambah tile'}
+      >
+        <div class="add-inner">
+          <div class="plus">+</div>
+          <div class="add-title">{'Tambah tile'}</div>
+        </div>
+      </button>
+      {/if}
     </div>
   {/if}
   </div>
@@ -1687,10 +1738,27 @@
 {/if}
 
 <style>
+  /*
+   * Tema "Midnight Teal" (opsi A, 2026-09): navy-abu lembut, dua hue data
+   * (RX cyan / TX violet) + status hijau/amber/merah. Token dioverride di
+   * scope ini saja — tile & panel ikut lewat var(--bg-surface) dll.
+   */
   .wallboard-viewport {
     min-height: 100dvh;
     overflow: hidden;
-    background: linear-gradient(145deg, #060810 0%, #0a0f1e 50%, #080c18 100%);
+    background:
+      radial-gradient(1200px 700px at 75% -10%, rgba(103, 232, 249, 0.05), transparent 60%),
+      #0a0f1a;
+    --bg-surface: #111927;
+    --bg-app: #0a0f1a;
+    --border-color: #1d2a3f;
+    --text-primary: #e8eef7;
+    --text-secondary: #93a3b8;
+    --text-muted: #64748b;
+    --accent: #67e8f9;
+    --color-warning: #fbbf24;
+    --color-danger: #f87171;
+    --color-success: #34d399;
   }
 
   :global(body.kiosk-wallboard header.topbar) {
@@ -1748,6 +1816,71 @@
     opacity: 0;
     transform: translateY(-8px);
     pointer-events: none;
+  }
+  .wb-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: var(--text-primary);
+    opacity: 0.9;
+    margin-left: 4px;
+  }
+  .toolbar-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .wb-total {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+    background: color-mix(in srgb, var(--bg-surface) 55%, transparent);
+  }
+  .wb-total-k {
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+  }
+  .wb-total-v {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .wb-total-v.rx {
+    color: #67e8f9;
+  }
+  .wb-total-v.tx {
+    color: #a78bfa;
+  }
+  .wb-clock {
+    font-size: 14px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+    letter-spacing: 0.03em;
+  }
+  /* Tile tambah compact: satu slot kecil, bukan placeholder selapuh layar. */
+  .tile.add.add-compact {
+    opacity: 0.55;
+    transition: opacity 0.2s ease, border-color 0.2s ease;
+  }
+  .tile.add.add-compact:hover {
+    opacity: 1;
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border-color));
+  }
+  .tile.add.add-compact .plus {
+    font-size: 22px;
+  }
+  .tile.add.add-compact .add-title {
+    font-size: 12px;
   }
   .insights-backdrop {
     position: fixed;
@@ -1830,10 +1963,10 @@
     transform: translateY(-1px);
   }
   .settings-btn.has-warning {
-    color: color-mix(in srgb, #f59e0b 85%, var(--text-primary));
+    color: color-mix(in srgb, #fbbf24 85%, var(--text-primary));
   }
   .settings-btn.has-critical {
-    color: color-mix(in srgb, #ef4444 88%, var(--text-primary));
+    color: color-mix(in srgb, #f87171 88%, var(--text-primary));
   }
   .insights-badge {
     position: absolute;
@@ -1850,12 +1983,12 @@
     font-weight: 900;
     line-height: 1;
     color: #fff;
-    background: #f59e0b;
-    border: 1px solid color-mix(in srgb, #f59e0b 65%, var(--border-color));
+    background: #fbbf24;
+    border: 1px solid color-mix(in srgb, #fbbf24 65%, var(--border-color));
   }
   .settings-btn.has-critical .insights-badge {
-    background: #ef4444;
-    border-color: color-mix(in srgb, #ef4444 65%, var(--border-color));
+    background: #f87171;
+    border-color: color-mix(in srgb, #f87171 65%, var(--border-color));
   }
   .alert-strip {
     display: grid;
@@ -1939,9 +2072,9 @@
     gap: 7px;
     padding: 8px 10px;
     border-radius: 11px;
-    border: 1px solid color-mix(in srgb, #f59e0b 45%, var(--border-color));
-    background: color-mix(in srgb, #f59e0b 16%, var(--bg-surface));
-    color: color-mix(in srgb, #f59e0b 88%, var(--text-primary));
+    border: 1px solid color-mix(in srgb, #fbbf24 45%, var(--border-color));
+    background: color-mix(in srgb, #fbbf24 16%, var(--bg-surface));
+    color: color-mix(in srgb, #fbbf24 88%, var(--text-primary));
     box-shadow: var(--shadow-md);
     font-weight: 900;
     font-size: 12px;
@@ -2005,11 +2138,6 @@
   .add-title {
     font-weight: 900;
     color: var(--text-primary);
-  }
-  .add-sub {
-    margin-top: 4px;
-    color: var(--text-muted);
-    font-size: 12px;
   }
 
   .icon-x {

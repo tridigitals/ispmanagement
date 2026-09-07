@@ -342,8 +342,8 @@
   /* ── NOC Glassmorphism Dark Theme ── */
 
   @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 4px 1px rgba(46, 204, 113, 0.5); }
-    50% { box-shadow: 0 0 8px 3px rgba(46, 204, 113, 0.8); }
+    0%, 100% { box-shadow: 0 0 4px 1px rgba(52, 211, 153, 0.45); }
+    50% { box-shadow: 0 0 8px 3px rgba(52, 211, 153, 0.7); }
   }
 
   .tile {
@@ -520,12 +520,12 @@
     transition: all 0.3s ease;
   }
   .badge.ok .dot {
-    background: #2ecc71;
-    box-shadow: 0 0 6px 1px rgba(46, 204, 113, 0.5);
+    background: #34d399;
+    box-shadow: 0 0 6px 1px rgba(52, 211, 153, 0.45);
     animation: pulse-glow 2s ease-in-out infinite;
   }
   .badge.bad .dot {
-    background: #ff6b6b;
+    background: #f87171;
     opacity: 0.5;
     box-shadow: none;
     animation: none;
@@ -537,15 +537,15 @@
     background: color-mix(in srgb, var(--color-warning) 10%, transparent);
   }
   .badge.maintenance {
-    border-color: color-mix(in srgb, #f59e0b 40%, var(--border-color));
-    color: color-mix(in srgb, #f59e0b 88%, var(--text-primary));
-    background: color-mix(in srgb, #f59e0b 10%, transparent);
+    border-color: color-mix(in srgb, #fbbf24 40%, var(--border-color));
+    color: color-mix(in srgb, #fbbf24 88%, var(--text-primary));
+    background: color-mix(in srgb, #fbbf24 10%, transparent);
     gap: 5px;
   }
   .badge.poll-err {
-    border-color: color-mix(in srgb, #ef4444 40%, var(--border-color));
-    color: color-mix(in srgb, #ef4444 90%, var(--text-primary));
-    background: color-mix(in srgb, #ef4444 10%, transparent);
+    border-color: color-mix(in srgb, #f87171 40%, var(--border-color));
+    color: color-mix(in srgb, #f87171 90%, var(--text-primary));
+    background: color-mix(in srgb, #f87171 10%, transparent);
     gap: 5px;
   }
 
@@ -590,12 +590,12 @@
     transition: height 160ms linear, filter 0.2s ease, box-shadow 0.2s ease;
   }
   .bar.rx {
-    background: linear-gradient(to top, #22d3ee, #2563eb);
-    box-shadow: 0 0 6px -1px color-mix(in srgb, #22d3ee 35%, transparent);
+    background: linear-gradient(to top, #0e7490, #67e8f9);
+    box-shadow: 0 0 6px -1px color-mix(in srgb, #67e8f9 35%, transparent);
   }
   .bar.tx {
-    background: linear-gradient(to top, #fb7185, #f97316);
-    box-shadow: 0 0 6px -1px color-mix(in srgb, #fb7185 35%, transparent);
+    background: linear-gradient(to top, #5b21b6, #a78bfa);
+    box-shadow: 0 0 6px -1px color-mix(in srgb, #a78bfa 35%, transparent);
   }
   .bar.active {
     filter: brightness(1.25) saturate(1.2);
@@ -658,16 +658,16 @@
     transition: all 0.2s ease;
   }
   .trend-chip.up {
-    border-color: color-mix(in srgb, #22c55e 40%, var(--border-color));
-    color: #22c55e;
-    background: color-mix(in srgb, #22c55e 10%, transparent);
-    text-shadow: 0 0 6px color-mix(in srgb, #22c55e 30%, transparent);
+    border-color: color-mix(in srgb, #34d399 40%, var(--border-color));
+    color: #34d399;
+    background: color-mix(in srgb, #34d399 10%, transparent);
+    text-shadow: 0 0 6px color-mix(in srgb, #34d399 30%, transparent);
   }
   .trend-chip.down {
-    border-color: color-mix(in srgb, #f97316 40%, var(--border-color));
-    color: #f97316;
-    background: color-mix(in srgb, #f97316 10%, transparent);
-    text-shadow: 0 0 6px color-mix(in srgb, #f97316 30%, transparent);
+    border-color: color-mix(in srgb, #fbbf24 40%, var(--border-color));
+    color: #fbbf24;
+    background: color-mix(in srgb, #fbbf24 10%, transparent);
+    text-shadow: 0 0 6px color-mix(in srgb, #fbbf24 30%, transparent);
   }
 
   /* ── Spark Hover / Tooltip / Crosshair ── */
