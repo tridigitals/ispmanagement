@@ -579,6 +579,7 @@
     <DataTable
       {columns}
       rows={visible}
+      pageSize={25}
       {loading}
       emptyTitle="Tidak ada work order"
       emptyHint="Instalasi baru dari langganan akan muncul di sini otomatis."

@@ -101,8 +101,6 @@
         : rows.filter((r) => dhcpSyncState(r) === syncFilter),
   );
 
-  const totalPages = $derived(Math.max(1, Math.ceil(total / perPage)));
-
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   async function load() {
@@ -564,7 +562,7 @@
   {/if}
 
   <div class="mt-4">
-    <DataTable {columns} rows={visibleRows} {loading} footNote={`${total} layanan total${search || filterRouterId ? ' pada filter ini' : ''}.`}>
+    <DataTable {columns} rows={visibleRows} {loading} pageSize={perPage} page={page} {total} onpage={(p) => { page = p; void load(); }} footNote={`${total} layanan total${search || filterRouterId ? ' pada filter ini' : ''}.`}>
       {#snippet cell(row: DhcpStaticServicePublic, col: Column)}
         {#if col.key === 'customer_id'}
           <span class="text-sm">{customerName.get(row.customer_id) || row.customer_id.slice(0, 8)}</span>
@@ -587,14 +585,6 @@
       {/snippet}
     </DataTable>
   </div>
-
-  {#if totalPages > 1}
-    <div class="mt-3 flex items-center justify-end gap-2">
-      <Button variant="ghost" size="sm" disabled={page <= 1} onclick={() => { page -= 1; void load(); }}>Sebelumnya</Button>
-      <span class="text-sm text-ink-500">Halaman {page} / {totalPages}</span>
-      <Button variant="ghost" size="sm" disabled={page >= totalPages} onclick={() => { page += 1; void load(); }}>Berikutnya</Button>
-    </div>
-  {/if}
 </AppShell>
 
 <!-- modal buat/sunting -->

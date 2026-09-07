@@ -407,6 +407,7 @@
         <DataTable
           {columns}
           rows={invoices}
+          pageSize={25}
           {loading}
           footNote={`${invoices.length} invoice langganan platform.`}
         >

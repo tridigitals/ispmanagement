@@ -502,6 +502,7 @@
         <DataTable
           columns={[{ key: 'loc', label: 'Lokasi' }, { key: 'subs', label: 'Langganan', width: '110px' }, { key: 'actions', label: '', width: '150px', align: 'right' }]}
           rows={locations}
+          pageSize={25}
           emptyTitle="Belum ada lokasi"
           emptyHint="Tambahkan alamat pemasangan untuk mulai menjual langganan."
         >
@@ -535,6 +536,7 @@
             { key: 'actions', label: '', width: '190px', align: 'right' },
           ]}
           rows={subscriptions}
+          pageSize={25}
           emptyTitle="Belum ada langganan"
           emptyHint="Buat langganan dari paket ISP yang tersedia."
         >
@@ -590,6 +592,7 @@
             { key: 'actions', label: '', width: '110px', align: 'right' },
           ]}
           rows={billingRows}
+          pageSize={25}
           emptyTitle="Tidak ada tagihan"
           emptyHint="Invoice paket pelanggan akan muncul di sini."
         >
@@ -622,6 +625,7 @@
             { key: 'actions', label: '', width: '110px', align: 'right' },
           ]}
           rows={assets}
+          pageSize={25}
           emptyTitle="Tidak ada aset"
           emptyHint="ONT/ONU terikat lewat penyelesaian work order instalasi."
         >
@@ -657,6 +661,7 @@
             { key: 'online', label: 'Status', width: '110px' },
           ]}
           rows={pppoeAccounts}
+          pageSize={25}
           emptyTitle="Tidak ada akun PPPoE"
           emptyHint="Akun dibuat lewat work order instalasi atau halaman PPPoE."
         >
@@ -688,6 +693,7 @@
             { key: 'sync', label: 'Sinkron', width: '120px' },
           ]}
           rows={dhcpServices}
+          pageSize={25}
           emptyTitle="Tidak ada layanan DHCP statis"
           emptyHint="Layanan DHCP statis terikat ke langganan pelanggan ini."
         >

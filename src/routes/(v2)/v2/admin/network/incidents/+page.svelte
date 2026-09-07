@@ -499,6 +499,7 @@
     <DataTable
       {columns}
       rows={filtered}
+      pageSize={25}
       {loading}
       emptyTitle="Tidak ada insiden"
       emptyHint={activeOnly

@@ -114,6 +114,7 @@
     <Card title="Daftar tiket" padded={false}>
       <DataTable
         rows={tickets}
+        pageSize={25}
         columns={[
           { key: 'id', label: 'ID' },
           { key: 'subject', label: 'Judul' },

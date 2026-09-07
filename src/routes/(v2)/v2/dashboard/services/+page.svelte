@@ -552,6 +552,7 @@
     {:else}
       <DataTable
         rows={subscriptions}
+        pageSize={25}
         columns={[
           { key: 'package_name', label: 'Layanan',  },
           { key: 'status', label: 'Status',  },

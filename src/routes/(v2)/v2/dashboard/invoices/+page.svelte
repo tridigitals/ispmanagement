@@ -297,6 +297,7 @@
     {:else}
       <DataTable
         rows={visible}
+        pageSize={25}
         {columns}
         {loading}
         emptyTitle="Tidak ada tagihan"
