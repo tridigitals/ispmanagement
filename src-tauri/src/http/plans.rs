@@ -55,7 +55,9 @@ async fn authenticate(state: &AppState, headers: &HeaderMap) -> AppResult<Claims
 
 fn require_superadmin(claims: &Claims) -> AppResult<()> {
     if !claims.is_super_admin {
-        return Err(AppError::Forbidden("Superadmin access required".to_string()));
+        return Err(AppError::Forbidden(
+            "Superadmin access required".to_string(),
+        ));
     }
     Ok(())
 }
@@ -102,12 +104,7 @@ async fn get_plan(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    Ok(Json(
-state
-           .plan_service
-           .get_plan_with_features(&id)
-           .await?,
-    ))
+    Ok(Json(state.plan_service.get_plan_with_features(&id).await?))
 }
 
 async fn create_plan(
@@ -158,12 +155,7 @@ async fn list_features(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    Ok(Json(
-state
-           .plan_service
-           .list_feature_definitions()
-           .await?,
-    ))
+    Ok(Json(state.plan_service.list_feature_definitions().await?))
 }
 
 async fn create_feature(
@@ -174,12 +166,7 @@ async fn create_feature(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    Ok(Json(
-state
-           .plan_service
-           .create_feature(req)
-           .await?,
-    ))
+    Ok(Json(state.plan_service.create_feature(req).await?))
 }
 
 async fn delete_feature(
@@ -190,10 +177,7 @@ async fn delete_feature(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state
-           .plan_service
-           .delete_feature(&id)
-           .await?;
+    state.plan_service.delete_feature(&id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -218,9 +202,9 @@ async fn set_plan_feature(
     require_superadmin(&claims)?;
 
     state
-           .plan_service
-           .set_plan_feature(&plan_id, &body.feature_id, &body.value)
-           .await?;
+        .plan_service
+        .set_plan_feature(&plan_id, &body.feature_id, &body.value)
+        .await?;
     Ok(StatusCode::OK)
 }
 
@@ -279,10 +263,10 @@ async fn get_subscription(
     }
 
     Ok(Json(
-state
-           .plan_service
-           .get_tenant_subscription(&tenant_id)
-           .await?,
+        state
+            .plan_service
+            .get_tenant_subscription(&tenant_id)
+            .await?,
     ))
 }
 
@@ -327,9 +311,9 @@ async fn check_access(
     }
 
     Ok(Json(
-state
-           .plan_service
-           .check_feature_access(&tenant_id, &feature_code)
-           .await?,
+        state
+            .plan_service
+            .check_feature_access(&tenant_id, &feature_code)
+            .await?,
     ))
 }

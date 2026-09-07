@@ -31,7 +31,10 @@ pub fn like_pattern(term: &str) -> String {
 /// Menerima tiga bentuk: RFC3339 penuh (yang dikirim `toISOString()`),
 /// `YYYY-MM-DDTHH:MM[:SS]` tanpa zona (datetime-local mentah, dianggap UTC),
 /// dan `YYYY-MM-DD` (awal hari UTC).
-pub fn parse_date_param(name: &str, raw: Option<&String>) -> Result<Option<chrono::DateTime<Utc>>, String> {
+pub fn parse_date_param(
+    name: &str,
+    raw: Option<&String>,
+) -> Result<Option<chrono::DateTime<Utc>>, String> {
     let Some(raw) = raw.map(|s| s.trim()).filter(|s| !s.is_empty()) else {
         return Ok(None);
     };
@@ -44,7 +47,9 @@ pub fn parse_date_param(name: &str, raw: Option<&String>) -> Result<Option<chron
         return Ok(Some(ndt.and_utc()));
     }
     if let Ok(nd) = chrono::NaiveDate::parse_from_str(raw, "%Y-%m-%d") {
-        return Ok(Some(nd.and_hms_opt(0, 0, 0).expect("00:00:00 valid").and_utc()));
+        return Ok(Some(
+            nd.and_hms_opt(0, 0, 0).expect("00:00:00 valid").and_utc(),
+        ));
     }
     Err(format!(
         "Parameter '{name}' bukan tanggal yang sah: '{raw}'. \

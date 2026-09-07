@@ -322,12 +322,13 @@ impl AnnouncementScheduler {
                 }
             } else {
                 // Global: hormati `audience` (dulu diabaikan → semua user aktif).
-                let ids: Vec<String> = crate::http::announcements_support_common::global_recipient_ids(
-                    pool,
-                    announcement.audience.as_str(),
-                )
-                .await
-                .unwrap_or_default();
+                let ids: Vec<String> =
+                    crate::http::announcements_support_common::global_recipient_ids(
+                        pool,
+                        announcement.audience.as_str(),
+                    )
+                    .await
+                    .unwrap_or_default();
                 recipients.extend(ids);
             }
         }
@@ -423,13 +424,12 @@ impl AnnouncementScheduler {
             }
         } else {
             // Jalur email global: audiens juga dihormati di sini.
-            let ids: Vec<String> =
-                crate::http::announcements_support_common::global_recipient_ids(
-                    pool,
-                    announcement.audience.as_str(),
-                )
-                .await
-                .unwrap_or_default();
+            let ids: Vec<String> = crate::http::announcements_support_common::global_recipient_ids(
+                pool,
+                announcement.audience.as_str(),
+            )
+            .await
+            .unwrap_or_default();
             recipients.extend(ids);
         }
 

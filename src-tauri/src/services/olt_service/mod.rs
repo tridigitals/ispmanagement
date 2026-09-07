@@ -48,12 +48,7 @@ pub fn normalize_uplink_router_id(raw: Option<String>) -> Option<String> {
 }
 
 /// Basic identity validation shared by create/update.
-pub fn validate_olt_identity(
-    name: &str,
-    host: &str,
-    port: i32,
-    username: &str,
-) -> AppResult<()> {
+pub fn validate_olt_identity(name: &str, host: &str, port: i32, username: &str) -> AppResult<()> {
     if name.trim().is_empty() {
         return Err(AppError::Validation("OLT name is required".into()));
     }

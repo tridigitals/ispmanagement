@@ -4,8 +4,8 @@ use crate::models::{
     CreateIspPackageRequest, IspPackage, IspPackageRouterMapping, IspPackageRouterMappingView,
     PaginatedResponse, UpdateIspPackageRequest, UpsertIspPackageRouterMappingRequest,
 };
-use crate::services::{AuditService, AuthService};
 use crate::services::audit_service::like_pattern;
+use crate::services::{AuditService, AuthService};
 use chrono::Utc;
 use std::collections::HashSet;
 use uuid::Uuid;
@@ -194,7 +194,11 @@ impl IspPackageService {
         // Wildcard LIKE di-escape (bug yang sama dengan audit-logs: mencari
         // "%" dulu mencocokkan SELURUH tabel). Description ikut dicari —
         // paket sering dibedakan lewat catatan, bukan hanya nama.
-        let q_pattern = if q.is_empty() { String::new() } else { like_pattern(&q) };
+        let q_pattern = if q.is_empty() {
+            String::new()
+        } else {
+            like_pattern(&q)
+        };
         let pg = crate::services::pagination::normalize(page, per_page);
         let per_page = pg.per_page;
         let offset = pg.offset;
@@ -623,10 +627,7 @@ impl IspPackageService {
         .await
         .map_err(AppError::Database)?;
         if !refs.is_empty() {
-            let parts: Vec<String> = refs
-                .iter()
-                .map(|(l, c)| format!("{c} {l}"))
-                .collect();
+            let parts: Vec<String> = refs.iter().map(|(l, c)| format!("{c} {l}")).collect();
             return Err(AppError::Validation(format!(
                 "Package '{}' is still in use: {}. Move or cancel the related records before deleting.",
                 name,

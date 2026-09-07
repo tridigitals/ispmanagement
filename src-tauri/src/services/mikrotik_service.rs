@@ -1297,9 +1297,7 @@ impl MikrotikService {
         // berubah. Kini jujur: 404 untuk id asing, 409 untuk resolved.
         let target = target.ok_or_else(|| AppError::NotFound("Incident not found".to_string()))?;
         if target.resolved_at.is_some() {
-            return Err(AppError::Conflict(
-                "Incident already resolved".to_string(),
-            ));
+            return Err(AppError::Conflict("Incident already resolved".to_string()));
         }
 
         sqlx::query(

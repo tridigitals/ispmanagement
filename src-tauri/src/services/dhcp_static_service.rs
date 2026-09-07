@@ -648,7 +648,11 @@ impl DhcpStaticServiceManager {
         let offset = pg.offset;
         let q = q.unwrap_or_default();
         // Wildcard user di-escape: dulu cari "%" mencocokkan SELURUH tabel.
-        let q_pattern = if q.is_empty() { String::new() } else { like_pattern(&q) };
+        let q_pattern = if q.is_empty() {
+            String::new()
+        } else {
+            like_pattern(&q)
+        };
         let customer_id = customer_id.unwrap_or_default();
         let location_id = location_id.unwrap_or_default();
         let router_id = router_id.unwrap_or_default();

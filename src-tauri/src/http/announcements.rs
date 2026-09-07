@@ -107,11 +107,17 @@ async fn audience_reach(
                 "active_subscribers",
                 "suspended_subscribers",
             ] {
-                let n = global_recipient_ids(pool, a).await.unwrap_or_default().len();
+                let n = global_recipient_ids(pool, a)
+                    .await
+                    .unwrap_or_default()
+                    .len();
                 counts.insert(a.to_string(), serde_json::json!(n));
             }
         } else {
-            let admins = tenant_admin_user_ids(pool, &tenant_id).await.unwrap_or_default().len();
+            let admins = tenant_admin_user_ids(pool, &tenant_id)
+                .await
+                .unwrap_or_default()
+                .len();
             let customers = customer_portal_user_ids(pool, &tenant_id)
                 .await
                 .unwrap_or_default()
@@ -131,7 +137,11 @@ async fn audience_reach(
                 .unwrap_or_default()
                 .into_iter()
                 .collect();
-            set.extend(customer_portal_user_ids(pool, &tenant_id).await.unwrap_or_default());
+            set.extend(
+                customer_portal_user_ids(pool, &tenant_id)
+                    .await
+                    .unwrap_or_default(),
+            );
             counts.insert("all".into(), serde_json::json!(set.len()));
             counts.insert("admins".into(), serde_json::json!(admins));
             counts.insert("customers".into(), serde_json::json!(customers));

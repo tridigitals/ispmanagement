@@ -319,11 +319,7 @@ impl PlanService {
     }
 
     /// Update a plan
-    pub async fn update_plan(
-        &self,
-        plan_id: &str,
-        req: UpdatePlanRequest,
-    ) -> AppResult<Plan> {
+    pub async fn update_plan(&self, plan_id: &str, req: UpdatePlanRequest) -> AppResult<Plan> {
         if let Some(name) = &req.name {
             validate_plan_name(name)?;
         }
@@ -1346,7 +1342,10 @@ mod plan_validation_tests {
         assert!(validate_plan_slug("Pro").is_err(), "huruf besar");
         assert!(validate_plan_slug("pro!").is_err(), "karakter terlarang");
         assert!(validate_plan_slug("").is_err());
-        assert!(validate_plan_slug(&"x".repeat(41)).is_err(), "terlalu panjang");
+        assert!(
+            validate_plan_slug(&"x".repeat(41)).is_err(),
+            "terlalu panjang"
+        );
     }
 
     #[test]

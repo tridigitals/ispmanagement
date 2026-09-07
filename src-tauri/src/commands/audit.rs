@@ -39,10 +39,8 @@ pub async fn list_audit_logs(
         return Err("Unauthorized".to_string());
     }
 
-    let date_from_parsed = crate::services::audit_service::parse_date_param(
-        "date_from",
-        date_from.as_ref(),
-    )?;
+    let date_from_parsed =
+        crate::services::audit_service::parse_date_param("date_from", date_from.as_ref())?;
     let date_to_parsed =
         crate::services::audit_service::parse_date_param("date_to", date_to.as_ref())?;
 
@@ -107,10 +105,8 @@ pub async fn list_tenant_audit_logs(
         return Err("Missing permission audit_logs:read".to_string());
     }
 
-    let date_from_parsed = crate::services::audit_service::parse_date_param(
-        "date_from",
-        date_from.as_ref(),
-    )?;
+    let date_from_parsed =
+        crate::services::audit_service::parse_date_param("date_from", date_from.as_ref())?;
     let date_to_parsed =
         crate::services::audit_service::parse_date_param("date_to", date_to.as_ref())?;
 

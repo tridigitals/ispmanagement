@@ -1,7 +1,7 @@
 use crate::error::{AppError, AppResult};
-use crate::services::audit_service::like_pattern;
 use crate::http::AppState;
 use crate::models::{EmailOutboxItem, EmailOutboxStats, PaginatedResponse};
+use crate::services::audit_service::like_pattern;
 use axum::{
     extract::{Path, Query, State},
     http::HeaderMap,
