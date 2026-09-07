@@ -167,9 +167,15 @@
    */
   .v2-light {
     --bg-surface: var(--color-ink-0);
+    --bg-primary: var(--color-ink-0);
+    --bg-app: var(--color-ink-50);
     --bg-tertiary: var(--color-ink-50);
+    --bg-hover: var(--color-ink-100);
+    --bg-active: var(--color-ink-200);
+    --border-input: var(--color-ink-200);
     --text-primary: var(--color-ink-900);
     --text-secondary: var(--color-ink-500);
+    --text-tertiary: var(--color-ink-400);
     --text-muted: var(--color-ink-400);
     --border-color: var(--color-ink-200);
     --border-subtle: var(--color-ink-100);
@@ -177,6 +183,7 @@
     --color-primary-hover: var(--color-brand-700);
     --color-primary-subtle: var(--color-brand-50);
     --shadow-md: 0 12px 32px rgba(9, 12, 20, 0.18);
+    --shadow-lg: 0 20px 48px rgba(9, 12, 20, 0.22);
   }
 
   .ds-scope :is(button, input, select, textarea),

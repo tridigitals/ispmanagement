@@ -20,6 +20,8 @@
   import Topbar from './Topbar.svelte';
   import Icon from './Icon.svelte';
   import UserMenu from './UserMenu.svelte';
+  import { unreadCount } from '$lib/stores/notifications';
+  import { openNotificationModal } from '$lib/stores/notificationModal';
   import { buildPortalNavGroups } from '$lib/utils/portalNav';
 
   interface Props {
@@ -59,6 +61,18 @@
   <div class="flex min-w-0 flex-1 flex-col">
     <Topbar {title} search={false} onMenuClick={() => (mobileOpen = !mobileOpen)}>
       {#snippet right()}
+        <button
+          aria-label="Notifikasi"
+          class="focus-ring relative grid size-8 place-items-center rounded-lg text-ink-500 hover:bg-ink-100"
+          onclick={() => openNotificationModal()}
+        >
+          <Icon name="bell" size={17} />
+          {#if $unreadCount > 0}
+            <span
+              class="absolute -right-0.5 -top-0.5 grid min-w-[15px] place-items-center rounded-full bg-red-500 px-[3px] text-[9px] font-semibold leading-[15px] text-white"
+            >{$unreadCount > 99 ? '99+' : $unreadCount}</span>
+          {/if}
+        </button>
         <UserMenu subtitle="Portal Pelanggan" />
       {/snippet}
     </Topbar>

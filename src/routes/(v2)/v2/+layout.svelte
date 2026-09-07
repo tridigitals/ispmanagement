@@ -17,6 +17,8 @@
   import { hasInternalAppAccess } from '$lib/utils/appLanding';
   import { secureGetItem } from '$lib/utils/tauri-store';
   import ProfileModal from '$lib/components/profile/ProfileModal.svelte';
+  import NotificationModal from '$lib/components/notifications/NotificationModal.svelte';
+  import { refreshUnreadCount } from '$lib/stores/notifications';
   import '$lib/styles/design-system.css';
 
   let { children } = $props();
@@ -42,7 +44,12 @@
         }
       }
 
-      if (!cancelled) ready = true;
+      if (!cancelled) {
+        ready = true;
+        // Badge unread di bell butuh angka sejak halaman pertama; modalnya
+        // sendiri me-refresh saat dibuka.
+        refreshUnreadCount().catch(() => {});
+      }
     })();
 
     return () => {
@@ -67,15 +74,18 @@
 {#if ready}
   <!--
     `v2-light` meng-override token warna gelap legacy supaya komponen warisan
-    (ui/Modal, RichTextEditor, Select) yang dirender DI LUAR .ds-scope ikut
-    terang. `contents` = tidak membuat box, jadi layout h-dvh AppShell tidak
-    berubah; custom property tetap diwarisi lewat DOM.
+    (ui/Modal, RichTextEditor, Select, modal profil/notifikasi) yang dirender
+    DI LUAR .ds-scope ikut terang. `contents` = tidak membuat box, jadi layout
+    h-dvh AppShell tidak berubah; custom property tetap diwarisi lewat DOM.
+    PENTING: modal WAJIB di dalam wrapper ini — di luar = tema gelap bocor.
   -->
   <div class="contents v2-light">
     {@render children()}
+    <!-- Dipanggil dari UserMenu (Profil & keamanan) di AppShell/PortalShell. -->
+    <ProfileModal />
+    <!-- Dipanggil dari bell notifikasi di AppShell/PortalShell. -->
+    <NotificationModal />
   </div>
-  <!-- Modal profil (dipanggil dari UserMenu di AppShell/PortalShell). -->
-  <ProfileModal />
 {:else}
   <div class="grid h-dvh place-items-center bg-ink-50">
     <div class="text-base text-ink-500">Memuat…</div>
