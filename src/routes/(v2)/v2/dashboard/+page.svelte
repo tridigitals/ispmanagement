@@ -265,8 +265,8 @@
     <button
       type="button"
       class="admin-banner"
-      onclick={() => goto('/admin')}
-      onkeydown={(e) => e.key === 'Enter' && goto('/admin')}
+      onclick={() => goto('/v2/admin')}
+      onkeydown={(e) => e.key === 'Enter' && goto('/v2/admin')}
     >
       <Icon name="shield" size={20} />
       <span class="flex-1 text-left">

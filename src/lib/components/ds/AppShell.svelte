@@ -17,6 +17,7 @@
   import NavRail from './NavRail.svelte';
   import Topbar from './Topbar.svelte';
   import Icon from './Icon.svelte';
+  import UserMenu from './UserMenu.svelte';
   import { buildAdminNav, type NavBadges } from '$lib/utils/navConfig';
 
   interface Props {
@@ -64,19 +65,7 @@
         >
           <Icon name="bell" size={17} />
         </button>
-        <div class="ml-1 flex items-center gap-2 border-l border-ink-200 pl-2.5">
-          <div
-            class="grid size-7 place-items-center rounded-full bg-brand-100 text-2xs font-semibold text-brand-700"
-          >
-            {($user?.name ?? $user?.email ?? '?').slice(0, 2).toUpperCase()}
-          </div>
-          <div class="hidden min-w-0 sm:block">
-            <div class="truncate text-sm font-medium text-ink-900">
-              {$user?.name ?? $user?.email ?? '—'}
-            </div>
-            <div class="truncate text-2xs text-ink-400">{$user?.tenant_role ?? $user?.role ?? ''}</div>
-          </div>
-        </div>
+        <UserMenu />
       {/snippet}
     </Topbar>
 

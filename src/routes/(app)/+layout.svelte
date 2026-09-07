@@ -7,6 +7,7 @@
   import { page } from '$app/stores';
   import { user } from '$lib/stores/auth';
   import { resolveTenantContext, APP_ROOT_SEGMENTS } from '$lib/utils/tenantRouting';
+  import { v2RedirectFor } from '$lib/utils/legacyV2Redirect';
   import { isPlatformDomain } from '$lib/utils/domain';
   import { canAccessNetworkMap } from '$lib/utils/adminNetworkAccess';
   import { canAccessServiceCatalog } from '$lib/utils/serviceCatalogAccess';
@@ -276,6 +277,15 @@
         to: canonicalPath,
       });
       goto(canonicalPath);
+      return;
+    }
+
+    // Cutover v2: route lama punya padanan di /v2 -> redirect. Rollback:
+    // hapus blok ini (+ util legacyV2Redirect) — halaman lama tetap utuh.
+    const v2Target = v2RedirectFor(canonicalPath);
+    if (v2Target) {
+      debugLog('cutover-v2-redirect', { from: canonicalPath, to: v2Target });
+      goto(v2Target);
       return;
     }
 

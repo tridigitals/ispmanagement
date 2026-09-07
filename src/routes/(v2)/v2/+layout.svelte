@@ -1,19 +1,22 @@
 <!--
-  Layout pratinjau shell v2.
+  Layout shell v2 (entry utama sejak cutover).
 
-  Sengaja berada di route group sendiri dengan prefix URL /v2 supaya:
-  - Tidak bertabrakan dengan (app)/admin/** yang masih memakai shell lama.
-  - Halaman produksi tidak berubah sama sekali selama pratinjau berjalan.
+  Berada di route group sendiri dengan prefix URL /v2; route lama (app) kini
+  otomatis redirect ke padanannya lewat v2RedirectFor di (app)/+layout.svelte.
+  Rollback cutover: hapus blok redirect itu — halaman lama tetap utuh.
 
-  Guard auth di sini adalah versi ringkas dari (app)/+layout.svelte: hanya
-  memeriksa token lalu memvalidasi sesi. Cek izin per halaman tetap dilakukan
-  oleh masing-masing halaman lewat store `can`.
+  Guard auth di sini adalah versi ringkas dari (app)/+layout.svelte: memeriksa
+  token, memvalidasi sesi, lalu cek peran (admin vs portal). Cek izin per
+  halaman tetap dilakukan oleh masing-masing halaman lewat store `can`.
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { isAuthenticated, checkAuth } from '$lib/stores/auth';
+  import { page } from '$app/stores';
+  import { isAuthenticated, checkAuth, user } from '$lib/stores/auth';
+  import { hasInternalAppAccess } from '$lib/utils/appLanding';
   import { secureGetItem } from '$lib/utils/tauri-store';
+  import ProfileModal from '$lib/components/profile/ProfileModal.svelte';
   import '$lib/styles/design-system.css';
 
   let { children } = $props();
@@ -46,6 +49,19 @@
       cancelled = true;
     };
   });
+
+  // Reaktif: navigasi client-side antar area tidak me-remount layout ini,
+  // jadi cek peran tiap path/user berubah (setelah sesi valid).
+  $effect(() => {
+    if (!ready) return;
+    const path = $page.url.pathname;
+    const internal = hasInternalAppAccess($user);
+    if (path.startsWith('/v2/admin') && !internal) {
+      goto('/unauthorized');
+    } else if (path.startsWith('/v2/dashboard') && internal) {
+      goto('/v2/admin');
+    }
+  });
 </script>
 
 {#if ready}
@@ -58,6 +74,8 @@
   <div class="contents v2-light">
     {@render children()}
   </div>
+  <!-- Modal profil (dipanggil dari UserMenu di AppShell/PortalShell). -->
+  <ProfileModal />
 {:else}
   <div class="grid h-dvh place-items-center bg-ink-50">
     <div class="text-base text-ink-500">Memuat…</div>

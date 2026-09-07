@@ -23,7 +23,7 @@ describe('app landing helpers', () => {
     });
 
     expect(hasInternalAppAccess(user)).toBe(false);
-    expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/dashboard');
+    expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/v2/dashboard');
   });
 
   it('treats admin access permission as internal landing access', () => {
@@ -34,7 +34,7 @@ describe('app landing helpers', () => {
 
     expect(hasInternalAppAccess(user)).toBe(true);
     expect(canAccessCustomerDashboard(user)).toBe(false);
-    expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/admin');
+    expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/v2/admin');
   });
 
   it('treats granular internal permissions like technician access as admin landing access', () => {
@@ -45,7 +45,7 @@ describe('app landing helpers', () => {
 
     expect(hasInternalAppAccess(user)).toBe(true);
     expect(canAccessCustomerDashboard(user)).toBe(false);
-    expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/admin');
+    expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/v2/admin');
   });
 
   it('keeps superadmins on superadmin landing when there is no tenant prefix', () => {
@@ -55,7 +55,7 @@ describe('app landing helpers', () => {
     });
 
     expect(canAccessCustomerDashboard(user)).toBe(false);
-    expect(getDefaultTenantLandingPath(user, '')).toBe('/admin');
+    expect(getDefaultTenantLandingPath(user, '')).toBe('/v2/admin');
   });
 
   it('keeps customer-only users eligible for the customer dashboard', () => {
@@ -73,7 +73,7 @@ describe('app landing helpers', () => {
 
     expect(hasInternalAppAccess(user)).toBe(false);
     expect(canAccessCustomerDashboard(user)).toBe(true);
-    expect(getDefaultTenantLandingPath(user, '')).toBe('/dashboard');
+    expect(getDefaultTenantLandingPath(user, '')).toBe('/v2/dashboard');
   });
 
   it('keeps pelanggan portal users on the dashboard despite stale internal permissions', () => {
@@ -84,7 +84,7 @@ describe('app landing helpers', () => {
 
     expect(hasInternalAppAccess(user)).toBe(false);
     expect(canAccessCustomerDashboard(user)).toBe(true);
-    expect(getDefaultTenantLandingPath(user, '')).toBe('/dashboard');
+    expect(getDefaultTenantLandingPath(user, '')).toBe('/v2/dashboard');
   });
 
   it('normalizes whitespace around legacy portal roles', () => {
@@ -94,7 +94,7 @@ describe('app landing helpers', () => {
     });
 
     expect(hasInternalAppAccess(user)).toBe(false);
-    expect(getDefaultTenantLandingPath(user, '')).toBe('/dashboard');
+    expect(getDefaultTenantLandingPath(user, '')).toBe('/v2/dashboard');
   });
 
   it('uses the tenant role when the global role is stale', () => {
@@ -106,6 +106,6 @@ describe('app landing helpers', () => {
 
     expect(hasInternalAppAccess(user)).toBe(false);
     expect(canAccessCustomerDashboard(user)).toBe(true);
-    expect(getDefaultTenantLandingPath(user, '')).toBe('/dashboard');
+    expect(getDefaultTenantLandingPath(user, '')).toBe('/v2/dashboard');
   });
 });

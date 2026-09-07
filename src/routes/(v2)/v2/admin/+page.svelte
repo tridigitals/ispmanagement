@@ -198,7 +198,7 @@
   >
     {#snippet actions()}
       <Button icon="refresh" onclick={load} loading={loading}>Muat ulang</Button>
-      <Button variant="primary" icon="plus" href="/admin/customers?new=1">Pelanggan baru</Button>
+      <Button variant="primary" icon="plus" href="/v2/admin/customers?new=1">Pelanggan baru</Button>
     {/snippet}
   </PageHeader>
 
@@ -260,7 +260,7 @@
     <Card title="Jatuh tempo terdekat" padded={false}>
       {#snippet aside()}
         <a
-          href="/admin/invoices"
+          href="/v2/admin/invoices"
           class="focus-ring rounded text-sm font-medium text-brand-600 hover:text-brand-700"
         >
           Lihat semua {money.unpaidCount}
