@@ -9,10 +9,19 @@
   import Button from '$lib/components/ds/Button.svelte';
   import Badge from '$lib/components/ds/Badge.svelte';
   import Icon from '$lib/components/ds/Icon.svelte';
+  import DataTable from '$lib/components/ds/DataTable.svelte';
   import RowActions from '$lib/components/ds/RowActions.svelte';
-  import TableSkeleton from '$lib/components/ds/TableSkeleton.svelte';
   import { formatRelative } from '$lib/components/ds/format';
+  import type { Column } from '$lib/components/ds/table-types';
   import type { CustomerListItem } from '$lib/api/types';
+
+  const columns: Column[] = [
+    { key: 'name', label: 'Pelanggan' },
+    { key: 'contact', label: 'Kontak', hideSm: true },
+    { key: 'services', label: 'Layanan' },
+    { key: 'updated', label: 'Diperbarui', hideSm: true },
+    { key: 'actions', label: 'Aksi', align: 'right', width: '120px' },
+  ];
 
   let rows = $state<CustomerListItem[]>([]);
   let total = $state(0);
@@ -31,9 +40,6 @@
   let counts = $state({ all: 0, svcActive: 0, svcInactive: 0, svcNone: 0, pending: 0 });
 
   const canManage = $derived($can('manage', 'customers'));
-  const lastPage = $derived(Math.max(1, Math.ceil(total / perPage)));
-  const from = $derived(total === 0 ? 0 : (page - 1) * perPage + 1);
-  const to = $derived(Math.min(page * perPage, total));
 
   /* Chip filter cepat. Menggantikan 3 dropdown terpisah di halaman lama:
      pilihan yang sering dipakai jadi satu klik, dan jumlahnya terlihat. */
@@ -201,122 +207,60 @@
   </div>
 
   <Card padded={false}>
-    {#if loading}
-      <div class="px-4 py-3">
-        <TableSkeleton rows={10} cols={5} />
-      </div>
-    {:else if rows.length === 0}
-      <div class="flex flex-col items-center gap-2 px-4 py-16 text-center">
-        <Icon name="inbox" size={26} class="text-ink-300" />
-        <div class="text-base font-medium text-ink-700">Tidak ada pelanggan cocok</div>
-        <div class="text-sm text-ink-500">
-          {q ? `Tidak ada hasil untuk "${q}".` : 'Coba ubah filter di atas.'}
-        </div>
-      </div>
-    {:else}
-      <div class="overflow-x-auto">
-        <table class="w-full border-collapse text-base">
-          <thead>
-            <tr class="border-b border-ink-200 bg-ink-50">
-              <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-ink-500 uppercase"
-                >Pelanggan</th
-              >
-              <th
-                class="hidden px-4 py-2 text-left text-xs font-semibold tracking-wide text-ink-500 uppercase lg:table-cell"
-                >Kontak</th
-              >
-              <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-ink-500 uppercase"
-                >Layanan</th
-              >
-              <th
-                class="hidden px-4 py-2 text-left text-xs font-semibold tracking-wide text-ink-500 uppercase md:table-cell"
-                >Diperbarui</th
-              >
-              <th class="px-4 py-2 text-right text-xs font-semibold tracking-wide text-ink-500 uppercase"
-                >Aksi</th
-              >
-            </tr>
-          </thead>
-          <tbody>
-            {#each rows as c (c.id)}
-              <tr class="border-b border-ink-100 last:border-0 hover:bg-ink-50">
-                <td class="px-4 py-2.5">
-                  <div class="flex items-center gap-1.5">
-                    <span class="font-medium text-ink-900">{c.name}</span>
-                    {#if !c.is_active}
-                      <Badge tone="negative" label="Nonaktif" />
-                    {/if}
-                  </div>
-                  <div class="num text-sm text-ink-400">{c.customer_number || '—'}</div>
-                </td>
-                <td class="hidden px-4 py-2.5 lg:table-cell">
-                  <div class="text-ink-700">{c.email || '—'}</div>
-                  <div class="num text-sm text-ink-400">{c.phone || '—'}</div>
-                </td>
-                <td class="px-4 py-2.5">
-                  <Badge tone={serviceTone(c)} label={serviceLabel(c)} />
-                </td>
-                <td class="hidden px-4 py-2.5 text-sm text-ink-500 md:table-cell">
-                  {formatRelative(c.updated_at)}
-                </td>
-                <td class="px-4 py-2.5">
-                  {#if isPlaceholder(c)}
-                    <div class="text-right text-sm text-ink-400">—</div>
-                  {:else}
-                    <RowActions
-                      primary={{
-                        label: 'Buka',
-                        icon: 'chevronRight',
-                        onclick: () => goto(`/v2/admin/customers/${c.id}`),
-                      }}
-                      rest={canManage
-                        ? [
-                            { label: 'Tambah layanan', icon: 'wifi' },
-                            { label: 'Buat tagihan', icon: 'receipt' },
-                            { label: 'Kirim WhatsApp', icon: 'inbox' },
-                            { label: 'Kirim email', icon: 'mail' },
-                            { label: 'Hapus pelanggan', icon: 'close', danger: true },
-                          ]
-                        : []}
-                    />
-                  {/if}
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-
-      <div
-        class="flex flex-wrap items-center justify-between gap-2 border-t border-ink-200 bg-ink-50 px-4 py-2"
-      >
-        <div class="num text-sm text-ink-500">
-          {from}–{to} dari {total} pelanggan
-        </div>
-        <div class="flex items-center gap-1.5">
-          <Button
-            size="sm"
-            icon="chevronLeft"
-            label="Halaman sebelumnya"
-            disabled={page <= 1}
-            onclick={() => {
-              page -= 1;
-              load();
-            }}
-          />
-          <span class="num text-sm text-ink-500">Hal {page} / {lastPage}</span>
-          <Button
-            size="sm"
-            icon="chevronRight"
-            label="Halaman berikutnya"
-            disabled={page >= lastPage}
-            onclick={() => {
-              page += 1;
-              load();
-            }}
-          />
-        </div>
-      </div>
-    {/if}
+    <DataTable
+      {columns}
+      rows={rows}
+      {loading}
+      pageSize={perPage}
+      page={page}
+      {total}
+      onpage={(p) => {
+        page = p;
+        load();
+      }}
+      emptyTitle="Tidak ada pelanggan cocok"
+      emptyHint={q ? `Tidak ada hasil untuk "${q}".` : 'Coba ubah filter di atas.'}
+      footNote={`${total} pelanggan`}
+    >
+      {#snippet cell(c: CustomerListItem, col: Column)}
+        {#if col.key === 'name'}
+          <div class="flex items-center gap-1.5">
+            <span class="font-medium text-ink-900">{c.name}</span>
+            {#if !c.is_active}
+              <Badge tone="negative" label="Nonaktif" />
+            {/if}
+          </div>
+          <div class="num text-sm text-ink-400">{c.customer_number || '—'}</div>
+        {:else if col.key === 'contact'}
+          <div class="text-ink-700">{c.email || '—'}</div>
+          <div class="num text-sm text-ink-400">{c.phone || '—'}</div>
+        {:else if col.key === 'services'}
+          <Badge tone={serviceTone(c)} label={serviceLabel(c)} />
+        {:else if col.key === 'updated'}
+          <span class="text-sm text-ink-500">{formatRelative(c.updated_at)}</span>
+        {:else if col.key === 'actions'}
+          {#if isPlaceholder(c)}
+            <div class="text-right text-sm text-ink-400">—</div>
+          {:else}
+            <RowActions
+              primary={{
+                label: 'Buka',
+                icon: 'chevronRight',
+                onclick: () => goto(`/v2/admin/customers/${c.id}`),
+              }}
+              rest={canManage
+                ? [
+                    { label: 'Tambah layanan', icon: 'wifi' },
+                    { label: 'Buat tagihan', icon: 'receipt' },
+                    { label: 'Kirim WhatsApp', icon: 'inbox' },
+                    { label: 'Kirim email', icon: 'mail' },
+                    { label: 'Hapus pelanggan', icon: 'close', danger: true },
+                  ]
+                : []}
+            />
+          {/if}
+        {/if}
+      {/snippet}
+    </DataTable>
   </Card>
 </AppShell>

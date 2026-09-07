@@ -158,8 +158,6 @@
     detailOpen = true;
   }
 
-  const totalPages = $derived(Math.max(1, Math.ceil(total / perPage)));
-
   const columns: Column[] = [
     { key: 'created_at', label: 'Waktu', width: '160px' },
     { key: 'actor', label: 'Aktor' },
@@ -257,11 +255,17 @@
     {columns}
     rows={logs}
     {loading}
+    pageSize={perPage}
+    page={pageNum}
+    {total}
+    onpage={(p) => {
+      pageNum = p;
+      void load();
+    }}
     emptyTitle={filtered ? 'Tidak ada yang cocok' : 'Belum ada aktivitas tercatat'}
     emptyHint={filtered
       ? 'Longgarkan filter atau bersihkan kata kunci.'
       : 'Entri muncul saat ada tindakan admin, sistem, atau autentikasi.'}
-    footNote="{logs.length} dari {total.toLocaleString('id-ID')} entri · halaman {pageNum}/{totalPages}"
   >
     {#snippet cell(l, c)}
       {#if c.key === 'created_at'}
@@ -288,29 +292,6 @@
       {/if}
     {/snippet}
   </DataTable>
-
-  <div class="pager">
-    <div class="pbtns">
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={pageNum <= 1}
-        onclick={() => {
-          pageNum -= 1;
-          void load();
-        }}>Sebelumnya</Button
-      >
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={pageNum >= totalPages}
-        onclick={() => {
-          pageNum += 1;
-          void load();
-        }}>Berikutnya</Button
-      >
-    </div>
-  </div>
 </AppShell>
 
 <Modal bind:show={detailOpen} title="Detail entri audit" width="640px">
@@ -429,18 +410,6 @@
     font-family: ui-monospace, monospace;
     font-size: 12px;
     word-break: break-all;
-  }
-  .pager {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 12px;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .pbtns {
-    display: flex;
-    gap: 8px;
   }
   .detail {
     display: grid;

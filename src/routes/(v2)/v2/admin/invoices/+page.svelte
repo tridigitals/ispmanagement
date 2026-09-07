@@ -27,11 +27,11 @@
   import Card from '$lib/components/ds/Card.svelte';
   import Button from '$lib/components/ds/Button.svelte';
   import Badge from '$lib/components/ds/Badge.svelte';
-  import Icon from '$lib/components/ds/Icon.svelte';
+  import DataTable from '$lib/components/ds/DataTable.svelte';
   import StatTile from '$lib/components/ds/StatTile.svelte';
-  import TableSkeleton from '$lib/components/ds/TableSkeleton.svelte';
   import RowActions from '$lib/components/ds/RowActions.svelte';
   import { formatRupiah, formatDate, formatPercent } from '$lib/components/ds/format';
+  import type { Column } from '$lib/components/ds/table-types';
   import { fetchAllPages } from '$lib/utils/fetchAllPages';
   import type { Invoice } from '$lib/api/types';
 
@@ -71,9 +71,15 @@
      menyembunyikan tombol aksi dari Admin yang berhak. Halaman legacy memakai
      can('manage','billing'). */
   const canManage = $derived($can('manage', 'billing'));
-  const lastPage = $derived(Math.max(1, Math.ceil(total / perPage)));
-  const from = $derived(total === 0 ? 0 : (page - 1) * perPage + 1);
-  const to = $derived(Math.min(page * perPage, total));
+  const columns = $derived<Column[]>([
+    ...(canManage ? [{ key: 'select', label: '', width: '44px' }] : []),
+    { key: 'invoice_number', label: 'Invoice', num: true },
+    { key: 'description', label: 'Keterangan', hideSm: true },
+    { key: 'amount', label: 'Jumlah', align: 'right', num: true },
+    { key: 'status', label: 'Status' },
+    { key: 'due_date', label: 'Jatuh tempo', hideSm: true },
+    { key: 'actions', label: 'Aksi', align: 'right', width: '110px' },
+  ]);
 
   const billed = $derived(
     summary.pending.amount +
@@ -310,148 +316,84 @@
       </button>
     {/each}
 
-    {#if selected.size > 0 && canManage}
+    {#if canManage}
       <div class="ml-auto flex items-center gap-2">
-        <span class="num text-sm text-ink-500">{selected.size} dipilih</span>
-        <Button variant="primary" icon="mail" loading={sending} onclick={sendSelected}>
-          Kirim tagihan
-        </Button>
+        {#if selected.size > 0}
+          <span class="num text-sm text-ink-500">{selected.size} dipilih</span>
+          <Button size="sm" variant="ghost" onclick={() => (selected = new Set())}>Bersihkan</Button>
+          <Button variant="primary" icon="mail" loading={sending} onclick={sendSelected}>
+            Kirim tagihan
+          </Button>
+        {:else}
+          <Button size="sm" variant="ghost" icon="check" onclick={toggleAll}>
+            Pilih semua di halaman ini
+          </Button>
+        {/if}
       </div>
     {/if}
   </div>
 
   <Card padded={false}>
-    {#if loading}
-      <div class="px-4 py-3"><TableSkeleton rows={10} cols={6} /></div>
-    {:else if rows.length === 0}
-      <div class="flex flex-col items-center gap-2 px-4 py-16 text-center">
-        <Icon name="receipt" size={26} class="text-ink-300" />
-        <div class="text-base font-medium text-ink-700">Tidak ada tagihan</div>
-        <div class="text-sm text-ink-500">Coba pilih filter status yang lain.</div>
-      </div>
-    {:else}
-      <div class="overflow-x-auto">
-        <table class="w-full border-collapse text-base">
-          <thead>
-            <tr class="border-b border-ink-200 bg-ink-50">
-              {#if canManage}
-                <th class="w-10 px-3 py-1 text-left">
-                  <!-- Kotak visual 16px, area klik 24px lewat padding label:
-                       WCAG 2.5.8 minta target >= 24x24, checkbox native cuma 16. -->
-                  <label class="inline-flex size-6 cursor-pointer items-center justify-center">
-                    <input
-                      type="checkbox"
-                      checked={selected.size === rows.length && rows.length > 0}
-                      onchange={toggleAll}
-                      aria-label="Pilih semua di halaman ini"
-                      class="size-4 rounded border-ink-300"
-                    />
-                  </label>
-                </th>
-              {/if}
-              <th class="px-4 py-2 text-left text-xs font-semibold text-ink-500 uppercase"
-                >Invoice</th
-              >
-              <th
-                class="hidden px-4 py-2 text-left text-xs font-semibold text-ink-500 uppercase lg:table-cell"
-                >Keterangan</th
-              >
-              <th class="px-4 py-2 text-right text-xs font-semibold text-ink-500 uppercase"
-                >Jumlah</th
-              >
-              <th class="px-4 py-2 text-left text-xs font-semibold text-ink-500 uppercase">Status</th
-              >
-              <th
-                class="hidden px-4 py-2 text-left text-xs font-semibold text-ink-500 uppercase md:table-cell"
-                >Jatuh tempo</th
-              >
-              <th class="px-4 py-2 text-right text-xs font-semibold text-ink-500 uppercase">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each rows as inv (inv.id)}
-              <tr class="border-b border-ink-100 last:border-0 hover:bg-ink-50">
-                {#if canManage}
-                  <td class="px-3 py-1.5">
-                    <label class="inline-flex size-6 cursor-pointer items-center justify-center">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(inv.id)}
-                        onchange={() => toggle(inv.id)}
-                        aria-label="Pilih {inv.invoice_number}"
-                        class="size-4 rounded border-ink-300"
-                      />
-                    </label>
-                  </td>
-                {/if}
-                <td class="num px-4 py-2.5 font-medium text-ink-900">{inv.invoice_number}</td>
-                <td class="hidden max-w-xs truncate px-4 py-2.5 text-ink-700 lg:table-cell">
-                  {inv.description || '—'}
-                </td>
-                <td class="num px-4 py-2.5 text-right text-ink-900">{formatRupiah(inv.amount)}</td>
-                <td class="px-4 py-2.5">
-                  <div class="flex items-center gap-1.5">
-                    <Badge status={inv.status} />
-                    {#if isOverdue(inv)}
-                      <!-- Umur tunggakan lebih berguna daripada label "lewat"
-                           telanjang: 474 dari 476 piutang di sini sudah >90 hari. -->
-                      <Badge tone="negative" label="{daysLate(inv)} hari" />
-                    {/if}
-                  </div>
-                </td>
-                <td class="hidden px-4 py-2.5 text-ink-700 md:table-cell">
-                  {formatDate(inv.due_date)}
-                </td>
-                <td class="px-4 py-2.5">
-                  <RowActions
-                    primary={{
-                      label: 'Detail',
-                      icon: 'chevronRight',
-                      onclick: () => goto(`/v2/admin/invoices/${inv.id}`),
-                    }}
-                    rest={canManage
-                      ? [
-                          { label: 'Halaman bayar', icon: 'chevronRight', onclick: () => window.open(`/pay/${inv.id}`, '_blank') },
-                          { label: 'Verifikasi bayar', icon: 'check' },
-                          { label: 'Kirim ulang', icon: 'mail' },
-                        ]
-                      : []}
-                  />
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-
-      <div
-        class="flex flex-wrap items-center justify-between gap-2 border-t border-ink-200 bg-ink-50 px-4 py-2"
-      >
-        <div class="num text-sm text-ink-500">{from}–{to} dari {total} tagihan</div>
-        <div class="flex items-center gap-1.5">
-          <Button
-            size="sm"
-            icon="chevronLeft"
-            label="Halaman sebelumnya"
-            disabled={page <= 1}
-            onclick={() => {
-              page -= 1;
-              load();
+    <DataTable
+      {columns}
+      rows={rows}
+      {loading}
+      pageSize={perPage}
+      page={page}
+      {total}
+      onpage={(p) => {
+        page = p;
+        load();
+      }}
+      emptyTitle="Tidak ada tagihan"
+      emptyHint="Coba pilih filter status yang lain."
+      footNote={`${total} tagihan`}
+    >
+      {#snippet cell(inv: Invoice, col: Column)}
+        {#if col.key === 'select'}
+          <label class="inline-flex size-6 cursor-pointer items-center justify-center">
+            <input
+              type="checkbox"
+              checked={selected.has(inv.id)}
+              onchange={() => toggle(inv.id)}
+              aria-label="Pilih {inv.invoice_number}"
+              class="size-4 rounded border-ink-300"
+            />
+          </label>
+        {:else if col.key === 'invoice_number'}
+          <span class="font-medium text-ink-900">{inv.invoice_number}</span>
+        {:else if col.key === 'description'}
+          <div class="max-w-xs truncate">{inv.description || '—'}</div>
+        {:else if col.key === 'amount'}
+          <span class="text-ink-900">{formatRupiah(inv.amount)}</span>
+        {:else if col.key === 'status'}
+          <div class="flex items-center gap-1.5">
+            <Badge status={inv.status} />
+            {#if isOverdue(inv)}
+              <!-- Umur tunggakan lebih berguna daripada label "lewat"
+                   telanjang: 474 dari 476 piutang di sini sudah >90 hari. -->
+              <Badge tone="negative" label="{daysLate(inv)} hari" />
+            {/if}
+          </div>
+        {:else if col.key === 'due_date'}
+          <span>{formatDate(inv.due_date)}</span>
+        {:else if col.key === 'actions'}
+          <RowActions
+            primary={{
+              label: 'Detail',
+              icon: 'chevronRight',
+              onclick: () => goto(`/v2/admin/invoices/${inv.id}`),
             }}
+            rest={canManage
+              ? [
+                  { label: 'Halaman bayar', icon: 'chevronRight', onclick: () => window.open(`/pay/${inv.id}`, '_blank') },
+                  { label: 'Verifikasi bayar', icon: 'check' },
+                  { label: 'Kirim ulang', icon: 'mail' },
+                ]
+              : []}
           />
-          <span class="num text-sm text-ink-500">Hal {page} / {lastPage}</span>
-          <Button
-            size="sm"
-            icon="chevronRight"
-            label="Halaman berikutnya"
-            disabled={page >= lastPage}
-            onclick={() => {
-              page += 1;
-              load();
-            }}
-          />
-        </div>
-      </div>
-    {/if}
+        {/if}
+      {/snippet}
+    </DataTable>
   </Card>
 </AppShell>
