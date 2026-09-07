@@ -214,7 +214,6 @@
 
   <PageHeader
     title="Tagihan"
-    eyebrow="Portal"
     desc={loading
       ? 'Memuat tagihan…'
       : `${summary.total} invoice` +

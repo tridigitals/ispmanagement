@@ -299,7 +299,6 @@
 
   <PageHeader
     title={greeting() + ', ' + ($user?.name || '')}
-    eyebrow="Portal"
     desc={portalSummaryLoading
       ? 'Memuat ringkasan…'
       : `${activeSubscriptions.length} layanan aktif` +

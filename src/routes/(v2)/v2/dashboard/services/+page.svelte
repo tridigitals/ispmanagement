@@ -440,7 +440,6 @@
 <PortalShell title="Layanan">
   <PageHeader
     title="Layanan Saya"
-    eyebrow="Portal"
     desc="Semua layanan yang pernah Anda pesan."
   >
     {#snippet actions()}

@@ -52,7 +52,6 @@
 <PortalShell title="Pesan Layanan">
   <PageHeader
     title="Pesan Layanan Baru"
-    eyebrow="Portal"
     desc="Pilih jenis layanan untuk memulai pesanan instalasi."
   >
     {#snippet actions()}

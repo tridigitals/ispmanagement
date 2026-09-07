@@ -228,7 +228,6 @@
 <PortalShell title="Bantuan">
   <PageHeader
     title="Bantuan"
-    eyebrow="Portal"
     desc="Lacak tiket dan ajukan permintaan bantuan."
   >
     {#snippet actions()}

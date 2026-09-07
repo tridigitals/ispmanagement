@@ -19,6 +19,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import PortalShell from '$lib/components/ds/PortalShell.svelte';
   import Card from '$lib/components/ds/Card.svelte';
+  import PageHeader from '$lib/components/ds/PageHeader.svelte';
   import Button from '$lib/components/ds/Button.svelte';
   import Badge from '$lib/components/ds/Badge.svelte';
 
@@ -468,20 +469,18 @@
   }
 </script>
 <PortalShell title="Pesan Internet">
-  <div class="order-head">
-    <div>
-      <p class="eyebrow">Portal · Pesanan</p>
-      <h1 class="title">Pesan Layanan Internet</h1>
-      <p class="subtitle">Isi alamat, pilih paket, dan kirim permintaan instalasi.</p>
-    </div>
-    <div class="head-actions">
+  <PageHeader
+    title="Pesan Layanan Internet"
+    desc="Isi alamat, pilih paket, dan kirim permintaan instalasi."
+  >
+    {#snippet actions()}
       <Button variant="ghost" icon="chevronLeft" onclick={() => goto('/v2/dashboard/services/order')}>
         Jenis Layanan
       </Button>
       <Button variant="ghost" icon="receipt" onclick={() => goto('/v2/dashboard/invoices')}>Tagihan</Button>
       <Button variant="ghost" icon="refresh" disabled={loading} onclick={loadData}>Segarkan</Button>
-    </div>
-  </div>
+    {/snippet}
+  </PageHeader>
 
   {#if loadError}
     <div class="banner-bad">
@@ -751,38 +750,6 @@
 </Modal>
 
 <style>
-  .order-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-  .eyebrow {
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--ink-400, #a8a29e);
-    margin: 0 0 0.25rem;
-  }
-  .title {
-    font-size: 1.4rem;
-    font-weight: 750;
-    letter-spacing: -0.02em;
-    margin: 0 0 0.25rem;
-  }
-  .subtitle {
-    color: var(--ink-500, #78716c);
-    font-size: 0.88rem;
-    margin: 0;
-  }
-  .head-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    flex-wrap: wrap;
-  }
   .banner-bad {
     display: flex;
     align-items: center;

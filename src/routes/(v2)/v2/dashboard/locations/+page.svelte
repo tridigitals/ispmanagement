@@ -207,7 +207,6 @@
 <PortalShell title="Lokasi">
   <PageHeader
     title="Lokasi"
-    eyebrow="Portal"
     desc={loading ? 'Memuat lokasi…' : 'Alamat instalasi layanan Anda.'}
   >
     {#snippet actions()}

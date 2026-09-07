@@ -86,7 +86,7 @@
 </script>
 
 <PortalShell title="Pengaturan">
-  <PageHeader title="Pengaturan" eyebrow="Portal" desc="Profil, keamanan, dan preferensi akun." />
+  <PageHeader title="Pengaturan" desc="Profil, keamanan, dan preferensi akun." />
 
   <Card title="Profil" class="mb-4">
     {#snippet aside()}

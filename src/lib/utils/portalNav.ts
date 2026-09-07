@@ -31,3 +31,16 @@ export function buildPortalNav(can: Can, v2Prefix = '/v2'): PortalNavItem[] {
   }
   return items;
 }
+
+export interface PortalNavGroup {
+  title: string;
+  items: PortalNavItem[];
+}
+
+/**
+ * Menu portal dalam bentuk grup RailGroup (dipakai NavRail di PortalShell).
+ * Satu grup "Menu" — portal hanya punya 5-6 item, tidak perlu section.
+ */
+export function buildPortalNavGroups(can: Can, v2Prefix = '/v2'): PortalNavGroup[] {
+  return [{ title: 'Menu', items: buildPortalNav(can, v2Prefix) }];
+}

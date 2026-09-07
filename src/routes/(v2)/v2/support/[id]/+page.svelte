@@ -233,7 +233,7 @@
   {/if}
 
   {#if LightboxComponent && lightboxOpen}
-    <svelte:component this={LightboxComponent} bind:open={lightboxOpen} files={lightboxFiles} index={lightboxIndex} />
+    <LightboxComponent bind:open={lightboxOpen} files={lightboxFiles} index={lightboxIndex} />
   {/if}
 </PortalShell>
 

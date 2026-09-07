@@ -77,7 +77,6 @@
 <PortalShell title="Tiket">
   <PageHeader
     title="Tiket Dukungan"
-    eyebrow="Portal"
     desc={loading
       ? 'Memuat tiket…'
       : `${stats.total} tiket` +

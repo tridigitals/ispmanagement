@@ -115,7 +115,6 @@
 <PortalShell title="Pengumuman">
   <PageHeader
     title="Pengumuman"
-    eyebrow="Portal"
     desc="Update terbaru dari ISP."
   >
     {#snippet actions()}
