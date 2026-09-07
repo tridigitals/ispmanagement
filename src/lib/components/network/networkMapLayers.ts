@@ -32,12 +32,27 @@ export function buildBaseMapStyle({
     version: 8 as const,
     glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
     sources: {
+      // Basemap gelap (Esri Dark Gray Canvas, tanpa API key) — topologi
+      // cyan/violet "pop" dan tidak lagi mirip jalan raya OSM terang.
+      // Sumber tetap bernama 'osm' agar layer base-standard & toggle
+      // satelit lama tidak berubah kontraknya.
       osm: {
         type: 'raster' as const,
-        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+        tiles: [
+          'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+        ],
         tileSize: 256,
         maxzoom: standardMaxZoom,
-        attribution: '© OpenStreetMap contributors',
+        attribution: '© Esri, © OpenStreetMap contributors',
+      },
+      'osm-labels': {
+        type: 'raster' as const,
+        tiles: [
+          'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+        ],
+        tileSize: 256,
+        maxzoom: standardMaxZoom,
+        attribution: '',
       },
       satellite: {
         type: 'raster' as const,
@@ -52,7 +67,14 @@ export function buildBaseMapStyle({
       },
     },
     layers: [
+      { id: 'base-bg', type: 'background' as const, paint: { 'background-color': '#0a0f1a' } },
       { id: 'base-standard', type: 'raster' as const, source: 'osm' },
+      {
+        id: 'base-standard-labels',
+        type: 'raster' as const,
+        source: 'osm-labels',
+        paint: { 'raster-opacity': 0.9 },
+      },
       {
         id: 'base-satellite',
         type: 'raster' as const,
@@ -70,11 +92,11 @@ function addTopologyAssetLayers(map: import('maplibre-gl').Map) {
     source: SOURCE_TOPOLOGY_ASSETS,
     filter: ['has', 'point_count'],
     paint: {
-      'circle-color': ['step', ['get', 'point_count'], '#0f766e', 12, '#0f766e', 36, '#155e75'],
+      'circle-color': ['step', ['get', 'point_count'], '#155e75', 12, '#4c1d95', 36, '#6d28d9'],
       'circle-radius': ['step', ['get', 'point_count'], 17, 12, 21, 36, 25],
       'circle-opacity': 0.92,
       'circle-stroke-width': 1.8,
-      'circle-stroke-color': '#e2e8f0',
+      'circle-stroke-color': '#67e8f9',
     },
   });
 
@@ -102,7 +124,7 @@ function addTopologyAssetLayers(map: import('maplibre-gl').Map) {
     filter: ['!', ['has', 'point_count']],
     paint: {
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 9.5, 11, 12, 14, 14.5],
-      'circle-color': ['coalesce', ['get', 'marker_color'], '#64748b'],
+      'circle-color': ['coalesce', ['get', 'marker_color'], '#a78bfa'],
       'circle-opacity': 0.16,
       'circle-blur': 0.08,
       'circle-stroke-width': 0,
@@ -116,10 +138,10 @@ function addTopologyAssetLayers(map: import('maplibre-gl').Map) {
     filter: ['!', ['has', 'point_count']],
     paint: {
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 7.4, 11, 9.2, 14, 11.2],
-      'circle-color': ['coalesce', ['get', 'marker_color'], '#64748b'],
+      'circle-color': ['coalesce', ['get', 'marker_color'], '#a78bfa'],
       'circle-opacity': 0.38,
       'circle-stroke-width': 2,
-      'circle-stroke-color': '#e2e8f0',
+      'circle-stroke-color': '#0a0f1a',
     },
   });
 
@@ -238,8 +260,8 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
     type: 'fill',
     source: SOURCE_ZONES,
     paint: {
-      'fill-color': '#1fb6ff',
-      'fill-opacity': 0.12,
+      'fill-color': '#a78bfa',
+      'fill-opacity': 0.1,
     },
   });
 
@@ -248,9 +270,32 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
     type: 'line',
     source: SOURCE_ZONES,
     paint: {
-      'line-color': '#1fb6ff',
-      'line-width': 2,
-      'line-opacity': 0.9,
+      'line-color': '#a78bfa',
+      'line-width': 1.8,
+      'line-opacity': 0.75,
+      'line-dasharray': [2.5, 1.5],
+    },
+  });
+
+  map.addLayer({
+    id: 'nm-links-glow',
+    type: 'line',
+    source: SOURCE_LINKS,
+    minzoom: 0,
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: {
+      'line-color': [
+        'match',
+        ['get', 'health_tone'],
+        'bad',
+        '#f87171',
+        'warn',
+        '#fbbf24',
+        '#67e8f9',
+      ],
+      'line-width': 9,
+      'line-blur': 4,
+      'line-opacity': 0.16,
     },
   });
 
@@ -268,12 +313,12 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
         'match',
         ['get', 'health_tone'],
         'bad',
-        '#ef4444',
+        '#f87171',
         'warn',
-        '#f59e0b',
-        '#3f8cff',
+        '#fbbf24',
+        '#67e8f9',
       ],
-      'line-width': 2.5,
+      'line-width': 2.6,
       'line-opacity': 0.95,
     },
   });
@@ -288,14 +333,34 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
         'match',
         ['get', 'health_tone'],
         'bad',
-        '#ef4444',
+        '#f87171',
         'warn',
-        '#f59e0b',
-        '#3f8cff',
+        '#fbbf24',
+        '#67e8f9',
       ],
-      'line-width': 2.5,
+      'line-width': 2.6,
       'line-opacity': 0.95,
       'line-dasharray': [1.4, 1.2],
+    },
+  });
+
+  map.addLayer({
+    id: 'nm-nodes-alert-ring',
+    type: 'circle',
+    source: SOURCE_NODES,
+    filter: [
+      'all',
+      ['!=', ['get', 'node_type'], 'customer_endpoint'],
+      ['!=', ['get', 'node_type'], 'customer_premise'],
+      ['in', ['get', 'status'], ['literal', ['down', 'inactive', 'degraded']]],
+    ],
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 12, 11, 15, 14, 18],
+      'circle-color': 'rgba(248,113,113,0.14)',
+      'circle-opacity': 1,
+      'circle-blur': 0.35,
+      'circle-stroke-width': 2.2,
+      'circle-stroke-color': '#f87171',
     },
   });
 
@@ -314,13 +379,13 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
         'match',
         ['get', 'status'],
         'active',
-        '#16a34a',
+        '#34d399',
         'maintenance',
-        '#f59e0b',
-        '#64748b',
+        '#fbbf24',
+        '#94a3b8',
       ],
-      'circle-stroke-width': 1.6,
-      'circle-stroke-color': '#e2e8f0',
+      'circle-stroke-width': 1.8,
+      'circle-stroke-color': '#0a0f1a',
     },
   });
 
@@ -377,10 +442,10 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
     source: SOURCE_ROUTERS,
     filter: ['has', 'point_count'],
     paint: {
-      'circle-color': ['step', ['get', 'point_count'], '#0f766e', 10, '#0284c7', 24, '#4338ca'],
+      'circle-color': ['step', ['get', 'point_count'], '#155e75', 10, '#0e7490', 24, '#6d28d9'],
       'circle-radius': ['step', ['get', 'point_count'], 16, 10, 20, 24, 24],
       'circle-stroke-width': 1.8,
-      'circle-stroke-color': '#e2e8f0',
+      'circle-stroke-color': '#67e8f9',
     },
   });
 
@@ -408,9 +473,9 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
     filter: ['!', ['has', 'point_count']],
     paint: {
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 7, 11, 9, 14, 11.5],
-      'circle-color': ['case', ['==', ['get', 'is_online'], true], '#16a34a', '#ef4444'],
+      'circle-color': ['case', ['==', ['get', 'is_online'], true], '#34d399', '#f87171'],
       'circle-stroke-width': 2,
-      'circle-stroke-color': '#e2e8f0',
+      'circle-stroke-color': '#0a0f1a',
     },
   });
 

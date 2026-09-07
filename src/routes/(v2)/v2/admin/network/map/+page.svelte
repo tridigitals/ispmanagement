@@ -130,6 +130,7 @@
     isSystemManagedNode,
     linkStatusOptions,
     linkTypeOptions,
+    computeLinkHealth,
     manualNodeTypeOptions,
     nodesToFeatureCollection,
     parseGeometryText,
@@ -201,7 +202,6 @@
   let loading = $state(true);
   let refreshing = $state(false);
   let syncingAssetNodes = $state(false);
-  let OverviewComponent = $state<Component | null>(null);
   let FloatingControlsComponent = $state<Component | null>(null);
   let NodePanelComponent = $state<Component | null>(null);
   let LinkModalComponent = $state<Component | null>(null);
@@ -220,7 +220,6 @@
 
   let q = $state('');
   let workspaceSearchQuery = $state('');
-  let workspaceSearchOpen = $state(true);
   let status = $state('');
   let kind = $state('');
   let quickMode = $state<NetworkMapQuickMode>('all');
@@ -420,10 +419,73 @@
     }
     return notes;
   });
-  const workspaceSubtitle = $derived.by(() => {
-    const base =
-      'Visualisasikan node, link, zona layanan, dan konteks operasional.';
-    return `${base} ${workspaceStatusNotes[0] || ''}`.trim();
+  // ── Overlay topbar: dot kesegaran data + chip agregat + fokus masalah ──
+  const freshnessTone = $derived.by(() => {
+    if (!lastMapDataLoadedAt) return 'stale';
+    const diffMs = Math.max(0, currentTimeMs - lastMapDataLoadedAt);
+    if (lastMapDataSource === 'cache' || diffMs >= 5 * 60_000) return 'stale';
+    if (diffMs >= 60_000) return 'warn';
+    return 'fresh';
+  });
+  const freshnessLabel = $derived(
+    freshnessTone === 'fresh'
+      ? 'Data live'
+      : freshnessTone === 'warn'
+        ? 'Data agak basi'
+        : 'Data basi / cache',
+  );
+  // Node bermasalah (merah) + link ber-tone bad = target chip ALERT.
+  const problemTargets = $derived.by(() => {
+    const pts: { lng: number; lat: number; kind: 'node' | 'link'; id: string }[] = [];
+    for (const n of visibleNodeRows) {
+      if (['down', 'inactive', 'degraded'].includes(n.status) && Number.isFinite(n.lng) && Number.isFinite(n.lat)) {
+        pts.push({ lng: n.lng, lat: n.lat, kind: 'node', id: n.id });
+      }
+    }
+    for (const l of linkRows) {
+      if (computeLinkHealth(l).tone !== 'bad') continue;
+      const c = l.geometry?.type === 'LineString' ? (l.geometry.coordinates[Math.floor(l.geometry.coordinates.length / 2)] as number[]) : null;
+      if (c && Number.isFinite(c[0]) && Number.isFinite(c[1])) pts.push({ lng: c[0], lat: c[1], kind: 'link', id: l.id });
+    }
+    return pts;
+  });
+  const mapAlertCount = $derived(problemTargets.length);
+  let problemFocusIdx = $state(0);
+  function focusNextProblem() {
+    if (!problemTargets.length) return;
+    const t = problemTargets[problemFocusIdx % problemTargets.length];
+    problemFocusIdx = (problemFocusIdx + 1) % problemTargets.length;
+    focusMapOnCoordinates(t.lng, t.lat, 13);
+  }
+  // Auto-fit bounds sekali setelah data pertama masuk (bukan koordinat default).
+  let initialFitDone = $state(false);
+  function fitMapToTopology() {
+    if (!map || !maplibre || initialFitDone) return;
+    const pts = [
+      ...visibleNodeRows.filter((n) => Number.isFinite(n.lng) && Number.isFinite(n.lat)).map((n) => [n.lng, n.lat] as [number, number]),
+      ...topologyAssetRows.filter((r) => Number.isFinite(r.longitude ?? NaN) && Number.isFinite(r.latitude ?? NaN)).map((r) => [r.longitude as number, r.latitude as number] as [number, number]),
+    ];
+    if (pts.length < 2) return;
+    const lngs = pts.map((p) => p[0]);
+    const lats = pts.map((p) => p[1]);
+    try {
+      map.fitBounds(
+        [
+          [Math.min(...lngs), Math.min(...lats)],
+          [Math.max(...lngs), Math.max(...lats)],
+        ],
+        { padding: { top: 96, bottom: 48, left: 48, right: 48 }, maxZoom: 14, duration: 900 },
+      );
+      initialFitDone = true;
+    } catch {
+      // bounds degenerate — biarkan view default
+    }
+  }
+  $effect(() => {
+    // Sekali saja: begitu peta siap + data pertama masuk, bingkai semua node.
+    if (mapReady && !initialFitDone && (visibleNodeRows.length > 1 || topologyAssetRows.length > 1)) {
+      fitMapToTopology();
+    }
   });
   const visibleNodeRows = $derived.by(() =>
     nodeRows.filter((row) => !isLegacyFtthDistributionNode(row)),
@@ -535,9 +597,8 @@
   });
 
   async function ensureChromeComponentsLoaded() {
-    if (OverviewComponent && FloatingControlsComponent) return;
+    if (FloatingControlsComponent) return;
     const modules = await loadNetworkMapChromeModules();
-    OverviewComponent = modules.OverviewComponent;
     FloatingControlsComponent = modules.FloatingControlsComponent;
   }
 
@@ -823,7 +884,6 @@
 
   function handleWorkspaceSearchSelect(item: NetworkMapSearchResultItem) {
     workspaceSearchQuery = item.label;
-    workspaceSearchOpen = false;
 
     if (item.kind === 'customer' || item.kind === 'service' || item.kind === 'node') {
       const row = nodeRows.find((candidate) => candidate.id === item.id);
@@ -1851,6 +1911,7 @@
     });
     setLayerVisibility('nm-zones-fill', zonesVisible);
     setLayerVisibility('nm-zones-outline', zonesVisible);
+    setLayerVisibility('nm-links-glow', linkLayerVisibility.mainLinksVisible);
     setLayerVisibility('nm-links-line', linkLayerVisibility.mainLinksVisible);
     setLayerVisibility('nm-links-line-dashed', linkLayerVisibility.mainLinksVisible);
     setLayerVisibility(
@@ -1862,6 +1923,7 @@
       linkLayerVisibility.topologyAssetLinksVisible,
     );
     setLayerVisibility('nm-nodes-circle', nodesVisible);
+    setLayerVisibility('nm-nodes-alert-ring', nodesVisible);
     setLayerVisibility('nm-nodes-icons', nodesVisible);
     setLayerVisibility('nm-routers-cluster-circle', routersVisible);
     setLayerVisibility('nm-routers-cluster-count', routersVisible);
@@ -1916,6 +1978,7 @@
   function syncBaseLayerVisibility() {
     if (!map || !mapReady) return;
     setLayerVisibility('base-standard', viewMode === 'standard');
+    setLayerVisibility('base-standard-labels', viewMode === 'standard');
     setLayerVisibility('base-satellite', viewMode === 'satellite');
     const targetMaxZoom = viewMode === 'satellite' ? satelliteMaxZoom : standardMaxZoom;
     map.setMaxZoom(targetMaxZoom);
@@ -2491,30 +2554,6 @@
 </script>
 
 <div class="page-content fade-in" class:compact-mode={compactMode}>
-  {#if OverviewComponent}
-    <OverviewComponent
-      {compactMode}
-      {fromInstallation}
-      {installationReturnUrl}
-      {tenantPrefix}
-      {canManageTopology}
-      {syncingAssetNodes}
-      {refreshing}
-      {loading}
-      title={'Peta jaringan'}
-      subtitle={workspaceSubtitle}
-      labels={{
-        backToInstallation: 'Kembali ke instalasi',
-        backToNoc: 'Kembali ke NOC',
-        syncing: 'Menyinkron…',
-        sync: 'Sinkron',
-      }}
-      onSyncAssets={() => {
-        queueManualTopologySync();
-      }}
-    />
-  {/if}
-
   <MapCanvasShell
     bind:mapEl
     bind:viewMode
@@ -2525,40 +2564,82 @@
     {mapErrorMessage}
     mapUnavailableTitle={'Peta tidak tersedia'}
     mapUnavailableSubtitle={'Pratinjau peta tidak tersedia di perangkat ini.'}
-    height={compactMode ? 'min(82vh, 820px)' : 'calc(100vh - 150px)'}
+    height={compactMode ? 'min(82vh, 820px)' : 'calc(100vh - 120px)'}
   >
     <svelte:fragment slot="overlay">
-      <div class="map-workspace-search">
-        <button
-          class="map-workspace-search-toggle"
-          class:active={workspaceSearchOpen}
-          type="button"
-          aria-label={'Cari'}
-          title={'Cari'}
-          onclick={() => (workspaceSearchOpen = !workspaceSearchOpen)}
-        >
-          <Icon name="search" size={18} />
-        </button>
-        {#if workspaceSearchOpen}
-          <div class="map-workspace-search-panel">
-            <NetworkMapSearchBar
-              query={workspaceSearchQuery}
-              groups={workspaceSearchGroups}
-              summary=""
-              placeholder={'Cari node, pelanggan, alamat…'}
-              emptyTitle={'Tidak ada hasil'}
-              emptyHint={'Coba kata kunci lain.'}
-              onQueryChange={(value: string) => (workspaceSearchQuery = value)}
-              onSelect={handleWorkspaceSearchSelect}
-            />
-          </div>
+      <!-- Topbar overlay: judul, freshness, chip agregat, search, kontrol. -->
+      <div class="nm-topbar">
+        <div class="nm-brand">
+          <span class="nm-brand-ico"><Icon name="network" size={14} /></span>
+          <span class="nm-brand-txt">
+            <span class="nm-brand-title">{'Peta Jaringan'}</span>
+            <span class="nm-brand-sub" class:fresh={freshnessTone === 'fresh'} class:warn={freshnessTone === 'warn'} title={workspaceStatusNotes[0] || ''}>
+              {freshnessLabel}
+            </span>
+          </span>
+        </div>
+        <div class="nm-chips">
+          <span class="nm-chip" title={'Jumlah node'}><b>{nodeCount}</b><i>NODE</i></span>
+          <span class="nm-chip" title={'Jumlah link'}><b>{linkCount}</b><i>LINK</i></span>
+          {#if mapAlertCount > 0}
+            <button type="button" class="nm-chip alert" onclick={focusNextProblem} title={'Fokus ke masalah berikutnya (klik berulang untuk berpindah)'}>
+              <b>{mapAlertCount}</b><i>ALERT</i>
+            </button>
+          {:else}
+            <span class="nm-chip ok" title={'Tidak ada node/link bermasalah'}><Icon name="check" size={12} /><i>SEHAT</i></span>
+          {/if}
+        </div>
+        {#if fromInstallation}
+          <a class="nm-btn" href={installationReturnUrl}><Icon name="arrow-left" size={14} />{'Kembali'}</a>
         {/if}
+        <div class="nm-spacer"></div>
+        <div class="nm-search">
+          <NetworkMapSearchBar
+            query={workspaceSearchQuery}
+            groups={workspaceSearchGroups}
+            summary=""
+            placeholder={'Cari node, pelanggan, alamat…'}
+            emptyTitle={'Tidak ada hasil'}
+            emptyHint={'Coba kata kunci lain.'}
+            onQueryChange={(value: string) => (workspaceSearchQuery = value)}
+            onSelect={handleWorkspaceSearchSelect}
+          />
+        </div>
+        <div class="nm-seg" role="group" aria-label={'Tampilan peta'}>
+          <button type="button" class="nm-seg-btn" class:on={viewMode === 'standard'} onclick={() => (viewMode = 'standard')}>{'Standar'}</button>
+          <button type="button" class="nm-seg-btn" class:on={viewMode === 'satellite'} onclick={() => (viewMode = 'satellite')}>{'Satelit'}</button>
+        </div>
+        <button
+          type="button"
+          class="nm-btn"
+          class:on={!controlsHidden}
+          onclick={() => (controlsHidden = !controlsHidden)}
+          title={'Lapisan peta'}
+        >
+          <Icon name="layers" size={14} />
+        </button>
+        {#if canManageTopology}
+          <button
+            type="button"
+            class="nm-btn"
+            onclick={() => queueManualTopologySync()}
+            disabled={syncingAssetNodes || refreshing || loading}
+            title={'Sinkron aset topologi'}
+          >
+            <Icon name="refresh-cw" size={14} />
+          </button>
+        {/if}
+        <a class="nm-btn" href={`${tenantPrefix}/admin/network/noc`} title={'Kembali ke NOC'}>
+          <Icon name="monitor" size={14} />
+        </a>
       </div>
 
       {#if FloatingControlsComponent || canManageFtthAssets}
         <div class="map-controls-stack" class:controls-open={!controlsHidden}>
           {#if FloatingControlsComponent}
             <FloatingControlsComponent
+              showPill={false}
+              showView={false}
               labels={{
                 title: 'Kontrol peta',
                 layers: 'Lapisan',
@@ -2618,6 +2699,19 @@
           >
         </div>
       {/if}
+
+      <!-- Legenda selalu tampil: operator tak perlu buka panel utk baca warna. -->
+      <div class="nm-legend" aria-label={'Legenda peta'}>
+        <div class="nm-legend-title">{'LEGENDA'}</div>
+        <div class="nm-legend-row"><i class="ln" style="background:#67e8f9"></i>{'Link normal'}</div>
+        <div class="nm-legend-row"><i class="ln" style="background:#fbbf24"></i>{'Warning (>80%)'}</div>
+        <div class="nm-legend-row"><i class="ln" style="background:#f87171"></i>{'Down / kritis'}</div>
+        <div class="nm-legend-sep"></div>
+        <div class="nm-legend-row"><i class="dt" style="background:#34d399"></i>{'Node aktif'}</div>
+        <div class="nm-legend-row"><i class="dt ring"></i>{'Node bermasalah'}</div>
+        <div class="nm-legend-row"><i class="dt" style="background:#a78bfa"></i>{'Aset FTTH'}</div>
+        <div class="nm-legend-row"><i class="dt cl"></i>{'Cluster'}</div>
+      </div>
 
       {#if NodePanelComponent}
         <NodePanelComponent
@@ -2785,151 +2879,276 @@
     border-color: color-mix(in srgb, #ef4444 55%, var(--border-color));
   }
 
-  .map-workspace-search {
+  /* ── Topbar overlay peta ── */
+  .nm-topbar {
     position: absolute;
     top: 10px;
     left: 10px;
-    z-index: 9;
+    right: 10px;
+    z-index: 12;
     display: flex;
-    align-items: flex-start;
-    gap: 6px;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
   }
-
-  .map-workspace-search-toggle {
-    width: 38px;
-    height: 38px;
+  .nm-topbar > * {
+    pointer-events: auto;
+  }
+  .nm-spacer {
+    flex: 1;
+    pointer-events: none;
+  }
+  .nm-brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 12px;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+    background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  .nm-brand-ico {
     display: grid;
     place-items: center;
-    border: 1px solid rgba(15, 23, 42, 0.22);
-    border-radius: 10px;
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    cursor: pointer;
-    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #164e63, #155e75);
+    color: #67e8f9;
   }
-
-  .map-workspace-search-toggle.active {
-    border-color: color-mix(in srgb, var(--color-primary) 54%, rgba(15, 23, 42, 0.22));
-    color: var(--color-primary);
+  .nm-brand-txt {
+    display: grid;
+    line-height: 1.15;
   }
-
-  .map-workspace-search-panel {
-    width: min(540px, calc(100vw - 92px));
-    padding: 7px;
-    border: 1px solid rgba(15, 23, 42, 0.14);
-    border-radius: 10px;
-    background: var(--bg-surface);
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
-  }
-
-  .map-workspace-search-panel :global(.search-input-wrap) {
-    background: var(--bg-surface);
-    border-color: rgba(15, 23, 42, 0.2);
-    box-shadow: none;
-  }
-
-  .map-workspace-search-panel :global(.search-input) {
+  .nm-brand-title {
+    font-size: 12.5px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
     color: var(--text-primary);
   }
-
-  .map-workspace-search-panel :global(.search-summary) {
-    display: none;
+  .nm-brand-sub {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--text-muted, #94a3b8);
   }
-
-  .map-workspace-search-panel :global(.search-summary),
-  .map-workspace-search-panel :global(.search-input::placeholder) {
-    color: var(--text-secondary);
+  .nm-brand-sub::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-right: 4px;
+    background: #f87171;
+    vertical-align: 1px;
   }
-
-  .map-workspace-search :global(.search-results) {
-    z-index: 20;
-    gap: 5px;
-    max-height: min(50vh, 380px);
-    padding: 7px;
-    border-radius: 10px;
-    background: var(--bg-surface);
-    border-color: rgba(15, 23, 42, 0.16);
-    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+  .nm-brand-sub.fresh::before {
+    background: #34d399;
+    box-shadow: 0 0 6px rgba(52, 211, 153, 0.8);
   }
-
-  .map-workspace-search :global(.search-group) {
+  .nm-brand-sub.warn::before {
+    background: #fbbf24;
+  }
+  .nm-chips {
+    display: flex;
     gap: 6px;
   }
-
-  .map-workspace-search :global(.search-group-label) {
-    padding: 0 4px;
-    color: var(--text-secondary);
-    font-size: 0.68rem;
-    letter-spacing: 0.06em;
-  }
-
-  .map-workspace-search :global(.search-group-items) {
+  .nm-chip {
+    display: inline-flex;
+    align-items: baseline;
     gap: 5px;
-  }
-
-  .map-workspace-search :global(.search-item) {
-    gap: 3px;
-    min-height: 52px;
-    padding: 8px 10px;
-    border-color: rgba(15, 23, 42, 0.12);
-    border-radius: 10px;
-    background: var(--bg-surface);
+    padding: 7px 10px;
+    border-radius: 11px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+    background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+    backdrop-filter: blur(8px);
     color: var(--text-primary);
-    box-shadow: inset 3px 0 0 #94a3b8;
+    font: inherit;
   }
-
-  .map-workspace-search :global(.search-item:hover),
-  .map-workspace-search :global(.search-item.active) {
-    border-color: color-mix(in srgb, var(--color-primary) 42%, rgba(15, 23, 42, 0.12));
-    background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-surface));
-    box-shadow:
-      inset 3px 0 0 var(--color-primary),
-      0 6px 14px rgba(15, 23, 42, 0.06);
+  .nm-chip b {
+    font-size: 13.5px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
   }
-
-  .map-workspace-search :global(.search-item-label) {
-    min-width: 0;
+  .nm-chip i {
+    font-style: normal;
+    font-size: 8.5px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    color: var(--text-muted, #94a3b8);
+  }
+  button.nm-chip.alert {
+    cursor: pointer;
+    border-color: color-mix(in srgb, #f87171 45%, transparent);
+    background: color-mix(in srgb, #f87171 12%, var(--bg-surface) 80%);
+  }
+  button.nm-chip.alert b {
+    color: #f87171;
+  }
+  button.nm-chip.alert:hover {
+    background: color-mix(in srgb, #f87171 20%, var(--bg-surface) 70%);
+  }
+  .nm-chip.ok {
+    border-color: color-mix(in srgb, #34d399 40%, transparent);
+  }
+  .nm-chip.ok :global(svg) {
+    color: #34d399;
+    align-self: center;
+  }
+  .nm-search {
+    width: min(320px, 32vw);
+  }
+  .nm-search :global(.search-shell) {
+    gap: 0;
+  }
+  .nm-search :global(.search-input-wrap) {
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-color: color-mix(in srgb, var(--border-color) 70%, transparent);
+    box-shadow: 0 8px 20px rgba(2, 6, 23, 0.25);
+  }
+  .nm-search :global(.search-input) {
+    min-height: 36px;
+    font-size: 12px;
+  }
+  .nm-search :global(.search-summary) {
+    display: none;
+  }
+  .nm-search :global(.search-results) {
+    max-height: min(46vh, 380px);
+    padding: 8px;
+    border-radius: 12px;
+  }
+  .nm-seg {
+    display: flex;
+    border-radius: 12px;
     overflow: hidden;
-    font-size: 0.88rem;
-    font-weight: 850;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+    background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  .nm-seg-btn {
+    padding: 9px 11px;
+    border: 0;
+    background: none;
+    color: var(--text-muted, #94a3b8);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .nm-seg-btn.on {
+    background: color-mix(in srgb, #67e8f9 12%, transparent);
+    color: #67e8f9;
+  }
+  .nm-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 11px;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+    background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+    backdrop-filter: blur(8px);
+    color: var(--text-primary);
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .nm-btn:hover {
+    border-color: color-mix(in srgb, #67e8f9 40%, var(--border-color));
+  }
+  .nm-btn.on {
+    background: color-mix(in srgb, #67e8f9 12%, var(--bg-surface) 80%);
+    border-color: color-mix(in srgb, #67e8f9 45%, transparent);
+    color: #67e8f9;
+  }
+  .nm-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
 
-  .map-workspace-search :global(.search-item-kind) {
-    flex: 0 0 auto;
-    padding: 3px 7px;
-    border-radius: 999px;
-    background: #e2e8f0;
-    color: #475569;
-    font-size: 0.62rem;
-    letter-spacing: 0;
-    text-transform: capitalize;
+  /* ── Legenda ── */
+  .nm-legend {
+    position: absolute;
+    left: 12px;
+    bottom: 34px;
+    z-index: 9;
+    min-width: 158px;
+    padding: 10px 12px;
+    border-radius: 13px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+    background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 10px 26px rgba(2, 6, 23, 0.28);
   }
-
-  .map-workspace-search :global(.search-item-subtitle) {
-    overflow: hidden;
+  .nm-legend-title {
+    font-size: 8.5px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    color: var(--text-muted, #94a3b8);
+    margin-bottom: 6px;
+  }
+  .nm-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 5px;
+    font-size: 10.5px;
     color: var(--text-secondary);
-    font-size: 0.78rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  }
+  .nm-legend-row .ln {
+    width: 16px;
+    height: 3px;
+    border-radius: 2px;
+  }
+  .nm-legend-row .dt {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 1.5px solid #0a0f1a;
+  }
+  .nm-legend-row .dt.ring {
+    background: #94a3b8;
+    border: 2px solid #f87171;
+  }
+  .nm-legend-row .dt.cl {
+    background: #155e75;
+    border: 1.5px solid #67e8f9;
+    width: 11px;
+    height: 11px;
+  }
+  .nm-legend-sep {
+    height: 1px;
+    background: color-mix(in srgb, var(--border-color) 60%, transparent);
+    margin: 7px 0 2px;
   }
 
-  .map-workspace-search :global(.tone-ok) {
-    box-shadow: inset 3px 0 0 #10b981;
+  @media (max-width: 1100px) {
+    .nm-search {
+      width: min(220px, 26vw);
+    }
+    .nm-chips .nm-chip:not(.alert) i {
+      display: none;
+    }
   }
-
-  .map-workspace-search :global(.tone-warn) {
-    box-shadow: inset 3px 0 0 #f59e0b;
-  }
-
-  .map-workspace-search :global(.tone-muted) {
-    box-shadow: inset 3px 0 0 #64748b;
+  @media (max-width: 860px) {
+    .nm-topbar {
+      flex-wrap: wrap;
+    }
+    .nm-search {
+      order: 5;
+      width: 100%;
+    }
+    .nm-legend {
+      display: none;
+    }
   }
 
   .map-link-draw-controls {
     position: absolute;
-    top: 12px;
+    top: 64px;
     right: 58px;
     z-index: 8;
     display: flex;
@@ -2944,7 +3163,7 @@
 
   .map-controls-stack {
     position: absolute;
-    top: 16px;
+    top: 64px;
     right: 16px;
     z-index: 7;
     display: grid;
@@ -3727,17 +3946,8 @@
       padding: 12px;
     }
 
-    .map-workspace-search {
-      top: 12px;
-      right: 12px;
-    }
-
-    .map-workspace-search-panel {
-      width: calc(100vw - 82px);
-    }
-
     .map-controls-stack {
-      top: max(12px, env(safe-area-inset-top, 0px));
+      top: 118px;
       right: 12px;
       gap: 8px;
     }

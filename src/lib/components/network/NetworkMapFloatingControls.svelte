@@ -19,6 +19,8 @@
   let {
     labels,
     hidden = false,
+    showPill = true,
+    showView = true,
     viewMode,
     nodesVisible,
     linksVisible,
@@ -38,6 +40,10 @@
   }: {
     labels: NetworkMapFloatingLabels;
     hidden?: boolean;
+    /** Sembunyikan pill "Controls" bila toggle sudah ada di tempat lain (topbar). */
+    showPill?: boolean;
+    /** Sembunyikan section Tampilan (Standar/Satelit) bila sudah ada di topbar. */
+    showView?: boolean;
     viewMode: 'standard' | 'satellite';
     nodesVisible: boolean;
     linksVisible: boolean;
@@ -75,6 +81,7 @@
 <svelte:window onpointerdown={handleWindowPointerDown} />
 
 {#if hidden}
+  {#if showPill}
   <button
     type="button"
     class="floating-controls-toggle"
@@ -84,6 +91,7 @@
   >
     <span>{$t('network.map.controls')}</span>
   </button>
+  {/if}
 {:else}
   <aside
     class="floating-controls"
@@ -95,6 +103,7 @@
       <div class="controls-title">{labels.title}</div>
     </div>
 
+    {#if showView}
     <section class="control-group">
       <div class="control-group-label">{labels.view}</div>
       <div class="control-row">
@@ -114,6 +123,7 @@
         </button>
       </div>
     </section>
+    {/if}
 
     <section class="control-group">
       <div class="control-group-label">{labels.layers}</div>
