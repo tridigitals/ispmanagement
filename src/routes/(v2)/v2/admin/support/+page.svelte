@@ -57,7 +57,6 @@
     unassigned: 0,
   });
   let loading = $state(true);
-  let loadingMore = $state(false);
   let total = $state(0);
   let pageNum = $state(1);
   let search = $state('');
@@ -73,7 +72,6 @@
   const cards = $derived(buildStatCards(stats));
   const showPending = $derived(shouldShowPending(stats));
   const hilang = $derived(unaccounted(stats));
-  const hasMore = $derived(tickets.length < total);
   const ageBuckets = $derived(bucketByAge(tickets, now));
 
   /* Tiket aktif yang menunggu lebih dari 30 hari. Halaman lama menampilkan
@@ -121,11 +119,7 @@
   async function load(reset: boolean) {
     const mine = ++seq;
     loading = true;
-    if (reset) {
-      pageNum = 1;
-      tickets = [];
-      total = 0;
-    }
+    if (reset) pageNum = 1;
     try {
       const res = await api.support.list({
         // 'unassigned' bukan status: ia filter penugasan, bukan status tiket.
@@ -138,34 +132,12 @@
       });
       if (mine !== seq) return;
       total = res.total || 0;
-      tickets = reset ? res.data : [...tickets, ...res.data];
+      tickets = res.data;
       now = Date.now();
     } catch (e: unknown) {
       if (mine === seq) toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       if (mine === seq) loading = false;
-    }
-  }
-
-  async function loadMore() {
-    if (loadingMore || loading || !hasMore) return;
-    loadingMore = true;
-    pageNum += 1;
-    try {
-      const res = await api.support.list({
-        status: filter && filter !== 'unassigned' ? filter : undefined,
-        assigned: filter === 'unassigned' ? 'unassigned' : undefined,
-        category: category === 'all' ? undefined : category,
-        search: search.trim() || undefined,
-        page: pageNum,
-        perPage: PER_PAGE,
-      });
-      total = res.total || total;
-      tickets = [...tickets, ...res.data];
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    } finally {
-      loadingMore = false;
     }
   }
 
@@ -307,9 +279,15 @@
         {columns}
         rows={tickets}
         {loading}
+        pageSize={PER_PAGE}
+        page={pageNum}
+        {total}
+        onpage={(p) => {
+          pageNum = p;
+          void load(false);
+        }}
         emptyTitle="Tidak ada tiket"
         emptyHint={filter || search ? 'Coba hapus filter atau ubah kata kunci.' : 'Belum ada keluhan masuk.'}
-        footNote={`${tickets.length} dari ${total} tiket`}
       >
         {#snippet cell(t, c)}
           {#if c.key === 'subject'}
@@ -361,14 +339,6 @@
           {/if}
         {/snippet}
       </DataTable>
-
-      {#if hasMore}
-        <div class="mt-3 flex justify-center">
-          <Button variant="secondary" loading={loadingMore} onclick={loadMore}>
-            Muat {Math.min(PER_PAGE, total - tickets.length)} tiket lagi
-          </Button>
-        </div>
-      {/if}
     </Card>
   </div>
 </AppShell>
