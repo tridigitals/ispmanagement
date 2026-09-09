@@ -19,6 +19,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { api } from '$lib/api/client';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import type { SupportTicketListItem, SupportTicketStats } from '$lib/api/types';
   import { can } from '$lib/stores/auth';
   import { toast } from '$lib/stores/toast';
@@ -135,7 +136,7 @@
       tickets = res.data;
       now = Date.now();
     } catch (e: unknown) {
-      if (mine === seq) toast.error(e instanceof Error ? e.message : String(e));
+      if (mine === seq) toast.error(extractApiErrorMessage(e));
     } finally {
       if (mine === seq) loading = false;
     }
@@ -154,7 +155,7 @@
       toast.success('Tiket diambil');
       await Promise.all([load(true), loadStats()]);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(extractApiErrorMessage(e));
     } finally {
       claiming = null;
     }

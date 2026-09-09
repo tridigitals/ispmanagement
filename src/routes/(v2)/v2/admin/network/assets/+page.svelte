@@ -236,9 +236,13 @@
       });
       if (editing) await api.networkAssets.update(editing.id, payload);
       else await api.networkAssets.create(payload);
+      const wasEdit = Boolean(editing);
       showModal = false;
+      editing = null;
+      draft = emptyDraft();
+      detailDraft = createNetworkAssetDetailDraft(draft.asset_type, {});
       await load();
-      toast.success(editing ? 'Aset diperbarui.' : 'Aset dibuat.');
+      toast.success(wasEdit ? 'Aset diperbarui.' : 'Aset dibuat.');
     } catch (e) {
       toast.error(extractApiErrorMessage(e));
     } finally {

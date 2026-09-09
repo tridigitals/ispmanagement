@@ -19,6 +19,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { api } from '$lib/api/client';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { can } from '$lib/stores/auth';
   import { toast } from '$lib/stores/toast';
   import {
@@ -100,7 +101,7 @@
       rows = (await api.mikrotik.routers.list()) as Row[];
       now = Date.now();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(extractApiErrorMessage(e));
     } finally {
       loading = false;
     }
@@ -134,7 +135,7 @@
       }
       await refreshSilent();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(extractApiErrorMessage(e));
     } finally {
       testing = null;
     }

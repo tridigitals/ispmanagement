@@ -11,6 +11,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { api } from '$lib/api/client';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { can } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { toast } from '$lib/stores/toast';
@@ -190,7 +191,7 @@
     try {
       rows = (await api.mikrotik.routers.noc()) as NocRowFull[];
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(extractApiErrorMessage(e));
     } finally {
       loading = false;
     }
