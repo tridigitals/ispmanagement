@@ -1594,12 +1594,13 @@
           }
         }
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
       mapUnavailable = true;
       mapErrorMessage =
-        e?.message ||
-        'Gagal inisialisasi peta WebGL.';
+        e instanceof Error && e.message
+          ? e.message
+          : 'Gagal inisialisasi peta WebGL.';
       await refreshMapData();
     } finally {
       loading = false;
@@ -1844,8 +1845,8 @@
       await refreshTopologyAssets(force);
       syncTopologyAssetLinkOverlay();
       if (isInitialExtentRequest) initialExtentLoaded = true;
-    } catch (e: any) {
-      if ((e?.message || '').includes('Request canceled')) return;
+    } catch (e: unknown) {
+      if ((e instanceof Error ? e.message : String(e)).includes('Request canceled')) return;
       console.error(e);
     } finally {
       if (requestId === lastRequestId) activeDataAbortController = null;

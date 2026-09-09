@@ -155,8 +155,9 @@
   async function refreshStats() {
     try {
       stats = await api.emailOutbox.stats(scope);
-    } catch {
+    } catch (e) {
       // non-blocking; tabel tetap bisa dimuat
+      console.error('refreshStats gagal:', e);
     }
   }
 

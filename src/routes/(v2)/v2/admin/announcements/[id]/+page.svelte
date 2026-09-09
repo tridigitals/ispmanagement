@@ -10,6 +10,7 @@
   import { goto } from '$app/navigation';
   import { api, type Announcement } from '$lib/api/client';
   import { can, user, tenant } from '$lib/stores/auth';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { toast } from '$lib/stores/toast';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { hasInternalAppAccess } from '$lib/utils/appLanding';
@@ -38,8 +39,8 @@
     try {
       if (!id) return;
       ann = await api.announcements.get(id);
-    } catch (e: any) {
-      toast.error(e?.message || e);
+    } catch (e: unknown) {
+      toast.error(extractApiErrorMessage(e));
     } finally {
       loading = false;
     }

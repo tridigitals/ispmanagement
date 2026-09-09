@@ -393,9 +393,9 @@
       toast.success(wasCreate ? 'Paket dibuat' : 'Paket diperbarui');
       formOpen = false;
       await Promise.all([loadPackages(), loadMappings()]);
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast.error(
-        getPackageRouterMappingErrorFallback(extractApiErrorMessage(e) || String(e?.message || e)),
+        getPackageRouterMappingErrorFallback(extractApiErrorMessage(e)),
       );
     } finally {
       saving = false;
@@ -442,9 +442,9 @@
       toast.success('Pemetaan tersimpan');
       mapModalOpen = false;
       await loadMappings();
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast.error(
-        getPackageRouterMappingErrorFallback(extractApiErrorMessage(e) || String(e?.message || e)),
+        getPackageRouterMappingErrorFallback(extractApiErrorMessage(e)),
       );
     } finally {
       saving = false;
@@ -463,8 +463,8 @@
       await api.ispPackages.packages.delete(deleteTarget.id);
       toast.success('Paket dihapus');
       await Promise.all([loadPackages(), loadMappings()]);
-    } catch (e: any) {
-      toast.error(friendlyDeleteError(extractApiErrorMessage(e) || String(e?.message || e)));
+    } catch (e: unknown) {
+      toast.error(friendlyDeleteError(extractApiErrorMessage(e)));
     } finally {
       deleteOpen = false;
       deleteTarget = null;
@@ -670,7 +670,7 @@
           <Button
             variant="ghost"
             size="sm"
-            disabled={pageNum <= 1}
+            disabled={pageNum <= 1 || loading}
             onclick={() => {
               pageNum -= 1;
               void loadPackages();
@@ -680,7 +680,7 @@
           <Button
             variant="ghost"
             size="sm"
-            disabled={pageNum >= totalPages}
+            disabled={pageNum >= totalPages || loading}
             onclick={() => {
               pageNum += 1;
               void loadPackages();

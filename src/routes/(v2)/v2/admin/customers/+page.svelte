@@ -132,7 +132,10 @@
       api.customers
         .list({ page: 1, perPage: 1, service, installation: installation ?? 'all' })
         .then((r) => r.total ?? 0)
-        .catch(() => 0);
+        .catch((e) => {
+          console.error('hitung chip pelanggan gagal:', e);
+          return 0;
+        });
 
     await Promise.all([
       load(),

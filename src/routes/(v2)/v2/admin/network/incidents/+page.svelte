@@ -170,10 +170,10 @@
       try {
         const [inc, rts, team, warn, breach] = await Promise.all([
           api.mikrotik.incidents.list({ activeOnly, limit: 1000 }),
-          api.mikrotik.routers.list().catch(() => []),
-          api.team.list().catch(() => []),
-          api.settings.getValue('mikrotik_incident_sla_warn_minutes').catch(() => null),
-          api.settings.getValue('mikrotik_incident_sla_breach_minutes').catch(() => null),
+          api.mikrotik.routers.list().catch((e) => { console.error('routers list gagal:', e); return [] as RouterRow[]; }),
+          api.team.list().catch((e) => { console.error('team list gagal:', e); return [] as TeamMember[]; }),
+          api.settings.getValue('mikrotik_incident_sla_warn_minutes').catch((e) => { console.error('sla warn gagal:', e); return null; }),
+          api.settings.getValue('mikrotik_incident_sla_breach_minutes').catch((e) => { console.error('sla breach gagal:', e); return null; }),
         ]);
         rows = (inc || []) as IncidentRow[];
         routers = (rts || []) as RouterRow[];

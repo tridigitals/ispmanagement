@@ -13,6 +13,7 @@
   import { page as pageStore } from '$app/stores';
   import { can, user, tenant } from '$lib/stores/auth';
   import { api } from '$lib/api/client';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { toast } from '$lib/stores/toast';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import {
@@ -119,8 +120,9 @@
       if (isStatusFilter(sf)) statusFilter = sf;
       const pms = Number(pm || 1000);
       if ((WALLBOARD_POLL_MS_OPTIONS as readonly number[]).includes(pms)) pollMs = pms;
-    } catch {
+    } catch (e) {
       // abaikan: best-effort
+      console.error('loadRemoteAll gagal:', e);
     }
   }
 
@@ -149,14 +151,15 @@
             api.settings.upsert(KEEP_AWAKE_KEY, keepAwake ? 'true' : 'false', 'Wallboard keep awake'),
             api.settings.upsert(FOCUS_MODE_KEY, focusMode ? 'true' : 'false', 'Wallboard focus mode'),
           ]);
-        } catch {
+        } catch (e) {
           // simpan jarak jauh best-effort
+          console.error('upsert pengaturan jarak jauh gagal:', e);
         }
       }
       toast.success('Pengaturan wallboard disimpan');
       await goto(`${tenantPrefix}/v2/admin/network/noc/wallboard`);
-    } catch (e: any) {
-      toast.error(e?.message || e || 'Gagal menyimpan pengaturan');
+    } catch (e: unknown) {
+      toast.error(extractApiErrorMessage(e, 'Gagal menyimpan pengaturan'));
     } finally {
       saving = false;
     }

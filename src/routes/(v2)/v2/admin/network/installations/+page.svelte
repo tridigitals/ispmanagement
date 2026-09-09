@@ -171,9 +171,9 @@
       try {
         const [wo, assigneeList, assetList, vis] = await Promise.all([
           api.workOrders.list({ include_closed: true, limit: 500 }),
-          canManage ? api.workOrders.assignees().catch(() => [] as TeamMember[]) : Promise.resolve([] as TeamMember[]),
-          api.networkAssets.list({ page: 1, per_page: 500 }).catch(() => ({ data: [] as NetworkAssetListItem[] })),
-          api.settings.getValue(VISIBILITY_KEY).catch(() => null),
+          canManage ? api.workOrders.assignees().catch((e) => { console.error('assignees gagal:', e); return [] as TeamMember[]; }) : Promise.resolve([] as TeamMember[]),
+          api.networkAssets.list({ page: 1, per_page: 500 }).catch((e) => { console.error('assets gagal:', e); return { data: [] as NetworkAssetListItem[] }; }),
+          api.settings.getValue(VISIBILITY_KEY).catch((e) => { console.error('visibility setting gagal:', e); return null; }),
         ]);
         rows = wo || [];
         assignees = assigneeList || [];

@@ -146,8 +146,8 @@
         ),
         fetchAllRows<CustomerListItem>((p, per_page) =>
           api.customers.list({ page: p, perPage: per_page }),
-        ).catch(() => [] as CustomerListItem[]),
-        api.mikrotik.routers.list().catch(() => []) as Promise<RouterRef[]>,
+        ).catch((e) => { console.error('customers list gagal:', e); return [] as CustomerListItem[]; }),
+        api.mikrotik.routers.list().catch((e) => { console.error('routers list gagal:', e); return [] as RouterRef[]; }) as Promise<RouterRef[]>,
       ]);
 
       all = accounts.rows;

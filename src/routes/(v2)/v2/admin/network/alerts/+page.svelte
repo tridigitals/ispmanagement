@@ -150,8 +150,8 @@
     refreshing = true;
     try {
       rows = (await api.mikrotik.alerts.list({ activeOnly })) as AlertRow[];
-    } catch {
-      // abaikan
+    } catch (e) {
+      console.error('refreshSilent gagal:', e);
     } finally {
       refreshing = false;
     }

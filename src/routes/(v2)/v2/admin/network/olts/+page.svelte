@@ -476,9 +476,9 @@
       }
       syncPickerViewMode();
       setPickerPoint(initialLat, initialLng);
-    } catch (e: any) {
+    } catch (e: unknown) {
       pickerMapUnavailable = true;
-      pickerMapErrorMessage = e?.message || 'Peta gagal dimuat';
+      pickerMapErrorMessage = extractApiErrorMessage(e, 'Peta gagal dimuat');
     } finally {
       pickerMapLoading = false;
       pickerMap?.resize();
@@ -509,7 +509,7 @@
       .then((r: any) => {
         if (Array.isArray(r)) routers = r.filter((rt: RouterRow) => rt.enabled);
       })
-      .catch(() => {});
+      .catch((e) => console.error('router list gagal:', e));
     /* Poller backend jalan tiap 30 detik; UI ikut ritme itu, bukan 10 detik. */
     tickHandle = setInterval(() => {
       now = Date.now();

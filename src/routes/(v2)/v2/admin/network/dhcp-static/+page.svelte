@@ -154,13 +154,13 @@
         syncFilter = q;
       }
       const [routersRes, customersRes, packagesRes] = await Promise.all([
-        api.mikrotik.routers.list().catch(() => [] as any[]),
-        api.customers.list({ page: 1, perPage: 1000 }).catch(() => ({ data: [] as any[] })),
-        api.ispPackages.packages.list({ page: 1, per_page: 500 }).catch(() => ({ data: [] as IspPackage[] })),
+        api.mikrotik.routers.list().catch((e) => { console.error('routers list gagal:', e); return [] as RouterRow[]; }),
+        api.customers.list({ page: 1, perPage: 1000 }).catch((e) => { console.error('customers list gagal:', e); return { data: [] as CustomerRow[] }; }),
+        api.ispPackages.packages.list({ page: 1, per_page: 500 }).catch((e) => { console.error('packages list gagal:', e); return { data: [] as IspPackage[] }; }),
       ]);
-      routers = (routersRes || []).map((r: any) => ({ id: r.id, name: r.name }));
-      customers = ((customersRes as any)?.data || []).map((c: any) => ({ id: c.id, name: c.name }));
-      packages = ((packagesRes as any)?.data || []) as IspPackage[];
+      routers = (routersRes || []).map((r) => ({ id: r.id, name: r.name }));
+      customers = (customersRes?.data || []).map((c) => ({ id: c.id, name: c.name }));
+      packages = packagesRes?.data || [];
       await load();
     })();
   });
@@ -245,11 +245,11 @@
       return;
     }
     const [locRes, subRes] = await Promise.all([
-      api.customers.locations.list(customerId).catch(() => [] as any[]),
-      api.customers.subscriptions.list(customerId, { page: 1, per_page: 200 }).catch(() => ({ data: [] as CustomerSubscriptionView[] })),
+      api.customers.locations.list(customerId).catch((e) => { console.error('locations list gagal:', e); return [] as LocationRow[]; }),
+      api.customers.subscriptions.list(customerId, { page: 1, per_page: 200 }).catch((e) => { console.error('subscriptions list gagal:', e); return { data: [] as CustomerSubscriptionView[] }; }),
     ]);
-    locations = (locRes || []).map((l: any) => ({ id: l.id, label: l.label }));
-    subs = ((subRes as any)?.data || []) as CustomerSubscriptionView[];
+    locations = (locRes || []).map((l) => ({ id: l.id, label: l.label }));
+    subs = subRes?.data || [];
   }
 
   async function loadServers(routerId: string, preserve: boolean) {

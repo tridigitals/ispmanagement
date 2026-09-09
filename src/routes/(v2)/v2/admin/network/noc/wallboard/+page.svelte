@@ -13,6 +13,7 @@
   import { t } from 'svelte-i18n';
   import { can, user, tenant } from '$lib/stores/auth';
   import { api } from '$lib/api/client';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import Icon from '$lib/components/ui/Icon.svelte';
   import WallboardInterfaceTile from '$lib/components/network/WallboardInterfaceTile.svelte';
   import WallboardTopPager from '$lib/components/network/WallboardTopPager.svelte';
@@ -525,8 +526,8 @@
       await ackWallboardIncident(id, 'Alert diakui');
       pushIncident('ack', 'Incident acknowledged');
       await Promise.all([loadAlerts(true), loadIncidents(true)]);
-    } catch (e: any) {
-      toast.error(e?.message || e);
+    } catch (e: unknown) {
+      toast.error(extractApiErrorMessage(e));
     }
   }
 
@@ -536,8 +537,8 @@
       await resolveWallboardIncident(id, 'Alert diselesaikan');
       pushIncident('recovered', 'Incident resolved');
       await Promise.all([loadAlerts(true), loadIncidents(true)]);
-    } catch (e: any) {
-      toast.error(e?.message || e);
+    } catch (e: unknown) {
+      toast.error(extractApiErrorMessage(e));
     }
   }
 
@@ -549,8 +550,8 @@
       await ackWallboardAlerts(ids.slice(0, 50), 'Alert diakui');
       pushIncident('ack', `Ack ${Math.min(ids.length, 50)} alert(s)`, routerId);
       await Promise.all([loadAlerts(false), loadIncidents(false)]);
-    } catch (e: any) {
-      toast.error(e?.message || e);
+    } catch (e: unknown) {
+      toast.error(extractApiErrorMessage(e));
     }
   }
 
@@ -571,8 +572,8 @@
       );
       pushIncident('ack', `Ack visible ${Math.min(ids.length, 80)} alert(s)`);
       await Promise.all([loadAlerts(false), loadIncidents(false)]);
-    } catch (e: any) {
-      toast.error(e?.message || e);
+    } catch (e: unknown) {
+      toast.error(extractApiErrorMessage(e));
     }
   }
 
@@ -582,8 +583,8 @@
       await muteWallboardRouter(routerId, minutes, 'Router disnooze');
       pushIncident('mute', `Mute ${minutes}m`, routerId);
       await refresh();
-    } catch (e: any) {
-      toast.error(e?.message || e);
+    } catch (e: unknown) {
+      toast.error(extractApiErrorMessage(e));
     }
   }
 
@@ -593,8 +594,8 @@
       await unmuteWallboardRouter(routerId, 'Maintenance dibersihkan');
       pushIncident('unmute', 'Maintenance cleared', routerId);
       await refresh();
-    } catch (e: any) {
-      toast.error(e?.message || e);
+    } catch (e: unknown) {
+      toast.error(extractApiErrorMessage(e));
     }
   }
 
@@ -831,10 +832,10 @@
       if (fullMetricsKey !== request.key) return;
       fullMetricsRows = rows;
       fullMetricsLimit = minLimit;
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (fullMetricsKey !== request.key) return;
       fullMetricsRows = [];
-      fullMetricsError = e?.message || String(e);
+      fullMetricsError = extractApiErrorMessage(e);
     } finally {
       if (fullMetricsInFlightSig === request.requestSig) fullMetricsInFlightSig = '';
       if (fullMetricsKey === request.key) fullMetricsLoading = false;
@@ -921,8 +922,8 @@
         fetchSnapshot: (id) => api.mikrotik.routers.snapshot(id),
       });
       ifaceCatalog = next.ifaceCatalog;
-    } catch (e: any) {
-      toast.error(e?.message || e);
+    } catch (e: unknown) {
+      toast.error(extractApiErrorMessage(e));
     } finally {
       ifaceLoading[routerId] = false;
     }
@@ -991,8 +992,8 @@
       rows = next.rows;
       // Don't overwrite slotsAll with pruned data — DB is the source of truth.
       // Only update rows (router status), keep slots intact.
-    } catch (e: any) {
-      toast.error(e?.message || e);
+    } catch (e: unknown) {
+      toast.error(extractApiErrorMessage(e));
     } finally {
       refreshing = false;
     }

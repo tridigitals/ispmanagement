@@ -561,7 +561,7 @@
           <Button
             variant="ghost"
             size="sm"
-            disabled={pageNum <= 1}
+            disabled={pageNum <= 1 || loading}
             onclick={() => {
               pageNum -= 1;
               void load();
@@ -571,7 +571,7 @@
           <Button
             variant="ghost"
             size="sm"
-            disabled={pageNum >= totalPages}
+            disabled={pageNum >= totalPages || loading}
             onclick={() => {
               pageNum += 1;
               void load();
