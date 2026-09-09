@@ -15,6 +15,7 @@
   import { mikrotik } from '$lib/api/mikrotik';
   import { networkMapping } from '$lib/api/networkMapping';
   import { networkAssets } from '$lib/api/networkAssets';
+  import { fetchAllPages } from '$lib/utils/fetchAllPages';
   import type { NetworkAssetListItem } from '$lib/api/types';
   import { can, tenant, user } from '$lib/stores/auth';
   import { toast } from '$lib/stores/toast';
@@ -1275,11 +1276,12 @@
     refreshingTopologyAssets = true;
     try {
       await refreshTopologyAssetContext(force);
-      const response = await networkAssets.list({
-        page: 1,
-        per_page: 500,
-      });
-      topologyAssetItems = (response.data || []) as NetworkAssetListItem[];
+      // A-03: dulu per_page:500 sekali tarik; aset topologi ke-501+ hilang
+      // tanpa sinyal. Loop halaman ber-cap 10x500 sekarang.
+      const all = await fetchAllPages((page, per_page) =>
+        networkAssets.list({ page, per_page }),
+      );
+      topologyAssetItems = all.rows as NetworkAssetListItem[];
       topologyAssetRows = buildTopologyAssetRows(topologyAssetItems, {
         assetNodeIdsByAssetId: topologyAssetNodeIdCache,
         nodeRows: topologyAssetContextNodeRows,

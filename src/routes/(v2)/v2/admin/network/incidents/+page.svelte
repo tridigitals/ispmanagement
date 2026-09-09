@@ -85,6 +85,9 @@
   let routers = $state<RouterRow[]>([]);
   let teamMembers = $state<TeamMember[]>([]);
   let activeOnly = $state(true);
+  // A-16 (tahap 1): list BE hanya top-`limit`; cap tersentuh = data terpotong.
+  // Server-side filter penuh + endpoint stats agregat = putaran 4 (A-08 envelope).
+  let incidentsTruncated = $state(false);
   let search = $state('');
   let severityFilter = $state<'all' | 'critical' | 'warning' | 'info'>('all');
   let routerFilter = $state('all');
@@ -148,19 +151,30 @@
     filtered.filter((r) => slaLevel(r, nowMs, slaWarnMinutes, slaBreachMinutes) === 'breach'),
   );
 
-  const attentionItems = $derived<AttentionItem[]>(
-    breaches.length
+  const attentionItems = $derived<AttentionItem[]>([
+    ...(breaches.length
       ? [
           {
-            icon: 'alert',
+            icon: 'alert' as const,
             title: `${breaches.length} insiden melewati SLA`,
             detail: `Ambang breach ${slaBreachMinutes} menit. Cek yang paling lama terbuka lebih dulu.`,
             action: 'Lihat riwayat',
             href: '/v2/admin/network/incidents?active_only=0',
           },
         ]
-      : [],
-  );
+      : []),
+    ...(incidentsTruncated
+      ? [
+          {
+            icon: 'alert' as const,
+            title: 'Daftar insiden mencapai batas 1.000',
+            detail: 'Bisa ada insiden di luar yang tampil. Matikan "Hanya aktif" atau perkecil rentang untuk memastikan tidak ada yang terlewat.',
+            action: 'Muat ulang',
+            href: '/v2/admin/network/incidents',
+          },
+        ]
+      : []),
+  ]);
 
   const selectedRows = $derived(rows.filter((r) => selectedIds.includes(r.id)));
 
@@ -176,6 +190,7 @@
           api.settings.getValue('mikrotik_incident_sla_breach_minutes').catch((e) => { console.error('sla breach gagal:', e); return null; }),
         ]);
         rows = (inc || []) as IncidentRow[];
+        incidentsTruncated = rows.length >= 1000;
         routers = (rts || []) as RouterRow[];
         teamMembers = (team || []) as TeamMember[];
         const w = Number(warn);
@@ -201,7 +216,9 @@
     loading = true;
     loadError = null;
     try {
-      rows = (await api.mikrotik.incidents.list({ activeOnly, limit: 1000 })) as IncidentRow[];
+      const r = (await api.mikrotik.incidents.list({ activeOnly, limit: 1000 })) as IncidentRow[];
+      rows = r;
+      incidentsTruncated = r.length >= 1000;
       selectedIds = selectedIds.filter((id) => rows.some((r) => r.id === id));
     } catch (e) {
       loadError = friendlyIncidentError(extractApiErrorMessage(e));

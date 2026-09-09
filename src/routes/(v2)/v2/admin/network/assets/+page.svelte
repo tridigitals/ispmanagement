@@ -13,6 +13,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { api, type NetworkAssetListItem } from '$lib/api/client';
+  import { fetchAllPages } from '$lib/utils/fetchAllPages';
   import { can, tenant, user } from '$lib/stores/auth';
   import { toast } from '$lib/stores/toast';
   import { extractApiErrorMessage } from '$lib/api/core';
@@ -54,6 +55,7 @@
     Card,
     DataTable,
     Field,
+    Icon,
     PageHeader,
     RowActions,
     StatTile,
@@ -77,6 +79,7 @@
   let saving = $state(false);
   let showModal = $state(false);
   let rows = $state<NetworkAssetListItem[]>([]);
+  let assetsTruncated = $state(false);
   let detailDraft = $state<NetworkAssetDetailDraft>({});
   let q = $state('');
   let assetType = $state('all');
@@ -169,8 +172,14 @@
   async function load() {
     loading = true;
     try {
-      const result = await api.networkAssets.list({ page: 1, per_page: 500 });
-      rows = result.data || [];
+      // A-03: sebelumnya sekali tarik per_page:500 — aset ke-501 dan
+      // seterusnya hilang tanpa sinyal. Sekarang loop halaman (cap 10 x 500)
+      // dan `assetsTruncated` menandai jujur kalau cap-nya tersentuh.
+      const all = await fetchAllPages((page, per_page) =>
+        api.networkAssets.list({ page, per_page }),
+      );
+      rows = all.rows;
+      assetsTruncated = !all.complete;
     } catch (e) {
       toast.error(extractApiErrorMessage(e));
     } finally {
@@ -314,7 +323,20 @@
     </div>
   </Card>
 
-  <Card title={`Daftar aset (${filteredRows.length})`} padded={false}>
+  {#if assetsTruncated}
+    <div
+      role="alert"
+      class="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+    >
+      <Icon name="alert" size={16} class="mt-0.5 shrink-0 text-amber-700" />
+      <span>
+        Menampilkan 5.000 aset teratas — masih ada aset di luar batas ini. Sempitkan
+        filter tipe/status atau buka lewat halaman pelanggan untuk data lengkap.
+      </span>
+    </div>
+  {/if}
+
+  <Card title={`Daftar aset (${filteredRows.length}${assetsTruncated ? '+' : ''})`} padded={false}>
     <DataTable
       {columns}
       rows={filteredRows}

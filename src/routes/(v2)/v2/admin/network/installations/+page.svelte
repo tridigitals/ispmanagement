@@ -98,6 +98,7 @@
   let sortKey = $state<InstallationSortKey>('updated_at');
   let sortDir = $state<'asc' | 'desc'>('desc');
   let includeClosed = $state(true);
+  let woTruncated = $state(false);
 
   const stats = $derived(buildInstallationStats(rows));
   const visible = $derived(
@@ -119,19 +120,30 @@
         new Date(r.scheduled_at).getTime() < Date.now() - 24 * 3600 * 1000,
     ),
   );
-  const attentionItems = $derived<AttentionItem[]>(
-    overdue.length
+  const attentionItems = $derived<AttentionItem[]>([
+    ...(overdue.length
       ? [
           {
-            icon: 'clock',
+            icon: 'clock' as const,
             title: `${overdue.length} instalasi lewat jadwal`,
             detail: 'Jadwalnya sudah lewat lebih dari sehari dan WO masih menunggu teknisi.',
             action: 'Lihat penunggu',
             href: '/v2/admin/network/installations',
           },
         ]
-      : [],
-  );
+      : []),
+    ...(woTruncated
+      ? [
+          {
+            icon: 'alert' as const,
+            title: 'Daftar work order mencapai batas 500',
+            detail: 'Bisa ada WO di luar yang tampil. Sempitkan filter (sembunyikan yang tertutup, atau perkecil periode) untuk memastikan tidak ada yang terlewat.',
+            action: 'Segarkan',
+            href: '/v2/admin/network/installations',
+          },
+        ]
+      : []),
+  ]);
 
   // ---- modal detail ----
   let showDetail = $state(false);
@@ -198,6 +210,9 @@
     loadError = null;
     try {
       rows = await api.workOrders.list({ include_closed: includeClosed, limit: 500 });
+      // A-03: endpoint ini hanya menerima `limit` tunggal (tanpa page/offset),
+      // jadi daftar penuh = kemungkinan terpotong. tandai, jangan bisukan.
+      woTruncated = rows.length >= 500;
       if (active) {
         const refreshed = rows.find((r) => r.id === active?.id);
         active = refreshed ?? null;

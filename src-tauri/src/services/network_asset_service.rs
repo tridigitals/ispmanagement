@@ -1,5 +1,6 @@
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
+use crate::services::sql_ident::assert_sql_ident;
 use crate::models::{
     CreateNetworkAssetRequest, ListNetworkAssetsParams, NetworkAsset, NetworkAssetListItem,
     PaginatedResponse, UpdateNetworkAssetRequest,
@@ -187,6 +188,10 @@ impl NetworkAssetService {
         label: &str,
     ) -> AppResult<()> {
         let Some(id) = id else { return Ok(()) };
+
+        // A-01: `table` disisipkan via format!() — wajib lolos whitelist
+        // identifier (tidak bisa di-bind sbg parameter) sebelum masuk SQL.
+        assert_sql_ident(table)?;
 
         #[cfg(feature = "postgres")]
         let query = format!("SELECT id FROM {table} WHERE tenant_id = $1 AND id = $2 LIMIT 1");
@@ -1028,6 +1033,12 @@ impl NetworkAssetService {
         self.load_asset(tenant_id, id).await?;
         if field == "parent_asset_id" && value == Some(id) {
             return Err(AppError::Validation("Asset cannot parent itself".into()));
+        }
+        // A-01: `field` (kolom target UPDATE) dan `table` (lookup relasi)
+        // di-interpolasi ke SQL — whitelist identifier keduanya.
+        assert_sql_ident(field)?;
+        if let Some(table) = table {
+            assert_sql_ident(table)?;
         }
         if let Some(table) = table {
             self.ensure_relation_exists(tenant_id, table, value, label)

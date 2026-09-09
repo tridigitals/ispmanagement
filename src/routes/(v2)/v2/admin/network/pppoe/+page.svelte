@@ -30,9 +30,13 @@
   import Badge from '$lib/components/ds/Badge.svelte';
   import Icon from '$lib/components/ds/Icon.svelte';
   import StatTile from '$lib/components/ds/StatTile.svelte';
-  import TableSkeleton from '$lib/components/ds/TableSkeleton.svelte';
   import RowActions from '$lib/components/ds/RowActions.svelte';
+  import DataTable from '$lib/components/ds/DataTable.svelte';
+  import type { Column } from '$lib/components/ds/table-types';
   import AttentionPanel from '$lib/components/ds/AttentionPanel.svelte';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+  import { toast } from '$lib/stores/toast';
+  import { extractApiErrorMessage } from '$lib/api/core';
   import { fetchAllPages, fetchAllRows } from '$lib/utils/fetchAllPages';
   import type { PppoeAccountPublic, CustomerListItem } from '$lib/api/types';
 
@@ -52,6 +56,12 @@
 
   let q = $state('');
   let chip = $state<ChipKey>('all');
+  // P-01: tombol aksi baris di v2 sempat tanpa handler. Di-wire ke API yang
+  // sama dengan versi lama; create/edit penuh via modal = scope parity A-15.
+  let busyId = $state<string | null>(null);
+  let deleteTarget = $state<PppoeAccountPublic | null>(null);
+  let showDeleteConfirm = $state(false);
+  let deleting = $state(false);
   let routerFilter = $state('');
   let page = $state(1);
   const perPage = 25;
@@ -106,10 +116,16 @@
     });
   });
 
-  const lastPage = $derived(Math.max(1, Math.ceil(filtered.length / perPage)));
+  const columns: Column[] = [
+    { key: 'username', label: 'Username' },
+    { key: 'customer', label: 'Pelanggan', hideSm: true },
+    { key: 'status', label: 'Status' },
+    { key: 'router', label: 'Router', hideSm: true },
+    { key: 'ip', label: 'IP / pool', hideSm: true },
+    { key: 'actions', label: 'Aksi', align: 'right' },
+  ];
+
   const rows = $derived(filtered.slice((page - 1) * perPage, page * perPage));
-  const from = $derived(filtered.length === 0 ? 0 : (page - 1) * perPage + 1);
-  const to = $derived(Math.min(page * perPage, filtered.length));
 
   const chips = $derived([
     { key: 'all' as ChipKey, label: 'Semua', count: counts.all },
@@ -133,7 +149,7 @@
     }, 250);
   }
 
-  onMount(async () => {
+  async function load() {
     try {
       /* Semua akun ditarik sekali supaya hitungan chip dan tile benar untuk
          seluruh tenant, bukan hanya 25 baris pertama seperti versi lama.
@@ -162,7 +178,53 @@
     } finally {
       loading = false;
     }
-  });
+  }
+
+  onMount(() => void load());
+
+  async function applyToRouter(a: PppoeAccountPublic) {
+    if (!canManage || busyId) return;
+    busyId = a.id;
+    try {
+      await api.pppoe.accounts.apply(a.id);
+      toast.success('Perubahan diterapkan ke router.');
+      await load();
+    } catch (e: unknown) {
+      toast.error('Gagal menerapkan: ' + extractApiErrorMessage(e));
+    } finally {
+      busyId = null;
+    }
+  }
+
+  async function toggleIsolate(a: PppoeAccountPublic) {
+    if (!canManage || busyId) return;
+    busyId = a.id;
+    try {
+      await api.pppoe.accounts.update(a.id, { disabled: !a.disabled });
+      toast.success(a.disabled ? 'Akun diaktifkan kembali.' : 'Akun diisolir (dinonaktifkan di router).');
+      await load();
+    } catch (e: unknown) {
+      toast.error('Gagal mengubah status: ' + extractApiErrorMessage(e));
+    } finally {
+      busyId = null;
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    deleting = true;
+    try {
+      await api.pppoe.accounts.delete(deleteTarget.id);
+      toast.success('Akun dihapus.');
+      showDeleteConfirm = false;
+      deleteTarget = null;
+      await load();
+    } catch (e: unknown) {
+      toast.error('Gagal menghapus: ' + extractApiErrorMessage(e));
+    } finally {
+      deleting = false;
+    }
+  }
 </script>
 
 <AppShell title="PPPoE">
@@ -288,100 +350,74 @@
   </div>
 
   <Card padded={false}>
-    {#if loading}
-      <div class="px-4 py-3"><TableSkeleton rows={10} cols={5} /></div>
-    {:else if rows.length === 0}
-      <div class="flex flex-col items-center gap-2 px-4 py-16 text-center">
-        <Icon name="key" size={26} class="text-ink-300" />
-        <div class="text-base font-medium text-ink-700">Tidak ada akun cocok</div>
-        <div class="text-sm text-ink-500">
-          {q ? `Tidak ada hasil untuk "${q}".` : 'Coba ubah filter di atas.'}
-        </div>
-      </div>
-    {:else}
-      <div class="overflow-x-auto">
-        <table class="w-full border-collapse text-base">
-          <thead>
-            <tr class="border-b border-ink-200 bg-ink-50">
-              <th class="px-4 py-2 text-left text-xs font-semibold text-ink-500 uppercase"
-                >Username</th
-              >
-              <th
-                class="hidden px-4 py-2 text-left text-xs font-semibold text-ink-500 uppercase lg:table-cell"
-                >Pelanggan</th
-              >
-              <th class="px-4 py-2 text-left text-xs font-semibold text-ink-500 uppercase">Status</th>
-              <th
-                class="hidden px-4 py-2 text-left text-xs font-semibold text-ink-500 uppercase md:table-cell"
-                >Router</th
-              >
-              <th
-                class="hidden px-4 py-2 text-left text-xs font-semibold text-ink-500 uppercase xl:table-cell"
-                >IP / pool</th
-              >
-              <th class="px-4 py-2 text-right text-xs font-semibold text-ink-500 uppercase">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each rows as a (a.id)}
-              {@const h = healthOf(a)}
-              <tr class="border-b border-ink-100 last:border-0 hover:bg-ink-50">
-                <td class="num px-4 py-2.5 font-medium text-ink-900">{a.username}</td>
-                <td class="hidden max-w-xs truncate px-4 py-2.5 text-ink-700 lg:table-cell">
-                  {customerName.get(a.customer_id) ?? '—'}
-                </td>
-                <td class="px-4 py-2.5">
-                  <Badge tone={healthMeta[h].tone} label={healthMeta[h].label} />
-                </td>
-                <td class="hidden px-4 py-2.5 text-ink-700 md:table-cell">
-                  {routerName.get(a.router_id) ?? '—'}
-                </td>
-                <td class="num hidden px-4 py-2.5 text-sm text-ink-500 xl:table-cell">
-                  {a.remote_address || a.address_pool || '—'}
-                </td>
-                <td class="px-4 py-2.5">
-                  <RowActions
-                    primary={{ label: 'Ubah', icon: 'cog' }}
-                    rest={canManage
-                      ? [
-                          { label: 'Terapkan ke router', icon: 'refresh' },
-                          {
-                            label: a.disabled ? 'Aktifkan' : 'Isolir',
-                            icon: a.disabled ? 'check' : 'alert',
-                          },
-                          { label: 'Hapus akun', icon: 'close', danger: true },
-                        ]
-                      : []}
-                  />
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-
-      <div
-        class="flex flex-wrap items-center justify-between gap-2 border-t border-ink-200 bg-ink-50 px-4 py-2"
-      >
-        <div class="num text-sm text-ink-500">{from}–{to} dari {filtered.length} akun</div>
-        <div class="flex items-center gap-1.5">
-          <Button
-            size="sm"
-            icon="chevronLeft"
-            label="Halaman sebelumnya"
-            disabled={page <= 1}
-            onclick={() => (page -= 1)}
+    <DataTable
+      {columns}
+      {rows}
+      {loading}
+      page={page}
+      total={filtered.length}
+      pageSize={perPage}
+      onpage={(p) => (page = p)}
+      emptyTitle="Tidak ada akun cocok"
+      emptyHint={q ? `Tidak ada hasil untuk "${q}".` : 'Coba ubah filter di atas.'}
+    >
+      {#snippet cell(a, column)}
+        {#if column.key === 'username'}
+          <span class="num font-medium text-ink-900">{a.username}</span>
+        {:else if column.key === 'customer'}
+          <span class="block max-w-xs truncate">{customerName.get(a.customer_id) ?? '—'}</span>
+        {:else if column.key === 'status'}
+          <Badge tone={healthMeta[healthOf(a)].tone} label={healthMeta[healthOf(a)].label} />
+        {:else if column.key === 'router'}
+          {routerName.get(a.router_id) ?? '—'}
+        {:else if column.key === 'ip'}
+          <span class="num text-sm">{a.remote_address || a.address_pool || '—'}</span>
+        {:else if column.key === 'actions'}
+          <RowActions
+            primary={{
+              label: 'Ubah',
+              icon: 'cog',
+              disabled: true,
+              disabledReason: 'Form edit belum tersedia di tampilan baru — gunakan versi lama atau menu pelanggan',
+            }}
+            rest={canManage
+              ? [
+                  {
+                    label: 'Terapkan ke router',
+                    icon: 'refresh',
+                    disabled: busyId === a.id,
+                    onclick: () => void applyToRouter(a),
+                  },
+                  {
+                    label: a.disabled ? 'Aktifkan' : 'Isolir',
+                    icon: a.disabled ? 'check' : 'alert',
+                    disabled: busyId === a.id,
+                    onclick: () => void toggleIsolate(a),
+                  },
+                  {
+                    label: 'Hapus akun',
+                    icon: 'close',
+                    danger: true,
+                    onclick: () => {
+                      deleteTarget = a;
+                      showDeleteConfirm = true;
+                    },
+                  },
+                ]
+              : []}
           />
-          <span class="num text-sm text-ink-500">Hal {page} / {lastPage}</span>
-          <Button
-            size="sm"
-            icon="chevronRight"
-            label="Halaman berikutnya"
-            disabled={page >= lastPage}
-            onclick={() => (page += 1)}
-          />
-        </div>
-      </div>
-    {/if}
+        {/if}
+      {/snippet}
+    </DataTable>
   </Card>
+
+<ConfirmDialog
+  bind:show={showDeleteConfirm}
+  type="danger"
+  title="Hapus akun PPPoE"
+  message={deleteTarget ? `Akun "${deleteTarget.username}" akan dihapus dari aplikasi. Jalankan "Terapkan ke router" bila akun juga perlu dihapus dari perangkat.` : ''}
+  confirmText="Hapus"
+  loading={deleting}
+  onconfirm={() => void confirmDelete()}
+/>
 </AppShell>

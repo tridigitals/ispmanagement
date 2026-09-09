@@ -5,11 +5,12 @@
   import AppShell from '$lib/components/ds/AppShell.svelte';
   import PageHeader from '$lib/components/ds/PageHeader.svelte';
   import Card from '$lib/components/ds/Card.svelte';
+  import DataTable from '$lib/components/ds/DataTable.svelte';
+  import type { Column } from '$lib/components/ds/table-types';
   import StatTile from '$lib/components/ds/StatTile.svelte';
   import AttentionPanel from '$lib/components/ds/AttentionPanel.svelte';
   import Button from '$lib/components/ds/Button.svelte';
   import Badge from '$lib/components/ds/Badge.svelte';
-  import TableSkeleton from '$lib/components/ds/TableSkeleton.svelte';
   import type { AttentionItem } from '$lib/components/ds/AttentionPanel.svelte';
   import {
     formatRupiah,
@@ -102,6 +103,14 @@
 
     return items;
   });
+
+  const billingColumns: Column[] = [
+    { key: 'customer', label: 'Pelanggan' },
+    { key: 'paket', label: 'Paket', hideSm: true },
+    { key: 'nominal', label: 'Nominal', align: 'right' },
+    { key: 'due', label: 'Jatuh tempo' },
+    { key: 'status', label: 'Status' },
+  ];
 
   const soonest = $derived(
     invoices
@@ -267,55 +276,27 @@
         </a>
       {/snippet}
 
-      {#if loading}
-        <div class="px-4 py-3">
-          <TableSkeleton rows={6} cols={5} />
-        </div>
-      {:else if soonest.length === 0}
-        <div class="px-4 py-10 text-center text-base text-ink-500">
-          Tidak ada tagihan tertunggak.
-        </div>
-      {:else}
-        <div class="overflow-x-auto">
-          <table class="w-full border-collapse text-base">
-            <thead>
-              <tr class="border-b border-ink-200 bg-ink-50">
-                <th class="px-4 py-2 text-left text-sm font-semibold text-ink-500">Pelanggan</th>
-                <th class="hidden px-4 py-2 text-left text-sm font-semibold text-ink-500 md:table-cell"
-                  >Paket</th
-                >
-                <th class="px-4 py-2 text-right text-sm font-semibold text-ink-500">Nominal</th>
-                <th class="px-4 py-2 text-left text-sm font-semibold text-ink-500">Jatuh tempo</th>
-                <th class="px-4 py-2 text-left text-sm font-semibold text-ink-500">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each soonest as inv (inv.id)}
-                <tr class="border-b border-ink-100 last:border-0 hover:bg-ink-50">
-                  <td class="px-4 py-2.5 font-medium text-ink-900">{customerOf(inv)}</td>
-                  <td class="hidden px-4 py-2.5 text-ink-500 md:table-cell">{packageOf(inv)}</td>
-                  <td class="num px-4 py-2.5 text-right text-ink-900">{formatRupiah(inv.amount)}</td>
-                  <td class="num px-4 py-2.5 {isOverdue(inv) ? 'text-red-700' : 'text-ink-500'}">
-                    {formatDate(inv.due_date)}
-                  </td>
-                  <td class="px-4 py-2.5">
-                    <Badge
-                      status={inv.status}
-                      label={isOverdue(inv) ? 'Lewat tempo' : inv.status}
-                      tone={isOverdue(inv) ? 'negative' : undefined}
-                    />
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-        <div class="border-t border-ink-200 px-4 py-2 text-sm text-ink-500">
-          Menampilkan {soonest.length} dari {money.unpaidCount} tagihan tertunggak · total {formatRupiah(
-            money.unpaid,
-          )}
-        </div>
-      {/if}
+        <DataTable
+          columns={billingColumns}
+          rows={soonest}
+          emptyTitle="Tidak ada tagihan tertunggak."
+          emptyHint="Semua invoice lunas — kerja bagus."
+          footNote={`Menampilkan ${soonest.length} dari ${money.unpaidCount} tagihan tertunggak · total ${formatRupiah(money.unpaid)}`}
+        >
+          {#snippet cell(inv, column)}
+            {#if column.key === 'customer'}
+              <span class="font-medium text-ink-900">{customerOf(inv)}</span>
+            {:else if column.key === 'paket'}
+              <span class="text-ink-500">{packageOf(inv)}</span>
+            {:else if column.key === 'nominal'}
+              <span class="num text-ink-900">{formatRupiah(inv.amount)}</span>
+            {:else if column.key === 'due'}
+              <span class="num {isOverdue(inv) ? 'text-red-700' : 'text-ink-500'}">{formatDate(inv.due_date)}</span>
+            {:else if column.key === 'status'}
+              <Badge status={inv.status} label={isOverdue(inv) ? 'Lewat tempo' : inv.status} tone={isOverdue(inv) ? 'negative' : undefined} />
+            {/if}
+          {/snippet}
+        </DataTable>
     </Card>
   </div>
 </AppShell>

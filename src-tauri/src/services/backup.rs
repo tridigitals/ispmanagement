@@ -1,5 +1,6 @@
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
+use crate::services::sql_ident::is_safe_sql_ident;
 use crate::models::UpsertSettingDto;
 use crate::services::SettingsService;
 use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
@@ -977,6 +978,14 @@ impl BackupService {
                     continue;
                 }
 
+                // A-01: nama tabel berasal dari file ZIP yang bisa diedit
+                // user — jangan pernah interpolasikan ke SQL tanpa lolos
+                // whitelist identifier.
+                if !is_safe_sql_ident(table_name) {
+                    warn!("Restore: melewatkan tabel dengan nama tidak valid: {table_name:?}");
+                    continue;
+                }
+
                 if let Some(tid) = target_tenant_id {
                     // Tenant-specific cleanup for this table
                     let tenant_tables_with_tenant_id = [
@@ -1130,6 +1139,11 @@ impl BackupService {
                     let mut col_names = Vec::new();
                     let mut placeholders = Vec::new();
                     let mut values = Vec::new();
+
+                    // A-01: key kolom juga berasal dari JSON backup yang bisa
+                    // diedit — buang kolom dengan nama di luar whitelist
+                    // identifier agar tidak pernah masuk string INSERT.
+                    row.retain(|k, _| is_safe_sql_ident(k));
 
                     #[cfg(feature = "postgres")]
                     for (idx, (key, val)) in row.into_iter().enumerate() {

@@ -35,6 +35,7 @@
     PppoeAccountPublic,
   } from '$lib/api/client';
   import { extractApiErrorMessage } from '$lib/api/core';
+  import { fetchAllPages } from '$lib/utils/fetchAllPages';
   import { toast } from '$lib/stores/toast';
   import { formatDate, formatDateTime, timeAgo } from '$lib/utils/date';
   import { formatMoney } from '$lib/utils/money';
@@ -144,8 +145,13 @@
         canReadLocations ? api.customers.locations.list(customerId) : Promise.resolve([]),
         canReadBilling
           ? Promise.all([
-              api.customers.subscriptions.list(customerId, { page: 1, per_page: 200 }),
-              api.payment.listCustomerPackageInvoices({ page: 1, per_page: 1000 }),
+              // A-03: loop halaman ber-cap (500x10) — dulu bisu di baris ke-N.
+              fetchAllPages((page, per_page) =>
+                api.customers.subscriptions.list(customerId, { page, per_page }),
+              ),
+              fetchAllPages((page, per_page) =>
+                api.payment.listCustomerPackageInvoices({ page, per_page }),
+              ),
             ])
           : Promise.resolve([null, null] as const),
         canManage ? api.customers.portalUsers.list(customerId).catch(() => []) : Promise.resolve([]),
@@ -162,8 +168,8 @@
       ]);
       locations = (results[0].status === 'fulfilled' ? results[0].value : []) as CustomerLocation[];
       const subsRes = results[1].status === 'fulfilled' ? results[1].value : null;
-      subscriptions = subsRes?.[0]?.data || [];
-      const allInvoices: Invoice[] = subsRes?.[1]?.data || [];
+      subscriptions = subsRes?.[0]?.rows || [];
+      const allInvoices: Invoice[] = subsRes?.[1]?.rows || [];
       const subIds = new Set(subscriptions.map((s) => s.id));
       invoices = invoicesForSubscriptions(allInvoices, subIds);
       portalUsers = (results[2].status === 'fulfilled' ? results[2].value : []) as CustomerPortalUser[];

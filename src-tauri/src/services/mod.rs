@@ -19,6 +19,7 @@ pub mod network_asset_port_cache;
 pub mod network_asset_service;
 pub mod network_mapping_service;
 pub mod pagination;
+pub mod sql_ident;
 pub mod radius_service;
 pub mod rate_limiter;
 pub mod role_service;

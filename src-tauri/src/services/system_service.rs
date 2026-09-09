@@ -480,6 +480,11 @@ impl SystemService {
                 ];
 
                 for name in table_names {
+                    // A-01: whitelist identifier sebelum interpolasi (list di
+                    // atas hardcoded, tapi pertahankan guard bila berubah).
+                    if !crate::services::sql_ident::is_safe_sql_ident(name) {
+                        continue;
+                    }
                     let count: i64 = sqlx::query_scalar(&format!("SELECT COUNT(*) FROM {}", name))
                         .fetch_one(&self.pool)
                         .await
