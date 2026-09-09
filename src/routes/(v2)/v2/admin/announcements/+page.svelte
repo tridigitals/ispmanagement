@@ -65,6 +65,7 @@
     type FieldOption,
   } from '$lib/components/ds';
   import type { AttentionItem } from '$lib/components/ds/AttentionPanel.svelte';
+  import { t } from 'svelte-i18n';
   import {
     alreadyDelivered,
     announcementStatus,
@@ -125,10 +126,10 @@
   const totalPages = $derived(Math.max(1, Math.ceil(total / perPage)));
   const counts = $derived(statusCounts(rows));
   const ringkas = $derived(
-    audienceOptions(reach).find((o) => o.value === fAudience) ?? null,
+    audienceOptions(reach, $t).find((o) => o.value === fAudience) ?? null,
   );
   const gapPortal = $derived(
-    portalCoverageGap(reach.total_customers ?? 0, reach.portal_accounts ?? 0),
+    portalCoverageGap(reach.total_customers ?? 0, reach.portal_accounts ?? 0, $t),
   );
 
   const peringatan = $derived<AttentionItem[]>(
@@ -137,9 +138,9 @@
       if (gapPortal) {
         out.push({
           icon: 'mail',
-          title: 'Sebagian besar pelanggan tidak punya akun portal',
+          title: $t('announcements.v2.attn_nop_title'),
           detail: gapPortal,
-          action: 'Buatkan akun portal lewat modul Pelanggan',
+          action: $t('announcements.v2.attn_nop_action'),
           severity: 'medium',
         });
       }
@@ -147,9 +148,9 @@
       if (tanpaKanal > 0) {
         out.push({
           icon: 'alert',
-          title: 'Pengumuman tanpa kanal pengiriman',
-          detail: `${tanpaKanal} pengumuman tidak memilih notifikasi aplikasi maupun email — tidak akan pernah terkirim.`,
-          action: 'Sunting dan pilih minimal satu kanal',
+          title: $t('announcements.v2.attn_noch_title'),
+          detail: $t('announcements.v2.attn_noch_detail', { values: { n: tanpaKanal } }),
+          action: $t('announcements.v2.attn_noch_action'),
           severity: 'high',
         });
       }
@@ -157,27 +158,27 @@
     })(),
   );
 
-  const severityOpts: FieldOption[] = [
-    { value: 'info', label: 'Info' },
-    { value: 'success', label: 'Sukses' },
-    { value: 'warning', label: 'Peringatan' },
-    { value: 'error', label: 'Darurat' },
-  ];
-  const modeOpts: FieldOption[] = [
-    { value: 'post', label: 'Postingan' },
-    { value: 'banner', label: 'Banner' },
-  ];
-  const scopeOpts: FieldOption[] = [
-    { value: 'tenant', label: 'Tenant ini' },
-    { value: 'global', label: 'Global (semua tenant)' },
-  ];
+  const severityOpts = $derived<FieldOption[]>([
+    { value: 'info', label: $t('announcements.severity.info') },
+    { value: 'success', label: $t('announcements.severity.success') },
+    { value: 'warning', label: $t('announcements.severity.warning') },
+    { value: 'error', label: $t('announcements.v2.sev_error') },
+  ]);
+  const modeOpts = $derived<FieldOption[]>([
+    { value: 'post', label: $t('announcements.v2.mode_post') },
+    { value: 'banner', label: $t('announcements.modes.banner') },
+  ]);
+  const scopeOpts = $derived<FieldOption[]>([
+    { value: 'tenant', label: $t('announcements.v2.scope_tenant') },
+    { value: 'global', label: $t('announcements.v2.scope_global') },
+  ]);
 
   const columns: Column[] = [
-    { key: 'title', label: 'Pengumuman' },
-    { key: 'status', label: 'Status', hideSm: true },
-    { key: 'audience', label: 'Audiens', hideSm: true },
-    { key: 'channels', label: 'Kanal', hideSm: true },
-    { key: 'schedule', label: 'Jadwal', hideSm: true },
+    { key: 'title', label: $t('announcements.title') },
+    { key: 'status', label: $t('admin.customers.columns.status'), hideSm: true },
+    { key: 'audience', label: $t('superadmin.audit_logs.columns.audience'), hideSm: true },
+    { key: 'channels', label: $t('announcements.v2.col_channel'), hideSm: true },
+    { key: 'schedule', label: $t('common.schedule'), hideSm: true },
     { key: 'actions', label: '', width: '120px' },
   ];
 
@@ -287,7 +288,7 @@
       deliverEmail: fEmail,
       scope: fScope,
     };
-    issues = validateDraft(draft);
+    issues = validateDraft(draft, $t);
     if (issues.length) {
       toast.error(issues[0].message);
       return;
@@ -319,7 +320,7 @@
           ends_at: endsAt ?? (fEnds ? null : undefined),
           cover_file_id: coverFileId,
         });
-        toast.success('Pengumuman diperbarui');
+        toast.success($t('announcements.v2.t_updated'));
       } else {
         await api.announcements.createAdmin({
           scope: fScope,
@@ -336,7 +337,7 @@
           ends_at: endsAt,
           cover_file_id: coverFileId ?? null,
         });
-        toast.success('Pengumuman dibuat');
+        toast.success($t('announcements.v2.t_created'));
       }
       formOpen = false;
       if (fCoverPreview) URL.revokeObjectURL(fCoverPreview);
@@ -354,7 +355,7 @@
     deleting = true;
     try {
       await api.announcements.deleteAdmin(deleteTarget.id);
-      toast.success('Pengumuman dihapus');
+      toast.success($t('announcements.v2.t_deleted'));
       deleteTarget = null;
       deleteOpen = false;
       await load();
@@ -374,39 +375,39 @@
   });
 </script>
 
-<AppShell title="Pengumuman">
+<AppShell title={ $t('announcements.title') }>
   <PageHeader
-    title="Pengumuman"
+    title={ $t('announcements.title') }
     eyebrow="Komunikasi"
-    desc="Pesan untuk staf dan pelanggan lewat notifikasi aplikasi atau email."
+    desc={ $t('announcements.v2.desc') }
   >
     {#snippet actions()}
-      <Button variant="ghost" icon="refresh" onclick={() => void load()}>Muat ulang</Button>
-      <Button variant="primary" icon="plus" onclick={bukaBaru}>Buat pengumuman</Button>
+      <Button variant="ghost" icon="refresh" onclick={() => void load()}>{ $t('announcements.v2.reload') }</Button>
+      <Button variant="primary" icon="plus" onclick={bukaBaru}>{ $t('announcements.v2.create') }</Button>
     {/snippet}
   </PageHeader>
 
   <Card>
     <div class="grid grid-cols-2 gap-6 sm:grid-cols-4">
-      <StatTile label="Tayang" value={String(counts.active)} hint="terbuka untuk penerima sekarang" tone="positive" />
+      <StatTile label={ $t('announcements.v2.live') } value={String(counts.active)} hint={ $t('announcements.v2.h_live') } tone="positive" />
       <StatTile
-        label="Terjadwal"
+        label={ $t('announcements.status.scheduled') }
         value={String(counts.scheduled)}
-        hint={counts.scheduled > 0 ? 'akan tayang otomatis pada waktunya' : 'tidak ada'}
+        hint={counts.scheduled > 0 ? $t('announcements.v2.h_sched') : $t('announcements.v2.h_none')}
         tone={counts.scheduled > 0 ? 'warning' : 'neutral'}
       />
-      <StatTile label="Kedaluwarsa" value={String(counts.expired)} hint="di luar rentang tampil" />
+      <StatTile label={ $t('announcements.v2.expired') } value={String(counts.expired)} hint={ $t('announcements.v2.h_exp') } />
       <StatTile
-        label="Penerima 'Semua'"
+        label={ $t('announcements.v2.reach_tile') }
         value={reach.all != null ? String(reach.all) : '—'}
-        hint="akun yang benar-benar menerima audiens ini"
+        hint={ $t('announcements.v2.h_reach') }
       />
     </div>
   </Card>
 
   {#if peringatan.length}
     <div class="mt-4">
-      <AttentionPanel items={peringatan} title="Perlu perhatian" />
+      <AttentionPanel items={peringatan} title={ $t('admin.network.dhcp_static.v2.attention') } />
     </div>
   {/if}
 
@@ -421,54 +422,54 @@
           />
           <input
             bind:value={search}
-            placeholder="Cari judul atau isi"
-            aria-label="Cari pengumuman"
+            placeholder={ $t('announcements.v2.search_ph') }
+            aria-label={ $t('announcements.v2.search_aria') }
             class="focus-ring h-9 w-full rounded-lg border-0 bg-white pl-8 text-base text-ink-900 ring-1 ring-inset ring-ink-200 placeholder:text-ink-400"
           />
         </div>
 
         <select
           bind:value={statusFilter}
-          aria-label="Filter status"
+          aria-label={ $t('announcements.v2.f_status') }
           class="focus-ring h-9 rounded-lg border-0 bg-white px-2.5 text-base text-ink-900 ring-1 ring-inset ring-ink-200"
         >
-          <option value="all">Semua status</option>
-          <option value="active">Tayang</option>
-          <option value="scheduled">Terjadwal</option>
-          <option value="expired">Kedaluwarsa</option>
+          <option value="all">{ $t('announcements.v2.all_status') }</option>
+          <option value="active">{ $t('announcements.v2.live') }</option>
+          <option value="scheduled">{ $t('announcements.status.scheduled') }</option>
+          <option value="expired">{ $t('announcements.v2.expired') }</option>
         </select>
 
         <select
           bind:value={severityFilter}
-          aria-label="Filter tingkat"
+          aria-label={ $t('announcements.v2.f_sev') }
           class="focus-ring h-9 rounded-lg border-0 bg-white px-2.5 text-base text-ink-900 ring-1 ring-inset ring-ink-200"
         >
-          <option value="all">Semua tingkat</option>
-          <option value="info">Info</option>
-          <option value="success">Sukses</option>
-          <option value="warning">Peringatan</option>
-          <option value="error">Darurat</option>
+          <option value="all">{ $t('announcements.v2.all_sev') }</option>
+          <option value="info">{ $t('announcements.severity.info') }</option>
+          <option value="success">{ $t('announcements.severity.success') }</option>
+          <option value="warning">{ $t('announcements.severity.warning') }</option>
+          <option value="error">{ $t('announcements.v2.sev_error') }</option>
         </select>
 
         <select
           bind:value={modeFilter}
-          aria-label="Filter mode"
+          aria-label={ $t('announcements.v2.f_mode') }
           class="focus-ring h-9 rounded-lg border-0 bg-white px-2.5 text-base text-ink-900 ring-1 ring-inset ring-ink-200"
         >
-          <option value="all">Post & banner</option>
-          <option value="post">Postingan</option>
-          <option value="banner">Banner</option>
+          <option value="all">{ $t('announcements.v2.mode_post_banner') }</option>
+          <option value="post">{ $t('announcements.v2.mode_post') }</option>
+          <option value="banner">{ $t('announcements.modes.banner') }</option>
         </select>
 
         {#if $isSuperAdmin}
           <select
             bind:value={scopeFilter}
-            aria-label="Filter cakupan"
+            aria-label={ $t('announcements.v2.f_scope') }
             class="focus-ring h-9 rounded-lg border-0 bg-white px-2.5 text-base text-ink-900 ring-1 ring-inset ring-ink-200"
           >
-            <option value="tenant">Tenant ini</option>
-            <option value="global">Global</option>
-            <option value="all">Semua</option>
+            <option value="tenant">{ $t('announcements.v2.scope_tenant') }</option>
+            <option value="global">{ $t('admin.email_outbox.scope.global') }</option>
+            <option value="all">{ $t('admin.customers.billing.filters.all') }</option>
           </select>
         {/if}
 
@@ -488,8 +489,8 @@
         {loading}
         emptyTitle="Belum ada pengumuman"
         emptyHint={search
-          ? 'Coba kata kunci lain atau hapus filter.'
-          : 'Buat pengumuman pertama untuk memberi tahu staf atau pelanggan.'}
+          ? $t('announcements.v2.empty_hint1')
+          : $t('announcements.v2.empty_hint2')}
         footNote={`${rows.length} dari ${total} pengumuman · halaman ${pageNum}/${totalPages}`}
       >
         {#snippet cell(a, c)}
@@ -498,51 +499,51 @@
               <div class="flex items-center gap-1.5">
                 <span class="truncate font-medium text-ink-900">{a.title}</span>
                 {#if a.mode === 'banner'}
-                  <Badge label="Banner" tone="neutral" />
+                  <Badge label={ $t('announcements.modes.banner') } tone="neutral" />
                 {/if}
                 {#if a.tenant_id === null}
-                  <Badge label="Global" tone="warning" />
+                  <Badge label={ $t('admin.email_outbox.scope.global') } tone="warning" />
                 {/if}
               </div>
               <div class="truncate text-sm text-ink-500">{bodyExcerpt(a.body)}</div>
             </div>
           {:else if c.key === 'status'}
             <div class="flex flex-wrap items-center gap-1.5">
-              <Badge label={statusLabel(announcementStatus(a))} tone={statusTone(announcementStatus(a))} />
+              <Badge label={statusLabel(announcementStatus(a), $t)} tone={statusTone(announcementStatus(a))} />
               <Badge label={a.severity} tone={severityTone(a.severity)} />
             </div>
           {:else if c.key === 'audience'}
             <span class="text-sm text-ink-600">
-              {audienceOptions(reach).find((o) => o.value === a.audience)?.label ?? a.audience}
+              {audienceOptions(reach, $t).find((o) => o.value === a.audience)?.label ?? a.audience}
             </span>
           {:else if c.key === 'channels'}
             <div class="flex flex-wrap gap-1 text-sm text-ink-600">
               {#if deliveryLabels(a).length === 0}
                 <span class="inline-flex items-center gap-1 font-medium text-red-700">
-                  <Icon name="alert" size={13} /> Tanpa kanal
+                  <Icon name="alert" size={13} /> { $t('announcements.v2.no_channel') }
                 </span>
               {:else}
-                {#each deliveryLabels(a) as l (l)}
+                {#each deliveryLabels(a, $t) as l (l)}
                   <span class="inline-flex items-center gap-1">
-                    <Icon name={l === 'Email' ? 'mail' : 'bell'} size={13} /> {l}
+                    <Icon name={l === 'Email' ? 'mail' : 'bell'} size={13} />{l === 'Email' ? $t('admin.message_templates.channels.email') : $t('announcements.v2.inapp')}
                   </span>
                 {/each}
               {/if}
               {#if alreadyDelivered(a)}
-                <span class="text-ink-400">· terkirim {tanggal(a.notified_at)}</span>
+                <span class="text-ink-400">· { $t('announcements.v2.delivered') } {tanggal(a.notified_at)}</span>
               {/if}
             </div>
           {:else if c.key === 'schedule'}
             <div class="text-sm text-ink-500">
               <div>{tanggal(a.starts_at)}</div>
-              <div class="text-ink-400">s/d {a.ends_at ? tanggal(a.ends_at) : 'tanpa batas'}</div>
+              <div class="text-ink-400">{ $t('announcements.v2.range_sep') } {a.ends_at ? tanggal(a.ends_at) : $t('announcements.v2.no_limit')}</div>
             </div>
           {:else if c.key === 'actions'}
             <RowActions
-              primary={{ label: 'Sunting', icon: 'cog', onclick: () => bukaEdit(a) }}
+              primary={{ label: $t('admin.customers.detail.v2.act_edit'), icon: 'cog', onclick: () => bukaEdit(a) }}
               rest={[
                 {
-                  label: 'Hapus',
+                  label: $t('common.delete'),
                   icon: 'close',
                   danger: true,
                   onclick: () => {
@@ -583,10 +584,10 @@
   </div>
 </AppShell>
 
-<Modal bind:show={formOpen} title={editTarget ? 'Sunting pengumuman' : 'Buat pengumuman'} width="720px">
-  {#if editTarget && editDeliveryWarning(editTarget)}
+<Modal bind:show={formOpen} title={editTarget ? $t('announcements.v2.edit_title') : $t('announcements.v2.create')} width="720px">
+  {#if editTarget && editDeliveryWarning(editTarget, $t)}
     <p class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
-      {editDeliveryWarning(editTarget)}
+      {editDeliveryWarning(editTarget, $t)}
     </p>
   {/if}
 
@@ -594,7 +595,7 @@
     {#if $isSuperAdmin && !editTarget}
       <Field stacked
         id="f-scope"
-        label="Cakupan"
+        label={ $t('announcements.fields.scope') }
         value={fScope}
         type="select"
         options={scopeOpts}
@@ -605,7 +606,7 @@
 
     <Field stacked
       id="f-audience"
-      label="Audiens"
+      label={ $t('superadmin.audit_logs.columns.audience') }
       value={fAudience}
       type="select"
       options={audienceOptions(reach).map((o) => ({
@@ -620,7 +621,7 @@
     <div class="grid grid-cols-2 gap-3">
       <Field stacked
         id="f-severity"
-        label="Tingkat"
+        label={ $t('announcements.v2.sev_label') }
         value={fSeverity}
         type="select"
         options={severityOpts}
@@ -628,7 +629,7 @@
       />
       <Field stacked
         id="f-mode"
-        label="Mode tampil"
+        label={ $t('announcements.v2.mode_label') }
         value={fMode}
         type="select"
         options={modeOpts}
@@ -638,29 +639,29 @@
 
     <Field stacked
       id="f-title"
-      label="Judul"
+      label={ $t('admin.team.hard_delete.title') }
       value={fTitle}
       error={issues.find((i) => i.field === 'title')?.message ?? null}
       onchange={(v) => (fTitle = v)}
     />
 
     {#if Editor}
-      <Editor bind:value={fBody} label="Isi" placeholder="Tulis pesan…" minHeight={200} />
+      <Editor bind:value={fBody} label={ $t('announcements.v2.f_body') } placeholder={ $t('announcements.v2.body_ph') } minHeight={200} />
     {:else}
       <Field stacked
         id="f-body"
-        label="Isi"
+        label={ $t('announcements.v2.f_body') }
         value={fBody}
         type="textarea"
         rows={6}
-        placeholder="Editor teks kaya sedang dimuat…"
+        placeholder={ $t('announcements.v2.editor_loading') }
         onchange={(v) => (fBody = v)}
       />
     {/if}
 
     <div class="grid grid-cols-2 gap-3">
-      <DateTimeLocalInput id="f-starts" bind:value={fStarts} label="Mulai tayang" />
-      <DateTimeLocalInput id="f-ends" bind:value={fEnds} label="Berakhir (opsional)" />
+      <DateTimeLocalInput id="f-starts" bind:value={fStarts} label={ $t('announcements.v2.starts') } />
+      <DateTimeLocalInput id="f-ends" bind:value={fEnds} label={ $t('announcements.v2.ends') } />
     </div>
     {#each issues.filter((i) => i.field === 'startsAt' || i.field === 'endsAt') as i (i.field)}
       <p class="text-sm text-red-700">{i.message}</p>
@@ -669,14 +670,14 @@
     <div class="grid grid-cols-2 gap-3">
       <Field stacked
         id="f-inapp"
-        label="Notifikasi aplikasi"
+        label={ $t('announcements.v2.inapp') }
         value={String(fInApp)}
         type="toggle"
         onchange={(v) => (fInApp = v === 'true')}
       />
       <Field stacked
         id="f-email"
-        label="Email"
+        label={ $t('admin.message_templates.channels.email') }
         value={String(fEmail)}
         type="toggle"
         onchange={(v) => (fEmail = v === 'true')}
@@ -689,7 +690,7 @@
     {#if fEmail}
       <Field stacked
         id="f-email-force"
-        label="Kirim email walau nonaktif global"
+        label={ $t('announcements.v2.force_email') }
         value={String(fEmailForce)}
         type="toggle"
         help="Hanya perlu bila pengaturan email tenant sedang dimatikan."
@@ -698,7 +699,7 @@
     {/if}
 
     <div>
-      <label class="mb-1 block text-sm font-medium text-ink-700" for="f-cover">Gambar cover (opsional)</label>
+      <label class="mb-1 block text-sm font-medium text-ink-700" for="f-cover">{ $t('announcements.v2.cover') }</label>
       <input
         id="f-cover"
         type="file"
@@ -714,20 +715,20 @@
   </div>
 
   {#snippet footer()}
-    <Button variant="ghost" onclick={() => (formOpen = false)}>Batal</Button>
+    <Button variant="ghost" onclick={() => (formOpen = false)}>{ $t('common.cancel') }</Button>
     <Button variant="primary" icon="check" loading={saving} onclick={() => void simpan()}>
-      {editTarget ? 'Simpan perubahan' : 'Publikasikan'}
+      {editTarget ? $t('announcements.v2.save_changes') : $t('announcements.v2.publish')}
     </Button>
   {/snippet}
 </Modal>
 
-<Modal bind:show={deleteOpen} title="Hapus pengumuman" width="420px">
+<Modal bind:show={deleteOpen} title={ $t('announcements.v2.delete_title') } width="420px">
   <p class="text-sm text-ink-700">
-    Pengumuman <b>{deleteTarget?.title}</b> akan dihapus permanen. Notifikasi yang sudah
+    { $t('announcements.title') } <b>{deleteTarget?.title}</b> akan dihapus permanen. Notifikasi yang sudah
     terlanjur terkirim ke penerima tidak ikut terhapus.
   </p>
   {#snippet footer()}
-    <Button variant="ghost" onclick={() => (deleteOpen = false)}>Batal</Button>
-    <Button variant="danger" icon="close" loading={deleting} onclick={() => void hapus()}>Hapus</Button>
+    <Button variant="ghost" onclick={() => (deleteOpen = false)}>{ $t('common.cancel') }</Button>
+    <Button variant="danger" icon="close" loading={deleting} onclick={() => void hapus()}>{ $t('common.delete') }</Button>
   {/snippet}
 </Modal>

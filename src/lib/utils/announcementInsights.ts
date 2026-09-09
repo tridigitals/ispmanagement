@@ -112,21 +112,27 @@ export function alreadyDelivered(a: Announcement): boolean {
   return Boolean(a.notified_at);
 }
 
+/** Penerjemah opsional (mis. `$t`) agar label bisa mengikuti locale. */
+export type AnnTranslate = (
+  key: string,
+  options?: { values?: Record<string, string | number | boolean | null | undefined> }
+) => string;
+
 /**
  * Peringatan yang harus tampil saat pengguna membuka penyuntingan.
  *
  * Mengembalikan null bila pengumuman belum terkirim (penyuntingan aman).
  */
-export function editDeliveryWarning(a: Announcement): string | null {
+export function editDeliveryWarning(a: Announcement, tt?: AnnTranslate): string | null {
   if (!alreadyDelivered(a)) return null;
-  return 'Pengumuman ini sudah dikirim. Mengubah isi memperbarui halaman yang dibuka penerima, tapi tidak mengirim notifikasi baru dan tidak menjadwalkan ulang pengiriman.';
+  return tt?.('announcements.v2.edit_warn') ?? 'Pengumuman ini sudah dikirim. Mengubah isi memperbarui halaman yang dibuka penerima, tapi tidak mengirim notifikasi baru dan tidak menjadwalkan ulang pengiriman.';
 }
 
 /** Label kanal yang aktif. Pengumuman tanpa kanal tidak akan pernah dikirim. */
-export function deliveryLabels(a: Announcement): string[] {
+export function deliveryLabels(a: Announcement, tt?: AnnTranslate): string[] {
   const label: string[] = [];
-  if (a.deliver_in_app) label.push('Notifikasi aplikasi');
-  if (a.deliver_email) label.push('Email');
+  if (a.deliver_in_app) label.push(tt?.('announcements.v2.inapp') ?? 'Notifikasi aplikasi');
+  if (a.deliver_email) label.push(tt?.('admin.message_templates.channels.email') ?? 'Email');
   return label;
 }
 
@@ -143,14 +149,15 @@ export function deliveryLabels(a: Announcement): string[] {
  * tidak meninggalkan asumsi usang.
  */
 export function audienceOptions(
-  counts: Partial<Record<string, number>> = {}
+  counts: Partial<Record<string, number>> = {},
+  tt?: AnnTranslate
 ): AudienceReach[] {
   const dasar: Array<{ value: string; label: string }> = [
-    { value: 'all', label: 'Semua (staf + pelanggan berakun)' },
-    { value: 'admins', label: 'Admin tenant' },
-    { value: 'customers', label: 'Pelanggan berakun portal' },
-    { value: 'active_subscribers', label: 'Pelanggan berlangganan aktif' },
-    { value: 'suspended_subscribers', label: 'Pelanggan tersuspensi' },
+    { value: 'all', label: tt?.('announcements.v2.aud_all') ?? 'Semua (staf + pelanggan berakun)' },
+    { value: 'admins', label: tt?.('announcements.v2.aud_admins') ?? 'Admin tenant' },
+    { value: 'customers', label: tt?.('announcements.v2.aud_customers') ?? 'Pelanggan berakun portal' },
+    { value: 'active_subscribers', label: tt?.('announcements.v2.aud_active') ?? 'Pelanggan berlangganan aktif' },
+    { value: 'suspended_subscribers', label: tt?.('announcements.v2.aud_suspended') ?? 'Pelanggan tersuspensi' },
   ];
 
   return dasar.map(({ value, label }) => {
@@ -161,7 +168,7 @@ export function audienceOptions(
         value,
         label,
         recipients,
-        warning: 'Tidak ada akun yang cocok. Pengumuman tidak akan sampai ke siapa pun.',
+        warning: tt?.('announcements.v2.aud_zero') ?? 'Tidak ada akun yang cocok. Pengumuman tidak akan sampai ke siapa pun.',
       };
     }
 
@@ -175,10 +182,11 @@ export function audienceOptions(
  * Null bila tidak ada kesenjangan, supaya layar tidak memasang peringatan
  * kosong pada tenant yang sudah beres.
  */
-export function portalCoverageGap(totalCustomers: number, withPortalAccount: number): string | null {
+export function portalCoverageGap(totalCustomers: number, withPortalAccount: number, tt?: AnnTranslate): string | null {
   if (totalCustomers <= 0) return null;
   if (withPortalAccount >= totalCustomers) return null;
   const persen = Math.round((withPortalAccount / totalCustomers) * 100);
+  if (tt) return tt('announcements.v2.gap_portal', { values: { a: withPortalAccount, b: totalCustomers, p: persen } });
   return `${withPortalAccount} dari ${totalCustomers} pelanggan (${persen}%) punya akun portal. Notifikasi aplikasi hanya sampai ke akun portal, jadi sisanya tidak menerima pengumuman lewat kanal ini.`;
 }
 
@@ -190,17 +198,17 @@ export function portalCoverageGap(totalCustomers: number, withPortalAccount: num
  * memanggil `createAdmin`; kalau server menolak karena `ends_at <= starts_at`,
  * berkas yang sudah terunggah menjadi sampah tanpa pemilik.
  */
-export function validateDraft(draft: DraftInput): DraftIssue[] {
+export function validateDraft(draft: DraftInput, tt?: AnnTranslate): DraftIssue[] {
   const masalah: DraftIssue[] = [];
 
   if (!draft.title.trim()) {
-    masalah.push({ field: 'title', message: 'Judul wajib diisi.' });
+    masalah.push({ field: 'title', message: tt?.('announcements.v2.val_title') ?? 'Judul wajib diisi.' });
   }
   if (!draft.body.trim() || !stripToText(draft.body)) {
-    masalah.push({ field: 'body', message: 'Isi pengumuman wajib diisi.' });
+    masalah.push({ field: 'body', message: tt?.('announcements.v2.val_body') ?? 'Isi pengumuman wajib diisi.' });
   }
   if (!draft.deliverInApp && !draft.deliverEmail) {
-    masalah.push({ field: 'delivery', message: 'Pilih minimal satu kanal pengiriman.' });
+    masalah.push({ field: 'delivery', message: tt?.('announcements.v2.val_channel') ?? 'Pilih minimal satu kanal pengiriman.' });
   }
 
   const mulai = parseWaktu(draft.startsAt);
@@ -209,16 +217,16 @@ export function validateDraft(draft: DraftInput): DraftIssue[] {
   if (draft.startsAt.trim() && mulai === null) {
     masalah.push({
       field: 'startsAt',
-      message: 'Tanggal mulai tidak bisa dibaca. Kosongkan untuk terbit sekarang.',
+      message: tt?.('announcements.v2.val_starts') ?? 'Tanggal mulai tidak bisa dibaca. Kosongkan untuk terbit sekarang.',
     });
   }
   if (draft.endsAt.trim() && akhir === null) {
-    masalah.push({ field: 'endsAt', message: 'Tanggal berakhir tidak bisa dibaca.' });
+    masalah.push({ field: 'endsAt', message: tt?.('announcements.v2.val_ends') ?? 'Tanggal berakhir tidak bisa dibaca.' });
   }
   if (mulai !== null && akhir !== null && akhir <= mulai) {
     masalah.push({
       field: 'endsAt',
-      message: 'Tanggal berakhir harus setelah tanggal mulai.',
+      message: tt?.('announcements.v2.val_order') ?? 'Tanggal berakhir harus setelah tanggal mulai.',
     });
   }
 
@@ -276,14 +284,16 @@ export function statusTone(status: AnnouncementStatus): 'neutral' | 'positive' |
   return 'neutral';
 }
 
-export function statusLabel(status: AnnouncementStatus): string {
-  if (status === 'active') return 'Tayang';
-  if (status === 'scheduled') return 'Terjadwal';
-  return 'Kedaluwarsa';
+export function statusLabel(status: AnnouncementStatus, tt?: AnnTranslate): string {
+  if (status === 'active') return tt?.('announcements.v2.live') ?? 'Tayang';
+  if (status === 'scheduled') return tt?.('announcements.status.scheduled') ?? 'Terjadwal';
+  return tt?.('announcements.v2.expired') ?? 'Kedaluwarsa';
 }
 
-export function scopeLabel(a: Announcement): string {
-  return a.tenant_id === null ? 'Global' : 'Tenant';
+export function scopeLabel(a: Announcement, tt?: AnnTranslate): string {
+  return a.tenant_id === null
+    ? tt?.('announcements.scopes.global') ?? 'Global'
+    : tt?.('announcements.scopes.tenant') ?? 'Tenant';
 }
 
 /** Kutipan isi untuk daftar, sudah bebas markup. */

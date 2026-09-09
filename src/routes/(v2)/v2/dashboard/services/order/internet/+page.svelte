@@ -23,6 +23,7 @@
   import Button from '$lib/components/ds/Button.svelte';
   import Badge from '$lib/components/ds/Badge.svelte';
 
+  import { t } from 'svelte-i18n';
   type Step = 1 | 2 | 3;
 
   let loading = $state(true);
@@ -87,7 +88,7 @@
     if (!mapPickerContainer) {
       await new Promise((r) => setTimeout(r, 50));
       if (!mapPickerContainer) {
-        mapPickerError = 'Peta tidak dapat dimuat (container hilang). Silakan tutup dan buka kembali.';
+        mapPickerError = $t('dashboard.services_portal.order.map_noload');
         return;
       }
     }
@@ -163,7 +164,7 @@
       mapPickerError = '';
     } catch (err) {
       console.error('[internet-order] failed to init map picker', err);
-      mapPickerError = 'Peta gagal dimuat. Silakan cek koneksi internet atau coba lagi.';
+      mapPickerError = $t('dashboard.services_portal.order.map_fail');
     }
   }
 
@@ -198,7 +199,7 @@
 
   async function detectMyLocation() {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      toast.error('Browser Anda tidak mendukung deteksi lokasi otomatis.');
+      toast.error($t('dashboard.services_portal.order.t_geo_unsupported'));
       return;
     }
     mapPickerDetecting = true;
@@ -230,7 +231,7 @@
         }
       }
     } catch (err) {
-      toast.error('Tidak dapat mendeteksi lokasi. Pastikan izin lokasi diaktifkan.');
+      toast.error($t('dashboard.services_portal.order.t_geo_denied'));
     } finally {
       mapPickerDetecting = false;
     }
@@ -284,7 +285,7 @@
       if (!draftPackageId && basePackages.length > 0) draftPackageId = basePackages[0].id;
     } catch (e: any) {
       loadError = e?.message || String(e);
-      toast.error('Gagal memuat katalog layanan internet');
+      toast.error($t('dashboard.services_portal.order.t_catalog_fail'));
     } finally {
       loading = false;
     }
@@ -309,7 +310,7 @@
   }
 
   function billingCycleLabel(cycle: 'monthly' | 'yearly' | string) {
-    return cycle === 'yearly' ? 'Tahunan' : 'Bulanan';
+    return cycle === 'yearly' ? $t('dashboard.services_portal.order.yearly') : $t('dashboard.services_portal.order.monthly');
   }
 
   function locationLabel(locationId: string) {
@@ -325,14 +326,14 @@
 
   function checkoutEligibilityError(pkg: IspPackage, cycle: 'monthly' | 'yearly', locationId?: string): string | null {
     const targetLocationId = locationId || draftLocationId;
-    if (!targetLocationId) return 'Pilih alamat terlebih dahulu';
-    if (cycle === 'yearly' && !hasYearlyPrice(pkg)) return 'Paket ini belum mendukung tagihan tahunan';
+    if (!targetLocationId) return $t('dashboard.services_portal.order.need_addr');
+    if (cycle === 'yearly' && !hasYearlyPrice(pkg)) return $t('dashboard.services_portal.order.no_yearly');
     return null;
   }
 
   function moveToPackageStep() {
     if (!draftLocationId) {
-      toast.error('Pilih alamat terlebih dahulu');
+      toast.error($t('dashboard.services_portal.order.need_addr'));
       return;
     }
     step = 2;
@@ -345,7 +346,7 @@
   function orderNowFromPackage() {
     const pkg = getPackageById(draftPackageId);
     if (!pkg) {
-      toast.error('Paket tidak valid');
+      toast.error($t('dashboard.services_portal.order.t_pkg_invalid'));
       return;
     }
     const eligibilityError = checkoutEligibilityError(pkg, draftBillingCycle, draftLocationId);
@@ -362,7 +363,7 @@
         billing_cycle: draftBillingCycle,
       },
     ];
-    toast.success('Item berhasil ditambahkan ke pesanan');
+    toast.success($t('dashboard.services_portal.order.t_item_added'));
     step = 3;
   }
 
@@ -379,7 +380,7 @@
     for (const item of orderItems) {
       const pkg = getPackageById(item.package_id);
       if (!pkg) {
-        toast.error('Ada paket tidak valid di daftar pesanan');
+        toast.error($t('dashboard.services_portal.order.t_invalid_in_cart'));
         return;
       }
       const eligibilityError = checkoutEligibilityError(pkg, item.billing_cycle, item.location_id);
@@ -435,11 +436,11 @@
     const parsedLat = latRaw ? Number(latRaw) : NaN;
     const parsedLng = lngRaw ? Number(lngRaw) : NaN;
     if (latRaw && (Number.isNaN(parsedLat) || parsedLat < -90 || parsedLat > 90)) {
-      toast.error('Latitude harus di antara -90 hingga 90');
+      toast.error($t('dashboard.services_portal.order.t_lat_range'));
       return;
     }
     if (lngRaw && (Number.isNaN(parsedLng) || parsedLng < -180 || parsedLng > 180)) {
-      toast.error('Longitude harus di antara -180 hingga 180');
+      toast.error($t('dashboard.services_portal.order.t_lng_range'));
       return;
     }
     const latitude = latRaw ? parsedLat : null;
@@ -457,7 +458,7 @@
         longitude,
         notes: newLocationNotes.trim() || null,
       });
-      toast.success('Lokasi berhasil disimpan');
+      toast.success($t('dashboard.services_portal.order.t_loc_saved'));
       showAddLocationModal = false;
       await loadData();
       if (locations.length > 0) draftLocationId = locations[0].id;
@@ -468,10 +469,10 @@
     }
   }
 </script>
-<PortalShell title="Pesan Internet">
+<PortalShell title={ $t('dashboard.services_portal.order.title') }>
   <PageHeader
-    title="Pesan Layanan Internet"
-    desc="Isi alamat, pilih paket, dan kirim permintaan instalasi."
+    title={ $t('dashboard.services_portal.order.aria') }
+    desc={ $t('dashboard.services_portal.order.desc') }
   >
     {#snippet actions()}
       <Button variant="ghost" icon="chevronLeft" onclick={() => goto('/v2/dashboard/services/order')}>
@@ -485,7 +486,7 @@
   {#if loadError}
     <div class="banner-bad">
       <span>{loadError}</span>
-      <Button variant="ghost" size="sm" onclick={loadData}>Coba lagi</Button>
+      <Button variant="ghost" size="sm" onclick={loadData}>{ $t('common.retry') }</Button>
     </div>
   {/if}
 
@@ -495,7 +496,7 @@
         <span class="step-bullet">1</span>
         <div class="step-label">
           <span class="step-title">Alamat</span>
-          <span class="step-subtitle">Pilih lokasi instalasi</span>
+          <span class="step-subtitle">{ $t('dashboard.services_portal.order.step_addr') }</span>
         </div>
       </button>
       <div class="stepper-connector {step >= 2 ? 'filled' : ''}"></div>
@@ -503,29 +504,29 @@
         <span class="step-bullet">2</span>
         <div class="step-label">
           <span class="step-title">Paket</span>
-          <span class="step-subtitle">Pilih paket &amp; siklus</span>
+          <span class="step-subtitle">{ $t('dashboard.services_portal.order.step_pkg') }</span>
         </div>
       </button>
       <div class="stepper-connector {step >= 3 ? 'filled' : ''}"></div>
       <button class="stepper-step {step === 3 ? 'active' : ''}" type="button" onclick={() => orderItems.length > 0 && (step = 3)} disabled={orderItems.length === 0}>
         <span class="step-bullet">3</span>
         <div class="step-label">
-          <span class="step-title">Review</span>
-          <span class="step-subtitle">Konfirmasi pesanan</span>
+          <span class="step-title">{ $t('dashboard.services_portal.order.review_short') }</span>
+          <span class="step-subtitle">{ $t('dashboard.services_portal.order.step_review') }</span>
         </div>
       </button>
     </nav>
 
     <div class="order-content">
       {#if step === 1}
-        <Card title="Pilih Alamat" padded={false}>
+        <Card title={ $t('dashboard.services_portal.order.pick_addr') } padded={false}>
           {#snippet aside()}
-            <Button variant="secondary" icon="pin" onclick={openAddLocationModal}>Tambah Lokasi</Button>
+            <Button variant="secondary" icon="pin" onclick={openAddLocationModal}>{ $t('dashboard.services_portal.order.add_loc') }</Button>
           {/snippet}
           {#if !loading && locations.length === 0}
             <div class="empty-block">
-              <p class="font-medium">Belum ada lokasi</p>
-              <p class="text-sm text-ink-500">Tambah alamat instalasi terlebih dahulu untuk melanjutkan.</p>
+              <p class="font-medium">{ $t('dashboard.services_portal.order.no_locs') }</p>
+              <p class="text-sm text-ink-500">{ $t('dashboard.services_portal.order.no_locs_hint') }</p>
             </div>
           {:else}
             <div class="addr-grid">
@@ -538,7 +539,7 @@
                   <div class="addr-option-head">
                     <span class="addr-option-label">{location.label}</span>
                     {#if draftLocationId === location.id}
-                      <Badge tone="positive" label="Dipilih" />
+                      <Badge tone="positive" label={ $t('dashboard.services_portal.order.picked') } />
                     {/if}
                   </div>
                   {#if location.address_line1}
@@ -562,7 +563,7 @@
           {/if}
         </Card>
       {:else if step === 2}
-        <Card title="Pilih Paket" padded={false}>
+        <Card title={ $t('dashboard.services_portal.order.pick_pkg') } padded={false}>
           {#snippet aside()}
             <span class="text-sm text-ink-500">
               Lokasi: <strong class="text-ink-800">{selectedLocation?.label || '-'}</strong>
@@ -571,20 +572,20 @@
           <div class="cycle-toolbar">
             <div class="cycle-pills">
               <button class="cycle-pill {draftBillingCycle === 'monthly' ? 'active' : ''}" type="button" onclick={() => (draftBillingCycle = 'monthly')}>
-                Bulanan
+                { $t('dashboard.services_portal.order.monthly') }
               </button>
               <button class="cycle-pill {draftBillingCycle === 'yearly' ? 'active' : ''}" type="button" onclick={() => (draftBillingCycle = 'yearly')} disabled={!draftPackage || !hasYearlyPrice(draftPackage)}>
-                Tahunan
+                { $t('dashboard.services_portal.order.yearly') }
               </button>
             </div>
           </div>
 
           {#if loading}
-            <p class="status-note">Memuat paket…</p>
+            <p class="status-note">{ $t('dashboard.services_portal.order.load_pkgs') }</p>
           {:else if packages.length === 0}
             <div class="empty-block">
-              <p class="font-medium">Tidak ada paket tersedia</p>
-              <p class="text-sm text-ink-500">Paket internet aktif belum tersedia untuk akun Anda.</p>
+              <p class="font-medium">{ $t('dashboard.services_portal.order.no_pkgs') }</p>
+              <p class="text-sm text-ink-500">{ $t('dashboard.services_portal.order.no_pkgs_hint') }</p>
             </div>
           {:else}
             <div class="pkg-grid">
@@ -593,7 +594,7 @@
                   <div class="pkg-option-head">
                     <h4>{pkg.name}</h4>
                     {#if draftPackageId === pkg.id}
-                      <Badge tone="positive" label="Dipilih" />
+                      <Badge tone="positive" label={ $t('dashboard.services_portal.order.picked') } />
                     {/if}
                   </div>
                   {#if pkg.description}
@@ -612,16 +613,16 @@
           {/if}
 
           <div class="stage-nav">
-            <Button variant="ghost" icon="chevronLeft" onclick={moveBackToAddressStep}>Kembali ke Alamat</Button>
-            <Button icon="chevronRight" onclick={orderNowFromPackage} disabled={!draftPackageId}>Pesan Sekarang</Button>
+            <Button variant="ghost" icon="chevronLeft" onclick={moveBackToAddressStep}>{ $t('dashboard.services_portal.order.back_addr') }</Button>
+            <Button icon="chevronRight" onclick={orderNowFromPackage} disabled={!draftPackageId}>{ $t('dashboard.services_portal.order.order_now') }</Button>
           </div>
         </Card>
       {:else}
-        <Card title="Review & Konfirmasi" padded={false}>
+        <Card title={ $t('dashboard.services_portal.order.review') } padded={false}>
           {#if orderItems.length === 0}
             <div class="empty-block">
-              <p class="font-medium">Belum ada item pesanan</p>
-              <p class="text-sm text-ink-500">Kembali ke langkah paket untuk memilih layanan.</p>
+              <p class="font-medium">{ $t('dashboard.services_portal.order.cart_empty') }</p>
+              <p class="text-sm text-ink-500">{ $t('dashboard.services_portal.order.cart_empty_hint') }</p>
             </div>
           {:else}
             <div class="summary-card">
@@ -640,15 +641,15 @@
                 </div>
               {/each}
               <div class="summary-row total">
-                <span class="summary-label">Total Pesanan</span>
+                <span class="summary-label">{ $t('dashboard.services_portal.order.cart_total') }</span>
                 <span class="summary-value">{formatCurrency(orderTotalAmount)}</span>
               </div>
             </div>
           {/if}
           <div class="stage-nav">
-            <Button variant="secondary" icon="plus" onclick={addMoreFromStep3}>Tambah Item</Button>
+            <Button variant="secondary" icon="plus" onclick={addMoreFromStep3}>{ $t('dashboard.services_portal.order.add_item') }</Button>
             <Button loading={submitLoading} icon="check" onclick={submitBulkOrder} disabled={orderItems.length === 0}>
-              {submitLoading ? 'Memproses…' : 'Kirim Permintaan Instalasi'}
+              {submitLoading ? 'Memproses…' : $t('dashboard.services_portal.order.send_req')}
             </Button>
           </div>
         </Card>
@@ -658,7 +659,7 @@
 </PortalShell>
 <Modal
   show={showAddLocationModal}
-  title="Tambah Lokasi"
+  title={ $t('dashboard.services_portal.order.add_loc') }
   width="640px"
   onclose={() => {
     if (!creatingLocation) showAddLocationModal = false;
@@ -667,11 +668,11 @@
   <div class="location-form">
     <label class="form-field">
       <span>Label</span>
-      <input class="input" bind:value={newLocationLabel} placeholder="Rumah, Kantor, dll." />
+      <input class="input" bind:value={newLocationLabel} placeholder={ $t('dashboard.services_portal.order.label_ph') } />
     </label>
     <label class="form-field">
       <span>Alamat</span>
-      <input class="input" bind:value={newLocationAddress} placeholder="Jalan, nomor, RT/RW" />
+      <input class="input" bind:value={newLocationAddress} placeholder={ $t('dashboard.services_portal.order.addr_ph') } />
     </label>
     <div class="location-grid-2">
       <label class="form-field">
@@ -683,7 +684,7 @@
         <input class="input" bind:value={newLocationState} />
       </label>
       <label class="form-field">
-        <span>Kode Pos</span>
+        <span>{ $t('dashboard.services_portal.order.postal') }</span>
         <input class="input" bind:value={newLocationPostalCode} />
       </label>
       <label class="form-field">
@@ -691,7 +692,7 @@
         <Select2
           bind:value={newLocationCountry}
           options={countryOptions}
-          placeholder="Pilih negara"
+          placeholder={ $t('dashboard.services_portal.order.pick_country') }
           searchPlaceholder="Cari negara…"
           noResultsText="Negara tidak ditemukan"
           maxItems={50}
@@ -705,7 +706,7 @@
 
     <div class="map-picker">
       <div class="map-picker-header">
-        <span class="form-field-label">Pilih lokasi pada peta (klik atau geser marker)</span>
+        <span class="form-field-label">{ $t('dashboard.services_portal.order.map_hint') }</span>
         <div class="map-picker-actions">
           <button
             type="button"
@@ -722,7 +723,7 @@
         class="map-picker-canvas"
         bind:this={mapPickerContainer}
         role="application"
-        aria-label="Map picker"
+        aria-label={ $t('dashboard.services_portal.order.map_aria') }
       ></div>
       {#if mapPickerError}
         <p class="map-picker-error">{mapPickerError}</p>
@@ -740,10 +741,10 @@
     </div>
     <div class="checkout-actions">
       <Button variant="secondary" onclick={() => (showAddLocationModal = false)} disabled={creatingLocation}>
-        Batal
+        { $t('dashboard.services_portal.order.cancel_btn') }
       </Button>
       <Button loading={creatingLocation} icon="check" disabled={!newLocationLabel.trim()}>
-        {creatingLocation ? 'Menyimpan…' : 'Simpan'}
+        {creatingLocation ? $t('dashboard.services_portal.order.saving_btn') : $t('dashboard.services_portal.order.save_btn')}
       </Button>
     </div>
   </div>

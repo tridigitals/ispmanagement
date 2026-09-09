@@ -65,8 +65,8 @@ def convert_page(spec):
         before = s
         # 1) HTML attribute values:  attr="raw"  ->  attr={ $t('key') }
         s = re.sub(r'(\b[a-zA-Z-]+=)"' + esc_re(raw) + '"', lambda m: m.group(1) + "{ $t('" + key + "') }", s)
-        # 2) text node: >raw<
-        s = re.sub(r'>' + esc_re(raw) + r'<', ">{ $t('" + key + "') }<", s)
+        # 2) text node: >raw< (allow surrounding whitespace/newlines)
+        s = re.sub(r'>(\s*)' + esc_re(raw) + r'(\s*)<', lambda m: ">" + m.group(1) + "{ $t('" + key + "') }" + m.group(2) + "<", s)
         # 3) single/double-quoted literal in template expressions: 'raw' or "raw"
         s = re.sub(r"'" + esc_re(raw) + r"'", "$t('" + key + "')", s)
         s = re.sub(r'"' + esc_re(raw) + r'"', "$t('" + key + "')", s)
