@@ -47,6 +47,7 @@
   import { createThenApplyPppoeAccount, PppoeCreateApplyError } from '$lib/utils/pppoeCreateProvisioning';
   import { loadPppoeAccountModal } from '../../../../../(app)/admin/network/pppoe/pppoePageModules';
 
+  import { t } from 'svelte-i18n';
   /* api.mikrotik.routers.list() masih bertipe Promise<any[]> di lib/api/mikrotik.ts;
      dua field yang dipakai halaman ini dinyatakan eksplisit di sini. */
   type RouterRef = { id: string; name: string };
@@ -218,7 +219,7 @@
   async function submitCreate() {
     if (saving) return;
     if (packageSelectionHasMissingMapping) {
-      toast.error('Paket ini belum punya pemetaan ke router. Nilai akun yang ada dipertahankan sampai pemetaan ditambahkan.');
+      toast.error($t('admin.customers.pppoe.v2.t_no_mapping'));
       return;
     }
     if (!formRouterId || !formCustomerId || !formLocationId || !formUsername.trim() || !formPassword) return;
@@ -254,7 +255,7 @@
         showCreate = false;
         await load();
       } else {
-        toast.error('Gagal membuat akun: ' + extractApiErrorMessage(e));
+        toast.error($t('admin.customers.pppoe.v2.t_create_failed', { values: {message: extractApiErrorMessage(e) }}));
       }
     } finally {
       saving = false;
@@ -265,7 +266,7 @@
     if (saving || !editRow) return;
     if (!formUsername.trim()) return;
     if (packageSelectionHasMissingMapping) {
-      toast.error('Paket ini belum punya pemetaan ke router. Nilai akun yang ada dipertahankan sampai pemetaan ditambahkan.');
+      toast.error($t('admin.customers.pppoe.v2.t_no_mapping'));
       return;
     }
     saving = true;
@@ -284,11 +285,11 @@
         comment: formComment.trim() || null,
         account_source: formAccountSource,
       });
-      toast.success('Akun PPPoE diperbarui.');
+      toast.success($t('admin.customers.pppoe.v2.t_updated'));
       showEdit = false;
       await load();
     } catch (e: unknown) {
-      toast.error('Gagal menyimpan: ' + extractApiErrorMessage(e));
+      toast.error($t('admin.customers.pppoe.v2.t_save_failed', { values: {message: extractApiErrorMessage(e) }}));
     } finally {
       saving = false;
     }
@@ -318,12 +319,12 @@
     return 'serving';
   }
 
-  const healthMeta: Record<Health, { label: string; tone: 'positive' | 'negative' | 'warning' | 'neutral' }> = {
-    serving: { label: 'Melayani', tone: 'positive' },
-    isolated: { label: 'Terisolir', tone: 'neutral' },
-    missing: { label: 'Hilang di router', tone: 'negative' },
-    draft: { label: 'Belum aktif', tone: 'warning' },
-  };
+  const healthMeta = $derived<Record<Health, { label: string; tone: 'positive' | 'negative' | 'warning' | 'neutral' }>>({
+    serving: { label: $t('admin.customers.pppoe.v2.stat_serving'), tone: 'positive' },
+    isolated: { label: $t('admin.customers.pppoe.v2.stat_isolated'), tone: 'neutral' },
+    missing: { label: $t('admin.customers.pppoe.v2.stat_missing'), tone: 'negative' },
+    draft: { label: $t('admin.customers.pppoe.v2.stat_draft'), tone: 'warning' },
+  });
 
   const counts = $derived.by(() => {
     const c = { all: all.length, serving: 0, isolated: 0, missing: 0, draft: 0 };
@@ -367,10 +368,10 @@
 
   const chips = $derived([
     { key: 'all' as ChipKey, label: 'Semua', count: counts.all },
-    { key: 'serving' as ChipKey, label: 'Melayani', count: counts.serving },
-    { key: 'isolated' as ChipKey, label: 'Terisolir', count: counts.isolated },
-    { key: 'missing' as ChipKey, label: 'Hilang di router', count: counts.missing },
-    { key: 'draft' as ChipKey, label: 'Belum aktif', count: counts.draft },
+    { key: 'serving' as ChipKey, label: $t('admin.customers.pppoe.v2.stat_serving'), count: counts.serving },
+    { key: 'isolated' as ChipKey, label: $t('admin.customers.pppoe.v2.stat_isolated'), count: counts.isolated },
+    { key: 'missing' as ChipKey, label: $t('admin.customers.pppoe.v2.stat_missing'), count: counts.missing },
+    { key: 'draft' as ChipKey, label: $t('admin.customers.pppoe.v2.stat_draft'), count: counts.draft },
   ]);
 
   function applyChip(key: ChipKey) {
@@ -430,11 +431,11 @@
         ids.map((rid) => api.pppoe.accounts.reconcileRouter(rid)),
       );
       const failed = results.filter((r) => r.status === 'rejected').length;
-      if (failed === 0) toast.success('State router direkonsiliasi.');
-      else toast.warning(`${ids.length - failed} router berhasil, ${failed} gagal direkonsiliasi.`);
+      if (failed === 0) toast.success($t('admin.customers.pppoe.v2.t_reconciled'));
+      else toast.warning($t('admin.customers.pppoe.v2.t_recon_partial', { values: {ok: ids.length - failed, failed }}));
       await load();
     } catch (e: unknown) {
-      toast.error('Rekonsiliasi gagal: ' + extractApiErrorMessage(e));
+      toast.error($t('admin.customers.pppoe.v2.t_reconcile_failed', { values: {message: extractApiErrorMessage(e) }}));
     } finally {
       reconciling = false;
     }
@@ -445,10 +446,10 @@
     busyId = a.id;
     try {
       await api.pppoe.accounts.apply(a.id);
-      toast.success('Perubahan diterapkan ke router.');
+      toast.success($t('admin.customers.pppoe.v2.t_applied'));
       await load();
     } catch (e: unknown) {
-      toast.error('Gagal menerapkan: ' + extractApiErrorMessage(e));
+      toast.error($t('admin.customers.pppoe.v2.t_apply_failed', { values: {message: extractApiErrorMessage(e) }}));
     } finally {
       busyId = null;
     }
@@ -462,7 +463,7 @@
       toast.success(a.disabled ? 'Akun diaktifkan kembali.' : 'Akun diisolir (dinonaktifkan di router).');
       await load();
     } catch (e: unknown) {
-      toast.error('Gagal mengubah status: ' + extractApiErrorMessage(e));
+      toast.error($t('admin.customers.pppoe.v2.t_toggle_failed', { values: {message: extractApiErrorMessage(e) }}));
     } finally {
       busyId = null;
     }
@@ -473,12 +474,12 @@
     deleting = true;
     try {
       await api.pppoe.accounts.delete(deleteTarget.id);
-      toast.success('Akun dihapus.');
+      toast.success($t('admin.customers.pppoe.v2.t_deleted'));
       showDeleteConfirm = false;
       deleteTarget = null;
       await load();
     } catch (e: unknown) {
-      toast.error('Gagal menghapus: ' + extractApiErrorMessage(e));
+      toast.error($t('admin.customers.pppoe.v2.t_delete_failed', { values: {message: extractApiErrorMessage(e) }}));
     } finally {
       deleting = false;
     }
@@ -487,18 +488,18 @@
 
 <AppShell title="PPPoE">
   <PageHeader
-    title="Akun PPPoE"
+    title={ $t('admin.customers.pppoe.title') }
     eyebrow={loading
-      ? 'Memuat seluruh akun…'
+      ? $t('admin.customers.pppoe.v2.eyebrow_loading')
       : complete
-        ? `${counts.all} akun`
-        : `minimal ${counts.all} akun (data belum lengkap)`}
-    desc="Status diturunkan dari keberadaan akun di router dan flag isolir, bukan dari cara akun dibuat."
+        ? $t('admin.customers.pppoe.v2.eyebrow_count', { values: {n: counts.all }})
+        : $t('admin.customers.pppoe.v2.eyebrow_partial', { values: {n: counts.all }})}
+    desc={ $t('admin.customers.pppoe.v2.desc') }
   >
     {#snippet actions()}
       {#if canManage}
-        <Button icon="refresh" loading={reconciling} onclick={reconcileAll}>Rekonsiliasi router</Button>
-        <Button variant="primary" icon="plus" onclick={openCreate}>Tambah akun</Button>
+        <Button icon="refresh" loading={reconciling} onclick={reconcileAll}>{ $t('admin.customers.pppoe.v2.reconcile_btn') }</Button>
+        <Button variant="primary" icon="plus" onclick={openCreate}>{ $t('admin.customers.pppoe.actions.add') }</Button>
       {/if}
     {/snippet}
   </PageHeader>
@@ -515,30 +516,30 @@
   <Card class="mb-4">
     <div class="grid grid-cols-2 gap-5 lg:grid-cols-4">
       <StatTile
-        label="Melayani"
+        label={ $t('admin.customers.pppoe.v2.stat_serving') }
         value={String(counts.serving)}
-        hint={loading ? 'menghitung…' : `dari ${counts.all} akun terdaftar`}
+        hint={loading ? $t('admin.customers.pppoe.v2.counting') : $t('admin.customers.pppoe.v2.hint_from', { values: { n: counts.all } })}
         tone="positive"
       />
       <StatTile
-        label="Terisolir"
+        label={ $t('admin.customers.pppoe.v2.stat_isolated') }
         value={String(counts.isolated)}
-        hint={loading ? 'menghitung…' : 'akun dinonaktifkan di perangkat'}
+        hint={loading ? $t('admin.customers.pppoe.v2.counting') : $t('admin.customers.pppoe.v2.hint_isolated')}
       />
       <StatTile
-        label="Hilang di router"
+        label={ $t('admin.customers.pppoe.v2.stat_missing') }
         value={String(counts.missing)}
-        hint={loading ? 'menghitung…' : 'terdaftar di aplikasi, tidak ada di perangkat'}
+        hint={loading ? $t('admin.customers.pppoe.v2.counting') : $t('admin.customers.pppoe.v2.hint_missing')}
         tone={counts.missing > 0 ? 'negative' : 'positive'}
       />
       <StatTile
-        label="Router terpakai"
+        label={ $t('admin.customers.pppoe.v2.stat_routers') }
         value={String(routers.length)}
         hint={loading
-          ? 'menghitung…'
+          ? $t('admin.customers.pppoe.v2.counting')
           : routers[0]
-            ? `terbanyak ${routers[0].name} (${routers[0].n})`
-            : 'belum ada router'}
+            ? $t('admin.customers.pppoe.v2.hint_top_router', { values: { name: routers[0].name, n: routers[0].n } })
+            : $t('admin.customers.pppoe.v2.hint_no_router')}
       />
     </div>
   </Card>
@@ -547,14 +548,14 @@
     <!-- Drift nyata: akun ada di aplikasi tapi tidak ada di perangkat. -->
     <div class="mb-4">
       <AttentionPanel
-        title="Perlu rekonsiliasi"
+        title={ $t('admin.customers.pppoe.v2.reconcile_title') }
         items={[
           {
             icon: 'router',
-            title: `${counts.missing} akun tidak ditemukan di router`,
+            title: $t('admin.customers.pppoe.v2.reconcile_items', { values: {n: counts.missing }}),
             detail:
-              'Akun ini terdaftar di aplikasi tetapi tidak ada di perangkat, jadi pelanggannya tidak bisa terhubung.',
-            action: 'Lihat daftar',
+              $t('admin.customers.pppoe.v2.reconcile_detail'),
+            action: $t('admin.customers.pppoe.v2.see_list'),
             severity: 'high',
           },
         ]}
@@ -582,10 +583,10 @@
         <select
           bind:value={routerFilter}
           onchange={() => (page = 1)}
-          aria-label="Filter router"
+          aria-label={ $t('admin.network.incidents.ui.router_filter') }
           class="h-8 rounded-lg bg-white px-2.5 text-base text-ink-900 ring-1 ring-inset ring-ink-200 focus:ring-brand-600 focus:outline-none"
         >
-          <option value="">Semua router</option>
+          <option value="">{ $t('admin.network.incidents.ui.all_routers') }</option>
           {#each routers as r (r.id)}
             <option value={r.id}>{r.name} ({r.n})</option>
           {/each}
@@ -599,8 +600,8 @@
         <input
           oninput={(e) => onSearch((e.currentTarget as HTMLInputElement).value)}
           type="search"
-          placeholder="Cari username, pelanggan"
-          aria-label="Cari akun PPPoE"
+          placeholder={ $t('admin.customers.pppoe.v2.search_ph') }
+          aria-label={ $t('admin.customers.pppoe.search') }
           class="h-8 w-full rounded-lg bg-white pr-3 pl-8 text-base text-ink-900 ring-1 ring-inset ring-ink-200 placeholder:text-ink-400 focus:ring-brand-600 focus:outline-none"
         />
       </div>
@@ -671,8 +672,8 @@
 <ConfirmDialog
   bind:show={showDeleteConfirm}
   type="danger"
-  title="Hapus akun PPPoE"
-  message={deleteTarget ? `Akun "${deleteTarget.username}" akan dihapus dari aplikasi. Jalankan "Terapkan ke router" bila akun juga perlu dihapus dari perangkat.` : ''}
+  title={ $t('admin.customers.pppoe.v2.confirm_delete_title') }
+  message={deleteTarget ? $t('admin.customers.pppoe.v2.delete_msg', { values: { u: deleteTarget.username } }) : ''}
   confirmText="Hapus"
   loading={deleting}
   onconfirm={() => void confirmDelete()}
