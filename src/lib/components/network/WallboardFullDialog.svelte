@@ -128,6 +128,8 @@
   } = $props();
 
   const max = $derived(Math.max(1, ...rx, ...tx));
+  const denseLive = $derived(rx.length + tx.length > 60);
+  const denseHist = $derived(chartRx.length + chartTx.length > 60);
 </script>
 
 <div class="full-overlay" role="dialog" aria-modal="true">
@@ -202,24 +204,27 @@
       </div>
 
       {#if fullTab === 'live'}
-        <div class="full-stats">
-          <div class="stat-big">
-            <div class="k">RX</div>
-            <div class="v mono" class:warn={warnRx}>{formatBps(rxNow)}</div>
-          </div>
-          <div class="stat-big">
-            <div class="k">TX</div>
-            <div class="v mono" class:warn={warnTx}>{formatBps(txNow)}</div>
-          </div>
-        </div>
-
         <div class="spark huge">
-          <div class="bars" class:warn={warnRx}>
+          <div class="bars" class:warn={warnRx} class:dense={denseLive}>
+            <div class="spark-panel-title">
+              <span class="spark-chip">RX</span>
+              <div class="spark-rate">
+                <span class="mono rate" class:warn={warnRx}>{formatBps(rxNow)}</span>
+                <span class="spark-peak muted mono">{$t('admin.network.wallboard.chart.peak')}: {formatBps(rxPeak)}</span>
+              </div>
+            </div>
             {#each rx as v, i (i)}
               <div class="bar rx" style={`height:${Math.round((v / max) * 100)}%;`}></div>
             {/each}
           </div>
-          <div class="bars" class:warn={warnTx}>
+          <div class="bars" class:warn={warnTx} class:dense={denseLive}>
+            <div class="spark-panel-title">
+              <span class="spark-chip">TX</span>
+              <div class="spark-rate">
+                <span class="mono rate" class:warn={warnTx}>{formatBps(txNow)}</span>
+                <span class="spark-peak muted mono">{$t('admin.network.wallboard.chart.peak_tx')}: {formatBps(txPeak)}</span>
+              </div>
+            </div>
             {#each tx as v, i (i)}
               <div class="bar tx" style={`height:${Math.round((v / max) * 100)}%;`}></div>
             {/each}
@@ -227,7 +232,9 @@
         </div>
         <div class="chart-meta chart-meta-big muted">
           <span>{($t('admin.network.wallboard.chart.peak') || 'Peak') + ': ' + formatBps(rxPeak)}</span>
+          <span>{($t('admin.network.wallboard.chart.avg') || 'Avg') + ': ' + formatBps(rxAvg)}</span>
           <span>{($t('admin.network.wallboard.chart.peak_tx') || 'TX Peak') + ': ' + formatBps(txPeak)}</span>
+          <span>{($t('admin.network.wallboard.chart.avg_tx') || 'TX Avg') + ': ' + formatBps(txAvg)}</span>
         </div>
       {:else}
         <div class="metrics-filters">
@@ -318,10 +325,14 @@
                 {@const width = Math.max(0, Math.abs(metricsSelCurrent - metricsSelStart))}
                 <div class="metrics-selection" style={`left:${left}px; width:${width}px;`}></div>
               {/if}
-              <div class="bars">
+              <div class="bars" class:dense={denseHist}>
                 {#if pointIdx != null}
                   <div class="spark-crosshair" style={`--x:${((pointIdx + 0.5) / Math.max(1, chartRx.length)) * 100}%`}></div>
                 {/if}
+                <div class="spark-panel-title">
+                  <span class="spark-chip">RX</span>
+                  <span class="spark-peak muted mono">{$t('admin.network.wallboard.chart.avg')}: {formatBps(histRxAvg)}</span>
+                </div>
                 {#each chartRx as v, i (i)}
                   <div
                     class="bar rx"
@@ -340,10 +351,14 @@
                   ></div>
                 {/each}
               </div>
-              <div class="bars">
+              <div class="bars" class:dense={denseHist}>
                 {#if pointIdx != null}
                   <div class="spark-crosshair" style={`--x:${((pointIdx + 0.5) / Math.max(1, chartTx.length)) * 100}%`}></div>
                 {/if}
+                <div class="spark-panel-title">
+                  <span class="spark-chip">TX</span>
+                  <span class="spark-peak muted mono">{$t('admin.network.wallboard.chart.avg_tx')}: {formatBps(histTxAvg)}</span>
+                </div>
                 {#each chartTx as v, i (i)}
                   <div
                     class="bar tx"
@@ -401,6 +416,21 @@
     display: grid;
     place-items: center;
     animation: overlay-in 240ms ease both;
+    /* Tema Midnight Teal (sama persis dgn token .wallboard-viewport):
+       dialog ini bisa ter-render di subtree .v2-light (token legacy di-
+       override terang), jadi token dark dipasang sendiri di sini supaya
+       popup detail SELALU menyatu dgn index wallboard. */
+    color-scheme: dark;
+    --bg-surface: #111927;
+    --bg-app: #0a0f1a;
+    --border-color: #1d2a3f;
+    --text-primary: #e8eef7;
+    --text-secondary: #93a3b8;
+    --text-muted: #64748b;
+    --accent: #67e8f9;
+    --color-warning: #fbbf24;
+    --color-danger: #f87171;
+    --color-success: #34d399;
   }
   .full-backdrop {
     position: absolute;
@@ -489,7 +519,7 @@
   }
   .full-summary-grid {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
   }
   .full-summary-item {
@@ -638,6 +668,47 @@
     border-color: color-mix(in srgb, var(--accent) 50%, transparent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
   }
+  .spark-panel-title {
+    position: absolute;
+    left: 10px;
+    top: 8px;
+    right: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    z-index: 2;
+  }
+  .spark-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 45%, transparent);
+    color: var(--text-muted);
+    font-weight: 800;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: color-mix(in srgb, var(--bg-surface) 50%, transparent);
+  }
+  .spark-rate { display: inline-flex; align-items: center; gap: 8px; }
+  .rate {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+  }
+  .rate.warn {
+    color: var(--color-danger);
+    font-weight: 950;
+    text-shadow: 0 0 8px color-mix(in srgb, var(--color-danger) 40%, transparent);
+  }
+  .spark-peak {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
   .metrics-tooltip {
     margin-top: 8px;
     display: inline-flex;
@@ -674,35 +745,6 @@
     gap: 10px;
     margin-bottom: 10px;
   }
-  .full-stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-  }
-  .stat-big {
-    border: 1px solid color-mix(in srgb, var(--border-color) 45%, transparent);
-    border-radius: var(--radius-lg);
-    padding: 14px;
-    background: color-mix(in srgb, var(--accent) 4%, var(--bg-surface) 55%);
-    transition: border-color 250ms ease, box-shadow 250ms ease;
-  }
-  .stat-big .k {
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    font-weight: 900;
-    color: var(--text-muted);
-    text-transform: uppercase;
-  }
-  .stat-big .v {
-    margin-top: 8px;
-    font-weight: 950;
-    color: var(--text-primary);
-    font-size: 18px;
-  }
-  .stat-big .v.warn {
-    color: var(--color-danger);
-    text-shadow: 0 0 8px color-mix(in srgb, var(--color-danger) 40%, transparent);
-  }
   .spark {
     margin-top: 10px;
     position: relative;
@@ -727,12 +769,21 @@
     height: 100%;
     border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
     border-radius: 14px;
-    padding: 26px 6px 6px;
-    background:
-      color-mix(in srgb, var(--bg-surface) 92%, transparent);
+    padding: 30px 8px 8px;
+    background: color-mix(in srgb, var(--bg-surface) 60%, rgba(0, 0, 0, 0.25));
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
     overflow: hidden;
     transition: border-color 250ms ease, box-shadow 250ms ease;
+  }
+  /* Data rapat (metrics 24h/30d): bar flex baseline 3px biar nggak jadi blok penuh. */
+  .bars.dense {
+    display: flex;
+    gap: 1px;
+  }
+  .bars.dense .bar {
+    flex: 1 1 3px;
+    min-width: 2px;
+    max-width: 10px;
   }
   .bars.warn {
     border-color: color-mix(in srgb, var(--color-danger) 40%, var(--border-color));
@@ -746,12 +797,12 @@
     transition: opacity 200ms ease;
   }
   .bar.rx {
-    background: color-mix(in srgb, #22d3ee 65%, #2563eb 35%);
-    box-shadow: 0 0 4px color-mix(in srgb, #22d3ee 25%, transparent);
+    background: linear-gradient(to top, #0e7490, #67e8f9);
+    box-shadow: 0 0 6px -1px color-mix(in srgb, #67e8f9 30%, transparent);
   }
   .bar.tx {
-    background: color-mix(in srgb, #fb7185 65%, #f97316 35%);
-    box-shadow: 0 0 4px color-mix(in srgb, #fb7185 25%, transparent);
+    background: linear-gradient(to top, #5b21b6, #a78bfa);
+    box-shadow: 0 0 6px -1px color-mix(in srgb, #a78bfa 30%, transparent);
   }
   .bar.active {
     box-shadow:
@@ -869,12 +920,11 @@
     .metrics-dates {
       grid-template-columns: 1fr;
     }
-    .full-stats {
+    .chart-meta {
       grid-template-columns: 1fr;
     }
-    .chart-meta,
     .chart-meta-big {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 </style>
