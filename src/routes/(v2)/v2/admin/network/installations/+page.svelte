@@ -71,6 +71,7 @@
   import type { Column } from '$lib/components/ds/table-types';
   import type { StatusTone } from '$lib/components/ds/tokens';
 
+  import { t } from 'svelte-i18n';
   const VISIBILITY_KEY = 'installation_work_order_visibility_mode';
   const CANCEL_REASON_MIN = 10;
 
@@ -125,9 +126,9 @@
       ? [
           {
             icon: 'clock' as const,
-            title: `${overdue.length} instalasi lewat jadwal`,
-            detail: 'Jadwalnya sudah lewat lebih dari sehari dan WO masih menunggu teknisi.',
-            action: 'Lihat penunggu',
+            title: $t('admin.network.installations.v2.attn_overdue_title', { values: { n: overdue.length } }),
+            detail: $t('admin.network.installations.v2.attn_overdue_detail'),
+            action: $t('admin.network.installations.v2.attn_overdue_action'),
             href: '/v2/admin/network/installations',
           },
         ]
@@ -136,9 +137,9 @@
       ? [
           {
             icon: 'alert' as const,
-            title: 'Daftar work order mencapai batas 500',
-            detail: 'Bisa ada WO di luar yang tampil. Sempitkan filter (sembunyikan yang tertutup, atau perkecil periode) untuk memastikan tidak ada yang terlewat.',
-            action: 'Segarkan',
+            title: $t('admin.network.installations.v2.attn_trunc_title'),
+            detail: $t('admin.network.installations.v2.attn_trunc_detail'),
+            action: $t('admin.network.installations.v2.attn_trunc_action'),
             href: '/v2/admin/network/installations',
           },
         ]
@@ -233,7 +234,7 @@
   }
 
   function assigneeLabel(id: string | null): string {
-    if (!id) return 'Belum ada';
+    if (!id) return $t('admin.network.installations.v2.opt_unassigned');
     const a = assignees.find((x) => x.user_id === id);
     return a?.name || rows.find((r) => r.assigned_to === id)?.assigned_to_name || id.slice(0, 8);
   }
@@ -397,7 +398,7 @@
     busyId = row.id;
     try {
       await api.workOrders.claim(row.id);
-      toast.success('WO diambil.');
+      toast.success($t('admin.network.installations.v2.t_claim'));
       await reload();
     } catch (e) {
       toast.error(friendlyWorkOrderError(extractApiErrorMessage(e)));
@@ -414,7 +415,7 @@
     busyId = target.id;
     try {
       await api.workOrders.release(target.id);
-      toast.success('Penugasan dilepas.');
+      toast.success($t('admin.network.installations.v2.t_release'));
       await reload();
     } catch (e) {
       toast.error(friendlyWorkOrderError(extractApiErrorMessage(e)));
@@ -432,7 +433,7 @@
   async function confirmCancel() {
     if (!cancelTarget) return;
     if (cancelReason.trim().length < CANCEL_REASON_MIN) {
-      toast.error(`Alasan pembatalan minimal ${CANCEL_REASON_MIN} karakter.`);
+      toast.error($t('admin.network.installations.v2.t_reason_min', { values: { min: CANCEL_REASON_MIN } }));
       return;
     }
     showCancel = false;
@@ -459,7 +460,7 @@
           : { notes: rescheduleNotes };
       if (kind === 'approve') await api.workOrders.approveReschedule(active.id, payload);
       else await api.workOrders.rejectReschedule(active.id, { notes: rescheduleNotes });
-      toast.success(kind === 'approve' ? 'Jadwal ulang disetujui.' : 'Permintaan ditolak.');
+      toast.success(kind === 'approve' ? $t('admin.network.installations.v2.t_approve') : $t('admin.network.installations.v2.t_reject'));
       reschedule = null;
       await reload();
     } catch (e) {
@@ -479,7 +480,7 @@
         const up = await api.storage.uploadFile(f);
         if (!photoIds.includes(up.id)) photoIds = [...photoIds, up.id];
       }
-      toast.success('Foto terunggah.');
+      toast.success($t('admin.network.installations.v2.t_photo'));
     } catch (e) {
       toast.error(friendlyWorkOrderError(extractApiErrorMessage(e)));
     } finally {
@@ -496,7 +497,7 @@
         visibilityMode,
         'Kontrol visibilitas work order instalasi baru: admin saja atau semua staf instalasi.',
       );
-      toast.success('Visibilitas tersimpan.');
+      toast.success($t('admin.network.installations.v2.t_vis'));
       showVisibility = false;
       await reload();
     } catch (e) {
@@ -510,25 +511,25 @@
   const parentOptions = $derived(active ? buildInstallationParentAssetOptions(assets, parentAssetId) : []);
   const bindingError = $derived(active ? validateInstallationAssetBinding(active, { terminal_asset_id: terminalAssetId, parent_asset_id: parentAssetId }) : null);
 
-  const columns: Column[] = [
-    { key: 'customer', label: 'Pelanggan' },
-    { key: 'status', label: 'Status', width: '120px' },
-    { key: 'assignee', label: 'Teknisi', width: '150px' },
-    { key: 'schedule', label: 'Jadwal', width: '150px' },
-    { key: 'package', label: 'Paket', width: '160px' },
+  const columns = $derived<Column[]>([
+    { key: 'customer', label: $t('common.customer') },
+    { key: 'status', label: $t('common.status'), width: '120px' },
+    { key: 'assignee', label: $t('admin.network.installations.v2.tech'), width: '150px' },
+    { key: 'schedule', label: $t('common.schedule'), width: '150px' },
+    { key: 'package', label: $t('common.package'), width: '160px' },
     { key: 'actions', label: '', width: '170px', align: 'right' },
-  ];
+  ]);
 
-  const tiles: Array<{ st: 'pending' | 'in_progress' | 'completed' | 'cancelled'; label: string; statKey: 'pending' | 'inProgress' | 'completed' | 'cancelled'; baseTone: TileTone }> = [
-    { st: 'pending', label: 'Menunggu', statKey: 'pending', baseTone: 'warning' },
-    { st: 'in_progress', label: 'Dikerjakan', statKey: 'inProgress', baseTone: 'neutral' },
-    { st: 'completed', label: 'Selesai', statKey: 'completed', baseTone: 'positive' },
-    { st: 'cancelled', label: 'Batal', statKey: 'cancelled', baseTone: 'neutral' },
-  ];
+  const tiles = $derived<Array<{ st: 'pending' | 'in_progress' | 'completed' | 'cancelled'; label: string; statKey: 'pending' | 'inProgress' | 'completed' | 'cancelled'; baseTone: TileTone }>>([
+    { st: 'pending', label: $t('admin.network.installations.v2.tile_pending'), statKey: 'pending', baseTone: 'warning' },
+    { st: 'in_progress', label: $t('admin.network.installations.v2.tile_working'), statKey: 'inProgress', baseTone: 'neutral' },
+    { st: 'completed', label: $t('common.complete'), statKey: 'completed', baseTone: 'positive' },
+    { st: 'cancelled', label: $t('common.cancel'), statKey: 'cancelled', baseTone: 'neutral' },
+  ]);
 </script>
 
-<AppShell title="Instalasi">
-  <PageHeader title="Instalasi" desc="Work order pemasangan pelanggan — rencana, pengerjaan, penyelesaian.">
+<AppShell title={ $t('admin.dashboard.actions.installations.title') }>
+  <PageHeader title={ $t('admin.dashboard.actions.installations.title') } desc={ $t('admin.network.installations.v2.desc') }>
     {#snippet actions()}
       {#if isAdminOwner}
         <Button variant="ghost" icon="cog" onclick={() => (showVisibility = true)}>Visibilitas</Button>
@@ -539,19 +540,19 @@
   {#if loadError}
     <div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
       {loadError}
-      <button type="button" class="ml-2 underline" onclick={() => (loadError = null)}>Tutup</button>
+      <button type="button" class="ml-2 underline" onclick={() => (loadError = null)}>{ $t('common.close') }</button>
     </div>
   {/if}
 
   <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-    {#each tiles as t (t.st)}
+    {#each tiles as tile (tile.st)}
       <button
         type="button"
-        class="focus-ring rounded-xl text-left {statusFilter === t.st ? 'ring-2 ring-ink-900' : ''}"
-        aria-pressed={statusFilter === t.st}
-        onclick={() => (statusFilter = statusFilter === t.st ? 'all' : t.st)}
+        class="focus-ring rounded-xl text-left {statusFilter === tile.st ? 'ring-2 ring-ink-900' : ''}"
+        aria-pressed={statusFilter === tile.st}
+        onclick={() => (statusFilter = statusFilter === tile.st ? 'all' : tile.st)}
       >
-        <StatTile label={t.label} value={String(stats[t.statKey])} hint="klik untuk filter" tone={t.baseTone} />
+        <StatTile label={tile.label} value={String(stats[tile.statKey])} hint={ $t('admin.network.installations.v2.hint_filter') } tone={tile.baseTone} />
       </button>
     {/each}
   </div>
@@ -565,16 +566,16 @@
   <div class="mt-4 flex flex-wrap items-center gap-2">
     <label class="flex items-center gap-2 text-sm text-ink-700">
       <input type="checkbox" class="h-6 w-6 accent-ink-900" bind:checked={includeClosed} onchange={() => void reload()} />
-      Sertakan yang tutup
+      { $t('admin.network.installations.v2.include_closed') }
     </label>
-    <select class="focus-ring h-9 rounded-lg bg-white text-sm ring-1 ring-inset ring-ink-200" bind:value={assignmentFilter} aria-label="Filter penugasan">
-      <option value="all">Semua penugasan</option>
-      <option value="assigned">Sudah ada teknisi</option>
-      <option value="unassigned">Belum ada teknisi</option>
+    <select class="focus-ring h-9 rounded-lg bg-white text-sm ring-1 ring-inset ring-ink-200" bind:value={assignmentFilter} aria-label={ $t('admin.network.installations.v2.assign_aria') }>
+      <option value="all">{ $t('admin.network.installations.v2.assign_all') }</option>
+      <option value="assigned">{ $t('admin.network.installations.v2.assign_has') }</option>
+      <option value="unassigned">{ $t('admin.network.installations.v2.assign_none') }</option>
     </select>
     {#if assignees.length}
-      <select class="focus-ring h-9 rounded-lg bg-white text-sm ring-1 ring-inset ring-ink-200" bind:value={assigneeFilter} aria-label="Filter per teknisi">
-        <option value="">Semua teknisi</option>
+      <select class="focus-ring h-9 rounded-lg bg-white text-sm ring-1 ring-inset ring-ink-200" bind:value={assigneeFilter} aria-label={ $t('admin.network.installations.v2.tech_filter') }>
+        <option value="">{ $t('admin.network.installations.v2.tech_all') }</option>
         {#each assignees as a (a.user_id)}
           <option value={a.user_id}>{a.name}</option>
         {/each}
@@ -583,8 +584,8 @@
     <div class="relative ml-auto min-w-[220px]">
       <input
         bind:value={search}
-        placeholder="Cari pelanggan, lokasi, paket"
-        aria-label="Cari work order"
+        placeholder={ $t('admin.network.installations.v2.search_ph') }
+        aria-label={ $t('admin.network.installations.v2.search_aria') }
         class="focus-ring h-9 w-full rounded-lg border-0 bg-white px-3 text-base text-ink-900 ring-1 ring-inset ring-ink-200 placeholder:text-ink-400"
       />
     </div>
@@ -596,15 +597,15 @@
       rows={visible}
       pageSize={25}
       {loading}
-      emptyTitle="Tidak ada work order"
-      emptyHint="Instalasi baru dari langganan akan muncul di sini otomatis."
-      footNote={`${visible.length} dari ${rows.length} work order`}
+      emptyTitle={ $t('admin.network.installations.v2.empty_title') }
+      emptyHint={ $t('admin.network.installations.v2.empty_hint') }
+      footNote={$t('admin.network.installations.v2.foot_wo', { values: { n: visible.length, total: rows.length } })}
     >
       {#snippet cell(row: InstallationWorkOrderView, col: Column)}
         {#if col.key === 'customer'}
           <div class="min-w-0 max-w-[320px]">
             <div class="truncate font-medium text-ink-900">{row.customer_name || row.customer_id.slice(0, 8)}</div>
-            <div class="truncate text-sm text-ink-500">{row.location_label || 'Tanpa lokasi'}{#if row.router_name} · {row.router_name}{/if}</div>
+            <div class="truncate text-sm text-ink-500">{row.location_label || $t('admin.network.installations.v2.no_location')}{#if row.router_name} · {row.router_name}{/if}</div>
           </div>
         {:else if col.key === 'status'}
           <Badge tone={statusTone(row.status)} label={woStatusLabel(row.status)} />
@@ -612,18 +613,18 @@
           <span class="text-sm text-ink-700">{assigneeLabel(row.assigned_to)}</span>
         {:else if col.key === 'schedule'}
           <span class="text-sm {row.scheduled_at && new Date(row.scheduled_at).getTime() < Date.now() && row.status === 'pending' ? 'text-red-600' : 'text-ink-500'}">
-            {row.scheduled_at ? formatDateTime(row.scheduled_at, { timeZone: $appSettings.app_timezone }) : 'Belum dijadwal'}
+            {row.scheduled_at ? formatDateTime(row.scheduled_at, { timeZone: $appSettings.app_timezone }) : $t('admin.network.installations.v2.unscheduled')}
           </span>
         {:else if col.key === 'package'}
           <span class="text-sm text-ink-700">{row.package_name || '—'}</span>
         {:else if col.key === 'actions'}
           <RowActions
-            primary={{ label: 'Detail', icon: 'search', onclick: () => openDetail(row) }}
+            primary={{ label: $t('admin.network.installations.v2.act_detail'), icon: 'search', onclick: () => openDetail(row) }}
             rest={[
-              ...(canTake(row) ? [{ label: 'Ambil', onclick: () => void claimWo(row) }] : []),
-              ...(canManage && row.status === 'pending' && row.assigned_to ? [{ label: 'Lepas', onclick: () => void releaseWo(row) }] : []),
+              ...(canTake(row) ? [{ label: $t('admin.network.installations.v2.act_take'), onclick: () => void claimWo(row) }] : []),
+              ...(canManage && row.status === 'pending' && row.assigned_to ? [{ label: $t('admin.network.installations.v2.act_release'), onclick: () => void releaseWo(row) }] : []),
               ...(isAdminOwner && canManage && row.status !== 'completed' && row.status !== 'cancelled'
-                ? [{ label: 'Batalkan', onclick: () => openCancel(row) }]
+                ? [{ label: $t('admin.network.installations.v2.act_cancel'), onclick: () => openCancel(row) }]
                 : []),
             ]}
           />
@@ -632,46 +633,46 @@
     </DataTable>
   </div>
 
-  <Modal bind:show={showDetail} title={active ? `WO — ${active.customer_name || active.id.slice(0, 8)}` : 'Detail'}>
+  <Modal bind:show={showDetail} title={active ? $t('admin.network.installations.v2.wo_title', { values: { name: active.customer_name || active.id.slice(0, 8) } }) : $t('admin.network.installations.v2.act_detail')}>
     {#if active}
       <div class="space-y-3 text-sm">
         <div class="flex flex-wrap items-center gap-2">
           <Badge tone={statusTone(active.status)} label={woStatusLabel(active.status)} />
           {#if active.has_customer_package_invoice}
-            <Badge tone="positive" label="Invoice dibuat" />
+            <Badge tone="positive" label={ $t('admin.network.installations.v2.badge_invoice') } />
           {/if}
           {#if active.selected_zone_name}
-            <Badge tone="neutral" label="Zona: {active.selected_zone_name}" />
+            <Badge tone="neutral" label={$t('admin.network.installations.v2.badge_zone', { values: { name: active.selected_zone_name } })} />
           {/if}
         </div>
         <dl class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-ink-700">
-          <dt class="text-ink-500">Lokasi</dt>
+          <dt class="text-ink-500">{ $t('common.location') }</dt>
           <dd>{active.location_label || '—'}</dd>
-          <dt class="text-ink-500">Paket</dt>
+          <dt class="text-ink-500">{ $t('common.package') }</dt>
           <dd>{active.package_name || '—'} ({active.package_provisioning_type || '—'})</dd>
-          <dt class="text-ink-500">Langganan</dt>
-          <dd>{woStatusLabel(active.subscription_status || '') || '—'}{#if active.subscription_grace_until} · grace s/d {formatDateTime(active.subscription_grace_until, { timeZone: $appSettings.app_timezone })}{/if}</dd>
+          <dt class="text-ink-500">{ $t('admin.customers.tabs.subscriptions') }</dt>
+          <dd>{woStatusLabel(active.subscription_status || '') || '—'}{#if active.subscription_grace_until} · { $t('admin.network.installations.v2.grace_until') } {formatDateTime(active.subscription_grace_until, { timeZone: $appSettings.app_timezone })}{/if}</dd>
         </dl>
 
         {#if reschedule}
           <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
-            <div class="font-medium text-amber-900">Permintaan jadwal ulang dari pelanggan</div>
+            <div class="font-medium text-amber-900">{ $t('admin.network.installations.v2.resched_title') }</div>
             <div class="mt-1 text-amber-800">
-              Diminta: {formatDateTime(reschedule.requested_schedule_at, { timeZone: $appSettings.app_timezone })}
-              {#if reschedule.reason} · Alasan: {reschedule.reason}{/if}
+              { $t('admin.network.installations.v2.resched_requested') } {formatDateTime(reschedule.requested_schedule_at, { timeZone: $appSettings.app_timezone })}
+              {#if reschedule.reason} · { $t('admin.network.installations.v2.resched_reason') } {reschedule.reason}{/if}
             </div>
             {#if canManage}
               <div class="mt-2 flex flex-wrap items-end gap-2">
                 <label class="flex flex-col gap-1">
-                  <span class="text-xs text-amber-900">Jadwal final</span>
+                  <span class="text-xs text-amber-900">{ $t('admin.network.installations.v2.resched_final') }</span>
                   <input type="datetime-local" class="focus-ring h-9 rounded-lg bg-white px-2 ring-1 ring-inset ring-amber-300" bind:value={rescheduleOverride} />
                 </label>
                 <label class="flex min-w-[160px] flex-1 flex-col gap-1">
-                  <span class="text-xs text-amber-900">Catatan keputusan</span>
-                  <input type="text" class="focus-ring h-9 rounded-lg bg-white px-2 ring-1 ring-inset ring-amber-300" bind:value={rescheduleNotes} placeholder="opsional untuk setuju" />
+                  <span class="text-xs text-amber-900">{ $t('admin.network.installations.v2.resched_decision') }</span>
+                  <input type="text" class="focus-ring h-9 rounded-lg bg-white px-2 ring-1 ring-inset ring-amber-300" bind:value={rescheduleNotes} placeholder={ $t('admin.network.installations.v2.resched_notes_ph') } />
                 </label>
-                <Button variant="primary" size="sm" disabled={decisionBusy} onclick={() => void decideReschedule('approve')}>Setujui</Button>
-                <Button variant="ghost" size="sm" disabled={decisionBusy} onclick={() => void decideReschedule('reject')}>Tolak</Button>
+                <Button variant="primary" size="sm" disabled={decisionBusy} onclick={() => void decideReschedule('approve')}>{ $t('superadmin.pending_approvals.approve') }</Button>
+                <Button variant="ghost" size="sm" disabled={decisionBusy} onclick={() => void decideReschedule('reject')}>{ $t('superadmin.pending_approvals.reject') }</Button>
               </div>
             {/if}
           </div>
@@ -679,62 +680,62 @@
 
         {#if canOperate(active) && active.status !== 'completed' && active.status !== 'cancelled'}
           <div class="rounded-lg border border-ink-200 p-3">
-            <div class="mb-1 font-medium text-ink-900">Rencana</div>
+            <div class="mb-1 font-medium text-ink-900">{ $t('admin.network.installations.v2.plan_title') }</div>
             <Field
               id="wo-assignee"
-              label="Teknisi"
+              label={ $t('admin.network.installations.v2.tech') }
               type="select"
               stacked
               value={formAssignee}
-              options={[{ value: '', label: 'Belum ada' }, ...assignees.map((a) => ({ value: a.user_id, label: a.name }))]}
+              options={[{ value: '', label: $t('admin.network.installations.v2.opt_unassigned') }, ...assignees.map((a) => ({ value: a.user_id, label: a.name }))]}
               onchange={(v) => (formAssignee = String(v ?? ''))}
               disabled={!isAdminOwner}
             />
             <label class="mt-1 flex flex-col gap-1">
-              <span class="text-base font-medium text-ink-800">Jadwal</span>
+              <span class="text-base font-medium text-ink-800">{ $t('common.schedule') }</span>
               <input id="wo-schedule" type="datetime-local" class="focus-ring h-9 rounded-lg bg-white px-3 text-base ring-1 ring-inset ring-ink-200" bind:value={formSchedule} />
             </label>
             <div class="mt-2 flex flex-wrap gap-2">
               {#if isAdminOwner || isMine(active)}
-                <Button variant="ghost" size="sm" disabled={!!busyId} onclick={() => void savePlan()}>Simpan rencana</Button>
+                <Button variant="ghost" size="sm" disabled={!!busyId} onclick={() => void savePlan()}>{ $t('admin.network.installations.v2.btn_save_plan') }</Button>
               {/if}
               {#if active.status === 'pending' && formAssignee && formSchedule}
-                <Button variant="primary" size="sm" disabled={!!busyId} onclick={() => void startWo()}>Mulai</Button>
+                <Button variant="primary" size="sm" disabled={!!busyId} onclick={() => void startWo()}>{ $t('admin.network.installations.v2.btn_start') }</Button>
               {/if}
               {#if active.status === 'in_progress'}
-                <Button variant="primary" size="sm" disabled={!!busyId || !terminalAssetId} onclick={() => void completeWo()}>Selesaikan</Button>
+                <Button variant="primary" size="sm" disabled={!!busyId || !terminalAssetId} onclick={() => void completeWo()}>{ $t('admin.network.installations.v2.btn_complete') }</Button>
               {/if}
               {#if canRelease(active)}
-                <Button variant="ghost" size="sm" disabled={!!busyId} onclick={() => void releaseWo()}>Lepas penugasan</Button>
+                <Button variant="ghost" size="sm" disabled={!!busyId} onclick={() => void releaseWo()}>{ $t('admin.network.installations.v2.btn_release') }</Button>
               {/if}
             </div>
           </div>
         {:else if active.status === 'cancelled' && isAdminOwner && canManage}
           <div class="flex gap-2">
-            <Button variant="ghost" size="sm" disabled={!!busyId} onclick={() => void reopenWo()}>Buka ulang</Button>
+            <Button variant="ghost" size="sm" disabled={!!busyId} onclick={() => void reopenWo()}>{ $t('admin.network.installations.v2.btn_reopen') }</Button>
           </div>
         {/if}
 
         {#if active.status === 'in_progress'}
           <div class="rounded-lg border border-ink-200 p-3">
-            <div class="mb-1 font-medium text-ink-900">Aset instalasi</div>
+            <div class="mb-1 font-medium text-ink-900">{ $t('admin.network.installations.v2.assets_title') }</div>
             <Field
               id="wo-terminal"
-              label="Aset terminal (ONT/ONU)"
+              label={ $t('admin.network.installations.v2.terminal_field') }
               type="select"
               stacked
               value={terminalAssetId}
-              options={[{ value: '', label: 'Pilih aset…' }, ...terminalOptions]}
+              options={[{ value: '', label: $t('admin.network.installations.v2.pick_asset') }, ...terminalOptions]}
               onchange={(v) => (terminalAssetId = String(v ?? ''))}
               error={bindingError}
             />
             <Field
               id="wo-parent"
-              label="Aset induk (opsional)"
+              label={ $t('admin.network.installations.v2.parent_field') }
               type="select"
               stacked
               value={parentAssetId}
-              options={[{ value: '', label: 'Tidak ada' }, ...parentOptions]}
+              options={[{ value: '', label: $t('admin.network.installations.v2.opt_none') }, ...parentOptions]}
               onchange={(v) => (parentAssetId = String(v ?? ''))}
             />
           </div>
@@ -742,9 +743,9 @@
 
         {#if canOperate(active) && active.status !== 'completed' && active.status !== 'cancelled'}
           <div class="rounded-lg border border-ink-200 p-3">
-            <div class="mb-1 font-medium text-ink-900">Checklist lapangan</div>
+            <div class="mb-1 font-medium text-ink-900">{ $t('admin.network.installations.v2.chk_title') }</div>
             <div class="grid grid-cols-2 gap-1">
-              {#each [['cable', 'Kabel terpasang'], ['ont', 'ONT terpasang'], ['pppoe', 'PPPoE dikonfigurasi'], ['speed', 'Speedtest lolos']] as [key, label] (key)}
+              {#each [['cable', $t('admin.network.installations.v2.chk_cable')], ['ont', $t('admin.network.installations.v2.chk_ont')], ['pppoe', $t('admin.network.installations.v2.chk_pppoe')], ['speed', $t('admin.network.installations.v2.chk_speed')]] as [key, label] (key)}
                 <label class="flex items-center gap-2 py-1 text-ink-700">
                   <input
                     type="checkbox"
@@ -756,16 +757,16 @@
                 </label>
               {/each}
             </div>
-            <Field id="wo-notes" label="Catatan" type="textarea" stacked rows={3} value={formNotes} onchange={(v) => (formNotes = String(v ?? ''))} />
+            <Field id="wo-notes" label={ $t('common.notes') } type="textarea" stacked rows={3} value={formNotes} onchange={(v) => (formNotes = String(v ?? ''))} />
             <div class="mt-1 flex flex-wrap items-center gap-2">
               <label class="focus-ring inline-flex h-8 cursor-pointer items-center rounded-lg bg-ink-100 px-3 text-sm">
-                {uploadingPhotos ? 'Mengunggah…' : 'Tambah foto'}
+                {uploadingPhotos ? $t('admin.network.installations.v2.uploading') : $t('admin.network.installations.v2.add_photo')}
                 <input type="file" accept="image/*" multiple class="sr-only" onchange={onUploadPhotos} disabled={uploadingPhotos} />
               </label>
               {#each photoIds as pid (pid)}
-                <a class="text-sm text-brand-700 underline" href="{getApiBaseUrl()}/storage/files/{pid}/content?token={$token || ''}" target="_blank" rel="noreferrer">foto {pid.slice(0, 6)}</a>
+                <a class="text-sm text-brand-700 underline" href="{getApiBaseUrl()}/storage/files/{pid}/content?token={$token || ''}" target="_blank" rel="noreferrer">{ $t('admin.network.installations.v2.photo_word') } {pid.slice(0, 6)}</a>
               {/each}
-              <Button variant="ghost" size="sm" class="ml-auto" disabled={!!busyId} onclick={() => void saveNotesOnly()}>Simpan catatan</Button>
+              <Button variant="ghost" size="sm" class="ml-auto" disabled={!!busyId} onclick={() => void saveNotesOnly()}>{ $t('admin.network.installations.v2.save_notes') }</Button>
             </div>
           </div>
         {/if}
@@ -776,11 +777,11 @@
 
         {#if canReadAudit}
           <div class="rounded-lg border border-ink-200 p-3">
-            <div class="mb-1 font-medium text-ink-900">Riwayat</div>
+            <div class="mb-1 font-medium text-ink-900">{ $t('admin.network.installations.v2.history') }</div>
             {#if timelineLoading}
-              <div class="text-ink-500">Memuat…</div>
+              <div class="text-ink-500">{ $t('admin.network.installations.v2.loading') }</div>
             {:else if timeline.length === 0}
-              <div class="text-ink-500">Belum ada aktivitas tercatat.</div>
+              <div class="text-ink-500">{ $t('admin.network.installations.v2.no_activity') }</div>
             {:else}
               <ul class="max-h-48 space-y-1 overflow-auto">
                 {#each timeline as log (log.id)}
@@ -795,38 +796,38 @@
         {/if}
 
         <div class="flex justify-end">
-          <Button variant="ghost" onclick={closeDetail}>Tutup</Button>
+          <Button variant="ghost" onclick={closeDetail}>{ $t('common.close') }</Button>
         </div>
       </div>
     {/if}
   </Modal>
 
-  <Modal bind:show={showCancel} title="Batalkan work order">
+  <Modal bind:show={showCancel} title={ $t('admin.network.installations.v2.cancel_title') }>
     <div class="space-y-3 text-sm">
-      <p class="text-ink-500">Pembatalan juga membatalkan langganan terkait dan memberi tahu pelanggan. Alasan minimal {CANCEL_REASON_MIN} karakter.</p>
-      <Field id="cancel-reason" label="Alasan" type="textarea" stacked rows={3} value={cancelReason} onchange={(v) => (cancelReason = String(v ?? ''))} />
+      <p class="text-ink-500">{ $t('admin.network.installations.v2.cancel_body', { values: { min: CANCEL_REASON_MIN } }) }</p>
+      <Field id="cancel-reason" label={ $t('admin.network.installations.v2.reason') } type="textarea" stacked rows={3} value={cancelReason} onchange={(v) => (cancelReason = String(v ?? ''))} />
       <div class="flex justify-end gap-2">
-        <Button variant="ghost" onclick={() => (showCancel = false)}>Kembali</Button>
-        <Button variant="danger" disabled={cancelReason.trim().length < CANCEL_REASON_MIN} onclick={() => void confirmCancel()}>Batalkan WO</Button>
+        <Button variant="ghost" onclick={() => (showCancel = false)}>{ $t('common.back') }</Button>
+        <Button variant="danger" disabled={cancelReason.trim().length < CANCEL_REASON_MIN} onclick={() => void confirmCancel()}>{ $t('admin.network.installations.v2.btn_cancel_wo') }</Button>
       </div>
     </div>
   </Modal>
 
-  <Modal bind:show={showVisibility} title="Visibilitas work order">
+  <Modal bind:show={showVisibility} title={ $t('admin.network.installations.v2.vis_title') }>
     <div class="space-y-3 text-sm">
-      <p class="text-ink-500">Menentukan siapa selain admin/owner yang bisa melihat WO baru di daftar mereka.</p>
+      <p class="text-ink-500">{ $t('admin.network.installations.v2.vis_desc') }</p>
       <Field
         id="vis-mode"
-        label="Mode"
+        label={ $t('admin.network.installations.v2.vis_mode') }
         type="select"
         stacked
         value={visibilityMode}
-        options={[{ value: 'admin_only', label: 'Hanya admin' }, { value: 'all_staff', label: 'Semua staf instalasi' }]}
+        options={[{ value: 'admin_only', label: $t('admin.network.installations.v2.mode_admin') }, { value: 'all_staff', label: $t('admin.network.installations.v2.mode_all') }]}
         onchange={(v) => (visibilityMode = String(v ?? 'admin_only') as 'admin_only' | 'all_staff')}
       />
       <div class="flex justify-end gap-2">
-        <Button variant="ghost" onclick={() => (showVisibility = false)}>Batal</Button>
-        <Button variant="primary" disabled={visibilityBusy} onclick={() => void saveVisibility()}>Simpan</Button>
+        <Button variant="ghost" onclick={() => (showVisibility = false)}>{ $t('common.cancel') }</Button>
+        <Button variant="primary" disabled={visibilityBusy} onclick={() => void saveVisibility()}>{ $t('common.save') }</Button>
       </div>
     </div>
   </Modal>

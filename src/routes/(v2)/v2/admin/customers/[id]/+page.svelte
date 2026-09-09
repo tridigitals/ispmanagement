@@ -70,6 +70,7 @@
   import Field from '$lib/components/ds/Field.svelte';
   import type { Column } from '$lib/components/ds/table-types';
 
+  import { t } from 'svelte-i18n';
   const customerId = $derived($page.params.id || '');
 
   const canManage = $derived($can('manage', 'customers'));
@@ -249,7 +250,7 @@
 
   async function submitEdit() {
     if (!editName.trim()) {
-      toast.error('Nama wajib diisi.');
+      toast.error($t('admin.customers.detail.v2.t_name'));
       return;
     }
     if (await runAction(() => api.customers.update(customerId, {
@@ -271,7 +272,7 @@
   let deleteConfirmText = $state('');
   async function doDeleteCustomer() {
     if (deleteConfirmText.trim().toUpperCase() !== 'HAPUS') {
-      toast.error('Ketik HAPUS untuk konfirmasi.');
+      toast.error($t('admin.customers.detail.v2.t_hapus'));
       return;
     }
     showDelete = false;
@@ -302,7 +303,7 @@
     showLocForm = true;
   }
   async function submitLoc() {
-    if (!locLabel.trim()) { locError = 'Label wajib diisi.'; return; }
+    if (!locLabel.trim()) { locError = $t('admin.customers.detail.v2.label_required'); return; }
     const dto = {
       label: locLabel.trim(),
       address_line1: locAddr1.trim() || null,
@@ -408,7 +409,7 @@
   let portalPass = $state('');
   async function addPortalUser() {
     if (!portalEmail.trim() || portalPass.length < 8) {
-      toast.error('Email wajib dan password minimal 8 karakter.');
+      toast.error($t('admin.customers.detail.v2.t_email_pass'));
       return;
     }
     const ok = await runAction(
@@ -441,23 +442,23 @@
   }
 </script>
 
-<AppShell title={customer?.name || 'Pelanggan'}>
+<AppShell title={customer?.name || $t('common.customer')}>
   {#if loading}
-    <div class="py-16 text-center text-ink-500">Memuat pelanggan…</div>
+    <div class="py-16 text-center text-ink-500">{ $t('admin.customers.detail.v2.loading') }</div>
   {:else if !customer}
     <div class="py-16 text-center">
-      <div class="text-base font-medium text-ink-900">{loadError || 'Pelanggan tidak ditemukan.'}</div>
-      <Button variant="ghost" class="mt-3" onclick={() => goto('/v2/admin/customers')}>Kembali ke daftar</Button>
+      <div class="text-base font-medium text-ink-900">{loadError || $t('admin.customers.detail.v2.not_found')}</div>
+      <Button variant="ghost" class="mt-3" onclick={() => goto('/v2/admin/customers')}>{ $t('admin.customers.detail.v2.back_list') }</Button>
     </div>
   {:else}
     <PageHeader title={customer.name} desc={(customer.customer_number || '') + (customer.email ? ` · ${customer.email}` : '') + (customer.phone ? ` · ${customer.phone}` : '')}>
       {#snippet actions()}
         {#if canManage}
-          <Button variant="ghost" icon="clipboard" onclick={openEdit}>Sunting</Button>
+          <Button variant="ghost" icon="clipboard" onclick={openEdit}>{ $t('admin.customers.detail.v2.act_edit') }</Button>
           <Button variant={custActive ? 'ghost' : 'primary'} onclick={() => void toggleActive()}>
-            {custActive ? 'Nonaktifkan' : 'Aktifkan'}
+            {custActive ? $t('admin.customers.detail.v2.act_disable') : $t('admin.customers.detail.v2.act_enable')}
           </Button>
-          <Button variant="danger" onclick={() => (showDelete = true)}>Hapus</Button>
+          <Button variant="danger" onclick={() => (showDelete = true)}>{ $t('common.delete') }</Button>
         {/if}
       {/snippet}
     </PageHeader>
@@ -468,7 +469,7 @@
       {/each}
     </div>
 
-    <div class="relative mt-5" aria-label="Tab pelanggan">
+    <div class="relative mt-5" aria-label={ $t('admin.customers.detail.v2.tab_aria') }>
     <nav
       class="flex gap-1 overflow-x-auto border-b border-ink-200"
       bind:this={tabsEl}
@@ -481,7 +482,7 @@
           aria-current={activeTab === tab ? 'page' : undefined}
           onclick={() => selectTab(tab)}
         >
-          {tab === 'overview' ? 'Ringkasan' : tab === 'locations' ? 'Lokasi' : tab === 'subscriptions' ? 'Langganan' : tab === 'billing' ? 'Tagihan' : tab === 'assets' ? 'Aset' : tab === 'pppoe' ? 'PPPoE' : tab === 'dhcp_static' ? 'DHCP statis' : 'Riwayat'}
+          {tab === 'overview' ? $t('admin.customers.tabs.overview') : tab === 'locations' ? $t('admin.customers.tabs.locations') : tab === 'subscriptions' ? $t('admin.customers.tabs.subscriptions') : tab === 'billing' ? $t('admin.network.installations.billing') : tab === 'assets' ? $t('admin.customers.assets.columns.name') : tab === 'pppoe' ? 'PPPoE' : tab === 'dhcp_static' ? $t('admin.customers.detail.v2.tab_dhcp') : $t('admin.network.installations.v2.history')}
         </button>
       {/each}
     </nav>
@@ -495,54 +496,54 @@
     {#if activeTab === 'overview'}
       <div class="mt-4 grid gap-4 lg:grid-cols-3">
         <div class="rounded-xl bg-white p-4 ring-1 ring-ink-200 lg:col-span-2">
-          <div class="text-sm font-medium text-ink-900">Profil</div>
+          <div class="text-sm font-medium text-ink-900">{ $t('common.profile') }</div>
           <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-            <dt class="text-ink-500">Nomor</dt><dd class="text-ink-900">{customer.customer_number || '—'}</dd>
-            <dt class="text-ink-500">Email</dt><dd class="text-ink-900">{customer.email || '—'}</dd>
-            <dt class="text-ink-500">Telepon</dt><dd class="text-ink-900">{customer.phone || '—'}</dd>
-            <dt class="text-ink-500">Terdaftar</dt><dd class="text-ink-900">{formatDate(customer.created_at, { timeZone: tz() })}</dd>
-            <dt class="text-ink-500">Catatan</dt><dd class="text-ink-900">{customer.notes || '—'}</dd>
+            <dt class="text-ink-500">{ $t('admin.customers.detail.v2.dt_number') }</dt><dd class="text-ink-900">{customer.customer_number || '—'}</dd>
+            <dt class="text-ink-500">{ $t('admin.customers.fields.email') }</dt><dd class="text-ink-900">{customer.email || '—'}</dd>
+            <dt class="text-ink-500">{ $t('admin.customers.fields.phone') }</dt><dd class="text-ink-900">{customer.phone || '—'}</dd>
+            <dt class="text-ink-500">{ $t('admin.customers.detail.v2.dt_registered') }</dt><dd class="text-ink-900">{formatDate(customer.created_at, { timeZone: tz() })}</dd>
+            <dt class="text-ink-500">{ $t('common.notes') }</dt><dd class="text-ink-900">{customer.notes || '—'}</dd>
           </dl>
         </div>
         <div class="rounded-xl bg-white p-4 ring-1 ring-ink-200">
-          <div class="text-sm font-medium text-ink-900">Akses portal</div>
+          <div class="text-sm font-medium text-ink-900">{ $t('admin.customers.detail.v2.portal_access') }</div>
           {#if portalUsers.length === 0}
-            <EmptyState title="Belum ada akun portal" hint="Portal customer aktif setelah minimal satu akun akses dibuat." />
+            <EmptyState title={ $t('admin.customers.detail.v2.portal_none') } hint={ $t('admin.customers.detail.v2.portal_none_hint') } />
           {:else}
             <ul class="mt-2 space-y-1.5 text-sm">
               {#each portalUsers as u (u.customer_user_id)}
                 <li class="flex items-center justify-between gap-2">
                   <span class="min-w-0 truncate text-ink-900">{u.name} <span class="text-ink-500">· {u.email}</span></span>
                   {#if canManage}
-                    <button type="button" class="focus-ring inline-flex min-h-[24px] shrink-0 items-center px-1 text-sm text-red-700 underline" onclick={() => askPortalRemove(u)}>cabut</button>
+                    <button type="button" class="focus-ring inline-flex min-h-[24px] shrink-0 items-center px-1 text-sm text-red-700 underline" onclick={() => askPortalRemove(u)}>{ $t('admin.customers.detail.v2.portal_revoke') }</button>
                   {/if}
                 </li>
               {/each}
             </ul>
           {/if}
           {#if canManage}
-            <Button variant="ghost" size="sm" class="mt-2" onclick={() => (showPortalAdd = true)}>Tambah akun portal</Button>
+            <Button variant="ghost" size="sm" class="mt-2" onclick={() => (showPortalAdd = true)}>{ $t('admin.customers.detail.v2.portal_add') }</Button>
           {/if}
         </div>
       </div>
       <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Langganan" value={String(subscriptions.length)} hint="termasuk yang dibatalkan" />
-        <StatTile label="Lokasi" value={String(locations.length)} hint="alamat pemasangan" />
-        <StatTile label="Aset ONT" value={String(assets.length)} hint="terikat ke pelanggan ini" />
-        <StatTile label="Tagihan belum bayar" value={String(billingStats.unpaid)} hint="invoice paket" tone={billingStats.unpaid ? 'negative' : 'positive'} />
+        <StatTile label={ $t('admin.customers.tabs.subscriptions') } value={String(subscriptions.length)} hint={ $t('admin.customers.detail.v2.hint_incl_cancel') } />
+        <StatTile label={ $t('admin.customers.tabs.locations') } value={String(locations.length)} hint={ $t('admin.customers.detail.v2.hint_install_addr') } />
+        <StatTile label={ $t('admin.customers.detail.v2.ont') } value={String(assets.length)} hint={ $t('admin.customers.detail.v2.hint_bound') } />
+        <StatTile label={ $t('admin.customers.detail.v2.unpaid') } value={String(billingStats.unpaid)} hint={ $t('admin.customers.detail.v2.hint_pkg_invoice') } tone={billingStats.unpaid ? 'negative' : 'positive'} />
       </div>
     {:else if activeTab === 'locations'}
       <div class="mt-4 flex items-center justify-between">
-        <div class="text-sm text-ink-500">{locations.length} lokasi</div>
-        {#if canManage}<Button variant="primary" size="sm" icon="plus" onclick={openLocCreate}>Tambah lokasi</Button>{/if}
+        <div class="text-sm text-ink-500">{locations.length} {$t('admin.customers.detail.v2.c_locations')}</div>
+        {#if canManage}<Button variant="primary" size="sm" icon="plus" onclick={openLocCreate}>{ $t('admin.customers.detail.v2.loc_add') }</Button>{/if}
       </div>
       <div class="mt-3">
         <DataTable
-          columns={[{ key: 'loc', label: 'Lokasi' }, { key: 'subs', label: 'Langganan', width: '110px' }, { key: 'actions', label: '', width: '150px', align: 'right' }]}
+          columns={[{ key: 'loc', label: $t('admin.customers.tabs.locations') }, { key: 'subs', label: $t('admin.customers.tabs.subscriptions'), width: '110px' }, { key: 'actions', label: '', width: '150px', align: 'right' }]}
           rows={locations}
           pageSize={25}
-          emptyTitle="Belum ada lokasi"
-          emptyHint="Tambahkan alamat pemasangan untuk mulai menjual langganan."
+          emptyTitle={ $t('admin.customers.detail.v2.loc_empty') }
+          emptyHint={ $t('admin.customers.detail.v2.loc_empty_hint') }
         >
           {#snippet cell(row: CustomerLocation, col: Column)}
             {#if col.key === 'loc'}
@@ -552,8 +553,8 @@
               <span class="text-sm text-ink-700">{subscriptions.filter((s) => s.location_id === row.id).length}</span>
             {:else if col.key === 'actions'}
               <RowActions
-                primary={{ label: 'Sunting', onclick: () => openLocEdit(row), disabled: !canManage }}
-                rest={canManage ? [{ label: 'Hapus', danger: true, onclick: () => askLocDelete(row) }] : []}
+                primary={{ label: $t('admin.customers.detail.v2.act_edit'), onclick: () => openLocEdit(row), disabled: !canManage }}
+                rest={canManage ? [{ label: $t('common.delete'), danger: true, onclick: () => askLocDelete(row) }] : []}
               />
             {/if}
           {/snippet}
@@ -561,16 +562,16 @@
       </div>
     {:else if activeTab === 'subscriptions'}
       <div class="mt-4 flex items-center justify-between">
-        <div class="text-sm text-ink-500">{subscriptions.length} langganan</div>
-        {#if canManage}<Button variant="primary" size="sm" icon="plus" onclick={openSubCreate}>Langganan baru</Button>{/if}
+        <div class="text-sm text-ink-500">{subscriptions.length} {$t('admin.customers.detail.v2.c_subs')}</div>
+        {#if canManage}<Button variant="primary" size="sm" icon="plus" onclick={openSubCreate}>{ $t('admin.customers.detail.v2.sub_new') }</Button>{/if}
       </div>
       <div class="mt-3">
         <DataTable
           columns={[
-            { key: 'pkg', label: 'Paket' },
-            { key: 'status', label: 'Status', width: '150px' },
-            { key: 'price', label: 'Harga', width: '130px' },
-            { key: 'period', label: 'Periode', width: '170px' },
+            { key: 'pkg', label: $t('common.package') },
+            { key: 'status', label: $t('common.status'), width: '150px' },
+            { key: 'price', label: $t('admin.customers.detail.v2.col_price'), width: '130px' },
+            { key: 'period', label: $t('admin.customers.detail.v2.col_period'), width: '170px' },
             { key: 'actions', label: '', width: '190px', align: 'right' },
           ]}
           rows={subscriptions}
@@ -582,24 +583,24 @@
             {#if col.key === 'pkg'}
               <div class="min-w-0">
                 <div class="truncate font-medium text-ink-900">{row.package_name || '—'}</div>
-                <div class="truncate text-sm text-ink-500">{row.location_label || 'Tanpa lokasi'}{#if row.router_name} · {row.router_name}{/if}</div>
+                <div class="truncate text-sm text-ink-500">{row.location_label || $t('admin.network.installations.v2.no_location')}{#if row.router_name} · {row.router_name}{/if}</div>
               </div>
             {:else if col.key === 'status'}
               <Badge tone={subStatusTone(row.status)} label={subStatusLabel(row.status)} />
             {:else if col.key === 'price'}
-              <span class="text-sm text-ink-900">{formatMoney(row.price, { currency: row.currency_code })}<span class="text-ink-500">/{row.billing_cycle === 'yearly' ? 'thn' : 'bln'}</span></span>
+              <span class="text-sm text-ink-900">{formatMoney(row.price, { currency: row.currency_code })}<span class="text-ink-500">/{row.billing_cycle === 'yearly' ? $t('admin.customers.detail.v2.yearly_abbr') : $t('admin.customers.detail.v2.monthly_abbr')}</span></span>
             {:else if col.key === 'period'}
               <span class="text-sm text-ink-500">{row.starts_at ? formatDate(row.starts_at, { timeZone: tz() }) : '—'} → {row.ends_at ? formatDate(row.ends_at, { timeZone: tz() }) : '—'}</span>
             {:else if col.key === 'actions'}
               <RowActions
-                primary={{ label: 'Detail', icon: 'search', href: `/v2/admin/services?sub=${row.id}` }}
+                primary={{ label: $t('admin.network.incidents.ui.row_detail'), icon: 'search', href: `/v2/admin/services?sub=${row.id}` }}
                 rest={canManage
                   ? [
-                      { label: 'Sunting', onclick: () => openSubEdit(row) },
-                      { label: 'Ganti paket', onclick: () => { chgTarget = row; chgNewPkg = ''; showChangePkg = true; } },
-                      ...(row.status === 'active' ? [{ label: 'Tangguhkan', onclick: () => void setSubStatus(row, 'suspended') }] : []),
-                      ...(row.status === 'suspended' ? [{ label: 'Aktifkan', onclick: () => void setSubStatus(row, 'active') }] : []),
-                      { label: 'Hapus', danger: true, onclick: () => askSubDelete(row) },
+                      { label: $t('admin.customers.detail.v2.act_edit'), onclick: () => openSubEdit(row) },
+                      { label: $t('admin.customers.detail.v2.chg_btn'), onclick: () => { chgTarget = row; chgNewPkg = ''; showChangePkg = true; } },
+                      ...(row.status === 'active' ? [{ label: $t('admin.customers.detail.v2.act_suspend'), onclick: () => void setSubStatus(row, 'suspended') }] : []),
+                      ...(row.status === 'suspended' ? [{ label: $t('admin.customers.detail.v2.act_enable'), onclick: () => void setSubStatus(row, 'active') }] : []),
+                      { label: $t('common.delete'), danger: true, onclick: () => askSubDelete(row) },
                     ]
                   : []}
               />
@@ -609,30 +610,30 @@
       </div>
     {:else if activeTab === 'billing'}
       <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {#each [['all', 'Semua'], ['unpaid', 'Belum bayar'], ['paid', 'Lunas'], ['overdue', 'Terlambat']] as [key, label] (key)}
+        {#each [['all', $t('admin.customers.billing.filters.all')], ['unpaid', $t('admin.customers.detail.v2.chip_unpaid')], ['paid', $t('admin.customers.billing.stats.paid')], ['overdue', $t('admin.customers.detail.v2.chip_overdue')]] as [key, label] (key)}
           <button
             type="button"
             class="focus-ring rounded-xl text-left {billingFilter.value === key ? 'ring-2 ring-ink-900' : ''}"
             aria-pressed={billingFilter.value === key}
             onclick={() => (billingFilter.value = key as CustomerBillingFilter)}
           >
-            <StatTile label={label} value={String(billingStats[key as keyof typeof billingStats])} hint="klik untuk filter" tone={key === 'overdue' && billingStats.overdue ? 'negative' : 'neutral'} />
+            <StatTile label={label} value={String(billingStats[key as keyof typeof billingStats])} hint={ $t('admin.network.installations.v2.hint_filter') } tone={key === 'overdue' && billingStats.overdue ? 'negative' : 'neutral'} />
           </button>
         {/each}
       </div>
       <div class="mt-3">
         <DataTable
           columns={[
-            { key: 'inv', label: 'Invoice' },
-            { key: 'status', label: 'Status', width: '130px' },
-            { key: 'amount', label: 'Nominal', width: '140px' },
-            { key: 'due', label: 'Jatuh tempo', width: '140px' },
+            { key: 'inv', label: $t('common.invoice') },
+            { key: 'status', label: $t('common.status'), width: '130px' },
+            { key: 'amount', label: $t('admin.customers.detail.v2.col_price'), width: '140px' },
+            { key: 'due', label: $t('admin.customers.billing.columns.due_date'), width: '140px' },
             { key: 'actions', label: '', width: '110px', align: 'right' },
           ]}
           rows={billingRows}
           pageSize={25}
-          emptyTitle="Tidak ada tagihan"
-          emptyHint="Invoice paket pelanggan akan muncul di sini."
+          emptyTitle={ $t('admin.customers.detail.v2.bill_empty') }
+          emptyHint={ $t('admin.customers.detail.v2.bill_empty_hint') }
         >
           {#snippet cell(row: Invoice, col: Column)}
             {#if col.key === 'inv'}
@@ -641,13 +642,13 @@
                 <div class="truncate text-sm text-ink-500">{row.description || '—'}</div>
               </div>
             {:else if col.key === 'status'}
-              <Badge tone={row.status === 'paid' ? 'positive' : row.status === 'failed' ? 'negative' : 'warning'} label={row.status === 'paid' ? 'Lunas' : row.status === 'failed' ? 'Gagal' : row.status === 'verification_pending' ? 'Diverifikasi' : 'Belum bayar'} />
+              <Badge tone={row.status === 'paid' ? 'positive' : row.status === 'failed' ? 'negative' : 'warning'} label={row.status === 'paid' ? $t('admin.customers.billing.stats.paid') : row.status === 'failed' ? $t('admin.customers.detail.v2.inv_failed') : row.status === 'verification_pending' ? $t('admin.customers.detail.v2.inv_verif') : $t('admin.customers.detail.v2.chip_unpaid')} />
             {:else if col.key === 'amount'}
               <span class="text-sm text-ink-900">{formatMoney(row.amount, { currency: row.currency_code })}</span>
             {:else if col.key === 'due'}
               <span class="text-sm {row.status !== 'paid' && new Date(row.due_date).getTime() < Date.now() ? 'text-red-600' : 'text-ink-500'}">{formatDate(row.due_date, { timeZone: tz() })}</span>
             {:else if col.key === 'actions'}
-              <RowActions primary={{ label: 'Buka', href: `/v2/admin/invoices/${row.id}` }} />
+              <RowActions primary={{ label: $t('admin.customers.detail.v2.act_open'), href: `/v2/admin/invoices/${row.id}` }} />
             {/if}
           {/snippet}
         </DataTable>
@@ -656,16 +657,16 @@
       <div class="mt-4">
         <DataTable
           columns={[
-            { key: 'name', label: 'Aset' },
-            { key: 'type', label: 'Tipe', width: '120px' },
-            { key: 'status', label: 'Status', width: '120px' },
-            { key: 'loc', label: 'Lokasi', width: '180px' },
+            { key: 'name', label: $t('admin.customers.assets.columns.name') },
+            { key: 'type', label: $t('admin.customers.assets.columns.type'), width: '120px' },
+            { key: 'status', label: $t('common.status'), width: '120px' },
+            { key: 'loc', label: $t('admin.customers.tabs.locations'), width: '180px' },
             { key: 'actions', label: '', width: '110px', align: 'right' },
           ]}
           rows={assets}
           pageSize={25}
-          emptyTitle="Tidak ada aset"
-          emptyHint="ONT/ONU terikat lewat penyelesaian work order instalasi."
+          emptyTitle={ $t('admin.customers.detail.v2.asset_empty') }
+          emptyHint={ $t('admin.customers.detail.v2.asset_empty_hint') }
         >
           {#snippet cell(row: NetworkAssetListItem, col: Column)}
             {#if col.key === 'name'}
@@ -680,60 +681,60 @@
             {:else if col.key === 'loc'}
               <span class="text-sm text-ink-500">{row.location_label || '—'}</span>
             {:else if col.key === 'actions'}
-              <RowActions primary={{ label: 'Aset', href: `/v2/admin/network/assets?q=${encodeURIComponent(row.name)}` }} />
+              <RowActions primary={{ label: $t('admin.customers.assets.columns.name'), href: `/v2/admin/network/assets?q=${encodeURIComponent(row.name)}` }} />
             {/if}
           {/snippet}
         </DataTable>
       </div>
     {:else if activeTab === 'pppoe'}
       <div class="mt-4 flex items-center justify-between">
-        <div class="text-sm text-ink-500">{pppoeAccounts.length} akun PPPoE</div>
-        {#if canManage}<Button variant="ghost" size="sm" onclick={() => goto(`/v2/admin/network/pppoe?customer=${customerId}`)}>Kelola di halaman PPPoE</Button>{/if}
+        <div class="text-sm text-ink-500">{pppoeAccounts.length} {$t('admin.customers.detail.v2.c_pppoe')}</div>
+        {#if canManage}<Button variant="ghost" size="sm" onclick={() => goto(`/v2/admin/network/pppoe?customer=${customerId}`)}>{ $t('admin.customers.detail.v2.pppoe_manage') }</Button>{/if}
       </div>
       <div class="mt-3">
         <DataTable
           columns={[
-            { key: 'user', label: 'Username' },
-            { key: 'profile', label: 'Profil', width: '150px' },
+            { key: 'user', label: $t('common.username') },
+            { key: 'profile', label: $t('common.profile'), width: '150px' },
             { key: 'ip', label: 'IP', width: '140px' },
-            { key: 'online', label: 'Status', width: '110px' },
+            { key: 'online', label: $t('common.status'), width: '110px' },
           ]}
           rows={pppoeAccounts}
           pageSize={25}
-          emptyTitle="Tidak ada akun PPPoE"
-          emptyHint="Akun dibuat lewat work order instalasi atau halaman PPPoE."
+          emptyTitle={ $t('admin.customers.detail.v2.pppoe_empty') }
+          emptyHint={ $t('admin.customers.detail.v2.pppoe_empty_hint') }
         >
           {#snippet cell(row: PppoeAccountPublic, col: Column)}
             {#if col.key === 'user'}
               <div class="font-medium text-ink-900">{row.username}</div>
-              <div class="text-sm text-ink-500">{row.account_source === 'managed_radius' ? 'Radius terkelola' : 'Router'}</div>
+              <div class="text-sm text-ink-500">{row.account_source === 'managed_radius' ? $t('admin.customers.detail.v2.src_managed') : $t('admin.network.dhcp_static.filters.router')}</div>
             {:else if col.key === 'profile'}
               <span class="text-sm text-ink-700">{row.router_profile_name || '—'}</span>
             {:else if col.key === 'ip'}
               <span class="text-sm text-ink-700">{row.remote_address || '—'}</span>
             {:else if col.key === 'online'}
-              <Badge tone={row.disabled ? 'neutral' : 'positive'} label={row.disabled ? 'Nonaktif' : 'Aktif'} />
+              <Badge tone={row.disabled ? 'neutral' : 'positive'} label={row.disabled ? $t('common.disabled') : $t('common.enabled')} />
             {/if}
           {/snippet}
         </DataTable>
       </div>
     {:else if activeTab === 'dhcp_static'}
       <div class="mt-4 flex items-center justify-between">
-        <div class="text-sm text-ink-500">{dhcpServices.length} layanan DHCP statis</div>
-        {#if canManage}<Button variant="ghost" size="sm" onclick={() => goto('/v2/admin/network/dhcp-static')}>Kelola di halaman DHCP</Button>{/if}
+        <div class="text-sm text-ink-500">{dhcpServices.length} {$t('admin.customers.detail.v2.c_dhcp')}</div>
+        {#if canManage}<Button variant="ghost" size="sm" onclick={() => goto('/v2/admin/network/dhcp-static')}>{ $t('admin.customers.detail.v2.dhcp_manage') }</Button>{/if}
       </div>
       <div class="mt-3">
         <DataTable
           columns={[
-            { key: 'mac', label: 'MAC' },
+            { key: 'mac', label: $t('admin.network.dhcp_static.columns.mac') },
             { key: 'ip', label: 'IP', width: '150px' },
-            { key: 'server', label: 'Server', width: '160px' },
-            { key: 'sync', label: 'Sinkron', width: '120px' },
+            { key: 'server', label: $t('admin.customers.detail.v2.col_server'), width: '160px' },
+            { key: 'sync', label: $t('admin.customers.pppoe.columns.sync'), width: '120px' },
           ]}
           rows={dhcpServices}
           pageSize={25}
-          emptyTitle="Tidak ada layanan DHCP statis"
-          emptyHint="Layanan DHCP statis terikat ke langganan pelanggan ini."
+          emptyTitle={ $t('admin.customers.detail.v2.dhcp_empty') }
+          emptyHint={ $t('admin.customers.detail.v2.dhcp_empty_hint') }
         >
           {#snippet cell(row: DhcpStaticServicePublic, col: Column)}
             {#if col.key === 'mac'}
@@ -743,7 +744,7 @@
             {:else if col.key === 'server'}
               <span class="text-sm text-ink-700">{row.dhcp_server_name}</span>
             {:else if col.key === 'sync'}
-              <Badge tone={row.lease_present ? 'positive' : 'warning'} label={row.lease_present ? 'Lease ada' : 'Lease hilang'} />
+              <Badge tone={row.lease_present ? 'positive' : 'warning'} label={row.lease_present ? $t('admin.customers.detail.v2.lease_present') : $t('admin.customers.detail.v2.lease_missing')} />
             {/if}
           {/snippet}
         </DataTable>
@@ -752,7 +753,7 @@
       <div class="mt-4">
         {#if timeline.length === 0}
           <div class="rounded-xl bg-white ring-1 ring-ink-200">
-            <EmptyState icon="activity" title="Belum ada aktivitas tercatat" hint="Perubahan data, pembayaran, dan tiket pelanggan akan muncul di sini." />
+            <EmptyState icon="activity" title={ $t('admin.customers.detail.v2.no_activity') } hint={ $t('admin.customers.detail.v2.no_activity_hint') } />
           </div>
         {:else}
           <ul class="space-y-2">
@@ -767,136 +768,136 @@
       </div>
     {/if}
 
-  <Modal bind:show={showEdit} title="Sunting profil pelanggan">
+  <Modal bind:show={showEdit} title={ $t('admin.customers.detail.v2.edit_title') }>
     <div class="space-y-3">
-      <Field id="c-name" label="Nama" type="text" stacked value={editName} onchange={(v) => (editName = String(v ?? ''))} error={editName.trim() ? null : 'Wajib diisi'} />
-      <Field id="c-email" label="Email" type="text" stacked value={editEmail} onchange={(v) => (editEmail = String(v ?? ''))} />
-      <Field id="c-phone" label="Telepon" type="text" stacked value={editPhone} onchange={(v) => (editPhone = String(v ?? ''))} />
-      <Field id="c-notes" label="Catatan" type="textarea" stacked rows={3} value={editNotes} onchange={(v) => (editNotes = String(v ?? ''))} />
+      <Field id="c-name" label={ $t('admin.customers.fields.name') } type="text" stacked value={editName} onchange={(v) => (editName = String(v ?? ''))} error={editName.trim() ? null : $t('admin.customers.detail.v2.required')} />
+      <Field id="c-email" label={ $t('admin.customers.fields.email') } type="text" stacked value={editEmail} onchange={(v) => (editEmail = String(v ?? ''))} />
+      <Field id="c-phone" label={ $t('admin.customers.fields.phone') } type="text" stacked value={editPhone} onchange={(v) => (editPhone = String(v ?? ''))} />
+      <Field id="c-notes" label={ $t('common.notes') } type="textarea" stacked rows={3} value={editNotes} onchange={(v) => (editNotes = String(v ?? ''))} />
       <div class="flex justify-end gap-2">
-        <Button variant="ghost" onclick={() => (showEdit = false)}>Batal</Button>
-        <Button variant="primary" disabled={busy || !editName.trim()} onclick={() => void submitEdit()}>Simpan</Button>
+        <Button variant="ghost" onclick={() => (showEdit = false)}>{ $t('common.cancel') }</Button>
+        <Button variant="primary" disabled={busy || !editName.trim()} onclick={() => void submitEdit()}>{ $t('common.save') }</Button>
       </div>
     </div>
   </Modal>
 
-  <Modal bind:show={showDelete} title="Hapus pelanggan">
+  <Modal bind:show={showDelete} title={ $t('admin.customers.detail.v2.delete_title') }>
     <div class="space-y-3 text-sm">
-      <p class="text-ink-700">Penghapusan permanen. Backend menolak jika masih ada langganan, work order, akun PPPoE, layanan DHCP, atau lokasi — pesannya akan merinci sisanya.</p>
-      <Field id="del-confirm" label="Ketik HAPUS untuk konfirmasi" type="text" stacked value={deleteConfirmText} onchange={(v) => (deleteConfirmText = String(v ?? ''))} />
+      <p class="text-ink-700">{ $t('admin.customers.detail.v2.delete_body') }</p>
+      <Field id="del-confirm" label={ $t('admin.customers.detail.v2.type_hapus') } type="text" stacked value={deleteConfirmText} onchange={(v) => (deleteConfirmText = String(v ?? ''))} />
       <div class="flex justify-end gap-2">
-        <Button variant="ghost" onclick={() => (showDelete = false)}>Batal</Button>
-        <Button variant="danger" disabled={busy || deleteConfirmText.trim().toUpperCase() !== 'HAPUS'} onclick={() => void doDeleteCustomer()}>Hapus permanen</Button>
+        <Button variant="ghost" onclick={() => (showDelete = false)}>{ $t('common.cancel') }</Button>
+        <Button variant="danger" disabled={busy || deleteConfirmText.trim().toUpperCase() !== 'HAPUS'} onclick={() => void doDeleteCustomer()}>{ $t('admin.customers.detail.v2.delete_perm') }</Button>
       </div>
     </div>
   </Modal>
 
-  <Modal bind:show={showLocForm} title={locEditing ? 'Sunting lokasi' : 'Tambah lokasi'}>
+  <Modal bind:show={showLocForm} title={locEditing ? $t('admin.customers.detail.v2.loc_edit') : $t('admin.customers.detail.v2.loc_add')}>
     <div class="space-y-3">
-      <Field id="l-label" label="Label" type="text" stacked value={locLabel} onchange={(v) => (locLabel = String(v ?? ''))} error={locError} />
-      <Field id="l-addr" label="Alamat" type="text" stacked value={locAddr1} onchange={(v) => (locAddr1 = String(v ?? ''))} />
-      <Field id="l-city" label="Kota" type="text" stacked value={locCity} onchange={(v) => (locCity = String(v ?? ''))} />
-      <Field id="l-notes" label="Catatan" type="textarea" stacked rows={2} value={locNotes} onchange={(v) => (locNotes = String(v ?? ''))} />
+      <Field id="l-label" label={ $t('admin.customers.locations.fields.label') } type="text" stacked value={locLabel} onchange={(v) => (locLabel = String(v ?? ''))} error={locError} />
+      <Field id="l-addr" label={ $t('admin.customers.locations.columns.address') } type="text" stacked value={locAddr1} onchange={(v) => (locAddr1 = String(v ?? ''))} />
+      <Field id="l-city" label={ $t('admin.customers.locations.fields.city') } type="text" stacked value={locCity} onchange={(v) => (locCity = String(v ?? ''))} />
+      <Field id="l-notes" label={ $t('common.notes') } type="textarea" stacked rows={2} value={locNotes} onchange={(v) => (locNotes = String(v ?? ''))} />
       <div class="flex justify-end gap-2">
-        <Button variant="ghost" onclick={() => (showLocForm = false)}>Batal</Button>
-        <Button variant="primary" disabled={busy} onclick={() => void submitLoc()}>Simpan</Button>
+        <Button variant="ghost" onclick={() => (showLocForm = false)}>{ $t('common.cancel') }</Button>
+        <Button variant="primary" disabled={busy} onclick={() => void submitLoc()}>{ $t('common.save') }</Button>
       </div>
     </div>
   </Modal>
 
-  <Modal bind:show={showLocDelete} title="Hapus lokasi">
+  <Modal bind:show={showLocDelete} title={ $t('admin.customers.detail.v2.loc_delete_title') }>
     <div class="space-y-3 text-sm">
       <p class="text-ink-700">{locDeleteTarget ? formatLocationLine(locDeleteTarget) : ''}</p>
-      <p class="text-ink-500">Ditolak otomatis jika masih dipakai langganan/WO/PPPoE/DHCP.</p>
+      <p class="text-ink-500">{ $t('admin.customers.detail.v2.loc_reject_note') }</p>
       <div class="flex justify-end gap-2">
-        <Button variant="ghost" onclick={() => (showLocDelete = false)}>Batal</Button>
-        <Button variant="danger" disabled={busy} onclick={() => void doLocDelete()}>Hapus</Button>
+        <Button variant="ghost" onclick={() => (showLocDelete = false)}>{ $t('common.cancel') }</Button>
+        <Button variant="danger" disabled={busy} onclick={() => void doLocDelete()}>{ $t('common.delete') }</Button>
       </div>
     </div>
   </Modal>
 
-  <Modal bind:show={showSubForm} title={subEditing ? 'Sunting langganan' : 'Langganan baru'}>
+  <Modal bind:show={showSubForm} title={subEditing ? $t('admin.customers.detail.v2.sub_edit') : $t('admin.customers.detail.v2.sub_new')}>
     <div class="space-y-3">
       <Field
-        id="s-loc" label="Lokasi" type="select" stacked
+        id="s-loc" label={ $t('admin.customers.tabs.locations') } type="select" stacked
         value={subLocationId}
         options={locations.map((l) => ({ value: l.id, label: l.label }))}
         onchange={(v) => (subLocationId = String(v ?? ''))}
         error={subError}
       />
       <Field
-        id="s-pkg" label="Paket" type="select" stacked
+        id="s-pkg" label={ $t('common.package') } type="select" stacked
         value={subPackageId}
-        options={[{ value: '', label: 'Pilih paket…' }, ...packages.map((p) => ({ value: p.id, label: `${p.name} · ${formatMoney(p.price_monthly ?? 0)}` }))]}
+        options={[{ value: '', label: $t('admin.customers.detail.v2.pick_pkg') }, ...packages.map((p) => ({ value: p.id, label: `${p.name} · ${formatMoney(p.price_monthly ?? 0)}` }))]}
         onchange={(v) => (subPackageId = String(v ?? ''))}
       />
       <Field
-        id="s-cycle" label="Siklus" type="select" stacked
+        id="s-cycle" label={ $t('admin.customers.detail.v2.field_cycle') } type="select" stacked
         value={subCycle}
-        options={[{ value: 'monthly', label: 'Bulanan' }, { value: 'yearly', label: 'Tahunan' }]}
+        options={[{ value: 'monthly', label: $t('admin.network.installations.monthly') }, { value: 'yearly', label: $t('admin.network.installations.yearly') }]}
         onchange={(v) => (subCycle = String(v ?? 'monthly') as 'monthly' | 'yearly')}
       />
-      <Field id="s-price" label="Harga" type="number" stacked value={subPrice} onchange={(v) => (subPrice = String(v ?? ''))} />
+      <Field id="s-price" label={ $t('admin.customers.detail.v2.col_price') } type="number" stacked value={subPrice} onchange={(v) => (subPrice = String(v ?? ''))} />
       {#if !subEditing}
         <Field
-          id="s-status" label="Status awal" type="select" stacked
+          id="s-status" label={ $t('admin.customers.detail.v2.initial_status') } type="select" stacked
           value={subStatus}
-          options={[{ value: 'pending_installation', label: 'Menunggu instalasi' }, { value: 'active', label: 'Langsung aktif' }]}
+          options={[{ value: 'pending_installation', label: $t('admin.customers.detail.v2.waiting_install') }, { value: 'active', label: $t('admin.customers.detail.v2.activate_now') }]}
           onchange={(v) => (subStatus = String(v ?? 'pending_installation'))}
         />
       {/if}
       <div class="flex justify-end gap-2">
-        <Button variant="ghost" onclick={() => (showSubForm = false)}>Batal</Button>
-        <Button variant="primary" disabled={busy} onclick={() => void submitSub()}>Simpan</Button>
+        <Button variant="ghost" onclick={() => (showSubForm = false)}>{ $t('common.cancel') }</Button>
+        <Button variant="primary" disabled={busy} onclick={() => void submitSub()}>{ $t('common.save') }</Button>
       </div>
     </div>
   </Modal>
 
-  <Modal bind:show={showSubDelete} title="Hapus langganan">
+  <Modal bind:show={showSubDelete} title={ $t('admin.customers.detail.v2.sub_delete_title') }>
     <div class="space-y-3 text-sm">
       <p class="text-ink-700">{subDeleteTarget?.package_name || ''} — {subDeleteTarget ? subStatusLabel(subDeleteTarget.status) : ''}</p>
-      <p class="text-ink-500">Ditolak otomatis jika masih ada layanan DHCP statis atau work order yang mengikatnya.</p>
+      <p class="text-ink-500">{ $t('admin.customers.detail.v2.sub_reject_note') }</p>
       <div class="flex justify-end gap-2">
-        <Button variant="ghost" onclick={() => (showSubDelete = false)}>Batal</Button>
-        <Button variant="danger" disabled={busy} onclick={() => void doSubDelete()}>Hapus</Button>
+        <Button variant="ghost" onclick={() => (showSubDelete = false)}>{ $t('common.cancel') }</Button>
+        <Button variant="danger" disabled={busy} onclick={() => void doSubDelete()}>{ $t('common.delete') }</Button>
       </div>
     </div>
   </Modal>
 
-  <Modal bind:show={showChangePkg} title="Ganti paket langganan">
+  <Modal bind:show={showChangePkg} title={ $t('admin.customers.detail.v2.chg_title') }>
     <div class="space-y-3">
-      <p class="text-sm text-ink-500">Dari: {chgTarget?.package_name || '—'}. Selisih tagihan dihitung otomatis.</p>
+      <p class="text-sm text-ink-500">{$t('admin.customers.detail.v2.chg_from', { values: { name: chgTarget?.package_name || '—' } })}</p>
       <Field
-        id="chg-pkg" label="Paket baru" type="select" stacked
+        id="chg-pkg" label={ $t('admin.customers.detail.v2.chg_new_pkg') } type="select" stacked
         value={chgNewPkg}
-        options={[{ value: '', label: 'Pilih paket…' }, ...packages.filter((p) => p.id !== chgTarget?.package_id).map((p) => ({ value: p.id, label: p.name }))]}
+        options={[{ value: '', label: $t('admin.customers.detail.v2.pick_pkg') }, ...packages.filter((p) => p.id !== chgTarget?.package_id).map((p) => ({ value: p.id, label: p.name }))]}
         onchange={(v) => (chgNewPkg = String(v ?? ''))}
       />
       <div class="flex justify-end gap-2">
-        <Button variant="ghost" onclick={() => (showChangePkg = false)}>Batal</Button>
-        <Button variant="primary" disabled={busy || !chgNewPkg} onclick={() => void submitChangePkg()}>Ganti paket</Button>
+        <Button variant="ghost" onclick={() => (showChangePkg = false)}>{ $t('common.cancel') }</Button>
+        <Button variant="primary" disabled={busy || !chgNewPkg} onclick={() => void submitChangePkg()}>{ $t('admin.customers.detail.v2.chg_btn') }</Button>
       </div>
     </div>
   </Modal>
 
-  <Modal bind:show={showPortalAdd} title="Tambah akun portal">
+  <Modal bind:show={showPortalAdd} title={ $t('admin.customers.detail.v2.portal_add') }>
     <div class="space-y-3">
-      <Field id="p-name" label="Nama" type="text" stacked value={portalName} onchange={(v) => (portalName = String(v ?? ''))} />
-      <Field id="p-email" label="Email" type="text" stacked value={portalEmail} onchange={(v) => (portalEmail = String(v ?? ''))} />
-      <Field id="p-pass" label="Password (min 8)" type="password" stacked value={portalPass} onchange={(v) => (portalPass = String(v ?? ''))} />
+      <Field id="p-name" label={ $t('admin.customers.fields.name') } type="text" stacked value={portalName} onchange={(v) => (portalName = String(v ?? ''))} />
+      <Field id="p-email" label={ $t('admin.customers.fields.email') } type="text" stacked value={portalEmail} onchange={(v) => (portalEmail = String(v ?? ''))} />
+      <Field id="p-pass" label={ $t('admin.customers.detail.v2.portal_pass') } type="password" stacked value={portalPass} onchange={(v) => (portalPass = String(v ?? ''))} />
       <div class="flex justify-end gap-2">
-        <Button variant="ghost" onclick={() => (showPortalAdd = false)}>Batal</Button>
-        <Button variant="primary" disabled={busy} onclick={() => void addPortalUser()}>Buat akun</Button>
+        <Button variant="ghost" onclick={() => (showPortalAdd = false)}>{ $t('common.cancel') }</Button>
+        <Button variant="primary" disabled={busy} onclick={() => void addPortalUser()}>{ $t('admin.customers.detail.v2.portal_create') }</Button>
       </div>
     </div>
   </Modal>
 
-  <Modal bind:show={showPortalRemove} title="Cabut akses portal">
+  <Modal bind:show={showPortalRemove} title={ $t('admin.customers.detail.v2.portal_revoke_title') }>
     <div class="space-y-3 text-sm">
       <p class="text-ink-700">{portalRemoveTarget?.name} · {portalRemoveTarget?.email}</p>
       <div class="flex justify-end gap-2">
-        <Button variant="ghost" onclick={() => (showPortalRemove = false)}>Batal</Button>
-        <Button variant="danger" disabled={busy} onclick={() => void doPortalRemove()}>Cabut</Button>
+        <Button variant="ghost" onclick={() => (showPortalRemove = false)}>{ $t('common.cancel') }</Button>
+        <Button variant="danger" disabled={busy} onclick={() => void doPortalRemove()}>{ $t('admin.customers.invite.revoke') }</Button>
       </div>
     </div>
   </Modal>

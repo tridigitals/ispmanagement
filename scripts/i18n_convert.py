@@ -88,6 +88,13 @@ def convert_page(spec):
     for raw, key in spec.get('rawexpr', {}).items():
         s = re.sub(esc_re(raw), "$t('" + key + "')", s)
         report.append(('rawexpr', raw, key, True))
+    for entry in spec.get('post', []):
+        a, b = entry['old'], entry['new']
+        if a in s:
+            s = s.replace(a, b)
+            report.append(('post', a[:60], 'post', True))
+        else:
+            report.append(('post', a[:60], 'post', False))
     open(fp, 'w').write(s)
     ok = sum(1 for r in report if r[3])
     print(f'{fp}: applied {ok}/{len(report)}')

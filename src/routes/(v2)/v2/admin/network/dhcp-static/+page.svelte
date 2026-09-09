@@ -57,6 +57,7 @@
   import { extractApiErrorMessage } from '$lib/api/core';
   import { toast } from '$lib/stores/toast';
 
+  import { t } from 'svelte-i18n';
   type RouterRow = { id: string; name: string };
   type CustomerRow = { id: string; name: string };
   type LocationRow = { id: string; label: string };
@@ -121,9 +122,9 @@
         attention.push({
           severity: 'high',
           icon: 'alert',
-          title: `${broken.length} layanan belum cocok dengan router`,
-          detail: 'Lease tidak ditemukan atau gagal dibuat di MikroTik. Terapkan ulang atau rekonsiliasi router terkait.',
-          action: 'Lihat bermasalah',
+          title: $t('admin.network.dhcp_static.v2.attn_broken_title', { values: { n: broken.length } }),
+          detail: $t('admin.network.dhcp_static.v2.attn_broken_detail'),
+          action: $t('admin.network.dhcp_static.v2.attn_broken_action'),
           href: '/v2/admin/network/dhcp-static?sync=problem',
         });
       }
@@ -336,7 +337,7 @@
           queue_mode: fQueueMode,
           queue_rate_limit: fQueueMode === 'simple_queue' ? fQueueRate : null,
         });
-        toast.success('Layanan diperbarui.');
+        toast.success($t('admin.network.dhcp_static.v2.t_updated'));
       } else {
         await api.dhcpStatic.services.create({
           subscription_id: fSubscriptionId,
@@ -352,7 +353,7 @@
           queue_mode: fQueueMode,
           queue_rate_limit: fQueueMode === 'simple_queue' ? fQueueRate : null,
         });
-        toast.success('Layanan dibuat. Terapkan ke router agar lease aktif.');
+        toast.success($t('admin.network.dhcp_static.v2.t_created'));
       }
       formOpen = false;
       await load();
@@ -370,7 +371,7 @@
     busyId = row.id;
     try {
       await api.dhcpStatic.services.apply(row.id);
-      toast.success(`Lease ${row.mac_address} diterapkan ke router.`);
+      toast.success($t('admin.network.dhcp_static.v2.t_applied', { values: { mac: row.mac_address } }));
     } catch (e) {
       toast.error(friendlyDhcpError(extractApiErrorMessage(e)));
     } finally {
@@ -383,7 +384,7 @@
     busyId = row.id;
     try {
       await api.dhcpStatic.services.update(row.id, { disabled: !row.disabled });
-      toast.success(row.disabled ? 'Layanan diaktifkan.' : 'Layanan dinonaktifkan.');
+      toast.success(row.disabled ? $t('admin.network.dhcp_static.v2.t_enabled') : $t('admin.network.dhcp_static.v2.t_disabled'));
       await load();
     } catch (e) {
       toast.error(friendlyDhcpError(extractApiErrorMessage(e)));
@@ -395,13 +396,13 @@
   let reconcileBusy = $state(false);
   async function reconcile() {
     if (!filterRouterId) {
-      toast.error('Pilih router dulu untuk rekonsiliasi.');
+      toast.error($t('admin.network.dhcp_static.v2.t_recon_pick'));
       return;
     }
     reconcileBusy = true;
     try {
       const res: any = await api.dhcpStatic.services.reconcileRouter(filterRouterId);
-      toast.success(`Rekonsiliasi selesai — ${res?.updated ?? 0} layanan diperiksa.`);
+      toast.success($t('admin.network.dhcp_static.v2.t_recon_done', { values: { n: res?.updated ?? 0 } }));
       await load();
     } catch (e) {
       toast.error(friendlyDhcpError(extractApiErrorMessage(e)));
@@ -427,7 +428,7 @@
     deleteError = null;
     try {
       await api.dhcpStatic.services.delete(deleteTarget.id);
-      toast.success('Layanan dihapus dan jejak di router dibersihkan.');
+      toast.success($t('admin.network.dhcp_static.v2.t_deleted'));
       deleteTarget = null;
       await load();
     } catch (e) {
@@ -447,33 +448,33 @@
   }
 
   // ── tabel ─────────────────────────────────────────────────────────────
-  const columns: Column[] = [
-    { key: 'customer_id', label: 'Pelanggan', width: '180px' },
-    { key: 'mac_address', label: 'MAC Address', width: '150px' },
-    { key: 'ip_address', label: 'IP Statis', width: '130px' },
-    { key: 'router_id', label: 'Router / Server', width: '190px' },
-    { key: 'package_id', label: 'Paket', width: '150px' },
-    { key: 'sync', label: 'Sinkronisasi', width: '150px' },
+  const columns = $derived<Column[]>([
+    { key: 'customer_id', label: $t('common.customer'), width: '180px' },
+    { key: 'mac_address', label: $t('admin.network.dhcp_static.v2.col_mac'), width: '150px' },
+    { key: 'ip_address', label: $t('admin.network.dhcp_static.v2.col_ip'), width: '130px' },
+    { key: 'router_id', label: $t('admin.network.dhcp_static.v2.col_router'), width: '190px' },
+    { key: 'package_id', label: $t('common.package'), width: '150px' },
+    { key: 'sync', label: $t('admin.network.dhcp_static.v2.col_sync'), width: '150px' },
     { key: 'actions', label: '', width: '96px', align: 'right' },
-  ];
+  ]);
 
   function rowRest(row: DhcpStaticServicePublic): RowAction[] {
     const acts: RowAction[] = [];
     if (canManage) {
       acts.push({
-        label: 'Terapkan ke router',
+        label: $t('admin.network.dhcp_static.v2.act_apply'),
         icon: 'zap',
         disabled: busyId === row.id,
         onclick: () => void applyRow(row),
       });
       acts.push({
-        label: row.disabled ? 'Aktifkan' : 'Nonaktifkan',
+        label: row.disabled ? $t('admin.network.dhcp_static.v2.act_enable') : $t('admin.network.dhcp_static.v2.act_disable'),
         icon: 'check',
         disabled: busyId === row.id,
         onclick: () => void toggleDisabled(row),
       });
-      acts.push({ label: 'Sunting', icon: 'cog', onclick: () => void openEdit(row) });
-      acts.push({ label: 'Hapus', icon: 'close', danger: true, onclick: () => confirmDelete(row) });
+      acts.push({ label: $t('admin.network.dhcp_static.v2.act_edit'), icon: 'cog', onclick: () => void openEdit(row) });
+      acts.push({ label: $t('common.delete'), icon: 'close', danger: true, onclick: () => confirmDelete(row) });
     }
     return acts;
   }
@@ -488,26 +489,26 @@
   }
 </script>
 
-<AppShell title="DHCP Static">
-  <PageHeader title="DHCP Static" desc="Pemetaan MAC ke IP statis dan pembatas bandwidth per pelanggan.">
+<AppShell title={ $t('admin.network.dhcp_static.title') }>
+  <PageHeader title={ $t('admin.network.dhcp_static.title') } desc={ $t('admin.network.dhcp_static.v2.desc') }>
     {#snippet actions()}
       {#if canManage}
-        <Button variant="primary" icon="plus" onclick={openCreate}>Tambah Layanan</Button>
+        <Button variant="primary" icon="plus" onclick={openCreate}>{ $t('admin.network.dhcp_static.v2.add_service') }</Button>
       {/if}
     {/snippet}
   </PageHeader>
 
   {#if attention.length}
-    <AttentionPanel items={attention} title="Perlu perhatian" />
+    <AttentionPanel items={attention} title={ $t('admin.network.dhcp_static.v2.attention') } />
   {/if}
 
   <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
     {#each [
-      { st: 'all', label: 'Total', hint: 'baris pada filter saat ini' },
-      { st: 'synced', label: 'Sinkron', hint: 'lease (dan queue) cocok di router' },
-      { st: 'partial', label: 'Sebagian', hint: 'lease ada, queue belum' },
-      { st: 'problem', label: 'Bermasalah', hint: 'lease gagal / belum di router' },
-      { st: 'disabled', label: 'Nonaktif', hint: 'tidak berlaku di router' },
+      { st: 'all', label: $t('admin.network.dhcp_static.stats.total'), hint: $t('admin.network.dhcp_static.v2.tile_hint') },
+      { st: 'synced', label: $t('admin.network.dhcp_static.v2.tile_synced'), hint: $t('admin.network.dhcp_static.v2.tile_hint_synced') },
+      { st: 'partial', label: $t('admin.network.dhcp_static.v2.tile_partial'), hint: $t('admin.network.dhcp_static.v2.tile_hint_partial') },
+      { st: 'problem', label: $t('admin.network.dhcp_static.v2.tile_problem'), hint: $t('admin.network.dhcp_static.v2.tile_hint_problem') },
+      { st: 'disabled', label: $t('admin.network.dhcp_static.stats.disabled'), hint: $t('admin.network.dhcp_static.v2.tile_hint_disabled') },
     ] as tile}
       <button
         type="button"
@@ -530,10 +531,10 @@
       <input
         type="search"
         class="h-9 w-full rounded-lg border border-ink-200 bg-white pl-9 pr-3 text-sm text-ink-900 placeholder:text-ink-400"
-        placeholder="Cari MAC, IP, catatan…"
+        placeholder={ $t('admin.network.dhcp_static.v2.search_ph') }
         bind:value={search}
         oninput={onSearch}
-        aria-label="Cari layanan"
+        aria-label={ $t('admin.network.dhcp_static.v2.search_aria') }
       />
       <svg class="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-ink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35" /></svg>
     </div>
@@ -541,9 +542,9 @@
       class="h-9 rounded-lg border border-ink-200 bg-white px-2 text-sm text-ink-900"
       bind:value={filterRouterId}
       onchange={() => { page = 1; void load(); }}
-      aria-label="Filter router"
+      aria-label={ $t('admin.network.incidents.ui.router_filter') }
     >
-      <option value="">Semua router</option>
+      <option value="">{ $t('admin.network.dhcp_static.filters.all_routers') }</option>
       {#each routers as r (r.id)}
         <option value={r.id}>{r.name}</option>
       {/each}
@@ -562,7 +563,7 @@
   {/if}
 
   <div class="mt-4">
-    <DataTable {columns} rows={visibleRows} {loading} pageSize={perPage} page={page} {total} onpage={(p) => { page = p; void load(); }} footNote={`${total} layanan total${search || filterRouterId ? ' pada filter ini' : ''}.`}>
+    <DataTable {columns} rows={visibleRows} {loading} pageSize={perPage} page={page} {total} onpage={(p) => { page = p; void load(); }} footNote={`${total} ${$t('admin.network.dhcp_static.v2.foot_prefix')}${search || filterRouterId ? $t('admin.network.dhcp_static.v2.foot_filtered') : ''}.`}>
       {#snippet cell(row: DhcpStaticServicePublic, col: Column)}
         {#if col.key === 'customer_id'}
           <span class="text-sm">{customerName.get(row.customer_id) || row.customer_id.slice(0, 8)}</span>
@@ -576,11 +577,11 @@
           <span class="text-sm">{packageName.get(row.package_id) || '—'}</span>
         {:else if col.key === 'sync'}
           {@const st = dhcpSyncState(row)}
-          <button type="button" class="focus-ring inline-flex min-h-6 items-center rounded-md" onclick={() => openDetail(row)} aria-label="Lihat detail sinkronisasi">
+          <button type="button" class="focus-ring inline-flex min-h-6 items-center rounded-md" onclick={() => openDetail(row)} aria-label={ $t('admin.network.dhcp_static.v2.sync_aria') }>
             <Badge tone={dhcpSyncTone(st)} label={dhcpSyncLabel(st)} />
           </button>
         {:else if col.key === 'actions'}
-          <RowActions primary={{ label: 'Lihat sinkron', icon: 'clock', onclick: () => openDetail(row) }} rest={rowRest(row)} />
+          <RowActions primary={{ label: $t('admin.network.dhcp_static.v2.act_view_sync'), icon: 'clock', onclick: () => openDetail(row) }} rest={rowRest(row)} />
         {/if}
       {/snippet}
     </DataTable>
@@ -588,7 +589,7 @@
 </AppShell>
 
 <!-- modal buat/sunting -->
-<Modal title={editRow ? 'Sunting Layanan DHCP Static' : 'Tambah Layanan DHCP Static'} bind:show={formOpen}>
+<Modal title={editRow ? $t('admin.network.dhcp_static.v2.edit_title') : $t('admin.network.dhcp_static.v2.create_title')} bind:show={formOpen}>
   <div class="space-y-3">
     {#if errRequired}
       <p class="rounded-lg bg-red-50 p-2 text-sm text-red-700">{errRequired}</p>
@@ -597,7 +598,7 @@
       <Field
         stacked
         id="d-cust"
-        label="Pelanggan"
+        label={ $t('common.customer') }
         value={fCustomerId}
         type="select"
         options={[{ value: '', label: '— pilih pelanggan —' }, ...customers.map((c) => ({ value: c.id, label: c.name }))]}
@@ -607,7 +608,7 @@
       <Field
         stacked
         id="d-sub"
-        label="Langganan"
+        label={ $t('admin.customers.tabs.subscriptions') }
         value={fSubscriptionId}
         type="select"
         options={[{ value: '', label: '— pilih langganan —' }, ...subs.map((x) => ({ value: x.id, label: x.package_name || x.id.slice(0, 8) }))]}
@@ -617,7 +618,7 @@
       <Field
         stacked
         id="d-router"
-        label="Router"
+        label={ $t('admin.network.dhcp_static.filters.router') }
         value={fRouterId}
         type="select"
         options={[{ value: '', label: '— pilih router —' }, ...routers.map((r) => ({ value: r.id, label: r.name }))]}
@@ -626,39 +627,39 @@
       <Field
         stacked
         id="d-server"
-        label="DHCP server"
+        label={ $t('admin.network.dhcp_static.columns.server') }
         value={fServer}
         type="select"
-        options={[{ value: '', label: loadingServers ? 'memuat…' : '— pilih server —' }, ...dhcpServers.map((x) => ({ value: x.name, label: x.interface ? `${x.name} • ${x.interface}` : x.name }))]}
+        options={[{ value: '', label: loadingServers ? $t('admin.network.dhcp_static.v2.server_ph') : $t('admin.network.dhcp_static.v2.server_dash_ph') }, ...dhcpServers.map((x) => ({ value: x.name, label: x.interface ? `${x.name} • ${x.interface}` : x.name }))]}
         disabled={!fRouterId || loadingServers}
         onchange={(v) => (fServer = v)}
       />
       <Field
         stacked
         id="d-mac"
-        label="MAC address"
+        label={ $t('admin.network.dhcp_static.v2.field_mac') }
         value={fMac}
         placeholder="AA:BB:CC:DD:EE:FF"
         error={errMac}
         onchange={(v) => (fMac = formatDhcpStaticMacAddressInput(v))}
       />
-      <Field stacked id="d-ip" label="IP statis" value={fIp} placeholder="10.10.20.55" error={errIp} onchange={(v) => (fIp = v)} />
+      <Field stacked id="d-ip" label={ $t('admin.network.dhcp_static.v2.field_ip') } value={fIp} placeholder="10.10.20.55" error={errIp} onchange={(v) => (fIp = v)} />
       <Field
         stacked
         id="d-pkg"
-        label="Paket"
+        label={ $t('common.package') }
         value={fPackageId}
         type="select"
-        options={[{ value: '', label: '— pilih paket —' }, ...dhcpStaticPackages.map((x) => ({ value: x.id, label: x.name }))]}
+        options={[{ value: '', label: $t('admin.network.dhcp_static.v2.pkg_dash_ph') }, ...dhcpStaticPackages.map((x) => ({ value: x.id, label: x.name }))]}
         onchange={(v) => (fPackageId = v)}
       />
       <Field
         stacked
         id="d-qmode"
-        label="Pembatas bandwidth"
+        label={ $t('admin.network.dhcp_static.v2.field_queue') }
         value={fQueueMode}
         type="select"
-        options={[{ value: 'none', label: 'Tanpa queue' }, { value: 'simple_queue', label: 'Simple queue' }]}
+        options={[{ value: 'none', label: $t('admin.network.dhcp_static.v2.q_none') }, { value: 'simple_queue', label: $t('admin.network.dhcp_static.fields.simple_queue') }]}
         onchange={(v) => (fQueueMode = v as 'none' | 'simple_queue')}
       />
     </div>
@@ -666,38 +667,38 @@
       <Field
         stacked
         id="d-queue"
-        label="Rate limit"
+        label={ $t('admin.network.dhcp_static.v2.rate_field') }
         value={fQueueRate}
         placeholder="10M/10M"
-        help={`Contoh siap pakai: ${queuePresets.join(', ')}`}
+        help={$t('admin.network.dhcp_static.v2.queue_help', { values: { presets: queuePresets.join(', ') } })}
         error={errQueue}
         onchange={(v) => (fQueueRate = v)}
       />
     {/if}
-    <Field stacked id="d-comment" label="Catatan" value={fComment} placeholder="opsional" onchange={(v) => (fComment = v)} />
+    <Field stacked id="d-comment" label={ $t('common.notes') } value={fComment} placeholder={ $t('admin.network.dhcp_static.v2.comment_ph') } onchange={(v) => (fComment = v)} />
     <Field
       stacked
       id="d-disabled"
-      label="Nonaktifkan layanan"
+      label={ $t('admin.network.dhcp_static.v2.field_disable') }
       type="toggle"
       value={fDisabled ? 'true' : 'false'}
-      help="Lease & queue dibuat dalam keadaan disabled di router."
+      help={ $t('admin.network.dhcp_static.v2.disable_help') }
       onchange={(v) => (fDisabled = v === 'true')}
     />
     {#if formError}
       <p class="rounded-lg bg-red-50 p-2 text-sm text-red-700">{formError}</p>
     {/if}
     <div class="flex justify-end gap-2 pt-1">
-      <Button variant="ghost" onclick={() => (formOpen = false)}>Batal</Button>
+      <Button variant="ghost" onclick={() => (formOpen = false)}>{ $t('common.cancel') }</Button>
       <Button variant="primary" disabled={saving} onclick={() => void submitForm()}>
-        {saving ? 'Menyimpan…' : editRow ? 'Simpan' : 'Buat'}
+        {saving ? $t('admin.network.dhcp_static.v2.saving') : editRow ? $t('common.save') : $t('common.create')}
       </Button>
     </div>
   </div>
 </Modal>
 
 <!-- modal detail sinkron -->
-<Modal title="Detail sinkronisasi" bind:show={detailOpen}>
+<Modal title={ $t('admin.network.dhcp_static.v2.sync_title') } bind:show={detailOpen}>
   {#if detailRow}
     {@const st = dhcpSyncState(detailRow)}
     <div class="space-y-3 text-sm">
@@ -707,46 +708,45 @@
       </div>
       <p>{dhcpSyncSummary(detailRow)}</p>
       <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-ink-500">
-        <dt>Router / server</dt><dd class="text-ink-900">{routerName.get(detailRow.router_id) || '—'} · {detailRow.dhcp_server_name}</dd>
-        <dt>Ref lease di router</dt><dd class="text-ink-900">{detailRow.lease_router_ref || '—'}</dd>
-        <dt>Sync terakhir</dt><dd class="text-ink-900">{fmtDate(detailRow.lease_last_sync_at)}</dd>
-        <dt>Queue</dt><dd class="text-ink-900">{detailRow.queue_mode === 'none' ? 'tidak ada' : `${detailRow.queue_name || '—'} (${detailRow.queue_rate_limit || '—'})`}</dd>
+        <dt>{ $t('admin.network.dhcp_static.v2.dt_router') }</dt><dd class="text-ink-900">{routerName.get(detailRow.router_id) || '—'} · {detailRow.dhcp_server_name}</dd>
+        <dt>{ $t('admin.network.dhcp_static.v2.dt_lease_ref') }</dt><dd class="text-ink-900">{detailRow.lease_router_ref || '—'}</dd>
+        <dt>{ $t('admin.network.dhcp_static.v2.dt_sync_last') }</dt><dd class="text-ink-900">{fmtDate(detailRow.lease_last_sync_at)}</dd>
+        <dt>Queue</dt><dd class="text-ink-900">{detailRow.queue_mode === 'none' ? $t('admin.network.dhcp_static.v2.queue_none') : `${detailRow.queue_name || '—'} (${detailRow.queue_rate_limit || '—'})`}</dd>
       </dl>
       {#if detailRow.lease_last_error}
-        <p class="rounded-lg bg-red-50 p-2 text-red-700">Error lease: {detailRow.lease_last_error}</p>
+        <p class="rounded-lg bg-red-50 p-2 text-red-700">{ $t('admin.network.dhcp_static.v2.err_lease') } {detailRow.lease_last_error}</p>
       {/if}
       {#if detailRow.queue_last_error}
-        <p class="rounded-lg bg-red-50 p-2 text-red-700">Error queue: {detailRow.queue_last_error}</p>
+        <p class="rounded-lg bg-red-50 p-2 text-red-700">{ $t('admin.network.dhcp_static.v2.err_queue') } {detailRow.queue_last_error}</p>
       {/if}
       {#if canManage}
         <div class="flex justify-end gap-2 pt-1">
-          <Button variant="ghost" onclick={() => (detailOpen = false)}>Tutup</Button>
+          <Button variant="ghost" onclick={() => (detailOpen = false)}>{ $t('common.close') }</Button>
           <Button variant="primary" icon="zap" disabled={busyId === detailRow.id} onclick={() => { const r = detailRow; detailOpen = false; detailRow = null; if (r) void applyRow(r); }}>
-            Terapkan ulang
+            { $t('admin.network.dhcp_static.v2.reapply') }
           </Button>
         </div>
       {:else}
-        <div class="flex justify-end pt-1"><Button variant="ghost" onclick={() => (detailOpen = false)}>Tutup</Button></div>
+        <div class="flex justify-end pt-1"><Button variant="ghost" onclick={() => (detailOpen = false)}>{ $t('common.close') }</Button></div>
       {/if}
     </div>
   {/if}
 </Modal>
 
 <!-- modal hapus -->
-<Modal title="Hapus layanan DHCP static" bind:show={deleteOpen}>
+<Modal title={ $t('admin.network.dhcp_static.v2.delete_title') } bind:show={deleteOpen}>
   {#if deleteTarget}
     <div class="space-y-3 text-sm">
       <p>
-        Menghapus <code>{deleteTarget.mac_address} → {deleteTarget.ip_address}</code> juga
-        membersihkan lease dan queue-nya di router <strong>{routerName.get(deleteTarget.router_id) || deleteTarget.router_id}</strong>.
+        {$t('admin.network.dhcp_static.v2.delete_body_a')}<code>{deleteTarget.mac_address} → {deleteTarget.ip_address}</code>{$t('admin.network.dhcp_static.v2.delete_body_b')}<strong>{routerName.get(deleteTarget.router_id) || deleteTarget.router_id}</strong>.
       </p>
       {#if deleteError}
         <p class="rounded-lg bg-red-50 p-2 text-red-700">{deleteError}</p>
       {/if}
       <div class="flex justify-end gap-2">
-        <Button variant="ghost" onclick={() => (deleteOpen = false)}>Batal</Button>
+        <Button variant="ghost" onclick={() => (deleteOpen = false)}>{ $t('common.cancel') }</Button>
         <Button variant="danger" disabled={deleting} onclick={() => void doDelete()}>
-          {deleting ? 'Menghapus…' : 'Hapus'}
+          {deleting ? $t('admin.network.dhcp_static.v2.deleting') : $t('common.delete')}
         </Button>
       </div>
     </div>
