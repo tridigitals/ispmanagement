@@ -239,7 +239,7 @@ describe('network map popup models', () => {
     );
   });
 
-  it('builds compact link popups with only essential health and transport context', () => {
+  it('builds link popups with health, transport and technical detail pairs', () => {
     const link: NMLink = {
       id: 'link-1',
       name: 'Backhaul Ungaran',
@@ -269,7 +269,18 @@ describe('network map popup models', () => {
       expect.arrayContaining(['Health', 'Capacity']),
     );
     expect(model.summaryItems.map((item) => item.label)).not.toContain('Latency');
-    expect(model.detailPairs).toEqual([]);
+    expect(model.detailPairs.map((pair) => pair.label)).toEqual(
+      expect.arrayContaining(['Dari', 'Ke', 'Utilisasi', 'Loss', 'Latensi']),
+    );
+    expect(model.detailPairs.find((p) => p.label === 'Utilisasi')?.value).toBe('72.0%');
+    expect(model.detailPairs.find((p) => p.label === 'Loss')?.value).toBe('1.20 dB');
+    expect(model.detailPairs.find((p) => p.label === 'Latensi')?.value).toBe('14 ms');
+    expect(model.detailPairs.find((p) => p.label === 'Dari')?.value).toBe('ODC-1');
+    expect(
+      buildLinkPopupModel(link, { from: 'ODC Sukamaju', to: 'ODP 04' }).detailPairs.find(
+        (p) => p.label === 'Dari',
+      )?.value,
+    ).toBe('ODC Sukamaju');
     expect(model.actions.map((action) => action.key)).toEqual(['edit', 'delete']);
     expect(model.actions[0]).toEqual(
       expect.objectContaining({ key: 'edit', label: 'Edit', tone: 'primary' }),

@@ -190,6 +190,7 @@ export function openLinkPopup(args: {
   feature: { properties?: Record<string, any> };
   lngLat: { lng: number; lat: number };
   linkRows: NMLink[];
+  nodeNames?: { from?: string; to?: string };
   onClose?: () => void;
   onEdit: (link: NMLink) => void;
   onDelete: (linkId: string, linkName?: string) => void;
@@ -200,7 +201,7 @@ export function openLinkPopup(args: {
   if (!link) return;
 
   const popupUid = `nm-link-popup-${Math.random().toString(36).slice(2, 10)}`;
-  const popupModel = buildLinkPopupModel(link);
+  const popupModel = buildLinkPopupModel(link, args.nodeNames);
   const popupContent = buildLinkPopupHtml({ popupUid, model: popupModel });
   const popup = new args.maplibre.Popup(
     popupOptionsForMap(

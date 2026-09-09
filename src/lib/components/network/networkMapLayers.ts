@@ -123,7 +123,7 @@ function addTopologyAssetLayers(map: import('maplibre-gl').Map) {
     source: SOURCE_TOPOLOGY_ASSETS,
     filter: ['!', ['has', 'point_count']],
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 9.5, 11, 12, 14, 14.5],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 12, 8, 9.5, 11, 12, 14, 14.5],
       'circle-color': ['coalesce', ['get', 'marker_color'], '#a78bfa'],
       'circle-opacity': 0.16,
       'circle-blur': 0.08,
@@ -137,7 +137,7 @@ function addTopologyAssetLayers(map: import('maplibre-gl').Map) {
     source: SOURCE_TOPOLOGY_ASSETS,
     filter: ['!', ['has', 'point_count']],
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 7.4, 11, 9.2, 14, 11.2],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 9.2, 8, 7.4, 11, 9.2, 14, 11.2],
       'circle-color': ['coalesce', ['get', 'marker_color'], '#a78bfa'],
       'circle-opacity': 0.38,
       'circle-stroke-width': 2,
@@ -172,7 +172,7 @@ function addTopologyAssetLayers(map: import('maplibre-gl').Map) {
         'nm-node-glyph-switch',
         'nm-node-glyph-router',
       ],
-      'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 1.14, 11, 1.3, 14, 1.46],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 1.42, 8, 1.14, 11, 1.3, 14, 1.46],
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
     },
@@ -355,7 +355,7 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
       ['in', ['get', 'status'], ['literal', ['down', 'inactive', 'degraded']]],
     ],
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 12, 11, 15, 14, 18],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 15, 8, 12, 11, 15, 14, 18],
       'circle-color': 'rgba(248,113,113,0.14)',
       'circle-opacity': 1,
       'circle-blur': 0.35,
@@ -374,7 +374,7 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
       ['!=', ['get', 'node_type'], 'customer_premise'],
     ],
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 6, 11, 8, 14, 10.5],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 7.5, 8, 6, 11, 8, 14, 10.5],
       'circle-color': [
         'match',
         ['get', 'status'],
@@ -430,7 +430,7 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
         'nm-node-icon-customer',
         'nm-node-icon-router',
       ],
-      'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 0.58, 11, 0.72, 14, 0.88],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.72, 8, 0.58, 11, 0.72, 14, 0.88],
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
     },
@@ -472,7 +472,7 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
     source: SOURCE_ROUTERS,
     filter: ['!', ['has', 'point_count']],
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 7, 11, 9, 14, 11.5],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 8.75, 8, 7, 11, 9, 14, 11.5],
       'circle-color': ['case', ['==', ['get', 'is_online'], true], '#34d399', '#f87171'],
       'circle-stroke-width': 2,
       'circle-stroke-color': '#0a0f1a',
@@ -486,7 +486,7 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
     filter: ['!', ['has', 'point_count']],
     layout: {
       'icon-image': 'nm-node-icon-router',
-      'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 0.72, 11, 0.86, 14, 1],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.9, 8, 0.72, 11, 0.86, 14, 1],
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
     },
@@ -539,7 +539,7 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
         'nm-node-icon-customer-neutral',
         'nm-node-icon-customer-neutral',
       ],
-      'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 0.64, 11, 0.8, 14, 0.94],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.8, 8, 0.64, 11, 0.8, 14, 0.94],
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
     },
@@ -624,7 +624,7 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
     type: 'circle',
     source: SOURCE_SELECTION_POINTS,
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 9, 11, 12, 14, 15],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 11.25, 8, 9, 11, 12, 14, 15],
       'circle-color': '#f8fafc',
       'circle-opacity': 0.92,
       'circle-stroke-width': 3,

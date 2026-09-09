@@ -1057,10 +1057,15 @@ export function buildServicePopupModel(node: NMNode): NetworkMapPopupModel {
   };
 }
 
-export function buildLinkPopupModel(link: NMLink): NetworkMapPopupModel {
+export function buildLinkPopupModel(
+  link: NMLink,
+  nodeNames?: { from?: string; to?: string },
+): NetworkMapPopupModel {
   const health = computeLinkHealth(link);
   const capacity = link.capacity_mbps != null ? `${link.capacity_mbps} Mbps` : '-';
   const linkType = normalizePopupValue(link.link_type);
+  const fmtNum = (v: number | null | undefined, digits: number, suffix: string) =>
+    v == null ? '-' : `${(Math.round(v * 10 ** digits) / 10 ** digits).toFixed(digits)}${suffix}`;
   return {
     variant: 'network-link',
     kicker: 'Link',
@@ -1077,7 +1082,14 @@ export function buildLinkPopupModel(link: NMLink): NetworkMapPopupModel {
       },
       { label: 'Capacity', value: capacity },
     ],
-    detailPairs: [],
+    /* Sama seperti node: detail teknis yang dulu hanya hidup di modal edit. */
+    detailPairs: [
+      { label: 'Dari', value: nodeNames?.from || link.from_node_id || '—' },
+      { label: 'Ke', value: nodeNames?.to || link.to_node_id || '—' },
+      { label: 'Utilisasi', value: fmtNum(link.utilization_pct, 1, '%') },
+      { label: 'Loss', value: fmtNum(link.loss_db, 2, ' dB') },
+      { label: 'Latensi', value: link.latency_ms == null ? '-' : `${Math.round(link.latency_ms)} ms` },
+    ],
     actions: [popupAction('edit', 'Edit', 'primary'), popupAction('delete', 'Delete', 'danger')],
   };
 }

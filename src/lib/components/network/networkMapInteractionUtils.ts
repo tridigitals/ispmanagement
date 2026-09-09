@@ -181,8 +181,7 @@ function renderPopupModel(args: { popupUid: string; model: NetworkMapPopupModel 
       : args.model.variant === 'network-link'
         ? 'nm-popup-actions nm-popup-actions-link'
       : 'nm-popup-actions';
-  const shouldRenderDetailGrid =
-    args.model.variant !== 'network-link' && args.model.detailPairs.length > 0;
+  const shouldRenderDetailGrid = args.model.detailPairs.length > 0;
 
   return {
     closeBtnId,
@@ -287,7 +286,7 @@ export function getPopupSizeForModel(model: Pick<NetworkMapPopupModel, 'variant'
     return { width: 332, height: 320 };
   }
   if (model.variant === 'network-link') {
-    return { width: 252, height: 190 };
+    return { width: 288, height: 330 };
   }
   return { width: 288, height: 320 };
 }

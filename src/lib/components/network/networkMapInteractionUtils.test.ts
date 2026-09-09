@@ -127,7 +127,7 @@ describe('buildNodePopupHtml', () => {
 });
 
 describe('buildLinkPopupHtml', () => {
-  it('renders a compact link popup without the dense detail grid', () => {
+  it('renders a link popup with the dense detail grid when detail pairs exist', () => {
     const html = buildLinkPopupHtml({
       popupUid: 'link-popup-1',
       model: {
@@ -156,7 +156,7 @@ describe('buildLinkPopupHtml', () => {
     expect(html.html).toContain('Fiber transport path');
     expect(html.html).toContain('action-edit');
     expect(html.html).toContain('Edit');
-    expect(html.html).not.toContain('nm-popup-grid');
-    expect(html.html).not.toContain('very-long-source');
+    expect(html.html).toContain('nm-popup-grid');
+    expect(html.html).toContain('very-long-source');
   });
 });

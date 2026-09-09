@@ -882,7 +882,7 @@
     topologyAssetsVisible = true;
   }
 
-  function handleWorkspaceSearchSelect(item: NetworkMapSearchResultItem) {
+  async function handleWorkspaceSearchSelect(item: NetworkMapSearchResultItem) {
     workspaceSearchQuery = item.label;
 
     if (item.kind === 'customer' || item.kind === 'service' || item.kind === 'node') {
@@ -905,7 +905,7 @@
       if (!row) return;
       const coord = coordinateFromGeometry(row.geometry);
       if (coord) focusMapOnCoordinates(coord[0], coord[1], 13);
-      void updateWorkspaceSelection(
+      await updateWorkspaceSelection(
         buildSelectedMapObject({
           kind: 'link',
           id: row.id,
@@ -913,6 +913,24 @@
           linkType: row.link_type,
         }),
       );
+      /* Konsisten dengan klik canvas: hasil search link langsung membuka
+         popup detail (dari/ke/utilisasi/loss/latensi). */
+      if (coord && map && maplibre) {
+        const { openLinkPopup } = await loadNetworkMapPopupModule();
+        const fromNode = nodeRows.find((n) => n.id === row.from_node_id);
+        const toNode = nodeRows.find((n) => n.id === row.to_node_id);
+        openLinkPopup({
+          map,
+          maplibre,
+          feature: { properties: { id: row.id, name: row.name, link_type: row.link_type } } as any,
+          lngLat: { lng: coord[0], lat: coord[1] },
+          linkRows,
+          nodeNames: { from: fromNode?.name, to: toNode?.name },
+          onClose: clearMapPopupSelection,
+          onEdit: openEditLinkModal,
+          onDelete: (linkId, linkName) => openDeleteConfirm('link', linkId, linkName),
+        });
+      }
       return;
     }
 
@@ -1019,12 +1037,16 @@
       }),
     );
     const { openLinkPopup } = await loadNetworkMapPopupModule();
+    const fromNode = nodeRows.find((n) => n.id === props.from_node_id);
+    const toNode = nodeRows.find((n) => n.id === props.to_node_id);
+
     openLinkPopup({
       map,
       maplibre,
       feature: clickedFeature.feature as any,
       lngLat: e.lngLat,
       linkRows,
+      nodeNames: { from: fromNode?.name, to: toNode?.name },
       onClose: clearMapPopupSelection,
       onEdit: openEditLinkModal,
       onDelete: (linkId, linkName) => openDeleteConfirm('link', linkId, linkName),
@@ -1459,7 +1481,9 @@
         zoom: 8,
         maxZoom: standardMaxZoom,
         minZoom: 3,
-      });
+      }) as import('maplibre-gl').Map;
+      /* Hook E2E/dev: akses map instance dari Playwright tanpa menyentuh internal. */
+      (window as any).__nmMap = map;
 
       map.on('load', async () => {
         if (!map) return;
@@ -3267,8 +3291,8 @@
   }
 
   :global(.maplibregl-popup.nm-popup-link-shell .maplibregl-popup-content) {
-    width: min(252px, calc(100vw - 44px));
-    max-width: min(252px, calc(100vw - 44px)) !important;
+    width: min(288px, calc(100vw - 44px));
+    max-width: min(288px, calc(100vw - 44px)) !important;
     padding: 8px;
     border-color: rgba(59, 130, 246, 0.28);
   }

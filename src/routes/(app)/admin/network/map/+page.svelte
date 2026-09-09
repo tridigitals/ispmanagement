@@ -961,12 +961,16 @@
       }),
     );
     const { openLinkPopup } = await loadNetworkMapPopupModule();
+    const fromNode = nodeRows.find((n) => n.id === props.from_node_id);
+    const toNode = nodeRows.find((n) => n.id === props.to_node_id);
+
     openLinkPopup({
       map,
       maplibre,
       feature: clickedFeature.feature as any,
       lngLat: e.lngLat,
       linkRows,
+      nodeNames: { from: fromNode?.name, to: toNode?.name },
       onClose: clearMapPopupSelection,
       onEdit: openEditLinkModal,
       onDelete: (linkId, linkName) => openDeleteConfirm('link', linkId, linkName),
@@ -3049,8 +3053,8 @@
   }
 
   :global(.maplibregl-popup.nm-popup-link-shell .maplibregl-popup-content) {
-    width: min(252px, calc(100vw - 44px));
-    max-width: min(252px, calc(100vw - 44px)) !important;
+    width: min(288px, calc(100vw - 44px));
+    max-width: min(288px, calc(100vw - 44px)) !important;
     padding: 8px;
     border-color: rgba(59, 130, 246, 0.28);
   }
