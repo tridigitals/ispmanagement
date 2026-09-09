@@ -40,6 +40,7 @@
   import PageHeader from '$lib/components/ds/PageHeader.svelte';
   import StatTile from '$lib/components/ds/StatTile.svelte';
   import DataTable from '$lib/components/ds/DataTable.svelte';
+  import EmptyState from '$lib/components/ds/EmptyState.svelte';
   import Badge from '$lib/components/ds/Badge.svelte';
   import Button from '$lib/components/ds/Button.svelte';
   import type { Column } from '$lib/components/ds/table-types';
@@ -333,7 +334,7 @@
           Fitur paket (entitlement nyata)
         </h3>
         {#if featureGroups.length === 0}
-          <p class="mt-2 text-sm text-ink-500">Belum ada fitur terdefinisi untuk paket ini.</p>
+          <EmptyState icon="box" title="Belum ada fitur terdefinisi" hint="Paket ini belum memetakan entitlement apa pun." />
         {:else}
           <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {#each featureGroups as g (g.category)}

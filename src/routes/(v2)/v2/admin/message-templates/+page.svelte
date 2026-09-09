@@ -27,6 +27,7 @@
     Badge,
     Button,
     Card,
+    EmptyState,
     Field,
     Icon,
     PageHeader,
@@ -272,10 +273,7 @@
     <Card><div class="py-10 text-center text-sm text-ink-500">Memuat templat…</div></Card>
   {:else if templates.length === 0}
     <Card>
-      <div class="py-10 text-center">
-        <div class="text-sm font-medium text-ink-900">Belum ada templat</div>
-        <p class="mt-1 text-sm text-ink-500">Buat templat pertama untuk keperluan ini.</p>
-      </div>
+      <EmptyState title="Belum ada templat" hint="Buat templat pertama untuk keperluan ini." />
     </Card>
   {:else}
     <div class="grid gap-3 md:grid-cols-2">

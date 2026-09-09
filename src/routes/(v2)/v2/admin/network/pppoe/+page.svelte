@@ -38,7 +38,14 @@
   import { toast } from '$lib/stores/toast';
   import { extractApiErrorMessage } from '$lib/api/core';
   import { fetchAllPages, fetchAllRows } from '$lib/utils/fetchAllPages';
-  import type { PppoeAccountPublic, CustomerListItem } from '$lib/api/types';
+  import type {
+    PppoeAccountPublic,
+    CustomerListItem,
+    IspPackageRouterMappingView,
+  } from '$lib/api/types';
+  import { getPppoeAssignmentPayload } from '$lib/utils/pppoePackageAssignment';
+  import { createThenApplyPppoeAccount, PppoeCreateApplyError } from '$lib/utils/pppoeCreateProvisioning';
+  import { loadPppoeAccountModal } from '../../../../../(app)/admin/network/pppoe/pppoePageModules';
 
   /* api.mikrotik.routers.list() masih bertipe Promise<any[]> di lib/api/mikrotik.ts;
      dua field yang dipakai halaman ini dinyatakan eksplisit di sini. */
@@ -56,6 +63,237 @@
 
   let q = $state('');
   let chip = $state<ChipKey>('all');
+  /* ── A-15: create/edit akun PPPoE di v2 — reuse modal legacy (presentational)
+     yang sudah dipakai halaman (app) lewat loader cache-nya. ──────────────── */
+  type LocationRow = { id: string; label: string };
+
+  let showCreate = $state(false);
+  let showEdit = $state(false);
+  let saving = $state(false);
+  let editRow = $state<PppoeAccountPublic | null>(null);
+  let PppoeAccountModalComponent = $state<any | null>(null);
+
+  let formRouterId = $state('');
+  let formCustomerId = $state('');
+  let formLocationId = $state('');
+  let formUsername = $state('');
+  let formPassword = $state('');
+  let formRouterProfileName = $state('');
+  let formRemoteAddress = $state('');
+  let formAddressPool = $state('');
+  let formDisabled = $state(false);
+  let formComment = $state('');
+  let formPackageId = $state('');
+  let formAccountSource = $state<'router' | 'managed_radius'>('router');
+
+  let locations = $state<LocationRow[]>([]);
+  let routerPackageMappings = $state<IspPackageRouterMappingView[]>([]);
+
+  const routerOptions = $derived([...routerName.entries()].map(([id, name]) => ({ label: name, value: id })));
+  const customerOptions = $derived([...customerName.entries()].map(([id, name]) => ({ label: name, value: id })));
+  const locationOptions = $derived(locations.map((l) => ({ label: l.label, value: l.id })));
+  const packageOptions = $derived.by(() => {
+    const seen = new Set<string>();
+    const out: Array<{ label: string; value: string }> = [];
+    for (const m of routerPackageMappings) {
+      if (!m?.package_id || seen.has(m.package_id)) continue;
+      seen.add(m.package_id);
+      out.push({ label: m.package_name, value: m.package_id });
+    }
+    return out;
+  });
+  function assignmentPayload() {
+    return getPppoeAssignmentPayload({
+      packageId: formPackageId,
+      mappings: routerPackageMappings,
+      current: {
+        router_profile_name: formRouterProfileName,
+        remote_address: formRemoteAddress,
+        address_pool: formAddressPool,
+      },
+    });
+  }
+  const packageSelectionHasMissingMapping = $derived(
+    Boolean(formPackageId) && !assignmentPayload().hasPackageMapping,
+  );
+
+  const sourceLabel = (source: 'router' | 'managed_radius') =>
+    source === 'managed_radius' ? 'Managed RADIUS' : 'Secret router';
+  const sourceDisabledHintLabel = (source: 'router' | 'managed_radius') =>
+    source === 'managed_radius'
+      ? 'Nonaktifkan akun di RADIUS terpusat saat Apply ke RADIUS diklik.'
+      : 'Nonaktifkan akun PPPoE (diterapkan ke router saat Apply diklik).';
+  const sourceCreateActionLabel = (source: 'router' | 'managed_radius') =>
+    source === 'managed_radius' ? 'Simpan & terapkan ke RADIUS' : 'Simpan & terapkan ke router';
+
+  async function ensurePppoeAccountModalComponent() {
+    if (PppoeAccountModalComponent) return;
+    const modules = await loadPppoeAccountModal();
+    PppoeAccountModalComponent = modules.PppoeAccountModalComponent;
+  }
+
+  async function loadLocations(customerId: string) {
+    if (!customerId) {
+      locations = [];
+      return;
+    }
+    try {
+      const rows: any[] = (await api.customers.locations.list(customerId)) as any;
+      locations = (rows || []).map((l) => ({ id: l.id, label: l.label }));
+    } catch (e) {
+      console.error('locations gagal dimuat:', e);
+      locations = [];
+    }
+  }
+
+  async function loadRouterPackages(routerId: string) {
+    if (!routerId) {
+      routerPackageMappings = [];
+      return;
+    }
+    try {
+      routerPackageMappings = await api.ispPackages.routerMappings.list({ router_id: routerId });
+    } catch (e) {
+      console.error('mapping paket router gagal:', e);
+      routerPackageMappings = [];
+    }
+  }
+
+  function applyPackageToForm(pkgId: string) {
+    const resolved = assignmentPayload();
+    formRouterProfileName = resolved.router_profile_name || '';
+    formRemoteAddress = resolved.remote_address || '';
+    formAddressPool = resolved.address_pool || '';
+  }
+
+  function resetForm() {
+    formRouterId = '';
+    formCustomerId = '';
+    formLocationId = '';
+    formUsername = '';
+    formPassword = '';
+    formPackageId = '';
+    formRouterProfileName = '';
+    formRemoteAddress = '';
+    formAddressPool = '';
+    formDisabled = false;
+    formComment = '';
+    formAccountSource = 'router';
+    locations = [];
+    routerPackageMappings = [];
+    editRow = null;
+  }
+
+  async function openCreate() {
+    if (!canManage) return;
+    resetForm();
+    await ensurePppoeAccountModalComponent();
+    showCreate = true;
+  }
+
+  async function openEdit(row: PppoeAccountPublic) {
+    if (!canManage) return;
+    resetForm();
+    editRow = row;
+    formRouterId = row.router_id;
+    formCustomerId = row.customer_id;
+    formLocationId = row.location_id || '';
+    formUsername = row.username;
+    formPassword = '';
+    formPackageId = row.package_id || '';
+    formRouterProfileName = row.router_profile_name || '';
+    formRemoteAddress = row.remote_address || '';
+    formAddressPool = row.address_pool || '';
+    formDisabled = Boolean(row.disabled);
+    formComment = row.comment || '';
+    formAccountSource = row.account_source || 'router';
+    await Promise.all([
+      loadLocations(row.customer_id),
+      loadRouterPackages(row.router_id),
+      ensurePppoeAccountModalComponent(),
+    ]);
+    showEdit = true;
+  }
+
+  async function submitCreate() {
+    if (saving) return;
+    if (packageSelectionHasMissingMapping) {
+      toast.error('Paket ini belum punya pemetaan ke router. Nilai akun yang ada dipertahankan sampai pemetaan ditambahkan.');
+      return;
+    }
+    if (!formRouterId || !formCustomerId || !formLocationId || !formUsername.trim() || !formPassword) return;
+    saving = true;
+    try {
+      const payload = assignmentPayload();
+      const result = await createThenApplyPppoeAccount({
+        create: () =>
+          api.pppoe.accounts.create({
+            router_id: formRouterId,
+            customer_id: formCustomerId,
+            location_id: formLocationId,
+            username: formUsername.trim(),
+            password: formPassword,
+            package_id: formPackageId || null,
+            router_profile_name: payload.router_profile_name,
+            remote_address: payload.remote_address,
+            address_pool: payload.address_pool,
+            disabled: formDisabled,
+            comment: formComment.trim() || null,
+            account_source: formAccountSource,
+          }),
+        apply: (id) => api.pppoe.accounts.apply(id),
+      });
+      toast.success(result.applySucceeded ? 'Akun dibuat dan diterapkan ke router.' : 'Akun PPPoE dibuat.');
+      showCreate = false;
+      await load();
+    } catch (e: unknown) {
+      if (e instanceof PppoeCreateApplyError) {
+        toast.error(
+          'Tersimpan, tapi gagal diterapkan otomatis: ' + extractApiErrorMessage(e.applyError ?? e),
+        );
+        showCreate = false;
+        await load();
+      } else {
+        toast.error('Gagal membuat akun: ' + extractApiErrorMessage(e));
+      }
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function submitEdit() {
+    if (saving || !editRow) return;
+    if (!formUsername.trim()) return;
+    if (packageSelectionHasMissingMapping) {
+      toast.error('Paket ini belum punya pemetaan ke router. Nilai akun yang ada dipertahankan sampai pemetaan ditambahkan.');
+      return;
+    }
+    saving = true;
+    try {
+      const payload = assignmentPayload();
+      await api.pppoe.accounts.update(editRow.id, {
+        customer_id: formCustomerId || null,
+        location_id: formLocationId || null,
+        username: formUsername.trim(),
+        password: formPassword || undefined,
+        package_id: formPackageId || null,
+        router_profile_name: payload.router_profile_name,
+        remote_address: payload.remote_address,
+        address_pool: payload.address_pool,
+        disabled: formDisabled,
+        comment: formComment.trim() || null,
+        account_source: formAccountSource,
+      });
+      toast.success('Akun PPPoE diperbarui.');
+      showEdit = false;
+      await load();
+    } catch (e: unknown) {
+      toast.error('Gagal menyimpan: ' + extractApiErrorMessage(e));
+    } finally {
+      saving = false;
+    }
+  }
+
   // P-01: tombol aksi baris di v2 sempat tanpa handler. Di-wire ke API yang
   // sama dengan versi lama; create/edit penuh via modal = scope parity A-15.
   let busyId = $state<string | null>(null);
@@ -182,6 +420,26 @@
 
   onMount(() => void load());
 
+  let reconciling = $state(false);
+  async function reconcileAll() {
+    if (!canManage || reconciling) return;
+    reconciling = true;
+    try {
+      const ids = routers.map((r) => r.id);
+      const results = await Promise.allSettled(
+        ids.map((rid) => api.pppoe.accounts.reconcileRouter(rid)),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed === 0) toast.success('State router direkonsiliasi.');
+      else toast.warning(`${ids.length - failed} router berhasil, ${failed} gagal direkonsiliasi.`);
+      await load();
+    } catch (e: unknown) {
+      toast.error('Rekonsiliasi gagal: ' + extractApiErrorMessage(e));
+    } finally {
+      reconciling = false;
+    }
+  }
+
   async function applyToRouter(a: PppoeAccountPublic) {
     if (!canManage || busyId) return;
     busyId = a.id;
@@ -239,8 +497,8 @@
   >
     {#snippet actions()}
       {#if canManage}
-        <Button icon="refresh">Rekonsiliasi router</Button>
-        <Button variant="primary" icon="plus">Tambah akun</Button>
+        <Button icon="refresh" loading={reconciling} onclick={reconcileAll}>Rekonsiliasi router</Button>
+        <Button variant="primary" icon="plus" onclick={openCreate}>Tambah akun</Button>
       {/if}
     {/snippet}
   </PageHeader>
@@ -377,8 +635,7 @@
             primary={{
               label: 'Ubah',
               icon: 'cog',
-              disabled: true,
-              disabledReason: 'Form edit belum tersedia di tampilan baru — gunakan versi lama atau menu pelanggan',
+              onclick: () => void openEdit(a),
             }}
             rest={canManage
               ? [
@@ -420,4 +677,76 @@
   loading={deleting}
   onconfirm={() => void confirmDelete()}
 />
+{#if PppoeAccountModalComponent}
+  <PppoeAccountModalComponent
+    mode="create"
+    bind:show={showCreate}
+    {saving}
+    {routerOptions}
+    {customerOptions}
+    {locationOptions}
+    {packageOptions}
+    {packageSelectionHasMissingMapping}
+    bind:formRouterId
+    bind:formCustomerId
+    bind:formLocationId
+    bind:formUsername
+    bind:formPassword
+    bind:formPackageId
+    bind:formComment
+    bind:formDisabled
+    bind:formAccountSource
+    onRouterChange={() => {
+      formPackageId = '';
+      formRouterProfileName = '';
+      formRemoteAddress = '';
+      formAddressPool = '';
+      void loadRouterPackages(formRouterId);
+    }}
+    onCustomerChange={() => {
+      formLocationId = '';
+      void loadLocations(formCustomerId);
+    }}
+    onPackageChange={() => applyPackageToForm(formPackageId)}
+    onSubmit={submitCreate}
+    {sourceLabel}
+    {sourceDisabledHintLabel}
+    {sourceCreateActionLabel}
+  />
+  <PppoeAccountModalComponent
+    mode="edit"
+    bind:show={showEdit}
+    {saving}
+    {routerOptions}
+    {customerOptions}
+    {locationOptions}
+    {packageOptions}
+    {packageSelectionHasMissingMapping}
+    bind:formRouterId
+    bind:formCustomerId
+    bind:formLocationId
+    bind:formUsername
+    bind:formPassword
+    bind:formPackageId
+    bind:formComment
+    bind:formDisabled
+    bind:formAccountSource
+    routerDisplayName={formRouterId ? routerName.get(formRouterId) || '' : ''}
+    customerDisplayName={formCustomerId ? customerName.get(formCustomerId) || '' : ''}
+    locationDisplayName={formLocationId ? locations.find((l) => l.id === formLocationId)?.label || '' : ''}
+    onRouterChange={() => {
+      formPackageId = '';
+      void loadRouterPackages(formRouterId);
+    }}
+    onCustomerChange={() => {
+      formLocationId = '';
+      void loadLocations(formCustomerId);
+    }}
+    onPackageChange={() => applyPackageToForm(formPackageId)}
+    onSubmit={submitEdit}
+    {sourceLabel}
+    {sourceDisabledHintLabel}
+    {sourceCreateActionLabel}
+  />
+{/if}
 </AppShell>

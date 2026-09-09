@@ -29,6 +29,8 @@ pub fn router() -> Router<AppState> {
         .route("/alerts/{id}/ack", post(ack_alert))
         .route("/alerts/{id}/resolve", post(resolve_alert))
         .route("/incidents", get(list_incidents))
+        .route("/incidents/search", get(search_incidents_http))
+        .route("/incidents/stats", get(incident_stats_http))
         .route("/incidents/simulate", post(simulate_incident))
         .route(
             "/incidents/escalate-now",
@@ -232,6 +234,69 @@ async fn list_incidents(
         .list_incidents(&tenant_id, q.active_only.unwrap_or(true), limit)
         .await?;
     Ok(Json(rows))
+}
+
+// GET /api/admin/mikrotik/incidents/search — A-16: filter server-side + halaman
+#[derive(Debug, Deserialize)]
+struct IncidentSearchQuery {
+    active_only: Option<bool>,
+    severity: Option<String>,
+    status: Option<String>,
+    router_id: Option<String>,
+    q: Option<String>,
+    sla_breach_minutes: Option<i64>,
+    page: Option<u32>,
+    per_page: Option<u32>,
+}
+
+async fn search_incidents_http(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<IncidentSearchQuery>,
+) -> AppResult<Json<crate::models::PaginatedResponse<crate::models::mikrotik::MikrotikIncident>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_incidents", "read")
+        .await?;
+    let pg = crate::services::pagination::normalize(q.page.unwrap_or(1), q.per_page.unwrap_or(25));
+    let params = crate::models::mikrotik::IncidentSearchParams {
+        active_only: q.active_only.unwrap_or(false),
+        severity: q.severity.filter(|v| v != "all"),
+        status: q.status.filter(|v| v != "all"),
+        router_id: q.router_id.filter(|v| v != "all"),
+        q: q.q,
+        sla_breach_minutes: None,
+        page: pg.page,
+        per_page: pg.per_page,
+    };
+    let rows = state.mikrotik_service.search_incidents(&tenant_id, &params).await?;
+    Ok(Json(rows))
+}
+
+// GET /api/admin/mikrotik/incidents/stats — agregat untuk kartu statistik
+async fn incident_stats_http(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<IncidentSearchQuery>,
+) -> AppResult<Json<crate::models::mikrotik::IncidentStats>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_incidents", "read")
+        .await?;
+    let params = crate::models::mikrotik::IncidentSearchParams {
+        active_only: q.active_only.unwrap_or(false),
+        severity: q.severity.filter(|v| v != "all"),
+        status: q.status.filter(|v| v != "all"),
+        router_id: q.router_id.filter(|v| v != "all"),
+        q: q.q,
+        sla_breach_minutes: q.sla_breach_minutes.filter(|&v| v > 0),
+        page: 1,
+        per_page: 1,
+    };
+    let stats = state.mikrotik_service.incident_stats(&tenant_id, &params).await?;
+    Ok(Json(stats))
 }
 
 // PUT /api/admin/mikrotik/incidents/{id}

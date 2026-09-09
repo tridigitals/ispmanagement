@@ -128,6 +128,69 @@ pub async fn list_mikrotik_incidents(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn search_mikrotik_incidents(
+    token: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+    active_only: Option<bool>,
+    severity: Option<String>,
+    status: Option<String>,
+    router_id: Option<String>,
+    q: Option<String>,
+    page: Option<u32>,
+    per_page: Option<u32>,
+) -> Result<crate::models::PaginatedResponse<MikrotikIncident>, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims.tenant_id.ok_or_else(|| "No tenant ID in token".to_string())?;
+    auth.check_permission(&claims.sub, &tenant_id, "network_incidents", "read")
+        .await
+        .map_err(|e| e.to_string())?;
+    let pg = crate::services::pagination::normalize(page.unwrap_or(1), per_page.unwrap_or(25));
+    let params = crate::models::mikrotik::IncidentSearchParams {
+        active_only: active_only.unwrap_or(false),
+        severity: severity.filter(|v| v != "all"),
+        status: status.filter(|v| v != "all"),
+        router_id: router_id.filter(|v| v != "all"),
+        q,
+        sla_breach_minutes: None,
+        page: pg.page,
+        per_page: pg.per_page,
+    };
+    mikrotik.search_incidents(&tenant_id, &params).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_mikrotik_incident_stats(
+    token: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+    active_only: Option<bool>,
+    severity: Option<String>,
+    status: Option<String>,
+    router_id: Option<String>,
+    q: Option<String>,
+    sla_breach_minutes: Option<i64>,
+) -> Result<crate::models::mikrotik::IncidentStats, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims.tenant_id.ok_or_else(|| "No tenant ID in token".to_string())?;
+    auth.check_permission(&claims.sub, &tenant_id, "network_incidents", "read")
+        .await
+        .map_err(|e| e.to_string())?;
+    let params = crate::models::mikrotik::IncidentSearchParams {
+        active_only: active_only.unwrap_or(false),
+        severity: severity.filter(|v| v != "all"),
+        status: status.filter(|v| v != "all"),
+        router_id: router_id.filter(|v| v != "all"),
+        q,
+        sla_breach_minutes: sla_breach_minutes.filter(|&v| v > 0),
+        page: 1,
+        per_page: 1,
+    };
+    mikrotik.incident_stats(&tenant_id, &params).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn list_mikrotik_logs(
     token: String,
     auth: State<'_, AuthService>,

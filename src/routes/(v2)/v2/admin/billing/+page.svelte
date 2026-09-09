@@ -64,6 +64,7 @@
     Badge,
     Button,
     Card,
+    EmptyState,
     Icon,
     PageHeader,
     StatTile,
@@ -385,7 +386,7 @@
             Churn bulan ini {analytics.churn_rate}%.
           </p>
         {:else}
-          <div class="py-6 text-center text-sm text-ink-500">Belum ada langganan</div>
+          <EmptyState icon="users" title="Belum ada langganan" hint="Grafik churn butuh minimal satu langganan aktif." />
         {/if}
       </Card>
     </div>

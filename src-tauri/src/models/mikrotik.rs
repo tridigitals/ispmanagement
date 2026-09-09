@@ -508,6 +508,36 @@ pub struct MikrotikAlert {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IncidentSearchParams {
+    pub active_only: bool,
+    pub severity: Option<String>,
+    pub status: Option<String>,
+    pub router_id: Option<String>,
+    pub q: Option<String>,
+    /// Ambang breach SLA (menit) untuk stats; None = tidak dihitung.
+    pub sla_breach_minutes: Option<i64>,
+    pub page: u32,
+    pub per_page: u32,
+}
+
+/// Agregat server-side untuk kartu statistik — jujur atas SELURUH baris yang
+/// cocok filter, bukan hanya halaman yang tampil (A-16).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IncidentStats {
+    pub total: i64,
+    pub open: i64,
+    pub ack: i64,
+    pub in_progress: i64,
+    pub resolved: i64,
+    /// Rata-rata menit first_seen -> ack (null bila tanpa sampel).
+    pub mtta_minutes: Option<f64>,
+    /// Rata-rata menit first_seen -> resolved (null bila tanpa sampel).
+    pub mttr_minutes: Option<f64>,
+    /// Insiden AKTIF yang melewati ambang breach; null bila ambang tak dikirim.
+    pub breach_count: Option<i64>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct MikrotikIncident {
     pub id: String,

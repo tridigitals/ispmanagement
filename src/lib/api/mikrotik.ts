@@ -320,6 +320,52 @@ export const mikrotik = {
         activeOnly: params?.activeOnly,
         limit: params?.limit,
       }),
+    // A-16: filter + paginasi server-side (endpoint baru).
+    search: (params: {
+      activeOnly?: boolean;
+      severity?: string;
+      status?: string;
+      routerId?: string;
+      q?: string;
+      page?: number;
+      perPage?: number;
+    }): Promise<{ data: any[]; total: number; page: number; per_page: number }> =>
+      safeInvoke('search_mikrotik_incidents', {
+        token: getTokenOrThrow(),
+        active_only: params.activeOnly,
+        severity: params.severity,
+        status: params.status,
+        router_id: params.routerId,
+        q: params.q,
+        page: params.page,
+        per_page: params.perPage,
+      }),
+    stats: (params: {
+      activeOnly?: boolean;
+      severity?: string;
+      status?: string;
+      routerId?: string;
+      q?: string;
+      slaBreachMinutes?: number;
+    }): Promise<{
+      total: number;
+      open: number;
+      ack: number;
+      in_progress: number;
+      resolved: number;
+      mtta_minutes: number | null;
+      mttr_minutes: number | null;
+      breach_count: number | null;
+    }> =>
+      safeInvoke('get_mikrotik_incident_stats', {
+        token: getTokenOrThrow(),
+        active_only: params.activeOnly,
+        severity: params.severity,
+        status: params.status,
+        router_id: params.routerId,
+        q: params.q,
+        sla_breach_minutes: params.slaBreachMinutes,
+      }),
     ack: (id: string): Promise<any> =>
       safeInvoke('ack_mikrotik_incident', { token: getTokenOrThrow(), id }),
     resolve: (id: string): Promise<any> =>

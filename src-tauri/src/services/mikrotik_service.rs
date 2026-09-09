@@ -465,6 +465,210 @@ impl MikrotikService {
         Ok(rows)
     }
 
+    /// A-16: WHERE dinamis untuk insiden — dipakai bersama oleh search & stats
+    /// supaya kartu statistik dan daftar selalu melihat rentang baris yang sama.
+    #[cfg(feature = "postgres")]
+    fn incident_where(
+        qb: &mut sqlx::QueryBuilder<'_, sqlx::Postgres>,
+        tenant_id: &str,
+        p: &crate::models::mikrotik::IncidentSearchParams,
+    ) {
+        use crate::services::audit_service::like_pattern;
+        qb.push(" WHERE i.tenant_id::text = ");
+        qb.push_bind(tenant_id.to_string());
+        if p.active_only {
+            qb.push(" AND i.resolved_at IS NULL");
+        }
+        if let Some(sev) = &p.severity {
+            qb.push(" AND i.severity = ").push_bind(sev.clone());
+        }
+        if let Some(st) = &p.status {
+            qb.push(" AND i.status = ").push_bind(st.clone());
+        }
+        if let Some(rid) = &p.router_id {
+            qb.push(" AND i.router_id::text = ").push_bind(rid.clone());
+        }
+        if let Some(term) = p.q.as_deref().map(str::trim).filter(|t| !t.is_empty()) {
+            let pat = like_pattern(term);
+            qb.push(" AND (i.title ILIKE ").push_bind(pat.clone());
+            qb.push(" OR i.message ILIKE ").push_bind(pat.clone());
+            qb.push(" OR i.incident_type ILIKE ").push_bind(pat.clone());
+            qb.push(" OR EXISTS (SELECT 1 FROM mikrotik_routers mr WHERE mr.id::text = i.router_id::text AND mr.name ILIKE ").push_bind(pat);
+            qb.push("))");
+        }
+    }
+
+    #[cfg(not(feature = "postgres"))]
+    async fn incident_search_sqlite(
+        &self,
+        tenant_id: &str,
+        p: &crate::models::mikrotik::IncidentSearchParams,
+    ) -> AppResult<crate::models::PaginatedResponse<MikrotikIncident>> {
+        // Jalur sqlite dev: filter di atas hasil query dasar (setara perilaku
+        // lama). Produksi memakai postgres.
+        let all = self
+            .list_incidents(tenant_id, p.active_only, crate::services::pagination::MAX_PER_PAGE)
+            .await?;
+        let term = p.q.as_deref().map(str::trim).filter(|t| !t.is_empty()).map(str::to_lowercase);
+        let mut hits: Vec<MikrotikIncident> = all
+            .into_iter()
+            .filter(|r| {
+                if let Some(sev) = &p.severity { if &r.severity != sev { return false; } }
+                if let Some(st) = &p.status { if &r.status != st { return false; } }
+                if let Some(rid) = &p.router_id { if &r.router_id != rid { return false; } }
+                if let Some(t) = &term {
+                    let hay = format!("{} {} {}", r.title, r.message, r.incident_type).to_lowercase();
+                    if !hay.contains(t) { return false; }
+                }
+                true
+            })
+            .collect();
+        let total = hits.len() as i64;
+        let start = ((p.page.saturating_sub(1)) as usize).saturating_mul(p.per_page as usize);
+        hits = hits.into_iter().skip(start).take(p.per_page as usize).collect();
+        Ok(crate::models::PaginatedResponse { data: hits, total, page: p.page, per_page: p.per_page })
+    }
+
+    #[cfg(not(feature = "postgres"))]
+    async fn incident_stats_sqlite(
+        &self,
+        tenant_id: &str,
+        p: &crate::models::mikrotik::IncidentSearchParams,
+    ) -> AppResult<crate::models::mikrotik::IncidentStats> {
+        let pg = self.incident_search_sqlite(tenant_id, p).await?;
+        Ok(crate::models::mikrotik::IncidentStats {
+            total: pg.total, open: 0, ack: 0, in_progress: 0,
+            resolved: pg.data.iter().filter(|r| r.status == "resolved").count() as i64,
+            mtta_minutes: None, mttr_minutes: None,
+            breach_count: None,
+        })
+    }
+
+    /// A-16: daftar insiden dengan filter server-side + paginasi offset jujur.
+    pub async fn search_incidents(
+        &self,
+        tenant_id: &str,
+        p: &crate::models::mikrotik::IncidentSearchParams,
+    ) -> AppResult<crate::models::PaginatedResponse<MikrotikIncident>> {
+        #[cfg(not(feature = "postgres"))]
+        {
+            return self.incident_search_sqlite(tenant_id, p).await;
+        }
+        #[cfg(feature = "postgres")]
+        {
+            use sqlx::Postgres;
+            const ESCALATION_CTE: &str = r#"WITH incident_escalations AS (
+                  SELECT
+                    CAST(a.tenant_id AS TEXT) AS tenant_key,
+                    CAST(a.resource_id AS TEXT) AS incident_id,
+                    MAX(a.created_at) AS escalated_at
+                  FROM audit_logs a
+                  WHERE a.resource = 'mikrotik_incident'
+                    AND a.action = 'escalate'
+                  GROUP BY CAST(a.tenant_id AS TEXT), CAST(a.resource_id AS TEXT)
+                ) "#;
+
+            let mut count_qb: sqlx::QueryBuilder<'_, Postgres> =
+                sqlx::QueryBuilder::new(ESCALATION_CTE);
+            count_qb.push("SELECT COUNT(*) FROM mikrotik_incidents i");
+            Self::incident_where(&mut count_qb, tenant_id, p);
+            let total: i64 = count_qb
+                .build_query_scalar::<i64>()
+                .fetch_one(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
+
+            let mut qb: sqlx::QueryBuilder<'_, Postgres> =
+                sqlx::QueryBuilder::new(ESCALATION_CTE);
+            qb.push(
+                r#"SELECT
+                  i.*,
+                  CASE WHEN ie.escalated_at IS NULL THEN false ELSE true END AS is_auto_escalated,
+                  ie.escalated_at
+                FROM mikrotik_incidents i
+                LEFT JOIN incident_escalations ie
+                  ON ie.tenant_key = CAST(i.tenant_id AS TEXT)
+                 AND ie.incident_id = CAST(i.id AS TEXT)"#,
+            );
+            Self::incident_where(&mut qb, tenant_id, p);
+            // Urutan sama persis dgn comparator FE lama: berat severity -> waktu mulai.
+            qb.push(
+                " ORDER BY CASE i.severity WHEN 'critical' THEN 3 WHEN 'warning' THEN 2 ELSE 1 END DESC, i.first_seen_at DESC LIMIT ",
+            );
+            qb.push_bind(p.per_page as i64);
+            qb.push(" OFFSET ");
+            qb.push_bind((p.page.saturating_sub(1)) as i64 * p.per_page as i64);
+
+            let rows = qb
+                .build_query_as::<MikrotikIncident>()
+                .fetch_all(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
+            Ok(crate::models::PaginatedResponse {
+                data: rows,
+                total,
+                page: p.page,
+                per_page: p.per_page,
+            })
+        }
+    }
+
+    /// A-16: agregat kartu statistik (status counts + MTTA/MTTR menit) atas
+    /// seluruh baris yang cocok filter — bukan hanya halaman tampil.
+    pub async fn incident_stats(
+        &self,
+        tenant_id: &str,
+        p: &crate::models::mikrotik::IncidentSearchParams,
+    ) -> AppResult<crate::models::mikrotik::IncidentStats> {
+        #[cfg(not(feature = "postgres"))]
+        {
+            return self.incident_stats_sqlite(tenant_id, p).await;
+        }
+        #[cfg(feature = "postgres")]
+        {
+            use sqlx::Postgres;
+            let mut qb: sqlx::QueryBuilder<'_, Postgres> = sqlx::QueryBuilder::new(
+                r#"SELECT
+                     COUNT(*) AS total,
+                     COUNT(*) FILTER (WHERE i.status = 'open') AS open,
+                     COUNT(*) FILTER (WHERE i.status = 'ack') AS ack,
+                     COUNT(*) FILTER (WHERE i.status = 'in_progress') AS in_progress,
+                     COUNT(*) FILTER (WHERE i.status = 'resolved') AS resolved,
+                     AVG(EXTRACT(EPOCH FROM (i.acked_at - i.first_seen_at)) / 60)
+                       FILTER (WHERE i.acked_at IS NOT NULL
+                                  AND i.acked_at >= i.first_seen_at) AS mtta_minutes,
+                     AVG(EXTRACT(EPOCH FROM (i.resolved_at - i.first_seen_at)) / 60)
+                       FILTER (WHERE i.resolved_at IS NOT NULL
+                                  AND i.resolved_at >= i.first_seen_at) AS mttr_minutes"#,
+            );
+            if let Some(breach_min) = p.sla_breach_minutes {
+                qb.push(
+                    ", COUNT(*) FILTER (WHERE i.resolved_at IS NULL AND EXTRACT(EPOCH FROM (now() - i.first_seen_at)) / 60 >= ",
+                );
+                qb.push_bind(breach_min);
+                qb.push(") AS breach_count");
+            }
+            qb.push(" FROM mikrotik_incidents i");
+            Self::incident_where(&mut qb, tenant_id, p);
+            let row = qb
+                .build()
+                .fetch_one(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
+            use sqlx::Row;
+            Ok(crate::models::mikrotik::IncidentStats {
+                total: row.try_get::<i64, _>("total").unwrap_or(0),
+                open: row.try_get::<i64, _>("open").unwrap_or(0),
+                ack: row.try_get::<i64, _>("ack").unwrap_or(0),
+                in_progress: row.try_get::<i64, _>("in_progress").unwrap_or(0),
+                resolved: row.try_get::<i64, _>("resolved").unwrap_or(0),
+                mtta_minutes: row.try_get::<Option<f64>, _>("mtta_minutes").unwrap_or(None),
+                mttr_minutes: row.try_get::<Option<f64>, _>("mttr_minutes").unwrap_or(None),
+                breach_count: row.try_get::<Option<i64>, _>("breach_count").unwrap_or(None),
+            })
+        }
+    }
+
     pub async fn trigger_auto_escalation_now(
         &self,
         tenant_id: &str,
@@ -1011,7 +1215,7 @@ impl MikrotikService {
             use sqlx::{Postgres, QueryBuilder};
 
             for chunk in prepared_rows.chunks(MIKROTIK_LOG_SYNC_BATCH_SIZE) {
-                let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
+                let mut qb: QueryBuilder<Postgres> = sqlx::QueryBuilder::new(
                     "INSERT INTO mikrotik_logs \
                      (id, tenant_id, router_id, router_log_id, logged_at, router_time, topics, level, message, created_at, updated_at) ",
                 );
@@ -1052,7 +1256,7 @@ impl MikrotikService {
             use sqlx::{QueryBuilder, Sqlite};
 
             for chunk in prepared_rows.chunks(MIKROTIK_LOG_SYNC_BATCH_SIZE) {
-                let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
+                let mut qb: QueryBuilder<Sqlite> = sqlx::QueryBuilder::new(
                     "INSERT INTO mikrotik_logs \
                      (id, tenant_id, router_id, router_log_id, logged_at, router_time, topics, level, message, created_at, updated_at) ",
                 );

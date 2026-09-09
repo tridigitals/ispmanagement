@@ -14,6 +14,7 @@ export { default as StatTile } from './StatTile.svelte';
 export { default as TableSkeleton } from './TableSkeleton.svelte';
 export { default as RowActions } from './RowActions.svelte';
 export { default as AttentionPanel } from './AttentionPanel.svelte';
+export { default as EmptyState } from './EmptyState.svelte';
 export { default as DataTable } from './DataTable.svelte';
 export { default as Tabs } from './Tabs.svelte';
 export { default as DetailHeader } from './DetailHeader.svelte';

@@ -62,6 +62,7 @@
   import PageHeader from '$lib/components/ds/PageHeader.svelte';
   import StatTile from '$lib/components/ds/StatTile.svelte';
   import DataTable from '$lib/components/ds/DataTable.svelte';
+  import EmptyState from '$lib/components/ds/EmptyState.svelte';
   import RowActions from '$lib/components/ds/RowActions.svelte';
   import Badge from '$lib/components/ds/Badge.svelte';
   import Button from '$lib/components/ds/Button.svelte';
@@ -186,6 +187,26 @@
       loading = false;
     }
   }
+
+  // A-18: indikator bahwa tab bisa digeser (mobile) — fade + panah yang
+  // hanya muncul bila konten overflow dan belum di-scroll ke ujung.
+  let tabsEl: HTMLElement | undefined = $state();
+  let tabsOverflow = $state(false);
+  let tabsAtEnd = $state(false);
+  function measureTabs() {
+    const el = tabsEl;
+    if (!el) return;
+    tabsOverflow = el.scrollWidth - el.clientWidth > 4;
+    tabsAtEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+  }
+  $effect(() => {
+    const el = tabsEl;
+    if (!el) return;
+    measureTabs();
+    const ro = new ResizeObserver(measureTabs);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
 
   function selectTab(tab: CustomerDetailTab) {
     activeTab = tab;
@@ -447,7 +468,12 @@
       {/each}
     </div>
 
-    <nav class="mt-5 flex gap-1 overflow-x-auto border-b border-ink-200" aria-label="Tab pelanggan">
+    <div class="relative mt-5" aria-label="Tab pelanggan">
+    <nav
+      class="flex gap-1 overflow-x-auto border-b border-ink-200"
+      bind:this={tabsEl}
+      onscroll={measureTabs}
+    >
       {#each visibleTabs as tab (tab)}
         <button
           type="button"
@@ -459,6 +485,12 @@
         </button>
       {/each}
     </nav>
+    {#if tabsOverflow && !tabsAtEnd}
+      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-1 bg-gradient-to-l from-white via-white/90 to-transparent pl-6 pr-1">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-ink-500 animate-pulse" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+    {/if}
+    </div>
 
     {#if activeTab === 'overview'}
       <div class="mt-4 grid gap-4 lg:grid-cols-3">
@@ -475,7 +507,7 @@
         <div class="rounded-xl bg-white p-4 ring-1 ring-ink-200">
           <div class="text-sm font-medium text-ink-900">Akses portal</div>
           {#if portalUsers.length === 0}
-            <p class="mt-2 text-sm text-ink-500">Belum ada akun portal.</p>
+            <EmptyState title="Belum ada akun portal" hint="Portal customer aktif setelah minimal satu akun akses dibuat." />
           {:else}
             <ul class="mt-2 space-y-1.5 text-sm">
               {#each portalUsers as u (u.customer_user_id)}
@@ -719,7 +751,9 @@
     {:else if activeTab === 'timeline'}
       <div class="mt-4">
         {#if timeline.length === 0}
-          <div class="rounded-xl bg-white p-8 text-center text-sm text-ink-500 ring-1 ring-ink-200">Belum ada aktivitas tercatat untuk pelanggan ini.</div>
+          <div class="rounded-xl bg-white ring-1 ring-ink-200">
+            <EmptyState icon="activity" title="Belum ada aktivitas tercatat" hint="Perubahan data, pembayaran, dan tiket pelanggan akan muncul di sini." />
+          </div>
         {:else}
           <ul class="space-y-2">
             {#each timeline as log (log.id)}

@@ -383,6 +383,8 @@ const commandMap: Record<string, { method: string; path: string }> = {
   list_mikrotik_noc: { method: 'GET', path: '/admin/mikrotik/noc' },
   list_mikrotik_alerts: { method: 'GET', path: '/admin/mikrotik/alerts' },
   list_mikrotik_incidents: { method: 'GET', path: '/admin/mikrotik/incidents' },
+  search_mikrotik_incidents: { method: 'GET', path: '/admin/mikrotik/incidents/search' },
+  get_mikrotik_incident_stats: { method: 'GET', path: '/admin/mikrotik/incidents/stats' },
   list_mikrotik_logs: { method: 'GET', path: '/admin/mikrotik/logs' },
   get_mikrotik_log_retention: {
     method: 'GET',
@@ -948,8 +950,25 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
   }
 }
 
-/**
- * Redacted console logger that hides BE internals (sqlx / axum stack, file
+// ── A-08: user-safe error envelope ──────────────────────────────────────────
+// BE mengirim AppError apa adanya sebagai string/JSON (mis. "Database error:
+// connection refused at 10.0.0.7:5432"). FE tidak boleh menampilkan itu mentah.
+// Ekstraksi untuk LOG (extractApiErrorMessage) tetap utuh; fungsi ini khusus
+// untuk TEXT DI LAYAR — internals dibuang, diganti pesan umum.
+const INTERNAL_ERROR_PATTERNS =
+  /\b(database error|internal server error|internal error|connection refused|connection reset|fatal error|panic|stack trace|sqlx|tokio|row index|column indices?|error returned from database|syntax error at|relation .* does not exist|undefined table|EOF occurred|unexpected end|too many connections|could not (connect|resolve|find)|failed to (bind|serialize|query)|deadline exceeded|context deadline)/i;
+
+/** Pesan yang aman ditampilkan ke user. Internals => pesan umum. */
+export function toUserSafeErrorMessage(err: unknown, fallback = 'Terjadi kesalahan pada server. Coba lagi.'): string {
+  const raw = extractApiErrorMessage(err, '');
+  const code = extractApiErrorCode(err);
+  const msg = code ? raw.slice(code.length + 1).trim() : raw.trim();
+  if (!msg) return fallback;
+  if (INTERNAL_ERROR_PATTERNS.test(msg)) return fallback;
+  return msg;
+}
+
+/** Redacted console logger that hides BE internals (sqlx / axum stack, file
  * paths, env names). Call sites that previously did `console.error(e)` are
  * expected to migrate to `logApiError(scope, e)` so DevTools stays quiet.
  */
@@ -962,7 +981,37 @@ export function logApiError(scope: string, err: unknown, fallback = 'request fai
  * backend may return. Falls back gracefully when none of the well-known
  * fields are present so the FE never logs `[object Object]`.
  */
+/** Coba baca string JSON sebagai envelope AppError; null bila bukan. */
+function parseAppErrorEnvelope(
+  raw: string,
+): { code?: string; message: string; public_message?: string } | null {
+  const t = raw.trim();
+  if (!t.startsWith('{') || !t.endsWith('}')) return null;
+  if (!t.includes('"public_message"') && !t.includes('"kind"')) return null;
+  try {
+    const v = JSON.parse(t);
+    if (v && typeof v === 'object' && typeof v.message === 'string') {
+      return {
+        code: typeof v.code === 'string' ? v.code : undefined,
+        message: v.message,
+        public_message: typeof v.public_message === 'string' ? v.public_message : undefined,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function extractApiErrorCode(err: unknown): string | undefined {
+  // A-08: envelope punya `code` eksplisit — pakai itu bila ada.
+  const e = err as any;
+  if (typeof e?.code === 'string' && e.code) return e.code;
+  if (typeof e?.kind === 'string' && e.kind) return e.kind;
+  if (typeof err === 'string') {
+    const env = parseAppErrorEnvelope(err);
+    if (env?.code) return env.code;
+  }
   const message = extractApiErrorMessage(err, '');
   const match = message.match(/^([A-Z][A-Z0-9_]*(?::[a-z0-9_]+)?):/);
   return match?.[1];
@@ -970,9 +1019,21 @@ export function extractApiErrorCode(err: unknown): string | undefined {
 
 export function extractApiErrorMessage(err: unknown, fallback = 'Unknown error'): string {
   if (!err) return fallback;
-  if (typeof err === 'string') return err;
+  if (typeof err === 'string') {
+    // A-08: Tauri me-reject dengan JSON ter-serialize (bukan objek Error).
+    // Kenali envelope agar pesan publik yang keluar duluan.
+    const env = parseAppErrorEnvelope(err);
+    if (env) return env.public_message || env.message;
+    return err;
+  }
   const e = err as any;
-  if (e?.message) return String(e.message);
+  // A-08: envelope AppError {kind, code, message, public_message}.
+  if (typeof e?.public_message === 'string' && e.public_message) return e.public_message;
+  if (e?.message) {
+    const env = parseAppErrorEnvelope(String(e.message));
+    if (env?.public_message) return env.public_message;
+    return String(e.message);
+  }
   if (e?.error) return String(e.error);
   if (e?.detail) return String(e.detail);
   if (e?.details) return String(e.details);

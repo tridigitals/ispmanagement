@@ -577,6 +577,8 @@ pub fn run() {
                                     list_mikrotik_noc,
                                     list_mikrotik_alerts,
                                     list_mikrotik_incidents,
+                                    search_mikrotik_incidents,
+                                    get_mikrotik_incident_stats,
                                     list_mikrotik_logs,
                                     get_mikrotik_log_retention,
                                     ack_mikrotik_alert,

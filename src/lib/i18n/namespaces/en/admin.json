@@ -2434,6 +2434,49 @@
         "notes_placeholder": "Add operator notes, handover context, and actions...",
         "save": "Save Notes",
         "open_network_settings": "Open Network Settings"
+      },
+      "ui": {
+        "col_duration": "Duration",
+        "col_owner": "Owner",
+        "page_desc": "Active incidents from the MikroTik monitor — acknowledge, handle, escalate.",
+        "running": "Running…",
+        "run_escalation": "Escalate now",
+        "tile_hint": "click to filter",
+        "active_only": "Active only",
+        "severity_filter": "Severity filter",
+        "router_filter": "Router filter",
+        "all_severities": "All severities",
+        "all_routers": "All routers",
+        "severities": {
+          "critical": "Critical",
+          "warning": "Warning",
+          "info": "Info"
+        },
+        "status_chip": "Status: {s} — clear",
+        "search_placeholder": "Search title, message, type, router",
+        "stats": {
+          "open_title": "Opened",
+          "ack_title": "Acknowledged",
+          "mtta_title": "MTTA",
+          "mtta_hint": "avg time to acknowledge",
+          "mttr_title": "MTTR",
+          "mttr_hint": "avg time to recover"
+        },
+        "stats_prog": "Handling",
+        "stats_resolved": "Resolved",
+        "selected_suffix": "selected",
+        "bulk_ack": "Acknowledge selected",
+        "clear_selection": "Clear selection",
+        "row_detail": "Detail",
+        "row_ack": "Acknowledge",
+        "row_resolve": "Resolve",
+        "select_aria": "Select {title}",
+        "empty_title": "No incidents",
+        "no_incidents_range": "No incidents recorded.",
+        "all_active_done": "All active incidents are resolved. Turn off \"Active only\" to see history.",
+        "foot_note": "{n} incidents match filters · SLA warn {w}m / breach {b}m",
+        "sla_title": "{n} incidents exceeded SLA",
+        "sla_hint": "Over the {b}-minute target. Review the longest-open first."
       }
     },
     "installations": {

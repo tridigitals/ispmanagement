@@ -2161,6 +2161,49 @@
         "notes_placeholder": "Tambahkan catatan operator, konteks handover, dan tindakan...",
         "save": "Simpan Catatan",
         "open_network_settings": "Buka Pengaturan Network"
+      },
+      "ui": {
+        "col_duration": "Durasi",
+        "col_owner": "PIC",
+        "page_desc": "Insiden aktif dari monitor MikroTik — acknowledge, tangani, eskalasi.",
+        "running": "Menjalankan…",
+        "run_escalation": "Eskalasi Sekarang",
+        "tile_hint": "klik untuk filter",
+        "active_only": "Hanya aktif",
+        "severity_filter": "Filter severity",
+        "router_filter": "Filter router",
+        "all_severities": "Semua severity",
+        "all_routers": "Semua router",
+        "severities": {
+          "critical": "Kritis",
+          "warning": "Peringatan",
+          "info": "Info"
+        },
+        "status_chip": "Status: {s} — hapus",
+        "search_placeholder": "Cari judul, pesan, tipe, router",
+        "stats": {
+          "open_title": "Dibuka",
+          "ack_title": "Diakui",
+          "mtta_title": "MTTA",
+          "mtta_hint": "rata-rata waktu diakui",
+          "mttr_title": "MTTR",
+          "mttr_hint": "rata-rata waktu selesai"
+        },
+        "stats_prog": "Ditangani",
+        "stats_resolved": "Selesai",
+        "selected_suffix": "dipilih",
+        "bulk_ack": "Akui terpilih",
+        "clear_selection": "Batal pilih",
+        "row_detail": "Detail",
+        "row_ack": "Akui",
+        "row_resolve": "Selesaikan",
+        "select_aria": "Pilih {title}",
+        "empty_title": "Tidak ada insiden",
+        "no_incidents_range": "Belum ada insiden terekam.",
+        "all_active_done": "Semua insiden aktif sudah selesai. Matikan filter \"Hanya aktif\" untuk melihat riwayat.",
+        "foot_note": "{n} insiden cocok filter · SLA warn {w}m / breach {b}m",
+        "sla_title": "{n} insiden melewati SLA",
+        "sla_hint": "Lewati target {b} menit. Cek yang paling lama terbuka lebih dulu."
       }
     },
     "installations": {
