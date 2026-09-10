@@ -59,7 +59,7 @@
     outboxStatusLabel,
     outboxStatusTone,
   } from '$lib/utils/outboxInsights';
-  import { t } from 'svelte-i18n';
+  import { t, locale } from 'svelte-i18n';
 
   type Scope = 'tenant' | 'global' | 'all';
   type StatusFilter = 'all' | 'queued' | 'sending' | 'sent' | 'failed';
@@ -107,16 +107,16 @@
     hint: string;
     baseTone: StatTone;
   }[] = [
-    { st: 'all', label: 'Total', hint: 'semua status pada cakupan ini', baseTone: 'neutral' },
-    { st: 'queued', label: 'Antri', hint: 'menunggu worker', baseTone: 'neutral' },
-    { st: 'sending', label: 'Mengirim', hint: 'sedang diproses worker', baseTone: 'neutral' },
-    { st: 'sent', label: 'Terkirim', hint: 'sukses ke penerima', baseTone: 'positive' },
-    { st: 'failed', label: 'Gagal', hint: 'butuh diperiksa', baseTone: 'negative' },
+    { st: 'all', label: $t('admin.email_outbox.v2.col_total'), hint: $t('admin.email_outbox.v2.c_all'), baseTone: 'neutral' },
+    { st: 'queued', label: $t('admin.email_outbox.status.queued'), hint: $t('admin.email_outbox.v2.c_queued'), baseTone: 'neutral' },
+    { st: 'sending', label: $t('admin.email_outbox.status.sending'), hint: $t('admin.email_outbox.v2.c_sending'), baseTone: 'neutral' },
+    { st: 'sent', label: $t('admin.email_outbox.status.sent'), hint: $t('admin.email_outbox.v2.c_sent'), baseTone: 'positive' },
+    { st: 'failed', label: $t('admin.email_outbox.status.failed'), hint: $t('admin.email_outbox.v2.c_failed'), baseTone: 'negative' },
   ];
 
   const columns = $derived<Column[]>([
     { key: 'sel', label: '', width: '40px' },
-    { key: 'to', label: 'Penerima' },
+    { key: 'to', label: $t('admin.email_outbox.v2.col_to') },
     { key: 'subject', label: 'Subjek' },
     { key: 'status', label: 'Status', width: '150px' },
     { key: 'attempts', label: 'Percobaan', width: '96px' },
@@ -183,15 +183,20 @@
     }
   }
 
+  $effect(() => {
+    $locale;
+    buildAttention();
+  });
+
   function buildAttention() {
     attention.length = 0;
     if (stats.failed > 0) {
       attention.push({
         severity: 'high',
         icon: 'alert',
-        title: `${stats.failed} email gagal terkirim`,
-        detail: 'Periksa error terakhir, lalu coba ulang atau hapus dari antrian.',
-        action: 'Lihat yang gagal',
+        title: $t('admin.email_outbox.v2.at_fail_detail', { values: { a: stats.failed } }),
+        detail: $t('admin.email_outbox.v2.at_fail_hint'),
+        action: $t('admin.email_outbox.v2.at_fail_action'),
         href: '/v2/admin/email-outbox?status=failed',
       });
     }
@@ -199,8 +204,8 @@
       attention.push({
         severity: 'low',
         icon: 'clock',
-        title: `${stats.sending} email sedang dikirim`,
-        detail: 'Tunggu worker selesai sebelum mencoba ulang — baris sending tidak bisa diubah.',
+        title: $t('admin.email_outbox.v2.at_sending_detail', { values: { a: stats.sending } }),
+        detail: $t('admin.email_outbox.v2.at_send_hint'),
         action: '',
       });
     }
@@ -245,7 +250,7 @@
     busyId = id;
     try {
       await api.emailOutbox.retry(id);
-      toast.success('Email dimasukin lagi ke antrian.');
+      toast.success($t('admin.email_outbox.v2.t_requeued'));
       await Promise.all([refreshStats(), load()]);
     } catch (e) {
       toast.error(friendlyOutboxError(extractApiErrorMessage(e)));
@@ -287,7 +292,7 @@
         selectedIds = [];
       } else if (confirmTargetId) {
         await api.emailOutbox.delete(confirmTargetId);
-        toast.success('Baris dihapus.');
+        toast.success($t('admin.email_outbox.v2.t_deleted'));
       }
       await Promise.all([refreshStats(), load()]);
     } catch (e) {
@@ -315,7 +320,7 @@
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast.success('CSV diunduh.');
+      toast.success($t('admin.email_outbox.v2.t_csv'));
     } catch (e) {
       toast.error(friendlyOutboxError(extractApiErrorMessage(e)));
     }
@@ -340,7 +345,7 @@
     const acts: RowAction[] = [];
     if (canRetry) {
       acts.push({
-        label: 'Coba ulang',
+        label: $t('admin.email_outbox.v2.retry'),
         icon: 'refresh',
         disabled: !rowRetryable(i) || busyId === i.id,
         onclick: () => void retryOne(i.id),
@@ -369,11 +374,11 @@
   }
 </script>
 
-<AppShell title="Email Outbox">
+<AppShell title={ $t('admin.email_outbox.title') }>
   <PageHeader
-    title="Email Outbox"
+    title={ $t('admin.email_outbox.title') }
     eyebrow={ $t('admin.eyebrows.communication') }
-    desc="Antrian email sistem: notifikasi tagihan, tiket, dan pengumuman yang dikirim atas nama tenant."
+    desc={ $t('admin.email_outbox.v2.desc') }
   >
     {#snippet actions()}
       <Button variant="ghost" icon="download" onclick={() => void exportCsv()}>Ekspor CSV</Button>
@@ -402,7 +407,7 @@
 
   {#if attention.length}
     <div class="mt-4">
-      <AttentionPanel items={attention} title="Perlu perhatian" />
+      <AttentionPanel items={attention} title={ $t('admin.email_outbox.v2.attention_title') } />
     </div>
   {/if}
 
@@ -410,8 +415,8 @@
     <Card>
       <div class="mb-3 flex flex-wrap items-center gap-2">
         {#if isSuper}
-          <div class="flex rounded-lg bg-ink-100 p-0.5" role="group" aria-label="Cakupan">
-            {#each [['tenant', 'Tenant'], ['global', 'Global'], ['all', 'Semua']] as [v, l] (v)}
+          <div class="flex rounded-lg bg-ink-100 p-0.5" role="group" aria-label={ $t('admin.email_outbox.v2.scope_lbl') }>
+            {#each [['tenant', $t('admin.email_outbox.scope.tenant')], ['global', $t('admin.email_outbox.scope.global')], ['all', $t('admin.email_outbox.scope.all')]] as [v, l] (v)}
               <button
                 type="button"
                 class="rounded-md px-3 py-1.5 text-sm font-medium transition {scope === v
@@ -432,8 +437,8 @@
           />
           <input
             bind:value={search}
-            placeholder="Cari email penerima atau subjek"
-            aria-label="Cari email"
+            placeholder={ $t('admin.email_outbox.v2.search_aria') }
+            aria-label={ $t('admin.email_outbox.v2.search_ph') }
             class="focus-ring h-9 w-full rounded-lg border-0 bg-white pl-8 text-base text-ink-900 ring-1 ring-inset ring-ink-200 placeholder:text-ink-400"
           />
         </div>
@@ -451,7 +456,7 @@
               Hapus terpilih
             </Button>
           {/if}
-          <Button variant="ghost" onclick={() => (selectedIds = [])}>Batal pilih</Button>
+          <Button variant="ghost" onclick={() => (selectedIds = [])}>{ $t('admin.email_outbox.v2.unselect') }</Button>
         {:else}
           {#if canRetry}
             <Button variant="ghost" icon="check" onclick={selectVisibleRetryable}>
@@ -467,9 +472,9 @@
         {loading}
         emptyTitle="Tidak ada email"
         emptyHint={search
-          ? 'Coba kata kunci lain atau hapus pencarian.'
+          ? $t('admin.email_outbox.v2.empty_hint2')
           : statusFilter === 'all'
-            ? 'Belum ada email yang masuk antrian.'
+            ? $t('admin.email_outbox.v2.empty1')
             : `Tidak ada email berstatus ${outboxStatusLabel(statusFilter).toLowerCase()}.`}
         footNote={`${items.length} dari ${total} email · halaman ${pageNum}/${totalPages}`}
       >
@@ -513,7 +518,7 @@
             <span class="text-sm text-ink-500">{formatDateTime(row.updated_at)}</span>
           {:else if col.key === 'actions'}
             <RowActions
-              primary={{ label: 'Lihat isi', icon: 'mail', onclick: () => void openDetails(row.id) }}
+              primary={{ label: $t('admin.email_outbox.v2.view_body'), icon: 'mail', onclick: () => void openDetails(row.id) }}
               rest={rowRest(row)}
             />
           {/if}
@@ -551,7 +556,7 @@
 
 <Modal
   bind:show={detailOpen}
-  title="Isi email"
+  title={ $t('admin.email_outbox.v2.body') }
   width="920px"
   onclose={() => {
     detailItem = null;
@@ -568,7 +573,7 @@
       {@const d = detailItem}
       <div class="grid gap-x-6 gap-y-3 py-1 sm:grid-cols-2">
         <div>
-          <div class="text-[13px] font-medium text-ink-500">Penerima</div>
+          <div class="text-[13px] font-medium text-ink-500">{ $t('admin.email_outbox.v2.col_to') }</div>
           <div class="text-ink-900">{d.to_email}</div>
         </div>
         <div>
@@ -583,7 +588,7 @@
           <div class="text-ink-900">{formatDateTime(d.scheduled_at)}</div>
         </div>
         <div>
-          <div class="text-[13px] font-medium text-ink-500">Terkirim</div>
+          <div class="text-[13px] font-medium text-ink-500">{ $t('admin.email_outbox.status.sent') }</div>
           <div class="text-ink-900">{d.sent_at ? formatDateTime(d.sent_at) : '—'}</div>
         </div>
         <div class="sm:col-span-2">
@@ -599,7 +604,7 @@
         </div>
         {#if d.last_error}
           <div class="sm:col-span-2">
-            <div class="text-[13px] font-medium text-ink-500">Error terakhir</div>
+            <div class="text-[13px] font-medium text-ink-500">{ $t('admin.email_outbox.v2.last_err') }</div>
             <div class="rounded-lg bg-red-50 p-2 font-mono text-sm break-all text-red-700">
               {d.last_error}
             </div>
@@ -625,7 +630,7 @@
               : 'text-ink-500 hover:text-ink-700'}"
             onclick={() => (detailTab = 'html')}
           >
-            Pratinjau HTML
+            { $t('admin.email_outbox.v2.preview') }
           </button>
         {/if}
       </div>
@@ -635,22 +640,22 @@
           class="mt-3 h-[420px] w-full rounded-xl bg-white ring-1 ring-inset ring-ink-200"
           sandbox=""
           srcdoc={d.body_html}
-          title="Pratinjau HTML"
+          title={ $t('admin.email_outbox.v2.preview') }
         ></iframe>
         <details class="mt-2">
-          <summary class="cursor-pointer text-sm text-ink-500 hover:text-ink-700">Lihat sumber HTML</summary>
+          <summary class="cursor-pointer text-sm text-ink-500 hover:text-ink-700">{ $t('admin.email_outbox.v2.view_src') }</summary>
           <pre class="mt-2 max-h-72 overflow-auto rounded-lg bg-ink-50 p-3 font-mono text-xs text-ink-700">{d.body_html}</pre>
         </details>
       {:else}
         <pre class="mt-3 max-h-[420px] overflow-auto rounded-xl bg-ink-50 p-3 font-mono text-sm whitespace-pre-wrap text-ink-800">{d.body}</pre>
       {/if}
     {:else}
-      <div class="py-6 text-ink-500">Email tidak ditemukan.</div>
+      <div class="py-6 text-ink-500">{ $t('admin.email_outbox.v2.not_found') }</div>
     {/if}
   {/snippet}
 </Modal>
 
-<Modal bind:show={confirmOpen} title={confirmMode === 'bulk' ? 'Hapus email terpilih' : 'Hapus email'} width="460px">
+<Modal bind:show={confirmOpen} title={confirmMode === 'bulk' ? $t('admin.email_outbox.v2.del_sel') : $t('admin.email_outbox.v2.del_one')} width="460px">
   {#snippet children()}
     <p class="py-2 text-ink-700">
       {#if confirmMode === 'bulk'}
