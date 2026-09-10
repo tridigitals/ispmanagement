@@ -171,5 +171,6 @@
     "ago": "{t} lalu"
   },
   "export_csv": "Ekspor CSV",
-  "last_data": "Data terakhir"
+  "last_data": "Data terakhir",
+  "no_results_for": "Tidak ada hasil untuk \"{q}\""
 }

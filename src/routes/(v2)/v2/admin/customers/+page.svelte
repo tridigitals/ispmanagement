@@ -15,13 +15,15 @@
   import type { Column } from '$lib/components/ds/table-types';
   import type { CustomerListItem } from '$lib/api/types';
 
-  const columns: Column[] = [
-    { key: 'name', label: 'Pelanggan' },
-    { key: 'contact', label: 'Kontak', hideSm: true },
-    { key: 'services', label: 'Layanan' },
-    { key: 'updated', label: 'Diperbarui', hideSm: true },
-    { key: 'actions', label: 'Aksi', align: 'right', width: '120px' },
-  ];
+  import { t } from 'svelte-i18n';
+  import { get as getStore } from 'svelte/store';
+  const columns = $derived<Column[]>([
+    { key: 'name', label: $t('admin.customers.columns.customer') },
+    { key: 'contact', label: $t('admin.customers.columns.contact'), hideSm: true },
+    { key: 'services', label: $t('admin.customers.columns.service') },
+    { key: 'updated', label: $t('admin.customers.columns.updated'), hideSm: true },
+    { key: 'actions', label: $t('common.actions'), align: 'right', width: '120px' },
+  ]);
 
   let rows = $state<CustomerListItem[]>([]);
   let total = $state(0);
@@ -44,11 +46,11 @@
   /* Chip filter cepat. Menggantikan 3 dropdown terpisah di halaman lama:
      pilihan yang sering dipakai jadi satu klik, dan jumlahnya terlihat. */
   const chips = $derived([
-    { key: 'all', label: 'Semua', count: counts.all },
-    { key: 'svc-active', label: 'Layanan aktif', count: counts.svcActive },
-    { key: 'svc-inactive', label: 'Layanan nonaktif', count: counts.svcInactive },
-    { key: 'pending', label: 'Menunggu instalasi', count: counts.pending },
-    { key: 'svc-none', label: 'Tanpa layanan', count: counts.svcNone },
+    { key: 'all', label: $t('common.all'), count: counts.all },
+    { key: 'svc-active', label: $t('admin.customers.list_v2.chip_active'), count: counts.svcActive },
+    { key: 'svc-inactive', label: $t('admin.customers.list_v2.chip_inactive'), count: counts.svcInactive },
+    { key: 'pending', label: $t('admin.customers.list_v2.chip_pending'), count: counts.pending },
+    { key: 'svc-none', label: $t('admin.customers.list_v2.chip_none'), count: counts.svcNone },
   ]);
 
   let activeChip = $state('all');
@@ -77,10 +79,11 @@
   }
 
   function serviceLabel(c: CustomerListItem): string {
-    if (c.pending_installations > 0) return 'Menunggu instalasi';
-    if (c.active_subscriptions > 0) return `${c.active_subscriptions} layanan aktif`;
-    if (c.subscription_count > 0) return 'Layanan nonaktif';
-    return 'Belum ada layanan';
+    const tt = getStore(t);
+    if (c.pending_installations > 0) return tt('admin.customers.list_v2.chip_pending');
+    if (c.active_subscriptions > 0) return tt('admin.customers.list_v2.n_active', { values: { n: c.active_subscriptions } });
+    if (c.subscription_count > 0) return tt('admin.customers.list_v2.chip_inactive');
+    return tt('admin.customers.list_v2.no_service');
   }
 
   function serviceTone(c: CustomerListItem) {
@@ -152,15 +155,15 @@
   });
 </script>
 
-<AppShell title="Pelanggan">
+<AppShell title={ $t('admin.customers.title') }>
   <PageHeader
-    title="Pelanggan"
-    desc="{counts.all} terdaftar · {counts.svcActive} punya layanan aktif · {counts.pending} menunggu instalasi"
+    title={ $t('admin.customers.title') }
+    desc={ $t('admin.customers.list_v2.desc', { values: { a: counts.all, b: counts.svcActive, c: counts.pending } }) }
   >
     {#snippet actions()}
-      <Button icon="download">Ekspor</Button>
+      <Button icon="download">{ $t('admin.customers.list_v2.export') }</Button>
       {#if canManage}
-        <Button variant="primary" icon="plus">Tambah pelanggan</Button>
+        <Button variant="primary" icon="plus">{ $t('admin.customers.list_v2.add') }</Button>
       {/if}
     {/snippet}
   </PageHeader>
@@ -202,8 +205,8 @@
         value={q}
         oninput={(e) => onSearch((e.currentTarget as HTMLInputElement).value)}
         type="search"
-        placeholder="Cari nama, email, nomor"
-        aria-label="Cari pelanggan"
+        placeholder={ $t('admin.customers.list_v2.search_ph') }
+        aria-label={ $t('admin.customers.list_v2.search_aria') }
         class="h-8 w-full rounded-lg bg-white pr-3 pl-8 text-base text-ink-900 ring-1 ring-inset ring-ink-200 placeholder:text-ink-400 focus:ring-brand-600 focus:outline-none"
       />
     </div>
@@ -221,16 +224,16 @@
         page = p;
         load();
       }}
-      emptyTitle="Tidak ada pelanggan cocok"
-      emptyHint={q ? `Tidak ada hasil untuk "${q}".` : 'Coba ubah filter di atas.'}
-      footNote={`${total} pelanggan`}
+      emptyTitle={ $t('admin.customers.list_v2.empty_title') }
+      emptyHint={q ? $t('common.no_results_for', { values: { q } }) : $t('admin.customers.list_v2.empty_hint')}
+      footNote={ $t('admin.customers.list_v2.foot', { values: { n: total } }) }
     >
       {#snippet cell(c: CustomerListItem, col: Column)}
         {#if col.key === 'name'}
           <div class="flex items-center gap-1.5">
             <span class="font-medium text-ink-900">{c.name}</span>
             {#if !c.is_active}
-              <Badge tone="negative" label="Nonaktif" />
+              <Badge tone="negative" label={ $t('admin.customers.list_v2.disabled') } />
             {/if}
           </div>
           <div class="num text-sm text-ink-400">{c.customer_number || '—'}</div>
@@ -247,17 +250,17 @@
           {:else}
             <RowActions
               primary={{
-                label: 'Buka',
+                label: $t('common.open'),
                 icon: 'chevronRight',
                 onclick: () => goto(`/v2/admin/customers/${c.id}`),
               }}
               rest={canManage
                 ? [
-                    { label: 'Tambah layanan', icon: 'wifi' },
-                    { label: 'Buat tagihan', icon: 'receipt' },
-                    { label: 'Kirim WhatsApp', icon: 'inbox' },
-                    { label: 'Kirim email', icon: 'mail' },
-                    { label: 'Hapus pelanggan', icon: 'close', danger: true },
+                    { label: $t('admin.customers.list_v2.act_service'), icon: 'wifi' },
+                    { label: $t('admin.customers.list_v2.act_invoice'), icon: 'receipt' },
+                    { label: $t('admin.customers.list_v2.act_wa'), icon: 'inbox' },
+                    { label: $t('admin.customers.list_v2.act_email'), icon: 'mail' },
+                    { label: $t('admin.customers.list_v2.act_delete'), icon: 'close', danger: true },
                   ]
                 : []}
             />

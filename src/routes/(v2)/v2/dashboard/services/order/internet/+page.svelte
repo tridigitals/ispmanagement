@@ -637,7 +637,7 @@
                 </div>
                 <div class="summary-row sub">
                   <span>{locationLabel(item.location_id)} · {billingCycleLabel(item.billing_cycle)}</span>
-                  <Button variant="ghost" size="sm" icon="close" label="Hapus" onclick={() => removeOrderItem(item.id)} />
+                  <Button variant="ghost" size="sm" icon="close" label={ $t('common.delete') } onclick={() => removeOrderItem(item.id)} />
                 </div>
               {/each}
               <div class="summary-row total">

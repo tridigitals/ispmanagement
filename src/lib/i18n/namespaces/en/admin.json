@@ -1337,6 +1337,28 @@
       "step2": "Address & service",
       "searching": "Searching…",
       "no_contact": "No contact"
+    },
+    "list_v2": {
+      "desc": "{a} registered · {b} have an active service · {c} awaiting installation",
+      "export": "Export",
+      "add": "Add customer",
+      "search_ph": "Search name, email, number",
+      "search_aria": "Search customers",
+      "disabled": "Disabled",
+      "empty_title": "No matching customers",
+      "empty_hint": "Try changing the filters above.",
+      "foot": "{n} customers",
+      "act_service": "Add service",
+      "act_invoice": "Create bill",
+      "act_wa": "Send WhatsApp",
+      "act_email": "Send email",
+      "act_delete": "Delete customer",
+      "chip_active": "Active services",
+      "chip_inactive": "Inactive services",
+      "chip_pending": "Awaiting installation",
+      "chip_none": "No service",
+      "n_active": "{n} active services",
+      "no_service": "No service yet"
     }
   },
   "ftth_assets": {

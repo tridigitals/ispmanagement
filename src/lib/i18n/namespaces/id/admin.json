@@ -1064,6 +1064,28 @@
       "step2": "Alamat & layanan",
       "searching": "Mencari…",
       "no_contact": "Tanpa kontak"
+    },
+    "list_v2": {
+      "desc": "{a} terdaftar · {b} punya layanan aktif · {c} menunggu instalasi",
+      "export": "Ekspor",
+      "add": "Tambah pelanggan",
+      "search_ph": "Cari nama, email, nomor",
+      "search_aria": "Cari pelanggan",
+      "disabled": "Nonaktif",
+      "empty_title": "Tidak ada pelanggan cocok",
+      "empty_hint": "Coba ubah filter di atas.",
+      "foot": "{n} pelanggan",
+      "act_service": "Tambah layanan",
+      "act_invoice": "Buat tagihan",
+      "act_wa": "Kirim WhatsApp",
+      "act_email": "Kirim email",
+      "act_delete": "Hapus pelanggan",
+      "chip_active": "Layanan aktif",
+      "chip_inactive": "Layanan nonaktif",
+      "chip_pending": "Menunggu instalasi",
+      "chip_none": "Tanpa layanan",
+      "n_active": "{n} layanan aktif",
+      "no_service": "Belum ada layanan"
     }
   },
   "ftth_assets": {
