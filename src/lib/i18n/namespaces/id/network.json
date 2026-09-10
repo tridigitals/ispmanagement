@@ -682,5 +682,21 @@
   "pppoe_v2": {
     "apply_router": "Terapkan ke router",
     "empty_hint": "Coba ubah filter di atas."
+  },
+  "wb": {
+    "settings": "Pengaturan",
+    "close": "Tutup",
+    "add_tile": "Tambah tile",
+    "alerts_open": "Buka panel alert",
+    "total_tx": "Total TX semua tile di halaman ini",
+    "total_rx": "Total RX semua tile di halaman ini",
+    "title": "NOC Wallboard",
+    "loading": "Memuat…",
+    "fullscreen": "Layar penuh",
+    "exit": "Keluar",
+    "paused": "Dijeda",
+    "open_settings": "Buka pengaturan",
+    "alert_ack": "Alert diakui",
+    "e_no_export": "Tidak ada data metrik untuk diekspor."
   }
 }

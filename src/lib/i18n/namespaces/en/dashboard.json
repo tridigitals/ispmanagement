@@ -705,5 +705,33 @@
     "st_pay": "Pending payment",
     "st_failed": "Failed",
     "st_cancelled": "Cancelled"
+  },
+  "hotspot_order": {
+    "title": "Hotspot",
+    "desc": "This order flow is ready. Service activation is still on the roadmap.",
+    "soon": "Coming Soon",
+    "next": "Once the ISP internet order flow is stable, hotspot ordering and provisioning will be enabled.",
+    "rm1": "Voucher profiles and pricing",
+    "rm2": "Captive portal branding and login policy",
+    "rm3": "Device/session limit policy",
+    "rm4": "NAS integration and radius profiles"
+  },
+  "dedicated_order": {
+    "title": "Dedicated Link",
+    "desc": "The dedicated enterprise link order flow is reserved and will be enabled together with SLA provisioning support.",
+    "next": "The service opens once the hotspot baseline and enterprise provisioning module are ready.",
+    "rm1": "Multi-site endpoint mapping",
+    "rm2": "SLA classes and committed bandwidth",
+    "rm3": "Redundant paths and failover policy",
+    "rm4": "Enterprise onboarding checklist"
+  },
+  "vpn_order": {
+    "title": "Managed VPN",
+    "desc": "VPN ordering and provisioning will be enabled after the policy and security modules are hardened.",
+    "next": "VPN service will open with security templates and compliance logging support.",
+    "rm1": "Site-to-site and remote access modes",
+    "rm2": "User/group policy and route profiles",
+    "rm3": "Certificate and key lifecycle management",
+    "rm4": "Session monitoring and analytics"
   }
 }

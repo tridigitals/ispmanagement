@@ -114,7 +114,9 @@
   },
   "service_coming_soon": {
     "planned_scope": "Planned Scope",
-    "next_rollout": "Next rollout target"
+    "next_rollout": "Next rollout target",
+    "service_types": "Service Types",
+    "my_services": "My Services"
   },
   "date_time_picker": {
     "open": "Open date time picker"

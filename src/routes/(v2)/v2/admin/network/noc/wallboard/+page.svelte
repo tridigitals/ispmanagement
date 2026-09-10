@@ -568,7 +568,7 @@
     try {
       await ackWallboardAlerts(
         ids.slice(0, 80),
-        `${'Alert diakui'} (${Math.min(ids.length, 80)})`,
+        `${$t('network.wb.alert_ack')} (${Math.min(ids.length, 80)})`,
       );
       pushIncident('ack', `Ack visible ${Math.min(ids.length, 80)} alert(s)`);
       await Promise.all([loadAlerts(false), loadIncidents(false)]);
@@ -773,7 +773,7 @@
     bucket: 'raw' | 'hour' | 'day',
   ) {
     if (!rows.length) {
-      toast.error('Tidak ada data metrik untuk diekspor.');
+      toast.error($t('network.wb.e_no_export'));
       return;
     }
     const { exportCsvRows } = await loadWallboardExportModule();
@@ -1326,14 +1326,14 @@
           class="icon-x"
           type="button"
           onclick={exitWallboard}
-          title={'Keluar'}
+          title={ $t('network.wb.exit') }
         >
           <Icon name="arrow-left" size={16} />
         </button>
         <WallboardTopPager bind:page {pageCount} />
         <div class="wb-title">
           <Icon name="activity" size={15} />
-          {'NOC Wallboard'}
+          { $t('network.wb.title') }
         </div>
         <button
           class="settings-btn"
@@ -1342,10 +1342,10 @@
           onclick={() => {
             insightsOpen = !insightsOpen;
           }}
-          title={'Buka pengaturan'}
+          title={ $t('network.wb.open_settings') }
         >
           <Icon name="settings" size={16} />
-          {'Pengaturan'}
+          { $t('network.wb.settings') }
           {#if insightsBadge.total > 0}
             <span class="insights-badge">
               {insightsBadge.total > 99 ? '99+' : insightsBadge.total}
@@ -1356,17 +1356,17 @@
 
       <div class="toolbar-right">
         {#if pageTotals.any}
-          <div class="wb-total" title={'Total RX semua tile di halaman ini'}>
+          <div class="wb-total" title={ $t('network.wb.total_rx') }>
             <span class="wb-total-k">RX</span>
             <span class="wb-total-v rx">{formatBps(pageTotals.rx)}</span>
           </div>
-          <div class="wb-total" title={'Total TX semua tile di halaman ini'}>
+          <div class="wb-total" title={ $t('network.wb.total_tx') }>
             <span class="wb-total-k">TX</span>
             <span class="wb-total-v tx">{formatBps(pageTotals.tx)}</span>
           </div>
         {/if}
         <div class="wb-clock" aria-live="off">{wallClock}</div>
-        <button class="icon-x" type="button" onclick={toggleFullscreen} title={'Layar penuh'}>
+        <button class="icon-x" type="button" onclick={toggleFullscreen} title={ $t('network.wb.fullscreen') }>
           <Icon name="maximize" size={15} />
         </button>
       </div>
@@ -1379,12 +1379,12 @@
       class="insights-backdrop"
       type="button"
       onclick={() => (insightsOpen = false)}
-      aria-label={'Tutup'}
+      aria-label={ $t('network.wb.close') }
     ></button>
-    <aside class="wall-insights" aria-label={'Pengaturan'}>
+    <aside class="wall-insights" aria-label={ $t('network.wb.settings') }>
       <div class="insights-head">
-        <span class="title">{'Pengaturan'}</span>
-        <button class="icon-x" type="button" onclick={() => (insightsOpen = false)} title={'Tutup'}>
+        <span class="title">{ $t('network.wb.settings') }</span>
+        <button class="icon-x" type="button" onclick={() => (insightsOpen = false)} title={ $t('network.wb.close') }>
           <Icon name="x" size={16} />
         </button>
       </div>
@@ -1459,14 +1459,14 @@
   {#if paused}
     <div class="pause-indicator">
       <Icon name="pause" size={16} />
-      <span>{'Dijeda'}</span>
+      <span>{ $t('network.wb.paused') }</span>
     </div>
   {/if}
 
   {#if loading}
     <div class="empty">
       <Icon name="loader" size={18} />
-      {'Memuat…'}
+      { $t('network.wb.loading') }
     </div>
   {:else}
     <div class="grid" class:compact={layout === '4x3'} style={`--cols:${gridShape.cols}; --rows:${gridShape.rows};`}>
@@ -1522,11 +1522,11 @@
         data-wall-slot={addSlotIndex}
         type="button"
         onclick={() => openPicker(addSlotIndex)}
-        title={'Tambah tile'}
+        title={ $t('network.wb.add_tile') }
       >
         <div class="add-inner">
           <div class="plus">+</div>
-          <div class="add-title">{'Tambah tile'}</div>
+          <div class="add-title">{ $t('network.wb.add_tile') }</div>
         </div>
       </button>
       {/if}
@@ -1542,8 +1542,8 @@
       onclick={toggleAlertsPanel}
       aria-expanded={alertsOpen}
       aria-controls="wallboard-alert-panel"
-      aria-label={'Buka panel alert'}
-      title={'Buka panel alert'}
+      aria-label={ $t('network.wb.alerts_open') }
+      title={ $t('network.wb.alerts_open') }
     >
       <Icon name="alert-triangle" size={17} />
       <span class="floating-alert-count">{sortedAlerts.length > 99 ? '99+' : sortedAlerts.length}</span>

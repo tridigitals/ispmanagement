@@ -4,19 +4,25 @@
     Versi lama: (app)/dashboard/services/order/dedicated-link/+page.svelte.
     Pola DS: PortalShell + reuse ServiceComingSoonPage legacy.
   */
+  import { t } from 'svelte-i18n';
   import PortalShell from '$lib/components/ds/PortalShell.svelte';
   import ServiceComingSoonPage from '$lib/components/services/ServiceComingSoonPage.svelte';
 
-  const roadmap = ['Pemetaan endpoint multi-site', 'Kelas SLA dan bandwidth terkomitmen', 'Path redundan dan kebijakan failover', 'Checklist onboarding enterprise'];
+  const roadmap = $derived([
+    $t('dashboard.dedicated_order.rm1'),
+    $t('dashboard.dedicated_order.rm2'),
+    $t('dashboard.dedicated_order.rm3'),
+    $t('dashboard.dedicated_order.rm4'),
+  ]);
 </script>
 
-<PortalShell title="Dedicated Link">
+<PortalShell title={ $t('dashboard.dedicated_order.title') }>
   <ServiceComingSoonPage
-    title="Dedicated Link"
-    description="Alur pesanan link enterprise khusus disisihkan dan akan diaktifkan bersama dukungan provisioning SLA."
-    statusLabel="Segera Hadir"
+    title={ $t('dashboard.dedicated_order.title') }
+    description={ $t('dashboard.dedicated_order.desc') }
+    statusLabel={ $t('dashboard.hotspot_order.soon') }
     icon="router"
     {roadmap}
-    nextTarget="Layanan akan terbuka setelah baseline hotspot dan modul provisioning enterprise siap."
+    nextTarget={ $t('dashboard.dedicated_order.next') }
   />
 </PortalShell>

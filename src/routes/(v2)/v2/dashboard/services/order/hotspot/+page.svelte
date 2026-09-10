@@ -4,19 +4,25 @@
     Versi lama: (app)/dashboard/services/order/hotspot/+page.svelte.
     Pola DS: PortalShell + reuse ServiceComingSoonPage legacy.
   */
+  import { t } from 'svelte-i18n';
   import PortalShell from '$lib/components/ds/PortalShell.svelte';
   import ServiceComingSoonPage from '$lib/components/services/ServiceComingSoonPage.svelte';
 
-  const roadmap = ['Profil voucher dan harga', 'Branding captive portal dan kebijakan login', 'Kebijakan batas perangkat/sesi', 'Integrasi NAS dan profil radius'];
+  const roadmap = $derived([
+    $t('dashboard.hotspot_order.rm1'),
+    $t('dashboard.hotspot_order.rm2'),
+    $t('dashboard.hotspot_order.rm3'),
+    $t('dashboard.hotspot_order.rm4'),
+  ]);
 </script>
 
-<PortalShell title="Hotspot">
+<PortalShell title={ $t('dashboard.hotspot_order.title') }>
   <ServiceComingSoonPage
-    title="Hotspot"
-    description="Alur pesanan ini sudah disiapkan. Aktivasi layanan masih pada tahap roadmap."
-    statusLabel="Segera Hadir"
+    title={ $t('dashboard.hotspot_order.title') }
+    description={ $t('dashboard.hotspot_order.desc') }
+    statusLabel={ $t('dashboard.hotspot_order.soon') }
     icon="radio"
     {roadmap}
-    nextTarget="Setelah alur pesanan internet ISP stabil, pemesanan dan provisioning hotspot akan diaktifkan."
+    nextTarget={ $t('dashboard.hotspot_order.next') }
   />
 </PortalShell>

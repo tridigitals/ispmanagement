@@ -682,5 +682,21 @@
   "pppoe_v2": {
     "apply_router": "Apply to router",
     "empty_hint": "Try changing the filters above."
+  },
+  "wb": {
+    "settings": "Settings",
+    "close": "Close",
+    "add_tile": "Add tile",
+    "alerts_open": "Open alert panel",
+    "total_tx": "Total TX of all tiles on this page",
+    "total_rx": "Total RX of all tiles on this page",
+    "title": "NOC Wallboard",
+    "loading": "Loading…",
+    "fullscreen": "Fullscreen",
+    "exit": "Exit",
+    "paused": "Paused",
+    "open_settings": "Open settings",
+    "alert_ack": "Alert acknowledged",
+    "e_no_export": "No metric data to export."
   }
 }

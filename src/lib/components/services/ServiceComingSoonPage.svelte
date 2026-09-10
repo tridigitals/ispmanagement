@@ -30,11 +30,11 @@
     <div class="hero-actions">
       <button class="btn btn-secondary" type="button" onclick={() => goto('/dashboard/services/order')}>
         <Icon name="arrow-left" size={15} />
-        Service Types
+        { $t('components.service_coming_soon.service_types') }
       </button>
       <button class="btn btn-secondary" type="button" onclick={() => goto('/dashboard/services')}>
         <Icon name="layers" size={15} />
-        My Services
+        { $t('components.service_coming_soon.my_services') }
       </button>
     </div>
   </section>

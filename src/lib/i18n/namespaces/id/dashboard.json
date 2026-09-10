@@ -704,5 +704,33 @@
     "st_pay": "Menunggu bayar",
     "st_failed": "Gagal",
     "st_cancelled": "Dibatalkan"
+  },
+  "hotspot_order": {
+    "title": "Hotspot",
+    "desc": "Alur pesanan ini sudah disiapkan. Aktivasi layanan masih pada tahap roadmap.",
+    "soon": "Segera Hadir",
+    "next": "Setelah alur pesanan internet ISP stabil, pemesanan dan provisioning hotspot akan diaktifkan.",
+    "rm1": "Profil voucher dan harga",
+    "rm2": "Branding captive portal dan kebijakan login",
+    "rm3": "Kebijakan batas perangkat/sesi",
+    "rm4": "Integrasi NAS dan profil radius"
+  },
+  "dedicated_order": {
+    "title": "Dedicated Link",
+    "desc": "Alur pesanan link enterprise khusus disisihkan dan akan diaktifkan bersama dukungan provisioning SLA.",
+    "next": "Layanan akan terbuka setelah baseline hotspot dan modul provisioning enterprise siap.",
+    "rm1": "Pemetaan endpoint multi-site",
+    "rm2": "Kelas SLA dan bandwidth terkomitmen",
+    "rm3": "Path redundan dan kebijakan failover",
+    "rm4": "Checklist onboarding enterprise"
+  },
+  "vpn_order": {
+    "title": "Managed VPN",
+    "desc": "Alur pemesanan dan provisioning VPN akan diaktifkan setelah penguatan modul kebijakan dan keamanan.",
+    "next": "Layanan VPN akan dibuka dengan template keamanan dan dukungan logging kepatuhan.",
+    "rm1": "Mode site-to-site dan remote access",
+    "rm2": "Kebijakan user/group dan profil rute",
+    "rm3": "Manajemen siklus hidup sertifikat dan kunci",
+    "rm4": "Monitoring dan analitik sesi"
   }
 }

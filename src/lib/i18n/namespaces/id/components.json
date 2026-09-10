@@ -114,7 +114,9 @@
   },
   "service_coming_soon": {
     "planned_scope": "Ruang Lingkup",
-    "next_rollout": "Target rilis berikutnya"
+    "next_rollout": "Target rilis berikutnya",
+    "service_types": "Semua Jenis Layanan",
+    "my_services": "Layanan Saya"
   },
   "date_time_picker": {
     "open": "Buka pemilih tanggal dan waktu"
