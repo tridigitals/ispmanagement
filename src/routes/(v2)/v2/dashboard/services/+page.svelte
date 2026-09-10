@@ -444,7 +444,7 @@
   >
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" disabled={loading} onclick={() => void refreshAll()}>
-        Segarkan
+        { $t('common.refresh') }
       </Button>
       <Button variant="ghost" icon="receipt" onclick={() => goto('/v2/dashboard/invoices')}>
         Tagihan

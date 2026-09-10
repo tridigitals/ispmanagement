@@ -85,7 +85,7 @@
         (stats.pending > 0 ? ` · ${stats.pending} menunggu` : '')}
   >
     {#snippet actions()}
-      <Button variant="ghost" icon="refresh" disabled={loading} onclick={loadTickets}>Segarkan</Button>
+      <Button variant="ghost" icon="refresh" disabled={loading} onclick={loadTickets}>{ $t('common.refresh') }</Button>
       <Button icon="plus" onclick={() => goto('/v2/support')}>{ $t('support.v2.new_btn') }</Button>
     {/snippet}
   </PageHeader>
