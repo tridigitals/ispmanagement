@@ -252,7 +252,7 @@
           <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60"></span>
           <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
         </span>
-        {lastRefreshAt ? `Live · ${timeAgo(new Date(lastRefreshAt))}` : 'Live · memuat…'}
+        {lastRefreshAt ? 'Live · ' + timeAgo(new Date(lastRefreshAt), (k) => $t(k)) : $t('network.noc.v2.live_loading')}
       </span>
     {/snippet}
     <DataTable

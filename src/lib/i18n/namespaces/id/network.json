@@ -369,7 +369,10 @@
   "noc": {
     "title": "Ringkasan operasional seluruh router.",
     "disk": "DISK",
-    "wallboard_settings": "Pengaturan tampilan NOC live."
+    "wallboard_settings": "Pengaturan tampilan NOC live.",
+    "v2": {
+      "live_loading": "Live · memuat…"
+    }
   },
   "dhcp": {
     "title": "Pantau lease DHCP static."

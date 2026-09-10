@@ -369,7 +369,10 @@
   "noc": {
     "title": "Operational summary of all routers.",
     "disk": "DISK",
-    "wallboard_settings": "NOC live display settings."
+    "wallboard_settings": "NOC live display settings.",
+    "v2": {
+      "live_loading": "Live · loading…"
+    }
   },
   "dhcp": {
     "title": "Monitor DHCP static leases."
