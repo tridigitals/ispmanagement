@@ -55,6 +55,7 @@
       "status_updated": "Status updated: ",
       "current_status": "Current status: ",
       "proof_uploaded": "Proof uploaded successfully!"
-    }
+    },
+    "detail_invoice": "Invoice Details"
   }
 }

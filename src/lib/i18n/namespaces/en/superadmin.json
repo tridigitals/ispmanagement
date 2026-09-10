@@ -569,7 +569,13 @@
     "crumbs": {
       "root": "Superadmin",
       "tenants": "Tenants"
-    }
+    },
+    "columns": {
+      "name": "Tenant Name",
+      "domain": "Custom Domain",
+      "created": "Created At"
+    },
+    "domain_updated": "Domain status updated successfully"
   },
   "invoices": {
     "aria": {
@@ -1141,7 +1147,9 @@
     "crumbs": {
       "root": "Superadmin",
       "settings": "Settings"
-    }
+    },
+    "backup_queued": "Global backup queued",
+    "backup_fail": "Failed to queue global backup"
   },
   "plans": {
     "page_title": "Plans | Superadmin",

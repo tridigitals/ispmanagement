@@ -569,7 +569,13 @@
     "crumbs": {
       "root": "Superadmin",
       "tenants": "Tenant"
-    }
+    },
+    "columns": {
+      "name": "Nama Tenant",
+      "domain": "Domain Kustom",
+      "created": "Dibuat Pada"
+    },
+    "domain_updated": "Status domain berhasil diperbarui"
   },
   "invoices": {
     "aria": {
@@ -1141,7 +1147,9 @@
     "crumbs": {
       "root": "Superadmin",
       "settings": "Pengaturan"
-    }
+    },
+    "backup_queued": "Global backup queued",
+    "backup_fail": "Gagal mengantrekan global backup"
   },
   "plans": {
     "page_title": "Paket | Superadmin",

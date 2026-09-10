@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
 
+  import { t } from 'svelte-i18n';
   onMount(() => {
     // Preserve current URL params (e.g. ?reason=expired, ?invite=...)
     const search = window.location.search;
@@ -9,4 +10,4 @@
   });
 </script>
 
-<div class="redirect" style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:var(--text-muted)">Redirecting...</div>
+<div class="redirect" style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:var(--text-muted)">{ $t('common.redirecting') }</div>

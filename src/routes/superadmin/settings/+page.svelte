@@ -11,6 +11,7 @@
   import { superadminPlatformSettingsCache } from '$lib/stores/superadminPlatformSettings';
   import { get } from 'svelte/store';
   import { t } from 'svelte-i18n';
+  import { get as getStore } from 'svelte/store';
   import { extractApiErrorMessage } from '$lib/api/core';
   import {
     loadSettingsTabComponent,
@@ -915,10 +916,10 @@
         'true',
         'Manual trigger for global backup',
       );
-      toast.success('Global backup queued');
+      toast.success(getStore(t)('superadmin.settings.backup_queued'));
     } catch (err) {
       console.error('Failed to trigger global backup:', err);
-      toast.error('Failed to queue global backup');
+      toast.error(getStore(t)('superadmin.settings.backup_fail'));
     }
   }
 

@@ -491,7 +491,7 @@
         </section>
 
         <section class="section">
-          <h2 class="section-title">Detail Invoice</h2>
+          <h2 class="section-title">{ $t('payment.checkout.detail_invoice') }</h2>
           <div class="meta-grid">
             <div class="meta-item">
               <span class="k">Invoice #</span>

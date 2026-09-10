@@ -500,7 +500,7 @@
             <button type="button" class="method-btn" on:click={() => selectMethod(method)}>
               <Icon name={method === 'totp' ? 'shield' : 'mail'} size={24} />
               <span>
-                {method === 'totp' ? 'Authenticator App' : 'Email Code'}
+                {method === 'totp' ? $t('auth.login.mfa_totp') : $t('auth.login.mfa_email')}
               </span>
             </button>
           {/each}

@@ -172,5 +172,8 @@
   },
   "export_csv": "Export CSV",
   "last_data": "Last data",
-  "no_results_for": "No results for \"{q}\"."
+  "no_results_for": "No results for \"{q}\".",
+  "cards": "Cards",
+  "table": "Table",
+  "redirecting": "Redirecting..."
 }

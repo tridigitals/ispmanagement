@@ -55,6 +55,7 @@
       "status_updated": "Status diperbarui: ",
       "current_status": "Status saat ini: ",
       "proof_uploaded": "Bukti berhasil diunggah!"
-    }
+    },
+    "detail_invoice": "Detail Invoice"
   }
 }

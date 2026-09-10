@@ -172,5 +172,8 @@
   },
   "export_csv": "Ekspor CSV",
   "last_data": "Data terakhir",
-  "no_results_for": "Tidak ada hasil untuk \"{q}\""
+  "no_results_for": "Tidak ada hasil untuk \"{q}\"",
+  "cards": "Kartu",
+  "table": "Tabel",
+  "redirecting": "Mengalihkan..."
 }

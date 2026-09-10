@@ -9,6 +9,7 @@
   import { superadminTenantsCache } from '$lib/stores/superadminTenants';
   import { superadminPlansCache } from '$lib/stores/superadminPlans';
   import { t } from 'svelte-i18n';
+  import { get as getStore } from 'svelte/store';
 
   import { loadSuperadminTenantsModules } from './tenantsPageModules';
 
@@ -89,14 +90,14 @@
   );
 
   // Table columns
-  const columns = [
-    { key: 'name', label: 'Tenant Name', sortable: true },
+  const columns = $derived([
+    { key: 'name', label: $t('superadmin.tenants.columns.name'), sortable: true },
     { key: 'slug', label: 'Slug', sortable: true },
-    { key: 'custom_domain', label: 'Custom Domain', sortable: true },
-    { key: 'is_active', label: 'Status', sortable: true },
-    { key: 'created_at', label: 'Created At', sortable: true },
-    { key: 'actions', label: 'Actions', align: 'right' },
-  ];
+    { key: 'custom_domain', label: $t('superadmin.tenants.columns.domain'), sortable: true },
+    { key: 'is_active', label: $t('common.status'), sortable: true },
+    { key: 'created_at', label: $t('superadmin.tenants.columns.created'), sortable: true },
+    { key: 'actions', label: $t('common.actions'), align: 'right' },
+  ]);
 
   onMount(() => {
     let cleanup: (() => void) | undefined;
@@ -311,7 +312,7 @@
         domainStatusReason: updated.custom_domain_failure_reason || '',
       });
 
-      toast.success('Status domain berhasil diperbarui');
+      toast.success(getStore(t)('superadmin.tenants.domain_updated'));
       await loadTenants();
     } catch (e: any) {
       toast.error(e?.message || 'Gagal memperbarui status domain');
