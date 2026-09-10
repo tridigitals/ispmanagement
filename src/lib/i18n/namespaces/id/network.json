@@ -567,5 +567,40 @@
       "t_gone": "Pool sudah hilang di router — daftar disegarkan.",
       "t_deleted": "Pool IP dihapus."
     }
+  },
+  "ppp_profiles": {
+    "v2": {
+      "title": "Profil PPP",
+      "desc": "Template kecepatan & alamat untuk akun PPPoE per router.",
+      "sync": "Sinkron",
+      "add": "Tambah",
+      "router": "Router",
+      "pick_router": "Pilih router…",
+      "empty": "Router ini belum punya profil PPP tersinkron.",
+      "card_title": "Profil — {n} item",
+      "edit": "Ubah",
+      "delete": "Hapus",
+      "col_name": "Nama",
+      "col_local": "Lokal",
+      "col_rate": "Rate limit",
+      "col_synced": "Sinkron",
+      "col_actions": "Aksi",
+      "state_present": "Ada",
+      "state_missing": "Hilang",
+      "del_title": "Hapus profil PPP",
+      "t_synced": "Profil PPP tersinkron.",
+      "pick_router_first": "Pilih router dulu.",
+      "t_updated": "Profil PPP diperbarui.",
+      "t_created": "Profil PPP dibuat.",
+      "t_deleted": "Profil PPP dihapus.",
+      "t_load_routers": "Gagal memuat router.",
+      "t_load_profiles": "Gagal memuat profil.",
+      "t_sync_fail": "Gagal sinkron.",
+      "t_dep_fail": "Gagal cek dependensi.",
+      "t_del_fail": "Gagal hapus.",
+      "t_gone": "Profil sudah hilang di router — daftar disegarkan.",
+      "del_block": "Tidak bisa hapus {n} — masih dipakai {d} data.",
+      "del_msg": "Hapus profil PPP {n} dari router?"
+    }
   }
 }

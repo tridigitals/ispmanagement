@@ -567,5 +567,40 @@
       "t_gone": "Pool already gone on the router — list refreshed.",
       "t_deleted": "IP pool deleted."
     }
+  },
+  "ppp_profiles": {
+    "v2": {
+      "title": "PPP profiles",
+      "desc": "Speed & address templates for PPPoE accounts per router.",
+      "sync": "Sync",
+      "add": "Add",
+      "router": "Router",
+      "pick_router": "Pick a router…",
+      "empty": "This router has no synced PPP profiles yet.",
+      "card_title": "Profiles — {n} items",
+      "edit": "Edit",
+      "delete": "Delete",
+      "col_name": "Name",
+      "col_local": "Local",
+      "col_rate": "Rate limit",
+      "col_synced": "Synced",
+      "col_actions": "Actions",
+      "state_present": "Present",
+      "state_missing": "Missing",
+      "del_title": "Delete PPP profile",
+      "t_synced": "PPP profiles synced.",
+      "pick_router_first": "Pick a router first.",
+      "t_updated": "PPP profile updated.",
+      "t_created": "PPP profile created.",
+      "t_deleted": "PPP profile deleted.",
+      "t_load_routers": "Failed to load routers.",
+      "t_load_profiles": "Failed to load profiles.",
+      "t_sync_fail": "Sync failed.",
+      "t_dep_fail": "Dependency check failed.",
+      "t_del_fail": "Delete failed.",
+      "t_gone": "Profile already gone on the router — list refreshed.",
+      "del_block": "Cannot delete {n} — still referenced by {d} records.",
+      "del_msg": "Delete PPP profile {n} from the router?"
+    }
   }
 }

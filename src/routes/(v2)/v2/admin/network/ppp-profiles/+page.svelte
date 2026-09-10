@@ -78,17 +78,17 @@
 
   const remotePoolOptions = $derived.by(() => getPppProfileRemotePoolOptions(ipPools));
 
-  const columns: Column[] = [
-    { key: 'name', label: 'Nama' },
-    { key: 'local', label: 'Lokal' },
+  const columns = $derived<Column[]>([
+    { key: 'name', label: $t('network.ppp_profiles.v2.col_name') },
+    { key: 'local', label: $t('network.ppp_profiles.v2.col_local') },
     { key: 'remote', label: 'Remote' },
-    { key: 'rate', label: 'Rate limit' },
+    { key: 'rate', label: $t('network.ppp_profiles.v2.col_rate') },
     { key: 'dns', label: 'DNS' },
     { key: 'only_one', label: 'Only-one' },
     { key: 'state', label: 'State' },
-    { key: 'synced', label: 'Sinkron' },
-    { key: 'actions', label: 'Aksi' },
-  ];
+    { key: 'synced', label: $t('network.ppp_profiles.v2.col_synced') },
+    { key: 'actions', label: $t('network.ppp_profiles.v2.col_actions') },
+  ]);
 
   const canManage = $derived($can('manage', 'ppp_profiles'));
 
@@ -106,7 +106,7 @@
       routers = (await api.mikrotik.routers.list()) as any;
       if (routerId) await load();
     } catch (e) {
-      toast.error(extractApiErrorMessage(e) || 'Gagal memuat router.');
+      toast.error(extractApiErrorMessage(e) || $t('network.ppp_profiles.v2.t_load_routers'));
     } finally {
       loadingRouters = false;
     }
@@ -123,7 +123,7 @@
       rows = profileRows as any;
       ipPools = poolRows as any;
     } catch (e) {
-      toast.error(extractApiErrorMessage(e) || 'Gagal memuat profil.');
+      toast.error(extractApiErrorMessage(e) || $t('network.ppp_profiles.v2.t_load_profiles'));
     } finally {
       loading = false;
     }
@@ -135,9 +135,9 @@
     try {
       rows = (await api.mikrotik.routers.syncPppProfiles(routerId)) as any;
       ipPools = (await api.mikrotik.routers.ipPools(routerId)) as any;
-      toast.success('Profil PPP tersinkron.');
+      toast.success($t('network.ppp_profiles.v2.t_synced'));
     } catch (e) {
-      toast.error(extractApiErrorMessage(e) || 'Gagal sinkron.');
+      toast.error(extractApiErrorMessage(e) || $t('network.ppp_profiles.v2.t_sync_fail'));
     } finally {
       loading = false;
     }
@@ -149,7 +149,7 @@
 
   function openCreate() {
     if (getPppProfileCrudGateState(routerId).blocked) {
-      toast.error('Pilih router dulu.');
+      toast.error($t('network.ppp_profiles.v2.pick_router_first'));
       return;
     }
     editing = null;
@@ -159,7 +159,7 @@
 
   function openEdit(row: PppProfileRow) {
     if (getPppProfileCrudGateState(routerId).blocked) {
-      toast.error('Pilih router dulu.');
+      toast.error($t('network.ppp_profiles.v2.pick_router_first'));
       return;
     }
     editing = row;
@@ -177,7 +177,7 @@
 
   async function save() {
     if (!routerId) {
-      toast.error('Pilih router dulu.');
+      toast.error($t('network.ppp_profiles.v2.pick_router_first'));
       return;
     }
     saving = true;
@@ -186,10 +186,10 @@
       if (!payload.name && !editing) throw new Error('Nama profil wajib diisi.');
       if (editing) {
         await api.mikrotik.routers.updatePppProfile(routerId, editing.id, payload);
-        toast.success('Profil PPP diperbarui.');
+        toast.success($t('network.ppp_profiles.v2.t_updated'));
       } else {
         await api.mikrotik.routers.createPppProfile(routerId, payload as any);
-        toast.success('Profil PPP dibuat.');
+        toast.success($t('network.ppp_profiles.v2.t_created'));
       }
       showForm = false;
       editing = null;
@@ -206,7 +206,7 @@
 
   async function openDelete(row: PppProfileRow) {
     if (!routerId) {
-      toast.error('Pilih router dulu.');
+      toast.error($t('network.ppp_profiles.v2.pick_router_first'));
       return;
     }
     try {
@@ -217,11 +217,11 @@
       deleteBlocked = state.blocked;
       deleteKeyword = state.blocked ? '__blocked__' : row.name;
       deleteMessage = state.blocked
-        ? `Tidak bisa hapus ${row.name} — masih dipakai ${state.totalDependencies} data.`
-        : `Hapus profil PPP ${row.name} dari router?`;
+        ? $t('network.ppp_profiles.v2.del_block', { values: { n: row.name, d: state.totalDependencies } })
+        : $t('network.ppp_profiles.v2.del_msg', { values: { n: row.name } });
       showDelete = true;
     } catch (error) {
-      toast.error(extractApiErrorMessage(error) || 'Gagal cek dependensi.');
+      toast.error(extractApiErrorMessage(error) || $t('network.ppp_profiles.v2.t_dep_fail'));
     }
   }
 
@@ -234,13 +234,13 @@
     deleting = true;
     try {
       await api.mikrotik.routers.deletePppProfile(routerId, deleteTarget.id);
-      toast.success('Profil PPP dihapus.');
+      toast.success($t('network.ppp_profiles.v2.t_deleted'));
       showDelete = false;
       deleteTarget = null;
       deleteBlocked = false;
       await load();
     } catch (error) {
-      const message = extractApiErrorMessage(error) || 'Gagal hapus.';
+      const message = extractApiErrorMessage(error) || $t('network.ppp_profiles.v2.t_del_fail');
       if (isPppProfileStaleTargetConflict(message)) {
         try {
           rows = (await api.mikrotik.routers.syncPppProfiles(routerId)) as any;
@@ -250,7 +250,7 @@
           deleteMessage = '';
           deleteKeyword = '';
           deleteBlocked = false;
-          toast.warning('Profil sudah hilang di router — daftar disegarkan.');
+          toast.warning($t('network.ppp_profiles.v2.t_gone'));
           return;
         } catch (syncError) {
           toast.error(extractApiErrorMessage(syncError) || message);
@@ -264,32 +264,32 @@
   }
 
 </script>
-<AppShell title="Profil PPP">
+<AppShell title={ $t('network.ppp_profiles.v2.title') }>
   <PageHeader
-    title="Profil PPP"
+    title={ $t('network.ppp_profiles.v2.title') }
     eyebrow={ $t('admin.eyebrows.network') }
-    desc="Template kecepatan & alamat untuk akun PPPoE per router."
+    desc={ $t('network.ppp_profiles.v2.desc') }
   >
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" onclick={() => void load()} disabled={!routerId || loading}>{ $t('common.refresh') }</Button>
-      <Button variant="ghost" icon="download" onclick={() => void sync()} disabled={!routerId || loading}>Sinkron</Button>
+      <Button variant="ghost" icon="download" onclick={() => void sync()} disabled={!routerId || loading}>{ $t('network.ppp_profiles.v2.sync') }</Button>
       {#if canManage}
-        <Button variant="primary" icon="plus" onclick={openCreate} disabled={!routerId || loading}>Tambah</Button>
+        <Button variant="primary" icon="plus" onclick={openCreate} disabled={!routerId || loading}>{ $t('network.ppp_profiles.v2.add') }</Button>
       {/if}
     {/snippet}
   </PageHeader>
 
-  <Card title="Router">
+  <Card title={ $t('network.ppp_profiles.v2.router') }>
     <div class="max-w-md">
-      <Field stacked id="pp-router" label="Router" type="select" value={routerId} options={[{ value: '', label: 'Pilih router…' }, ...routers.map((r) => ({ value: r.id, label: r.name }))]} onchange={(v) => { routerId = v; void load(); }} />
+      <Field stacked id="pp-router" label={ $t('network.ppp_profiles.v2.router') } type="select" value={routerId} options={[{ value: '', label: $t('network.ppp_profiles.v2.pick_router') }, ...routers.map((r) => ({ value: r.id, label: r.name }))]} onchange={(v) => { routerId = v; void load(); }} />
     </div>
   </Card>
 
   {#if routerId}
     {#if rows.length === 0 && !loading}
-      <Card><p class="py-10 text-center text-sm text-ink-500">Router ini belum punya profil PPP tersinkron.</p></Card>
+      <Card><p class="py-10 text-center text-sm text-ink-500">{ $t('network.ppp_profiles.v2.empty') }</p></Card>
     {:else}
-    <Card title={`Profil — ${rows.length} item`}>
+    <Card title={ $t('network.ppp_profiles.v2.card_title', { values: { n: rows.length } }) }>
       <DataTable
         {columns}
         rows={rows.map((r, idx) => ({
@@ -308,9 +308,9 @@
         {#snippet cell(row, col)}
           {@const cellVal = (row as unknown as Record<string, unknown>)[col.key] as string}
           {#if col.key === 'state'}
-            <Badge tone={row.state ? 'positive' : 'warning'} label={row.state ? 'Ada' : 'Hilang'} />
+            <Badge tone={row.state ? 'positive' : 'warning'} label={row.state ? $t('network.ppp_profiles.v2.state_present') : $t('network.ppp_profiles.v2.state_missing')} />
           {:else if col.key === 'only_one'}
-            <Badge tone={row.only_one ? 'positive' : 'neutral'} label={row.only_one ? 'Ya' : 'Tidak'} />
+            <Badge tone={row.only_one ? 'positive' : 'neutral'} label={row.only_one ? $t('common.yes') : $t('common.no')} />
           {:else if col.key === 'synced'}
             {#if row.synced}
               <span class="font-mono text-xs">{new Date(row.synced).toLocaleString('id-ID')}</span>
@@ -320,8 +320,8 @@
           {:else if col.key === 'actions'}
             {#if canManage}
               <div class="flex gap-1">
-                <Button variant="ghost" onclick={() => openEdit(rows.find((r) => (r.id || r.name) === row.id) ?? rows[0])}>Ubah</Button>
-                <Button variant="ghost" onclick={() => void openDelete(rows.find((r) => (r.id || r.name) === row.id) ?? rows[0])}>Hapus</Button>
+                <Button variant="ghost" onclick={() => openEdit(rows.find((r) => (r.id || r.name) === row.id) ?? rows[0])}>{ $t('network.ppp_profiles.v2.edit') }</Button>
+                <Button variant="ghost" onclick={() => void openDelete(rows.find((r) => (r.id || r.name) === row.id) ?? rows[0])}>{ $t('network.ppp_profiles.v2.delete') }</Button>
               </div>
             {/if}
           {:else if col.key === 'local' || col.key === 'remote' || col.key === 'rate' || col.key === 'dns'}
@@ -347,7 +347,7 @@
 
 <ConfirmDialog
   bind:show={showDelete}
-  title="Hapus profil PPP"
+  title={ $t('network.ppp_profiles.v2.del_title') }
   message={deleteMessage}
   confirmText="Hapus"
   confirmationKeyword={deleteKeyword}
