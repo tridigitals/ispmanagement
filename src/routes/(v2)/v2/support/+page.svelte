@@ -28,6 +28,7 @@
   import Modal from '$lib/components/ui/Modal.svelte';
   import type { StatusTone } from '$lib/components/ds/tokens';
 
+  import { t } from 'svelte-i18n';
   let tickets = $state<SupportTicketListItem[]>([]);
   let stats = $state<SupportTicketStats>({ all: 0, open: 0, pending: 0, closed: 0, resolved: 0, unassigned: 0 });
   let total = $state(0);
@@ -50,9 +51,9 @@
 
   type QuickAction = { icon: 'alert' | 'wifi' | 'plus'; label: string; subject: string; message: string; category: string };
   const quickActions: QuickAction[] = [
-    { icon: 'alert', label: 'Internet Mati', subject: 'Internet mati / tidak connect', message: 'Halo, internet saya mati total. Tidak ada koneksi sama sekali. Mohon bantuan.', category: 'technical' },
-    { icon: 'wifi', label: 'Internet Lambat', subject: 'Internet lambat', message: 'Halo, koneksi internet saya sangat lambat. Kecepatan jauh di bawah normal.', category: 'technical' },
-    { icon: 'plus', label: 'Lainnya', subject: '', message: '', category: 'general' },
+    { icon: 'alert', label: $t('support.v2.qa1_l'), subject: $t('support.v2.qa1_s'), message: $t('support.v2.qa1_m'), category: 'technical' },
+    { icon: 'wifi', label: $t('support.v2.qa2_l'), subject: $t('support.v2.qa2_s'), message: $t('support.v2.qa2_m'), category: 'technical' },
+    { icon: 'plus', label: $t('support.v2.qa3_l'), subject: '', message: '', category: 'general' },
   ];
 
   let statusFilter = $state('all');
@@ -74,7 +75,7 @@
   }
   function statusLabel(status: string) {
     const s = normStatus(status);
-    return { open: 'Terbuka', pending: 'Menunggu', closed: 'Selesai' }[s] ?? (status || '—');
+    return { open: $t('support.status.open'), pending: $t('support.status.pending'), closed: $t('support.status.closed') }[s] ?? (status || '—');
   }
   function priorityTone(p: string): StatusTone {
     if (p === 'urgent') return 'negative';
@@ -83,10 +84,10 @@
     return 'info';
   }
   function priorityLabel(p: string) {
-    return { low: 'Rendah', normal: 'Normal', high: 'Tinggi', urgent: 'Darurat' }[p] ?? (p || '—');
+    return { low: $t('support.priorities.low'), normal: $t('support.priorities.normal'), high: $t('support.priorities.high'), urgent: $t('support.v2.p_urgent') }[p] ?? (p || '—');
   }
   function categoryLabel(c: string) {
-    return { general: 'Umum', billing: 'Tagihan', technical: 'Teknis', installation: 'Instalasi' }[c] ?? (c || '—');
+    return { general: $t('support.categories.general'), billing: $t('support.categories.billing'), technical: $t('support.categories.technical'), installation: $t('support.categories.installation') }[c] ?? (c || '—');
   }
 
   function onPickFiles(e: Event) {
@@ -119,7 +120,7 @@
       const res = await api.customers.portal.mySubscriptions({ per_page: 50, status: 'active' });
       subscriptions = (res.data || []).map((s: any) => ({
         id: s.id,
-        label: s.package_name || s.plan_name || 'Langganan',
+        label: s.package_name || s.plan_name || $t('support.fields.subscription'),
       }));
     } catch (_) {
       /* ignore */
@@ -188,7 +189,7 @@
   async function submitCreate() {
     if (!subject.trim() || !message.trim()) return;
     if (subject.trim().length < 3 || message.trim().length < 10) {
-      toast.error('Judul min 3 huruf, pesan min 10 huruf.');
+      toast.error($t('support.v2.t_valid'));
       return;
     }
     creating = true;
@@ -206,7 +207,7 @@
         subscriptionId || undefined,
         ids,
       );
-      toast.success('Tiket berhasil dibuat.');
+      toast.success($t('support.v2.t_created'));
       showCreate = false;
       subject = '';
       message = '';
@@ -218,21 +219,21 @@
       await loadTickets(true);
       goto(`/v2/support/${detail.ticket.id}`);
     } catch (e: any) {
-      toast.error(`Gagal membuat tiket: ${e?.message || e}`);
+      toast.error($t('support.v2.t_failed', { values: { message: String(e?.message || e) } }));
     } finally {
       creating = false;
     }
   }
 </script>
 
-<PortalShell title="Bantuan">
+<PortalShell title={ $t('sidebar.sections.help') }>
   <PageHeader
-    title="Bantuan"
-    desc="Lacak tiket dan ajukan permintaan bantuan."
+    title={ $t('sidebar.sections.help') }
+    desc={ $t('support.v2.desc') }
   >
     {#snippet actions()}
       {#if $can('create', 'support')}
-        <Button icon="plus" onclick={() => (showCreate = true)}>Buat tiket</Button>
+        <Button icon="plus" onclick={() => (showCreate = true)}>{ $t('support.v2.new_btn') }</Button>
       {/if}
     {/snippet}
   </PageHeader>
@@ -240,10 +241,10 @@
   {#if !loading}
     <div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
       {#each [
-        { key: 'all', label: 'Total', val: stats.all, sub: 'semua tiket' },
-        { key: 'open', label: 'Terbuka', val: stats.open, sub: 'butuh respon' },
-        { key: 'pending', label: 'Menunggu', val: stats.pending, sub: 'diproses' },
-        { key: 'closed', label: 'Selesai', val: stats.closed, sub: 'tuntas' },
+        { key: 'all', label: $t('support.stats.total'), val: stats.all, sub: $t('support.v2.h_all') },
+        { key: 'open', label: $t('support.status.open'), val: stats.open, sub: $t('support.v2.h_need_res') },
+        { key: 'pending', label: $t('support.status.pending'), val: stats.pending, sub: $t('support.v2.h_proc') },
+        { key: 'closed', label: $t('support.status.closed'), val: stats.closed, sub: $t('support.v2.h_done') },
       ] as k (k.key)}
         <button
           type="button"
@@ -261,48 +262,48 @@
   <div class="mb-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px_170px]">
     <Field
       id="sup-search"
-      label="Cari"
+      label={ $t('common.search') }
       type="text"
       value={searchQuery}
-      placeholder="Cari tiket…"
+      placeholder={ $t('support.v2.search_ph') }
       onchange={(v) => (searchQuery = v)}
     />
     <Field
       id="sup-status"
-      label="Status"
+      label={ $t('admin.customers.columns.status') }
       type="select"
       value={statusFilter}
       options={[
-        { value: 'all', label: 'Semua' },
-        { value: 'open', label: 'Terbuka' },
-        { value: 'pending', label: 'Menunggu' },
-        { value: 'closed', label: 'Selesai' },
+        { value: 'all', label: $t('support.categories.all') },
+        { value: 'open', label: $t('support.status.open') },
+        { value: 'pending', label: $t('support.status.pending') },
+        { value: 'closed', label: $t('support.status.closed') },
       ]}
       onchange={(v) => (statusFilter = v)}
     />
     <Field
       id="sup-category"
-      label="Kategori"
+      label={ $t('support.fields.category') }
       type="select"
       value={categoryFilter}
       options={[
-        { value: 'all', label: 'Semua' },
-        { value: 'general', label: 'Umum' },
-        { value: 'billing', label: 'Tagihan' },
-        { value: 'technical', label: 'Teknis' },
-        { value: 'installation', label: 'Instalasi' },
+        { value: 'all', label: $t('support.categories.all') },
+        { value: 'general', label: $t('support.categories.general') },
+        { value: 'billing', label: $t('support.categories.billing') },
+        { value: 'technical', label: $t('support.categories.technical') },
+        { value: 'installation', label: $t('support.categories.installation') },
       ]}
       onchange={(v) => (categoryFilter = v)}
     />
   </div>
 
   {#if loading}
-    <Card title="Memuat…"><p class="text-sm text-ink-500">Mengambil tiket…</p></Card>
+    <Card title={ $t('support.loading') }><p class="text-sm text-ink-500">{ $t('support.v2.loading_fetch') }</p></Card>
   {:else if tickets.length === 0}
-    <Card title="Belum ada tiket">
-      <p class="mb-4 text-sm text-ink-500">Buat tiket jika butuh bantuan.</p>
+    <Card title={ $t('support.empty.title') }>
+      <p class="mb-4 text-sm text-ink-500">{ $t('support.v2.empty_hint') }</p>
       {#if $can('create', 'support')}
-        <Button icon="plus" onclick={() => (showCreate = true)}>Buat tiket</Button>
+        <Button icon="plus" onclick={() => (showCreate = true)}>{ $t('support.v2.new_btn') }</Button>
       {/if}
     </Card>
   {:else}
@@ -333,7 +334,7 @@
     {#if hasMore}
       <div class="mt-4 flex items-center justify-center gap-3">
         <Button variant="secondary" icon="chevronDown" disabled={loadingMore} onclick={loadMore}>
-          {loadingMore ? 'Memuat…' : 'Muat lagi'}
+          {loadingMore ? $t('support.loading') : $t('support.v2.load_more')}
         </Button>
         <span class="text-xs text-ink-400">{tickets.length}/{total}</span>
       </div>
@@ -341,10 +342,10 @@
   {/if}
 </PortalShell>
 
-<Modal bind:show={showCreate} title="Buat tiket" onclose={() => (showCreate = false)}>
+<Modal bind:show={showCreate} title={ $t('support.v2.new_btn') } onclose={() => (showCreate = false)}>
   <div class="flex flex-col gap-4">
     <div>
-      <p class="mb-2 text-xs font-medium text-ink-500">Akses cepat</p>
+      <p class="mb-2 text-xs font-medium text-ink-500">{ $t('support.v2.quick') }</p>
       <div class="flex flex-wrap gap-2">
         {#each quickActions as a (a.label)}
           <button
@@ -358,25 +359,25 @@
       </div>
     </div>
 
-    <Field id="sup-subject" label="Judul" type="text" value={subject} placeholder="Ringkas masalah Anda" onchange={(v) => (subject = v)} />
-    <Field id="sup-message" label="Pesan" type="textarea" value={message} placeholder="Jelaskan masalah secara detail (min 10 huruf)" onchange={(v) => (message = v)} />
+    <Field id="sup-subject" label={ $t('support.fields.subject') } type="text" value={subject} placeholder={ $t('support.v2.subject_ph') } onchange={(v) => (subject = v)} />
+    <Field id="sup-message" label={ $t('support.fields.message') } type="textarea" value={message} placeholder={ $t('support.v2.body_ph') } onchange={(v) => (message = v)} />
     <Field
       id="sup-category"
-      label="Kategori"
+      label={ $t('support.fields.category') }
       type="select"
       value={category}
       options={[
-        { value: 'general', label: 'Umum' },
-        { value: 'billing', label: 'Tagihan' },
-        { value: 'technical', label: 'Teknis' },
-        { value: 'installation', label: 'Instalasi' },
+        { value: 'general', label: $t('support.categories.general') },
+        { value: 'billing', label: $t('support.categories.billing') },
+        { value: 'technical', label: $t('support.categories.technical') },
+        { value: 'installation', label: $t('support.categories.installation') },
       ]}
       onchange={(v) => (category = v)}
     />
     {#if subscriptions.length > 0}
       <Field
         id="sup-subscription"
-        label="Langganan"
+        label={ $t('support.fields.subscription') }
         type="select"
         value={subscriptionId}
         options={[
@@ -388,14 +389,14 @@
     {/if}
     <Field
       id="sup-priority"
-      label="Prioritas"
+      label={ $t('support.fields.priority') }
       type="select"
       value={priority}
       options={[
-        { value: 'low', label: 'Rendah' },
-        { value: 'normal', label: 'Normal' },
-        { value: 'high', label: 'Tinggi' },
-        { value: 'urgent', label: 'Darurat' },
+        { value: 'low', label: $t('support.priorities.low') },
+        { value: 'normal', label: $t('support.priorities.normal') },
+        { value: 'high', label: $t('support.priorities.high') },
+        { value: 'urgent', label: $t('support.v2.p_urgent') },
       ]}
       onchange={(v) => (priority = v)}
     />
@@ -413,7 +414,7 @@
           {#each attachments as att, i (att.name)}
             <span class="flex items-center gap-1.5 rounded-md bg-ink-100 px-2 py-1 text-xs text-ink-600">
               {att.name}
-              <button type="button" class="text-ink-400 hover:text-ink-700" onclick={() => removeAttachment(i)} aria-label="Hapus">
+              <button type="button" class="text-ink-400 hover:text-ink-700" onclick={() => removeAttachment(i)} aria-label={ $t('common.delete') }>
                 ×
               </button>
             </span>
@@ -425,7 +426,7 @@
     <div class="flex justify-end gap-2 border-t border-ink-200 pt-4">
       <Button variant="ghost" onclick={() => (showCreate = false)}>Batal</Button>
       <Button loading={creating} onclick={submitCreate} disabled={creating}>
-        {creating ? 'Membuat…' : 'Buat tiket'}
+        {creating ? 'Membuat…' : $t('support.v2.new_btn')}
       </Button>
     </div>
   </div>

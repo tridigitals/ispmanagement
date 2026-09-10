@@ -96,5 +96,32 @@
   },
   "quick": {
     "label": "Label"
+  },
+  "v2": {
+    "title": "Bantuan",
+    "desc": "Lacak tiket dan ajukan permintaan bantuan.",
+    "new_btn": "Buat tiket",
+    "search_ph": "Cari tiket…",
+    "loading_fetch": "Mengambil tiket…",
+    "empty_hint": "Buat tiket jika butuh bantuan.",
+    "quick": "Akses cepat",
+    "subject_ph": "Ringkas masalah Anda",
+    "body_ph": "Jelaskan masalah secara detail (min 10 huruf)",
+    "h_need_res": "butuh respon",
+    "qa1_l": "Internet Mati",
+    "qa1_s": "Internet mati / tidak connect",
+    "qa1_m": "Halo, internet saya mati total. Tidak ada koneksi sama sekali. Mohon bantuan.",
+    "qa2_l": "Internet Lambat",
+    "qa2_s": "Internet lambat",
+    "qa2_m": "Halo, koneksi internet saya sangat lambat. Kecepatan jauh di bawah normal.",
+    "qa3_l": "Lainnya",
+    "t_valid": "Judul min 3 huruf, pesan min 10 huruf.",
+    "t_created": "Tiket berhasil dibuat.",
+    "p_urgent": "Darurat",
+    "h_all": "semua tiket",
+    "h_proc": "diproses",
+    "h_done": "tuntas",
+    "t_failed": "Gagal membuat tiket: {message}",
+    "load_more": "Muat lagi"
   }
 }

@@ -96,5 +96,32 @@
   },
   "quick": {
     "label": "Label"
+  },
+  "v2": {
+    "title": "Bantuan",
+    "desc": "Track tickets and submit help requests.",
+    "new_btn": "Create ticket",
+    "search_ph": "Search tickets…",
+    "loading_fetch": "Fetching tickets…",
+    "empty_hint": "Create a ticket if you need help.",
+    "quick": "Quick access",
+    "subject_ph": "Summarize your issue",
+    "body_ph": "Describe the issue in detail (min 10 chars)",
+    "h_need_res": "needs response",
+    "qa1_l": "Internet down",
+    "qa1_s": "Internet down / not connecting",
+    "qa1_m": "Hello, my internet is completely down. There is no connection at all. Please help.",
+    "qa2_l": "Slow internet",
+    "qa2_s": "Slow internet",
+    "qa2_m": "Hello, my internet connection is very slow. Speed is far below normal.",
+    "qa3_l": "Other",
+    "t_valid": "Title min 3 chars, message min 10 chars.",
+    "t_created": "Ticket created successfully.",
+    "p_urgent": "Urgent",
+    "h_all": "all tickets",
+    "h_proc": "in progress",
+    "h_done": "resolved",
+    "t_failed": "Failed to create ticket: {message}",
+    "load_more": "Load more"
   }
 }
