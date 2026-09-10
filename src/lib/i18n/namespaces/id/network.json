@@ -658,5 +658,23 @@
     "pick_hint": "Pilih sumber untuk membuka wizard impornya.",
     "ready": "Siap",
     "soon": "Segera"
+  },
+  "wallboard_set": {
+    "title": "Pengaturan wallboard",
+    "desc": "Tata letak, rotasi halaman, dan filter status untuk layar wallboard NOC.",
+    "discard": "Keluar tanpa menyimpan",
+    "sec_view": "Tampilan",
+    "layout": "Tata letak",
+    "status_filter": "Filter status",
+    "focus_mode": "Mode fokus",
+    "sec_rot": "Rotasi & polling",
+    "rot_mode": "Mode rotasi",
+    "rot_interval": "Interval rotasi",
+    "poll_interval": "Interval polling",
+    "keep_awake": "Jaga layar tetap menyala",
+    "saved": "Pengaturan wallboard disimpan",
+    "save_fail": "Gagal menyimpan pengaturan",
+    "auto": "Otomatis",
+    "auto_help": "Otomatis mengganti halaman ubin sesuai interval."
   }
 }

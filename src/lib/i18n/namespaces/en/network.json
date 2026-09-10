@@ -658,5 +658,23 @@
     "pick_hint": "Pick a source to open its import wizard.",
     "ready": "Ready",
     "soon": "Soon"
+  },
+  "wallboard_set": {
+    "title": "Wallboard settings",
+    "desc": "Layout, page rotation, and status filters for the NOC wallboard screen.",
+    "discard": "Leave without saving",
+    "sec_view": "Appearance",
+    "layout": "Layout",
+    "status_filter": "Status filter",
+    "focus_mode": "Focus mode",
+    "sec_rot": "Rotation & polling",
+    "rot_mode": "Rotation mode",
+    "rot_interval": "Rotation interval",
+    "poll_interval": "Polling interval",
+    "keep_awake": "Keep screen awake",
+    "saved": "Wallboard settings saved",
+    "save_fail": "Failed to save settings",
+    "auto": "Automatic",
+    "auto_help": "Automatically switches the tile page on the set interval."
   }
 }

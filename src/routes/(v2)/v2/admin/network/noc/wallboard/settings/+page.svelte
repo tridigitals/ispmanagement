@@ -16,6 +16,7 @@
   import { extractApiErrorMessage } from '$lib/api/core';
   import { toast } from '$lib/stores/toast';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
+  import { t } from 'svelte-i18n';
   import {
     FOCUS_MODE_KEY,
     KEEP_AWAKE_KEY,
@@ -65,22 +66,22 @@
   const canUseTenantSettings = $derived($can('read', 'settings') || $can('update', 'settings'));
 
   const layoutOptions = WALLBOARD_LAYOUT_PRESETS.map((preset) => ({ value: preset, label: preset }));
-  const statusOptions = WALLBOARD_STATUS_FILTERS.map((value) => ({
+  const statusOptions = $derived(WALLBOARD_STATUS_FILTERS.map((value) => ({
     value,
-    label: value === 'all' ? 'Semua' : value === 'online' ? 'Online' : 'Offline',
-  }));
-  const rotateModeOptions = WALLBOARD_ROTATE_MODES.map((value) => ({
+    label: value === 'all' ? $t('common.all') : value === 'online' ? 'Online' : 'Offline',
+  })));
+  const rotateModeOptions = $derived(WALLBOARD_ROTATE_MODES.map((value) => ({
     value,
-    label: value === 'manual' ? 'Manual' : 'Otomatis',
-  }));
-  const rotateMsOptions = WALLBOARD_ROTATE_MS_OPTIONS.map((value) => ({
+    label: value === 'manual' ? 'Manual' : $t('network.wallboard_set.auto'),
+  })));
+  const rotateMsOptions = $derived(WALLBOARD_ROTATE_MS_OPTIONS.map((value) => ({
     value: String(value),
-    label: `${Math.floor(value / 1000)} detik`,
-  }));
-  const pollMsOptions = WALLBOARD_POLL_MS_OPTIONS.map((value) => ({
+    label: $t('common.time.sec', { values: { n: Math.floor(value / 1000) } }),
+  })));
+  const pollMsOptions = $derived(WALLBOARD_POLL_MS_OPTIONS.map((value) => ({
     value: String(value),
-    label: `${Math.floor(value / 1000)} detik`,
-  }));
+    label: $t('common.time.sec', { values: { n: Math.floor(value / 1000) } }),
+  })));
 
   function loadLocal() {
     try {
@@ -156,10 +157,10 @@
           console.error('upsert pengaturan jarak jauh gagal:', e);
         }
       }
-      toast.success('Pengaturan wallboard disimpan');
+      toast.success($t('network.wallboard_set.saved'))
       await goto(`${tenantPrefix}/v2/admin/network/noc/wallboard`);
     } catch (e: unknown) {
-      toast.error(extractApiErrorMessage(e, 'Gagal menyimpan pengaturan'));
+      toast.error(extractApiErrorMessage(e, $t('network.wallboard_set.save_fail')));
     } finally {
       saving = false;
     }
@@ -179,14 +180,14 @@
   });
 </script>
 
-<AppShell title="Pengaturan wallboard">
+<AppShell title={ $t('network.wallboard_set.title') }>
   <PageHeader
-    title="Pengaturan wallboard"
+    title={ $t('network.wallboard_set.title') }
     eyebrow="Jaringan · NOC"
-    desc="Tata letak, rotasi halaman, dan filter status untuk layar wallboard NOC."
+    desc={ $t('network.wallboard_set.desc') }
   >
     {#snippet actions()}
-      <Button variant="ghost" onclick={exitWithoutSave}>Keluar tanpa menyimpan</Button>
+      <Button variant="ghost" onclick={exitWithoutSave}>{ $t('network.wallboard_set.discard') }</Button>
       <Button variant="primary" loading={saving} onclick={() => void saveAndExit()}>
         Simpan & keluar
       </Button>
@@ -194,10 +195,10 @@
   </PageHeader>
 
   <div class="mt-4 grid gap-4">
-    <Card title="Tampilan">
+    <Card title={ $t('network.wallboard_set.sec_view') }>
       <Field
         id="wb-layout"
-        label="Tata letak"
+        label={ $t('network.wallboard_set.layout') }
         type="select"
         value={layout}
         options={layoutOptions}
@@ -206,7 +207,7 @@
       />
       <Field
         id="wb-filter"
-        label="Filter status"
+        label={ $t('network.wallboard_set.status_filter') }
         type="select"
         value={statusFilter}
         options={statusOptions}
@@ -215,7 +216,7 @@
       />
       <Field
         id="wb-focus"
-        label="Mode fokus"
+        label={ $t('network.wallboard_set.focus_mode') }
         type="toggle"
         value={focusMode ? 'true' : 'false'}
         help="Sembunyikan router sehat, tampilkan yang bermasalah saja."
@@ -223,19 +224,19 @@
       />
     </Card>
 
-    <Card title="Rotasi & polling">
+    <Card title={ $t('network.wallboard_set.sec_rot') }>
       <Field
         id="wb-rotate-mode"
-        label="Mode rotasi"
+        label={ $t('network.wallboard_set.rot_mode') }
         type="select"
         value={rotateMode}
         options={rotateModeOptions}
-        help="Otomatis mengganti halaman ubin sesuai interval."
+        help={ $t('network.wallboard_set.auto_help') }
         onchange={(v) => (rotateMode = v as RotateMode)}
       />
       <Field
         id="wb-rotate-ms"
-        label="Interval rotasi"
+        label={ $t('network.wallboard_set.rot_interval') }
         type="select"
         value={String(rotateMs)}
         options={rotateMsOptions}
@@ -243,7 +244,7 @@
       />
       <Field
         id="wb-poll"
-        label="Interval polling"
+        label={ $t('network.wallboard_set.poll_interval') }
         type="select"
         value={String(pollMs)}
         options={pollMsOptions}
@@ -252,7 +253,7 @@
       />
       <Field
         id="wb-awake"
-        label="Jaga layar tetap menyala"
+        label={ $t('network.wallboard_set.keep_awake') }
         type="toggle"
         value={keepAwake ? 'true' : 'false'}
         help="Mencegah layar wallboard mati otomatis."
