@@ -28,6 +28,7 @@
   import type { Column } from '$lib/components/ds/table-types';
   import type { StatusTone } from '$lib/components/ds/tokens';
 
+  import { t } from 'svelte-i18n';
   let invoices = $state<Invoice[]>([]);
   let loading = $state(true);
   let error = $state('');
@@ -84,11 +85,11 @@
   let cachedBanks = $state<BankAccount[] | null>(null);
 
   const columns: Column[] = $derived([
-    { key: 'invoice_number', label: 'Invoice' },
-    { key: 'description', label: 'Deskripsi' },
-    { key: 'amount', label: 'Jumlah', align: 'right', num: true },
-    { key: 'status', label: 'Status' },
-    { key: 'due_date', label: 'Jatuh tempo' },
+    { key: 'invoice_number', label: $t('dashboard.invoices_v2.col_number') },
+    { key: 'description', label: $t('dashboard.invoices_v2.col_desc') },
+    { key: 'amount', label: $t('dashboard.invoices_v2.col_amount'), align: 'right', num: true },
+    { key: 'status', label: $t('common.status') },
+    { key: 'due_date', label: $t('dashboard.invoices_v2.col_due') },
     { key: 'actions', label: '', align: 'right' },
   ] as Column[]);
 
@@ -103,7 +104,7 @@
       invoices = await api.payment.listInvoices();
     } catch (e: any) {
       error = e.toString();
-      toast.error('Gagal memuat tagihan.');
+      toast.error($t('dashboard.invoices_v2.t_load_fail'));
     } finally {
       loading = false;
     }
@@ -117,11 +118,11 @@
   }
   function statusLabel(status?: string | null) {
     const st = statusKey(status);
-    if (st === 'verification_pending') return 'Menunggu verifikasi';
-    if (st === 'pending') return 'Menunggu bayar';
-    if (st === 'paid') return 'Lunas';
-    if (st === 'failed') return 'Gagal';
-    if (st === 'cancelled' || st === 'canceled') return 'Dibatalkan';
+    if (st === 'verification_pending') return $t('dashboard.invoices_v2.st_verif');
+    if (st === 'pending') return $t('dashboard.invoices_v2.st_pay');
+    if (st === 'paid') return $t('dashboard.invoices_v2.st_paid');
+    if (st === 'failed') return $t('dashboard.invoices_v2.st_failed');
+    if (st === 'cancelled' || st === 'canceled') return $t('dashboard.invoices_v2.st_cancelled');
     return status || '—';
   }
   function statusTone(item: Invoice): StatusTone {
@@ -193,7 +194,7 @@
   }
 </script>
 
-<PortalShell title="Tagihan">
+<PortalShell title={ $t('dashboard.invoices_v2.title') }>
   {#if !loading && summary.overdue > 0 && summary.firstOverdue}
     <div class="alert-overdue" role="alert">
       <div class="flex items-center gap-3">
@@ -213,18 +214,18 @@
   {/if}
 
   <PageHeader
-    title="Tagihan"
+    title={ $t('dashboard.invoices_v2.title') }
     desc={loading
-      ? 'Memuat tagihan…'
-      : `${summary.total} invoice` +
-        (summary.open > 0 ? ` · ${summary.open} terbuka` : '') +
-        (summary.overdue > 0 ? ` · ${summary.overdue} jatuh tempo` : '')}
+      ? $t('dashboard.invoices_v2.loading')
+      : $t('dashboard.invoices_v2.sum_total', { values: { n: summary.total } }) +
+        (summary.open > 0 ? ' · ' + $t('dashboard.invoices_v2.sum_open', { values: { n: summary.open } }) : '') +
+        (summary.overdue > 0 ? ' · ' + $t('dashboard.invoices_v2.sum_due', { values: { n: summary.overdue } }) : '')}
   >
     {#snippet actions()}
-      <Button variant="ghost" icon="refresh" disabled={loading} onclick={loadInvoices}>Segarkan</Button>
+      <Button variant="ghost" icon="refresh" disabled={loading} onclick={loadInvoices}>{ $t('common.refresh') }</Button>
       {#if summary.firstPayable || summary.firstOverdue}
         <Button icon="card" onclick={payFirst}>
-          {summary.payableTotal > 0 ? `Bayar · ${formatCurrency(summary.payableTotal)}` : 'Lihat tagihan'}
+          {summary.payableTotal > 0 ? $t('dashboard.invoices_v2.pay_with', { values: { a: formatCurrency(summary.payableTotal) } }) : $t('dashboard.invoices_v2.view_bills')}
         </Button>
       {/if}
     {/snippet}
@@ -232,46 +233,46 @@
 
   {#if !loading && !error}
     <div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatTile label="Total" value={String(summary.total)} hint="semua invoice" />
+      <StatTile label={ $t('dashboard.invoices_v2.st_total') } value={String(summary.total)} hint={ $t('dashboard.invoices_v2.h_all') } />
       <StatTile
-        label="Terbuka"
+        label={ $t('dashboard.invoices_v2.st_open') }
         value={summary.open > 0 ? formatCurrency(summary.pendingTotal) : 'Rp 0'}
-        hint={`${summary.open} menunggu`}
+        hint={ $t('dashboard.invoices_v2.h_waiting', { values: { n: summary.open } }) }
         tone={summary.open > 0 ? 'warning' : 'neutral'}
       />
       <StatTile
-        label="Jatuh tempo"
+        label={ $t('dashboard.invoices_v2.st_due') }
         value={String(summary.overdue)}
-        hint="perlu bayar"
+        hint={ $t('dashboard.invoices_v2.h_pay') }
         tone={summary.overdue > 0 ? 'negative' : 'positive'}
       />
-      <StatTile label="Lunas" value={String(summary.paid)} hint="sudah dibayar" tone="positive" />
+      <StatTile label={ $t('dashboard.invoices_v2.st_paid') } value={String(summary.paid)} hint={ $t('dashboard.invoices_v2.h_paid') } tone="positive" />
     </div>
   {/if}
 
-  <Card title="Daftar tagihan" padded={false}>
+  <Card title={ $t('dashboard.invoices_v2.list') } padded={false}>
     <div class="flex flex-wrap items-end gap-3 border-b border-ink-200 p-3">
       <div class="min-w-56 flex-1">
         <Field
           id="inv-search"
-          label="Cari"
+          label={ $t('common.search') }
           type="text"
           value={search}
-          placeholder="Cari invoice…"
+          placeholder={ $t('dashboard.invoices_v2.search_ph') }
           onchange={(v) => (search = v)}
         />
       </div>
       <div class="w-44">
         <Field
           id="inv-sort"
-          label="Urut"
+          label={ $t('dashboard.invoices_v2.f_sort') }
           type="select"
           value={sortKey}
           options={[
-            { value: 'due_date', label: 'Jatuh tempo' },
-            { value: 'amount', label: 'Jumlah' },
-            { value: 'invoice_number', label: 'Nomor' },
-            { value: 'description', label: 'Deskripsi' },
+            { value: 'due_date', label: $t('dashboard.invoices_v2.col_due') },
+            { value: 'amount', label: $t('dashboard.invoices_v2.col_amount') },
+            { value: 'invoice_number', label: $t('dashboard.invoices_v2.col_number') },
+            { value: 'description', label: $t('dashboard.invoices_v2.col_desc') },
           ]}
           onchange={(v) => (sortKey = v as typeof sortKey)}
         />
@@ -282,17 +283,17 @@
         icon="filter"
         onclick={() => (sortDir = sortDir === 'asc' ? 'desc' : 'asc')}
       >
-        {sortDir === 'asc' ? 'Terlama dulu' : 'Terbaru dulu'}
+        {sortDir === 'asc' ? $t('dashboard.invoices_v2.sort_old') : $t('dashboard.invoices_v2.sort_new')}
       </Button>
     </div>
     {#if error}
       <div class="flex flex-col items-start gap-3 p-6">
         <Icon name="alert" size={28} />
         <div>
-          <p class="text-sm font-medium">Gagal memuat</p>
+          <p class="text-sm font-medium">{ $t('dashboard.invoices_v2.load_fail') }</p>
           <p class="text-sm text-ink-500">{error}</p>
         </div>
-        <Button variant="secondary" onclick={loadInvoices}>Coba lagi</Button>
+        <Button variant="secondary" onclick={loadInvoices}>{ $t('common.retry') }</Button>
       </div>
     {:else}
       <DataTable
@@ -300,8 +301,8 @@
         pageSize={25}
         {columns}
         {loading}
-        emptyTitle="Tidak ada tagihan"
-        emptyHint="Tagihan Anda akan tampil di sini."
+        emptyTitle={ $t('dashboard.invoices_v2.empty') }
+        emptyHint={ $t('dashboard.invoices_v2.empty_hint') }
       >
         {#snippet cell(item: Invoice, col: Column)}
           {#if col.key === 'invoice_number'}
@@ -311,7 +312,7 @@
           {:else if col.key === 'amount'}
             <span class="tabular-nums font-medium">{formatCurrency(item.amount, item.currency_code)}</span>
           {:else if col.key === 'status'}
-            <Badge tone={statusTone(item)} label={isOverdue(item) ? 'Jatuh tempo' : statusLabel(item.status)} />
+            <Badge tone={statusTone(item)} label={isOverdue(item) ? $t('dashboard.invoices_v2.st_due') : statusLabel(item.status)} />
           {:else if col.key === 'due_date'}
             <span class={isOverdue(item) ? 'text-red-600 font-medium' : ''}>
               {formatDate(item.due_date, { timeZone: $appSettings.app_timezone })}
