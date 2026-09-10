@@ -108,7 +108,7 @@
       }
     } catch (e: any) {
       loadError = e?.message || String(e);
-      toast.error('Gagal memuat layanan.');
+      toast.error($t('dashboard.services_v2.t_load_fail'));
     } finally {
       loading = false;
     }
@@ -154,45 +154,45 @@
 
   function billingCycleLabel(cycle?: string | null) {
     const normalized = String(cycle || '').toLowerCase();
-    if (normalized === 'yearly') return 'Tahunan';
-    return 'Bulanan';
+    if (normalized === 'yearly') return $t('dashboard.services_v2.yearly');
+    return $t('dashboard.services_v2.monthly');
   }
 
   function serviceStatusMeta(status?: string | null, startsAt?: string | null, canRequestReopen = false): { label: string; tone: StatusTone; hint: string } {
     if (canRequestReopen) {
       return {
-        label: 'Dibatalkan',
+        label: $t('dashboard.services_v2.st_cancelled'),
         tone: 'neutral',
-        hint: 'Permintaan dibatalkan. Anda bisa mengajukan buka ulang.',
+        hint: $t('dashboard.services_v2.hint_cancelled'),
       };
     }
     const s = String(status || '').toLowerCase();
     if (s === 'active') {
-      return { label: 'Aktif', tone: 'positive', hint: 'Layanan aktif dan berjalan.' };
+      return { label: $t('dashboard.services_v2.kpi_active'), tone: 'positive', hint: $t('dashboard.services_v2.hint_active2') };
     }
     if (s === 'pending_installation') {
-      return { label: 'Menunggu Instalasi', tone: 'warning', hint: 'Menunggu penugasan dan jadwal instalasi.' };
+      return { label: $t('dashboard.services_v2.kpi_pending'), tone: 'warning', hint: $t('dashboard.services_v2.hint_pending') };
     }
     if (s === 'suspended') {
       const awaitingPayment = !startsAt;
       return {
-        label: awaitingPayment ? 'Menunggu Pembayaran' : 'Ditangguhkan',
+        label: awaitingPayment ? $t('dashboard.services_v2.st_await_pay') : $t('dashboard.services_v2.st_suspended'),
         tone: 'negative',
         hint: awaitingPayment
-          ? 'Instalasi selesai. Menunggu konfirmasi invoice/pembayaran pertama.'
-          : 'Layanan ditangguhkan. Cek tagihan atau hubungi support.',
+          ? $t('dashboard.services_v2.hint_await')
+          : $t('dashboard.services_v2.hint_susp'),
       };
     }
     if (s === 'cancelled') {
-      return { label: 'Dibatalkan', tone: 'neutral', hint: 'Permintaan dibatalkan.' };
+      return { label: $t('dashboard.services_v2.st_cancelled'), tone: 'neutral', hint: $t('dashboard.services_v2.hint_cancelled2') };
     }
     return { label: status || '-', tone: 'neutral', hint: '' };
   }
 
   function invoiceActionLabel(status?: string | null, startsAt?: string | null) {
     const normalized = String(status || '').toLowerCase();
-    if (normalized === 'suspended' && !startsAt) return 'Bayar Invoice';
-    return 'Lihat Tagihan';
+    if (normalized === 'suspended' && !startsAt) return $t('dashboard.services_v2.pay_invoice');
+    return $t('dashboard.services_v2.view_billing');
   }
 
   function setStatusFilter(filter: StatusFilter) {
@@ -233,27 +233,27 @@
     try {
       const res = await api.customers.portal.reopenOrderRequest(sub.id);
       const woId = res?.work_order?.id;
-      toast.success(woId ? `Permintaan instalasi dibuka ulang (WO ${woId})` : 'Permintaan instalasi dibuka ulang.');
+      toast.success(woId ? `Permintaan instalasi dibuka ulang (WO ${woId})` : $t('dashboard.services_v2.t_reopened'));
       await refreshAll();
     } catch (e: any) {
-      toast.error(e?.message || 'Gagal membuka ulang permintaan instalasi.');
+      toast.error(e?.message || $t('dashboard.services_v2.t_reopen_fail'));
     } finally {
       reopeningId = null;
     }
   }
 
   function activeFilterLabel(filter: StatusFilter) {
-    if (filter === 'all') return 'Semua Layanan';
-    if (filter === 'active') return 'Aktif';
-    if (filter === 'pending_installation') return 'Menunggu Instalasi';
-    return 'Perlu Perhatian';
+    if (filter === 'all') return $t('dashboard.services_v2.f_all');
+    if (filter === 'active') return $t('dashboard.services_v2.kpi_active');
+    if (filter === 'pending_installation') return $t('dashboard.services_v2.kpi_pending');
+    return $t('dashboard.services_v2.kpi_attention');
   }
 
   function activeSortLabel(key: SortBy) {
-    if (key === 'updated_at') return 'Diperbarui';
-    if (key === 'price') return 'Harga';
+    if (key === 'updated_at') return $t('dashboard.services_v2.col_updated');
+    if (key === 'price') return $t('dashboard.services_v2.col_price');
     if (key === 'status') return 'Status';
-    if (key === 'location_label') return 'Lokasi';
+    if (key === 'location_label') return $t('dashboard.services_v2.col_location');
     return 'Layanan';
   }
 
@@ -292,9 +292,9 @@
 
   function rescheduleStatusMeta(status?: string | null) {
     const s = String(status || '').toLowerCase();
-    if (s === 'approved') return { tone: 'approved', label: 'Reschedule Disetujui' };
-    if (s === 'rejected') return { tone: 'rejected', label: 'Reschedule Ditolak' };
-    if (s === 'pending') return { tone: 'pending', label: 'Reschedule Menunggu' };
+    if (s === 'approved') return { tone: 'approved', label: $t('dashboard.services_v2.rs_approved') };
+    if (s === 'rejected') return { tone: 'rejected', label: $t('dashboard.services_v2.rs_rejected') };
+    if (s === 'pending') return { tone: 'pending', label: $t('dashboard.services_v2.rs_pending') };
     return null;
   }
 
@@ -400,12 +400,12 @@
     if (!trackerSub || !canRequestReschedule() || rescheduleBusy) return;
     const value = rescheduleAt.trim();
     if (!value) {
-      toast.error('Pilih jadwal instalasi baru.');
+      toast.error($t('dashboard.services_v2.e_pick_sched'));
       return;
     }
     const iso = new Date(value).toISOString();
     if (!Number.isFinite(new Date(iso).getTime())) {
-      toast.error('Tanggal dan waktu tidak valid.');
+      toast.error($t('dashboard.services_v2.e_bad_dt'));
       return;
     }
     rescheduleBusy = true;
@@ -425,7 +425,7 @@
         reason: rescheduleReason.trim() || null,
       } as WorkOrderRescheduleRequestView;
       rescheduleAt = toLocalInputValue((res.work_order as any)?.scheduled_at || null);
-      toast.success('Permintaan reschedule dikirim.');
+      toast.success($t('dashboard.services_v2.t_resched'));
       await refreshAll();
     } catch (e: any) {
       toast.error(e?.message || 'Gagal mengirim permintaan reschedule.');
@@ -437,10 +437,10 @@
 
   const totalPages = $derived(Math.max(1, Math.ceil(totalCount / pageSize)));
 </script>
-<PortalShell title="Layanan">
+<PortalShell title={ $t('dashboard.services_v2.col_service') }>
   <PageHeader
-    title="Layanan Saya"
-    desc="Semua layanan yang pernah Anda pesan."
+    title={ $t('dashboard.services_v2.title') }
+    desc={ $t('dashboard.services_v2.desc') }
   >
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" disabled={loading} onclick={() => void refreshAll()}>
@@ -450,7 +450,7 @@
         Tagihan
       </Button>
       <Button icon="plus" onclick={() => goto('/v2/dashboard/services/order')}>
-        Pesan Layanan
+        { $t('dashboard.services_v2.order_btn') }
       </Button>
     {/snippet}
   </PageHeader>
@@ -458,7 +458,7 @@
   {#if loadError}
     <div class="banner-bad">
       <span>{loadError}</span>
-      <Button variant="ghost" size="sm" onclick={() => void refreshAll()}>Coba lagi</Button>
+      <Button variant="ghost" size="sm" onclick={() => void refreshAll()}>{ $t('common.retry') }</Button>
     </div>
   {/if}
 
@@ -468,7 +468,7 @@
       class="kpi-filter {statusFilter === 'all' ? 'kpi-filter-active' : ''}"
       onclick={() => setStatusFilter('all')}
     >
-      <span class="kpi-label">Total Layanan</span>
+      <span class="kpi-label">{ $t('dashboard.services_v2.kpi_total') }</span>
       <span class="kpi-val">{stats.total}</span>
     </button>
     <button
@@ -476,7 +476,7 @@
       class="kpi-filter {statusFilter === 'active' ? 'kpi-filter-active' : ''}"
       onclick={() => setStatusFilter('active')}
     >
-      <span class="kpi-label">Aktif</span>
+      <span class="kpi-label">{ $t('dashboard.services_v2.kpi_active') }</span>
       <span class="kpi-val ok">{stats.active}</span>
     </button>
     <button
@@ -484,7 +484,7 @@
       class="kpi-filter {statusFilter === 'pending_installation' ? 'kpi-filter-active' : ''}"
       onclick={() => setStatusFilter('pending_installation')}
     >
-      <span class="kpi-label">Menunggu Instalasi</span>
+      <span class="kpi-label">{ $t('dashboard.services_v2.kpi_pending') }</span>
       <span class="kpi-val warn">{stats.pendingInstallation}</span>
     </button>
     <button
@@ -492,31 +492,31 @@
       class="kpi-filter {statusFilter === 'needs_attention' ? 'kpi-filter-active' : ''}"
       onclick={() => setStatusFilter('needs_attention')}
     >
-      <span class="kpi-label">Perlu Perhatian</span>
+      <span class="kpi-label">{ $t('dashboard.services_v2.kpi_attention') }</span>
       <span class="kpi-val bad">{stats.needsAttention}</span>
     </button>
   </div>
 
-  <Card title="Layanan Terpesan" padded={false}>
+  <Card title={ $t('dashboard.services_v2.card_title') } padded={false}>
     {#snippet aside()}
       <div class="flex flex-wrap items-center gap-2">
         <div class="chip-filter">
           <span>Filter: {activeFilterLabel(statusFilter)}</span>
           {#if statusFilter !== 'all'}
-            <Button variant="ghost" size="sm" icon="close" onclick={clearFilter}>Bersihkan</Button>
+            <Button variant="ghost" size="sm" icon="close" onclick={clearFilter}>{ $t('dashboard.services_v2.clear') }</Button>
           {/if}
         </div>
         <div class="chip-filter">
-          <span>Urut:</span>
+          <span>{ $t('dashboard.services_v2.sort_by_label') }</span>
           <select
             class="sort-select"
             value={sortBy}
             onchange={(e) => handleTableSort((e.target as HTMLSelectElement).value)}
           >
-            <option value="updated_at">Diperbarui</option>
-            <option value="price">Harga</option>
+            <option value="updated_at">{ $t('dashboard.services_v2.col_updated') }</option>
+            <option value="price">{ $t('dashboard.services_v2.col_price') }</option>
             <option value="status">Status</option>
-            <option value="location_label">Lokasi</option>
+            <option value="location_label">{ $t('dashboard.services_v2.col_location') }</option>
             <option value="package_name">Layanan</option>
           </select>
           <select
@@ -528,25 +528,25 @@
               void loadData();
             }}
           >
-            <option value="desc">Terbaru</option>
-            <option value="asc">Terlama</option>
+            <option value="desc">{ $t('dashboard.services_v2.sort_newest') }</option>
+            <option value="asc">{ $t('dashboard.services_v2.sort_oldest') }</option>
           </select>
         </div>
       </div>
     {/snippet}
 
     {#if loading}
-      <p class="px-4 py-6 text-sm text-ink-500">Memuat layanan…</p>
+      <p class="px-4 py-6 text-sm text-ink-500">{ $t('dashboard.services_v2.loading') }</p>
     {:else if subscriptions.length === 0}
       <div class="px-4 py-8 text-center">
         {#if totalCount === 0}
-          <p class="mb-1 font-medium">Belum ada layanan terpesan.</p>
-          <p class="mb-4 text-sm text-ink-500">Pesan layanan baru untuk mulai berlangganan.</p>
-          <Button icon="plus" onclick={() => goto('/v2/dashboard/services/order')}>Pesan Layanan</Button>
+          <p class="mb-1 font-medium">{ $t('dashboard.services_v2.empty1') }</p>
+          <p class="mb-4 text-sm text-ink-500">{ $t('dashboard.services_v2.empty2') }</p>
+          <Button icon="plus" onclick={() => goto('/v2/dashboard/services/order')}>{ $t('dashboard.services_v2.order_btn') }</Button>
         {:else}
-          <p class="mb-1 font-medium">Tidak ada layanan untuk filter ini.</p>
-          <p class="mb-4 text-sm text-ink-500">Ubah atau bersihkan filter.</p>
-          <Button variant="ghost" onclick={clearFilter}>Tampilkan Semua</Button>
+          <p class="mb-1 font-medium">{ $t('dashboard.services_v2.filter_empty1') }</p>
+          <p class="mb-4 text-sm text-ink-500">{ $t('dashboard.services_v2.filter_empty2') }</p>
+          <Button variant="ghost" onclick={clearFilter}>{ $t('dashboard.services_v2.show_all') }</Button>
         {/if}
       </div>
     {:else}
@@ -554,13 +554,13 @@
         rows={subscriptions}
         pageSize={25}
         columns={[
-          { key: 'package_name', label: 'Layanan',  },
-          { key: 'status', label: 'Status',  },
-          { key: 'location_label', label: 'Lokasi',  },
-          { key: 'billing_cycle', label: 'Siklus' },
-          { key: 'price', label: 'Harga', align: 'right',  },
-          { key: 'updated_at', label: 'Diperbarui',  },
-          { key: 'actions', label: 'Aksi', align: 'right' },
+          { key: 'package_name', label: $t('dashboard.services_v2.col_service'),  },
+          { key: 'status', label: $t('dashboard.services_v2.col_status'),  },
+          { key: 'location_label', label: $t('dashboard.services_v2.col_location'),  },
+          { key: 'billing_cycle', label: $t('dashboard.services_v2.col_cycle') },
+          { key: 'price', label: $t('dashboard.services_v2.col_price'), align: 'right',  },
+          { key: 'updated_at', label: $t('dashboard.services_v2.col_updated'),  },
+          { key: 'actions', label: $t('dashboard.services_v2.col_actions'), align: 'right' },
         ]}
         emptyTitle="Belum ada layanan"
       >
@@ -599,7 +599,7 @@
                   loading={reopeningId === row.id}
                   onclick={() => requestReopen(row)}
                 >
-                  {reopeningId === row.id ? 'Membuka…' : 'Buka Ulang'}
+                  {reopeningId === row.id ? $t('dashboard.services_v2.reopening') : $t('dashboard.services_v2.reopen')}
                 </Button>
               {/if}
               <Button variant="ghost" size="sm" onclick={() => openSubscriptionInvoice(row.id)}>
@@ -628,7 +628,7 @@
                 if (loading || page <= 0) return;
                 page -= 1;
                 void loadData();
-              }}>Sebelumnya</Button
+              }}>{ $t('dashboard.services_v2.prev') }</Button
             >
             <Button
               variant="ghost"
@@ -639,7 +639,7 @@
                 if (loading || page >= totalPages - 1) return;
                 page += 1;
                 void loadData();
-              }}>Berikutnya</Button
+              }}>{ $t('dashboard.services_v2.next') }</Button
             >
           </div>
         </div>
@@ -678,7 +678,7 @@
     />
   {:else}
     <div class="tracker-loading">
-      <p class="text-sm text-ink-500">Memuat pelacak instalasi…</p>
+      <p class="text-sm text-ink-500">{ $t('dashboard.services_v2.tr_loading') }</p>
     </div>
   {/if}
 {/if}
