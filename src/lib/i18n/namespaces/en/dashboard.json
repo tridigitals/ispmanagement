@@ -50,7 +50,37 @@
       "pick_province_state": "Province / State"
     },
     "no_customer_hint": "This account is not linked to a customer, so service locations cannot be managed.",
-    "service_location": "Service Location"
+    "service_location": "Service Location",
+    "v2": {
+      "title": "Locations",
+      "loading": "Loading…",
+      "desc": "Your service installation addresses.",
+      "total": "Total",
+      "h_saved": "locations saved",
+      "mapped": "Mapped",
+      "h_pin": "have a map pin",
+      "noted": "Noted",
+      "h_notes": "have notes",
+      "no_link": "Account is not linked to a customer yet.",
+      "fetching": "Fetching locations…",
+      "empty": "No locations yet",
+      "empty_hint": "Add an installation address for a new service.",
+      "add": "Add location",
+      "no_pin": "No pin yet",
+      "no_addr": "Address not filled in",
+      "del_title": "Delete location",
+      "del_body": "This location will be removed from the customer account. Continue?",
+      "t_load_fail": "Failed to load locations",
+      "t_saved": "Saved",
+      "t_save_fail": "Failed to save location",
+      "t_label_req": "Location label is required",
+      "t_deleted": "Deleted",
+      "t_del_fail": "Failed to delete location",
+      "t_map_req": "A map point is required",
+      "t_coord": "Invalid location coordinates",
+      "t_lat": "Latitude must be between -90 and 90",
+      "t_lng": "Longitude must be between -180 and 180"
+    }
   },
   "stats": {
     "account_role": "Account Role",

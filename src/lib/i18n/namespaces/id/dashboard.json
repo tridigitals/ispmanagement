@@ -50,7 +50,37 @@
       "pick_province_state": "Provinsi / State"
     },
     "no_customer_hint": "Akun ini belum terhubung ke customer, jadi lokasi layanan belum bisa dikelola.",
-    "service_location": "Lokasi Layanan"
+    "service_location": "Lokasi Layanan",
+    "v2": {
+      "title": "Lokasi",
+      "loading": "Memuat lokasi…",
+      "desc": "Alamat instalasi layanan Anda.",
+      "total": "Total",
+      "h_saved": "lokasi tersimpan",
+      "mapped": "Berpeta",
+      "h_pin": "punya pin map",
+      "noted": "Bercatatan",
+      "h_notes": "ada notes",
+      "no_link": "Akun belum terhubung ke customer.",
+      "fetching": "Mengambil lokasi…",
+      "empty": "Belum ada lokasi",
+      "empty_hint": "Tambah alamat instalasi untuk layanan baru.",
+      "add": "Tambah lokasi",
+      "no_pin": "Belum ada pin",
+      "no_addr": "Alamat belum diisi",
+      "del_title": "Hapus lokasi",
+      "del_body": "Lokasi ini akan dihapus dari akun customer. Lanjutkan?",
+      "t_load_fail": "Gagal memuat lokasi",
+      "t_saved": "Disimpan",
+      "t_save_fail": "Gagal menyimpan lokasi",
+      "t_label_req": "Label lokasi wajib diisi",
+      "t_deleted": "Dihapus",
+      "t_del_fail": "Gagal menghapus lokasi",
+      "t_map_req": "Lokasi wajib dipilih di map",
+      "t_coord": "Koordinat lokasi tidak valid",
+      "t_lat": "Latitude harus di antara -90 hingga 90",
+      "t_lng": "Longitude harus di antara -180 hingga 180"
+    }
   },
   "stats": {
     "account_role": "Peran Akun",

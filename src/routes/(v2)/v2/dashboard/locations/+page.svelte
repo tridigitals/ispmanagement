@@ -18,6 +18,7 @@
   import Button from '$lib/components/ds/Button.svelte';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 
+  import { t } from 'svelte-i18n';
   let loading = $state(true);
   let locations = $state<CustomerLocation[]>([]);
   let error = $state('');
@@ -56,8 +57,8 @@
     try {
       locations = hasLinkedCustomer ? await api.customers.portal.myLocations() : [];
     } catch (e: any) {
-      error = String(e?.message || e || 'Gagal memuat lokasi');
-      toast.error('Gagal memuat lokasi');
+      error = String(e?.message || e || $t('dashboard.locations.v2.t_load_fail'));
+      toast.error($t('dashboard.locations.v2.t_load_fail'));
     } finally {
       loading = false;
     }
@@ -126,25 +127,25 @@
   function validateLocationForm() {
     const label = fLabel.trim();
     if (!label) {
-      toast.error('Label lokasi wajib diisi');
+      toast.error($t('dashboard.locations.v2.t_label_req'));
       return null;
     }
     const latitude = parseCoordOrNull(fLatitude);
     const longitude = parseCoordOrNull(fLongitude);
     if (latitude == null || longitude == null) {
-      toast.error('Lokasi wajib dipilih di map');
+      toast.error($t('dashboard.locations.v2.t_map_req'));
       return null;
     }
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      toast.error('Koordinat lokasi tidak valid');
+      toast.error($t('dashboard.locations.v2.t_coord'));
       return null;
     }
     if (latitude < -90 || latitude > 90) {
-      toast.error('Latitude harus di antara -90 hingga 90');
+      toast.error($t('dashboard.locations.v2.t_lat'));
       return null;
     }
     if (longitude < -180 || longitude > 180) {
-      toast.error('Longitude harus di antara -180 hingga 180');
+      toast.error($t('dashboard.locations.v2.t_lng'));
       return null;
     }
     return {
@@ -174,9 +175,9 @@
       showLocationModal = false;
       resetForm();
       await load();
-      toast.success('Disimpan');
+      toast.success($t('dashboard.locations.v2.t_saved'));
     } catch (e: any) {
-      toast.error(String(e?.message || e || 'Gagal menyimpan lokasi'));
+      toast.error(String(e?.message || e || $t('dashboard.locations.v2.t_save_fail')));
     } finally {
       savingLocation = false;
     }
@@ -195,77 +196,77 @@
       showDeleteDialog = false;
       deleteLocationId = null;
       await load();
-      toast.success('Dihapus');
+      toast.success($t('dashboard.locations.v2.t_deleted'));
     } catch (e: any) {
-      toast.error(String(e?.message || e || 'Gagal menghapus lokasi'));
+      toast.error(String(e?.message || e || $t('dashboard.locations.v2.t_del_fail')));
     } finally {
       deletingLocation = false;
     }
   }
 </script>
 
-<PortalShell title="Lokasi">
+<PortalShell title={ $t('dashboard.locations.location') }>
   <PageHeader
-    title="Lokasi"
-    desc={loading ? 'Memuat lokasi…' : 'Alamat instalasi layanan Anda.'}
+    title={ $t('dashboard.locations.location') }
+    desc={loading ? $t('dashboard.locations.v2.loading') : $t('dashboard.locations.v2.desc')}
   >
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" disabled={loading} onclick={load}>Segarkan</Button>
       <Button icon="plus" onclick={openCreateLocation} disabled={loading || !hasLinkedCustomer}>
-        Tambah lokasi
+        { $t('dashboard.locations.v2.add') }
       </Button>
     {/snippet}
   </PageHeader>
 
   {#if !loading}
     <div class="mb-5 grid grid-cols-3 gap-3">
-      <StatTile label="Total" value={String(totalLocations)} hint="lokasi tersimpan" />
+      <StatTile label={ $t('dashboard.locations.v2.total') } value={String(totalLocations)} hint={ $t('dashboard.locations.v2.h_saved') } />
       <StatTile
-        label="Berpeta"
+        label={ $t('dashboard.locations.v2.mapped') }
         value={String(mappedLocations)}
-        hint="punya pin map"
+        hint={ $t('dashboard.locations.v2.h_pin') }
         tone={mappedLocations > 0 ? 'positive' : 'neutral'}
       />
-      <StatTile label="Bercatatan" value={String(notedLocations)} hint="ada notes" />
+      <StatTile label={ $t('dashboard.locations.v2.noted') } value={String(notedLocations)} hint={ $t('dashboard.locations.v2.h_notes') } />
     </div>
   {/if}
 
   {#if !hasLinkedCustomer}
-    <div class="banner-warn">Akun belum terhubung ke customer.</div>
+    <div class="banner-warn">{ $t('dashboard.locations.v2.no_link') }</div>
   {/if}
 
   {#if error}
     <div class="banner-bad">
       <span>{error}</span>
-      <Button variant="ghost" size="sm" onclick={load}>Coba lagi</Button>
+      <Button variant="ghost" size="sm" onclick={load}>{ $t('common.retry') }</Button>
     </div>
   {/if}
 
   {#if loading}
-    <Card title="Memuat…"><p class="text-sm text-ink-500">Mengambil lokasi…</p></Card>
+    <Card title={ $t('common.loading') }><p class="text-sm text-ink-500">{ $t('dashboard.locations.v2.fetching') }</p></Card>
   {:else if locations.length === 0}
-    <Card title="Belum ada lokasi">
-      <p class="mb-4 text-sm text-ink-500">Tambah alamat instalasi untuk layanan baru.</p>
-      <Button icon="plus" onclick={openCreateLocation} disabled={!hasLinkedCustomer}>Tambah lokasi</Button>
+    <Card title={ $t('dashboard.locations.v2.empty') }>
+      <p class="mb-4 text-sm text-ink-500">{ $t('dashboard.locations.v2.empty_hint') }</p>
+      <Button icon="plus" onclick={openCreateLocation} disabled={!hasLinkedCustomer}>{ $t('dashboard.locations.v2.add') }</Button>
     </Card>
   {:else}
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {#each locations as loc (loc.id)}
-        <Card title={loc.label || 'Lokasi'}>
+        <Card title={loc.label || $t('dashboard.locations.location')}>
           {#snippet aside()}
             <div class="flex gap-1">
-              <Button variant="ghost" size="sm" icon="wrench" onclick={() => openEditLocation(loc)}>Edit</Button>
+              <Button variant="ghost" size="sm" icon="wrench" onclick={() => openEditLocation(loc)}>{ $t('common.edit') }</Button>
               <Button variant="ghost" size="sm" icon="close" onclick={() => askDeleteLocation(loc.id)}>
-                Hapus
+                { $t('common.delete') }
               </Button>
             </div>
           {/snippet}
-          <p class="text-sm text-ink-600">{formatAddress(loc) || 'Alamat belum diisi'}</p>
+          <p class="text-sm text-ink-600">{formatAddress(loc) || $t('dashboard.locations.v2.no_addr')}</p>
           <div class="mt-3 flex flex-wrap items-center gap-2">
             {#if loc.latitude != null && loc.longitude != null}
               <span class="chip">{Number(loc.latitude).toFixed(6)}, {Number(loc.longitude).toFixed(6)}</span>
             {:else}
-              <span class="chip chip-missing">Belum ada pin</span>
+              <span class="chip chip-missing">{ $t('dashboard.locations.v2.no_pin') }</span>
             {/if}
           </div>
           {#if loc.notes}
@@ -298,9 +299,9 @@
 
 <ConfirmDialog
   show={showDeleteDialog}
-  title="Hapus lokasi"
-  message="Lokasi ini akan dihapus dari akun customer. Lanjutkan?"
-  confirmText="Hapus"
+  title={ $t('dashboard.locations.v2.del_title') }
+  message={ $t('dashboard.locations.v2.del_body') }
+  confirmText={ $t('common.delete') }
   cancelText="Batal"
   type="danger"
   loading={deletingLocation}
