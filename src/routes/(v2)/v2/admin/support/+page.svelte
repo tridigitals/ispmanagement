@@ -46,6 +46,7 @@
     type TicketStatus,
   } from '$lib/utils/supportStats';
   import { t } from 'svelte-i18n';
+  import { get as getStore } from 'svelte/store';
 
   type Filter = TicketStatus | 'unassigned' | null;
 
@@ -71,7 +72,7 @@
 
   const PER_PAGE = 25;
 
-  const cards = $derived(buildStatCards(stats));
+  const cards = $derived(buildStatCards(stats, (k, v) => $t(k, v ? { values: v } : undefined)));
   const showPending = $derived(shouldShowPending(stats));
   const hilang = $derived(unaccounted(stats));
   const ageBuckets = $derived(bucketByAge(tickets, now));
@@ -93,22 +94,22 @@
       })),
   );
 
-  const columns: Column[] = [
-    { key: 'subject', label: 'Tiket' },
-    { key: 'status', label: 'Status' },
-    { key: 'assigned', label: 'Ditugaskan' },
-    { key: 'waiting', label: 'Menunggu', hideSm: true },
-    { key: 'messages', label: 'Pesan', align: 'right', num: true, hideSm: true },
+  const columns = $derived<Column[]>([
+    { key: 'subject', label: $t('support.admin_v2.col_ticket') },
+    { key: 'status', label: $t('common.status') },
+    { key: 'assigned', label: $t('support.admin_v2.col_assigned') },
+    { key: 'waiting', label: $t('support.admin_v2.col_waiting'), hideSm: true },
+    { key: 'messages', label: $t('support.admin_v2.col_messages'), align: 'right', num: true, hideSm: true },
     { key: 'actions', label: '', align: 'right', width: '150px' },
-  ];
+  ]);
 
-  const categories = [
-    { value: 'all', label: 'Semua kategori' },
-    { value: 'general', label: 'Umum' },
-    { value: 'billing', label: 'Tagihan' },
-    { value: 'technical', label: 'Teknis' },
-    { value: 'installation', label: 'Instalasi' },
-  ];
+  const categories = $derived([
+    { value: 'all', label: $t('support.admin_v2.cat_all') },
+    { value: 'general', label: $t('support.categories.general') },
+    { value: 'billing', label: $t('support.categories.billing') },
+    { value: 'technical', label: $t('support.categories.technical') },
+    { value: 'installation', label: $t('support.categories.installation') },
+  ]);
 
   async function loadStats() {
     try {
@@ -148,12 +149,12 @@
     void load(true);
   }
 
-  async function klaim(t: SupportTicketListItem) {
+  async function klaim(tk: SupportTicketListItem) {
     if (claiming) return;
-    claiming = t.id;
+    claiming = tk.id;
     try {
-      await api.support.claim(t.id);
-      toast.success('Tiket diambil');
+      await api.support.claim(tk.id);
+      toast.success(getStore(t)('support.admin_v2.claimed'))
       await Promise.all([load(true), loadStats()]);
     } catch (e: unknown) {
       toast.error(extractApiErrorMessage(e));
@@ -181,11 +182,11 @@
   });
 </script>
 
-<AppShell title="Tiket dukungan">
+<AppShell title={ $t('support.admin_v2.title') }>
   <PageHeader
-    title="Tiket dukungan"
+    title={ $t('support.admin_v2.title') }
     eyebrow={ $t('admin.eyebrows.services') }
-    desc="Keluhan dan permintaan pelanggan. Ringkasan menghitung setiap status, termasuk yang sudah diselesaikan."
+    desc={ $t('support.admin_v2.desc') }
   >
     {#snippet actions()}
       <Button
@@ -194,7 +195,7 @@
         onclick={() => {
           void loadStats();
           void load(true);
-        }}>Muat ulang</Button
+        }}> { $t('common.refresh') }</Button
       >
     {/snippet}
   </PageHeader>
@@ -221,14 +222,14 @@
       <!-- Jaring pengaman: kalau backend menulis status yang belum masuk
            ringkasan, selisihnya tampil di sini alih-alih hilang diam-diam. -->
       <p class="mt-3 border-t border-ink-100 pt-3 text-sm text-amber-800">
-        {hilang} tiket punya status di luar ember di atas. Ringkasan perlu diperbarui.
+        {$t('support.admin_v2.bucket_note', { values: { n: hilang } })}
       </p>
     {/if}
   </Card>
 
   {#if terlantar.length}
     <div class="mt-4">
-      <AttentionPanel items={terlantar} title="Tiket menunggu lebih dari 30 hari" />
+      <AttentionPanel items={terlantar} title={ $t('support.admin_v2.abandon_title') } />
     </div>
   {/if}
 
@@ -243,8 +244,8 @@
           />
           <input
             bind:value={search}
-            placeholder="Cari subjek atau nama pelapor"
-            aria-label="Cari tiket"
+            placeholder={ $t('support.admin_v2.search_ph') }
+            aria-label={ $t('support.admin_v2.search_aria') }
             class="focus-ring h-9 w-full rounded-lg border-0 bg-white pl-8 text-base text-ink-900 ring-1 ring-inset ring-ink-200 placeholder:text-ink-400"
           />
         </div>
@@ -252,7 +253,7 @@
         <select
           bind:value={category}
           onchange={() => load(true)}
-          aria-label="Filter kategori"
+          aria-label={ $t('support.admin_v2.cat_aria') }
           class="focus-ring h-9 rounded-lg border-0 bg-white px-2.5 text-base text-ink-900 ring-1 ring-inset ring-ink-200"
         >
           {#each categories as c (c.value)}
@@ -261,7 +262,7 @@
         </select>
 
         {#if filter}
-          <Button variant="ghost" icon="close" onclick={() => pilih(filter)}>Hapus filter</Button>
+          <Button variant="ghost" icon="close" onclick={() => pilih(filter)}>{ $t('support.admin_v2.clear_filter') }</Button>
         {/if}
       </div>
 
@@ -288,52 +289,52 @@
           pageNum = p;
           void load(false);
         }}
-        emptyTitle="Tidak ada tiket"
-        emptyHint={filter || search ? 'Coba hapus filter atau ubah kata kunci.' : 'Belum ada keluhan masuk.'}
+        emptyTitle={ $t('support.admin_v2.empty_title') }
+        emptyHint={filter || search ? $t('support.admin_v2.empty_hint') : $t('support.admin_v2.empty_hint_none')}
       >
-        {#snippet cell(t, c)}
+        {#snippet cell(tk, c)}
           {#if c.key === 'subject'}
             <div class="min-w-0">
               <a
-                href={`/v2/admin/support/${t.id}`}
+                href={`/v2/admin/support/${tk.id}`}
                 class="focus-ring block truncate font-medium text-ink-900 hover:underline"
               >
-                {t.subject}
+                {tk.subject}
               </a>
               <div class="truncate text-sm text-ink-500">
-                {t.created_by_name || 'Tanpa nama'}
-                {#if t.category}· {t.category}{/if}
+                {tk.created_by_name || $t('support.admin_v2.anon')}
+                {#if tk.category}· {tk.category}{/if}
               </div>
             </div>
           {:else if c.key === 'status'}
             <div class="flex flex-wrap items-center gap-1.5">
-              <Badge status={t.status} />
-              {#if t.priority && t.priority !== 'normal'}
-                <Badge status={t.priority} />
+              <Badge status={tk.status} />
+              {#if tk.priority && tk.priority !== 'normal'}
+                <Badge status={tk.priority} />
               {/if}
             </div>
           {:else if c.key === 'assigned'}
-            {#if t.assigned_to}
-              <span class="text-ink-700">{t.assigned_to_name || 'Sudah ditugaskan'}</span>
+            {#if tk.assigned_to}
+              <span class="text-ink-700">{tk.assigned_to_name || $t('support.admin_v2.assigned_ok')}</span>
             {:else}
               <!-- Ditandai eksplisit: ini pekerjaan tanpa pemilik. -->
-              <span class="text-amber-800">Belum ditugaskan</span>
+              <span class="text-amber-800">{ $t('support.admin_v2.unassigned') }</span>
             {/if}
           {:else if c.key === 'waiting'}
-            <span class="text-sm {isStale(t, now) ? 'font-medium text-red-700' : 'text-ink-500'}">
-              {waitingLabel(t.created_at, now)}
+            <span class="text-sm {isStale(tk, now) ? 'font-medium text-red-700' : 'text-ink-500'}">
+              {waitingLabel(tk.created_at, now)}
             </span>
           {:else if c.key === 'messages'}
-            <span class="text-ink-700">{t.message_count ?? 0}</span>
+            <span class="text-ink-700">{tk.message_count ?? 0}</span>
           {:else if c.key === 'actions'}
             <RowActions
-              primary={{ label: 'Buka', icon: 'chevronRight', href: `/v2/admin/support/${t.id}` }}
-              rest={!t.assigned_to && t.status !== 'closed' && t.status !== 'resolved'
+              primary={{ label: $t('common.open'), icon: 'chevronRight', href: `/v2/admin/support/${tk.id}` }}
+              rest={!tk.assigned_to && tk.status !== 'closed' && tk.status !== 'resolved'
                 ? [
                     {
-                      label: claiming === t.id ? 'Mengambil…' : 'Ambil tiket',
+                      label: claiming === tk.id ? $t('support.admin_v2.claiming') : $t('support.admin_v2.claim_btn'),
                       icon: 'users' as const,
-                      onclick: () => void klaim(t),
+                      onclick: () => void klaim(tk),
                     },
                   ]
                 : []}

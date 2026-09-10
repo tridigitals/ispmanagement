@@ -155,5 +155,41 @@
     "closed_note": "Tiket sudah ditutup.",
     "reply_ph": "Tulis balasan…",
     "reply_fail": "Gagal mengirim: {msg}"
+  },
+  "admin_v2": {
+    "title": "Tiket dukungan",
+    "desc": "Keluhan dan permintaan pelanggan. Ringkasan menghitung setiap status, termasuk yang sudah diselesaikan.",
+    "abandon_title": "Tiket menunggu lebih dari 30 hari",
+    "search_ph": "Cari subjek atau nama pelapor",
+    "search_aria": "Cari tiket",
+    "cat_aria": "Filter kategori",
+    "clear_filter": "Hapus filter",
+    "col_ticket": "Tiket",
+    "col_assigned": "Ditugaskan",
+    "col_waiting": "Menunggu",
+    "col_messages": "Pesan",
+    "cat_all": "Semua kategori",
+    "assigned_ok": "Sudah ditugaskan",
+    "claiming": "Mengambil…",
+    "claim_btn": "Ambil tiket",
+    "claimed": "Tiket diambil",
+    "empty_title": "Tidak ada tiket",
+    "empty_hint": "Coba hapus filter atau ubah kata kunci.",
+    "empty_hint_none": "Belum ada keluhan masuk.",
+    "anon": "Tanpa nama",
+    "unassigned": "Belum ditugaskan",
+    "bucket_note": "{n} tiket punya status di luar ember di atas. Ringkasan perlu diperbarui.",
+    "card": {
+      "all": "Semua tiket",
+      "all_hint": "{a} masih aktif · {s} selesai",
+      "open": "Terbuka",
+      "of_all": "{p} dari seluruh tiket",
+      "none": "belum ada tiket",
+      "unassigned": "Belum ditugaskan",
+      "of_active": "dari {a} tiket aktif",
+      "none_active": "tidak ada tiket aktif",
+      "resolved": "Diselesaikan",
+      "closed": "Ditutup"
+    }
   }
 }

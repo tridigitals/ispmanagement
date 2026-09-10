@@ -77,7 +77,9 @@ export function unaccounted(stats: StatsLike): number {
   return Math.max(0, n(stats.all) - berember);
 }
 
-export function buildStatCards(stats: StatsLike): StatCard[] {
+export type StatTranslate = (k: string, v?: Record<string, string | number>) => string;
+
+export function buildStatCards(stats: StatsLike, tt?: StatTranslate): StatCard[] {
   const total = n(stats.all);
   const open = n(stats.open);
   const pending = n(stats.pending);
@@ -89,41 +91,41 @@ export function buildStatCards(stats: StatsLike): StatCard[] {
   return [
     {
       key: 'all',
-      label: 'Semua tiket',
+      label: tt ? tt('support.admin_v2.card.all') : 'Semua tiket',
       value: total,
-      hint: `${aktif} masih aktif · ${resolved + closed} selesai`,
+      hint: tt ? tt('support.admin_v2.card.all_hint', { a: aktif, s: resolved + closed }) : `${aktif} masih aktif · ${resolved + closed} selesai`,
       tone: 'neutral',
       filter: null,
     },
     {
       key: 'open',
-      label: 'Terbuka',
+      label: tt ? tt('support.admin_v2.card.open') : 'Terbuka',
       value: open,
-      hint: total ? `${persen(open, total)} dari seluruh tiket` : 'belum ada tiket',
+      hint: total ? (tt ? tt('support.admin_v2.card.of_all', { p: persen(open, total) }) : `${persen(open, total)} dari seluruh tiket`) : (tt ? tt('support.admin_v2.card.none') : 'belum ada tiket'),
       tone: open > 0 ? 'warning' : 'neutral',
       filter: 'open',
     },
     {
       key: 'unassigned',
-      label: 'Belum ditugaskan',
+      label: tt ? tt('support.admin_v2.card.unassigned') : 'Belum ditugaskan',
       value: unassigned,
-      hint: aktif ? `dari ${aktif} tiket aktif` : 'tidak ada tiket aktif',
+      hint: aktif ? (tt ? tt('support.admin_v2.card.of_active', { a: aktif }) : `dari ${aktif} tiket aktif`) : (tt ? tt('support.admin_v2.card.none_active') : 'tidak ada tiket aktif'),
       tone: unassigned > 0 ? 'negative' : 'positive',
       filter: 'unassigned',
     },
     {
       key: 'resolved',
-      label: 'Diselesaikan',
+      label: tt ? tt('support.admin_v2.card.resolved') : 'Diselesaikan',
       value: resolved,
-      hint: total ? `${persen(resolved, total)} dari seluruh tiket` : 'belum ada tiket',
+      hint: total ? (tt ? tt('support.admin_v2.card.of_all', { p: persen(resolved, total) }) : `${persen(resolved, total)} dari seluruh tiket`) : (tt ? tt('support.admin_v2.card.none') : 'belum ada tiket'),
       tone: 'positive',
       filter: 'resolved',
     },
     {
       key: 'closed',
-      label: 'Ditutup',
+      label: tt ? tt('support.admin_v2.card.closed') : 'Ditutup',
       value: closed,
-      hint: total ? `${persen(closed, total)} dari seluruh tiket` : 'belum ada tiket',
+      hint: total ? (tt ? tt('support.admin_v2.card.of_all', { p: persen(closed, total) }) : `${persen(closed, total)} dari seluruh tiket`) : (tt ? tt('support.admin_v2.card.none') : 'belum ada tiket'),
       tone: 'neutral',
       filter: 'closed',
     },

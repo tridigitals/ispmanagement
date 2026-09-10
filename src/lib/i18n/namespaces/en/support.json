@@ -155,5 +155,41 @@
     "closed_note": "Ticket closed.",
     "reply_ph": "Write a reply…",
     "reply_fail": "Failed to send: {msg}"
+  },
+  "admin_v2": {
+    "title": "Support tickets",
+    "desc": "Customer complaints and requests. The summary counts every status, including resolved ones.",
+    "abandon_title": "Tickets waiting over 30 days",
+    "search_ph": "Search subject or reporter name",
+    "search_aria": "Search tickets",
+    "cat_aria": "Category filter",
+    "clear_filter": "Clear filter",
+    "col_ticket": "Ticket",
+    "col_assigned": "Assigned",
+    "col_waiting": "Waiting",
+    "col_messages": "Messages",
+    "cat_all": "All categories",
+    "assigned_ok": "Assigned",
+    "claiming": "Claiming…",
+    "claim_btn": "Claim ticket",
+    "claimed": "Ticket claimed",
+    "empty_title": "No tickets",
+    "empty_hint": "Try clearing the filter or changing the keyword.",
+    "empty_hint_none": "No complaints received yet.",
+    "anon": "Anonymous",
+    "unassigned": "Unassigned",
+    "bucket_note": "{n} tickets have a status outside the buckets above. The summary needs updating.",
+    "card": {
+      "all": "All tickets",
+      "all_hint": "{a} still active · {s} finished",
+      "open": "Open",
+      "of_all": "{p} of all tickets",
+      "none": "no tickets yet",
+      "unassigned": "Unassigned",
+      "of_active": "of {a} active tickets",
+      "none_active": "no active tickets",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    }
   }
 }
