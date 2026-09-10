@@ -645,5 +645,18 @@
       "del_block": "Tidak bisa hapus {n} — masih dipakai {d} data.",
       "del_msg": "Hapus profil PPP {n} dari router?"
     }
+  },
+  "import_v2": {
+    "title": "Pusat impor",
+    "desc": "Pindahkan data dari sistem lain ke tenant ini: paket, pelanggan, langganan, dan PPPoE.",
+    "sec_summary": "Ringkasan",
+    "src_count": "Sumber impor",
+    "src_hint": "sumber yang tersedia",
+    "stages": "Tahap migrasi",
+    "stages_hint": "validasi, pemetaan, impor, verifikasi",
+    "sources": "Sumber impor",
+    "pick_hint": "Pilih sumber untuk membuka wizard impornya.",
+    "ready": "Siap",
+    "soon": "Segera"
   }
 }

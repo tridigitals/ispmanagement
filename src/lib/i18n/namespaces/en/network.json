@@ -645,5 +645,18 @@
       "del_block": "Cannot delete {n} — still referenced by {d} records.",
       "del_msg": "Delete PPP profile {n} from the router?"
     }
+  },
+  "import_v2": {
+    "title": "Import center",
+    "desc": "Move data from other systems into this tenant: packages, customers, subscriptions, and PPPoE.",
+    "sec_summary": "Summary",
+    "src_count": "Import sources",
+    "src_hint": "available sources",
+    "stages": "Migration stages",
+    "stages_hint": "validation, mapping, import, verification",
+    "sources": "Import sources",
+    "pick_hint": "Pick a source to open its import wizard.",
+    "ready": "Ready",
+    "soon": "Soon"
   }
 }

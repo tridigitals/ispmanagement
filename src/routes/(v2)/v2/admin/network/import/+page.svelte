@@ -35,27 +35,27 @@
   );
 </script>
 
-<AppShell title="Pusat impor">
+<AppShell title={ $t('network.import_v2.title') }>
   <PageHeader
-    title="Pusat impor"
+    title={ $t('network.import_v2.title') }
     eyebrow={ $t('admin.eyebrows.network') }
-    desc="Pindahkan data dari sistem lain ke tenant ini: paket, pelanggan, langganan, dan PPPoE."
+    desc={ $t('network.import_v2.desc') }
   />
 
   <div class="mt-4 grid gap-4">
-    <Card title="Ringkasan">
+    <Card title={ $t('network.import_v2.sec_summary') }>
       <div class="grid grid-cols-2 gap-6">
         <StatTile
-          label="Sumber impor"
+          label={ $t('network.import_v2.src_count') }
           value={String(sources.length)}
-          hint="sumber yang tersedia"
+          hint={ $t('network.import_v2.src_hint') }
         />
-        <StatTile label="Tahap migrasi" value="4" hint="validasi, pemetaan, impor, verifikasi" />
+        <StatTile label={ $t('network.import_v2.stages') } value="4" hint={ $t('network.import_v2.stages_hint') } />
       </div>
     </Card>
 
-    <Card title="Sumber impor">
-      <p class="mb-2 text-sm text-ink-500">Pilih sumber untuk membuka wizard impornya.</p>
+    <Card title={ $t('network.import_v2.sources') }>
+      <p class="mb-2 text-sm text-ink-500">{ $t('network.import_v2.pick_hint') }</p>
       <ul class="divide-y divide-ink-100">
         {#each sources as source (source.key)}
           <li class="flex items-center gap-4 py-3">
@@ -66,7 +66,7 @@
               <div class="flex flex-wrap items-center gap-2">
                 <span class="font-medium text-ink-900">{source.title}</span>
                 <Badge
-                  label={source.status === 'ready' ? 'Siap' : 'Segera'}
+                  label={source.status === 'ready' ? $t('network.import_v2.ready') : $t('network.import_v2.soon')}
                   tone={source.status === 'ready' ? 'positive' : 'neutral'}
                 />
               </div>
