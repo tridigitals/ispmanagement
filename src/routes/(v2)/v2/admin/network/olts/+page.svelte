@@ -23,6 +23,7 @@
   import { appSettings } from '$lib/stores/settings';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
   import { appendBackParam } from '$lib/utils/backNavigation';
+  import { t } from 'svelte-i18n';
   import Modal from '$lib/components/ui/Modal.svelte';
   import MapCanvasShell from '$lib/components/network/MapCanvasShell.svelte';
   import 'maplibre-gl/dist/maplibre-gl.css';
@@ -109,7 +110,7 @@
   /* ── routers untuk dropdown uplink ──────────────────────── */
   let routers = $state<RouterRow[]>([]);
   const routerOptions = $derived<FieldOption[]>([
-    { value: '', label: '— Tidak ada —' },
+    { value: '', label: $t('network.olt.v2.none_opt') },
     ...routers.map((r) => ({ value: r.id, label: `${r.name} (${r.host})` })),
   ]);
 
@@ -131,16 +132,16 @@
   });
 
   /* OLT yang datanya tidak bisa dipercaya: error poll terakhir, atau tipe
-     tanpa driver (warisan dropdown lama). Versi lama mengubur ini di sel. */
+     { $t('network.olt.v2.no_driver') } (warisan dropdown lama). Versi lama mengubur ini di sel. */
   const attention = $derived<AttentionItem[]>(
     olts
       .map((o): AttentionItem | null => {
         if (!hasOltDriver(o.olt_type)) {
           return {
             icon: 'alert' as const,
-            title: `${o.name} — tipe ${oltTypeLabel(o.olt_type)} tidak punya driver`,
-            detail: 'Monitoring, uji koneksi, dan detail akan selalu gagal untuk tipe ini.',
-            action: 'Buka',
+            title: $t('network.olt.v2.attn_nodriver', { values: { a: o.name, t: oltTypeLabel(o.olt_type) } }),
+            detail: $t('network.olt.v2.attn_nodriver_detail'),
+            action: $t('network.olt.open'),
             href: `${tenantPrefix}/admin/network/olts/${o.id}`,
             severity: 'high' as const,
           };
@@ -148,9 +149,9 @@
         if (o.last_error) {
           return {
             icon: 'wifi' as const,
-            title: `${o.name} — error koneksi terakhir`,
+            title: $t('network.olt.v2.attn_err', { values: { a: o.name } }),
             detail: o.last_error,
-            action: 'Buka',
+            action: $t('network.olt.open'),
             href: `${tenantPrefix}/admin/network/olts/${o.id}`,
             severity: 'medium' as const,
           };
@@ -162,9 +163,9 @@
 
   const columns: Column[] = [
     { key: 'name', label: 'OLT' },
-    { key: 'status', label: 'Status' },
-    { key: 'uplink', label: 'Uplink', hideSm: true },
-    { key: 'seen', label: 'Data terakhir', hideSm: true },
+    { key: 'status', label: $t('admin.customers.columns.status') },
+    { key: 'uplink', label: $t('network.olt.uplink'), hideSm: true },
+    { key: 'seen', label: $t('network.olt.v2.last_data'), hideSm: true },
     { key: 'actions', label: '', align: 'right', width: '170px' },
   ];
 
@@ -271,7 +272,7 @@
           longitude: fLng,
           address_line: addr,
         });
-        toast.success('OLT diperbarui.');
+        toast.success($t('network.olt.v2.t_updated'));
       } else {
         await api.olt.create({
           name,
@@ -296,7 +297,7 @@
             });
           }
         }
-        toast.success('OLT ditambahkan.');
+        toast.success($t('network.olt.v2.t_created'));
       }
       formOpen = false;
       await load();
@@ -321,9 +322,9 @@
         olt_type: o.olt_type,
       })) as { success?: boolean; info?: { model?: string; version?: string }; error?: string };
       if (res?.success) {
-        toast.success(`Terhubung · ${res.info?.model ?? ''} ${res.info?.version ? `v${res.info.version}` : ''}`.trim());
+        toast.success(`${$t('network.olt.v2.connected')} · ${res.info?.model ?? ''} ${res.info?.version ? `v${res.info.version}` : ''}`.trim());
       } else {
-        toast.error(friendlyOltError(res?.error || 'Koneksi gagal.'));
+        toast.error(friendlyOltError(res?.error || $t('network.olt.v2.conn_fail')));
       }
       await loadSilent();
     } catch (e: unknown) {
@@ -342,7 +343,7 @@
     if (!deleteTarget) return;
     try {
       await api.olt.delete(deleteTarget.id);
-      toast.success('OLT dihapus.');
+      toast.success($t('network.olt.v2.t_deleted'));
       deleteOpen = false;
       deleteTarget = null;
       await load();
@@ -353,7 +354,7 @@
 
   function openOnMap(o: Olt) {
     if (o.latitude == null || o.longitude == null) {
-      toast.error('OLT belum punya koordinat lokasi.');
+      toast.error($t('network.olt.v2.t_nocoord'));
       return;
     }
     const params = new URLSearchParams({
@@ -366,12 +367,12 @@
 
   function rowActions(o: Olt): RowAction[] {
     const acts: RowAction[] = [
-      { label: testingId === o.id ? 'Menguji…' : 'Uji koneksi', icon: 'zap', onclick: () => void uji(o) },
-      { label: 'Lihat di peta', icon: 'pin', onclick: () => openOnMap(o) },
+      { label: testingId === o.id ? $t('network.olt.v2.testing') : $t('network.olt.v2.test_conn'), icon: 'zap', onclick: () => void uji(o) },
+      { label: $t('network.olt.v2.view_map'), icon: 'pin', onclick: () => openOnMap(o) },
     ];
     if (canManage) {
-      acts.push({ label: 'Sunting', icon: 'cog', onclick: () => openEdit(o) });
-      acts.push({ label: 'Hapus', icon: 'close', danger: true, onclick: () => askDelete(o) });
+      acts.push({ label: $t('admin.customers.detail.v2.act_edit'), icon: 'cog', onclick: () => openEdit(o) });
+      acts.push({ label: $t('common.delete'), icon: 'close', danger: true, onclick: () => askDelete(o) });
     }
     return acts;
   }
@@ -478,7 +479,7 @@
       setPickerPoint(initialLat, initialLng);
     } catch (e: unknown) {
       pickerMapUnavailable = true;
-      pickerMapErrorMessage = extractApiErrorMessage(e, 'Peta gagal dimuat');
+      pickerMapErrorMessage = extractApiErrorMessage(e, $t('network.olt.v2.map_fail'));
     } finally {
       pickerMapLoading = false;
       pickerMap?.resize();
@@ -528,35 +529,35 @@
   <PageHeader
     title="OLT"
     eyebrow="Jaringan"
-    desc="Optical Line Terminal yang dipantau. Status, ONU, dan riwayat diambil oleh poller backend tiap 30 detik."
+    desc={ $t('network.olt.v2.desc') }
   >
     {#snippet actions()}
-      <Button variant="ghost" icon="refresh" onclick={load}>Muat ulang</Button>
+      <Button variant="ghost" icon="refresh" onclick={load}> { $t('network.olt.refresh') } </Button>
       {#if canManage}
-        <Button icon="plus" onclick={openCreate}>Tambah OLT</Button>
+        <Button icon="plus" onclick={openCreate}> { $t('network.olt.add') } </Button>
       {/if}
     {/snippet}
   </PageHeader>
 
   <Card>
     <div class="grid grid-cols-2 gap-6 sm:grid-cols-4">
-      <StatTile label="Total OLT" value={String(stats.total)} hint="perangkat terdaftar" />
+      <StatTile label={ $t('network.olt.total') } value={String(stats.total)} hint={ $t('network.olt.v2.h_total') } />
       <StatTile
-        label="Online"
+        label={ $t('network.olt.online') }
         value={String(stats.online)}
-        hint={stats.total ? `${stats.online} dari ${stats.total} menjawab poll terakhir` : 'belum ada perangkat'}
+        hint={stats.total ? $t("network.olt.v2.h_online_of", { values: { a: stats.online, b: stats.total } }) : $t('network.olt.v2.h_none')}
         tone={stats.total > 0 && stats.online === stats.total ? 'positive' : 'neutral'}
       />
       <StatTile
-        label="Offline"
+        label={ $t('network.olt.offline') }
         value={String(stats.offline)}
-        hint={stats.offline ? 'tidak menjawab poll terakhir' : 'semua menjawab'}
+        hint={stats.offline ? $t('network.olt.v2.h_offline') : $t('network.olt.v2.h_all')}
         tone={stats.offline ? 'negative' : 'neutral'}
       />
       <StatTile
-        label="Tanpa uplink"
+        label={ $t('network.olt.v2.no_uplink') }
         value={String(stats.noUplink)}
-        hint="belum dipetakan ke router"
+        hint={ $t('network.olt.v2.h_nouplink') }
         tone={stats.noUplink ? 'warning' : 'neutral'}
       />
     </div>
@@ -564,7 +565,7 @@
 
   {#if attention.length}
     <div class="mt-4">
-      <AttentionPanel items={attention} title="Perlu diperiksa" />
+      <AttentionPanel items={attention} title={ $t('network.olt.v2.attention') } />
     </div>
   {/if}
 
@@ -579,8 +580,8 @@
           />
           <input
             bind:value={search}
-            placeholder="Cari nama, host, atau tipe"
-            aria-label="Cari OLT"
+            placeholder={ $t('network.olt.v2.search_ph') }
+            aria-label={ $t('network.olt.search') }
             class="focus-ring h-9 w-full rounded-lg border-0 bg-white pl-8 text-base text-ink-900 ring-1 ring-inset ring-ink-200 placeholder:text-ink-400"
           />
         </div>
@@ -605,7 +606,7 @@
                 <span class="rounded-md bg-ink-100 px-1.5 py-0.5 text-sm text-ink-600">{oltTypeLabel(o.olt_type)}</span>
                 {#if !hasOltDriver(o.olt_type)}
                   <span class="rounded-md bg-red-50 px-1.5 py-0.5 text-sm text-red-700 ring-1 ring-inset ring-red-200"
-                    >tanpa driver</span
+                    >{ $t('network.olt.v2.no_driver') }</span
                   >
                 {/if}
               </div>
@@ -616,7 +617,7 @@
             </div>
           {:else if c.key === 'status'}
             <div class="min-w-0">
-              <Badge tone={o.is_online ? 'positive' : 'negative'} label={o.is_online ? 'Online' : 'Offline'} />
+              <Badge tone={o.is_online ? 'positive' : 'negative'} label={o.is_online ? $t('network.olt.online') : $t('network.olt.offline')} />
               {#if o.last_error}
                 <div class="mt-1 max-w-[22rem] truncate text-sm text-red-700" title={o.last_error}>
                   {o.last_error}
@@ -640,11 +641,11 @@
                 {timeAgo(o.last_polled_at)}
               </span>
             {:else}
-              <span class="text-ink-400">belum pernah</span>
+              <span class="text-ink-400"> { $t('network.olt.v2.never') } </span>
             {/if}
           {:else if c.key === 'actions'}
             <RowActions
-              primary={{ label: 'Buka', icon: 'chevronRight', href: `${tenantPrefix}/admin/network/olts/${o.id}` }}
+              primary={{ label: $t('network.olt.open'), icon: 'chevronRight', href: `${tenantPrefix}/admin/network/olts/${o.id}` }}
               rest={rowActions(o)}
             />
           {/if}
@@ -657,7 +658,7 @@
 <!-- Modal form OLT -->
 <Modal
   bind:show={formOpen}
-  title={editTarget ? `Sunting OLT — ${editTarget.name}` : 'OLT baru'}
+  title={editTarget ? $t('network.olt.v2.edit_olt', { values: { name: editTarget.name } }) : $t('network.olt.v2.new_olt')}
   width="720px"
 >
   <div class="space-y-1 py-1">
@@ -667,29 +668,29 @@
       </div>
     {/if}
     <div class="grid gap-x-6 sm:grid-cols-2">
-      <Field stacked id="o-name" label="Nama" value={fName} placeholder="OLT Jambu"
+      <Field stacked id="o-name" label={ $t('admin.customers.fields.name') } value={fName} placeholder="OLT Jambu"
         error={formErrs.name} onchange={(v) => (fName = v)} />
-      <Field stacked id="o-desc" label="Deskripsi" value={fDesc} placeholder="Catatan lokasi / seri"
+      <Field stacked id="o-desc" label={ $t('admin.message_templates.fields.description') } value={fDesc} placeholder="Catatan lokasi / seri"
         onchange={(v) => (fDesc = v)} />
     </div>
     <div class="grid gap-x-6 sm:grid-cols-2">
-      <Field stacked id="o-type" label="Tipe" value={fType} type="select" options={typeOptions}
+      <Field stacked id="o-type" label={ $t('network.olt.type') } value={fType} type="select" options={typeOptions}
         disabled={!!editTarget} error={formErrs.oltType}
-        help={editTarget ? 'Tipe tidak bisa diubah setelah dibuat.' : 'Hanya tipe dengan driver di server.'}
+        help={editTarget ? $t('network.olt.v2.type_locked') : $t('network.olt.v2.type_driver')}
         onchange={(v) => (fType = v)} />
       <div></div>
     </div>
     <div class="grid gap-x-6 sm:grid-cols-[1fr_160px]">
-      <Field stacked id="o-host" label="Host" value={fHost} placeholder="192.168.1.1"
+      <Field stacked id="o-host" label={ $t('network.olt.host') } value={fHost} placeholder="192.168.1.1"
         error={formErrs.host} onchange={(v) => (fHost = v)} />
-      <Field stacked id="o-port" label="Port" value={fPort} type="number" min={1} max={65535}
+      <Field stacked id="o-port" label={ $t('network.olt.port') } value={fPort} type="number" min={1} max={65535}
         error={formErrs.port} onchange={(v) => (fPort = v)} />
     </div>
     <div class="grid gap-x-6 sm:grid-cols-2">
-      <Field stacked id="o-user" label="Username" value={fUser} placeholder="admin"
+      <Field stacked id="o-user" label={ $t('admin.network.routers.form.username') } value={fUser} placeholder="admin"
         error={formErrs.username} onchange={(v) => (fUser = v)} />
-      <Field stacked id="o-pass" label="Password" value={fPass} type="password"
-        placeholder={editTarget ? 'Kosongkan untuk mempertahankan' : '••••••'}
+      <Field stacked id="o-pass" label={ $t('admin.customers.pppoe.fields.password') } value={fPass} type="password"
+        placeholder={editTarget ? $t('network.olt.v2.keep_blank') : '••••••'}
         error={formErrs.password} onchange={(v) => (fPass = v)} />
     </div>
 
@@ -705,43 +706,42 @@
       >
         <Icon name="pin" size={15} />
         {fLat != null && fLng != null
-          ? `Ubah titik (${fLat.toFixed(6)}, ${fLng.toFixed(6)})`
-          : 'Pilih lokasi di peta'}
+          ? $t('network.olt.v2.change_point', { values: { a: fLat.toFixed(6), b: fLng.toFixed(6) } })
+          : $t('network.olt.v2.pick_map')}
       </button>
       {#if formErrs.location}
         <div class="mt-1 text-sm text-red-700">{formErrs.location}</div>
       {/if}
     </div>
-    <Field stacked id="o-addr" label="Alamat" value={fAddr} placeholder="Jalan, desa, kecamatan"
+    <Field stacked id="o-addr" label={ $t('network.olt.address') } value={fAddr} placeholder={ $t('network.olt.v2.addr_ph') }
       onchange={(v) => (fAddr = v)} />
 
     <div class="mt-5 mb-2 border-t border-ink-200 pt-4 text-sm font-semibold uppercase tracking-wide text-ink-500">
-      Uplink router
+      { $t('network.olt.v2.uplink_head') }
     </div>
     <div class="grid gap-x-6 sm:grid-cols-[1fr_160px]">
-      <Field stacked id="o-up-router" label="Router" value={fUplinkRouter} type="select"
-        options={routerOptions} help="Membuat koneksi otomatis di peta topologi."
+      <Field stacked id="o-up-router" label={ $t('network.olt.v2.router_lbl') } value={fUplinkRouter} type="select"
+        options={routerOptions} help={ $t('network.olt.v2.uplink_help') }
         onchange={(v) => (fUplinkRouter = v)} />
-      <Field stacked id="o-up-port" label="Port" value={fUplinkPort} placeholder="ether1"
+      <Field stacked id="o-up-port" label={ $t('network.olt.port') } value={fUplinkPort} placeholder="ether1"
         onchange={(v) => (fUplinkPort = v)} />
     </div>
   </div>
   {#snippet footer()}
-    <Button variant="ghost" onclick={() => (formOpen = false)}>Batal</Button>
+    <Button variant="ghost" onclick={() => (formOpen = false)}> { $t('common.cancel') } </Button>
     <Button onclick={() => void save()} disabled={saving}>
-      {saving ? 'Menyimpan…' : editTarget ? 'Simpan perubahan' : 'Buat OLT'}
+      {saving ? $t('network.olt.v2.saving') : editTarget ? $t('admin.ftth_assets.actions.save_changes') : $t('network.olt.v2.make_olt')}
     </Button>
   {/snippet}
 </Modal>
 
 <!-- Modal hapus -->
-<Modal bind:show={deleteOpen} title="Hapus OLT" width="480px">
+<Modal bind:show={deleteOpen} title={ $t('network.olt.v2.del_title') } width="480px">
   <p class="py-2 text-ink-700">
-    Hapus <strong>{deleteTarget?.name}</strong> ({deleteTarget?.host}:{deleteTarget?.port})?
-    Riwayat ONU perangkat ini ikut terhapus dan peta topologi akan diperbarui.
+    { $t('network.olt.v2.del_body', { values: { name: deleteTarget?.name, host: deleteTarget?.host, port: deleteTarget?.port } }) }
   </p>
   {#snippet footer()}
-    <Button variant="ghost" onclick={() => (deleteOpen = false)}>Batal</Button>
+    <Button variant="ghost" onclick={() => (deleteOpen = false)}> { $t('common.cancel') } </Button>
     <Button variant="danger" onclick={() => void confirmDelete()}>Hapus</Button>
   {/snippet}
 </Modal>
@@ -752,14 +752,14 @@
   <div class="fixed inset-0 z-[70] grid place-items-center bg-black/40 p-4" onclick={() => (showMapPicker = false)} role="presentation">
     <div class="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
       <div class="flex items-center justify-between border-b border-ink-200 px-5 py-3">
-        <h3 class="font-semibold text-ink-900">Pilih lokasi di peta</h3>
+        <h3 class="font-semibold text-ink-900">{ $t('network.olt.v2.pick_map') }</h3>
         <button type="button" class="rounded-lg p-1.5 text-ink-500 hover:bg-ink-100 focus-ring" onclick={() => (showMapPicker = false)}>
           <Icon name="close" size={18} />
         </button>
       </div>
       <div class="p-5">
         <div class="mb-2 flex items-center justify-between">
-          <span class="text-sm text-ink-500">Klik peta untuk memindahkan titik.</span>
+          <span class="text-sm text-ink-500">{ $t('network.olt.v2.map_hint') }</span>
           {#if pickerLat != null && pickerLng != null}
             <span class="num text-sm text-ink-700">{pickerLat.toFixed(7)}, {pickerLng.toFixed(7)}</span>
           {/if}
@@ -771,13 +771,13 @@
           loading={pickerMapLoading}
           mapUnavailable={pickerMapUnavailable}
           mapErrorMessage={pickerMapErrorMessage}
-          mapUnavailableTitle="Peta tidak tersedia di perangkat ini"
-          mapUnavailableSubtitle="Koordinat tetap bisa diisi lewat tombol di bawah."
+          mapUnavailableTitle={ $t('network.olt.v2.map_na') }
+          mapUnavailableSubtitle={ $t('network.olt.v2.map_manual') }
           height="min(55vh, 480px)"
         />
         <div class="mt-4 flex justify-end gap-2">
-          <Button variant="ghost" onclick={() => (showMapPicker = false)}>Batal</Button>
-          <Button onclick={applyPickedCoordinates}>Gunakan titik ini</Button>
+          <Button variant="ghost" onclick={() => (showMapPicker = false)}> { $t('common.cancel') } </Button>
+          <Button onclick={applyPickedCoordinates}> { $t('network.olt.v2.use_this') } </Button>
         </div>
       </div>
     </div>
