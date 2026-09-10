@@ -125,11 +125,11 @@
   });
 
   const columns: Column[] = [
-    { key: 'role', label: 'Role' },
-    { key: 'level', label: 'Level', num: true, width: '90px' },
-    { key: 'members', label: 'Dipakai', num: true, width: '110px' },
-    { key: 'perms', label: 'Izin', num: true, width: '110px' },
-    { key: 'origin', label: 'Asal', hideSm: true, width: '130px' },
+    { key: 'role', label: $t('admin.roles.v2.col_role') },
+    { key: 'level', label: $t('admin.roles.v2.col_level'), num: true, width: '90px' },
+    { key: 'members', label: $t('admin.roles.v2.col_used'), num: true, width: '110px' },
+    { key: 'perms', label: $t('admin.roles.v2.col_perms'), num: true, width: '110px' },
+    { key: 'origin', label: $t('admin.roles.v2.col_origin'), hideSm: true, width: '130px' },
     { key: 'actions', label: '', align: 'right', width: '150px' },
   ];
 
@@ -147,7 +147,7 @@
       permissions = p ?? [];
       members = m ?? [];
     } catch (e: unknown) {
-      toast.error(extractApiErrorMessage(e, 'Gagal memuat role'));
+      toast.error(extractApiErrorMessage(e, $t('admin.roles.v2.t_load_fail')));
     } finally {
       loading = false;
     }
@@ -198,14 +198,14 @@
   const editGuard = $derived(
     editing
       ? canEditRole(editing, { level: myLevel, isSuperAdmin, canUpdate: $can('update', 'roles') })
-      : { allowed: $can('create', 'roles'), reason: 'Tidak punya izin membuat role' }
+      : { allowed: $can('create', 'roles'), reason: $t('admin.roles.v2.reason_no_create') }
   );
 
   async function simpan() {
     if (!editGuard.allowed) return;
     const nama = form.name.trim();
     if (!nama) {
-      toast.error('Nama role wajib diisi');
+      toast.error($t('admin.roles.v2.name_required'));
       return;
     }
 
@@ -214,10 +214,10 @@
       const perms = [...checked];
       if (editing) {
         await api.roles.update(editing.id, nama, form.description.trim(), form.level, perms);
-        toast.success('Role diperbarui');
+        toast.success($t('admin.roles.v2.t_updated'));
       } else {
         await api.roles.create(nama, form.description.trim() || undefined, form.level, perms);
-        toast.success('Role dibuat');
+        toast.success($t('admin.roles.v2.t_created'));
       }
       editOpen = false;
       await load();
@@ -236,7 +236,7 @@
     deleting = true;
     try {
       await api.roles.delete(target.id);
-      toast.success('Role dihapus');
+      toast.success($t('admin.roles.v2.t_deleted'));
       deleteTarget = null;
       await load();
     } catch (e: unknown) {
@@ -255,36 +255,36 @@
   });
 </script>
 
-<AppShell title="Role & izin">
+<AppShell title={ $t('admin.roles.v2.title') }>
   <PageHeader
-    title="Role & izin"
+    title={ $t('admin.roles.v2.title') }
     eyebrow={ $t('admin.eyebrows.organization') }
-    desc="Apa yang boleh dilakukan tiap role. Penetapan role ke orang ada di halaman Anggota tim."
+    desc={ $t('admin.roles.v2.desc') }
   >
     {#snippet actions()}
-      <Button variant="ghost" icon="refresh" onclick={() => void load()}>Muat ulang</Button>
+      <Button variant="ghost" icon="refresh" onclick={() => void load()}>{ $t('network.olt.refresh') }</Button>
       {#if $can('create', 'roles')}
-        <Button variant="primary" icon="plus" onclick={bukaBaru}>Role baru</Button>
+        <Button variant="primary" icon="plus" onclick={bukaBaru}>{ $t('admin.roles.v2.new_btn') }</Button>
       {/if}
     {/snippet}
   </PageHeader>
 
   <Card>
     <div class="grid grid-cols-2 gap-6 sm:grid-cols-4">
-      <StatTile label="Role" value={String(ringkasan.total)} hint="tersedia di tenant ini" />
+      <StatTile label={ $t('admin.roles.v2.col_role') } value={String(ringkasan.total)} hint={ $t('admin.roles.v2.h_in_tenant') } />
       <StatTile
-        label="Role sistem"
+        label={ $t('admin.roles.v2.system_roles') }
         value={String(ringkasan.system)}
         hint={ringkasan.custom === 0
           ? 'semua role bawaan — hanya Super Admin yang bisa mengubah'
           : 'hanya Super Admin yang bisa mengubah'}
         tone={ringkasan.custom === 0 ? 'warning' : 'neutral'}
       />
-      <StatTile label="Role kustom" value={String(ringkasan.custom)} hint="dibuat sendiri" />
+      <StatTile label={ $t('admin.roles.v2.custom_roles') } value={String(ringkasan.custom)} hint={ $t('admin.roles.v2.h_custom_made') } />
       <StatTile
-        label="Tidak terpakai"
+        label={ $t('admin.roles.v2.h_unused') }
         value={String(ringkasan.unused)}
-        hint={`${ringkasan.totalAssigned} keanggotaan terisi`}
+        hint={ $t('admin.roles.v2.h_assigned', { values: { a: ringkasan.totalAssigned } }) }
       />
     </div>
   </Card>
@@ -295,8 +295,7 @@
     <p class="mt-4 flex items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
       <Icon name="alert" size={16} class="mt-0.5 shrink-0" />
       <span>
-        Semua {ringkasan.total} role di sini adalah role sistem. Mengubahnya butuh Super Admin —
-        buat role kustom kalau perlu izin yang berbeda.
+        { $t('admin.roles.v2.all_system', { values: { n: ringkasan.total } }) }
       </span>
     </p>
   {/if}
@@ -312,8 +311,8 @@
           />
           <input
             bind:value={search}
-            placeholder="Cari nama role"
-            aria-label="Cari role"
+            placeholder={ $t('admin.roles.v2.search_ph') }
+            aria-label={ $t('admin.roles.v2.search_aria') }
             class="focus-ring h-9 w-full rounded-lg border-0 bg-white pl-8 text-base text-ink-900 ring-1 ring-inset ring-ink-200 placeholder:text-ink-400"
           />
         </div>
@@ -368,7 +367,7 @@
               }}
               rest={[
                 {
-                  label: 'Hapus role',
+                  label: $t('admin.roles.v2.delete_title'),
                   icon: 'close' as const,
                   danger: true,
                   disabled: !dg.allowed,
@@ -384,27 +383,27 @@
   </div>
 </AppShell>
 
-<Modal bind:show={editOpen} title={editing ? `Izin ${editing.name}` : 'Role baru'} width="720px">
+<Modal bind:show={editOpen} title={editing ? $t('admin.roles.v2.perms_title', { values: { n: editing.name } }) : $t('admin.roles.v2.new_btn')} width="720px">
   <div class="space-y-4">
     {#if editing && !editGuard.allowed}
       <p class="flex items-start gap-2 rounded-lg bg-ink-50 px-3 py-2 text-sm text-ink-700">
         <Icon name="lock" size={15} class="mt-0.5 shrink-0" />
-        <span>Mode baca. {editGuard.reason}.</span>
+        <span>{ $t('admin.roles.v2.readonly_mode') } {editGuard.reason}.</span>
       </p>
     {/if}
 
     <div class="grid gap-3 sm:grid-cols-[1fr_120px]">
       <label class="block">
-        <span class="mb-1 block text-sm font-medium text-ink-700">Nama role</span>
+        <span class="mb-1 block text-sm font-medium text-ink-700">{ $t('admin.roles.v2.f_name') }</span>
         <input
           bind:value={form.name}
           disabled={!editGuard.allowed}
-          placeholder="misal Dispatcher"
+          placeholder={ $t('admin.roles.v2.name_ph') }
           class="focus-ring h-9 w-full rounded-lg border-0 bg-white px-2.5 text-base text-ink-900 ring-1 ring-inset ring-ink-200 disabled:bg-ink-50 disabled:text-ink-500"
         />
       </label>
       <label class="block">
-        <span class="mb-1 block text-sm font-medium text-ink-700">Level</span>
+        <span class="mb-1 block text-sm font-medium text-ink-700">{ $t('admin.roles.v2.col_level') }</span>
         <input
           type="number"
           bind:value={form.level}
@@ -417,11 +416,11 @@
     </div>
 
     <label class="block">
-      <span class="mb-1 block text-sm font-medium text-ink-700">Keterangan</span>
+      <span class="mb-1 block text-sm font-medium text-ink-700">{ $t('admin.roles.v2.f_desc') }</span>
       <input
         bind:value={form.description}
         disabled={!editGuard.allowed}
-        placeholder="Untuk apa role ini dipakai"
+        placeholder={ $t('admin.roles.v2.desc_ph') }
         class="focus-ring h-9 w-full rounded-lg border-0 bg-white px-2.5 text-base text-ink-900 ring-1 ring-inset ring-ink-200 disabled:bg-ink-50 disabled:text-ink-500"
       />
     </label>
@@ -471,7 +470,7 @@
                   onclick={() => toggleGroupAll(g)}
                   class="focus-ring rounded px-1.5 py-0.5 text-sm text-ink-500 hover:text-ink-900"
                 >
-                  {cov.granted === cov.total ? 'Kosongkan' : 'Pilih semua'}
+                  {cov.granted === cov.total ? $t('admin.roles.v2.clear_group') : $t('admin.roles.v2.select_group')}
                 </button>
               {/if}
             </div>
@@ -505,11 +504,11 @@
 
   {#snippet footer()}
     <Button variant="ghost" onclick={() => (editOpen = false)}>
-      {editGuard.allowed ? 'Batal' : 'Tutup'}
+      {editGuard.allowed ? $t('common.cancel') : $t('admin.roles.v2.close')}
     </Button>
     {#if editGuard.allowed}
       <Button variant="primary" loading={saving} onclick={() => void simpan()}>
-        {editing ? 'Simpan perubahan' : 'Buat role'}
+        {editing ? $t('admin.roles.v2.save_changes') : $t('admin.roles.v2.create_btn')}
       </Button>
     {/if}
   {/snippet}
@@ -517,16 +516,16 @@
 
 <Modal
   show={deleteTarget !== null}
-  title="Hapus role"
+  title={ $t('admin.roles.v2.delete_title') }
   width="420px"
   onclose={() => (deleteTarget = null)}
 >
   <p class="text-base text-ink-700">
-    Hapus role <span class="font-medium text-ink-900">{deleteTarget?.name}</span>? Tindakan ini
+    { $t('admin.roles.v2.delete_title') } <span class="font-medium text-ink-900">{deleteTarget?.name}</span>? Tindakan ini
     tidak bisa dibatalkan.
   </p>
   {#snippet footer()}
-    <Button variant="ghost" onclick={() => (deleteTarget = null)}>Batal</Button>
+    <Button variant="ghost" onclick={() => (deleteTarget = null)}>{ $t('common.cancel') }</Button>
     <Button variant="danger" loading={deleting} onclick={() => void hapus()}>Hapus</Button>
   {/snippet}
 </Modal>
