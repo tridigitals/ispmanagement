@@ -72,14 +72,14 @@
     ),
   );
 
-  const columns: Column[] = [
-    { key: 'name', label: 'Nama' },
-    { key: 'ranges', label: 'Rentang' },
-    { key: 'next', label: 'Next pool' },
-    { key: 'state', label: 'State' },
-    { key: 'synced', label: 'Sinkron' },
-    { key: 'actions', label: 'Aksi' },
-  ];
+  const columns = $derived<Column[]>([
+    { key: 'name', label: $t('network.ip_pools.v2.col_name') },
+    { key: 'ranges', label: $t('network.ip_pools.v2.col_ranges') },
+    { key: 'next', label: $t('network.ip_pools.v2.col_next') },
+    { key: 'state', label: $t('network.ip_pools.v2.col_state') },
+    { key: 'synced', label: $t('network.ip_pools.v2.col_synced') },
+    { key: 'actions', label: $t('network.ip_pools.v2.col_actions') },
+  ]);
 
   const canManage = $derived($can('manage', 'ip_pools'));
 
@@ -97,7 +97,7 @@
       routers = (await api.mikrotik.routers.list()) as any;
       if (routerId) await load();
     } catch (e) {
-      toast.error(extractApiErrorMessage(e) || 'Gagal memuat router.');
+      toast.error(extractApiErrorMessage(e) || $t('network.ip_pools.v2.t_load_routers'));
     } finally {
       loadingRouters = false;
     }
@@ -109,7 +109,7 @@
     try {
       rows = (await api.mikrotik.routers.ipPools(routerId)) as any;
     } catch (e) {
-      toast.error(extractApiErrorMessage(e) || 'Gagal memuat pool.');
+      toast.error(extractApiErrorMessage(e) || $t('network.ip_pools.v2.t_load_pools'));
     } finally {
       loading = false;
     }
@@ -120,9 +120,9 @@
     loading = true;
     try {
       rows = (await api.mikrotik.routers.syncIpPools(routerId)) as any;
-      toast.success('Pool IP tersinkron.');
+      toast.success($t('network.ip_pools.v2.t_synced'));
     } catch (e) {
-      toast.error(extractApiErrorMessage(e) || 'Gagal sinkron.');
+      toast.error(extractApiErrorMessage(e) || $t('network.ip_pools.v2.t_sync_fail'));
     } finally {
       loading = false;
     }
@@ -134,7 +134,7 @@
 
   function openCreate() {
     if (getIpPoolCrudGateState(routerId).blocked) {
-      toast.error('Pilih router dulu.');
+      toast.error($t('network.ip_pools.v2.pick_router_first'));
       return;
     }
     editing = null;
@@ -144,7 +144,7 @@
 
   function openEdit(row: IpPoolRow) {
     if (getIpPoolCrudGateState(routerId).blocked) {
-      toast.error('Pilih router dulu.');
+      toast.error($t('network.ip_pools.v2.pick_router_first'));
       return;
     }
     editing = row;
@@ -172,7 +172,7 @@
 
   async function save() {
     if (!routerId) {
-      toast.error('Pilih router dulu.');
+      toast.error($t('network.ip_pools.v2.pick_router_first'));
       return;
     }
     saving = true;
@@ -181,10 +181,10 @@
       if (!payload.name && !editing) throw new Error('Nama pool wajib diisi.');
       if (editing) {
         await api.mikrotik.routers.updateIpPool(routerId, editing.id, payload);
-        toast.success('Pool IP diperbarui.');
+        toast.success($t('network.ip_pools.v2.t_updated'));
       } else {
         await api.mikrotik.routers.createIpPool(routerId, payload as any);
-        toast.success('Pool IP dibuat.');
+        toast.success($t('network.ip_pools.v2.t_created'));
       }
       showForm = false;
       editing = null;
@@ -207,7 +207,7 @@
 
   async function openDelete(row: IpPoolRow) {
     if (!routerId) {
-      toast.error('Pilih router dulu.');
+      toast.error($t('network.ip_pools.v2.pick_router_first'));
       return;
     }
     try {
@@ -219,11 +219,11 @@
       deleteWarningCount = state.totalDependencies;
       deleteKeyword = row.name;
       deleteMessage = state.warning
-        ? `Hapus ${row.name}? ${state.totalDependencies} data internal masih merujuk pool ini.`
-        : `Hapus pool IP ${row.name} dari router?`;
+        ? $t('network.ip_pools.v2.del_dep', { values: { n: row.name, d: state.totalDependencies } })
+        : $t('network.ip_pools.v2.del_msg', { values: { n: row.name } });
       showDelete = true;
     } catch (error) {
-      toast.error(extractApiErrorMessage(error) || 'Gagal cek dependensi.');
+      toast.error(extractApiErrorMessage(error) || $t('network.ip_pools.v2.t_dep_fail'));
     }
   }
 
@@ -234,9 +234,9 @@
       const result = await api.mikrotik.routers.deleteIpPool(routerId, deleteTarget.id);
       showDelete = false;
       if ((result.warnings || []).some((item: any) => Number(item.count || 0) > 0) && typeof toast.warning === 'function') {
-        toast.warning(`Pool ${deleteTarget.name} dihapus dengan ${deleteWarningCount} referensi peringatan.`);
+        toast.warning($t('network.ip_pools.v2.t_del_warn', { values: { n: deleteTarget.name, c: deleteWarningCount } }));
       } else {
-        toast.success('Pool IP dihapus.');
+        toast.success($t('network.ip_pools.v2.t_deleted'));
       }
       deleteTarget = null;
       deleteMessage = '';
@@ -253,7 +253,7 @@
           deleteMessage = '';
           deleteKeyword = '';
           deleteWarningCount = 0;
-          toast.warning('Pool sudah hilang di router — daftar disegarkan.');
+          toast.warning($t('network.ip_pools.v2.t_gone'));
           return;
         } catch (syncError) {
           toast.error(extractApiErrorMessage(syncError) || message);
@@ -270,32 +270,32 @@
     return rows.find((r) => (r.id || r.name) === id) ?? rows[0];
   }
 </script>
-<AppShell title="Pool IP">
+<AppShell title={ $t('network.ip_pools.v2.title') }>
   <PageHeader
-    title="Pool IP"
+    title={ $t('network.ip_pools.v2.title') }
     eyebrow={ $t('admin.eyebrows.network') }
-    desc="Rentang alamat IP per router untuk distribusi PPPoE/DHCP."
+    desc={ $t('network.ip_pools.v2.desc') }
   >
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" onclick={() => void load()} disabled={!routerId || loading}>{ $t('common.refresh') }</Button>
-      <Button variant="ghost" icon="download" onclick={() => void sync()} disabled={!routerId || loading}>Sinkron</Button>
+      <Button variant="ghost" icon="download" onclick={() => void sync()} disabled={!routerId || loading}>{ $t('network.ip_pools.v2.col_synced') }</Button>
       {#if canManage}
-        <Button variant="primary" icon="plus" onclick={openCreate} disabled={!routerId || loading}>Tambah</Button>
+        <Button variant="primary" icon="plus" onclick={openCreate} disabled={!routerId || loading}>{ $t('network.ip_pools.v2.add') }</Button>
       {/if}
     {/snippet}
   </PageHeader>
 
-  <Card title="Router">
+  <Card title={ $t('network.ip_pools.v2.router') }>
     <div class="max-w-md">
-      <Field stacked id="ip-router" label="Router" type="select" value={routerId} options={[{ value: '', label: 'Pilih router…' }, ...routers.map((r) => ({ value: r.id, label: r.name }))]} onchange={(v) => { routerId = v; void load(); }} />
+      <Field stacked id="ip-router" label={ $t('network.ip_pools.v2.router') } type="select" value={routerId} options={[{ value: '', label: $t('network.ip_pools.v2.pick_router') }, ...routers.map((r) => ({ value: r.id, label: r.name }))]} onchange={(v) => { routerId = v; void load(); }} />
     </div>
   </Card>
 
   {#if routerId}
     {#if rows.length === 0 && !loading}
-      <Card><p class="py-10 text-center text-sm text-ink-500">Router ini belum punya pool IP tersinkron.</p></Card>
+      <Card><p class="py-10 text-center text-sm text-ink-500">{ $t('network.ip_pools.v2.empty_no_pool') }</p></Card>
     {:else}
-      <Card title={`Pool — ${rows.length} item`}>
+      <Card title={ $t('network.ip_pools.v2.card_pool', { values: { n: rows.length } }) }>
         <DataTable
           {columns}
           rows={rows.map((r, idx) => ({
@@ -311,7 +311,7 @@
           {#snippet cell(row, col)}
             {@const cellVal = (row as unknown as Record<string, unknown>)[col.key] as string}
             {#if col.key === 'state'}
-              <Badge tone={row.state ? 'positive' : 'warning'} label={row.state ? 'Ada' : 'Hilang'} />
+              <Badge tone={row.state ? 'positive' : 'warning'} label={row.state ? $t('network.ip_pools.v2.state_present') : $t('network.ip_pools.v2.state_missing')} />
             {:else if col.key === 'synced'}
               {#if row.synced}
                 <span class="font-mono text-xs">{new Date(row.synced).toLocaleString('id-ID')}</span>
@@ -321,8 +321,8 @@
             {:else if col.key === 'actions'}
               {#if canManage}
                 <div class="flex gap-1">
-                  <Button variant="ghost" onclick={() => openEdit(rowById(row.id))}>Ubah</Button>
-                  <Button variant="ghost" onclick={() => void openDelete(rowById(row.id))}>Hapus</Button>
+                  <Button variant="ghost" onclick={() => openEdit(rowById(row.id))}>{ $t('network.ip_pools.v2.edit') }</Button>
+                  <Button variant="ghost" onclick={() => void openDelete(rowById(row.id))}>{ $t('network.ip_pools.v2.delete') }</Button>
                 </div>
               {/if}
             {:else if col.key === 'ranges' || col.key === 'next'}
@@ -349,9 +349,9 @@
 <ConfirmDialog
   bind:show={showDelete}
   type={deleteDialogType}
-  title="Hapus pool IP"
+  title={ $t('network.ip_pools.v2.del_title') }
   message={deleteMessage}
-  confirmText="Hapus"
+  confirmText={ $t('network.ip_pools.v2.delete') }
   confirmationKeyword={deleteKeyword}
   loading={deleting}
   onconfirm={() => void confirmDelete()}

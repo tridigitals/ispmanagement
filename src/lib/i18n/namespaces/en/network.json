@@ -531,5 +531,41 @@
       "a_snooze": "Snooze 30 min",
       "t_latency": "Latency"
     }
+  },
+  "ip_pools": {
+    "v2": {
+      "title": "IP pools",
+      "desc": "IP address ranges per router for PPPoE/DHCP distribution.",
+      "sync": "Sync",
+      "add": "Add",
+      "router": "Router",
+      "pick_router": "Pick a router…",
+      "empty_no_pool": "This router has no synced IP pools yet.",
+      "col_name": "Name",
+      "col_ranges": "Ranges",
+      "col_next": "Next pool",
+      "col_state": "State",
+      "col_synced": "Synced",
+      "col_actions": "Actions",
+      "state_present": "Present",
+      "state_missing": "Missing",
+      "edit": "Edit",
+      "delete": "Delete",
+      "card_pool": "Pool — {n} items",
+      "del_title": "Delete IP pool",
+      "del_msg": "Delete IP pool {n} from the router?",
+      "t_synced": "IP pools synced.",
+      "t_sync_fail": "Sync failed.",
+      "pick_router_first": "Pick a router first.",
+      "t_updated": "IP pool updated.",
+      "t_created": "IP pool created.",
+      "t_load_routers": "Failed to load routers.",
+      "t_load_pools": "Failed to load pools.",
+      "del_dep": "Delete {n}? {d} internal records still reference this pool.",
+      "t_dep_fail": "Dependency check failed.",
+      "t_del_warn": "Pool {n} deleted with {c} warning references.",
+      "t_gone": "Pool already gone on the router — list refreshed.",
+      "t_deleted": "IP pool deleted."
+    }
   }
 }

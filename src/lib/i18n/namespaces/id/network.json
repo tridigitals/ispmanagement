@@ -531,5 +531,41 @@
       "a_snooze": "Tunda 30 mnt",
       "t_latency": "Latensi"
     }
+  },
+  "ip_pools": {
+    "v2": {
+      "title": "Pool IP",
+      "desc": "Rentang alamat IP per router untuk distribusi PPPoE/DHCP.",
+      "sync": "Sinkron",
+      "add": "Tambah",
+      "router": "Router",
+      "pick_router": "Pilih router…",
+      "empty_no_pool": "Router ini belum punya pool IP tersinkron.",
+      "col_name": "Nama",
+      "col_ranges": "Rentang",
+      "col_next": "Next pool",
+      "col_state": "State",
+      "col_synced": "Sinkron",
+      "col_actions": "Aksi",
+      "state_present": "Ada",
+      "state_missing": "Hilang",
+      "edit": "Ubah",
+      "delete": "Hapus",
+      "card_pool": "Pool — {n} item",
+      "del_title": "Hapus pool IP",
+      "del_msg": "Hapus pool IP {n} dari router?",
+      "t_synced": "Pool IP tersinkron.",
+      "t_sync_fail": "Gagal sinkron.",
+      "pick_router_first": "Pilih router dulu.",
+      "t_updated": "Pool IP diperbarui.",
+      "t_created": "Pool IP dibuat.",
+      "t_load_routers": "Gagal memuat router.",
+      "t_load_pools": "Gagal memuat pool.",
+      "del_dep": "Hapus {n}? {d} data internal masih merujuk pool ini.",
+      "t_dep_fail": "Gagal cek dependensi.",
+      "t_del_warn": "Pool {n} dihapus dengan {c} referensi peringatan.",
+      "t_gone": "Pool sudah hilang di router — daftar disegarkan.",
+      "t_deleted": "Pool IP dihapus."
+    }
   }
 }
