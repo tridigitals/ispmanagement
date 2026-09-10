@@ -357,7 +357,7 @@
       });
       rows = rows.map((r) => (r.id === targetId ? ((updated as IncidentRow) ?? { ...r, owner_user_id: detailOwner || null, notes: detailNotes }) : r));
       detail = rows.find((r) => r.id === targetId) ?? detail;
-      toast.success('Insiden diperbarui.');
+      toast.success($t('admin.network.incidents.ui.t_updated'));
     } catch (e) {
       detailError = friendlyIncidentError(extractApiErrorMessage(e));
     } finally {
@@ -384,7 +384,7 @@
       simType = '';
       simInterface = '';
       simMessage = '';
-      toast.success('Insiden simulasi dibuat.');
+      toast.success($t('admin.network.incidents.ui.t_sim_created'));
       await loadData();
     } catch (e) {
       simError = friendlyIncidentError(extractApiErrorMessage(e));
@@ -409,22 +409,22 @@
     return lvl === 'breach' ? 'negative' : lvl === 'warn' ? 'warning' : 'neutral';
   }
   function ownerLabel(id?: string | null): string {
-    if (!id) return 'Belum ada';
+    if (!id) return $t('admin.network.incidents.ui.none');
     const m = memberById.get(id);
     return m ? m.name : id.slice(0, 8);
   }
   function routerLabel(id: string): string {
     return routerById.get(id)?.name ?? id.slice(0, 8);
   }
-  function typeLabel(t: string): string {
+  function typeLabel(tp: string): string {
     const map: Record<string, string> = {
       offline: 'Offline',
-      latency: 'Latensi',
+      latency: $t('admin.network.incidents.ui.tp_latency'),
       cpu: 'CPU',
-      router_down: 'Router mati',
-      packet_loss: 'Paket hilang',
+      router_down: $t('admin.network.incidents.ui.tp_down'),
+      packet_loss: $t('admin.network.incidents.ui.tp_loss'),
     };
-    return map[t] ?? t;
+    return map[tp] ?? tp;
   }
 
   const columns = $derived<Column[]>([
@@ -513,7 +513,7 @@
     </select>
     {#if statusFilter !== 'all'}
       <button type="button" class="focus-ring rounded-full bg-ink-100 px-3 py-1 text-sm" onclick={() => { statusFilter = 'all'; refilter(); }}>
-        {$t("admin.network.incidents.ui.status_chip", { values: { s: statusLabel(statusFilter) } })}
+        {$t("admin.network.incidents.ui.status_chip", { values: { s: statusLabel(statusFilter, (k) => $t(k)) } })}
       </button>
     {/if}
     <div class="relative ml-auto min-w-[220px]">
@@ -532,9 +532,9 @@
     <div class="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-ink-200 bg-white p-2">
       <span class="rounded-full bg-ink-100 px-3 py-1 text-sm text-ink-700">{selectedIds.length} {$t("admin.network.incidents.ui.selected_suffix")}</span>
       <Button variant="ghost" size="sm" disabled={bulkBusy} onclick={() => void bulk('ack')}>{$t("admin.network.incidents.ui.bulk_ack")}</Button>
-      <Button variant="ghost" size="sm" disabled={bulkBusy} onclick={() => void bulk('resolve')}>Selesaikan terpilih</Button>
-      <select class="focus-ring h-8 rounded-lg bg-white text-sm ring-1 ring-inset ring-ink-200" bind:value={bulkOwner} aria-label="PIC baru">
-        <option value="">Pilih PIC…</option>
+      <Button variant="ghost" size="sm" disabled={bulkBusy} onclick={() => void bulk('resolve')}>{ $t('admin.network.incidents.ui.bulk_resolve') }</Button>
+      <select class="focus-ring h-8 rounded-lg bg-white text-sm ring-1 ring-inset ring-ink-200" bind:value={bulkOwner} aria-label={ $t('admin.network.incidents.ui.new_pic') }>
+        <option value="">{ $t('admin.network.incidents.ui.pick_pic') }</option>
         {#each teamMembers as m (m.user_id)}
           <option value={m.user_id}>{m.name}</option>
         {/each}
@@ -580,13 +580,13 @@
           </div>
         {:else if col.key === 'severity'}
           <div class="flex items-center gap-1.5">
-            <Badge tone={sevTone(row.severity)} label={severityLabel(row.severity)} />
+            <Badge tone={sevTone(row.severity)} label={severityLabel(row.severity, (k) => $t(k))} />
             {#if row.is_auto_escalated}
-              <Badge tone="neutral" label="auto" />
+              <Badge tone="neutral" label={ $t('admin.network.incidents.ui.auto_badge') } />
             {/if}
           </div>
         {:else if col.key === 'status'}
-          <Badge tone={statTone(row.status)} label={statusLabel(row.status)} />
+          <Badge tone={statTone(row.status)} label={statusLabel(row.status, (k) => $t(k))} />
         {:else if col.key === 'duration'}
           <Badge tone={slaTone(row)} label={formatDurationCompact(incidentOpenMs(row, nowMs))} />
         {:else if col.key === 'owner'}
@@ -614,22 +614,22 @@
     {#if detail}
       <div class="space-y-3 text-sm">
         <div class="flex flex-wrap items-center gap-2">
-          <Badge tone={sevTone(detail.severity)} label={severityLabel(detail.severity)} />
-          <Badge tone={statTone(detail.status)} label={statusLabel(detail.status)} />
-          <Badge tone={slaTone(detail)} label="SLA {formatDurationCompact(incidentOpenMs(detail, nowMs))}" />
+          <Badge tone={sevTone(detail.severity)} label={severityLabel(detail.severity, (k) => $t(k))} />
+          <Badge tone={statTone(detail.status)} label={statusLabel(detail.status, (k) => $t(k))} />
+          <Badge tone={slaTone(detail)} label={ 'SLA ' + formatDurationCompact(incidentOpenMs(detail, nowMs)) } />
           {#if detail.is_auto_escalated}
-            <Badge tone="neutral" label="Eskalasi otomatis" />
+            <Badge tone="neutral" label={ $t('admin.network.incidents.ui.escalated') } />
           {/if}
         </div>
         <p class="text-ink-700">{detail.message}</p>
         <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-ink-700">
           <dt class="text-ink-500">Router</dt>
           <dd>{routerLabel(detail.router_id)}{#if detail.interface_name} · {detail.interface_name}{/if}</dd>
-          <dt class="text-ink-500">Tipe</dt>
+          <dt class="text-ink-500">{ $t('admin.network.incidents.ui.lbl_type') }</dt>
           <dd>{typeLabel(detail.incident_type)}</dd>
-          <dt class="text-ink-500">Pertama terlihat</dt>
+          <dt class="text-ink-500">{ $t('admin.network.incidents.ui.first_seen') }</dt>
           <dd>{formatDateTime(detail.first_seen_at || detail.updated_at, { timeZone: $appSettings.app_timezone })}</dd>
-          <dt class="text-ink-500">Diakui</dt>
+          <dt class="text-ink-500">{ $t('admin.network.incidents.ui.status.ack') }</dt>
           <dd>{detail.acked_at ? formatDateTime(detail.acked_at, { timeZone: $appSettings.app_timezone }) : '—'}</dd>
           <dt class="text-ink-500">Selesai</dt>
           <dd>{detail.resolved_at ? formatDateTime(detail.resolved_at, { timeZone: $appSettings.app_timezone }) : '—'}</dd>
@@ -637,63 +637,63 @@
         {#if canManage}
           <Field
             id="inc-owner"
-            label="Penanggung jawab"
+            label={ $t('admin.network.incidents.ui.owner') }
             type="select"
             stacked
             value={detailOwner}
-            options={[{ value: '', label: 'Belum ada' }, ...teamMembers.map((m) => ({ value: m.user_id, label: m.name }))]}
+            options={[{ value: '', label: $t('admin.network.incidents.ui.none') }, ...teamMembers.map((m) => ({ value: m.user_id, label: m.name }))]}
             onchange={(v) => (detailOwner = String(v ?? ''))}
           />
-          <Field id="inc-notes" label="Catatan" type="textarea" stacked value={detailNotes} onchange={(v) => (detailNotes = String(v ?? ''))} />
+          <Field id="inc-notes" label={ $t('admin.network.incidents.ui.notes') } type="textarea" stacked value={detailNotes} onchange={(v) => (detailNotes = String(v ?? ''))} />
           {#if detailError}
             <div class="rounded-lg border border-red-200 bg-red-50 p-2 text-red-700">{detailError}</div>
           {/if}
           <div class="flex justify-end gap-2">
-            <Button variant="ghost" onclick={closeDetail}>Tutup</Button>
+            <Button variant="ghost" onclick={closeDetail}>{ $t('admin.network.incidents.ui.close') }</Button>
             <Button variant="primary" disabled={detailSaving} onclick={() => void saveDetail()}>
-              {detailSaving ? 'Menyimpan…' : 'Simpan'}
+              {detailSaving ? $t('common.saving') : $t('common.save')}
             </Button>
           </div>
         {:else}
           <div class="flex justify-end">
-            <Button variant="ghost" onclick={closeDetail}>Tutup</Button>
+            <Button variant="ghost" onclick={closeDetail}>{ $t('admin.network.incidents.ui.close') }</Button>
           </div>
         {/if}
       </div>
     {/if}
   </Modal>
 
-  <Modal bind:show={showSimulate} title="Simulasi insiden">
+  <Modal bind:show={showSimulate} title={ $t('admin.network.incidents.ui.sim_title') }>
     <div class="space-y-3 text-sm">
       <p class="text-ink-500">Membuat insiden manual untuk menguji alur acknowledge/eskalasi. Gunakan hanya saat latihan.</p>
       <Field
         id="sim-router"
-        label="Router"
+        label={ $t('admin.network.incidents.ui.router') }
         type="select"
         stacked
         value={simRouter}
-        options={[{ value: '', label: 'Pilih router…' }, ...routers.map((r) => ({ value: r.id, label: r.name }))]}
+        options={[{ value: '', label: $t('admin.network.incidents.ui.pick_router') }, ...routers.map((r) => ({ value: r.id, label: r.name }))]}
         onchange={(v) => (simRouter = String(v ?? ''))}
       />
-      <Field id="sim-type" label="Tipe insiden" type="text" stacked value={simType} placeholder="mis. latency" onchange={(v) => (simType = String(v ?? ''))} />
+      <Field id="sim-type" label={ $t('admin.network.incidents.ui.sim_type') } type="text" stacked value={simType} placeholder={ $t('admin.network.incidents.ui.sim_type_ph') } onchange={(v) => (simType = String(v ?? ''))} />
       <Field
         id="sim-sev"
-        label="Severity"
+        label={ $t('admin.network.incidents.ui.sev_filter') }
         type="select"
         stacked
         value={simSeverity}
-        options={[{ value: 'info', label: 'Info' }, { value: 'warning', label: 'Peringatan' }, { value: 'critical', label: 'Kritis' }]}
+        options={[{ value: 'info', label: $t('admin.network.incidents.ui.severities.info') }, { value: 'warning', label: $t('admin.network.incidents.ui.severities.warning') }, { value: 'critical', label: $t('admin.network.incidents.ui.severities.critical') }]}
         onchange={(v) => (simSeverity = String(v ?? 'warning') as 'info' | 'warning' | 'critical')}
       />
-      <Field id="sim-iface" label="Antarmuka (opsional)" type="text" stacked value={simInterface} placeholder="mis. ether1" onchange={(v) => (simInterface = String(v ?? ''))} />
-      <Field id="sim-msg" label="Pesan (opsional)" type="textarea" stacked value={simMessage} onchange={(v) => (simMessage = String(v ?? ''))} />
+      <Field id="sim-iface" label={ $t('admin.network.incidents.ui.sim_iface') } type="text" stacked value={simInterface} placeholder={ $t('admin.network.incidents.ui.sim_iface_ph') } onchange={(v) => (simInterface = String(v ?? ''))} />
+      <Field id="sim-msg" label={ $t('admin.network.incidents.ui.sim_msg') } type="textarea" stacked value={simMessage} onchange={(v) => (simMessage = String(v ?? ''))} />
       {#if simError}
         <div class="rounded-lg border border-red-200 bg-red-50 p-2 text-red-700">{simError}</div>
       {/if}
       <div class="flex justify-end gap-2">
-        <Button variant="ghost" onclick={() => (showSimulate = false)}>Batal</Button>
+        <Button variant="ghost" onclick={() => (showSimulate = false)}>{ $t('common.cancel') }</Button>
         <Button variant="primary" disabled={simBusy} onclick={() => void submitSimulate()}>
-          {simBusy ? 'Membuat…' : 'Buat simulasi'}
+          {simBusy ? $t('admin.network.incidents.ui.sim_making') : $t('admin.network.incidents.ui.sim_run')}
         </Button>
       </div>
     </div>

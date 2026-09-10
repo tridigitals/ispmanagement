@@ -27,13 +27,15 @@ export function severityWeight(severity: string): number {
   return 0;
 }
 
-export function severityLabel(severity: string): string {
+export function severityLabel(severity: string, tt?: (k: string) => string): string {
+  if (tt) return tt('admin.network.incidents.ui.severities.' + (severity === 'critical' || severity === 'warning' ? severity : 'info'));
   if (severity === 'critical') return 'Kritis';
   if (severity === 'warning') return 'Peringatan';
   return 'Info';
 }
 
-export function statusLabel(status: string): string {
+export function statusLabel(status: string, tt?: (k: string) => string): string {
+  if (tt && ['open','ack','in_progress','resolved'].includes(status)) return tt('admin.network.incidents.ui.status.' + status);
   if (status === 'open') return 'Terbuka';
   if (status === 'ack') return 'Diakui';
   if (status === 'in_progress') return 'Ditangani';
