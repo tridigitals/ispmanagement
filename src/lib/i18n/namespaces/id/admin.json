@@ -3400,7 +3400,11 @@
   "backups": {
     "disabled_title": "Dinonaktifkan untuk Tenant",
     "disabled_desc": "Backup dikelola oleh Super Admin. Hubungi support jika perlu restore.",
-    "disabled_body": "Backup/restore tenant dinonaktifkan untuk mengurangi risiko keamanan. Data Anda tetap tercakup oleh backup global."
+    "disabled_body": "Backup/restore tenant dinonaktifkan untuk mengurangi risiko keamanan. Data Anda tetap tercakup oleh backup global.",
+    "title": "Cadangan",
+    "desc": "Salinan cadangan basis data dan berkas. Fitur ini sedang dinonaktifkan di tenant ini.",
+    "off_title": "Cadangan dinonaktifkan",
+    "off_body": "Layanan cadangan belum diaktifkan untuk tenant ini. Hubungi administrator sistem untuk mengaktifkannya kembali."
   },
   "overview": {
     "loading": "Memuat data sistem...",
@@ -4529,5 +4533,12 @@
     "v2_col_actor": "Aktor",
     "v2_col_action": "Aksi",
     "v2_col_target": "Target"
+  },
+  "settings_v2": {
+    "title": "Pengaturan",
+    "eyebrow": "Konfigurasi tenant",
+    "desc": "Perubahan berlaku untuk seluruh pengguna di tenant ini.",
+    "others": "Bagian lain",
+    "legacy_note": "masih memakai tampilan lama"
   }
 }

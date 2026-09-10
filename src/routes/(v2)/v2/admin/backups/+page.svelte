@@ -25,11 +25,11 @@
   });
 </script>
 
-<AppShell title="Cadangan">
+<AppShell title={ $t('admin.backups.title') }>
   <PageHeader
-    title="Cadangan"
+    title={ $t('admin.backups.title') }
     eyebrow={ $t('admin.eyebrows.system') }
-    desc="Salinan cadangan basis data dan berkas. Fitur ini sedang dinonaktifkan di tenant ini."
+    desc={ $t('admin.backups.desc') }
   />
 
   <div class="mt-4">
@@ -39,10 +39,9 @@
           <Icon name="shield" size={22} />
         </span>
         <div class="min-w-0">
-          <h2 class="text-base font-semibold text-ink-900">Cadangan dinonaktifkan</h2>
+          <h2 class="text-base font-semibold text-ink-900">{ $t('admin.backups.off_title') }</h2>
           <p class="mt-1 text-sm text-ink-500">
-            Layanan cadangan belum diaktifkan untuk tenant ini. Hubungi administrator
-            sistem untuk mengaktifkannya kembali.
+            { $t('admin.backups.off_body') }
           </p>
         </div>
       </div>

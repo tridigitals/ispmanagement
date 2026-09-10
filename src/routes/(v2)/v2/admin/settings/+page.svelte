@@ -44,6 +44,7 @@
   import { api } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import type { Setting } from '$lib/api/client';
+  import { t } from 'svelte-i18n';
   import {
     AppShell,
     Button,
@@ -193,11 +194,11 @@
   }
 </script>
 
-<AppShell title="Pengaturan">
+<AppShell title={ $t('admin.settings_v2.title') }>
   <PageHeader
-    title="Pengaturan"
-    eyebrow="Konfigurasi tenant"
-    desc="Perubahan berlaku untuk seluruh pengguna di tenant ini."
+    title={ $t('admin.settings_v2.title') }
+    eyebrow={ $t('admin.settings_v2.eyebrow') }
+    desc={ $t('admin.settings_v2.desc') }
   />
 
   {#if loading}
@@ -267,9 +268,9 @@
          eksplisit, bukan disembunyikan: pengguna perlu tahu ke mana harus pergi
          alih-alih mengira fiturnya hilang di versi baru. -->
     <div class="mt-8">
-      <Card title="Bagian lain">
+      <Card title={ $t('admin.settings_v2.others') }>
         {#snippet aside()}
-          <span class="text-sm text-ink-400">masih memakai tampilan lama</span>
+          <span class="text-sm text-ink-400">{ $t('admin.settings_v2.legacy_note') }</span>
         {/snippet}
         <ul class="grid gap-2 sm:grid-cols-2">
           {#each PANEL_SECTIONS as s (s.id)}
