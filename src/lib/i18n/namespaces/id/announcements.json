@@ -147,6 +147,22 @@
     "aud_admins": "Admin tenant",
     "aud_customers": "Pelanggan berakun portal",
     "aud_active": "Pelanggan berlangganan aktif",
-    "aud_suspended": "Pelanggan tersuspensi"
+    "aud_suspended": "Pelanggan tersuspensi",
+    "title": "Pengumuman",
+    "all_levels": "Semua tingkat",
+    "all_kinds": "Semua jenis",
+    "clear_filters": "Bersihkan filter",
+    "count_updated": "{n} pengumuman · Diperbarui",
+    "fetching": "Mengambil pengumuman…",
+    "empty": "Belum ada pengumuman",
+    "empty_hint": "Nantikan update selanjutnya.",
+    "all": "Semua",
+    "f_success": "Berhasil",
+    "f_warning": "Peringatan",
+    "f_error": "Penting",
+    "f_post": "Postingan",
+    "f_banner": "Banner",
+    "f_level": "Tingkat",
+    "f_kind": "Jenis"
   }
 }

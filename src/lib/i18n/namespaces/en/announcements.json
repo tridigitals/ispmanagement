@@ -147,6 +147,22 @@
     "aud_admins": "Tenant admins",
     "aud_customers": "Customers with portal accounts",
     "aud_active": "Active subscribers",
-    "aud_suspended": "Suspended customers"
+    "aud_suspended": "Suspended customers",
+    "title": "Announcements",
+    "all_levels": "All levels",
+    "all_kinds": "All types",
+    "clear_filters": "Clear filters",
+    "count_updated": "{n} announcements · Updated",
+    "fetching": "Fetching announcements…",
+    "empty": "No announcements yet",
+    "empty_hint": "Stay tuned for the next update.",
+    "all": "All",
+    "f_success": "Success",
+    "f_warning": "Warning",
+    "f_error": "Urgent",
+    "f_post": "Post",
+    "f_banner": "Banner",
+    "f_level": "Level",
+    "f_kind": "Type"
   }
 }

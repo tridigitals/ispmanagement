@@ -20,6 +20,7 @@
   import Button from '$lib/components/ds/Button.svelte';
   import Field from '$lib/components/ds/Field.svelte';
   import type { StatusTone } from '$lib/components/ds/tokens';
+  import { t } from 'svelte-i18n';
 
   const API_BASE = getApiBaseUrl();
 
@@ -46,7 +47,7 @@
     return 'info';
   }
   function label(sev: string) {
-    return { success: 'Berhasil', warning: 'Peringatan', error: 'Penting' }[sev] ?? 'Info';
+    return { success: $t('announcements.v2.f_success'), warning: $t('announcements.v2.f_warning'), error: $t('announcements.v2.f_error') }[sev] ?? 'Info';
   }
   function clearFilters() {
     q = '';
@@ -112,14 +113,14 @@
   }
 </script>
 
-<PortalShell title="Pengumuman">
+<PortalShell title={ $t('announcements.v2.title') }>
   <PageHeader
-    title="Pengumuman"
-    desc="Update terbaru dari ISP."
+    title={ $t('announcements.v2.title') }
+    desc={ $t('announcements.v2.desc') }
   >
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" disabled={loading} onclick={() => load(true)}>
-        Segarkan
+        { $t('common.refresh') }
       </Button>
     {/snippet}
   </PageHeader>
@@ -127,35 +128,35 @@
   <div class="mb-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_170px_150px]">
     <Field
       id="ann-search"
-      label="Cari"
+      label={ $t('common.search') }
       type="text"
       value={q}
-      placeholder="Cari pengumuman…"
+      placeholder={ $t('announcements.v2.search_ph') }
       onchange={(v) => (q = v)}
     />
     <Field
       id="ann-sev"
-      label="Tingkat"
+      label={ $t('announcements.v2.f_level') }
       type="select"
       value={sev}
       options={[
-        { value: 'all', label: 'Semua' },
+        { value: 'all', label: $t('announcements.v2.all') },
         { value: 'info', label: 'Info' },
-        { value: 'success', label: 'Berhasil' },
-        { value: 'warning', label: 'Peringatan' },
-        { value: 'error', label: 'Penting' },
+        { value: 'success', label: $t('announcements.v2.f_success') },
+        { value: 'warning', label: $t('announcements.v2.f_warning') },
+        { value: 'error', label: $t('announcements.v2.f_error') },
       ]}
       onchange={(v) => (sev = v)}
     />
     <Field
       id="ann-mode"
-      label="Jenis"
+      label={ $t('announcements.v2.f_kind') }
       type="select"
       value={mode}
       options={[
-        { value: 'all', label: 'Semua' },
-        { value: 'post', label: 'Postingan' },
-        { value: 'banner', label: 'Banner' },
+        { value: 'all', label: $t('announcements.v2.all') },
+        { value: 'post', label: $t('announcements.v2.f_post') },
+        { value: 'banner', label: $t('announcements.v2.f_banner') },
       ]}
       onchange={(v) => (mode = v)}
     />
@@ -163,20 +164,20 @@
   {#if q.trim() || sev !== 'all' || mode !== 'all'}
     <div class="mb-4">
       <Button variant="ghost" size="sm" icon="close" onclick={clearFilters}>
-        Bersihkan filter
+        { $t('announcements.v2.clear_filters') }
       </Button>
     </div>
   {/if}
 
   {#if loading && rows.length === 0}
-    <Card title="Memuat…"><p class="text-sm text-ink-500">Mengambil pengumuman…</p></Card>
+    <Card title={ $t('common.loading') }><p class="text-sm text-ink-500">{ $t('announcements.v2.fetching') }</p></Card>
   {:else if rows.length === 0}
-    <Card title="Belum ada pengumuman"
-      ><p class="text-sm text-ink-500">Nantikan update selanjutnya.</p></Card
+    <Card title={ $t('announcements.v2.empty') }
+      ><p class="text-sm text-ink-500">{ $t('announcements.v2.empty_hint') }</p></Card
     >
   {:else}
     <p class="mb-3 text-sm text-ink-500">
-      {rows.length} pengumuman · Diperbarui
+      { $t('announcements.v2.count_updated', { values: { n: rows.length } }) }
       {formatDateTime(new Date().toISOString(), { timeZone: $appSettings.app_timezone })}
     </p>
     <div class="grid gap-4 md:grid-cols-2">
@@ -207,7 +208,7 @@
     {#if hasMore}
       <div class="mt-4 flex justify-center">
         <Button variant="secondary" icon="chevronDown" disabled={loadingMore} onclick={loadMore}>
-          {loadingMore ? 'Memuat…' : 'Muat lagi'}
+          {loadingMore ? $t('common.loading') : $t('common.load_more')}
         </Button>
       </div>
     {/if}
