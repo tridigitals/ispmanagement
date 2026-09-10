@@ -113,36 +113,36 @@
   }
 
   function getAssetSummary(item: NetworkAssetListItem): string[] {
-    const occupancy = getNetworkAssetPortOccupancySummary(item, rows);
+    const occupancy = getNetworkAssetPortOccupancySummary(item, rows, undefined, (k) => $t(k));
     if (occupancy.length > 0) return occupancy;
     const detailSummary = getNetworkAssetDetailSummary(item);
     const coordinateSummary = formatNetworkAssetCoordinates(item.latitude, item.longitude);
     return coordinateSummary ? [...detailSummary, `Peta ${coordinateSummary}`] : detailSummary;
   }
 
-  const columns: Column[] = [
-    { key: 'name', label: 'Aset' },
-    { key: 'asset_type', label: 'Tipe' },
-    { key: 'status', label: 'Status' },
-    { key: 'serial_number', label: 'Serial' },
-    { key: 'customer_name', label: 'Relasi' },
-    { key: 'location_label', label: 'Topologi' },
-    { key: 'updated_at', label: 'Diperbarui' },
+  const columns = $derived<Column[]>([
+    { key: 'name', label: $t('admin.network.assets.v2.col_asset') },
+    { key: 'asset_type', label: $t('admin.network.assets.v2.col_type') },
+    { key: 'status', label: $t('admin.network.assets.v2.col_status') },
+    { key: 'serial_number', label: $t('admin.network.assets.v2.col_serial') },
+    { key: 'customer_name', label: $t('admin.network.assets.v2.col_relation') },
+    { key: 'location_label', label: $t('admin.network.assets.v2.col_topology') },
+    { key: 'updated_at', label: $t('admin.network.assets.v2.col_updated') },
     { key: 'actions', label: '' },
-  ];
+  ]);
 
   const typeOptions = $derived([
-    { value: 'all', label: 'Semua tipe' },
+    { value: 'all', label: $t('admin.network.assets.v2.all_types') },
     ...NETWORK_ASSET_TYPE_GROUPS.flatMap((g) => g.types.map((t) => ({ value: t, label: getNetworkAssetTypeLabel(t) }))),
   ]);
-  const statusOptions = [
-    { value: 'all', label: 'Semua status' },
-    { value: 'available', label: 'Tersedia' },
-    { value: 'reserved', label: 'Dipesan' },
-    { value: 'installed', label: 'Terpasang' },
-    { value: 'faulty', label: 'Rusak' },
-    { value: 'retired', label: 'Pensiun' },
-  ];
+  const statusOptions = $derived([
+    { value: 'all', label: $t('admin.network.assets.v2.all_status') },
+    { value: 'available', label: $t('admin.network.assets.v2.st_available') },
+    { value: 'reserved', label: $t('admin.network.assets.v2.st_reserved') },
+    { value: 'installed', label: $t('admin.network.assets.v2.st_installed') },
+    { value: 'faulty', label: $t('admin.network.assets.v2.st_faulty') },
+    { value: 'retired', label: $t('admin.network.assets.v2.st_retired') },
+  ]);
 
   const canRead = $derived($can('read', 'ftth_assets') || $can('manage', 'ftth_assets'));
   const canManage = $derived($can('manage', 'ftth_assets'));
@@ -224,10 +224,10 @@
       const detailErrors = validateNetworkAssetDetailDraft(draft.asset_type, detailDraft);
       if (detailErrors.length > 0) throw new Error(detailErrors[0]);
       const parsed = parseNetworkAssetCoordinates(draft.latitude, draft.longitude);
-      if (parsed.error === 'pair') throw new Error('Latitude dan longitude harus diisi bersamaan.');
-      if (parsed.error === 'invalid') throw new Error('Latitude dan longitude harus angka yang valid.');
-      if (parsed.error === 'latitude_range') throw new Error('Latitude harus di antara -90 dan 90.');
-      if (parsed.error === 'longitude_range') throw new Error('Longitude harus di antara -180 dan 180.');
+      if (parsed.error === 'pair') throw new Error($t('admin.network.assets.v2.e_pair'));
+      if (parsed.error === 'invalid') throw new Error($t('admin.network.assets.v2.e_invalid'));
+      if (parsed.error === 'latitude_range') throw new Error($t('admin.network.assets.v2.e_lat'));
+      if (parsed.error === 'longitude_range') throw new Error($t('admin.network.assets.v2.e_lng'));
       const payload = buildNetworkAssetSavePayload({
         draft: {
           ...draft,
@@ -252,7 +252,7 @@
       draft = emptyDraft();
       detailDraft = createNetworkAssetDetailDraft(draft.asset_type, {});
       await load();
-      toast.success(wasEdit ? 'Aset diperbarui.' : 'Aset dibuat.');
+      toast.success(wasEdit ? $t('admin.network.assets.v2.t_updated') : $t('admin.network.assets.v2.t_created'));
     } catch (e) {
       toast.error(extractApiErrorMessage(e));
     } finally {
@@ -272,7 +272,7 @@
     try {
       await api.networkAssets.delete(row.id);
       rows = rows.filter((item) => item.id !== row.id);
-      toast.success('Aset dihapus.');
+      toast.success($t('admin.network.assets.v2.t_deleted'));
     } catch (e) {
       toast.error(extractApiErrorMessage(e));
     }
@@ -280,7 +280,7 @@
 
   function openOnMap(row: NetworkAssetListItem) {
     if (row.latitude == null || row.longitude == null) {
-      toast.error('Aset belum punya koordinat peta.');
+      toast.error($t('admin.network.assets.v2.t_nocoord'));
       return;
     }
     void goto(
@@ -293,34 +293,34 @@
     );
   }
 </script>
-<AppShell title="Aset FTTH">
+<AppShell title={ $t('admin.network.assets.v2.title') }>
   <PageHeader
-    title="Aset FTTH"
+    title={ $t('admin.network.assets.v2.title') }
     eyebrow={ $t('admin.eyebrows.network') }
-    desc="Registri perangkat lapangan — ONT, OLT, ODP, kabel, dan tiang."
+    desc={ $t('admin.network.assets.v2.desc') }
   >
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" onclick={() => void load()} disabled={loading}>
         { $t('common.refresh') }
       </Button>
       {#if canManage}
-        <Button variant="primary" onclick={openCreate}>Aset baru</Button>
+        <Button variant="primary" onclick={openCreate}>{ $t('admin.network.assets.v2.new_btn') }</Button>
       {/if}
     {/snippet}
   </PageHeader>
 
   <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-    <StatTile label="Total aset" value={String(stats.total)} hint={`${stats.installed} terpasang`} />
-    <StatTile label="Terpasang" value={String(stats.installed)} hint={`dari ${stats.total} aset`} tone="positive" />
-    <StatTile label="Tersedia" value={String(stats.available)} hint="siap dipasang" />
-    <StatTile label="Rusak" value={String(stats.faulty)} hint="perlu tindak lanjut" tone="negative" />
+    <StatTile label={ $t('admin.network.assets.v2.st_total') } value={String(stats.total)} hint={ $t('admin.network.assets.v2.h_installed', { values: { n: stats.installed } }) } />
+    <StatTile label={ $t('admin.network.assets.v2.st_installed') } value={String(stats.installed)} hint={ $t('admin.network.assets.v2.h_from_total', { values: { n: stats.total } }) } tone="positive" />
+    <StatTile label={ $t('admin.network.assets.v2.st_available') } value={String(stats.available)} hint={ $t('admin.network.assets.v2.h_ready') } />
+    <StatTile label={ $t('admin.network.assets.v2.st_faulty') } value={String(stats.faulty)} hint={ $t('admin.network.assets.v2.h_followup') } tone="negative" />
   </div>
 
-  <Card title="Filter">
+  <Card title={ $t('admin.network.assets.v2.f_filter') }>
     <div class="grid gap-3 sm:grid-cols-3">
-      <Field id="as-q" label="Cari" type="text" stacked value={q} onchange={(v) => (q = v)} placeholder="Cari nama/kode/serial…" />
-      <Field id="as-type" label="Tipe" type="select" stacked value={assetType} options={typeOptions} onchange={(v) => (assetType = v)} />
-      <Field id="as-status" label="Status" type="select" stacked value={status} options={statusOptions} onchange={(v) => (status = v)} />
+      <Field id="as-q" label={ $t('common.search') } type="text" stacked value={q} onchange={(v) => (q = v)} placeholder={ $t('admin.network.assets.v2.search_ph') } />
+      <Field id="as-type" label={ $t('admin.network.assets.v2.col_type') } type="select" stacked value={assetType} options={typeOptions} onchange={(v) => (assetType = v)} />
+      <Field id="as-status" label={ $t('admin.network.assets.v2.col_status') } type="select" stacked value={status} options={statusOptions} onchange={(v) => (status = v)} />
     </div>
   </Card>
 
@@ -360,11 +360,11 @@
             <div class="text-xs text-ink-400">{getNetworkAssetGroupLabel(item.asset_group)}</div>
           </div>
         {:else if column.key === 'status'}
-          <Badge tone={assetStatusTone(item.status)} label={getNetworkAssetStatusLabel(item.status)} />
+          <Badge tone={assetStatusTone(item.status)} label={getNetworkAssetStatusLabel(item.status, (k) => $t(k))} />
         {:else if column.key === 'serial_number'}
           <span class="font-mono text-xs">{item.serial_number || '—'}</span>
         {:else if column.key === 'customer_name'}
-          <span class="text-sm text-ink-700">{buildNetworkAssetRelationText(item)}</span>
+          <span class="text-sm text-ink-700">{buildNetworkAssetRelationText(item, (k) => $t(k))}</span>
         {:else if column.key === 'location_label'}
           <span class="text-sm text-ink-700">{buildNetworkAssetTopologyText(item, rows)}</span>
         {:else if column.key === 'updated_at'}
@@ -372,10 +372,10 @@
         {:else if column.key === 'actions'}
           {#if canManage}
             <RowActions
-              primary={{ label: 'Sunting', icon: 'cog', onclick: () => void openEdit(item) }}
+              primary={{ label: $t('admin.network.assets.v2.a_edit'), icon: 'cog', onclick: () => void openEdit(item) }}
               rest={[
-                { label: 'Lihat di peta', icon: 'pin', disabled: item.latitude == null || item.longitude == null, disabledReason: 'Aset belum punya koordinat', onclick: () => openOnMap(item) },
-                { label: 'Hapus', icon: 'close', danger: true, onclick: () => remove(item) },
+                { label: $t('admin.network.assets.v2.a_map'), icon: 'pin', disabled: item.latitude == null || item.longitude == null, disabledReason: 'Aset belum punya koordinat', onclick: () => openOnMap(item) },
+                { label: $t('common.delete'), icon: 'close', danger: true, onclick: () => remove(item) },
               ]}
             />
           {/if}
@@ -401,8 +401,8 @@
 
 <ConfirmDialog
   bind:show={showDeleteConfirm}
-  title="Hapus aset?"
-  message={`Aset ${deleteTarget?.name || ''} yang dihapus tidak bisa dikembalikan.`}
+  title={ $t('admin.network.assets.v2.del_q') }
+  message={ $t('admin.network.assets.v2.del_msg', { values: { n: deleteTarget?.name || '' } }) }
   confirmText="Hapus"
   cancelText="Batal"
   type="danger"

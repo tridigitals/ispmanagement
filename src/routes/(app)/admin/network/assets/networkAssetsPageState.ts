@@ -65,9 +65,11 @@ export function isDistributionAssetType(assetType: string): boolean {
 
 export function buildNetworkAssetRelationText(
   asset: Pick<NetworkAssetListItem, 'asset_type' | 'customer_name' | 'parent_asset_name'>,
+  tt?: (k: string) => string,
 ): string {
   if (isDistributionAssetType(asset.asset_type)) {
     const upstream = String(asset.parent_asset_name || '').trim();
+    if (tt) return upstream ? tt('admin.network.assets.v2.upstream') + ': ' + upstream : tt('admin.network.assets.v2.topo_managed');
     return upstream ? `Upstream: ${upstream}` : 'Topology-managed';
   }
 

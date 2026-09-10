@@ -97,10 +97,18 @@ export function getNetworkAssetPortOccupancySummary(
     'id' | 'asset_type' | 'parent_asset_id' | 'status' | 'customer_id' | 'location_id'
   >[],
   topology?: NetworkAssetOccupancyTopologyArgs,
+  tt?: (k: string) => string,
 ): string[] {
   const occupancy = getNetworkAssetPortOccupancy(asset, allAssets, topology);
   if (!occupancy) return [];
 
+  if (tt) {
+    return [
+      tt('admin.network.assets.v2.cap_total') + ': ' + occupancy.total,
+      tt('admin.network.assets.v2.cap_used') + ': ' + occupancy.used,
+      tt('admin.network.assets.v2.cap_avail') + ': ' + occupancy.available,
+    ];
+  }
   return [
     `Port Capacity: ${occupancy.total}`,
     `Ports Used: ${occupancy.used}`,

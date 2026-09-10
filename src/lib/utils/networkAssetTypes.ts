@@ -74,12 +74,12 @@ export function getNetworkAssetGroupLabel(group: string): string {
   return group;
 }
 
-export function getNetworkAssetStatusLabel(status: string): string {
-  if (status === 'available') return 'Available';
-  if (status === 'reserved') return 'Reserved';
-  if (status === 'installed') return 'Installed';
-  if (status === 'faulty') return 'Faulty';
-  if (status === 'retired') return 'Retired';
+export function getNetworkAssetStatusLabel(status: string, tt?: (k: string) => string): string {
+  if (status === 'available') return tt ? tt('admin.network.assets.v2.st_available') : 'Available';
+  if (status === 'reserved') return tt ? tt('admin.network.assets.v2.st_reserved') : 'Reserved';
+  if (status === 'installed') return tt ? tt('admin.network.assets.v2.st_installed') : 'Installed';
+  if (status === 'faulty') return tt ? tt('admin.network.assets.v2.st_faulty') : 'Faulty';
+  if (status === 'retired') return tt ? tt('admin.network.assets.v2.st_retired') : 'Retired';
   return status;
 }
 
