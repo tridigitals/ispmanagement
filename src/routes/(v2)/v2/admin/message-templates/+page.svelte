@@ -75,33 +75,34 @@
   let showDeleteConfirm = $state(false);
   let deleteTargetId = $state<string | null>(null);
 
-  const useCaseOptions = [
-    { value: 'all', label: 'Semua keperluan' },
-    { value: 'billing', label: 'Tagihan' },
-    { value: 'installation', label: 'Instalasi' },
-    { value: 'support', label: 'Dukungan' },
-    { value: 'outage', label: 'Gangguan' },
-    { value: 'lifecycle', label: 'Siklus hidup' },
-    { value: 'custom', label: 'Kustom' },
-  ];
-  const channelOptions = [
-    { value: 'all', label: 'Semua kanal' },
+  const useCaseOptions = $derived([
+    { value: 'all', label: $t('admin.message_templates.v2.all_use') },
+    { value: 'billing', label: $t('admin.message_templates.v2.uc_billing') },
+    { value: 'installation', label: $t('admin.message_templates.use_cases.installation') },
+    { value: 'support', label: $t('admin.message_templates.v2.uc_support') },
+    { value: 'outage', label: $t('admin.message_templates.use_cases.outage') },
+    { value: 'lifecycle', label: $t('admin.message_templates.v2.uc_lifecycle') },
+    { value: 'custom', label: $t('admin.message_templates.v2.uc_custom') },
+  ]);
+  const channelOptions = $derived([
+    { value: 'all', label: $t('admin.message_templates.v2.all_chan') },
     { value: 'whatsapp', label: 'WhatsApp' },
     { value: 'email', label: 'Email' },
-    { value: 'both', label: 'Keduanya' },
-  ];
-  const statusOptions = [
-    { value: 'all', label: 'Semua status' },
-    { value: 'draft', label: 'Draf' },
-    { value: 'active', label: 'Aktif' },
-    { value: 'archived', label: 'Arsip' },
-  ];
-  const statusFormOptions = statusOptions.filter((o) => o.value !== 'all');
-  const triggerOptions = [
-    { value: 'manual', label: 'Manual' },
-    { value: 'automatic', label: 'Otomatis' },
-    { value: 'both', label: 'Keduanya' },
-  ];
+    { value: 'both', label: $t('admin.message_templates.both') },
+  ]);
+  const statusOptions = $derived([
+    { value: 'all', label: $t('admin.message_templates.v2.all_status') },
+    { value: 'draft', label: $t('admin.message_templates.v2.st_draft') },
+    { value: 'active', label: $t('admin.message_templates.statuses.active') },
+    { value: 'archived', label: $t('admin.message_templates.v2.st_arch') },
+  ],
+  );
+  const statusFormOptions = $derived(statusOptions.filter((o) => o.value !== 'all'));
+  const triggerOptions = $derived([
+    { value: 'manual', label: $t('admin.message_templates.triggers.manual') },
+    { value: 'automatic', label: $t('admin.message_templates.triggers.automatic') },
+    { value: 'both', label: $t('admin.message_templates.both') },
+  ]);
 
   function templateStatusTone(s: string): 'positive' | 'warning' | 'neutral' {
     if (s === 'active') return 'positive';
@@ -183,14 +184,14 @@
   async function saveTemplate() {
     if (!canManage || saving) return;
     if (!form.key.trim() || !form.name.trim()) {
-      toast.error('Kunci dan nama templat wajib diisi.');
+      toast.error($t('admin.message_templates.v2.t_required'));
       return;
     }
     saving = true;
     try {
       if (editing) await api.messageTemplates.update(editing.id, form);
       else await api.messageTemplates.create(form);
-      toast.success('Templat pesan disimpan.');
+      toast.success($t('admin.message_templates.v2.t_saved'));
       showEditor = false;
       await loadTemplates();
     } catch (e) {
@@ -210,7 +211,7 @@
     if (!deleteTargetId) return;
     try {
       await api.messageTemplates.delete(deleteTargetId);
-      toast.success('Templat pesan dihapus.');
+      toast.success($t('admin.message_templates.v2.t_deleted'));
       await loadTemplates();
     } catch (e) {
       toast.error(extractApiErrorMessage(e));
@@ -243,25 +244,25 @@
     else form.whatsappBody = `${form.whatsappBody || ''}${token}`;
   }
 </script>
-<AppShell title="Templat pesan">
+<AppShell title={ $t('admin.message_templates.v2.title') }>
   <PageHeader
-    title="Templat pesan"
+    title={ $t('admin.message_templates.v2.title') }
     eyebrow={ $t('admin.eyebrows.communication') }
-    desc="Templat WhatsApp & email dengan variabel pelanggan."
+    desc={ $t('admin.message_templates.v2.desc') }
   >
     {#snippet actions()}
       {#if canManage}
-        <Button variant="primary" onclick={openCreate}>Templat baru</Button>
+        <Button variant="primary" onclick={openCreate}>{ $t('admin.message_templates.v2.new') }</Button>
       {/if}
     {/snippet}
   </PageHeader>
 
-  <Card title="Filter">
+  <Card title={ $t('admin.message_templates.v2.filter') }>
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-      <Field id="mt-q" label="Cari" type="text" stacked value={q} onchange={(v) => { q = v; void loadTemplates(); }} placeholder="Cari kunci/nama…" />
-      <Field id="mt-usecase" label="Keperluan" type="select" stacked value={useCase} options={useCaseOptions} onchange={(v) => { useCase = v; void loadTemplates(); }} />
-      <Field id="mt-channel" label="Kanal" type="select" stacked value={channel} options={channelOptions} onchange={(v) => { channel = v as MessageTemplateChannel | 'all'; void loadTemplates(); }} />
-      <Field id="mt-status" label="Status" type="select" stacked value={status} options={statusOptions} onchange={(v) => { status = v as MessageTemplateStatus | 'all'; void loadTemplates(); }} />
+      <Field id="mt-q" label={ $t('common.search') } type="text" stacked value={q} onchange={(v) => { q = v; void loadTemplates(); }} placeholder={ $t('admin.message_templates.v2.search_ph') } />
+      <Field id="mt-usecase" label={ $t('admin.message_templates.v2.use_case') } type="select" stacked value={useCase} options={useCaseOptions} onchange={(v) => { useCase = v; void loadTemplates(); }} />
+      <Field id="mt-channel" label={ $t('admin.message_templates.fields.channel') } type="select" stacked value={channel} options={channelOptions} onchange={(v) => { channel = v as MessageTemplateChannel | 'all'; void loadTemplates(); }} />
+      <Field id="mt-status" label={ $t('admin.customers.columns.status') } type="select" stacked value={status} options={statusOptions} onchange={(v) => { status = v as MessageTemplateStatus | 'all'; void loadTemplates(); }} />
       <div class="flex items-end">
         <Button variant="ghost" icon="refresh" onclick={() => void loadTemplates()} disabled={loading}>
           Segarkan
@@ -271,10 +272,10 @@
   </Card>
 
   {#if loading}
-    <Card><div class="py-10 text-center text-sm text-ink-500">Memuat templat…</div></Card>
+    <Card><div class="py-10 text-center text-sm text-ink-500">{ $t('admin.message_templates.v2.loading') }</div></Card>
   {:else if templates.length === 0}
     <Card>
-      <EmptyState title="Belum ada templat" hint="Buat templat pertama untuk keperluan ini." />
+      <EmptyState title={ $t('admin.message_templates.v2.empty') } hint={ $t('admin.message_templates.v2.empty_hint') } />
     </Card>
   {:else}
     <div class="grid gap-3 md:grid-cols-2">
@@ -307,33 +308,33 @@
 <Modal
   bind:show={showEditor}
   width="min(1040px, calc(100vw - 2rem))"
-  title={editing ? `Sunting templat — ${editing.name}` : 'Templat baru'}
+  title={editing ? `Sunting templat — ${editing.name}` : $t('admin.message_templates.v2.new')}
   onclose={() => (showEditor = false)}
 >
   <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
     <div class="space-y-3">
       <div class="grid gap-3 sm:grid-cols-2">
-        <Field id="mt-f-key" label="Kunci" type="text" stacked value={form.key} onchange={(v) => (form.key = v)} placeholder="invoice_due_reminder" />
-        <Field id="mt-f-name" label="Nama" type="text" stacked value={form.name} onchange={(v) => (form.name = v)} placeholder="Pengingat jatuh tempo" />
+        <Field id="mt-f-key" label={ $t('admin.message_templates.v2.key') } type="text" stacked value={form.key} onchange={(v) => (form.key = v)} placeholder="invoice_due_reminder" />
+        <Field id="mt-f-name" label={ $t('admin.message_templates.fields.name') } type="text" stacked value={form.name} onchange={(v) => (form.name = v)} placeholder="Pengingat jatuh tempo" />
       </div>
-      <Field id="mt-f-desc" label="Deskripsi" type="text" stacked value={form.description || ''} onchange={(v) => (form.description = v)} />
+      <Field id="mt-f-desc" label={ $t('admin.message_templates.fields.description') } type="text" stacked value={form.description || ''} onchange={(v) => (form.description = v)} />
       <div class="grid gap-3 sm:grid-cols-3">
-        <Field id="mt-f-usecase" label="Keperluan" type="select" stacked value={form.useCase} options={useCaseOptions.filter((o) => o.value !== 'all')} onchange={(v) => (form.useCase = v)} />
-        <Field id="mt-f-channel" label="Kanal" type="select" stacked value={form.channel} options={channelOptions.filter((o) => o.value !== 'all')} onchange={(v) => (form.channel = v as MessageTemplateChannel)} />
-        <Field id="mt-f-status" label="Status" type="select" stacked value={form.status} options={statusFormOptions} onchange={(v) => (form.status = v as MessageTemplateStatus)} />
+        <Field id="mt-f-usecase" label={ $t('admin.message_templates.v2.use_case') } type="select" stacked value={form.useCase} options={useCaseOptions.filter((o) => o.value !== 'all')} onchange={(v) => (form.useCase = v)} />
+        <Field id="mt-f-channel" label={ $t('admin.message_templates.fields.channel') } type="select" stacked value={form.channel} options={channelOptions.filter((o) => o.value !== 'all')} onchange={(v) => (form.channel = v as MessageTemplateChannel)} />
+        <Field id="mt-f-status" label={ $t('admin.customers.columns.status') } type="select" stacked value={form.status} options={statusFormOptions} onchange={(v) => (form.status = v as MessageTemplateStatus)} />
       </div>
       <div class="grid gap-3 sm:grid-cols-2">
-        <Field id="mt-f-trigger" label="Pemicu" type="select" stacked value={form.triggerMode} options={triggerOptions} onchange={(v) => (form.triggerMode = v as MessageTemplateTriggerMode)} />
-        <Field id="mt-f-event" label="Kunci event" type="text" stacked value={form.eventKey || ''} onchange={(v) => (form.eventKey = v)} placeholder="invoice.due_reminder" />
+        <Field id="mt-f-trigger" label={ $t('admin.message_templates.v2.trigger') } type="select" stacked value={form.triggerMode} options={triggerOptions} onchange={(v) => (form.triggerMode = v as MessageTemplateTriggerMode)} />
+        <Field id="mt-f-event" label={ $t('admin.message_templates.v2.event_key') } type="text" stacked value={form.eventKey || ''} onchange={(v) => (form.eventKey = v)} placeholder="invoice.due_reminder" />
       </div>
-      <Field id="mt-f-wa" label="Isi WhatsApp" type="textarea" stacked rows={6} value={form.whatsappBody || ''} onchange={(v) => (form.whatsappBody = v)} />
-      <Field id="mt-f-subject" label="Subjek email" type="text" stacked value={form.emailSubject || ''} onchange={(v) => (form.emailSubject = v)} />
-      <Field id="mt-f-email" label="Isi email" type="textarea" stacked rows={8} value={form.emailBody || ''} onchange={(v) => (form.emailBody = v)} />
+      <Field id="mt-f-wa" label={ $t('admin.message_templates.v2.wa_body') } type="textarea" stacked rows={6} value={form.whatsappBody || ''} onchange={(v) => (form.whatsappBody = v)} />
+      <Field id="mt-f-subject" label={ $t('admin.message_templates.v2.email_subject') } type="text" stacked value={form.emailSubject || ''} onchange={(v) => (form.emailSubject = v)} />
+      <Field id="mt-f-email" label={ $t('admin.message_templates.v2.email_body') } type="textarea" stacked rows={8} value={form.emailBody || ''} onchange={(v) => (form.emailBody = v)} />
     </div>
     <aside class="space-y-3 rounded-xl bg-ink-50 p-3">
       <div>
         <div class="text-sm font-semibold text-ink-900">Variabel</div>
-        <p class="text-xs text-ink-500">Klik untuk menyisipkan ke isi pesan.</p>
+        <p class="text-xs text-ink-500">{ $t('admin.message_templates.v2.var_hint') }</p>
       </div>
       {#each variableGroups as group}
         <div>
@@ -352,11 +353,11 @@
         </div>
       {/each}
       <Button variant="secondary" onclick={() => void previewTemplate()} disabled={previewing}>
-        {previewing ? 'Mempratinjau…' : 'Pratinjau'}
+        {previewing ? 'Mempratinjau…' : $t('admin.message_templates.v2.preview')}
       </Button>
       {#if preview}
         <div class="space-y-1.5 rounded-lg bg-white p-3 text-sm ring-1 ring-ink-200">
-          <div class="text-xs font-medium text-ink-500">Pratinjau</div>
+          <div class="text-xs font-medium text-ink-500">{ $t('admin.message_templates.v2.preview') }</div>
           {#if preview.whatsappBody}<p class="whitespace-pre-wrap">{preview.whatsappBody}</p>{/if}
           {#if preview.emailSubject}<p><b>{preview.emailSubject}</b></p>{/if}
           {#if preview.emailBody}<p class="whitespace-pre-wrap">{preview.emailBody}</p>{/if}
@@ -366,19 +367,19 @@
     </aside>
   </div>
   <div class="mt-4 flex justify-end gap-2">
-    <Button variant="ghost" onclick={() => (showEditor = false)}>Batal</Button>
+    <Button variant="ghost" onclick={() => (showEditor = false)}>{ $t('common.cancel') }</Button>
     <Button variant="primary" onclick={() => void saveTemplate()} disabled={!canManage || saving}>
-      {saving ? 'Menyimpan…' : 'Simpan'}
+      {saving ? 'Menyimpan…' : $t('common.save')}
     </Button>
   </div>
 </Modal>
 
 <ConfirmDialog
   bind:show={showDeleteConfirm}
-  title="Hapus templat?"
-  message="Templat yang dihapus tidak bisa dikembalikan."
+  title={ $t('admin.message_templates.v2.del_title') }
+  message={ $t('admin.message_templates.v2.del_note') }
   confirmText="Hapus"
-  cancelText="Batal"
+  cancelText={ $t('common.cancel') }
   type="danger"
   onconfirm={() => void handleConfirmDelete()}
   oncancel={() => { deleteTargetId = null; }}
