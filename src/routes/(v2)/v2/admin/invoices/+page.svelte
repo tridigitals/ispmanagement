@@ -35,6 +35,7 @@
   import { fetchAllPages } from '$lib/utils/fetchAllPages';
   import type { Invoice } from '$lib/api/types';
 
+  import { t } from 'svelte-i18n';
   type StatusKey = 'all' | 'pending' | 'verification_pending' | 'paid' | 'failed';
 
   let rows = $state<Invoice[]>([]);
@@ -73,12 +74,12 @@
   const canManage = $derived($can('manage', 'billing'));
   const columns = $derived<Column[]>([
     ...(canManage ? [{ key: 'select', label: '', width: '44px' }] : []),
-    { key: 'invoice_number', label: 'Invoice', num: true },
-    { key: 'description', label: 'Keterangan', hideSm: true },
-    { key: 'amount', label: 'Jumlah', align: 'right', num: true },
-    { key: 'status', label: 'Status' },
-    { key: 'due_date', label: 'Jatuh tempo', hideSm: true },
-    { key: 'actions', label: 'Aksi', align: 'right', width: '110px' },
+    { key: 'invoice_number', label: $t('admin.invoices.columns.invoice_number'), num: true },
+    { key: 'description', label: $t('admin.invoices.columns.description'), hideSm: true },
+    { key: 'amount', label: $t('admin.invoices.columns.amount'), align: 'right', num: true },
+    { key: 'status', label: $t('common.status') },
+    { key: 'due_date', label: $t('admin.invoices.columns.due_date'), hideSm: true },
+    { key: 'actions', label: $t('admin.invoices.v2list.col_actions'), align: 'right', width: '110px' },
   ]);
 
   const billed = $derived(
@@ -90,15 +91,15 @@
   const collectionRate = $derived(billed === 0 ? 0 : (summary.paid.amount / billed) * 100);
 
   const chips = $derived([
-    { key: 'all' as StatusKey, label: 'Semua', count: summary.count },
-    { key: 'pending' as StatusKey, label: 'Belum dibayar', count: summary.pending.n },
+    { key: 'all' as StatusKey, label: $t('common.all'), count: summary.count },
+    { key: 'pending' as StatusKey, label: $t('admin.invoices.v2list.status.pending'), count: summary.pending.n },
     {
       key: 'verification_pending' as StatusKey,
-      label: 'Perlu verifikasi',
+      label: $t('admin.invoices.v2list.status.verification_pending'),
       count: summary.verification.n,
     },
-    { key: 'paid' as StatusKey, label: 'Lunas', count: summary.paid.n },
-    { key: 'failed' as StatusKey, label: 'Gagal', count: summary.failed.n },
+    { key: 'paid' as StatusKey, label: $t('admin.invoices.v2list.status.paid'), count: summary.paid.n },
+    { key: 'failed' as StatusKey, label: $t('admin.invoices.v2list.status.failed'), count: summary.failed.n },
   ]);
 
   function isOverdue(inv: Invoice): boolean {
@@ -227,15 +228,15 @@
   });
 </script>
 
-<AppShell title="Tagihan" badges={{ invoicesOverdue: summary.overdue.n }}>
+<AppShell title={ $t('admin.invoices.v2list.title') } badges={{ invoicesOverdue: summary.overdue.n }}>
   <PageHeader
-    title="Tagihan"
+    title={ $t('admin.invoices.v2list.title') }
     eyebrow={summaryLoading
-      ? 'Menghitung seluruh tagihan…'
+      ? $t('admin.invoices.v2list.ey_calc')
       : summary.complete
-        ? `${summary.count} tagihan dihitung`
-        : `minimal ${summary.count} tagihan (data belum lengkap)`}
-    desc="Ringkasan di bawah dihitung atas seluruh tagihan tenant, bukan hanya halaman yang tampil."
+        ? $t('admin.invoices.v2list.ey_count', { values: { n: summary.count } })
+        : $t('admin.invoices.v2list.ey_min', { values: { n: summary.count } })}
+    desc={ $t('admin.invoices.v2list.desc') }
   >
     {#snippet actions()}
       {#if canManage}
@@ -268,31 +269,31 @@
   <Card class="mb-4">
     <div class="grid grid-cols-2 gap-5 lg:grid-cols-4">
       <StatTile
-        label="Piutang"
+        label={ $t('admin.invoices.v2list.st_receivable') }
         value={formatRupiah(summary.pending.amount + summary.verification.amount)}
         hint={summaryLoading
-          ? 'menghitung…'
-          : `${summary.pending.n + summary.verification.n} belum lunas · ${summary.overdue.n} jatuh tempo`}
+          ? $t('admin.invoices.v2list.calculating')
+          : $t('admin.invoices.v2list.h_unpaid', { values: { a: summary.pending.n + summary.verification.n, b: summary.overdue.n } })}
         tone="negative"
       />
       <StatTile
-        label="Lewat 90 hari"
+        label={ $t('admin.invoices.v2list.st_over90') }
         value={formatRupiah(summary.aged90.amount)}
         hint={summaryLoading
-          ? 'menghitung…'
-          : `${summary.aged90.n} dari ${summary.overdue.n} tagihan jatuh tempo`}
+          ? $t('admin.invoices.v2list.calculating')
+          : $t('admin.invoices.v2list.h_of_due', { values: { a: summary.aged90.n, b: summary.overdue.n } })}
         tone="negative"
       />
       <StatTile
-        label="Terbayar"
+        label={ $t('admin.invoices.v2list.st_paid') }
         value={formatRupiah(summary.paid.amount)}
         hint={summaryLoading ? 'menghitung…' : `${summary.paid.n} tagihan lunas`}
         tone="positive"
       />
       <StatTile
-        label="Tingkat penagihan"
+        label={ $t('admin.invoices.v2list.st_collection') }
         value={formatPercent(collectionRate)}
-        hint={summaryLoading ? 'menghitung…' : `dari ${formatRupiah(billed)} diterbitkan`}
+        hint={summaryLoading ? $t('admin.invoices.v2list.calculating') : $t('admin.invoices.v2list.h_issued', { values: { a: formatRupiah(billed) } })}
         tone={collectionRate < 50 ? 'negative' : 'positive'}
       />
     </div>
@@ -356,7 +357,7 @@
               type="checkbox"
               checked={selected.has(inv.id)}
               onchange={() => toggle(inv.id)}
-              aria-label="Pilih {inv.invoice_number}"
+              aria-label={ $t('admin.invoices.v2list.pick_aria', { values: { n: inv.invoice_number } }) }
               class="size-4 rounded border-ink-300"
             />
           </label>
@@ -372,7 +373,7 @@
             {#if isOverdue(inv)}
               <!-- Umur tunggakan lebih berguna daripada label "lewat"
                    telanjang: 474 dari 476 piutang di sini sudah >90 hari. -->
-              <Badge tone="negative" label="{daysLate(inv)} hari" />
+              <Badge tone="negative" label="{ $t('admin.invoices.v2list.days_late', { values: { n: daysLate(inv) } }) }" />
             {/if}
           </div>
         {:else if col.key === 'due_date'}
@@ -380,15 +381,15 @@
         {:else if col.key === 'actions'}
           <RowActions
             primary={{
-              label: 'Detail',
+              label: $t('common.details'),
               icon: 'chevronRight',
               onclick: () => goto(`/v2/admin/invoices/${inv.id}`),
             }}
             rest={canManage
               ? [
-                  { label: 'Halaman bayar', icon: 'chevronRight', onclick: () => window.open(`/pay/${inv.id}`, '_blank') },
-                  { label: 'Verifikasi bayar', icon: 'check' },
-                  { label: 'Kirim ulang', icon: 'mail' },
+                  { label: $t('admin.invoices.v2list.pay_page'), icon: 'chevronRight', onclick: () => window.open(`/pay/${inv.id}`, '_blank') },
+                  { label: $t('admin.invoices.v2list.verify_page'), icon: 'check' },
+                  { label: $t('admin.invoices.v2list.resend'), icon: 'mail' },
                 ]
               : []}
           />

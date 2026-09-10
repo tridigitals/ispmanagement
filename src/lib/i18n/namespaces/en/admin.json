@@ -3858,7 +3858,34 @@
       "t_marked_failed": "Invoice marked as failed.",
       "t_reason_req": "Rejection reason is required."
     },
-    "details_title": "Details"
+    "details_title": "Details",
+    "v2list": {
+      "title": "Billing",
+      "desc": "The summary below covers ALL tenant bills, not just the visible page.",
+      "ey_calc": "Calculating all bills…",
+      "ey_count": "{n} bills counted",
+      "ey_min": "at least {n} bills (data incomplete)",
+      "st_receivable": "Receivable",
+      "calculating": "calculating…",
+      "h_unpaid": "{a} unpaid · {b} overdue",
+      "st_over90": "Over 90 days",
+      "h_of_due": "{a} of {b} overdue bills",
+      "st_paid": "Paid",
+      "st_collection": "Collection rate",
+      "h_issued": "of {a} issued",
+      "pick_aria": "Select {n}",
+      "days_late": "{n} days",
+      "pay_page": "Payment page",
+      "verify_page": "Verify payment",
+      "resend": "Resend",
+      "status": {
+        "pending": "Unpaid",
+        "verification_pending": "Needs verification",
+        "paid": "Paid",
+        "failed": "Failed"
+      },
+      "col_actions": "Actions"
+    }
   },
   "billing_collection": {
     "title": "Billing Collection Logs",

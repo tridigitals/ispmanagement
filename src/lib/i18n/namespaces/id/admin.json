@@ -3585,7 +3585,34 @@
       "t_marked_failed": "Invoice ditandai gagal.",
       "t_reason_req": "Alasan penolakan wajib diisi."
     },
-    "details_title": "Rincian"
+    "details_title": "Rincian",
+    "v2list": {
+      "title": "Tagihan",
+      "desc": "Ringkasan di bawah dihitung atas seluruh tagihan tenant, bukan hanya halaman yang tampil.",
+      "ey_calc": "Menghitung seluruh tagihan…",
+      "ey_count": "{n} tagihan dihitung",
+      "ey_min": "minimal {n} tagihan (data belum lengkap)",
+      "st_receivable": "Piutang",
+      "calculating": "menghitung…",
+      "h_unpaid": "{a} belum lunas · {b} jatuh tempo",
+      "st_over90": "Lewat 90 hari",
+      "h_of_due": "{a} dari {b} tagihan jatuh tempo",
+      "st_paid": "Terbayar",
+      "st_collection": "Tingkat penagihan",
+      "h_issued": "dari {a} diterbitkan",
+      "pick_aria": "Pilih {n}",
+      "days_late": "{n} hari",
+      "pay_page": "Halaman bayar",
+      "verify_page": "Verifikasi bayar",
+      "resend": "Kirim ulang",
+      "status": {
+        "pending": "Belum dibayar",
+        "verification_pending": "Perlu verifikasi",
+        "paid": "Lunas",
+        "failed": "Gagal"
+      },
+      "col_actions": "Aksi"
+    }
   },
   "billing_collection": {
     "title": "Log Billing Collection",
