@@ -45,6 +45,7 @@
     waitingLabel,
     type TicketStatus,
   } from '$lib/utils/supportStats';
+  import { t } from 'svelte-i18n';
 
   type Filter = TicketStatus | 'unassigned' | null;
 
@@ -183,7 +184,7 @@
 <AppShell title="Tiket dukungan">
   <PageHeader
     title="Tiket dukungan"
-    eyebrow="Layanan"
+    eyebrow={ $t('admin.eyebrows.services') }
     desc="Keluhan dan permintaan pelanggan. Ringkasan menghitung setiap status, termasuk yang sudah diselesaikan."
   >
     {#snippet actions()}

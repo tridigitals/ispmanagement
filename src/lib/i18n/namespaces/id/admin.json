@@ -1357,10 +1357,56 @@
           "go_to_list": "Ke daftar PPPoE"
         },
         "columns": {
-          "password": "Password"
+          "password": "Password",
+          "profile": "Profil"
         },
         "summary": {
           "items": "item"
+        },
+        "v2": {
+          "title": "Impor PPPoE",
+          "desc": "Tarik akun PPPoE dari router MikroTik ke database.",
+          "back_pppoe": "Kembali ke PPPoE",
+          "source": "Sumber & mapping",
+          "inc_disabled": "Sertakan akun nonaktif?",
+          "customer": "Pelanggan (opsional)",
+          "no_map": "Tanpa mapping",
+          "loc_required": "Wajib isi bila pelanggan dipilih.",
+          "scan": "Pindai router",
+          "clear": "Bersihkan",
+          "items": "Item",
+          "h_cand": "Kandidat pindaian",
+          "h_fresh": "Belum ada di DB",
+          "h_upd": "Sudah ada, beda data",
+          "h_same": "Tidak berubah",
+          "sel_nu": "Pilih baru+perbarui",
+          "sel_all": "Pilih semua",
+          "rescan": "Pindai ulang",
+          "no_cand": "Tidak ada kandidat",
+          "result": "Hasil impor",
+          "h_new": "Akun baru",
+          "h_old": "Akun lama",
+          "h_pwlost": "Password hilang",
+          "h_pwmanual": "Perlu set manual",
+          "again": "Impor lagi",
+          "pw_yes": "Ada",
+          "pw_no": "Hilang",
+          "t_routers": "Gagal memuat router.",
+          "t_locs": "Gagal memuat lokasi.",
+          "t_pick_router": "Pilih router dulu.",
+          "t_scan": "Gagal pindai router.",
+          "t_denied": "Akses ditolak.",
+          "t_pick_one": "Pilih minimal satu akun.",
+          "t_import": "Gagal impor.",
+          "pick": "Pilih…",
+          "map_pair": "Pilih pelanggan dan lokasi dua-duanya, atau kosongkan dua-duanya.",
+          "step3": "Impor",
+          "lab_new": "Baru",
+          "lab_upd": "Perbarui",
+          "lab_same": "Sama",
+          "pwlost2": "Password hilang",
+          "col_remote": "Remote",
+          "btn_import": "Impor ({n})"
         }
       },
       "stats": {
@@ -3797,5 +3843,19 @@
       "no_overdue": "Belum ada invoice overdu 🎉",
       "revenue_trend": "Revenue Trend (6 bulan)"
     }
+  },
+  "eyebrows": {
+    "network": "Jaringan",
+    "network_import": "Jaringan · Pusat impor",
+    "communication": "Komunikasi",
+    "system": "Sistem",
+    "customers": "Pelanggan",
+    "catalog": "Katalog",
+    "services": "Layanan",
+    "finance": "Keuangan",
+    "organization": "Organisasi",
+    "operations": "Operasional",
+    "platform": "Platform",
+    "billing": "Billing"
   }
 }

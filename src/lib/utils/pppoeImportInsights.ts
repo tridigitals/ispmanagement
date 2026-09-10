@@ -13,10 +13,10 @@ export type PppoeCandidate = {
   password_available?: boolean;
 };
 
-export function pppoeActionLabel(action: string): string {
-  if (action === 'new') return 'Baru';
-  if (action === 'update') return 'Perbarui';
-  return 'Sama';
+export function pppoeActionLabel(action: string, tt?: (key: string) => string): string {
+  if (action === 'new') return tt?.('admin.network.pppoe.import.labels.new') ?? 'Baru';
+  if (action === 'update') return tt?.('admin.network.pppoe.import.labels.update') ?? 'Perbarui';
+  return tt?.('admin.network.pppoe.import.labels.same') ?? 'Sama';
 }
 
 export function pppoeActionTone(action: string): 'positive' | 'warning' | 'neutral' {
@@ -25,9 +25,9 @@ export function pppoeActionTone(action: string): 'positive' | 'warning' | 'neutr
   return 'neutral';
 }
 
-export function pppoeMappingError(customerId: string, locationId: string): string | null {
+export function pppoeMappingError(customerId: string, locationId: string, tt?: (key: string) => string): string | null {
   if ((customerId && !locationId) || (!customerId && locationId)) {
-    return 'Pilih pelanggan dan lokasi dua-duanya, atau kosongkan dua-duanya.';
+    return tt?.('admin.network.pppoe.import.v2.map_pair') ?? 'Pilih pelanggan dan lokasi dua-duanya, atau kosongkan dua-duanya.';
   }
   return null;
 }

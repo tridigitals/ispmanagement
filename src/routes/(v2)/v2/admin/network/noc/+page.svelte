@@ -36,6 +36,7 @@
     StatTile,
   } from '$lib/components/ds';
   import type { Column } from '$lib/components/ds/table-types';
+  import { t } from 'svelte-i18n';
 
   type NocRowFull = {
     id: string;
@@ -213,7 +214,7 @@
 <AppShell title="NOC">
   <PageHeader
     title="NOC"
-    eyebrow="Jaringan"
+    eyebrow={ $t('admin.eyebrows.network') }
     desc="Pantauan kesehatan router — disegarkan tiap 5 detik."
   >
     {#snippet actions()}

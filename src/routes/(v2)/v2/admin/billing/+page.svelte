@@ -84,6 +84,7 @@
     subscriptionSummary,
     trendIsEmpty,
   } from '$lib/utils/billingAnalytics';
+  import { t } from 'svelte-i18n';
 
   let analytics = $state<BillingAnalytics | null>(null);
   let loading = $state(true);
@@ -195,7 +196,7 @@
 <AppShell title="Analitik penagihan">
   <PageHeader
     title="Analitik penagihan"
-    eyebrow="Keuangan"
+    eyebrow={ $t('admin.eyebrows.finance') }
     desc="Pemasukan, piutang, dan kesehatan langganan pelanggan. Tagihan langganan platform dihitung terpisah."
   >
     {#snippet actions()}

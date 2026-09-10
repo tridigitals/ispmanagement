@@ -1630,10 +1630,56 @@
           "go_to_list": "Go to PPPoE list"
         },
         "columns": {
-          "password": "Password"
+          "password": "Password",
+          "profile": "Profile"
         },
         "summary": {
           "items": "items"
+        },
+        "v2": {
+          "title": "Import PPPoE",
+          "desc": "Pull PPPoE accounts from a MikroTik router into the database.",
+          "back_pppoe": "Back to PPPoE",
+          "source": "Sources & mapping",
+          "inc_disabled": "Include disabled accounts?",
+          "customer": "Customer (optional)",
+          "no_map": "No mapping",
+          "loc_required": "Required when a customer is selected.",
+          "scan": "Scan router",
+          "clear": "Clear",
+          "items": "Items",
+          "h_cand": "scan candidates",
+          "h_fresh": "Not in the database yet",
+          "h_upd": "Exists, different data",
+          "h_same": "Unchanged",
+          "sel_nu": "Select new+update",
+          "sel_all": "Select all",
+          "rescan": "Rescan",
+          "no_cand": "No candidates",
+          "result": "Import results",
+          "h_new": "New accounts",
+          "h_old": "Existing accounts",
+          "h_pwlost": "Password missing",
+          "h_pwmanual": "Needs manual setting",
+          "again": "Import again",
+          "pw_yes": "Present",
+          "pw_no": "Missing",
+          "t_routers": "Failed to load routers.",
+          "t_locs": "Failed to load locations.",
+          "t_pick_router": "Choose a router first.",
+          "t_scan": "Failed to scan the router.",
+          "t_denied": "Access denied.",
+          "t_pick_one": "Select at least one account.",
+          "t_import": "Import failed.",
+          "pick": "Choose…",
+          "map_pair": "Select both customer and location, or clear both.",
+          "step3": "Import",
+          "lab_new": "New",
+          "lab_upd": "Update",
+          "lab_same": "Same",
+          "pwlost2": "Password missing",
+          "col_remote": "Remote",
+          "btn_import": "Import ({n})"
         }
       },
       "stats": {
@@ -3796,5 +3842,19 @@
       "no_overdue": "No overdue invoices 🎉",
       "revenue_trend": "Revenue Trend (6 months)"
     }
+  },
+  "eyebrows": {
+    "network": "Network",
+    "network_import": "Network · Import center",
+    "communication": "Communication",
+    "system": "System",
+    "customers": "Customers",
+    "catalog": "Catalog",
+    "services": "Services",
+    "finance": "Finance",
+    "organization": "Organization",
+    "operations": "Operations",
+    "platform": "Platform",
+    "billing": "Billing"
   }
 }

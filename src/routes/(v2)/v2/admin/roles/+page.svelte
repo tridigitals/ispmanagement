@@ -67,6 +67,7 @@
     summarizeRoles,
     type PermissionGroup,
   } from '$lib/utils/rolesMatrix';
+  import { t } from 'svelte-i18n';
 
   let roles = $state<Role[]>([]);
   let permissions = $state<Permission[]>([]);
@@ -257,7 +258,7 @@
 <AppShell title="Role & izin">
   <PageHeader
     title="Role & izin"
-    eyebrow="Organisasi"
+    eyebrow={ $t('admin.eyebrows.organization') }
     desc="Apa yang boleh dilakukan tiap role. Penetapan role ke orang ada di halaman Anggota tim."
   >
     {#snippet actions()}

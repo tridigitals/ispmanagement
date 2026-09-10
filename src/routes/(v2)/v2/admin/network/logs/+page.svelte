@@ -29,6 +29,7 @@
     PageHeader,
   } from '$lib/components/ds';
   import type { Column } from '$lib/components/ds/table-types';
+  import { t } from 'svelte-i18n';
 
   interface RouterRow { id: string; name: string; host?: string; port?: number }
   interface LogRow {
@@ -266,7 +267,7 @@
 <AppShell title="Log jaringan">
   <PageHeader
     title="Log jaringan"
-    eyebrow="Jaringan"
+    eyebrow={ $t('admin.eyebrows.network') }
     desc="Log router MikroTik yang tersinkron — filter, retensi, dan sinkronisasi manual."
   >
     {#snippet actions()}

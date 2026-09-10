@@ -43,6 +43,7 @@
     summarize,
     type RouterLike,
   } from '$lib/utils/routerStatus';
+  import { t } from 'svelte-i18n';
 
   type Row = RouterLike & {
     id: string;
@@ -166,7 +167,7 @@
 <AppShell title="Router">
   <PageHeader
     title="Router"
-    eyebrow="Jaringan"
+    eyebrow={ $t('admin.eyebrows.network') }
     desc="Perangkat MikroTik yang dipantau. Status dihitung dari status aktif, umur data, dan jendela pemeliharaan."
   >
     {#snippet actions()}

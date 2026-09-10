@@ -378,7 +378,7 @@
 <AppShell title={ $t('announcements.title') }>
   <PageHeader
     title={ $t('announcements.title') }
-    eyebrow="Komunikasi"
+    eyebrow={ $t('admin.eyebrows.communication') }
     desc={ $t('announcements.v2.desc') }
   >
     {#snippet actions()}

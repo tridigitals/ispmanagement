@@ -322,7 +322,7 @@
 <AppShell title={ $t('admin.team.v2.aria_team') }>
   <PageHeader
     title={ $t('admin.team.v2.aria_team') }
-    eyebrow="Organisasi"
+    eyebrow={ $t('admin.eyebrows.organization') }
     desc={ $t('admin.team.v2.desc') }
   >
     {#snippet actions()}

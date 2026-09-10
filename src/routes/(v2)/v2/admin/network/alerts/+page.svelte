@@ -35,6 +35,7 @@
     StatTile,
   } from '$lib/components/ds';
   import type { Column } from '$lib/components/ds/table-types';
+  import { t } from 'svelte-i18n';
 
   type AlertRow = {
     id: string;
@@ -207,7 +208,7 @@
 <AppShell title="Alert jaringan">
   <PageHeader
     title="Alert jaringan"
-    eyebrow="Jaringan"
+    eyebrow={ $t('admin.eyebrows.network') }
     desc="Alert router — diakui, diselesaikan, atau ditunda."
   >
     {#snippet actions()}

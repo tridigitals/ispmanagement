@@ -59,6 +59,7 @@
     outboxStatusLabel,
     outboxStatusTone,
   } from '$lib/utils/outboxInsights';
+  import { t } from 'svelte-i18n';
 
   type Scope = 'tenant' | 'global' | 'all';
   type StatusFilter = 'all' | 'queued' | 'sending' | 'sent' | 'failed';
@@ -371,7 +372,7 @@
 <AppShell title="Email Outbox">
   <PageHeader
     title="Email Outbox"
-    eyebrow="Komunikasi"
+    eyebrow={ $t('admin.eyebrows.communication') }
     desc="Antrian email sistem: notifikasi tagihan, tiket, dan pengumuman yang dikirim atas nama tenant."
   >
     {#snippet actions()}

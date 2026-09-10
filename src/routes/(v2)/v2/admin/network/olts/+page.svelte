@@ -528,7 +528,7 @@
 <AppShell title="OLT">
   <PageHeader
     title="OLT"
-    eyebrow="Jaringan"
+    eyebrow={ $t('admin.eyebrows.network') }
     desc={ $t('network.olt.v2.desc') }
   >
     {#snippet actions()}

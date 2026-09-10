@@ -34,6 +34,7 @@
     Field,
     PageHeader,
   } from '$lib/components/ds';
+  import { t } from 'svelte-i18n';
 
   type RouterRow = { id: string; name: string };
   type IpPoolRow = {
@@ -272,7 +273,7 @@
 <AppShell title="Pool IP">
   <PageHeader
     title="Pool IP"
-    eyebrow="Jaringan"
+    eyebrow={ $t('admin.eyebrows.network') }
     desc="Rentang alamat IP per router untuk distribusi PPPoE/DHCP."
   >
     {#snippet actions()}

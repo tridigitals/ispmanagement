@@ -61,6 +61,7 @@
     StatTile,
   } from '$lib/components/ds';
   import type { Column } from '$lib/components/ds/table-types';
+  import { t } from 'svelte-i18n';
 
   type AssetDraft = {
     asset_type: string;
@@ -295,7 +296,7 @@
 <AppShell title="Aset FTTH">
   <PageHeader
     title="Aset FTTH"
-    eyebrow="Jaringan"
+    eyebrow={ $t('admin.eyebrows.network') }
     desc="Registri perangkat lapangan — ONT, OLT, ODP, kabel, dan tiang."
   >
     {#snippet actions()}

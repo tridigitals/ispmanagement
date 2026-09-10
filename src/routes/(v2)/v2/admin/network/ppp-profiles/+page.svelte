@@ -39,6 +39,7 @@
     Field,
     PageHeader,
   } from '$lib/components/ds';
+  import { t } from 'svelte-i18n';
 
   type RouterRow = { id: string; name: string };
   type PppProfileRow = {
@@ -266,7 +267,7 @@
 <AppShell title="Profil PPP">
   <PageHeader
     title="Profil PPP"
-    eyebrow="Jaringan"
+    eyebrow={ $t('admin.eyebrows.network') }
     desc="Template kecepatan & alamat untuk akun PPPoE per router."
   >
     {#snippet actions()}

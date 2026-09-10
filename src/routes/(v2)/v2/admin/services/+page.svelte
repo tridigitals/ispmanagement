@@ -520,7 +520,7 @@
 <AppShell title={ $t('sidebar.services') }>
   <PageHeader
     title={ $t('sidebar.services') }
-    eyebrow="Katalog"
+    eyebrow={ $t('admin.eyebrows.catalog') }
     desc={ $t('admin.network.packages.v2.desc') }
   >
     {#snippet actions()}

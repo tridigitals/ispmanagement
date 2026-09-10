@@ -32,6 +32,7 @@
     Icon,
     PageHeader,
   } from '$lib/components/ds';
+  import { t } from 'svelte-i18n';
 
   const variableGroups = [
     { label: 'Tenant', variables: ['tenant.name'] },
@@ -245,7 +246,7 @@
 <AppShell title="Templat pesan">
   <PageHeader
     title="Templat pesan"
-    eyebrow="Komunikasi"
+    eyebrow={ $t('admin.eyebrows.communication') }
     desc="Templat WhatsApp & email dengan variabel pelanggan."
   >
     {#snippet actions()}

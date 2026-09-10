@@ -6,6 +6,7 @@
   import { onMount } from 'svelte';
   import MixRadiusImportWizard from '$lib/components/network/mixradius/MixRadiusImportWizard.svelte';
   import { AppShell, Card, PageHeader, TableSkeleton } from '$lib/components/ds';
+  import { t } from 'svelte-i18n';
 
   let wizardLoading = $state(true);
 
@@ -19,7 +20,7 @@
 <AppShell title="Impor MixRadius">
   <PageHeader
     title="Impor MixRadius"
-    eyebrow="Jaringan · Pusat impor"
+    eyebrow={ $t('admin.eyebrows.network_import') }
     desc="Migrasi backup .sql/.sql.gz MixRadius ke paket, pelanggan, langganan, dan PPPoE."
   />
 

@@ -17,6 +17,7 @@
     PageHeader,
     StatTile,
   } from '$lib/components/ds';
+  import { t } from 'svelte-i18n';
 
   const tenantCtx = $derived.by(() =>
     resolveTenantContext({
@@ -37,7 +38,7 @@
 <AppShell title="Pusat impor">
   <PageHeader
     title="Pusat impor"
-    eyebrow="Jaringan"
+    eyebrow={ $t('admin.eyebrows.network') }
     desc="Pindahkan data dari sistem lain ke tenant ini: paket, pelanggan, langganan, dan PPPoE."
   />
 

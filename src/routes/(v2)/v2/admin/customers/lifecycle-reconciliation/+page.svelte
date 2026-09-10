@@ -37,6 +37,7 @@
     StatTile,
   } from '$lib/components/ds';
   import type { Column } from '$lib/components/ds/table-types';
+  import { t } from 'svelte-i18n';
 
   const columns: Column[] = [
     { key: 'customer', label: 'Pelanggan' },
@@ -147,7 +148,7 @@
 <AppShell title="Rekonsiliasi lifecycle">
   <PageHeader
     title="Rekonsiliasi lifecycle"
-    eyebrow="Pelanggan"
+    eyebrow={ $t('admin.eyebrows.customers') }
     desc="Layanan yang lifecycle-nya tidak sinkron dengan tagihan — periksa lalu perbaiki massal."
   >
     {#snippet actions()}

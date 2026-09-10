@@ -10,6 +10,7 @@
   import { goto } from '$app/navigation';
   import { can } from '$lib/stores/auth';
   import { AppShell, Card, Icon, PageHeader } from '$lib/components/ds';
+  import { t } from 'svelte-i18n';
 
   onMount(() => {
     if (
@@ -27,7 +28,7 @@
 <AppShell title="Cadangan">
   <PageHeader
     title="Cadangan"
-    eyebrow="Sistem"
+    eyebrow={ $t('admin.eyebrows.system') }
     desc="Salinan cadangan basis data dan berkas. Fitur ini sedang dinonaktifkan di tenant ini."
   />
 

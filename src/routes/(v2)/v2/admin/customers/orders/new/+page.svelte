@@ -45,6 +45,7 @@
     PageHeader,
   } from '$lib/components/ds';
   import 'maplibre-gl/dist/maplibre-gl.css';
+  import { t } from 'svelte-i18n';
 
   type Step = 1 | 2 | 3;
 
@@ -387,7 +388,7 @@
 <AppShell title="Order instalasi baru">
   <PageHeader
     title="Order instalasi baru"
-    eyebrow="Pelanggan"
+    eyebrow={ $t('admin.eyebrows.customers') }
     desc="Wizard 3 langkah: pelanggan → alamat & layanan → review."
   >
     {#snippet actions()}
