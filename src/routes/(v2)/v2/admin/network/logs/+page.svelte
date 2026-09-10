@@ -76,7 +76,7 @@
   ]);
   const yearOptions = $derived.by(() => {
     const y = new Date().getFullYear();
-    return [{ value: '', label: 'Semua' }, ...Array.from({ length: 8 }, (_, i) => ({ value: String(y - i), label: String(y - i) }))];
+    return [{ value: '', label: $t('common.all') }, ...Array.from({ length: 8 }, (_, i) => ({ value: String(y - i), label: String(y - i) }))];
   });
   const levelOptions = [
     { value: '', label: $t('admin.network.logs.v2.all_levels') },

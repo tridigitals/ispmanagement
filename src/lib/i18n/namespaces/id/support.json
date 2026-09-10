@@ -143,7 +143,11 @@
     "p_high": "Tinggi",
     "p_urgent2": "Urgent",
     "refresh": "Segarkan",
-    "created": "dibuat"
+    "created": "dibuat",
+    "age_lt2": "< 2 hari",
+    "age_2_7": "2–7 hari",
+    "age_1_4w": "1–4 minggu",
+    "age_gt30": "> 30 hari"
   },
   "detail_v2": {
     "title": "Detail tiket",
@@ -190,6 +194,7 @@
       "none_active": "tidak ada tiket aktif",
       "resolved": "Diselesaikan",
       "closed": "Ditutup"
-    }
+    },
+    "waiting_prefix": "Menunggu"
   }
 }

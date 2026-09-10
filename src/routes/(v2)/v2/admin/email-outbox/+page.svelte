@@ -60,6 +60,7 @@
     outboxStatusTone,
   } from '$lib/utils/outboxInsights';
   import { t, locale } from 'svelte-i18n';
+  import { get as getStore } from 'svelte/store';
 
   type Scope = 'tenant' | 'global' | 'all';
   type StatusFilter = 'all' | 'queued' | 'sending' | 'sent' | 'failed';
@@ -353,7 +354,7 @@
     }
     if (canDelete) {
       acts.push({
-        label: 'Hapus',
+        label: getStore(t)('common.delete'),
         icon: 'close',
         danger: true,
         disabled: busyId === i.id || i.status === 'sending',

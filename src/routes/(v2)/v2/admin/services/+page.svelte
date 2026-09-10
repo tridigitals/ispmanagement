@@ -56,6 +56,7 @@
   } from '$lib/components/ds';
   import type { RowAction } from '$lib/components/ds/RowActions.svelte';
   import { t } from 'svelte-i18n';
+  import { get as getStore } from 'svelte/store';
   import {
     convertPrice,
     friendlyDeleteError,
@@ -473,7 +474,7 @@
   }
 
   function rowPrimary(p: IspPackage): RowAction {
-    return { label: 'Sunting', icon: 'cog', onclick: () => openEdit(p) };
+    return { label: getStore(t)('common.edit'), icon: 'cog', onclick: () => openEdit(p) };
   }
 
   function rowRest(p: IspPackage): RowAction[] {
@@ -481,7 +482,7 @@
     if (mappingAllowed(p.service_type, p.provisioning_type)) {
       acts.push({ label: $t('admin.network.packages.v2.map_btn'), icon: 'router', onclick: () => openMapping(p) });
     }
-    acts.push({ label: 'Hapus', icon: 'close', danger: true, onclick: () => confirmDelete(p) });
+    acts.push({ label: getStore(t)('common.delete'), icon: 'close', danger: true, onclick: () => confirmDelete(p) });
     return acts;
   }
 

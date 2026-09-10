@@ -4,5 +4,11 @@
     "downloading": "Mengunduh {filename}...",
     "failed": "Unduhan gagal: {message}",
     "failed_generic": "Unduhan gagal"
+  },
+  "time": {
+    "minutes": "{n} menit",
+    "hours": "{n} jam",
+    "days": "{n} hari",
+    "months": "{n} bulan"
   }
 }

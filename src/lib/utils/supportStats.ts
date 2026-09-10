@@ -157,6 +157,7 @@ export interface AgeBucket {
 export function bucketByAge(
   tickets: { status?: string | null; created_at?: string | null }[],
   now: number = Date.now(),
+  tt?: StatTranslate,
 ): AgeBucket[] {
   const HARI = 86_400_000;
   const b = { baru: 0, seminggu: 0, sebulan: 0, lama: 0 };
@@ -171,24 +172,31 @@ export function bucketByAge(
     else b.lama++;
   }
 
+  const L = (key: string, fallback: string) => (tt ? tt('support.v2.age_' + key) : fallback);
   return [
-    { label: '< 2 hari', count: b.baru },
-    { label: '2–7 hari', count: b.seminggu },
-    { label: '1–4 minggu', count: b.sebulan },
-    { label: '> 30 hari', count: b.lama },
+    { label: L('lt2', '< 2 hari'), count: b.baru },
+    { label: L('2_7', '2–7 hari'), count: b.seminggu },
+    { label: L('1_4w', '1–4 minggu'), count: b.sebulan },
+    { label: L('gt30', '> 30 hari'), count: b.lama },
   ];
 }
 
 /** Umur dalam kata, dipakai di kolom "Menunggu". */
-export function waitingLabel(createdAt: string | null | undefined, now: number = Date.now()): string {
+export function waitingLabel(
+  createdAt: string | null | undefined,
+  now: number = Date.now(),
+  tt?: StatTranslate,
+): string {
   if (!createdAt) return '—';
   const ms = now - new Date(createdAt).getTime();
   if (!Number.isFinite(ms) || ms < 0) return '—';
   const HARI = 86_400_000;
-  if (ms < 3_600_000) return `${Math.max(1, Math.floor(ms / 60_000))} menit`;
-  if (ms < HARI) return `${Math.floor(ms / 3_600_000)} jam`;
-  if (ms < 30 * HARI) return `${Math.floor(ms / HARI)} hari`;
-  return `${Math.floor(ms / (30 * HARI))} bulan`;
+  const unit = (key: string, id: string, n: number) =>
+    tt ? tt('utils.time.' + key, { n }) : `${n} ${id}`;
+  if (ms < 3_600_000) return unit('minutes', 'menit', Math.max(1, Math.floor(ms / 60_000)));
+  if (ms < HARI) return unit('hours', 'jam', Math.floor(ms / 3_600_000));
+  if (ms < 30 * HARI) return unit('days', 'hari', Math.floor(ms / HARI));
+  return unit('months', 'bulan', Math.floor(ms / (30 * HARI)));
 }
 
 /** Tiket aktif yang menunggu lebih lama dari ambang ini disebut terlantar. */

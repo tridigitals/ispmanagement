@@ -1192,7 +1192,11 @@
         "hint_no_router": "no routers yet",
         "t_created_applied": "Account created and applied to the router.",
         "t_created": "PPPoE account created.",
-        "t_saved_apply_fail": "Saved, but auto-apply failed:"
+        "t_saved_apply_fail": "Saved, but auto-apply failed:",
+        "act_enable": "Enable",
+        "act_isolate": "Isolate",
+        "act_delete": "Delete account",
+        "empty_match": "No matching accounts"
       }
     },
     "dhcp_static": {
@@ -2301,7 +2305,10 @@
         "r_stale": "Active, but no updates since {t}. The poller runs every {p} minutes.",
         "r_online": "Last answered {t}.",
         "r_never": "Never connected successfully.",
-        "r_noanswer": "No answer. Last seen {t}."
+        "r_noanswer": "No answer. Last seen {t}.",
+        "foot_poller": "{shown} of {total} routers · backend poller runs every {m} minutes",
+        "hint_monitored": "of {total} registered routers",
+        "hint_disabled": "{d} disabled · {s} stale data"
       }
     },
     "wallboard": {

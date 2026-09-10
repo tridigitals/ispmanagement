@@ -4,5 +4,11 @@
     "downloading": "Downloading {filename}...",
     "failed": "Download failed: {message}",
     "failed_generic": "Download failed"
+  },
+  "time": {
+    "minutes": "{n} min",
+    "hours": "{n} hr",
+    "days": "{n} d",
+    "months": "{n} mo"
   }
 }

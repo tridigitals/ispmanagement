@@ -75,21 +75,21 @@
   const cards = $derived(buildStatCards(stats, (k, v) => $t(k, v ? { values: v } : undefined)));
   const showPending = $derived(shouldShowPending(stats));
   const hilang = $derived(unaccounted(stats));
-  const ageBuckets = $derived(bucketByAge(tickets, now));
+  const ageBuckets = $derived(bucketByAge(tickets, now, (k, v) => getStore(t)(k, v ? { values: v } : undefined)));
 
   /* Tiket aktif yang menunggu lebih dari 30 hari. Halaman lama menampilkan
      kolom "Updated" berisi tanggal, jadi tiket 195 hari terlihat sama biasa
      dengan tiket kemarin. */
   const terlantar = $derived.by(() =>
     tickets
-      .filter((t) => isStale(t, now))
+      .filter((tk) => isStale(tk, now))
       .slice(0, 5)
-      .map((t) => ({
+      .map((tk) => ({
         icon: 'clock' as const,
-        title: t.subject,
-        detail: `Menunggu ${waitingLabel(t.created_at, now)}${t.assigned_to ? '' : ' · belum ditugaskan'}`,
-        action: 'Buka',
-        href: `/v2/admin/support/${t.id}`,
+        title: tk.subject,
+        detail: $t('support.admin_v2.waiting_prefix') + ' ' + waitingLabel(tk.created_at, now, (k, v) => getStore(t)(k, v ? { values: v } : undefined)) + (tk.assigned_to ? '' : ' · ' + $t('support.admin_v2.unassigned')),
+        action: $t('common.open'),
+        href: `/v2/admin/support/${tk.id}`,
         severity: 'high' as const,
       })),
   );
@@ -322,7 +322,7 @@
             {/if}
           {:else if c.key === 'waiting'}
             <span class="text-sm {isStale(tk, now) ? 'font-medium text-red-700' : 'text-ink-500'}">
-              {waitingLabel(tk.created_at, now)}
+              {waitingLabel(tk.created_at, now, (k, v) => getStore(t)(k, v ? { values: v } : undefined))}
             </span>
           {:else if c.key === 'messages'}
             <span class="text-ink-700">{tk.message_count ?? 0}</span>

@@ -82,7 +82,7 @@
         icon: x.status.state === 'disabled' ? ('lock' as const) : ('clock' as const),
         title: `${x.row.name} — ${x.status.label.toLowerCase()}`,
         detail: x.status.reason,
-        action: 'Buka',
+        action: $t('common.open'),
         href: `/v2/admin/network/routers/${x.row.id}`,
         severity: (x.status.state === 'stale' ? 'high' : 'medium') as 'high' | 'medium',
       })),
@@ -185,7 +185,7 @@
       <StatTile
         label={ $t('admin.network.routers.v2list.monitored') }
         value={String(stats.monitored)}
-        hint={`dari ${stats.total} router terdaftar`}
+        hint={$t('admin.network.routers.v2list.hint_monitored', { values: { total: stats.total } })}
       />
       <StatTile
         label={ $t('admin.network.routers.v2d.online') }
@@ -202,7 +202,7 @@
       <StatTile
         label={ $t('admin.network.routers.v2list.unmonitored') }
         value={String(stats.disabled + stats.stale)}
-        hint={`${stats.disabled} dinonaktifkan · ${stats.stale} data usang`}
+        hint={$t('admin.network.routers.v2list.hint_disabled', { values: { d: stats.disabled, s: stats.stale } })}
         tone={stats.disabled + stats.stale ? 'warning' : 'neutral'}
       />
     </div>
@@ -238,7 +238,7 @@
         {loading}
         emptyTitle="Belum ada router"
         emptyHint="Tambahkan perangkat MikroTik untuk mulai memantau."
-        footNote={`${filtered.length} dari ${rows.length} router · poller backend berjalan tiap ${Math.round(POLL_INTERVAL_MS / 60000)} menit`}
+        footNote={$t('admin.network.routers.v2list.foot_poller', { values: { shown: filtered.length, total: rows.length, m: Math.round(POLL_INTERVAL_MS / 60000) } })}
       >
         {#snippet cell(r, c)}
           {@const s = routerStatus(r, now, tr)}

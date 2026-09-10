@@ -919,7 +919,11 @@
         "hint_no_router": "belum ada router",
         "t_created_applied": "Akun dibuat dan diterapkan ke router.",
         "t_created": "Akun PPPoE dibuat.",
-        "t_saved_apply_fail": "Tersimpan, tapi gagal diterapkan otomatis:"
+        "t_saved_apply_fail": "Tersimpan, tapi gagal diterapkan otomatis:",
+        "act_enable": "Aktifkan",
+        "act_isolate": "Isolir",
+        "act_delete": "Hapus akun",
+        "empty_match": "Tidak ada akun cocok"
       }
     },
     "dhcp_static": {
@@ -2028,7 +2032,10 @@
         "r_stale": "Aktif, tapi tidak ada pembaruan sejak {t}. Poller berjalan tiap {p} menit.",
         "r_online": "Terakhir menjawab {t}.",
         "r_never": "Belum pernah berhasil terhubung.",
-        "r_noanswer": "Tidak menjawab. Terakhir terlihat {t}."
+        "r_noanswer": "Tidak menjawab. Terakhir terlihat {t}.",
+        "foot_poller": "{shown} dari {total} router · poller backend berjalan tiap {m} menit",
+        "hint_monitored": "dari {total} router terdaftar",
+        "hint_disabled": "{d} dinonaktifkan · {s} data usang"
       }
     },
     "wallboard": {

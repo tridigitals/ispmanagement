@@ -367,7 +367,7 @@
   const rows = $derived(filtered.slice((page - 1) * perPage, page * perPage));
 
   const chips = $derived([
-    { key: 'all' as ChipKey, label: 'Semua', count: counts.all },
+    { key: 'all' as ChipKey, label: $t('common.all'), count: counts.all },
     { key: 'serving' as ChipKey, label: $t('admin.customers.pppoe.v2.stat_serving'), count: counts.serving },
     { key: 'isolated' as ChipKey, label: $t('admin.customers.pppoe.v2.stat_isolated'), count: counts.isolated },
     { key: 'missing' as ChipKey, label: $t('admin.customers.pppoe.v2.stat_missing'), count: counts.missing },
@@ -617,7 +617,7 @@
       total={filtered.length}
       pageSize={perPage}
       onpage={(p) => (page = p)}
-      emptyTitle="Tidak ada akun cocok"
+      emptyTitle={ $t('admin.customers.pppoe.v2.empty_match') }
       emptyHint={q ? $t('common.no_results_for', { values: { q } }) : $t('network.pppoe_v2.empty_hint')}
     >
       {#snippet cell(a, column)}
@@ -647,13 +647,13 @@
                     onclick: () => void applyToRouter(a),
                   },
                   {
-                    label: a.disabled ? 'Aktifkan' : 'Isolir',
+                    label: a.disabled ? $t('admin.customers.pppoe.v2.act_enable') : $t('admin.customers.pppoe.v2.act_isolate'),
                     icon: a.disabled ? 'check' : 'alert',
                     disabled: busyId === a.id,
                     onclick: () => void toggleIsolate(a),
                   },
                   {
-                    label: 'Hapus akun',
+                    label: $t('admin.customers.pppoe.v2.act_delete'),
                     icon: 'close',
                     danger: true,
                     onclick: () => {
