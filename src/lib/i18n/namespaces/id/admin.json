@@ -3460,6 +3460,32 @@
       "search_placeholder": "Cari invoice...",
       "pay": "Bayar",
       "view_details": "Lihat detail"
+    },
+    "v2": {
+      "title": "Langganan Platform",
+      "desc": "Paket platform Tri Digital, pemakaian, dan riwayat penagihan tenant ini.",
+      "team_members": "Anggota tim",
+      "fx_loading": "kurs memuat…",
+      "fx_unavailable": "kurs tidak tersedia",
+      "no_features": "Belum ada fitur terdefinisi",
+      "no_features_hint": "Paket ini belum memetakan entitlement apa pun.",
+      "current_plan": "Paket saat ini",
+      "active_plan": "Paket aktif",
+      "st_active": "Aktif",
+      "plan_default_desc": "Paket platform aktif untuk tenant ini.",
+      "base_prefix": "Dasar ",
+      "valid_until": "Berlaku s.d. ",
+      "lifetime": "Seumur hidup",
+      "no_limit": "Tanpa batas",
+      "tab_overview": "Ringkasan",
+      "tab_plans": "Paket",
+      "tab_history": "Riwayat Pembayaran",
+      "col_desc": "Uraian",
+      "col_due": "Jatuh tempo",
+      "subscribe": "Langganan",
+      "upgrade": "Upgrade",
+      "pay": "Bayar",
+      "t_activated": "Paket diaktifkan."
     }
   },
   "invoices": {

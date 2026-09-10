@@ -46,6 +46,7 @@
   import type { Column } from '$lib/components/ds/table-types';
   import type { StatusTone } from '$lib/components/ds/tokens';
 
+  import { t } from 'svelte-i18n';
   type PlanRow = {
     id: string;
     name: string;
@@ -191,14 +192,14 @@
     usagePercent(subscription?.member_usage ?? 0, subscription?.member_limit),
   );
 
-  const columns: Column[] = [
-    { key: 'invoice_number', label: 'Invoice' },
-    { key: 'description', label: 'Uraian' },
-    { key: 'amount', label: 'Nominal', align: 'right' },
-    { key: 'status', label: 'Status', width: '120px' },
-    { key: 'due_date', label: 'Jatuh tempo', width: '140px' },
+  const columns = $derived<Column[]>([
+    { key: 'invoice_number', label: $t('admin.invoices.columns.invoice_number') },
+    { key: 'description', label: $t('admin.subscription.v2.col_desc') },
+    { key: 'amount', label: $t('admin.invoices.columns.amount'), align: 'right' },
+    { key: 'status', label: $t('common.status'), width: '120px' },
+    { key: 'due_date', label: $t('admin.subscription.v2.col_due'), width: '140px' },
     { key: 'actions', label: '', width: '110px', align: 'right' },
-  ];
+  ]);
 
   function invoiceTone(status: string): StatusTone {
     if (status === 'paid') return 'positive';
@@ -207,15 +208,15 @@
     return 'neutral';
   }
 
-  const tabs = [
-    { id: 'overview', label: 'Ringkasan' },
-    { id: 'plans', label: 'Paket' },
-    { id: 'history', label: 'Riwayat Pembayaran' },
-  ] as const;
+  const tabs = $derived<{ id: 'overview' | 'plans' | 'history'; label: string }[]>([
+    { id: 'overview', label: $t('admin.subscription.v2.tab_overview') },
+    { id: 'plans', label: $t('admin.subscription.v2.tab_plans') },
+    { id: 'history', label: $t('admin.subscription.v2.tab_history') },
+  ]);
 </script>
 
-<AppShell title="Langganan Platform">
-  <PageHeader title="Langganan Platform" desc="Paket platform Tri Digital, pemakaian, dan riwayat penagihan tenant ini.">
+<AppShell title={ $t('admin.subscription.v2.title') }>
+  <PageHeader title={ $t('admin.subscription.v2.title') } desc={ $t('admin.subscription.v2.desc') }>
     {#snippet actions()}
       <Button variant="ghost" icon="receipt" onclick={() => goto(billingNav.billingPath)}>
         Tagihan Pelanggan
@@ -260,10 +261,10 @@
           <div>
             <div class="flex items-center gap-2">
               <h2 class="text-lg font-semibold text-ink-900">{subscription.plan_name}</h2>
-              <Badge tone={statusTone} label={subscription.status === 'active' ? 'Aktif' : subscription.status} />
+              <Badge tone={statusTone} label={subscription.status === 'active' ? $t('admin.subscription.v2.st_active') : subscription.status} />
             </div>
             <p class="mt-1 text-sm text-ink-500">
-              {currentPlanInfo?.description || 'Paket platform aktif untuk tenant ini.'}
+              {currentPlanInfo?.description || $t('admin.subscription.v2.plan_default_desc')}
             </p>
           </div>
           <div class="text-right">
@@ -274,13 +275,13 @@
               </div>
               {#if tenantCurrencyCode !== baseCurrencyCode}
                 <div class="mt-1 text-xs text-ink-500">
-                  Dasar {formatBasePrice(currentPlanInfo.price_monthly)}
+                  { $t('admin.subscription.v2.base_prefix') }{formatBasePrice(currentPlanInfo.price_monthly)}
                   {#if fxLoading}
-                    <span class="ml-1 rounded bg-ink-100 px-1.5 py-0.5">kurs memuat…</span>
+                    <span class="ml-1 rounded bg-ink-100 px-1.5 py-0.5">$t('admin.subscription.v2.fx_loading')</span>
                   {:else if fxSource}
                     <span class="ml-1 rounded bg-ink-100 px-1.5 py-0.5">kurs {fxSource}</span>
                   {:else if fxError}
-                    <span class="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-amber-800">kurs tidak tersedia</span>
+                    <span class="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-amber-800">{ $t('admin.subscription.v2.fx_unavailable') }</span>
                   {/if}
                 </div>
               {/if}
@@ -289,9 +290,9 @@
             {/if}
             <div class="mt-1 text-sm text-ink-500">
               {#if subscription.current_period_end}
-                Berlaku s.d. {formatDate(subscription.current_period_end, { timeZone: $appSettings.app_timezone })}
+                { $t('admin.subscription.v2.valid_until') }{formatDate(subscription.current_period_end, { timeZone: $appSettings.app_timezone })}
               {:else}
-                Seumur hidup
+                { $t('admin.subscription.v2.lifetime') }
               {/if}
             </div>
           </div>
@@ -303,7 +304,7 @@
               <span class="text-sm font-medium text-ink-900">Penyimpanan</span>
               <span class="text-sm text-ink-500">
                 {formatBytesIEC(subscription.storage_usage)} /
-                {subscription.storage_limit ? formatBytesIEC(subscription.storage_limit) : 'Tanpa batas'}
+                {subscription.storage_limit ? formatBytesIEC(subscription.storage_limit) : $t('admin.subscription.v2.no_limit')}
               </span>
             </div>
             <div class="mt-2 h-2 overflow-hidden rounded-full bg-ink-100">
@@ -315,10 +316,10 @@
           </div>
           <div class="rounded-lg border border-ink-200 p-4">
             <div class="flex items-baseline justify-between">
-              <span class="text-sm font-medium text-ink-900">Anggota tim</span>
+              <span class="text-sm font-medium text-ink-900">{ $t('admin.subscription.v2.team_members') }</span>
               <span class="text-sm text-ink-500">
                 {subscription.member_usage} /
-                {subscription.member_limit ?? 'Tanpa batas'}
+                {subscription.member_limit ?? $t('admin.subscription.v2.no_limit')}
               </span>
             </div>
             <div class="mt-2 h-2 overflow-hidden rounded-full bg-ink-100">
@@ -334,7 +335,7 @@
           Fitur paket (entitlement nyata)
         </h3>
         {#if featureGroups.length === 0}
-          <EmptyState icon="box" title="Belum ada fitur terdefinisi" hint="Paket ini belum memetakan entitlement apa pun." />
+          <EmptyState icon="box" title={ $t('admin.subscription.v2.no_features') } hint={ $t('admin.subscription.v2.no_features_hint') } />
         {:else}
           <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {#each featureGroups as g (g.category)}
@@ -367,7 +368,7 @@
             <div class="flex items-baseline justify-between">
               <h3 class="text-base font-semibold text-ink-900">{plan.name}</h3>
               {#if isCurrent}
-                <Badge tone="neutral" label="Paket saat ini" />
+                <Badge tone="neutral" label={ $t('admin.subscription.v2.current_plan') } />
               {/if}
             </div>
             <div class="mt-2">
@@ -388,7 +389,7 @@
             {/if}
             <div class="mt-auto pt-4">
               {#if isCurrent}
-                <Button variant="ghost" class="w-full" disabled>Paket aktif</Button>
+                <Button variant="ghost" class="w-full" disabled>{ $t('admin.subscription.v2.active_plan') }</Button>
               {:else}
                 <Button
                   variant={plan.price_monthly > 0 ? 'primary' : 'ghost'}
@@ -396,7 +397,7 @@
                   disabled={upgrading || plan.price_monthly <= 0}
                   onclick={() => void handleUpgrade(plan)}
                 >
-                  {upgrading ? 'Memproses…' : subscription.plan_slug === 'free' ? 'Langganan' : 'Upgrade'}
+                  {upgrading ? $t('common.processing') : subscription.plan_slug === 'free' ? $t('admin.subscription.v2.subscribe'): $t('admin.subscription.v2.upgrade')}
                 </Button>
               {/if}
             </div>
@@ -425,7 +426,7 @@
                 size="sm"
                 onclick={() => goto(`/pay/${row.id}`)}
               >
-                {row.status === 'pending' ? 'Bayar' : 'Detail'}
+                {row.status === 'pending' ? $t('admin.subscription.v2.pay') : $t('common.details')}
               </Button>
             {:else}
               <span class="text-sm">{String((row as unknown as Record<string, unknown>)[col.key] ?? '—')}</span>

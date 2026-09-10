@@ -3733,6 +3733,32 @@
       "search_placeholder": "Search invoices...",
       "pay": "Pay",
       "view_details": "View Details"
+    },
+    "v2": {
+      "title": "Platform subscription",
+      "desc": "Tri Digital platform package, usage, and billing history for this tenant.",
+      "team_members": "Team members",
+      "fx_loading": "loading rates…",
+      "fx_unavailable": "rates unavailable",
+      "no_features": "No features defined yet",
+      "no_features_hint": "This package does not map any entitlements yet.",
+      "current_plan": "Current plan",
+      "active_plan": "Active plan",
+      "st_active": "Active",
+      "plan_default_desc": "Active platform package for this tenant.",
+      "base_prefix": "Base ",
+      "valid_until": "Valid until ",
+      "lifetime": "Lifetime",
+      "no_limit": "Unlimited",
+      "tab_overview": "Overview",
+      "tab_plans": "Plans",
+      "tab_history": "Payment history",
+      "col_desc": "Description",
+      "col_due": "Due date",
+      "subscribe": "Subscribe",
+      "upgrade": "Upgrade",
+      "pay": "Pay",
+      "t_activated": "Plan activated."
     }
   },
   "invoices": {
