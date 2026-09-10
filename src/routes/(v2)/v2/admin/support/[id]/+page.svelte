@@ -36,6 +36,7 @@
     ticketStatusTone,
   } from '$lib/utils/supportTicketInsights';
   import { loadLightboxModule } from '$lib/components/ui/lightboxModule';
+  import { t } from 'svelte-i18n';
   import {
     AppShell,
     Badge,
@@ -84,23 +85,23 @@
   ]);
 
   const statusOptions = $derived([
-    { value: 'open', label: 'Terbuka' },
-    { value: 'pending', label: 'Menunggu' },
-    { value: 'closed', label: 'Ditutup' },
-    { value: 'resolved', label: 'Selesai' },
+    { value: 'open', label: $t('support.v2.st_open') },
+    { value: 'pending', label: $t('support.v2.st_pending') },
+    { value: 'closed', label: $t('support.v2.st_closed') },
+    { value: 'resolved', label: $t('support.v2.st_resolved') },
   ]);
   const priorityOptions = $derived([
-    { value: 'low', label: 'Rendah' },
-    { value: 'normal', label: 'Normal' },
-    { value: 'high', label: 'Tinggi' },
-    { value: 'urgent', label: 'Urgent' },
+    { value: 'low', label: $t('support.v2.p_low') },
+    { value: 'normal', label: $t('support.v2.p_normal') },
+    { value: 'high', label: $t('support.v2.p_high') },
+    { value: 'urgent', label: $t('support.v2.p_urgent2') },
   ]);
   const categoryOptions = $derived([
     { value: '', label: '—' },
-    { value: 'general', label: 'Umum' },
-    { value: 'billing', label: 'Tagihan' },
-    { value: 'technical', label: 'Teknis' },
-    { value: 'installation', label: 'Instalasi' },
+    { value: 'general', label: $t('support.categories.general') },
+    { value: 'billing', label: $t('support.categories.billing') },
+    { value: 'technical', label: $t('support.categories.technical') },
+    { value: 'installation', label: $t('support.categories.installation') },
   ]);
 
   let reply = $state('');
@@ -164,7 +165,7 @@
         assignedTo: assignedTo || null,
       });
       detail = { ...detail, ticket: updated as any };
-      toast.success('Perubahan tiket disimpan.');
+      toast.success($t('support.v2.t_saved'));
     } catch (e) {
       toast.error(extractApiErrorMessage(e));
     } finally {
@@ -179,7 +180,7 @@
       const updated = await api.support.claim(detail.ticket.id);
       detail = { ...detail, ticket: updated as any };
       assignedTo = updated.assigned_to || '';
-      toast.success('Tiket diklaim.');
+      toast.success($t('support.v2.t_claimed'));
     } catch (e) {
       toast.error(extractApiErrorMessage(e));
     } finally {
@@ -195,7 +196,7 @@
   async function sendReply() {
     if (supportBusy) return;
     if (isClosed) {
-      toast.error('Tiket sudah ditutup.');
+      toast.error($t('support.toasts.ticket_closed'));
       return;
     }
     if (!reply.trim()) return;
@@ -212,7 +213,7 @@
       reply = '';
       internalNote = false;
       attachments = [];
-      toast.success('Balasan terkirim.');
+      toast.success($t('support.toasts.replied'));
       await load();
     } catch (e) {
       toast.error(extractApiErrorMessage(e));
@@ -243,7 +244,7 @@
         goto(`/v2/admin/customers/${sub.customer_id}`);
       }
     } catch {
-      toast.error('Gagal memuat langganan terkait.');
+      toast.error($t('support.toasts.subscription_load_failed'));
     }
   }
 
@@ -258,33 +259,33 @@
 </script>
 <AppShell>
   {#if loading && !detail}
-    <div class="py-16 text-center text-ink-500">Memuat tiket…</div>
+    <div class="py-16 text-center text-ink-500">{ $t('support.loading_detail') }</div>
   {:else if !detail}
     <div class="py-16 text-center">
-      <div class="text-base font-medium text-ink-900">Tiket tidak ditemukan.</div>
-      <Button variant="ghost" class="mt-3" href={backTarget}>Kembali</Button>
+      <div class="text-base font-medium text-ink-900">{ $t('support.detail.not_found') }</div>
+      <Button variant="ghost" class="mt-3" href={backTarget}>{ $t('components.detail_header.back') }</Button>
     </div>
   {:else if ticket}
     <DetailHeader
       title={ticket.subject}
-      subtitle={`#${ticket.id.slice(0, 8)} · dibuat ${formatDateTime(ticket.created_at, { timeZone: $appSettings.app_timezone })}`}
+      subtitle={`#${ticket.id.slice(0, 8)} · ${$t('support.v2.created')} ${formatDateTime(ticket.created_at, { timeZone: $appSettings.app_timezone })}`}
       status={ticket.status}
       statusTone={ticketStatusTone(ticket.status)}
-      statusLabel={ticketStatusLabel(ticket.status)}
+      statusLabel={ticketStatusLabel(ticket.status, $t)}
       backHref={backTarget}
       meta={[
-        { label: 'Prioritas', value: ticketPriorityLabel(ticket.priority) },
-        { label: 'Kategori', value: ticketCategoryLabel(ticket.category) },
-        { label: 'Diperbarui', value: formatDateTime(ticket.updated_at, { timeZone: $appSettings.app_timezone }) },
-        ...(ticket.assigned_to ? [{ label: 'Ditugaskan ke', value: 'Staf' }] : []),
+        { label: $t('support.fields.priority'), value: ticketPriorityLabel(ticket.priority, $t) },
+        { label: $t('support.fields.category'), value: ticketCategoryLabel(ticket.category, $t) },
+        { label: $t('support.detail.updated'), value: formatDateTime(ticket.updated_at, { timeZone: $appSettings.app_timezone }) },
+        ...(ticket.assigned_to ? [{ label: $t('support.v2.assigned_to'), value: $t('support.labels.staff') }] : []),
       ]}
     >
       {#snippet actions()}
         <Button variant="ghost" icon="refresh" onclick={() => void load()} disabled={loading || supportBusy}>
-          Segarkan
+          { $t('support.v2.refresh') }
         </Button>
         <Button variant="primary" icon="check" onclick={() => void saveTicket()} disabled={saving || loading || supportBusy}>
-          {saving ? 'Menyimpan…' : 'Simpan'}
+          {saving ? 'Menyimpan…' : $t('common.save')}
         </Button>
       {/snippet}
     </DetailHeader>
@@ -302,24 +303,24 @@
 
     <div class="mt-4 grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
       <div class="space-y-4">
-        <Card title="Kelola tiket">
+        <Card title={ $t('support.v2.manage') }>
           <div class="space-y-3">
-            <Field id="t-status" label="Status" type="select" stacked value={status} options={statusOptions} onchange={(v) => (status = v as TicketStatus)} disabled={supportBusy} />
-            <Field id="t-priority" label="Prioritas" type="select" stacked value={priority} options={priorityOptions} onchange={(v) => (priority = v as TicketPriority)} disabled={supportBusy} />
-            <Field id="t-category" label="Kategori" type="select" stacked value={category} options={categoryOptions} onchange={(v) => (category = v as TicketCategory | '')} disabled={supportBusy} />
+            <Field id="t-status" label={ $t('admin.customers.columns.status') } type="select" stacked value={status} options={statusOptions} onchange={(v) => (status = v as TicketStatus)} disabled={supportBusy} />
+            <Field id="t-priority" label={ $t('support.fields.priority') } type="select" stacked value={priority} options={priorityOptions} onchange={(v) => (priority = v as TicketPriority)} disabled={supportBusy} />
+            <Field id="t-category" label={ $t('support.fields.category') } type="select" stacked value={category} options={categoryOptions} onchange={(v) => (category = v as TicketCategory | '')} disabled={supportBusy} />
             {#if canChangeAssignee}
-              <Field id="t-assignee" label="Petugas" type="select" stacked value={assignedTo} options={memberOptions} onchange={(v) => (assignedTo = v)} disabled={supportBusy} />
+              <Field id="t-assignee" label={ $t('support.v2.agent') } type="select" stacked value={assignedTo} options={memberOptions} onchange={(v) => (assignedTo = v)} disabled={supportBusy} />
             {/if}
             {#if !ticket.assigned_to && !isClosed}
               <Button variant="secondary" onclick={() => void claimTicket()} disabled={claiming || supportBusy}>
-                {claiming ? 'Mengklaim…' : 'Klaim tiket'}
+                {claiming ? 'Mengklaim…' : $t('support.v2.claim_btn')}
               </Button>
             {/if}
           </div>
         </Card>
 
         {#if ticket.satisfaction_rating}
-          <Card title="Penilaian pelanggan">
+          <Card title={ $t('support.v2.rating_label') }>
             <div class="flex items-center gap-2 text-sm">
               <span class="text-ink-900">{ticket.satisfaction_rating}/5</span>
               <div class="flex gap-0.5" aria-hidden="true">
@@ -334,14 +335,14 @@
           </Card>
         {/if}
 
-        <Card title="Balas">
+        <Card title={ $t('support.fields.reply') }>
           {#if isClosed}
             <div class="flex items-center gap-2 rounded-lg bg-ink-50 px-3 py-2 text-sm text-ink-600">
               <Icon name="lock" size={14} />
               Tiket ditutup — balasan nonaktif.
             </div>
           {:else}
-            <Field id="t-reply" label="Balasan" type="textarea" stacked rows={5} value={reply} onchange={(v) => (reply = v)} placeholder="Tulis balasan…" />
+            <Field id="t-reply" label={ $t('support.v2.reply_label') } type="textarea" stacked rows={5} value={reply} onchange={(v) => (reply = v)} placeholder={ $t('support.v2.reply_ph') } />
             <div class="mt-3 flex flex-wrap items-center gap-3">
               <label class="focus-ring inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-lg bg-ink-50 px-3 text-sm text-ink-700 ring-1 ring-ink-200 hover:bg-ink-100">
                 <Icon name="folder" size={14} />
@@ -358,14 +359,14 @@
                 </label>
               {/if}
               <Button variant="primary" icon="mail" onclick={() => void sendReply()} disabled={sending || supportBusy || !reply.trim()}>
-                {sending ? 'Mengirim…' : 'Kirim balasan'}
+                {sending ? 'Mengirim…' : $t('support.v2.send_reply')}
               </Button>
             </div>
           {/if}
         </Card>
       </div>
 
-      <Card title="Percakapan" padded={false}>
+      <Card title={ $t('support.detail.thread') } padded={false}>
         <div class="divide-y divide-ink-100">
           {#each messages as m (m.id)}
             {@const isCustomer = isCustomerMessage(createdBy, m.author_id)}
@@ -375,11 +376,11 @@
                 <span class="inline-flex size-6 items-center justify-center rounded-full bg-ink-900 text-[11px] font-medium text-white">{initials(who)}</span>
                 <span class="font-medium text-ink-900">{who}</span>
                 {#if m.is_internal}
-                  <Badge tone="warning" label="Internal" />
+                  <Badge tone="warning" label={ $t('support.tags.internal') } />
                 {:else if isCustomer}
-                  <Badge tone="info" label="Pelanggan" />
+                  <Badge tone="info" label={ $t('support.labels.customer') } />
                 {:else}
-                  <Badge tone="neutral" label="Staf" />
+                  <Badge tone="neutral" label={ $t('support.labels.staff') } />
                 {/if}
                 <span class="text-xs text-ink-400">{formatDateTime(m.created_at, { timeZone: $appSettings.app_timezone })}</span>
               </div>
@@ -400,7 +401,7 @@
               {/if}
             </div>
           {:else}
-            <div class="px-4 py-10 text-center text-sm text-ink-500">Belum ada pesan.</div>
+            <div class="px-4 py-10 text-center text-sm text-ink-500">{ $t('support.v2.no_msgs') }</div>
           {/each}
         </div>
       </Card>

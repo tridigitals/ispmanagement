@@ -14,6 +14,7 @@
   import Badge from './Badge.svelte';
   import Icon from './Icon.svelte';
   import type { StatusTone } from './tokens';
+  import { t } from 'svelte-i18n';
 
   export interface MetaItem {
     label: string;
@@ -43,7 +44,7 @@
     statusLabel,
     meta = [],
     backHref,
-    backLabel = 'Kembali',
+    backLabel = $t('components.detail_header.back'),
     actions,
   }: Props = $props();
 

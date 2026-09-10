@@ -506,7 +506,7 @@
       <Button variant="ghost" href="/v2/admin/customers">Batal</Button>
       <div class="flex gap-2">
         {#if step > 1}
-          <Button variant="ghost" onclick={prevStep}>Kembali</Button>
+          <Button variant="ghost" onclick={prevStep}>{ $t('components.detail_header.back') }</Button>
         {/if}
         {#if step < 3}
           <Button variant="primary" onclick={nextStep}>Lanjut</Button>

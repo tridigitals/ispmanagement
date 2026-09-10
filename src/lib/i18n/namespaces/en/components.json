@@ -129,5 +129,8 @@
     "quote": "Quote",
     "link": "Link",
     "clear_formatting": "Clear formatting"
+  },
+  "detail_header": {
+    "back": "Back"
   }
 }

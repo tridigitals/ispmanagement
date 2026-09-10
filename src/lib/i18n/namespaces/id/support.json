@@ -122,6 +122,27 @@
     "h_proc": "diproses",
     "h_done": "tuntas",
     "t_failed": "Gagal membuat tiket: {message}",
-    "load_more": "Muat lagi"
+    "load_more": "Muat lagi",
+    "manage": "Kelola tiket",
+    "agent": "Petugas",
+    "assigned_to": "Ditugaskan ke",
+    "claim_btn": "Klaim tiket",
+    "no_msgs": "Belum ada pesan.",
+    "send_reply": "Kirim balasan",
+    "reply_label": "Balasan",
+    "reply_ph": "Tulis balasan…",
+    "rating_label": "Penilaian pelanggan",
+    "t_saved": "Perubahan tiket disimpan.",
+    "t_claimed": "Tiket diklaim.",
+    "st_open": "Terbuka",
+    "st_closed": "Ditutup",
+    "st_resolved": "Selesai",
+    "st_pending": "Menunggu",
+    "p_low": "Rendah",
+    "p_normal": "Normal",
+    "p_high": "Tinggi",
+    "p_urgent2": "Urgent",
+    "refresh": "Segarkan",
+    "created": "dibuat"
   }
 }

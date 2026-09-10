@@ -32,8 +32,16 @@ export const TICKET_CATEGORY_LABEL: Record<TicketCategory, string> = {
   installation: 'Instalasi',
 };
 
-export function ticketStatusLabel(status: string | null | undefined): string {
+const STATUS_KEYS: Record<string, string> = {
+  open: 'support.v2.st_open',
+  pending: 'support.v2.st_pending',
+  closed: 'support.v2.st_closed',
+  resolved: 'support.v2.st_resolved',
+};
+
+export function ticketStatusLabel(status: string | null | undefined, tt?: (k: string) => string): string {
   if (!status) return '—';
+  if (tt && STATUS_KEYS[status]) return tt(STATUS_KEYS[status]);
   return TICKET_STATUS_LABEL[status as TicketStatus] || status;
 }
 
@@ -52,8 +60,16 @@ export function ticketStatusTone(status: string | null | undefined): StatusTone 
   }
 }
 
-export function ticketPriorityLabel(priority: string | null | undefined): string {
+const PRIORITY_KEYS: Record<string, string> = {
+  low: 'support.v2.p_low',
+  normal: 'support.v2.p_normal',
+  high: 'support.v2.p_high',
+  urgent: 'support.v2.p_urgent2',
+};
+
+export function ticketPriorityLabel(priority: string | null | undefined, tt?: (k: string) => string): string {
   if (!priority) return '—';
+  if (tt && PRIORITY_KEYS[priority]) return tt(PRIORITY_KEYS[priority]);
   return TICKET_PRIORITY_LABEL[priority as TicketPriority] || priority;
 }
 
@@ -72,8 +88,16 @@ export function ticketPriorityTone(priority: string | null | undefined): StatusT
   }
 }
 
-export function ticketCategoryLabel(category: string | null | undefined): string {
-  if (!category) return 'Umum';
+const CATEGORY_KEYS: Record<string, string> = {
+  general: 'support.categories.general',
+  billing: 'support.categories.billing',
+  technical: 'support.categories.technical',
+  installation: 'support.categories.installation',
+};
+
+export function ticketCategoryLabel(category: string | null | undefined, tt?: (k: string) => string): string {
+  if (!category) return tt ? tt('support.categories.general') : 'Umum';
+  if (tt && CATEGORY_KEYS[category]) return tt(CATEGORY_KEYS[category]);
   return TICKET_CATEGORY_LABEL[category as TicketCategory] || category;
 }
 

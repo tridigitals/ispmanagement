@@ -122,6 +122,27 @@
     "h_proc": "in progress",
     "h_done": "resolved",
     "t_failed": "Failed to create ticket: {message}",
-    "load_more": "Load more"
+    "load_more": "Load more",
+    "manage": "Manage ticket",
+    "agent": "Officer",
+    "assigned_to": "Assigned to",
+    "claim_btn": "Claim ticket",
+    "no_msgs": "No messages yet.",
+    "send_reply": "Send reply",
+    "reply_label": "Reply",
+    "reply_ph": "Write a reply…",
+    "rating_label": "Customer rating",
+    "t_saved": "Ticket changes saved.",
+    "t_claimed": "Ticket claimed.",
+    "st_open": "Open",
+    "st_closed": "Closed",
+    "st_resolved": "Resolved",
+    "st_pending": "Pending",
+    "p_low": "Low",
+    "p_normal": "Normal",
+    "p_high": "High",
+    "p_urgent2": "Urgent",
+    "refresh": "Refresh",
+    "created": "created"
   }
 }

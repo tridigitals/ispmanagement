@@ -25,6 +25,7 @@
   } from '$lib/utils/supportTicketInsights';
   import { loadLightboxModule } from '$lib/components/ui/lightboxModule';
   import PortalShell from '$lib/components/ds/PortalShell.svelte';
+  import { t } from 'svelte-i18n';
   import Card from '$lib/components/ds/Card.svelte';
   import Badge from '$lib/components/ds/Badge.svelte';
   import Button from '$lib/components/ds/Button.svelte';
@@ -132,7 +133,7 @@
 
 <PortalShell title="Detail tiket">
   <div class="mb-4 flex flex-wrap items-center gap-3">
-    <Button variant="ghost" size="sm" icon="chevronLeft" onclick={goBack}>Kembali</Button>
+    <Button variant="ghost" size="sm" icon="chevronLeft" onclick={goBack}>{ $t('components.detail_header.back') }</Button>
     <span class="font-mono text-xs text-ink-400">#{id.slice(0, 8)}</span>
     <div class="ml-auto">
       <Button variant="ghost" size="sm" icon="refresh" onclick={load}>Segarkan</Button>
@@ -145,12 +146,12 @@
     {@const d = detail}
     <Card title={d.ticket.subject}>
       {#snippet aside()}
-        <Badge tone={ticketStatusTone(d.ticket.status)} label={ticketStatusLabel(d.ticket.status)} />
+        <Badge tone={ticketStatusTone(d.ticket.status)} label={ticketStatusLabel(d.ticket.status, $t)} />
       {/snippet}
       <div class="mb-3 flex flex-wrap items-center gap-1.5">
-        <Badge tone={ticketPriorityTone(d.ticket.priority)} label={ticketPriorityLabel(d.ticket.priority)} />
+        <Badge tone={ticketPriorityTone(d.ticket.priority)} label={ticketPriorityLabel(d.ticket.priority, $t)} />
         {#if d.ticket.category}
-          <Badge tone="neutral" label={ticketCategoryLabel(d.ticket.category)} />
+          <Badge tone="neutral" label={ticketCategoryLabel(d.ticket.category, $t)} />
         {/if}
         <span class="ml-auto text-xs text-ink-400">
           Diperbarui {formatDateTime(d.ticket.updated_at, { timeZone: $appSettings.app_timezone })}

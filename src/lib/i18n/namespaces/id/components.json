@@ -129,5 +129,8 @@
     "quote": "Kutipan",
     "link": "Tautan",
     "clear_formatting": "Hapus format"
+  },
+  "detail_header": {
+    "back": "Kembali"
   }
 }

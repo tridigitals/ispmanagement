@@ -2617,7 +2617,7 @@
           {/if}
         </div>
         {#if fromInstallation}
-          <a class="nm-btn" href={installationReturnUrl}><Icon name="arrow-left" size={14} />{'Kembali'}</a>
+          <a class="nm-btn" href={installationReturnUrl}><Icon name="arrow-left" size={14} />{ $t('components.detail_header.back') }</a>
         {/if}
         <div class="nm-spacer"></div>
         <div class="nm-search">
@@ -2763,7 +2763,7 @@
               disabled={linkPathBendPoints.length === 0}
             >
               <Icon name="arrow-left" size={14} />
-              {'Kembali'}
+              { $t('components.detail_header.back') }
             </button>
           {/if}
           <button class="btn ghost btn-xs danger" type="button" onclick={cancelLinkPicking}>
