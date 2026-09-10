@@ -68,7 +68,7 @@
     "current_password": "Current Password",
     "new_password": "New Password",
     "confirm_password": "Confirm Password",
-    "password_placeholder": "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+    "password_placeholder": "••••••••",
     "requirements_title": "Password requirements:",
     "req_length": "At least {length} characters long",
     "req_uppercase": "One uppercase letter",
@@ -193,5 +193,26 @@
     "twofa_required": "Your organization requires Two-Factor Authentication. Please enable it to continue.",
     "2fa_method_totp": "2FA method changed to Authenticator App",
     "2fa_method_email": "2FA method changed to Email"
+  },
+  "portal_settings": {
+    "title": "Settings",
+    "desc": "Profile, security, and account preferences.",
+    "tab_profile": "Profile",
+    "name": "Name",
+    "name_ph": "Full name",
+    "email_ph": "user@example.com",
+    "phone": "Phone",
+    "save": "Save",
+    "tab_security": "Security",
+    "change_pw": "Change password",
+    "tab_notif": "Notifications",
+    "tab_lang": "Language",
+    "ui_lang": "Interface language",
+    "t_saved": "Profile saved successfully.",
+    "t_pw_hint": "Change password — open it from the profile menu.",
+    "twofa_on": "Active",
+    "twofa_off": "Inactive",
+    "t_2fa_on": "2FA enabled.",
+    "t_2fa_off": "2FA disabled."
   }
 }

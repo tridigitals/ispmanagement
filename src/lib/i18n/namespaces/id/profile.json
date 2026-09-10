@@ -68,7 +68,7 @@
     "current_password": "Kata Sandi Saat Ini",
     "new_password": "Kata Sandi Baru",
     "confirm_password": "Konfirmasi Kata Sandi",
-    "password_placeholder": "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+    "password_placeholder": "••••••••",
     "requirements_title": "Syarat kata sandi:",
     "req_length": "Minimal {length} karakter",
     "req_uppercase": "Satu huruf besar",
@@ -193,5 +193,26 @@
     "twofa_required": "Organisasi Anda mewajibkan Autentikasi Dua Faktor (2FA). Silakan aktifkan untuk melanjutkan.",
     "2fa_method_totp": "Metode 2FA diubah ke Aplikasi Authenticator",
     "2fa_method_email": "Metode 2FA diubah ke Email"
+  },
+  "portal_settings": {
+    "title": "Pengaturan",
+    "desc": "Profil, keamanan, dan preferensi akun.",
+    "tab_profile": "Profil",
+    "name": "Nama",
+    "name_ph": "Nama lengkap",
+    "email_ph": "email@contoh.com",
+    "phone": "Telepon",
+    "save": "Simpan",
+    "tab_security": "Keamanan",
+    "change_pw": "Ganti password",
+    "tab_notif": "Notifikasi",
+    "tab_lang": "Bahasa",
+    "ui_lang": "Bahasa antarmuka",
+    "t_saved": "Profil berhasil disimpan.",
+    "t_pw_hint": "Ganti password — buka dari menu profil.",
+    "twofa_on": "Aktif",
+    "twofa_off": "Nonaktif",
+    "t_2fa_on": "2FA diaktifkan.",
+    "t_2fa_off": "2FA dinonaktifkan."
   }
 }

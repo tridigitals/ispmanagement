@@ -14,6 +14,7 @@
   import Button from '$lib/components/ds/Button.svelte';
   import Field from '$lib/components/ds/Field.svelte';
   import Icon from '$lib/components/ds/Icon.svelte';
+  import { t } from 'svelte-i18n';
 
   let name = $state('');
   let email = $state('');
@@ -40,7 +41,7 @@
     saving = true;
     try {
       await api.auth.updateMe({ name, email, phone: phone || undefined });
-      toast.success('Profil berhasil disimpan.');
+      toast.success($t('profile.portal_settings.t_saved'));
     } catch (e: any) {
       toast.error(e?.message || 'Gagal menyimpan profil.');
     } finally {
@@ -53,11 +54,11 @@
       if (twofaEnabled) {
         await api.auth.disable2FA('');
         twofaEnabled = false;
-        toast.success('2FA dinonaktifkan.');
+        toast.success($t('profile.portal_settings.t_2fa_off'));
       } else {
         await api.auth.enable2FA();
         twofaEnabled = true;
-        toast.success('2FA diaktifkan.');
+        toast.success($t('profile.portal_settings.t_2fa_on'));
       }
     } catch (e: any) {
       toast.error(e?.message || 'Gagal mengubah 2FA.');
@@ -65,7 +66,7 @@
   }
 
   function changePassword() {
-    toast.error('Ganti password — buka dari menu profil.');
+    toast.error($t('profile.portal_settings.t_pw_hint'));
   }
 
   const notifRows = $derived([
@@ -85,10 +86,10 @@
   }
 </script>
 
-<PortalShell title="Pengaturan">
-  <PageHeader title="Pengaturan" desc="Profil, keamanan, dan preferensi akun." />
+<PortalShell title={ $t('profile.portal_settings.title') }>
+  <PageHeader title={ $t('profile.portal_settings.title') } desc={ $t('profile.portal_settings.desc') } />
 
-  <Card title="Profil" class="mb-4">
+  <Card title={ $t('profile.portal_settings.tab_profile') } class="mb-4">
     {#snippet aside()}
       <div class="flex items-center gap-3">
         <span class="avatar">{$user?.name?.charAt(0) || 'U'}</span>
@@ -102,24 +103,24 @@
       </div>
     {/snippet}
     <div class="grid gap-4 md:grid-cols-2">
-      <Field id="s-name" label="Nama" type="text" value={name} placeholder="Nama lengkap" onchange={(v) => (name = v)} />
-      <Field id="s-email" label="Email" type="email" value={email} placeholder="email@contoh.com" onchange={(v) => (email = v)} />
-      <Field id="s-phone" label="Telepon" type="text" value={phone} placeholder="0812xxxx" onchange={(v) => (phone = v)} />
+      <Field id="s-name" label={ $t('profile.portal_settings.name') } type="text" value={name} placeholder={ $t('profile.portal_settings.name_ph') } onchange={(v) => (name = v)} />
+      <Field id="s-email" label="Email" type="email" value={email} placeholder={ $t('profile.portal_settings.email_ph') } onchange={(v) => (email = v)} />
+      <Field id="s-phone" label={ $t('profile.portal_settings.phone') } type="text" value={phone} placeholder="0812xxxx" onchange={(v) => (phone = v)} />
       <div class="flex items-end">
         <Button loading={saving} disabled={saving} onclick={saveProfile}>
-          {saving ? 'Menyimpan…' : 'Simpan'}
+          {saving ? $t('common.saving') : $t('profile.portal_settings.save')}
         </Button>
       </div>
     </div>
   </Card>
 
   <div class="grid gap-4 md:grid-cols-2">
-    <Card title="Keamanan"
+    <Card title={ $t('profile.portal_settings.tab_security') }
       >
       <div class="flex items-center justify-between py-2">
         <div>
           <p class="text-sm font-medium">Two-Factor Authentication</p>
-          <p class="text-xs text-ink-500">{twofaEnabled ? 'Aktif' : 'Nonaktif'}</p>
+          <p class="text-xs text-ink-500">{twofaEnabled ? $t('profile.portal_settings.twofa_on') : $t('profile.portal_settings.twofa_off')}</p>
         </div>
         <Field
           id="s-2fa"
@@ -130,11 +131,11 @@
         />
       </div>
       <Button variant="ghost" icon="lock" onclick={changePassword} class="mt-2">
-        Ganti password
+        { $t('profile.portal_settings.change_pw') }
       </Button>
     </Card>
 
-    <Card title="Notifikasi"
+    <Card title={ $t('profile.portal_settings.tab_notif') }
       >
       <div class="flex flex-col gap-1">
         {#each notifRows as item (item.key)}
@@ -155,11 +156,11 @@
       </div>
     </Card>
 
-    <Card title="Bahasa" class="md:col-span-2">
+    <Card title={ $t('profile.portal_settings.tab_lang') } class="md:col-span-2">
       <div class="max-w-xs">
         <Field
           id="s-lang"
-          label="Bahasa antarmuka"
+          label={ $t('profile.portal_settings.ui_lang') }
           type="select"
           value={language}
           options={[
