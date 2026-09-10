@@ -325,7 +325,7 @@
       >
         {#snippet cell(item, column)}
           {#if column.key === 'logged_at'}
-            <span title={formatDateTime(item.logged_at, { timeZone: $appSettings.app_timezone })}>{timeAgo(item.logged_at)}</span>
+            <span title={formatDateTime(item.logged_at, { timeZone: $appSettings.app_timezone })}>{timeAgo(item.logged_at, (k) => $t(k))}</span>
             {#if item.router_time}
               <span class="block font-mono text-xs text-ink-400">{item.router_time}</span>
             {/if}

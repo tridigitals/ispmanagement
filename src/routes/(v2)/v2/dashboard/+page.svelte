@@ -434,7 +434,7 @@
                     <span class="min-w-0 flex-1">
                       <span class="flex items-baseline justify-between gap-3">
                         <span class="truncate text-sm">{n.title}</span>
-                        <span class="shrink-0 text-xs text-ink-400">{timeAgo(n.created_at)}</span>
+                        <span class="shrink-0 text-xs text-ink-400">{timeAgo(n.created_at, (k) => $t(k))}</span>
                       </span>
                       {#if n.message}
                         <span class="block truncate text-xs text-ink-500">{n.message}</span>

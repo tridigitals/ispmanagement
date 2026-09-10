@@ -27,7 +27,7 @@
     getCustomerPackageSubscriptionId,
   } from '$lib/utils/customerPackageInvoice';
   import {
-    INVOICE_REJECT_REASONS,
+    INVOICE_REJECT_REASON_KEYS,
     invoicePaymentMethodLabel,
     invoiceStatusLabel,
     invoiceStatusTone,
@@ -37,6 +37,7 @@
   import Modal from '$lib/components/ui/Modal.svelte';
   import { loadLightboxModule } from '$lib/components/ui/lightboxModule';
   import InvoicePrintModal from '$lib/components/invoice/InvoicePrintModal.svelte';
+  import { t } from 'svelte-i18n';
   import {
     AppShell,
     Badge,
@@ -144,9 +145,9 @@
     try {
       await api.payment.checkStatus(invoice.id);
       await loadInvoice();
-      toast.success('Status diperbarui.');
+      toast.success($t('admin.invoices.detail.t_updated'));
     } catch (e) {
-      toast.error(extractApiErrorMessage(e) || 'Gagal cek status.');
+      toast.error(extractApiErrorMessage(e) || $t('admin.invoices.detail.t_check_fail'));
     } finally {
       checking = false;
     }
@@ -161,7 +162,7 @@
   function openProofLightbox() {
     const fileId = invoice?.proof_attachment;
     if (!fileId) {
-      toast.error('Bukti bayar belum tersedia.');
+      toast.error($t('admin.invoices.detail.t_no_proof'));
       return;
     }
     lightboxFiles = [
@@ -182,7 +183,7 @@
     try {
       await api.payment.verifyCustomerPackagePayment(invoice.id, status, rejectionReason);
       await loadInvoice();
-      toast.success(`Invoice ditandai ${status === 'paid' ? 'lunas' : 'gagal'}.`);
+      toast.success(status === 'paid' ? $t('admin.invoices.detail.t_marked_paid') : $t('admin.invoices.detail.t_marked_failed'));
       return true;
     } catch (e) {
       toast.error(extractApiErrorMessage(e) || 'Gagal verifikasi.');
@@ -206,7 +207,7 @@
   async function submitRejectPayment() {
     const reason = rejectReason.trim();
     if (!reason) {
-      toast.error('Alasan penolakan wajib diisi.');
+      toast.error($t('admin.invoices.detail.t_reason_req'));
       return;
     }
     if (await markPayment('failed', reason)) {
@@ -245,41 +246,41 @@
     }
   }
 </script>
-<AppShell title={invoice ? `Invoice ${invoice.invoice_number}` : 'Detail invoice'}>
+<AppShell title={invoice ? $t('admin.invoices.detail.title', { values: { n: invoice.invoice_number } }) : $t('admin.invoices.detail.title_fallback')}>
   {#if loading}
-    <Card><p class="py-10 text-center text-sm text-ink-500">Memuat invoice…</p></Card>
+    <Card><p class="py-10 text-center text-sm text-ink-500">{ $t('admin.invoices.detail.loading') }</p></Card>
   {:else if error || !invoice}
     <Card>
       <div class="py-10 text-center">
-        <p class="text-sm font-medium text-ink-900">{error || 'Invoice tidak ditemukan.'}</p>
+        <p class="text-sm font-medium text-ink-900">{error || $t('admin.invoices.detail.not_found')}</p>
         <div class="mt-3">
-          <Button variant="ghost" href="/v2/admin/invoices">Kembali ke daftar</Button>
+          <Button variant="ghost" href="/v2/admin/invoices">{ $t('admin.invoices.detail.back_list') }</Button>
         </div>
       </div>
     </Card>
   {:else}
     <DetailHeader
-      title={`Invoice ${invoice.invoice_number}`}
+      title={ $t('admin.invoices.detail.title', { values: { n: invoice.invoice_number } }) }
       subtitle={invoice.description || '-'}
       status={invoice.status}
       statusTone={invoiceStatusTone(invoice.status)}
-      statusLabel={invoiceStatusLabel(invoice.status)}
+      statusLabel={invoiceStatusLabel(invoice.status, (k) => $t(k))}
       backHref="/v2/admin/invoices"
       meta={[
-        { label: 'Nominal', value: formatMoney(invoice.amount, { currency: invoice.currency_code }) },
-        { label: 'Jatuh tempo', value: formatDateTime(invoice.due_date, { timeZone: $appSettings.app_timezone }) },
-        { label: 'Metode', value: invoicePaymentMethodLabel(invoice) },
+        { label: $t('admin.invoices.detail.amount'), value: formatMoney(invoice.amount, { currency: invoice.currency_code }) },
+        { label: $t('admin.invoices.detail.due'), value: formatDateTime(invoice.due_date, { timeZone: $appSettings.app_timezone }) },
+        { label: $t('admin.invoices.detail.method'), value: invoicePaymentMethodLabel(invoice, (k) => $t(k)) },
       ]}
     >
       {#snippet actions()}
         {#if invoice}
         {@const inv = invoice}
         {#if relatedCustomerId}
-          <Button variant="ghost" onclick={openCustomerDetail}>Buka pelanggan</Button>
+          <Button variant="ghost" onclick={openCustomerDetail}>{ $t('admin.invoices.detail.open_customer') }</Button>
         {/if}
         <Button variant="ghost" href="/v2/admin/invoices/collection">Log penagihan</Button>
         <Button variant="ghost" icon="refresh" onclick={() => void loadInvoice()} disabled={loading || paymentMutationBusy}>
-          Segarkan
+          { $t('common.refresh') }
         </Button>
         <Button variant="ghost" onclick={() => void openPrintModal()} disabled={loading || paymentMutationBusy}>
           {printPreparing ? 'Menyiapkan…' : 'Cetak / PDF'}
@@ -294,18 +295,18 @@
     </DetailHeader>
 
     <div class="grid gap-3 lg:grid-cols-2">
-      <Card title="Rincian">
+      <Card title={ $t('admin.invoices.details_title') }>
         <dl class="grid grid-cols-2 gap-3 text-sm">
           <div><dt class="text-xs text-ink-500">Dibuat</dt><dd class="font-medium">{invoice.created_at ? formatDateTime(invoice.created_at, { timeZone: $appSettings.app_timezone }) : '-'}</dd></div>
           <div><dt class="text-xs text-ink-500">Diperbarui</dt><dd class="font-medium">{invoice.updated_at ? formatDateTime(invoice.updated_at, { timeZone: $appSettings.app_timezone }) : '-'}</dd></div>
           {#if invoice.status === 'failed' && invoice.rejection_reason}
-            <div class="col-span-2"><dt class="text-xs text-ink-500">Alasan penolakan</dt><dd class="font-medium text-red-700">{invoice.rejection_reason}</dd></div>
+            <div class="col-span-2"><dt class="text-xs text-ink-500">{ $t('admin.invoices.detail.reject_reason') }</dt><dd class="font-medium text-red-700">{invoice.rejection_reason}</dd></div>
           {/if}
         </dl>
       </Card>
 
       {#if invoice.proof_attachment}
-        <Card title="Bukti bayar — klik gambar untuk memperbesar">
+        <Card title={ $t('admin.invoices.detail.proof_title') }>
           <button type="button" class="block overflow-hidden rounded-xl ring-1 ring-ink-200" onclick={openProofLightbox}>
             <img src={getProofUrl(invoice.proof_attachment)} alt="Bukti bayar" class="max-h-80 w-full object-contain bg-ink-50" />
           </button>
@@ -313,19 +314,19 @@
       {/if}
     </div>
 
-    <Card title="Aksi verifikasi">
+    <Card title={ $t('admin.invoices.detail.verify_title') }>
       <div class="flex flex-wrap gap-2">
         {#if !isManualPaymentInvoice(invoice)}
           <Button variant="ghost" onclick={() => void checkStatus()} disabled={paymentMutationBusy}>
-            {checking ? 'Mengecek…' : 'Cek status online'}
+            {checking ? $t('admin.invoices.detail.checking') : $t('admin.invoices.detail.check')}
           </Button>
         {/if}
         {#if canManageBilling && (invoice.status === 'pending' || invoice.status === 'verification_pending')}
           <Button variant="primary" onclick={() => requestMarkPayment('paid')} disabled={paymentMutationBusy}>
-            {processing ? 'Memproses…' : 'Tandai lunas'}
+            {processing ? $t('admin.invoices.detail.processing') : $t('admin.invoices.detail.mark_paid')}
           </Button>
           <Button variant="danger" onclick={() => requestMarkPayment('failed')} disabled={paymentMutationBusy}>
-            {processing ? 'Memproses…' : 'Tandai gagal'}
+            {processing ? $t('admin.invoices.detail.processing') : $t('admin.invoices.detail.mark_failed')}
           </Button>
         {/if}
       </div>
@@ -335,13 +336,13 @@
 
 <ConfirmDialog
   bind:show={showConfirm}
-  title={pendingVerifyStatus === 'paid' ? 'Tandai lunas?' : 'Tandai gagal?'}
+  title={pendingVerifyStatus === 'paid' ? $t('admin.invoices.detail.confirm_paid_q') : $t('admin.invoices.detail.confirm_failed_q')}
   message={pendingVerifyStatus === 'paid'
-    ? 'Status invoice akan menjadi lunas.'
-    : 'Status invoice akan menjadi gagal.'}
+    ? $t('admin.invoices.detail.confirm_paid')
+    : $t('admin.invoices.detail.confirm_failed')}
   type={pendingVerifyStatus === 'paid' ? 'info' : 'danger'}
-  confirmText={pendingVerifyStatus === 'paid' ? 'Tandai lunas' : 'Tandai gagal'}
-  cancelText="Batal"
+  confirmText={pendingVerifyStatus === 'paid' ? $t('admin.invoices.detail.mark_paid') : $t('admin.invoices.detail.mark_failed')}
+  cancelText={ $t('common.cancel') }
   loading={processing}
   onconfirm={() => { void (async () => { if (await markPayment(pendingVerifyStatus)) showConfirm = false; })(); }}
   oncancel={() => {}}
@@ -349,12 +350,13 @@
 
 <Modal
   bind:show={showRejectModal}
-  title="Tolak bukti bayar"
+  title={ $t('admin.invoices.detail.reject_title') }
   onclose={() => (showRejectModal = false)}
 >
-  <p class="text-sm text-ink-500">Pilih alasan cepat atau tulis sendiri — alasan tersimpan di invoice.</p>
+  <p class="text-sm text-ink-500">{ $t('admin.invoices.detail.reject_hint') }</p>
   <div class="mt-3 flex flex-wrap gap-1.5">
-    {#each INVOICE_REJECT_REASONS as opt}
+    {#each INVOICE_REJECT_REASON_KEYS as rk}
+      {@const opt = $t(rk)}
       <button
         type="button"
         class="rounded-lg px-2.5 py-1.5 text-xs ring-1 ring-ink-200 hover:bg-ink-50 {rejectReason === opt ? 'bg-ink-900 text-white' : ''}"
@@ -365,12 +367,12 @@
     {/each}
   </div>
   <div class="mt-3">
-    <Field id="inv-reject-reason" label="Alasan penolakan" type="textarea" stacked rows={3} value={rejectReason} onchange={(v) => (rejectReason = v)} />
+    <Field id="inv-reject-reason" label={ $t('admin.invoices.detail.reject_reason') } type="textarea" stacked rows={3} value={rejectReason} onchange={(v) => (rejectReason = v)} />
   </div>
   <div class="mt-4 flex justify-end gap-2">
-    <Button variant="ghost" onclick={() => (showRejectModal = false)}>Batal</Button>
+    <Button variant="ghost" onclick={() => (showRejectModal = false)}>{ $t('common.cancel') }</Button>
     <Button variant="danger" onclick={() => void submitRejectPayment()} disabled={!canManageBilling || paymentMutationBusy}>
-      {processing ? 'Memproses…' : 'Tandai gagal'}
+      {processing ? $t('admin.invoices.detail.processing') : $t('admin.invoices.detail.mark_failed')}
     </Button>
   </div>
 </Modal>

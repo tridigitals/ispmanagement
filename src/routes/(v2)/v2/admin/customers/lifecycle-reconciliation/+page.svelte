@@ -153,7 +153,7 @@
   >
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" onclick={() => void loadReport()} disabled={loading || repairing}>
-        Segarkan
+        { $t('common.refresh') }
       </Button>
       {#if canRepair}
         <Button

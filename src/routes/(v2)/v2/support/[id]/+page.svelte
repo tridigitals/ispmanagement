@@ -136,7 +136,7 @@
     <Button variant="ghost" size="sm" icon="chevronLeft" onclick={goBack}>{ $t('components.detail_header.back') }</Button>
     <span class="font-mono text-xs text-ink-400">#{id.slice(0, 8)}</span>
     <div class="ml-auto">
-      <Button variant="ghost" size="sm" icon="refresh" onclick={load}>Segarkan</Button>
+      <Button variant="ghost" size="sm" icon="refresh" onclick={load}>{ $t('common.refresh') }</Button>
     </div>
   </div>
 

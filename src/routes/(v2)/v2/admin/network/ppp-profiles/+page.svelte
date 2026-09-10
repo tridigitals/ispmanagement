@@ -271,7 +271,7 @@
     desc="Template kecepatan & alamat untuk akun PPPoE per router."
   >
     {#snippet actions()}
-      <Button variant="ghost" icon="refresh" onclick={() => void load()} disabled={!routerId || loading}>Segarkan</Button>
+      <Button variant="ghost" icon="refresh" onclick={() => void load()} disabled={!routerId || loading}>{ $t('common.refresh') }</Button>
       <Button variant="ghost" icon="download" onclick={() => void sync()} disabled={!routerId || loading}>Sinkron</Button>
       {#if canManage}
         <Button variant="primary" icon="plus" onclick={openCreate} disabled={!routerId || loading}>Tambah</Button>

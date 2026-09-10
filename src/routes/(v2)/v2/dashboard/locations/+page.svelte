@@ -211,7 +211,7 @@
     desc={loading ? $t('dashboard.locations.v2.loading') : $t('dashboard.locations.v2.desc')}
   >
     {#snippet actions()}
-      <Button variant="ghost" icon="refresh" disabled={loading} onclick={load}>Segarkan</Button>
+      <Button variant="ghost" icon="refresh" disabled={loading} onclick={load}>{ $t('common.refresh') }</Button>
       <Button icon="plus" onclick={openCreateLocation} disabled={loading || !hasLinkedCustomer}>
         { $t('dashboard.locations.v2.add') }
       </Button>

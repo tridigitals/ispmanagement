@@ -528,7 +528,7 @@
         { label: $t('admin.network.routers.v2d.latency'), value: router.latency_ms == null ? '—' : `${router.latency_ms} ms` },
         {
           label: $t('admin.network.routers.v2d.last_online'),
-          value: router.last_seen_at ? timeAgo(router.last_seen_at) : '—',
+          value: router.last_seen_at ? timeAgo(router.last_seen_at, (k) => $t(k)) : '—',
         },
         { label: 'RouterOS', value: router.ros_version || '—' },
         ...(router.identity ? [{ label: $t('admin.network.routers.v2d.identity'), value: router.identity }] : []),

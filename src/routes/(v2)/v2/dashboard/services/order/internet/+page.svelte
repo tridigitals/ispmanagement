@@ -479,7 +479,7 @@
         Jenis Layanan
       </Button>
       <Button variant="ghost" icon="receipt" onclick={() => goto('/v2/dashboard/invoices')}>Tagihan</Button>
-      <Button variant="ghost" icon="refresh" disabled={loading} onclick={loadData}>Segarkan</Button>
+      <Button variant="ghost" icon="refresh" disabled={loading} onclick={loadData}>{ $t('common.refresh') }</Button>
     {/snippet}
   </PageHeader>
 

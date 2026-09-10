@@ -265,7 +265,7 @@
       <Field id="mt-status" label={ $t('admin.customers.columns.status') } type="select" stacked value={status} options={statusOptions} onchange={(v) => { status = v as MessageTemplateStatus | 'all'; void loadTemplates(); }} />
       <div class="flex items-end">
         <Button variant="ghost" icon="refresh" onclick={() => void loadTemplates()} disabled={loading}>
-          Segarkan
+          { $t('common.refresh') }
         </Button>
       </div>
     </div>

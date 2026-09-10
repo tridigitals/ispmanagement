@@ -638,7 +638,7 @@
           {:else if c.key === 'seen'}
             {#if o.last_polled_at}
               <span class="text-sm text-ink-500" title={formatDateTime(o.last_polled_at, { timeZone: $appSettings.app_timezone })}>
-                {timeAgo(o.last_polled_at)}
+                {timeAgo(o.last_polled_at, (k) => $t(k))}
               </span>
             {:else}
               <span class="text-ink-400"> { $t('network.olt.v2.never') } </span>

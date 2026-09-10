@@ -381,7 +381,7 @@
     desc={ $t('admin.email_outbox.v2.desc') }
   >
     {#snippet actions()}
-      <Button variant="ghost" icon="download" onclick={() => void exportCsv()}>Ekspor CSV</Button>
+      <Button variant="ghost" icon="download" onclick={() => void exportCsv()}>{ $t('common.export_csv') }</Button>
       <Button variant="ghost" icon="refresh" onclick={() => void Promise.all([refreshStats(), load()])}>
         Muat ulang
       </Button>

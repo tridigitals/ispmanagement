@@ -222,7 +222,7 @@
       <Button variant="ghost" href="/v2/admin/network/incidents">Insiden</Button>
       <Button variant="ghost" href="/v2/admin/network/noc/wallboard">Wallboard</Button>
       <Button variant="ghost" icon="refresh" onclick={() => void load()} disabled={loading}>
-        Segarkan
+        { $t('common.refresh') }
       </Button>
     {/snippet}
   </PageHeader>
@@ -294,7 +294,7 @@
           {/if}
         {:else if column.key === 'seen'}
           {#if item.last_seen_at}
-            <span class="text-xs text-ink-500" title={formatDateTime(item.last_seen_at, { timeZone: $appSettings.app_timezone })}>{timeAgo(item.last_seen_at)}</span>
+            <span class="text-xs text-ink-500" title={formatDateTime(item.last_seen_at, { timeZone: $appSettings.app_timezone })}>{timeAgo(item.last_seen_at, (k) => $t(k))}</span>
           {:else}
             <span class="text-xs text-ink-400">—</span>
           {/if}

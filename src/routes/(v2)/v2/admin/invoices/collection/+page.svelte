@@ -282,14 +282,14 @@
   >
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" onclick={() => void refreshCurrent()} disabled={currentLoading || runningNow}>
-        Segarkan
+        { $t('common.refresh') }
       </Button>
       {#if canManageBilling}
         <Button variant="primary" icon="zap" loading={runningNow} onclick={() => void runCollectionNow()} disabled={runningNow || currentLoading}>
           {runningNow ? 'Menjalankan…' : $t('admin.billing_collection.actions.run_now')}
         </Button>
       {/if}
-      <Button variant="ghost" onclick={() => void exportCsv()}>Ekspor CSV</Button>
+      <Button variant="ghost" onclick={() => void exportCsv()}>{ $t('common.export_csv') }</Button>
       <Button variant="ghost" onclick={() => void exportExcel()}>{ $t('admin.network.incidents.export.excel') }</Button>
     {/snippet}
   </PageHeader>
@@ -345,7 +345,7 @@
           >
             {#snippet cell(row: BillingCollectionLogView, col: Column)}
               {#if col.key === 'time'}
-                <div><div class="font-medium">{formatDateTime(row.created_at, { timeZone: $appSettings.app_timezone })}</div><div class="text-xs text-ink-500">{timeAgo(row.created_at)}</div></div>
+                <div><div class="font-medium">{formatDateTime(row.created_at, { timeZone: $appSettings.app_timezone })}</div><div class="text-xs text-ink-500">{timeAgo(row.created_at, (k) => $t(k))}</div></div>
               {:else if col.key === 'invoice'}
                 <div><div class="font-medium">{row.invoice_number || row.invoice_id}</div><div class="text-xs text-ink-500">{row.invoice_status || '—'}</div></div>
               {:else if col.key === 'customer'}
@@ -392,7 +392,7 @@
           >
             {#snippet cell(row: InvoiceReminderLogView, col: Column)}
               {#if col.key === 'time'}
-                <div><div class="font-medium">{formatDateTime(row.created_at, { timeZone: $appSettings.app_timezone })}</div><div class="text-xs text-ink-500">{timeAgo(row.created_at)}</div></div>
+                <div><div class="font-medium">{formatDateTime(row.created_at, { timeZone: $appSettings.app_timezone })}</div><div class="text-xs text-ink-500">{timeAgo(row.created_at, (k) => $t(k))}</div></div>
               {:else if col.key === 'invoice'}
                 <div class="font-medium">{row.invoice_number || row.invoice_id}</div>
               {:else if col.key === 'reminder'}

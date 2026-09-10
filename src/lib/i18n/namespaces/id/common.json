@@ -168,5 +168,6 @@
     "hour": "{n} jam lalu",
     "day": "{n} hari lalu",
     "week": "{n} mgg lalu"
-  }
+  },
+  "export_csv": "Ekspor CSV"
 }

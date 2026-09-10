@@ -218,7 +218,7 @@
         {activeOnly ? 'Aktif saja' : 'Semua'}
       </Button>
       <Button variant="ghost" icon="refresh" onclick={() => void load()} disabled={loading}>
-        Segarkan
+        { $t('common.refresh') }
       </Button>
     {/snippet}
   </PageHeader>
@@ -274,7 +274,7 @@
         {:else if column.key === 'status'}
           <Badge tone={alertStatusTone(item.status)} label={item.status} />
         {:else if column.key === 'seen'}
-          <span class="text-xs text-ink-500" title={formatDateTime(item.last_seen_at, { timeZone: $appSettings.app_timezone })}>{timeAgo(item.last_seen_at)}</span>
+          <span class="text-xs text-ink-500" title={formatDateTime(item.last_seen_at, { timeZone: $appSettings.app_timezone })}>{timeAgo(item.last_seen_at, (k) => $t(k))}</span>
         {:else if column.key === 'actions'}
           <RowActions
             primary={{ label: 'Buka router', icon: 'chevronRight', onclick: () => openRouter(item.router_id) }}

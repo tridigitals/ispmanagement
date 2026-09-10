@@ -301,7 +301,7 @@
   >
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" onclick={() => void load()} disabled={loading}>
-        Segarkan
+        { $t('common.refresh') }
       </Button>
       {#if canManage}
         <Button variant="primary" onclick={openCreate}>Aset baru</Button>

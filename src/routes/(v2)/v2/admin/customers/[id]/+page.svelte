@@ -760,7 +760,7 @@
             {#each timeline as log (log.id)}
               <li class="flex items-baseline justify-between gap-3 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-ink-200">
                 <span class="min-w-0 text-ink-900">{log.action} <span class="text-ink-500">{log.details || ''}</span></span>
-                <span class="shrink-0 text-xs text-ink-400">{timeAgo(log.created_at)}</span>
+                <span class="shrink-0 text-xs text-ink-400">{timeAgo(log.created_at, (k) => $t(k))}</span>
               </li>
             {/each}
           </ul>

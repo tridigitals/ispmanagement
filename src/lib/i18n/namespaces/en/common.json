@@ -168,5 +168,6 @@
     "hour": "{n} hours ago",
     "day": "{n} days ago",
     "week": "{n} weeks ago"
-  }
+  },
+  "export_csv": "Export CSV"
 }
