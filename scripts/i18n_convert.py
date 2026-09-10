@@ -61,7 +61,7 @@ def convert_page(spec):
     uses_t = bool(spec.get('map') or spec.get('toast') or spec.get('rawexpr'))
     if uses_t:
         s = ensure_ts_import(s)
-    for raw, key in spec.get('map', {}).items():
+    for raw, key in sorted(spec.get('map', {}).items(), key=lambda kv: -len(kv[0])):
         before = s
         # 1) HTML attribute values:  attr="raw"  ->  attr={ $t('key') }
         s = re.sub(r'(\b[a-zA-Z-]+=)"' + esc_re(raw) + '"', lambda m: m.group(1) + "{ $t('" + key + "') }", s)

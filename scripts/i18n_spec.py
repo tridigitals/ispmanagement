@@ -16,8 +16,17 @@ page, nsfile, out = sys.argv[1], sys.argv[2], sys.argv[3]
 new_keys, m, toast, post = {}, {}, {}, []
 STEMS = ('admin', 'common', 'dashboard', 'network', 'support', 'components', 'pages', 'payment', 'superadmin', 'profile', 'announcements', 'notifications', 'notifications_page', 'topbar', 'utils', 'install', 'mixradius', 'auth', 'sidebar')
 
+import os
+_loc = 'id'
+try:
+    _ns_top = set(json.load(open(f'src/lib/i18n/namespaces/{_loc}/{nsfile}.json')).keys())
+except Exception:
+    _ns_top = set()
+
 def full_ref(nsfile, key):
     head = key.split('.')[0]
+    if head in _ns_top:
+        return f'{nsfile}.{key}'
     return key if head in STEMS else f'{nsfile}.{key}'
 
 for ln in sys.stdin:

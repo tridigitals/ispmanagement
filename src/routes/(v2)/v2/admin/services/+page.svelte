@@ -55,6 +55,7 @@
     type FieldOption,
   } from '$lib/components/ds';
   import type { RowAction } from '$lib/components/ds/RowActions.svelte';
+  import { t } from 'svelte-i18n';
   import {
     convertPrice,
     friendlyDeleteError,
@@ -163,7 +164,7 @@
     if (tanpaMap.length) {
       items.push({
         icon: 'router',
-        title: `${tanpaMap.length} paket PPPoE aktif belum dipetakan ke router`,
+        title: $t('admin.network.packages.v2.attn_unmapped', { values: { a: tanpaMap.length } }),
         detail: `Tanpa mapping, provisioning memakai profil default: ${tanpaMap
           .slice(0, 3)
           .map((p) => p.name)
@@ -175,7 +176,7 @@
     if (nonaktif) {
       items.push({
         icon: 'zap',
-        title: `${nonaktif} paket dinonaktifkan`,
+        title: $t('admin.network.packages.v2.attn_disabled', { values: { a: nonaktif } }),
         detail: 'Paket nonaktif tidak muncul di penawaran baru; langganan lama tetap berjalan.',
         action: 'Tinjau paket',
       });
@@ -190,7 +191,7 @@
     { key: 'type', label: 'Tipe', width: '170px' },
     { key: 'price', label: 'Harga', width: '190px' },
     { key: 'status', label: 'Status', width: '110px' },
-    { key: 'mappings', label: 'Router', width: '110px' },
+    { key: 'mappings', label: $t('admin.customers.pppoe.columns.router'), width: '110px' },
     { key: 'actions', label: '', width: '120px', align: 'right' },
   ];
 
@@ -405,7 +406,7 @@
   function openMapping(p: IspPackage) {
     if (!$can('manage', 'isp_packages')) return;
     if (!mappingAllowed(p.service_type, p.provisioning_type)) {
-      toast.error('Pemetaan router hanya untuk layanan Internet / PPPoE.');
+      toast.error($t('admin.network.packages.v2.t_map_only'));
       return;
     }
     mapPkg = p;
@@ -439,7 +440,7 @@
         address_pool: mapPool.trim() || null,
         isolation_pool: mapIsolation.trim() || null,
       });
-      toast.success('Pemetaan tersimpan');
+      toast.success($t('admin.network.packages.v2.t_mapped'));
       mapModalOpen = false;
       await loadMappings();
     } catch (e: unknown) {
@@ -461,7 +462,7 @@
     if (!deleteTarget) return;
     try {
       await api.ispPackages.packages.delete(deleteTarget.id);
-      toast.success('Paket dihapus');
+      toast.success($t('admin.network.packages.v2.t_deleted'));
       await Promise.all([loadPackages(), loadMappings()]);
     } catch (e: unknown) {
       toast.error(friendlyDeleteError(extractApiErrorMessage(e)));
@@ -478,7 +479,7 @@
   function rowRest(p: IspPackage): RowAction[] {
     const acts: RowAction[] = [];
     if (mappingAllowed(p.service_type, p.provisioning_type)) {
-      acts.push({ label: 'Petakan router', icon: 'router', onclick: () => openMapping(p) });
+      acts.push({ label: $t('admin.network.packages.v2.map_btn'), icon: 'router', onclick: () => openMapping(p) });
     }
     acts.push({ label: 'Hapus', icon: 'close', danger: true, onclick: () => confirmDelete(p) });
     return acts;
@@ -494,7 +495,7 @@
     {
       value: 'hotspot' as ServiceType,
       icon: 'wifi' as const,
-      title: 'Hotspot',
+      title: $t('admin.network.packages.v2.hotspot'),
       sub: 'Layanan voucher / captive portal untuk zona akses bersama.',
     },
     {
@@ -516,34 +517,34 @@
   });
 </script>
 
-<AppShell title="Layanan">
+<AppShell title={ $t('sidebar.services') }>
   <PageHeader
-    title="Layanan"
+    title={ $t('sidebar.services') }
     eyebrow="Katalog"
-    desc="Paket internet, hotspot, dan VPN yang bisa dilanggankan pelanggan."
+    desc={ $t('admin.network.packages.v2.desc') }
   >
     {#snippet actions()}
-      <Button variant="ghost" icon="refresh" onclick={() => void load()}>Muat ulang</Button>
+      <Button variant="ghost" icon="refresh" onclick={() => void load()}>{ $t('admin.network.packages.v2.reload') }</Button>
       {#if canManage}
-        <Button variant="primary" icon="plus" onclick={openCreate}>Tambah paket</Button>
+        <Button variant="primary" icon="plus" onclick={openCreate}>{ $t('admin.network.packages.actions.add') }</Button>
       {/if}
     {/snippet}
   </PageHeader>
 
   <Card>
     <div class="grid grid-cols-2 gap-6 sm:grid-cols-4">
-      <StatTile label="Total paket" value={String(stats.total)} hint="di katalog tenant ini" />
+      <StatTile label={ $t('admin.network.packages.v2.total') } value={String(stats.total)} hint={ $t('admin.network.packages.v2.h_total') } />
       <StatTile
-        label="Aktif"
+        label={ $t('admin.network.packages.fields.active') }
         value={String(stats.aktif)}
-        hint="bisa dilanggankan baru"
+        hint={ $t('admin.network.packages.v2.h_active') }
         tone={stats.aktif > 0 ? 'positive' : 'warning'}
       />
-      <StatTile label="Internet/PPPoE" value={String(stats.pppoe)} hint="butuh pemetaan router agar profil bandwidth benar" />
+      <StatTile label={ $t('admin.network.packages.v2.tile_pppoe') } value={String(stats.pppoe)} hint={ $t('admin.network.packages.v2.h_pppoe') } />
       <StatTile
-        label="Terpetakan"
+        label={ $t('admin.network.packages.v2.mapped') }
         value={String(stats.terpetakan)}
-        hint="paket dengan minimal satu mapping router"
+        hint={ $t('admin.network.packages.v2.h_mapped') }
         tone={stats.terpetakan < stats.pppoe ? 'warning' : 'positive'}
       />
     </div>
@@ -551,7 +552,7 @@
 
   {#if attention.length}
     <div class="mt-4">
-      <AttentionPanel items={attention} title="Perlu perhatian" />
+      <AttentionPanel items={attention} title={ $t('admin.network.dhcp_static.v2.attention') } />
     </div>
   {/if}
 
@@ -566,8 +567,8 @@
           />
           <input
             bind:value={search}
-            placeholder="Cari nama atau deskripsi paket"
-            aria-label="Cari paket"
+            placeholder={ $t('admin.network.packages.v2.search_ph') }
+            aria-label={ $t('admin.network.packages.v2.search_aria') }
             class="focus-ring h-9 w-full rounded-lg border-0 bg-white pl-8 text-base text-ink-900 ring-1 ring-inset ring-ink-200 placeholder:text-ink-400"
             oninput={() => {
               pageNum = 1;
@@ -577,7 +578,7 @@
         </div>
         <select
           bind:value={sortBy}
-          aria-label="Urutkan"
+          aria-label={ $t('admin.network.packages.v2.sort') }
           class="focus-ring h-9 rounded-lg border-0 bg-white px-2 text-base text-ink-900 ring-1 ring-inset ring-ink-200"
           onchange={() => {
             pageNum = 1;
@@ -588,7 +589,7 @@
           <option value="type">Tipe</option>
           <option value="price">Harga</option>
           <option value="status">Status</option>
-          <option value="mappings">Jumlah mapping</option>
+          <option value="mappings">{ $t('admin.network.packages.v2.mapping_count') }</option>
         </select>
         <button
           type="button"
@@ -608,9 +609,9 @@
         {loading}
         emptyTitle="Belum ada paket"
         emptyHint={search
-          ? 'Coba kata kunci lain atau hapus pencarian.'
-          : 'Tambahkan paket pertama agar pelanggan bisa dilanggankan.'}
-        footNote={`${rows.length} dari ${total} paket · halaman ${pageNum}/${totalPages}`}
+          ? $t('admin.network.packages.v2.empty_hint1')
+          : $t('admin.network.packages.v2.empty_hint2')}
+        footNote={$t('admin.network.packages.v2.foot', { values: { a: rows.length, b: total, c: pageNum, d: totalPages } })}
       >
         {#snippet cell(p, c)}
           {#if c.key === 'name'}
@@ -647,7 +648,7 @@
               {/if}
             </div>
           {:else if c.key === 'status'}
-            <Badge label={p.is_active ? 'Aktif' : 'Nonaktif'} tone={p.is_active ? 'positive' : 'neutral'} />
+            <Badge label={p.is_active ? $t('admin.network.packages.fields.active') : $t('admin.network.packages.v2.inactive')} tone={p.is_active ? 'positive' : 'neutral'} />
           {:else if c.key === 'mappings'}
             {#if mappingAllowed(p.service_type, p.provisioning_type)}
               {@const n = mappingCountFor(p.id)}
@@ -693,7 +694,7 @@
 </AppShell>
 
 <!-- Pilih tipe layanan dulu (parity dengan legacy), baru form. -->
-<Modal bind:show={typePickerOpen} title="Pilih tipe layanan" width="640px">
+<Modal bind:show={typePickerOpen} title={ $t('admin.network.packages.v2.pick_type') } width="640px">
   <div class="grid gap-3 py-1">
     {#each typeCards as card (card.value)}
       <button
@@ -716,7 +717,7 @@
 <!-- Form create/edit paket. -->
 <Modal
   bind:show={formOpen}
-  title={editTarget ? `Sunting paket — ${editTarget.name}` : 'Paket baru'}
+  title={editTarget ? `Sunting paket — ${editTarget.name}` : $t('admin.network.packages.v2.new_title')}
   width="720px"
 >
   <div class="space-y-1 py-1">
@@ -724,12 +725,12 @@
       <Field
         stacked
         id="s-type"
-        label="Tipe layanan"
+        label={ $t('admin.network.packages.v2.type_label') }
         value={fType}
         type="select"
         options={[
           { value: 'internet_pppoe', label: 'Internet / PPPoE' },
-          { value: 'hotspot', label: 'Hotspot' },
+          { value: 'hotspot', label: $t('admin.network.packages.v2.hotspot') },
           { value: 'vpn', label: 'VPN' },
         ]}
         onchange={(v) => {
@@ -744,12 +745,12 @@
         <Field
           stacked
           id="s-prov"
-          label="Provisioning"
+          label={ $t('admin.network.packages.v2.provisioning') }
           value={fProv}
           type="select"
           options={[
             { value: 'pppoe', label: 'PPPoE' },
-            { value: 'dhcp_static', label: 'DHCP Static' },
+            { value: 'dhcp_static', label: $t('admin.network.packages.v2.dhcp') },
           ]}
           help="DHCP Static tidak memakai pemetaan profil router."
           onchange={(v) => {
@@ -763,20 +764,20 @@
     <Field
       stacked
       id="s-name"
-      label="Nama paket"
+      label={ $t('admin.network.packages.v2.name_field') }
       value={fName}
-      placeholder="mis. Fiber 20 Mbps"
+      placeholder={ $t('admin.network.packages.v2.name_ph') }
       error={formErrors.find((e) => /Nama/i.test(e)) ?? null}
       onchange={(v) => (fName = v)}
     />
     <Field
       stacked
       id="s-desc"
-      label="Deskripsi"
+      label={ $t('admin.message_templates.fields.description') }
       value={fDesc}
       type="textarea"
       rows={2}
-      placeholder="Catatan singkat untuk staf dan portal pelanggan."
+      placeholder={ $t('admin.network.packages.v2.desc_help') }
       onchange={(v) => (fDesc = v)}
     />
 
@@ -784,7 +785,7 @@
       <Field
         stacked
         id="s-monthly"
-        label="Harga bulanan ({baseCurrency})"
+        label={ $t('admin.network.packages.v2.price_m', { values: { c: baseCurrency } }) }
         value={String(fMonthly)}
         type="number"
         min={0}
@@ -795,7 +796,7 @@
         <Field
           stacked
           id="s-yearly-on"
-          label="Tawarkan harga tahunan"
+          label={ $t('admin.network.packages.v2.offer_yearly') }
           value={String(fYearlyOn)}
           type="toggle"
           help="Berguna untuk promo bayar-12-gratis-2."
@@ -805,7 +806,7 @@
           <Field
             stacked
             id="s-yearly"
-            label="Harga tahunan ({baseCurrency})"
+            label={ $t('admin.network.packages.v2.price_y', { values: { c: baseCurrency } }) }
             value={String(fYearly)}
             type="number"
             min={0}
@@ -819,7 +820,7 @@
     <Field
       stacked
       id="s-active"
-      label="Aktif"
+      label={ $t('admin.network.packages.fields.active') }
       value={String(fActive)}
       type="toggle"
       help="Paket nonaktif tidak bisa dilanggungkan baru."
@@ -832,7 +833,7 @@
       <div class="flex gap-2">
         <input
           bind:value={fFeatureInput}
-          placeholder="mis. Bandwidth dedicated"
+          placeholder={ $t('admin.network.packages.v2.feature_ph') }
           class="focus-ring h-9 min-w-0 flex-1 rounded-lg border-0 bg-white px-3 text-base text-ink-900 ring-1 ring-inset ring-ink-200 placeholder:text-ink-400"
           onkeydown={(e) => {
             if (e.key === 'Enter') {
@@ -853,7 +854,7 @@
               <button
                 type="button"
                 class="grid h-5 w-5 place-items-center rounded-full text-ink-400 hover:bg-ink-200 hover:text-ink-700"
-                aria-label="Hapus fitur {f}"
+                aria-label={ $t('admin.network.packages.v2.remove_feature') }
                 onclick={() => removeFeature(i)}
               >
                 <Icon name="close" size={12} />
@@ -870,7 +871,7 @@
         <Field
           stacked
           id="s-map-on"
-          label="Petakan ke router sekarang"
+          label={ $t('admin.network.packages.v2.map_now') }
           value={String(mapInline)}
           type="toggle"
           help="Profil PPP & pool IP menentukan bandwidth pelanggan baru paket ini."
@@ -881,7 +882,7 @@
             <Field
               stacked
               id="s-map-router"
-              label="Router"
+              label={ $t('admin.customers.pppoe.columns.router') }
               value={mapRouter}
               type="select"
               options={routerOptions}
@@ -895,18 +896,18 @@
             <Field
               stacked
               id="s-map-profile"
-              label="Profil PPP"
+              label={ $t('admin.network.packages.v2.ppp_profile') }
               value={mapProfile}
               type="select"
               options={profileOptions}
               disabled={!mapRouter || loadingMeta}
-              help={loadingMeta ? 'Mengambil profil dari router…' : 'Hanya profil yang masih ada di router.'}
+              help={loadingMeta ? $t('admin.network.packages.v2.fetching_profiles') : $t('admin.network.packages.v2.profiles_hint')}
               onchange={(v) => (mapProfile = v)}
             />
             <Field
               stacked
               id="s-map-pool"
-              label="Address pool (opsional)"
+              label={ $t('admin.network.packages.v2.addr_pool') }
               value={mapPool}
               type="select"
               options={poolOptions}
@@ -916,9 +917,9 @@
             <Field
               stacked
               id="s-map-iso"
-              label="Isolation pool (opsional)"
+              label={ $t('admin.network.packages.v2.iso_pool') }
               value={mapIsolation}
-              placeholder="mis. iso-20m"
+              placeholder={ $t('admin.network.packages.v2.iso_ph') }
               onchange={(v) => (mapIsolation = v)}
             />
           </div>
@@ -936,20 +937,20 @@
   </div>
 
   {#snippet footer()}
-    <Button variant="ghost" onclick={() => (formOpen = false)}>Batal</Button>
+    <Button variant="ghost" onclick={() => (formOpen = false)}>{ $t('common.cancel') }</Button>
     <Button variant="primary" disabled={saving} onclick={() => void savePackage()}>
-      {saving ? 'Menyimpan…' : editTarget ? 'Simpan perubahan' : 'Buat paket'}
+      {saving ? 'Menyimpan…' : editTarget ? $t('admin.ftth_assets.actions.save_changes') : $t('admin.network.packages.v2.make_btn')}
     </Button>
   {/snippet}
 </Modal>
 
 <!-- Mapping berdiri sendiri -->
-<Modal bind:show={mapModalOpen} title={mapPkg ? `Pemetaan router — ${mapPkg.name}` : 'Pemetaan router'} width="640px">
+<Modal bind:show={mapModalOpen} title={mapPkg ? $t('admin.network.packages.v2.map_title_pkg', { values: { name: mapPkg.name } }) : $t('admin.network.packages.v2.map_title')} width="640px">
   <div class="grid gap-x-6 py-1 sm:grid-cols-2">
     <Field
       stacked
       id="m-router"
-      label="Router"
+      label={ $t('admin.customers.pppoe.columns.router') }
       value={mapRouter}
       type="select"
       options={routerOptions}
@@ -963,18 +964,18 @@
     <Field
       stacked
       id="m-profile"
-      label="Profil PPP"
+      label={ $t('admin.network.packages.v2.ppp_profile') }
       value={mapProfile}
       type="select"
       options={profileOptions}
       disabled={!mapRouter || loadingMeta}
-      help={loadingMeta ? 'Mengambil profil dari router…' : undefined}
+      help={loadingMeta ? $t('admin.network.packages.v2.fetching_profiles') : undefined}
       onchange={(v) => (mapProfile = v)}
     />
     <Field
       stacked
       id="m-pool"
-      label="Address pool (opsional)"
+      label={ $t('admin.network.packages.v2.addr_pool') }
       value={mapPool}
       type="select"
       options={poolOptions}
@@ -984,34 +985,33 @@
     <Field
       stacked
       id="m-iso"
-      label="Isolation pool (opsional)"
+      label={ $t('admin.network.packages.v2.iso_pool') }
       value={mapIsolation}
-      placeholder="mis. iso-20m"
+      placeholder={ $t('admin.network.packages.v2.iso_ph') }
       onchange={(v) => (mapIsolation = v)}
     />
   </div>
 
   {#snippet footer()}
-    <Button variant="ghost" onclick={() => (mapModalOpen = false)}>Batal</Button>
+    <Button variant="ghost" onclick={() => (mapModalOpen = false)}>{ $t('common.cancel') }</Button>
     <Button
       variant="primary"
       disabled={saving || !mapRouter || !mapProfile.trim()}
       onclick={() => void saveMapping()}
     >
-      {saving ? 'Menyimpan…' : 'Simpan pemetaan'}
+      {saving ? $t('common.saving') : $t('admin.network.packages.v2.save_map')}
     </Button>
   {/snippet}
 </Modal>
 
 <!-- Konfirmasi hapus -->
-<Modal bind:show={deleteOpen} title="Hapus paket" width="480px">
+<Modal bind:show={deleteOpen} title={ $t('admin.network.packages.v2.del_title') } width="480px">
   <p class="text-sm text-ink-700">
-    Hapus paket <span class="font-medium text-ink-900">{deleteTarget?.name}</span>? Server akan
-    menolak jika paket masih dipakai langganan, akun PPPoE, layanan DHCP static, atau penawaran zona.
+    { $t('admin.network.packages.v2.del_title') } <span class="font-medium text-ink-900">{deleteTarget?.name}</span>? { $t('admin.network.packages.v2.del_note') }
   </p>
 
   {#snippet footer()}
-    <Button variant="ghost" onclick={() => (deleteOpen = false)}>Batal</Button>
-    <Button variant="primary" onclick={() => void handleDelete()}>Hapus paket</Button>
+    <Button variant="ghost" onclick={() => (deleteOpen = false)}>{ $t('common.cancel') }</Button>
+    <Button variant="primary" onclick={() => void handleDelete()}>{ $t('admin.network.packages.v2.del_title') }</Button>
   {/snippet}
 </Modal>
