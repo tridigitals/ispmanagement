@@ -20,6 +20,7 @@
   import type { Column } from '$lib/components/ds/table-types';
   import type { StatusTone } from '$lib/components/ds/tokens';
 
+  import { t } from 'svelte-i18n';
   let tickets = $state<SupportTicketListItem[]>([]);
   let loading = $state(true);
   let error = $state('');
@@ -50,9 +51,9 @@
   }
   function statusLabel(status: string) {
     const s = normStatus(status);
-    if (s === 'open') return 'Terbuka';
-    if (s === 'pending') return 'Menunggu';
-    if (s === 'closed') return 'Selesai';
+    if (s === 'open') return $t('dashboard.tickets_v2.st_open');
+    if (s === 'pending') return $t('dashboard.tickets_v2.st_pending');
+    if (s === 'closed') return $t('dashboard.tickets_v2.st_resolved');
     return status || '—';
   }
 
@@ -74,55 +75,55 @@
   }
 </script>
 
-<PortalShell title="Tiket">
+<PortalShell title={ $t('dashboard.tickets_v2.col_ticket') }>
   <PageHeader
-    title="Tiket Dukungan"
+    title={ $t('dashboard.tickets_v2.title') }
     desc={loading
-      ? 'Memuat tiket…'
+      ? $t('dashboard.tickets_v2.loading')
       : `${stats.total} tiket` +
         (stats.open > 0 ? ` · ${stats.open} terbuka` : '') +
         (stats.pending > 0 ? ` · ${stats.pending} menunggu` : '')}
   >
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" disabled={loading} onclick={loadTickets}>Segarkan</Button>
-      <Button icon="plus" onclick={() => goto('/v2/support')}>Buat tiket</Button>
+      <Button icon="plus" onclick={() => goto('/v2/support')}>{ $t('support.v2.new_btn') }</Button>
     {/snippet}
   </PageHeader>
 
   {#if !loading && !error}
     <div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatTile label="Total" value={String(stats.total)} hint="semua tiket" />
-      <StatTile label="Terbuka" value={String(stats.open)} hint="butuh respon" tone={stats.open > 0 ? 'positive' : 'neutral'} />
-      <StatTile label="Menunggu" value={String(stats.pending)} hint="diproses" tone={stats.pending > 0 ? 'warning' : 'neutral'} />
-      <StatTile label="Selesai" value={String(stats.closed)} hint="tuntas" />
+      <StatTile label={ $t('dashboard.tickets_v2.st_total') } value={String(stats.total)} hint={ $t('dashboard.tickets_v2.h_all') } />
+      <StatTile label={ $t('dashboard.tickets_v2.st_open') } value={String(stats.open)} hint={ $t('dashboard.tickets_v2.h_need_resp') } tone={stats.open > 0 ? 'positive' : 'neutral'} />
+      <StatTile label={ $t('dashboard.tickets_v2.st_pending') } value={String(stats.pending)} hint={ $t('dashboard.tickets_v2.h_processing') } tone={stats.pending > 0 ? 'warning' : 'neutral'} />
+      <StatTile label={ $t('dashboard.tickets_v2.st_resolved') } value={String(stats.closed)} hint={ $t('dashboard.tickets_v2.h_done') } />
     </div>
   {/if}
 
   {#if loading}
-    <Card title="Memuat…"><p class="text-sm text-ink-500">Mengambil tiket…</p></Card>
+    <Card title={ $t('common.loading') }><p class="text-sm text-ink-500">{ $t('dashboard.tickets_v2.fetching') }</p></Card>
   {:else if error}
-    <Card title="Gagal memuat">
+    <Card title={ $t('dashboard.tickets_v2.load_fail') }>
       <p class="mb-4 text-sm text-ink-500">{error}</p>
-      <Button variant="secondary" onclick={loadTickets}>Coba lagi</Button>
+      <Button variant="secondary" onclick={loadTickets}>{ $t('common.retry') }</Button>
     </Card>
   {:else if tickets.length === 0}
-    <Card title="Belum ada tiket">
-      <p class="mb-4 text-sm text-ink-500">Buat tiket support jika butuh bantuan teknis.</p>
-      <Button icon="plus" onclick={() => goto('/v2/support')}>Buat tiket</Button>
+    <Card title={ $t('dashboard.tickets_v2.empty') }>
+      <p class="mb-4 text-sm text-ink-500">{ $t('dashboard.tickets_v2.empty_hint') }</p>
+      <Button icon="plus" onclick={() => goto('/v2/support')}>{ $t('support.v2.new_btn') }</Button>
     </Card>
   {:else}
-    <Card title="Daftar tiket" padded={false}>
+    <Card title={ $t('dashboard.tickets_v2.list') } padded={false}>
       <DataTable
         rows={tickets}
         pageSize={25}
         columns={[
           { key: 'id', label: 'ID' },
-          { key: 'subject', label: 'Judul' },
-          { key: 'status', label: 'Status' },
-          { key: 'date', label: 'Dibuat' },
+          { key: 'subject', label: $t('dashboard.tickets_v2.col_title') },
+          { key: 'status', label: $t('dashboard.tickets_v2.col_status') },
+          { key: 'date', label: $t('dashboard.tickets_v2.col_created') },
           { key: 'actions', label: '', align: 'right' },
         ]}
-        emptyTitle="Belum ada tiket"
+        emptyTitle={ $t('dashboard.tickets_v2.empty') }
       >
         {#snippet cell(row: SupportTicketListItem, col: Column)}
           {#if col.key === 'id'}

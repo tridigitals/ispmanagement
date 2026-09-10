@@ -632,5 +632,27 @@
     "col_service": "Service",
     "col_status": "Status",
     "hint_cancelled2": "Request cancelled."
+  },
+  "tickets_v2": {
+    "title": "Support Tickets",
+    "h_all": "all tickets",
+    "h_need_resp": "needs a response",
+    "h_processing": "being processed",
+    "h_done": "completed",
+    "fetching": "Fetching tickets…",
+    "loading": "Loading tickets…",
+    "load_fail": "Failed to load",
+    "empty": "No tickets yet",
+    "empty_hint": "Create a support ticket if you need technical help.",
+    "list": "Ticket list",
+    "col_title": "Title",
+    "col_status": "Status",
+    "col_created": "Created",
+    "col_ticket": "Ticket",
+    "st_pending": "Pending",
+    "st_open": "Open",
+    "st_resolved": "Resolved",
+    "st_closed": "Closed",
+    "st_total": "Total"
   }
 }

@@ -631,5 +631,27 @@
     "col_service": "Layanan",
     "col_status": "Status",
     "hint_cancelled2": "Permintaan dibatalkan."
+  },
+  "tickets_v2": {
+    "title": "Tiket Dukungan",
+    "h_all": "semua tiket",
+    "h_need_resp": "butuh respon",
+    "h_processing": "diproses",
+    "h_done": "tuntas",
+    "fetching": "Mengambil tiket…",
+    "loading": "Memuat tiket…",
+    "load_fail": "Gagal memuat",
+    "empty": "Belum ada tiket",
+    "empty_hint": "Buat tiket support jika butuh bantuan teknis.",
+    "list": "Daftar tiket",
+    "col_title": "Judul",
+    "col_status": "Status",
+    "col_created": "Dibuat",
+    "col_ticket": "Tiket",
+    "st_pending": "Menunggu",
+    "st_open": "Terbuka",
+    "st_resolved": "Selesai",
+    "st_closed": "Ditutup",
+    "st_total": "Total"
   }
 }
