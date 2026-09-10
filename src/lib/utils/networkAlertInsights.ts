@@ -18,16 +18,16 @@ export function alertSeverityWeight(severity: string): number {
   return 0;
 }
 
-export function alertTypeLabel(tpe: string): string {
+export function alertTypeLabel(tpe: string, tt?: (k: string) => string): string {
   if (tpe === 'offline') return 'Offline';
   if (tpe === 'cpu') return 'CPU';
-  if (tpe === 'latency') return 'Latensi';
+  if (tpe === 'latency') return tt?.('network.alerts.v2.t_latency') ?? 'Latensi';
   return tpe;
 }
 
-export function alertSeverityLabel(sev: string): string {
-  if (sev === 'critical') return 'Kritis';
-  if (sev === 'warning') return 'Peringatan';
+export function alertSeverityLabel(sev: string, tt?: (k: string) => string): string {
+  if (sev === 'critical') return tt?.('network.alerts.v2.sev_crit') ?? 'Kritis';
+  if (sev === 'warning') return tt?.('network.alerts.v2.sev_warn') ?? 'Peringatan';
   return 'Info';
 }
 
