@@ -698,5 +698,9 @@
     "open_settings": "Open settings",
     "alert_ack": "Alert acknowledged",
     "e_no_export": "No metric data to export."
+  },
+  "miximport": {
+    "title": "MixRadius import",
+    "desc": "Migrate a MixRadius .sql/.sql.gz backup into packages, customers, subscriptions, and PPPoE."
   }
 }

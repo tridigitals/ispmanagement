@@ -17,11 +17,11 @@
   });
 </script>
 
-<AppShell title="Impor MixRadius">
+<AppShell title={ $t('network.miximport.title') }>
   <PageHeader
-    title="Impor MixRadius"
+    title={ $t('network.miximport.title') }
     eyebrow={ $t('admin.eyebrows.network_import') }
-    desc="Migrasi backup .sql/.sql.gz MixRadius ke paket, pelanggan, langganan, dan PPPoE."
+    desc={ $t('network.miximport.desc') }
   />
 
   <div class="mt-4">

@@ -698,5 +698,9 @@
     "open_settings": "Buka pengaturan",
     "alert_ack": "Alert diakui",
     "e_no_export": "Tidak ada data metrik untuk diekspor."
+  },
+  "miximport": {
+    "title": "Impor MixRadius",
+    "desc": "Migrasi backup .sql/.sql.gz MixRadius ke paket, pelanggan, langganan, dan PPPoE."
   }
 }
