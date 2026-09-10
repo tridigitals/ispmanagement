@@ -4419,5 +4419,34 @@
     "reload": "Muat ulang",
     "new_customer": "Pelanggan baru",
     "overdue": "Lewat tempo"
+  },
+  "audit_logs": {
+    "v2": {
+      "title": "Audit log",
+      "desc": "Jejak tindakan di tenant ini — {n} entri tersimpan",
+      "hint_rows": "baris tampil · {n} total"
+    },
+    "v2_this_page": "Dari halaman ini",
+    "v2_by_human": "Oleh manusia",
+    "v2_by_human_hint": "user aktif pada halaman ini",
+    "v2_by_system": "Oleh sistem",
+    "v2_by_system_hint": "pekerja latar, bukan manusia",
+    "v2_attention": "Perlu perhatian",
+    "v2_attention_hint": "gagal / terkunci / dihapus",
+    "v2_search_ph": "aksi, modul, target, detail, nama user…",
+    "v2_f_module": "Modul",
+    "v2_f_action": "Aksi persis",
+    "v2_all_modules": "Semua modul",
+    "v2_no_match": "Tidak ada yang cocok",
+    "v2_empty": "Belum ada aktivitas tercatat",
+    "v2_empty_hint2": "Longgarkan filter atau bersihkan kata kunci.",
+    "v2_empty_hint": "Entri muncul saat ada tindakan admin, sistem, atau autentikasi.",
+    "v2_a_detail": "Detail",
+    "v2_detail_title": "Detail entri audit",
+    "v2_no_detail": "Tidak ada detail tersimpan untuk entri ini.",
+    "v2_col_time": "Waktu",
+    "v2_col_actor": "Aktor",
+    "v2_col_action": "Aksi",
+    "v2_col_target": "Target"
   }
 }

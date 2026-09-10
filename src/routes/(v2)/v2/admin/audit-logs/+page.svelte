@@ -50,6 +50,7 @@
   import Modal from '$lib/components/ui/Modal.svelte';
   import { formatDate } from '$lib/components/ds/format';
 
+  import { t } from 'svelte-i18n';
   let logs = $state<AuditLog[]>([]);
   let loading = $state(true);
   let error = $state('');
@@ -70,7 +71,7 @@
   let debounce: ReturnType<typeof setTimeout> | undefined;
 
   const resourceOptions: FieldOption[] = [
-    { value: '', label: 'Semua modul' },
+    { value: '', label: $t('admin.audit_logs.v2_all_modules') },
     ...[
       'billing',
       'settings',
@@ -159,12 +160,12 @@
   }
 
   const columns: Column[] = [
-    { key: 'created_at', label: 'Waktu', width: '160px' },
-    { key: 'actor', label: 'Aktor' },
-    { key: 'action', label: 'Aksi', width: '180px' },
-    { key: 'resource', label: 'Modul', width: '150px', hideSm: true },
-    { key: 'target', label: 'Target', hideSm: true },
-    { key: 'details', label: 'Detail' },
+    { key: 'created_at', label: $t('admin.audit_logs.v2_col_time'), width: '160px' },
+    { key: 'actor', label: $t('admin.audit_logs.v2_col_actor') },
+    { key: 'action', label: $t('admin.audit_logs.v2_col_action'), width: '180px' },
+    { key: 'resource', label: $t('admin.audit_logs.v2_f_module'), width: '150px', hideSm: true },
+    { key: 'target', label: $t('admin.audit_logs.v2_col_target'), hideSm: true },
+    { key: 'details', label: $t('admin.audit_logs.v2_a_detail') },
     { key: 'ip', label: 'IP', width: '120px', hideSm: true },
     { key: 'actions', label: '', width: '110px', align: 'right' },
   ];
@@ -178,17 +179,17 @@
   });
 </script>
 
-<AppShell title="Audit log">
+<AppShell title={ $t('admin.audit_logs.v2.title') }>
   <PageHeader
-    title="Audit log"
-    desc="Jejak tindakan di tenant ini — {total.toLocaleString('id-ID')} entri tersimpan"
+    title={ $t('admin.audit_logs.v2.title') }
+    desc={ $t('admin.audit_logs.v2.desc', { values: { n: total.toLocaleString('id-ID') } }) }
   />
 
   <div class="grid stats">
-    <StatTile label="Dari halaman ini" value={logs.length.toString()} hint="baris tampil · {total.toLocaleString('id-ID')} total" />
-    <StatTile label="Oleh manusia" value={stats.manusia.toString()} hint="user aktif pada halaman ini" />
-    <StatTile label="Oleh sistem" value={stats.sistem.toString()} hint="pekerja latar, bukan manusia" />
-    <StatTile label="Perlu perhatian" value={stats.gagal.toString()} tone={stats.gagal > 0 ? 'negative' : 'neutral'} hint="gagal / terkunci / dihapus" />
+    <StatTile label={ $t('admin.audit_logs.v2_this_page') } value={logs.length.toString()} hint={ $t('admin.audit_logs.v2.hint_rows', { values: { n: total.toLocaleString('id-ID') } }) } />
+    <StatTile label={ $t('admin.audit_logs.v2_by_human') } value={stats.manusia.toString()} hint={ $t('admin.audit_logs.v2_by_human_hint') } />
+    <StatTile label={ $t('admin.audit_logs.v2_by_system') } value={stats.sistem.toString()} hint={ $t('admin.audit_logs.v2_by_system_hint') } />
+    <StatTile label={ $t('admin.audit_logs.v2_attention') } value={stats.gagal.toString()} tone={stats.gagal > 0 ? 'negative' : 'neutral'} hint={ $t('admin.audit_logs.v2_attention_hint') } />
   </div>
 
   <div class="panel">
@@ -199,14 +200,14 @@
           id="aq"
           class="inp"
           type="search"
-          placeholder="aksi, modul, target, detail, nama user…"
+          placeholder={ $t('admin.audit_logs.v2_search_ph') }
           bind:value={q}
           oninput={onSearchInput}
         />
       </div>
       <Field
         id="af-resource"
-        label="Modul"
+        label={ $t('admin.audit_logs.v2_f_module') }
         value={resourceQ}
         type="select"
         options={resourceOptions}
@@ -216,7 +217,7 @@
         }}
       />
       <div class="f-text">
-        <label class="lbl" for="af-action">Aksi persis</label>
+        <label class="lbl" for="af-action">{ $t('admin.audit_logs.v2_f_action') }</label>
         <input
           id="af-action"
           class="inp"
@@ -235,7 +236,7 @@
         <input id="af-to" class="inp" type="date" bind:value={dateTo} onchange={applyFilters} />
       </div>
       <div class="f-btn">
-        <Button variant="ghost" size="sm" onclick={resetFilters}>Bersihkan</Button>
+        <Button variant="ghost" size="sm" onclick={resetFilters}>{ $t('admin.billing_collection.v2.clear') }</Button>
       </div>
     </div>
     {#if dateError}
@@ -262,10 +263,10 @@
       pageNum = p;
       void load();
     }}
-    emptyTitle={filtered ? 'Tidak ada yang cocok' : 'Belum ada aktivitas tercatat'}
+    emptyTitle={filtered ? $t('admin.audit_logs.v2_no_match') : $t('admin.audit_logs.v2_empty')}
     emptyHint={filtered
-      ? 'Longgarkan filter atau bersihkan kata kunci.'
-      : 'Entri muncul saat ada tindakan admin, sistem, atau autentikasi.'}
+      ? $t('admin.audit_logs.v2_empty_hint2')
+      : $t('admin.audit_logs.v2_empty_hint')}
   >
     {#snippet cell(l, c)}
       {#if c.key === 'created_at'}
@@ -285,7 +286,7 @@
         <span class="mono">{l.ip_address || '—'}</span>
       {:else if c.key === 'actions'}
         <RowActions
-          primary={{ label: 'Detail', icon: 'search', onclick: () => openDetail(l) }}
+          primary={{ label: $t('admin.audit_logs.v2_a_detail'), icon: 'search', onclick: () => openDetail(l) }}
         />
       {:else}
         {String((l as unknown as Record<string, unknown>)[c.key] ?? '—')}
@@ -294,16 +295,16 @@
   </DataTable>
 </AppShell>
 
-<Modal bind:show={detailOpen} title="Detail entri audit" width="640px">
+<Modal bind:show={detailOpen} title={ $t('admin.audit_logs.v2_detail_title') } width="640px">
   {#if detailLog}
     {@const d = summarizeDetails(detailLog.details)}
     {@const actor = describeActor(detailLog)}
     <dl class="detail">
-      <div><dt>Waktu</dt><dd>{formatDate(detailLog.created_at, true)}</dd></div>
-      <div><dt>Aktor</dt><dd title={actor.detail}>{actor.label}</dd></div>
-      <div><dt>Aksi</dt><dd><Badge tone={actionTone(detailLog.action)} label={detailLog.action} /></dd></div>
-      <div><dt>Modul</dt><dd>{resourceLabel(detailLog.resource)}</dd></div>
-      <div><dt>Target</dt><dd class="mono">{detailLog.resource_name || detailLog.resource_id || '—'}</dd></div>
+      <div><dt>{ $t('admin.audit_logs.v2_col_time') }</dt><dd>{formatDate(detailLog.created_at, true)}</dd></div>
+      <div><dt>{ $t('admin.audit_logs.v2_col_actor') }</dt><dd title={actor.detail}>{actor.label}</dd></div>
+      <div><dt>{ $t('admin.audit_logs.v2_col_action') }</dt><dd><Badge tone={actionTone(detailLog.action)} label={detailLog.action} /></dd></div>
+      <div><dt>{ $t('admin.audit_logs.v2_f_module') }</dt><dd>{resourceLabel(detailLog.resource)}</dd></div>
+      <div><dt>{ $t('admin.audit_logs.v2_col_target') }</dt><dd class="mono">{detailLog.resource_name || detailLog.resource_id || '—'}</dd></div>
       <div><dt>IP</dt><dd class="mono">{detailLog.ip_address || '—'}</dd></div>
     </dl>
     <div class="det-block">
@@ -315,7 +316,7 @@
           {/each}
         </dl>
       {:else if d.kind === 'empty'}
-        <p class="muted">Tidak ada detail tersimpan untuk entri ini.</p>
+        <p class="muted">{ $t('admin.audit_logs.v2_no_detail') }</p>
       {:else}
         <p class="mono det-raw">{d.summary}</p>
       {/if}
