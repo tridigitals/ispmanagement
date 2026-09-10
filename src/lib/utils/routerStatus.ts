@@ -69,25 +69,33 @@ const JAM = 3_600_000;
 const HARI = 86_400_000;
 
 /** "28 hari", "3 jam", "5 menit", "baru saja". */
-export function humanAge(ms: number): string {
-  if (ms < MENIT) return 'baru saja';
-  if (ms < JAM) return `${Math.floor(ms / MENIT)} menit`;
-  if (ms < HARI) return `${Math.floor(ms / JAM)} jam`;
-  return `${Math.floor(ms / HARI)} hari`;
+export function humanAge(ms: number, tt?: (k: string, v?: Record<string, string | number>) => string): string {
+  if (!tt) {
+    if (ms < MENIT) return 'baru saja';
+    if (ms < JAM) return `${Math.floor(ms / MENIT)} menit`;
+    if (ms < HARI) return `${Math.floor(ms / JAM)} jam`;
+    return `${Math.floor(ms / HARI)} hari`;
+  }
+  if (ms < MENIT) return tt('admin.network.routers.v2list.age_now');
+  if (ms < JAM) return tt('admin.network.routers.v2list.age_min', { n: Math.floor(ms / MENIT) });
+  if (ms < HARI) return tt('admin.network.routers.v2list.age_hour', { n: Math.floor(ms / JAM) });
+  return tt('admin.network.routers.v2list.age_day', { n: Math.floor(ms / HARI) });
 }
 
-export function routerStatus(r: RouterLike, now: number = Date.now()): RouterStatus {
+export function routerStatus(r: RouterLike, now: number = Date.now(), tt?: (k: string, v?: Record<string, string | number>) => string): RouterStatus {
   const seenMs = r.last_seen_at ? new Date(r.last_seen_at).getTime() : NaN;
   const ageMs = Number.isFinite(seenMs) ? Math.max(0, now - seenMs) : null;
-  const umur = ageMs == null ? 'belum pernah terhubung' : `${humanAge(ageMs)} lalu`;
+  const umur = ageMs == null
+    ? (tt ? tt('admin.network.routers.v2list.never_conn') : 'belum pernah terhubung')
+    : (tt ? tt('common.time.ago', { t: humanAge(ageMs, tt) }) : `${humanAge(ageMs)} lalu`);
 
   /* Dinonaktifkan menang atas segalanya: poller melewatkannya, jadi apa pun
      isi is_online/latency_ms adalah sisa masa lalu. */
   if (r.enabled === false) {
     return {
       state: 'disabled',
-      label: 'Dinonaktifkan',
-      reason: `Tidak dipantau. Data terakhir ${umur}.`,
+      label: tt ? tt('admin.network.routers.v2list.st_disabled') : 'Dinonaktifkan',
+      reason: tt ? tt('admin.network.routers.v2list.r_disabled', { t: umur }) : `Tidak dipantau. Data terakhir ${umur}.`,
       ageMs,
       metricsTrustworthy: false,
     };
@@ -95,13 +103,13 @@ export function routerStatus(r: RouterLike, now: number = Date.now()): RouterSta
 
   const untilMs = r.maintenance_until ? new Date(r.maintenance_until).getTime() : NaN;
   if (Number.isFinite(untilMs) && untilMs > now) {
-    const sisa = humanAge(untilMs - now);
+    const sisa = humanAge(untilMs - now, tt);
     return {
       state: 'maintenance',
-      label: 'Pemeliharaan',
+      label: tt ? tt('admin.network.routers.v2list.st_maint') : 'Pemeliharaan',
       reason: r.maintenance_reason?.trim()
-        ? `${r.maintenance_reason.trim()} — sisa ${sisa}.`
-        : `Dijadwalkan selesai dalam ${sisa}.`,
+        ? (tt ? tt('admin.network.routers.v2list.r_maint_reason', { m: r.maintenance_reason.trim(), t: sisa }) : `${r.maintenance_reason.trim()} — sisa ${sisa}.`)
+        : (tt ? tt('admin.network.routers.v2list.r_maint', { t: sisa }) : `Dijadwalkan selesai dalam ${sisa}.`),
       ageMs,
       metricsTrustworthy: Boolean(r.is_online),
     };
@@ -112,10 +120,12 @@ export function routerStatus(r: RouterLike, now: number = Date.now()): RouterSta
   if (ageMs != null && ageMs > STALE_AFTER_MS) {
     return {
       state: 'stale',
-      label: 'Data usang',
-      reason: `Aktif, tapi tidak ada pembaruan sejak ${umur}. Poller berjalan tiap ${Math.round(
-        POLL_INTERVAL_MS / 60000,
-      )} menit.`,
+      label: tt ? tt('admin.network.routers.v2list.st_stale') : 'Data usang',
+      reason: tt
+        ? tt('admin.network.routers.v2list.r_stale', { t: umur, p: Math.round(POLL_INTERVAL_MS / 60000) })
+        : `Aktif, tapi tidak ada pembaruan sejak ${umur}. Poller berjalan tiap ${Math.round(
+            POLL_INTERVAL_MS / 60000,
+          )} menit.`,
       ageMs,
       metricsTrustworthy: false,
     };
@@ -125,7 +135,7 @@ export function routerStatus(r: RouterLike, now: number = Date.now()): RouterSta
     return {
       state: 'online',
       label: 'Online',
-      reason: `Terakhir menjawab ${umur}.`,
+      reason: tt ? tt('admin.network.routers.v2list.r_online', { t: umur }) : `Terakhir menjawab ${umur}.`,
       ageMs,
       metricsTrustworthy: true,
     };
@@ -137,8 +147,8 @@ export function routerStatus(r: RouterLike, now: number = Date.now()): RouterSta
     reason: r.last_error?.trim()
       ? `${r.last_error.trim()}`
       : ageMs == null
-        ? 'Belum pernah berhasil terhubung.'
-        : `Tidak menjawab. Terakhir terlihat ${umur}.`,
+        ? (tt ? tt('admin.network.routers.v2list.r_never') : 'Belum pernah berhasil terhubung.')
+        : (tt ? tt('admin.network.routers.v2list.r_noanswer', { t: umur }) : `Tidak menjawab. Terakhir terlihat ${umur}.`),
     ageMs,
     metricsTrustworthy: false,
   };

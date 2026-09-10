@@ -11,7 +11,7 @@
 
     Terbukti pada data hidup: "Solikin" `enabled=false`, `is_online=true`,
     `latency_ms=65`, `last_seen_at` 28 hari lalu → layar lama menampilkan badge
-    hijau "Online" dan "65 ms", ringkasan "Online 3 dari 3".
+    hijau $t('admin.network.routers.v2d.online') dan "65 ms", ringkasan "Online 3 dari 3".
 
     Semua logika status pindah ke `$lib/utils/routerStatus` (13 tes unit) supaya
     aturannya bisa diuji tanpa merender halaman.
@@ -76,7 +76,7 @@
      aktif tapi datanya usang. Versi lama tidak punya cara menampilkan ini. */
   const perluPerhatian = $derived.by(() =>
     rows
-      .map((r) => ({ row: r, status: routerStatus(r, now) }))
+      .map((r) => ({ row: r, status: routerStatus(r, now, tr) }))
       .filter((x) => x.status.state === 'stale' || x.status.state === 'disabled')
       .map((x) => ({
         icon: x.status.state === 'disabled' ? ('lock' as const) : ('clock' as const),
@@ -88,13 +88,15 @@
       })),
   );
 
-  const columns: Column[] = [
-    { key: 'name', label: 'Router' },
-    { key: 'status', label: 'Status' },
-    { key: 'latency', label: 'Latensi', align: 'right', num: true, hideSm: true },
-    { key: 'seen', label: 'Data terakhir', hideSm: true },
+  const tr = (k: string, v?: Record<string, string | number>) => $t(k, v ? { values: v } : undefined);
+
+  const columns = $derived<Column[]>([
+    { key: 'name', label: $t('admin.network.routers.columns.name') },
+    { key: 'status', label: $t('common.status') },
+    { key: 'latency', label: $t('admin.network.routers.v2list.latency') },
+    { key: 'seen', label: $t('common.last_data') },
     { key: 'actions', label: '', align: 'right', width: '150px' },
-  ];
+  ]);
 
   async function load() {
     loading = true;
@@ -164,16 +166,16 @@
   });
 </script>
 
-<AppShell title="Router">
+<AppShell title={ $t('admin.network.routers.title') }>
   <PageHeader
-    title="Router"
+    title={ $t('admin.network.routers.title') }
     eyebrow={ $t('admin.eyebrows.network') }
-    desc="Perangkat MikroTik yang dipantau. Status dihitung dari status aktif, umur data, dan jendela pemeliharaan."
+    desc={ $t('admin.network.routers.v2list.desc') }
   >
     {#snippet actions()}
-      <Button variant="ghost" icon="refresh" onclick={load}>Muat ulang</Button>
+      <Button variant="ghost" icon="refresh" onclick={load}>{ $t('network.olt.refresh') }</Button>
       {#if $can('manage', 'router_inventory')}
-        <Button icon="plus" href="/v2/admin/network/routers?new=1">Tambah router</Button>
+        <Button icon="plus" href="/v2/admin/network/routers?new=1">{ $t('admin.network.routers.v2list.add') }</Button>
       {/if}
     {/snippet}
   </PageHeader>
@@ -181,24 +183,24 @@
   <Card>
     <div class="grid grid-cols-2 gap-6 sm:grid-cols-4">
       <StatTile
-        label="Dipantau"
+        label={ $t('admin.network.routers.v2list.monitored') }
         value={String(stats.monitored)}
         hint={`dari ${stats.total} router terdaftar`}
       />
       <StatTile
-        label="Online"
+        label={ $t('admin.network.routers.v2d.online') }
         value={String(stats.online)}
-        hint={stats.monitored ? `${stats.online} dari ${stats.monitored} yang dipantau` : 'tidak ada yang dipantau'}
+        hint={stats.monitored ? $t('admin.network.routers.v2list.h_on_of', { values: { a: stats.online, b: stats.monitored } }) : $t('admin.network.routers.v2list.h_none_mon')}
         tone={stats.online === stats.monitored && stats.monitored > 0 ? 'positive' : 'neutral'}
       />
       <StatTile
-        label="Offline"
+        label={ $t('admin.network.routers.v2d.off') }
         value={String(stats.offline)}
-        hint={stats.offline ? 'tidak menjawab poll terakhir' : 'semua menjawab'}
+        hint={stats.offline ? $t('admin.network.routers.v2list.h_no_answer') : $t('admin.network.routers.v2list.h_all_answer')}
         tone={stats.offline ? 'negative' : 'neutral'}
       />
       <StatTile
-        label="Tidak dipantau"
+        label={ $t('admin.network.routers.v2list.unmonitored') }
         value={String(stats.disabled + stats.stale)}
         hint={`${stats.disabled} dinonaktifkan · ${stats.stale} data usang`}
         tone={stats.disabled + stats.stale ? 'warning' : 'neutral'}
@@ -208,7 +210,7 @@
 
   {#if perluPerhatian.length}
     <div class="mt-4">
-      <AttentionPanel items={perluPerhatian} title="Status tidak bisa dipercaya" />
+      <AttentionPanel items={perluPerhatian} title={ $t('admin.network.routers.v2list.untrusted') } />
     </div>
   {/if}
 
@@ -223,8 +225,8 @@
           />
           <input
             bind:value={search}
-            placeholder="Cari nama, host, atau identity"
-            aria-label="Cari router"
+            placeholder={ $t('admin.network.routers.v2list.search_ph') }
+            aria-label={ $t('admin.network.routers.v2list.search_aria') }
             class="focus-ring h-9 w-full rounded-lg border-0 bg-white pl-8 text-base text-ink-900 ring-1 ring-inset ring-ink-200 placeholder:text-ink-400"
           />
         </div>
@@ -239,7 +241,7 @@
         footNote={`${filtered.length} dari ${rows.length} router · poller backend berjalan tiap ${Math.round(POLL_INTERVAL_MS / 60000)} menit`}
       >
         {#snippet cell(r, c)}
-          {@const s = routerStatus(r, now)}
+          {@const s = routerStatus(r, now, tr)}
 
           {#if c.key === 'name'}
             <div class="min-w-0">
@@ -263,7 +265,7 @@
               <span class="text-ink-700">{r.latency_ms} ms</span>
             {:else if r.latency_ms != null}
               <!-- Angka basi tidak ditampilkan sebagai pengukuran. -->
-              <span class="text-ink-400" title="Nilai terakhir sebelum berhenti dipantau">
+              <span class="text-ink-400" title={ $t('admin.network.routers.v2list.stale_hint') }>
                 {r.latency_ms} ms lama
               </span>
             {:else}
@@ -271,21 +273,21 @@
             {/if}
           {:else if c.key === 'seen'}
             <span class="text-sm {s.metricsTrustworthy ? 'text-ink-500' : 'text-amber-700'}">
-              {s.ageMs == null ? 'belum pernah' : `${humanAge(s.ageMs)} lalu`}
+              {s.ageMs == null ? $t('network.olt.v2.never') : $t('common.time.ago', { values: { t: humanAge(s.ageMs, tr) } })}
             </span>
           {:else if c.key === 'actions'}
             <RowActions
-              primary={{ label: 'Buka', icon: 'chevronRight', href: `/v2/admin/network/routers/${r.id}` }}
+              primary={{ label: $t('common.open'), icon: 'chevronRight', href: `/v2/admin/network/routers/${r.id}` }}
               rest={[
                 {
-                  label: testing === r.id ? 'Menguji…' : 'Uji koneksi',
+                  label: testing === r.id ? $t('admin.network.routers.v2list.testing') : $t('admin.network.routers.v2list.test_conn'),
                   icon: 'zap',
                   onclick: () => void uji(r),
                 },
                 ...($can('manage', 'router_inventory')
                   ? [
                       {
-                        label: 'Ubah',
+                        label: $t('common.edit'),
                         icon: 'cog' as const,
                         onclick: () => goto(`/v2/admin/network/routers?edit=${r.id}`),
                       },

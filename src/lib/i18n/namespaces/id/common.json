@@ -167,7 +167,9 @@
     "min": "{n} mnt lalu",
     "hour": "{n} jam lalu",
     "day": "{n} hari lalu",
-    "week": "{n} mgg lalu"
+    "week": "{n} mgg lalu",
+    "ago": "{t} lalu"
   },
-  "export_csv": "Ekspor CSV"
+  "export_csv": "Ekspor CSV",
+  "last_data": "Data terakhir"
 }
