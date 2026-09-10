@@ -35,6 +35,7 @@
     snapshotHealthStats,
   } from '$lib/utils/routerDetailInsights';
   import RouterDetailDialogs from '../../../../../../(app)/admin/network/routers/[id]/RouterDetailDialogs.svelte';
+  import { t } from 'svelte-i18n';
   import {
     AppShell,
     Badge,
@@ -163,29 +164,29 @@
   );
 
   const tabItems = $derived([
-    { id: 'overview', label: 'Ringkasan' },
+    { id: 'overview', label: $t('admin.network.routers.v2d.tab_overview') },
     { id: 'interfaces', label: 'Interfaces', count: snapshot?.interfaces?.length || 0 },
     { id: 'ip', label: 'IP Address', count: snapshot?.ip_addresses?.length || 0 },
-    { id: 'metrics', label: 'Metrik' },
+    { id: 'metrics', label: $t('admin.network.routers.v2d.tab_metrics') },
   ]);
 
   const interfaceCols: Column[] = [
     { key: 'name', label: 'Nama' },
-    { key: 'type', label: 'Tipe' },
-    { key: 'status', label: 'Status' },
+    { key: 'type', label: $t('admin.network.routers.v2d.col_type') },
+    { key: 'status', label: $t('admin.network.routers.columns.status') },
     { key: 'mtu', label: 'MTU', align: 'right', width: '90px' },
     { key: 'mac', label: 'MAC', hideSm: true },
-    { key: 'rx_rate', label: 'RX rate', align: 'right', width: '130px', num: true },
-    { key: 'tx_rate', label: 'TX rate', align: 'right', width: '130px', num: true },
+    { key: 'rx_rate', label: $t('admin.network.routers.v2d.col_rx_rate'), align: 'right', width: '130px', num: true },
+    { key: 'tx_rate', label: $t('admin.network.routers.v2d.col_tx_rate'), align: 'right', width: '130px', num: true },
     { key: 'rx', label: 'RX', align: 'right', width: '110px', num: true, hideSm: true },
     { key: 'tx', label: 'TX', align: 'right', width: '110px', num: true, hideSm: true },
-    { key: 'downs', label: 'Link down', align: 'right', width: '90px', num: true, hideSm: true },
+    { key: 'downs', label: $t('admin.network.routers.v2d.col_link_down'), align: 'right', width: '90px', num: true, hideSm: true },
   ];
 
   const interfaceRows = $derived.by(() => {
     const list = snapshot?.interfaces || [];
     const rows = list.map((it) => {
-      const status = it.disabled ? 'disabled' : it.running ? 'running' : 'down';
+      const status = it.disabled ? $t('admin.network.routers.v2d.flag_dis') : it.running ? 'running' : 'down';
       return { ...it, status };
     });
     switch (ifFilter) {
@@ -193,8 +194,8 @@
         return rows.filter((r) => r.status === 'running');
       case 'down':
         return rows.filter((r) => r.status === 'down');
-      case 'disabled':
-        return rows.filter((r) => r.status === 'disabled');
+      case $t('admin.network.routers.v2d.flag_dis'):
+        return rows.filter((r) => r.status === $t('admin.network.routers.v2d.flag_dis'));
       default:
         return rows;
     }
@@ -235,9 +236,9 @@
   );
 
   const metricCols: Column[] = [
-    { key: 'ts', label: 'Waktu' },
+    { key: 'ts', label: $t('admin.network.routers.v2d.col_time') },
     { key: 'cpu', label: 'CPU', align: 'right', width: '90px', num: true },
-    { key: 'mem', label: 'Memori', align: 'right', width: '200px', num: true },
+    { key: 'mem', label: $t('admin.network.routers.v2d.memory'), align: 'right', width: '200px', num: true },
     { key: 'disk', label: 'Disk', align: 'right', width: '200px', num: true },
     { key: 'uptime', label: 'Uptime', align: 'right', width: '110px', num: true },
   ];
@@ -377,8 +378,8 @@
     try {
       const res = await api.mikrotik.routers.test(id);
       const ok = Boolean((res as any)?.ok);
-      if (ok) toast.success('Koneksi router OK.');
-      else toast.error(String((res as any)?.error || 'Tes koneksi gagal.'));
+      if (ok) toast.success($t('admin.network.routers.v2d.t_testok'));
+      else toast.error(String((res as any)?.error || $t('admin.network.routers.v2d.t_testfail')));
       await refresh(true);
     } catch (e) {
       toast.error(friendlyRouterError(extractApiErrorMessage(e)));
@@ -410,7 +411,7 @@
     if (!secret) return;
     try {
       await navigator.clipboard.writeText(secret);
-      toast.success('Shared secret disalin.');
+      toast.success($t('admin.network.routers.managed_radius.toasts.secret_copied'));
     } catch (e) {
       toast.error(friendlyRouterError(extractApiErrorMessage(e)));
     }
@@ -421,7 +422,7 @@
     if (!script) return;
     try {
       await navigator.clipboard.writeText(script);
-      toast.success('CLI disalin.');
+      toast.success($t('admin.network.routers.v2d.t_cli'));
     } catch (e) {
       toast.error(friendlyRouterError(extractApiErrorMessage(e)));
     }
@@ -445,7 +446,7 @@
       managedRadiusSetup = (await api.mikrotik.routers.assignManagedRadiusDefault(
         id,
       )) as ManagedRadiusRouterSetup;
-      toast.success('Mapping default berhasil.');
+      toast.success($t('admin.network.routers.v2d.t_mapok'));
     } catch (e) {
       toast.error(friendlyRouterError(extractApiErrorMessage(e)));
     } finally {
@@ -458,7 +459,7 @@
       managedRadiusSetup = (await api.mikrotik.routers.createManagedRadiusMapping(
         id,
       )) as ManagedRadiusRouterSetup;
-      toast.success('Mapping dibuat.');
+      toast.success($t('admin.network.routers.v2d.t_mapcreated'));
     } catch (e) {
       toast.error(friendlyRouterError(extractApiErrorMessage(e)));
     } finally {
@@ -471,7 +472,7 @@
       managedRadiusSetup = (await api.mikrotik.routers.applyManagedRadius(
         id,
       )) as ManagedRadiusRouterSetup;
-      toast.success('Konfigurasi RADIUS diterapkan.');
+      toast.success($t('admin.network.routers.v2d.t_radius_applied'));
     } catch (e) {
       toast.error(friendlyRouterError(extractApiErrorMessage(e)));
     } finally {
@@ -503,8 +504,8 @@
   function statusLabel(): string {
     if (!router) return '—';
     if (router.maintenance_until && new Date(router.maintenance_until).getTime() > Date.now())
-      return 'Pemeliharaan';
-    return router.is_online ? 'Online' : 'Offline';
+      return $t('admin.network.routers.v2d.maint');
+    return router.is_online ? $t('admin.network.routers.v2d.online') : $t('admin.network.routers.v2d.offline');
   }
 
   const maintenance = $derived(
@@ -512,9 +513,9 @@
   );
 </script><AppShell>
   {#if initialLoading && !router}
-    <div class="p-8 text-center text-ink-500">Memuat router…</div>
+    <div class="p-8 text-center text-ink-500">{ $t('admin.network.routers.v2d.loading') }</div>
   {:else if !router}
-    <div class="p-8 text-center text-ink-500">{loadError || 'Router tidak ditemukan.'}</div>
+    <div class="p-8 text-center text-ink-500">{loadError || $t('admin.network.routers.v2d.not_found')}</div>
   {:else}
     <DetailHeader
       title={router.name}
@@ -524,21 +525,21 @@
       statusLabel={statusLabel()}
       backHref={backTarget}
       meta={[
-        { label: 'Latency', value: router.latency_ms == null ? '—' : `${router.latency_ms} ms` },
+        { label: $t('admin.network.routers.v2d.latency'), value: router.latency_ms == null ? '—' : `${router.latency_ms} ms` },
         {
-          label: 'Terakhir online',
+          label: $t('admin.network.routers.v2d.last_online'),
           value: router.last_seen_at ? timeAgo(router.last_seen_at) : '—',
         },
         { label: 'RouterOS', value: router.ros_version || '—' },
-        ...(router.identity ? [{ label: 'Identity', value: router.identity }] : []),
+        ...(router.identity ? [{ label: $t('admin.network.routers.v2d.identity'), value: router.identity }] : []),
       ]}
     >
       {#snippet actions()}
         <Button variant="ghost" icon="refresh" onclick={() => void refresh(false)} disabled={refreshing}>
-          {refreshing ? 'Menyegarkan…' : 'Segarkan'}
+          {refreshing ? $t('admin.network.routers.v2d.refreshing') : $t('admin.network.routers.v2d.refresh')}
         </Button>
         <Button variant="ghost" icon="zap" onclick={() => void test()} disabled={!router || refreshing}>
-          Tes koneksi
+          { $t('admin.network.routers.v2d.test_conn') }
         </Button>
         {#if canManage}
           <Button variant="secondary" onclick={() => void openManagedRadiusModal()}>RADIUS</Button>
@@ -554,10 +555,10 @@
     {/if}
 
     <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatTile label="Status" value={router.is_online ? 'Online' : 'Offline'} tone={router.is_online ? 'positive' : 'negative'} hint="RouterOS reachable" />
-      <StatTile label="CPU" value={health.cpu == null ? '—' : `${health.cpu}%`} tone={health.cpu == null ? 'neutral' : health.cpu > 80 ? 'negative' : 'positive'} hint="beban terkini" />
-      <StatTile label="Memori" value={health.memPct == null ? '—' : `${health.memPct}%`} tone={health.memPct == null ? 'neutral' : health.memPct > 85 ? 'negative' : 'positive'} hint="terpakai" />
-      <StatTile label="Uptime" value={health.uptime} hint="sejak boot" />
+      <StatTile label={ $t('admin.network.routers.columns.status') } value={router.is_online ? $t('admin.network.routers.v2d.online') : $t('admin.network.routers.v2d.offline')} tone={router.is_online ? 'positive' : 'negative'} hint={ $t('admin.network.routers.v2d.h_reach') } />
+      <StatTile label="CPU" value={health.cpu == null ? '—' : `${health.cpu}%`} tone={health.cpu == null ? 'neutral' : health.cpu > 80 ? 'negative' : 'positive'} hint={ $t('admin.network.routers.v2d.h_cpu') } />
+      <StatTile label={ $t('admin.network.routers.v2d.memory') } value={health.memPct == null ? '—' : `${health.memPct}%`} tone={health.memPct == null ? 'neutral' : health.memPct > 85 ? 'negative' : 'positive'} hint={ $t('admin.network.routers.v2d.h_used') } />
+      <StatTile label="Uptime" value={health.uptime} hint={ $t('admin.network.routers.v2d.h_boot') } />
     </div>
 
     <Tabs items={tabItems} active={activeTab} onselect={(id) => (activeTab = id as typeof activeTab)} />
@@ -567,7 +568,7 @@
         <Card title="CPU">
           <div class="text-xs text-ink-500">120 sampel terakhir</div>
           {#if cpuSeries.length === 0}
-            <div class="mt-4 text-sm text-ink-500">Belum ada data metrik.</div>
+            <div class="mt-4 text-sm text-ink-500">{ $t('admin.network.routers.v2d.no_metrics') }</div>
           {:else}
             <div class="mt-3 flex h-20 items-end gap-[2px]">
               {#each cpuSeries as v}
@@ -577,26 +578,26 @@
           {/if}
         </Card>
 
-        <Card title="Sumber daya">
+        <Card title={ $t('admin.network.routers.v2d.resources') }>
           <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <dt class="text-ink-500">CPU load</dt>
             <dd class="font-mono text-ink-900">{snapshot?.cpu_load ?? '—'}%</dd>
-            <dt class="text-ink-500">Memori terpakai</dt>
+            <dt class="text-ink-500">{ $t('admin.network.routers.v2d.mem_used') }</dt>
             <dd class="font-mono text-ink-900">{snapshot && pctUsed(snapshot.total_memory_bytes, snapshot.free_memory_bytes) != null ? `${pctUsed(snapshot.total_memory_bytes, snapshot.free_memory_bytes)}%` : '—'}</dd>
-            <dt class="text-ink-500">Disk terpakai</dt>
+            <dt class="text-ink-500">{ $t('admin.network.routers.v2d.disk_used') }</dt>
             <dd class="font-mono text-ink-900">{snapshot && pctUsed(snapshot.total_hdd_bytes, snapshot.free_hdd_bytes) != null ? `${pctUsed(snapshot.total_hdd_bytes, snapshot.free_hdd_bytes)}%` : '—'}</dd>
             <dt class="text-ink-500">Uptime</dt>
             <dd class="font-mono text-ink-900">{formatUptime(snapshot?.uptime_seconds)}</dd>
           </dl>
           <div class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 border-t border-ink-100 pt-3 text-sm">
-            <span class="text-ink-500">Memori</span>
+            <span class="text-ink-500">{ $t('admin.network.routers.v2d.memory') }</span>
             <span class="text-right font-mono text-ink-700">{snapshot ? `${formatBytes(snapshot.free_memory_bytes)} / ${formatBytes(snapshot.total_memory_bytes)}` : '—'}</span>
             <span class="text-ink-500">Disk</span>
             <span class="text-right font-mono text-ink-700">{snapshot ? `${formatBytes(snapshot.free_hdd_bytes)} / ${formatBytes(snapshot.total_hdd_bytes)}` : '—'}</span>
           </div>
         </Card>
 
-        <Card title="Perangkat keras">
+        <Card title={ $t('admin.network.routers.v2d.hardware') }>
           <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <dt class="text-ink-500">Board</dt>
             <dd class="text-ink-900">{snapshot?.board_name || '—'}</dd>
@@ -607,7 +608,7 @@
           </dl>
         </Card>
 
-        <Card title="Kesehatan">
+        <Card title={ $t('admin.network.routers.v2d.health') }>
           {#if snapshot?.health}
             <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <dt class="text-ink-500">Suhu</dt>
@@ -618,14 +619,14 @@
               <dd class="font-mono text-ink-900">{snapshot.health.voltage_v ?? '—'} V</dd>
             </dl>
           {:else}
-            <div class="mt-2 text-sm text-ink-500">Perangkat tidak mendukung pembacaan kesehatan.</div>
+            <div class="mt-2 text-sm text-ink-500">{ $t('admin.network.routers.v2d.no_health') }</div>
           {/if}
         </Card>
       </div>
     {:else if activeTab === 'interfaces'}
       <div class="mt-4">
         <div class="mb-3 flex flex-wrap gap-2">
-          {#each [['all', 'Semua'], ['running', 'Jalan'], ['down', 'Down'], ['disabled', 'Nonaktif']] as [val, label] (val)}
+          {#each [['all', $t('admin.customers.billing.filters.all')], ['running', $t('admin.network.routers.v2d.up')], ['down', $t('admin.network.routers.v2d.col_down')], ['disabled', $t('admin.network.routers.v2d.off')]] as [val, label] (val)}
             <button
               type="button"
               class="focus-ring rounded-lg px-3 py-1.5 text-sm {ifFilter === val ? 'bg-ink-900 text-white' : 'bg-white text-ink-700 ring-1 ring-ink-200 hover:bg-ink-50'}"
@@ -644,11 +645,11 @@
         >
           {#snippet cell(row: any, col: Column)}
             {#if col.key === 'name'}
-              <button type="button" class="focus-ring font-mono text-ink-900 underline-offset-2 hover:underline" onclick={() => openInterface(row.name)} title="Buka lalu lintas interface">
+              <button type="button" class="focus-ring font-mono text-ink-900 underline-offset-2 hover:underline" onclick={() => openInterface(row.name)} title={ $t('admin.network.routers.v2d.open_traffic') }>
                 {row.name}
               </button>
             {:else if col.key === 'status'}
-              <Badge tone={row.status === 'running' ? 'positive' : row.status === 'disabled' ? 'neutral' : 'negative'} label={row.status === 'running' ? 'Jalan' : row.status === 'disabled' ? 'Nonaktif' : 'Down'} />
+              <Badge tone={row.status === 'running' ? 'positive' : row.status === 'disabled' ? 'neutral' : 'negative'} label={row.status === 'running' ? $t('admin.network.routers.v2d.up') : row.status === 'disabled' ? $t('admin.network.routers.v2d.off') : $t('admin.network.routers.v2d.col_down')} />
             {:else}
               <span class={col.key === 'mac' || col.key === 'rx' || col.key === 'tx' ? 'font-mono' : ''}>{row[col.key] ?? ''}</span>
             {/if}
@@ -668,8 +669,8 @@
               <span class="font-mono text-ink-900">{row.address}</span>
             {:else if col.key === 'flags'}
               <span class="flex flex-wrap gap-1">
-                {#if row.dynamic}<Badge tone="info" label="dynamic" />{/if}
-                {#if row.disabled}<Badge tone="neutral" label="disabled" />{/if}
+                {#if row.dynamic}<Badge tone="info" label={ $t('admin.network.routers.v2d.flag_dyn') } />{/if}
+                {#if row.disabled}<Badge tone="neutral" label={ $t('admin.network.routers.v2d.flag_dis') } />{/if}
                 {#if !row.dynamic && !row.disabled}<span class="text-ink-400">—</span>{/if}
               </span>
             {:else}
@@ -680,7 +681,7 @@
       </div>
     {:else if activeTab === 'metrics'}
       <div class="mt-4">
-        <DataTable columns={metricCols} rows={metricRows} emptyTitle="Belum ada metrik" emptyHint="Metrik akan terkumpul tiap interval pemantauan." />
+        <DataTable columns={metricCols} rows={metricRows} emptyTitle={ $t('admin.network.routers.v2d.no_metrics') } emptyHint={ $t('admin.network.routers.v2d.metrics_hint') } />
       </div>
     {/if}
   {/if}
