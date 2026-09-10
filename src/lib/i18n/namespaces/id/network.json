@@ -310,7 +310,9 @@
       "onu_history": "Riwayat ONU",
       "t_refresh": "Data disegarkan langsung dari perangkat.",
       "t_reboot": "ONU {n} sedang reboot.",
-      "back_list_full": "Kembali ke daftar OLT"
+      "back_list_full": "Kembali ke daftar OLT",
+      "name_ph": "OLT Jambu",
+      "desc_ph": "Catatan lokasi / seri"
     }
   },
   "router": {
@@ -676,5 +678,9 @@
     "save_fail": "Gagal menyimpan pengaturan",
     "auto": "Otomatis",
     "auto_help": "Otomatis mengganti halaman ubin sesuai interval."
+  },
+  "pppoe_v2": {
+    "apply_router": "Terapkan ke router",
+    "empty_hint": "Coba ubah filter di atas."
   }
 }

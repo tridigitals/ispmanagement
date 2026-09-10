@@ -314,7 +314,8 @@
       "email_body": "Isi email",
       "all_status": "Semua status",
       "t_deleted": "Templat pesan dihapus.",
-      "st_arch": "Arsip"
+      "st_arch": "Arsip",
+      "name_ph": "Pengingat jatuh tempo"
     }
   },
   "customers": {
@@ -4540,5 +4541,9 @@
     "desc": "Perubahan berlaku untuk seluruh pengguna di tenant ini.",
     "others": "Bagian lain",
     "legacy_note": "masih memakai tampilan lama"
+  },
+  "storage": {
+    "title": "Penyimpanan",
+    "desc": "Kelola file dan lampiran tenant: unggah, unduh, dan hapus."
   }
 }

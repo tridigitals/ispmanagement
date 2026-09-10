@@ -213,6 +213,8 @@
     "twofa_on": "Aktif",
     "twofa_off": "Nonaktif",
     "t_2fa_on": "2FA diaktifkan.",
-    "t_2fa_off": "2FA dinonaktifkan."
+    "t_2fa_off": "2FA dinonaktifkan.",
+    "twofa_label": "Autentikasi Dua Faktor",
+    "phone_ph": "0812xxxx"
   }
 }

@@ -618,7 +618,7 @@
       pageSize={perPage}
       onpage={(p) => (page = p)}
       emptyTitle="Tidak ada akun cocok"
-      emptyHint={q ? `Tidak ada hasil untuk "${q}".` : 'Coba ubah filter di atas.'}
+      emptyHint={q ? $t('common.no_results_for', { values: { q } }) : $t('network.pppoe_v2.empty_hint')}
     >
       {#snippet cell(a, column)}
         {#if column.key === 'username'}
@@ -634,14 +634,14 @@
         {:else if column.key === 'actions'}
           <RowActions
             primary={{
-              label: 'Ubah',
+              label: $t('common.edit'),
               icon: 'cog',
               onclick: () => void openEdit(a),
             }}
             rest={canManage
               ? [
                   {
-                    label: 'Terapkan ke router',
+                    label: $t('network.pppoe_v2.apply_router'),
                     icon: 'refresh',
                     disabled: busyId === a.id,
                     onclick: () => void applyToRouter(a),

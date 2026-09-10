@@ -105,7 +105,7 @@
     <div class="grid gap-4 md:grid-cols-2">
       <Field id="s-name" label={ $t('profile.portal_settings.name') } type="text" value={name} placeholder={ $t('profile.portal_settings.name_ph') } onchange={(v) => (name = v)} />
       <Field id="s-email" label="Email" type="email" value={email} placeholder={ $t('profile.portal_settings.email_ph') } onchange={(v) => (email = v)} />
-      <Field id="s-phone" label={ $t('profile.portal_settings.phone') } type="text" value={phone} placeholder="0812xxxx" onchange={(v) => (phone = v)} />
+      <Field id="s-phone" label={ $t('profile.portal_settings.phone') } type="text" value={phone} placeholder={ $t('profile.portal_settings.phone_ph') } onchange={(v) => (phone = v)} />
       <div class="flex items-end">
         <Button loading={saving} disabled={saving} onclick={saveProfile}>
           {saving ? $t('common.saving') : $t('profile.portal_settings.save')}
@@ -119,7 +119,7 @@
       >
       <div class="flex items-center justify-between py-2">
         <div>
-          <p class="text-sm font-medium">Two-Factor Authentication</p>
+          <p class="text-sm font-medium">{ $t("profile.portal_settings.twofa_label") }</p>
           <p class="text-xs text-ink-500">{twofaEnabled ? $t('profile.portal_settings.twofa_on') : $t('profile.portal_settings.twofa_off')}</p>
         </div>
         <Field

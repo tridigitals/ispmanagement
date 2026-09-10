@@ -310,7 +310,9 @@
       "onu_history": "ONU history",
       "t_refresh": "Data refreshed directly from the device.",
       "t_reboot": "ONU {n} is rebooting.",
-      "back_list_full": "Back to OLT list"
+      "back_list_full": "Back to OLT list",
+      "name_ph": "e.g. OLT Jambu",
+      "desc_ph": "Location / serial notes"
     }
   },
   "router": {
@@ -676,5 +678,9 @@
     "save_fail": "Failed to save settings",
     "auto": "Automatic",
     "auto_help": "Automatically switches the tile page on the set interval."
+  },
+  "pppoe_v2": {
+    "apply_router": "Apply to router",
+    "empty_hint": "Try changing the filters above."
   }
 }

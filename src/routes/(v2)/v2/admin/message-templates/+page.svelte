@@ -315,7 +315,7 @@
     <div class="space-y-3">
       <div class="grid gap-3 sm:grid-cols-2">
         <Field id="mt-f-key" label={ $t('admin.message_templates.v2.key') } type="text" stacked value={form.key} onchange={(v) => (form.key = v)} placeholder="invoice_due_reminder" />
-        <Field id="mt-f-name" label={ $t('admin.message_templates.fields.name') } type="text" stacked value={form.name} onchange={(v) => (form.name = v)} placeholder="Pengingat jatuh tempo" />
+        <Field id="mt-f-name" label={ $t('admin.message_templates.fields.name') } type="text" stacked value={form.name} onchange={(v) => (form.name = v)} placeholder={ $t('admin.message_templates.v2.name_ph') } />
       </div>
       <Field id="mt-f-desc" label={ $t('admin.message_templates.fields.description') } type="text" stacked value={form.description || ''} onchange={(v) => (form.description = v)} />
       <div class="grid gap-3 sm:grid-cols-3">

@@ -668,9 +668,9 @@
       </div>
     {/if}
     <div class="grid gap-x-6 sm:grid-cols-2">
-      <Field stacked id="o-name" label={ $t('admin.customers.fields.name') } value={fName} placeholder="OLT Jambu"
+      <Field stacked id="o-name" label={ $t('admin.customers.fields.name') } value={fName} placeholder={ $t('network.olt.v2.name_ph') }
         error={formErrs.name} onchange={(v) => (fName = v)} />
-      <Field stacked id="o-desc" label={ $t('admin.message_templates.fields.description') } value={fDesc} placeholder="Catatan lokasi / seri"
+      <Field stacked id="o-desc" label={ $t('admin.message_templates.fields.description') } value={fDesc} placeholder={ $t('network.olt.v2.desc_ph') }
         onchange={(v) => (fDesc = v)} />
     </div>
     <div class="grid gap-x-6 sm:grid-cols-2">

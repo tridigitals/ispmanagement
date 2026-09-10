@@ -213,6 +213,8 @@
     "twofa_on": "Active",
     "twofa_off": "Inactive",
     "t_2fa_on": "2FA enabled.",
-    "t_2fa_off": "2FA disabled."
+    "t_2fa_off": "2FA disabled.",
+    "twofa_label": "Two-Factor Authentication",
+    "phone_ph": "0812xxxx"
   }
 }

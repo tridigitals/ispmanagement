@@ -314,7 +314,8 @@
       "email_body": "Email body",
       "all_status": "All statuses",
       "t_deleted": "Message template deleted.",
-      "st_arch": "Archived"
+      "st_arch": "Archived",
+      "name_ph": "Due date reminder"
     }
   },
   "settings": {
@@ -4539,5 +4540,9 @@
     "desc": "Changes apply to all users in this tenant.",
     "others": "Other sections",
     "legacy_note": "still using the legacy view"
+  },
+  "storage": {
+    "title": "Storage",
+    "desc": "Manage tenant files and attachments: upload, download, and delete."
   }
 }
