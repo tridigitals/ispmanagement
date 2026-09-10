@@ -160,5 +160,13 @@
   "shown": "Ditampilkan",
   "subscription": "Langganan",
   "suspend": "Tunda",
-  "undo": "Batalkan"
+  "undo": "Batalkan",
+  "time": {
+    "just_now": "baru saja",
+    "sec": "{n} dtk lalu",
+    "min": "{n} mnt lalu",
+    "hour": "{n} jam lalu",
+    "day": "{n} hari lalu",
+    "week": "{n} mgg lalu"
+  }
 }

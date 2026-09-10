@@ -160,5 +160,13 @@
   "shown": "Shown",
   "subscription": "Subscription",
   "suspend": "Suspend",
-  "undo": "Undo"
+  "undo": "Undo",
+  "time": {
+    "just_now": "just now",
+    "sec": "{n} sec ago",
+    "min": "{n} min ago",
+    "hour": "{n} hours ago",
+    "day": "{n} days ago",
+    "week": "{n} weeks ago"
+  }
 }

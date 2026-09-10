@@ -24,6 +24,7 @@
   import { appSettings } from '$lib/stores/settings';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import { t } from 'svelte-i18n';
   import {
     AppShell,
     Badge,
@@ -82,7 +83,7 @@
   const tabItems = $derived([
     { id: 'overview', label: 'Ringkasan' },
     { id: 'onus', label: 'ONU', count: onus.length },
-    { id: 'history', label: 'Riwayat ONU' },
+    { id: 'history', label: $t('network.olt.v2.onu_history') },
   ]);
 
   const onuColumns: Column[] = [
@@ -155,7 +156,7 @@
     refreshing = true;
     try {
       await refresh(false);
-      toast.success('Data disegarkan langsung dari perangkat.');
+      toast.success($t('network.olt.v2.t_refresh'));
     } finally {
       refreshing = false;
     }
@@ -171,7 +172,7 @@
     rebooting = true;
     try {
       await api.olt.rebootOnu(id, rebootTarget.onu_id, rebootTarget.name || rebootTarget.onu_id);
-      toast.success(`ONU ${rebootTarget.name || rebootTarget.onu_id} sedang reboot.`);
+      toast.success($t('network.olt.v2.t_reboot', { values: { n: rebootTarget.name || rebootTarget.onu_id } }));
       rebootOpen = false;
       rebootTarget = null;
     } catch (e: unknown) {
@@ -183,7 +184,7 @@
 
   function openOnMap() {
     if (!olt || olt.latitude == null || olt.longitude == null) {
-      toast.error('OLT belum punya koordinat lokasi.');
+      toast.error($t('network.olt.v2.t_nocoord'));
       return;
     }
     const params = new URLSearchParams({
@@ -212,10 +213,10 @@
   <DetailHeader
     title={olt?.name ?? 'Detail OLT'}
     subtitle={olt ? `${oltTypeLabel(olt.olt_type)} — ${olt.host}:${olt.port}` : undefined}
-    statusLabel={olt ? (olt.is_online ? 'Online' : 'Offline') : undefined}
+    statusLabel={olt ? (olt.is_online ? $t('network.olt.online') : $t('network.olt.offline')) : undefined}
     statusTone={olt ? (olt.is_online ? 'positive' : 'negative') : undefined}
     backHref={backTarget}
-    backLabel="Kembali ke daftar OLT"
+    backLabel={ $t('network.olt.v2.back_list_full') }
   >
     {#snippet actions()}
       <Button variant="ghost" icon="pin" onclick={openOnMap} disabled={!olt || olt.latitude == null}>
@@ -225,7 +226,7 @@
         Muat ulang
       </Button>
       <Button icon="zap" onclick={() => void forceRefreshStats()} disabled={refreshing || !id}>
-        Segarkan dari perangkat
+        { $t('network.olt.v2.refresh_dev') }
       </Button>
     {/snippet}
   </DetailHeader>
@@ -241,13 +242,13 @@
     <Card>
       <div class="py-6 text-center text-ink-500">
         OLT tidak ditemukan.
-        <a class="text-brand-600 hover:underline" href={backTarget}>Kembali ke daftar</a>
+        <a class="text-brand-600 hover:underline" href={backTarget}>{ $t('network.olt.v2.back_list') }</a>
       </div>
     </Card>
   {:else}
     {#if !hasOltDriver(olt.olt_type)}
       <div class="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 ring-1 ring-inset ring-red-200">
-        Tipe <strong>{oltTypeLabel(olt.olt_type)}</strong> tidak punya driver di server —
+        { $t('network.olt.type') } <strong>{oltTypeLabel(olt.olt_type)}</strong> tidak punya driver di server —
         statistik, ONU, dan riwayat tidak akan pernah berhasil untuk perangkat ini.
       </div>
     {/if}
@@ -264,42 +265,42 @@
     {#if activeTab === 'overview'}
       <div class="grid grid-cols-2 gap-6 sm:grid-cols-4">
         <StatTile
-          label="Total ONU"
+          label={ $t('network.olt.onu_total') }
           value={String(stats?.total_onus ?? onuStats.total)}
-          hint="terdaftar di perangkat"
+          hint={ $t('network.olt.v2.h_reg') }
         />
         <StatTile
-          label="ONU Online"
+          label={ $t('network.olt.onu_online') }
           value={String(stats?.online_onus ?? onuStats.online)}
-          hint="menjawab poll terakhir"
+          hint={ $t('network.olt.v2.h_answer') }
           tone={onuStats.online === onuStats.total && onuStats.total > 0 ? 'positive' : 'neutral'}
         />
         <StatTile
-          label="ONU Offline"
+          label={ $t('network.olt.onu_offline') }
           value={String(stats?.offline_onus ?? onuStats.offline)}
-          hint="tidak menjawab poll terakhir"
+          hint={ $t('network.olt.v2.h_noanswer') }
           tone={stats?.offline_onus || onuStats.offline ? 'negative' : 'neutral'}
         />
         <StatTile
-          label="Sinyal lemah (di bawah −27 dBm)"
+          label={ $t('network.olt.v2.weak_label') }
           value={String(stats?.low_onus ?? onuStats.low)}
-          hint="berisiko sering drop"
+          hint={ $t('network.olt.v2.h_drop') }
           tone={stats?.low_onus || onuStats.low ? 'warning' : 'neutral'}
         />
       </div>
 
       {#if details?.info}
         <div class="mt-4">
-          <Card title="Info sistem">
+          <Card title={ $t('network.olt.v2.sys_info') }>
             <div class="grid gap-x-8 sm:grid-cols-2">
               {#if details.info.model}
-                <FieldRow label="Model" value={details.info.model} />
+                <FieldRow label={ $t('network.olt.model') } value={details.info.model} />
               {/if}
               {#if details.info.version}
-                <FieldRow label="Versi firmware" value={details.info.version} mono />
+                <FieldRow label={ $t('network.olt.v2.firmware') } value={details.info.version} mono />
               {/if}
               {#if details.info.address}
-                <FieldRow label="Alamat" value={details.info.address} mono />
+                <FieldRow label={ $t('network.olt.address') } value={details.info.address} mono />
               {/if}
               {#each Object.entries(details.info).filter(([k]) => !['name', 'model', 'version', 'address'].includes(k)) as [key, val] (key)}
                 {#if val != null}
@@ -312,36 +313,36 @@
       {/if}
 
       <div class="mt-4">
-        <Card title="Konfigurasi">
+        <Card title={ $t('network.olt.v2.config') }>
           <div class="grid gap-x-8 sm:grid-cols-2">
-            <FieldRow label="Tipe" value={oltTypeLabel(olt.olt_type)} />
-            <FieldRow label="Endpoint" value={`${olt.host}:${olt.port}`} mono />
-            <FieldRow label="Username" value={olt.username} />
+            <FieldRow label={ $t('network.olt.type') } value={oltTypeLabel(olt.olt_type)} />
+            <FieldRow label={ $t('network.olt.v2.endpoint') } value={`${olt.host}:${olt.port}`} mono />
+            <FieldRow label={ $t('admin.network.routers.form.username') } value={olt.username} />
             <FieldRow
-              label="Data terakhir"
-              value={olt.last_polled_at ? `${timeAgo(olt.last_polled_at)} lalu` : 'belum pernah'}
+              label={ $t('network.olt.v2.last_poll') }
+              value={olt.last_polled_at ? timeAgo(olt.last_polled_at, (k, v) => $t(k, v ? { values: v } : undefined)) : $t('network.olt.v2.never')}
             />
             <FieldRow
-              label="Koordinat"
+              label={ $t('network.olt.coordinates') }
               value={olt.latitude != null && olt.longitude != null ? `${olt.latitude}, ${olt.longitude}` : null}
               mono
             />
-            <FieldRow label="Alamat lokasi" value={olt.address_line} />
-            <FieldRow label="Uplink router" value={olt.uplink_router_name || olt.uplink_router_id} />
-            <FieldRow label="Uplink port" value={olt.uplink_port} mono />
+            <FieldRow label={ $t('network.olt.v2.loc_address') } value={olt.address_line} />
+            <FieldRow label={ $t('network.olt.v2.up_router') } value={olt.uplink_router_name || olt.uplink_router_id} />
+            <FieldRow label={ $t('network.olt.v2.up_port') } value={olt.uplink_port} mono />
           </div>
         </Card>
       </div>
 
       {#if stats?.pon_ports && stats.pon_ports.length > 0}
         <div class="mt-4">
-          <Card title="Port PON">
+          <Card title={ $t('network.olt.pon_ports') }>
             <DataTable
               columns={[
-                { key: 'name', label: 'Port' },
+                { key: 'name', label: $t('network.olt.v2.col_port') },
                 { key: 'total', label: 'ONU', align: 'right', num: true },
-                { key: 'online', label: 'Online', align: 'right', num: true },
-                { key: 'offline', label: 'Offline', align: 'right', num: true },
+                { key: 'online', label: $t('network.olt.online'), align: 'right', num: true },
+                { key: 'offline', label: $t('network.olt.offline'), align: 'right', num: true },
               ]}
               rows={stats.pon_ports}
               footNote={`${stats.pon_ports.length} port aktif`}
@@ -363,7 +364,7 @@
           columns={onuColumns}
           rows={sortedOnus}
           emptyTitle="Belum ada data ONU"
-          emptyHint="Klik 'Segarkan dari perangkat' untuk menarik data langsung dari OLT."
+          emptyHint="Klik $t('network.olt.v2.refresh_dev') untuk menarik data langsung dari OLT."
           footNote={`${sortedOnus.length} ONU · ${onuStats.online} online · ${onuStats.low} sinyal lemah`}
         >
           {#snippet cell(o, c)}
@@ -393,7 +394,7 @@
               <span class="num text-sm text-ink-500">{o.mac || '—'}</span>
             {:else if c.key === 'actions'}
               {#if $can('manage', 'router_inventory')}
-                <Button size="sm" variant="secondary" onclick={() => promptReboot(o)}>Reboot</Button>
+                <Button size="sm" variant="secondary" onclick={() => promptReboot(o)}>{ $t('network.olt.v2.reboot') }</Button>
               {/if}
             {/if}
           {/snippet}
@@ -438,15 +439,15 @@
 </AppShell>
 
 <!-- Konfirmasi reboot ONU -->
-<Modal bind:show={rebootOpen} title="Reboot ONU" width="480px">
+<Modal bind:show={rebootOpen} title={ $t('network.olt.reboot_onu') } width="480px">
   <p class="py-2 text-ink-700">
-    Reboot ONU <strong>{rebootTarget?.name || rebootTarget?.onu_id}</strong> pada port
+    { $t('network.olt.reboot_onu') } <strong>{rebootTarget?.name || rebootTarget?.onu_id}</strong> pada port
     {rebootTarget?.pon}? Pelanggan di belakang ONU ini akan kehilangan koneksi ±1–2 menit.
   </p>
   {#snippet footer()}
     <Button variant="ghost" onclick={() => (rebootOpen = false)}>Batal</Button>
     <Button variant="danger" onclick={() => void confirmReboot()} disabled={rebooting}>
-      {rebooting ? 'Mengirim…' : 'Reboot'}
+      {rebooting ? 'Mengirim…' : $t('network.olt.v2.reboot')}
     </Button>
   {/snippet}
 </Modal>
