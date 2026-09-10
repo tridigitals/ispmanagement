@@ -260,7 +260,7 @@
     goto('/v2/support');
   }
 </script>
-<PortalShell title="Beranda">
+<PortalShell title={ $t('dashboard.v2.home') }>
   {#if $isAdmin}
     <button
       type="button"
@@ -270,8 +270,8 @@
     >
       <Icon name="shield" size={20} />
       <span class="flex-1 text-left">
-        <span class="block text-sm font-semibold">Anda dalam mode admin</span>
-        <span class="block text-xs text-ink-500">Kelola sistem dari panel admin</span>
+        <span class="block text-sm font-semibold">{ $t('dashboard.v2.admin_mode1') }</span>
+        <span class="block text-xs text-ink-500">{ $t('dashboard.v2.admin_mode2') }</span>
       </span>
       <Icon name="chevronRight" size={16} />
     </button>
@@ -284,7 +284,7 @@
         <div class="flex items-center gap-3">
           <Icon name="alert" size={20} />
           <div>
-            <p class="text-sm font-semibold">{overdueInvoices.length} layanan jatuh tempo</p>
+            <p class="text-sm font-semibold">{ $t('dashboard.v2.overdue_services', { values: { n: overdueInvoices.length } }) }</p>
             <p class="text-xs text-ink-300">
               {first.description || first.invoice_number} · {formatAmount(first.amount, first.currency_code)}
             </p>
@@ -300,13 +300,13 @@
   <PageHeader
     title={greeting() + ', ' + ($user?.name || '')}
     desc={portalSummaryLoading
-      ? 'Memuat ringkasan…'
-      : `${activeSubscriptions.length} layanan aktif` +
-        (pendingInvoices.length > 0 ? ` · ${pendingInvoices.length} tagihan menunggu` : '') +
-        (overdueInvoices.length > 0 ? ` · ${overdueInvoices.length} jatuh tempo` : '')}
+      ? $t('dashboard.v2.sum_loading')
+      : $t('dashboard.v2.sum_active', { values: { n: activeSubscriptions.length } }) +
+        (pendingInvoices.length > 0 ? ' · ' + $t('dashboard.v2.sum_pending', { values: { n: pendingInvoices.length } }) : '') +
+        (overdueInvoices.length > 0 ? ' · ' + $t('dashboard.v2.sum_overdue', { values: { n: overdueInvoices.length } }) : '')}
   >
     {#snippet actions()}
-      <Button variant="ghost" icon="plus" onclick={goNewTicket}>Buat tiket</Button>
+      <Button variant="ghost" icon="plus" onclick={goNewTicket}>{ $t('dashboard.v2.new_ticket') }</Button>
       {#if pendingInvoices.length > 0}
         <Button icon="card" onclick={payFirstPending}>
           {#if payableInvoices.length > 0}
@@ -322,18 +322,18 @@
   {#if !$isAdmin}
     <div class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
       <StatTile
-        label="Layanan aktif"
+        label={ $t('dashboard.v2.st_services') }
         value={portalSummaryLoading ? '—' : String(activeSubscriptions.length)}
-        hint={locationCount > 0 ? `${locationCount} lokasi` : 'Semua paket aktif'}
+        hint={locationCount > 0 ? $t('dashboard.v2.h_locations', { values: { n: locationCount } }) : $t('dashboard.v2.all_pkgs')}
       />
       <StatTile
-        label="Total tagihan"
+        label={ $t('dashboard.v2.st_bills') }
         value={portalSummaryLoading ? '—' : totalPending > 0 ? formatShortAmount(totalPending) : 'Rp 0'}
-        hint={pendingInvoices.length > 0 ? `${pendingInvoices.length} invoice menunggu` : 'Tidak ada tagihan'}
+        hint={pendingInvoices.length > 0 ? $t('dashboard.v2.h_inv_wait', { values: { n: pendingInvoices.length } }) : $t('dashboard.v2.h_no_bills')}
         tone={totalPending > 0 ? 'warning' : 'neutral'}
       />
       <StatTile
-        label="Jatuh tempo"
+        label={ $t('dashboard.v2.st_due') }
         value={portalSummaryLoading
           ? '—'
           : nearestDueInvoice
@@ -341,13 +341,13 @@
                 timeZone: $appSettings.app_timezone,
               })
             : '—'}
-        hint={nearestDueSubName || 'Belum ada'}
+        hint={nearestDueSubName || $t('dashboard.v2.h_none')}
         tone={overdueInvoices.length > 0 ? 'negative' : 'neutral'}
       />
       <StatTile
-        label="Tiket terbuka"
+        label={ $t('dashboard.v2.st_tickets') }
         value={portalSummaryLoading ? '—' : String(openTicketCount)}
-        hint="Lihat di Bantuan"
+        hint={ $t('dashboard.v2.h_help') }
       />
     </div>
   {/if}
@@ -355,7 +355,7 @@
   <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
     <div class="flex flex-col gap-4">
       {#if !$isAdmin}
-        <Card title="Langganan"
+        <Card title={ $t('dashboard.v2.subscriptions') }
           padded={false}
         >
           {#snippet aside()}
@@ -369,10 +369,10 @@
             {:else if sortedSubscriptions.length === 0}
               <div class="flex flex-col items-start gap-3 py-4">
                 <div>
-                  <p class="text-sm font-medium">Belum ada layanan aktif</p>
-                  <p class="text-sm text-ink-500">Pesan paket internet untuk mulai berlangganan.</p>
+                  <p class="text-sm font-medium">{ $t('dashboard.v2.no_subs') }</p>
+                  <p class="text-sm text-ink-500">{ $t('dashboard.v2.no_subs_hint') }</p>
                 </div>
-                <Button icon="box" onclick={goServices}>Lihat layanan</Button>
+                <Button icon="box" onclick={goServices}>{ $t('dashboard.v2.view_services') }</Button>
               </div>
             {:else}
               <div class="flex flex-col gap-2">
@@ -408,7 +408,7 @@
         </Card>
       {/if}
 
-      <Card title="Aktivitas terbaru" padded={false}>
+      <Card title={ $t('dashboard.v2.activity') } padded={false}>
         {#snippet aside()}
           <Button variant="ghost" size="sm" icon="chevronRight" onclick={() => openNotificationModal()}>
             Semua
@@ -420,8 +420,8 @@
           {:else if recent.length === 0}
             <div class="flex flex-col items-start gap-2 p-4">
               <Icon name="bell" size={24} />
-              <p class="text-sm font-medium">Belum ada aktivitas</p>
-              <p class="text-sm text-ink-500">Notifikasi terbaru akan tampil di sini.</p>
+              <p class="text-sm font-medium">{ $t('dashboard.v2.no_activity') }</p>
+              <p class="text-sm text-ink-500">{ $t('dashboard.v2.no_activity_hint') }</p>
             </div>
           {:else}
             <ul class="flex flex-col">
@@ -450,7 +450,7 @@
     </div>
     <aside class="flex flex-col gap-4">
       {#if !$isAdmin}
-        <Card title="Tagihan"
+        <Card title={ $t('dashboard.v2.billing') }
           padded={false}
         >
           {#snippet aside()}
@@ -488,9 +488,9 @@
                 </p>
               {/if}
               <div class="mt-4 flex gap-2">
-                <Button variant="ghost" size="sm" onclick={goInvoices}>Detail invoice</Button>
+                <Button variant="ghost" size="sm" onclick={goInvoices}>{ $t('dashboard.v2.inv_detail') }</Button>
                 {#if payableInvoices.length > 0}
-                  <Button size="sm" icon="card" onclick={payFirstPending}>Bayar semua</Button>
+                  <Button size="sm" icon="card" onclick={payFirstPending}>{ $t('dashboard.v2.pay_all') }</Button>
                 {/if}
               </div>
             {:else}
@@ -498,7 +498,7 @@
                 <span class="text-lg font-semibold">Rp 0</span>
                 <span class="flex items-center gap-1 text-xs text-emerald-600">
                   <Icon name="check" size={13} />
-                  Tidak ada tagihan
+                  { $t('dashboard.v2.h_no_bills') }
                 </span>
               </div>
               <Button variant="ghost" size="sm" icon="box" class="mt-3" onclick={goServices}>
@@ -509,7 +509,7 @@
         </Card>
       {/if}
 
-      <Card title="Pengumuman"
+      <Card title={ $t('dashboard.v2.announcements') }
         padded={false}
       >
         {#snippet aside()}
@@ -521,7 +521,7 @@
           {#if annLoading && annPosts.length === 0}
             <p class="p-3 text-sm text-ink-500">Memuat…</p>
           {:else if annPosts.length === 0}
-            <p class="p-4 text-sm text-ink-500">Belum ada pengumuman.</p>
+            <p class="p-4 text-sm text-ink-500">{ $t('dashboard.v2.no_ann') }</p>
           {:else}
             <ul class="flex flex-col">
               {#each annPosts as a (a.id)}
