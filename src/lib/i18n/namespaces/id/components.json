@@ -132,5 +132,8 @@
   },
   "detail_header": {
     "back": "Kembali"
+  },
+  "attention": {
+    "default_title": "Perlu tindakan"
   }
 }

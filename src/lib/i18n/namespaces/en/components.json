@@ -132,5 +132,8 @@
   },
   "detail_header": {
     "back": "Back"
+  },
+  "attention": {
+    "default_title": "Needs action"
   }
 }

@@ -20,6 +20,7 @@
   } from '$lib/components/ds/format';
   import { fetchAllPages } from '$lib/utils/fetchAllPages';
   import type { Invoice } from '$lib/api/types';
+  import { t } from 'svelte-i18n';
 
   let loading = $state(true);
   let err = $state('');
@@ -70,9 +71,9 @@
     if (money.overdueCount > 0) {
       items.push({
         icon: 'receipt',
-        title: 'Tagihan jatuh tempo belum dibayar',
-        detail: `${money.overdueCount} invoice · ${formatRupiah(money.unpaid)} · ${formatPercent(money.rate)} tingkat pembayaran`,
-        action: `Tinjau ${money.overdueCount} tagihan`,
+        title: $t('admin.home.at_overdue'),
+        detail: $t('admin.home.at_overdue_detail', { values: { a: money.overdueCount, b: formatRupiah(money.unpaid), c: formatPercent(money.rate) } }),
+        action: $t('admin.home.at_review_n', { values: { n: money.overdueCount } }),
         href: '/admin/invoices?status=pending',
         severity: 'high',
       });
@@ -82,9 +83,9 @@
       const share = pppoeTotal > 0 ? ((pppoeDisabled / pppoeTotal) * 100).toFixed(0) : '0';
       items.push({
         icon: 'key',
-        title: 'Akun PPPoE dinonaktifkan',
-        detail: `${pppoeDisabled} dari ${pppoeTotal} akun (${share}%) tidak bisa dial`,
-        action: 'Buka daftar PPPoE',
+        title: $t('admin.home.at_pppoe'),
+        detail: $t('admin.home.at_pppoe_detail', { values: { a: pppoeDisabled, b: pppoeTotal, c: share } }),
+        action: $t('admin.home.at_open_pppoe'),
         href: '/admin/network/pppoe?status=disabled',
         severity: pppoeDisabled > pppoeTotal / 2 ? 'high' : 'medium',
       });
@@ -93,9 +94,9 @@
     if (pendingInstall > 0) {
       items.push({
         icon: 'clipboard',
-        title: 'Instalasi menunggu jadwal',
-        detail: `${pendingInstall} pelanggan sudah terdaftar tapi belum aktif`,
-        action: 'Atur jadwal teknisi',
+        title: $t('admin.home.at_install'),
+        detail: $t('admin.home.at_install_detail', { values: { n: pendingInstall } }),
+        action: $t('admin.home.at_schedule'),
         href: '/admin/network/installations',
         severity: 'medium',
       });
@@ -105,11 +106,11 @@
   });
 
   const billingColumns: Column[] = [
-    { key: 'customer', label: 'Pelanggan' },
-    { key: 'paket', label: 'Paket', hideSm: true },
-    { key: 'nominal', label: 'Nominal', align: 'right' },
-    { key: 'due', label: 'Jatuh tempo' },
-    { key: 'status', label: 'Status' },
+    { key: 'customer', label: $t('admin.home.col_customer') },
+    { key: 'paket', label: $t('admin.home.col_package'), hideSm: true },
+    { key: 'nominal', label: $t('admin.home.col_amount'), align: 'right' },
+    { key: 'due', label: $t('admin.home.due') },
+    { key: 'status', label: $t('admin.home.status') },
   ];
 
   const soonest = $derived(
@@ -197,17 +198,17 @@
 </script>
 
 <AppShell
-  title="Ruang kendali"
+  title={ $t('admin.home.title') }
   badges={{ invoicesOverdue: money.overdueCount, supportOpen: 0 }}
 >
   <PageHeader
-    eyebrow={loadedAt ? `Diperbarui ${formatDate(loadedAt, true)}` : 'Memuat data'}
-    title="Ruang kendali"
-    desc="Kerjakan yang menunggu tindakan dulu, angka menyusul di bawah."
+    eyebrow={loadedAt ? $t('admin.home.updated', { values: { d: formatDate(loadedAt, true) } }) : $t('admin.home.loading')}
+    title={ $t('admin.home.title') }
+    desc={ $t('admin.home.desc') }
   >
     {#snippet actions()}
-      <Button icon="refresh" onclick={load} loading={loading}>Muat ulang</Button>
-      <Button variant="primary" icon="plus" href="/v2/admin/customers?new=1">Pelanggan baru</Button>
+      <Button icon="refresh" onclick={load} loading={loading}>{ $t('admin.home.reload') }</Button>
+      <Button variant="primary" icon="plus" href="/v2/admin/customers?new=1">{ $t('admin.home.new_customer') }</Button>
     {/snippet}
   </PageHeader>
 
@@ -235,38 +236,38 @@
     <div
       class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-base text-emerald-800"
     >
-      Tidak ada yang perlu tindakan segera.
+      { $t('admin.home.nothing') }
     </div>
   {/if}
 
   <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
     <StatTile
-      label="Tertunggak"
+      label={ $t('admin.home.st_unpaid') }
       value={formatCompactRupiah(money.unpaid)}
-      hint="{invoicesComplete ? '' : 'minimal '}{money.unpaidCount} invoice belum dibayar · {money.overdueCount} lewat jatuh tempo"
+      hint={invoicesComplete ? "" : $t('admin.home.min_prefix') + money.unpaidCount + " " + $t('admin.home.h_unpaid') + " · " + money.overdueCount + " " + $t('admin.home.h_past')}
       tone={money.unpaid > 0 ? 'negative' : 'positive'}
     />
     <StatTile
-      label="Terbayar"
+      label={ $t('admin.home.st_paid') }
       value={formatCompactRupiah(money.paid)}
-      hint="{money.paidCount} dari {invoices.length} invoice · {formatPercent(money.rate)} dari {formatCompactRupiah(money.issued)} diterbitkan"
+      hint={$t('admin.home.h_paid', { values: { a: money.paidCount, b: invoices.length, c: formatPercent(money.rate), d: formatCompactRupiah(money.issued) } })}
       tone={money.rate >= 50 ? 'positive' : 'warning'}
     />
     <StatTile
-      label="Pelanggan aktif"
+      label={ $t('admin.home.st_active') }
       value={String(customerActive)}
-      hint="dari {customerTotal} terdaftar · {pendingInstall} menunggu instalasi"
+      hint={$t('admin.home.h_cust', { values: { a: customerTotal, b: pendingInstall } })}
     />
     <StatTile
-      label="PPPoE bisa dial"
+      label={ $t('admin.home.st_dialable') }
       value={String(pppoeTotal - pppoeDisabled)}
-      hint="dari {pppoeTotal} akun · {pppoeDisabled} dinonaktifkan"
+      hint={$t('admin.home.h_pppoe', { values: { a: pppoeTotal, b: pppoeDisabled } })}
       tone={pppoeDisabled > pppoeTotal / 2 ? 'negative' : 'neutral'}
     />
   </div>
 
   <div class="mt-5">
-    <Card title="Jatuh tempo terdekat" padded={false}>
+    <Card title={ $t('admin.home.next_due') } padded={false}>
       {#snippet aside()}
         <a
           href="/v2/admin/invoices"
@@ -279,9 +280,9 @@
         <DataTable
           columns={billingColumns}
           rows={soonest}
-          emptyTitle="Tidak ada tagihan tertunggak."
-          emptyHint="Semua invoice lunas — kerja bagus."
-          footNote={`Menampilkan ${soonest.length} dari ${money.unpaidCount} tagihan tertunggak · total ${formatRupiah(money.unpaid)}`}
+          emptyTitle={ $t('admin.home.empty_t') }
+          emptyHint={ $t('admin.home.empty_h') }
+          footNote={$t('admin.home.foot', { values: { a: soonest.length, b: money.unpaidCount, c: formatRupiah(money.unpaid) } })}
         >
           {#snippet cell(inv, column)}
             {#if column.key === 'customer'}
@@ -293,7 +294,7 @@
             {:else if column.key === 'due'}
               <span class="num {isOverdue(inv) ? 'text-red-700' : 'text-ink-500'}">{formatDate(inv.due_date)}</span>
             {:else if column.key === 'status'}
-              <Badge status={inv.status} label={isOverdue(inv) ? 'Lewat tempo' : inv.status} tone={isOverdue(inv) ? 'negative' : undefined} />
+              <Badge status={inv.status} label={isOverdue(inv) ? $t('admin.home.overdue') : inv.status} tone={isOverdue(inv) ? 'negative' : undefined} />
             {/if}
           {/snippet}
         </DataTable>

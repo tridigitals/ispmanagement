@@ -7,6 +7,7 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
   import type { IconName } from './icons';
+  import { t } from 'svelte-i18n';
 
   export interface AttentionItem {
     icon: IconName;
@@ -25,7 +26,7 @@
     title?: string;
   }
 
-  let { items, title = 'Perlu tindakan' }: Props = $props();
+  let { items, title }: Props = $props();
 
   const dot = { high: 'bg-red-500', medium: 'bg-amber-500', low: 'bg-sky-500' };
 </script>
@@ -33,7 +34,7 @@
 <section class="overflow-hidden rounded-xl bg-amber-50/40 ring-1 ring-inset ring-amber-200">
   <div class="flex h-12 items-center gap-2 border-b border-amber-200/70 px-5">
     <Icon name="alert" size={15} class="text-amber-700" />
-    <h2 class="text-base font-semibold text-amber-900">{title}</h2>
+    <h2 class="text-base font-semibold text-amber-900">{title ?? $t('components.attention.default_title')}</h2>
     <span class="num ml-auto text-sm text-amber-800">{items.length} item</span>
   </div>
 
