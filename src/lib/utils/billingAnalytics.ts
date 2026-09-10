@@ -104,6 +104,13 @@ const AGING_LABELS: Record<AgingRow['key'], string> = {
   days_61_90: '61-90 hari',
   over_90: 'Lebih dari 90 hari'
 };
+const AGING_KEYS: Record<AgingRow['key'], string> = {
+  not_due: 'admin.billing.analytics.v2.ag_not_due',
+  current: 'admin.billing.analytics.v2.ag_0_30',
+  days_31_60: 'admin.billing.analytics.v2.ag_31_60',
+  days_61_90: 'admin.billing.analytics.v2.ag_61_90',
+  over_90: 'admin.billing.analytics.v2.ag_over90'
+};
 
 const AGING_SEVERITY: Record<AgingRow['key'], AgingRow['severity']> = {
   not_due: 'neutral',
@@ -127,14 +134,14 @@ const AGING_ORDER: AgingRow['key'][] = [
  * Pembagi memakai `aging_total` dari server, bukan hasil penjumlahan di sini,
  * supaya angka di kartu dan panjang bar berasal dari satu sumber.
  */
-export function buildAgingRows(analytics: BillingAnalytics): AgingRow[] {
+export function buildAgingRows(analytics: BillingAnalytics, tt?: (k: string) => string): AgingRow[] {
   const aging = analytics.aging;
   const total = analytics.aging_total > 0 ? analytics.aging_total : 0;
   return AGING_ORDER.map((key) => {
     const amount = aging?.[key] ?? 0;
     return {
       key,
-      label: AGING_LABELS[key],
+      label: tt ? tt(AGING_KEYS[key]) : AGING_LABELS[key],
       amount,
       sharePct: total > 0 ? Math.round((amount / total) * 1000) / 10 : 0,
       severity: AGING_SEVERITY[key]
@@ -167,20 +174,24 @@ export function agingReconciliation(analytics: BillingAnalytics): {
  * Persentase tanpa penyebut tidak bisa dinilai; 0% dari 2 invoice adalah
  * kabar yang sangat berbeda dari 0% atas 500 invoice.
  */
-export function collectionCaption(analytics: BillingAnalytics): string {
+export function collectionCaption(analytics: BillingAnalytics, tt?: (k: string, v?: Record<string, unknown>) => string): string {
   const sample = analytics.collection_sample;
   if (!sample || sample.invoices_considered <= 0) {
+    if (tt) return tt('admin.billing.analytics.v2.cap_nocoll', { d: sample?.window_days ?? 90 });
     return `Tidak ada tagihan pelanggan dalam ${sample?.window_days ?? 90} hari terakhir`;
   }
+  if (tt) return tt('admin.billing.analytics.v2.cap_coll', { a: sample.paid_on_time, b: sample.invoices_considered, d: sample.window_days });
   return `${sample.paid_on_time} dari ${sample.invoices_considered} tagihan lunas tepat waktu (${sample.window_days} hari terakhir)`;
 }
 
 /** Kalimat penjelas untuk rata-rata hari pelunasan. */
-export function avgDaysCaption(analytics: BillingAnalytics): string {
+export function avgDaysCaption(analytics: BillingAnalytics, tt?: (k: string, v?: Record<string, unknown>) => string): string {
   if (!analytics.avg_days_sample || analytics.avg_days_sample <= 0) {
+    if (tt) return tt('admin.billing.analytics.v2.cap_noavg');
     return 'Belum ada tagihan lunas pada periode ini';
   }
   const plural = analytics.avg_days_sample === 1 ? 'tagihan' : 'tagihan';
+  if (tt) return tt('admin.billing.analytics.v2.cap_avg', { n: analytics.avg_days_sample });
   return `Rata-rata dari ${analytics.avg_days_sample} ${plural} lunas`;
 }
 
@@ -190,14 +201,16 @@ export function avgDaysCaption(analytics: BillingAnalytics): string {
  * Mengembalikan null kalau MRR wajar (ada langganan aktif), sehingga halaman
  * tidak memasang peringatan tanpa sebab.
  */
-export function mrrExplanation(analytics: BillingAnalytics): string | null {
+export function mrrExplanation(analytics: BillingAnalytics, tt?: (k: string, v?: Record<string, unknown>) => string): string | null {
   if (analytics.active_subscriptions > 0) return null;
   const rows = analytics.subscription_breakdown ?? [];
   if (rows.length === 0) {
+    if (tt) return tt('admin.billing.analytics.v2.mrr_none');
     return 'Belum ada langganan pelanggan yang tercatat';
   }
   const total = rows.reduce((sum, row) => sum + row.count, 0);
   const dominant = rows.reduce((top, row) => (row.count > top.count ? row : top), rows[0]);
+  if (tt) return tt('admin.billing.analytics.v2.mrr_dom', { n: total, s: subscriptionStatusLabel(dominant.status, tt), c: dominant.count });
   return `Tidak ada langganan berstatus aktif dari ${total} langganan; terbanyak ${subscriptionStatusLabel(dominant.status)} (${dominant.count})`;
 }
 
@@ -212,7 +225,18 @@ const SUBSCRIPTION_STATUS_LABELS: Record<string, string> = {
 };
 
 /** Label Indonesia untuk status langganan; status tak dikenal tetap tampil. */
-export function subscriptionStatusLabel(status: string): string {
+const SUB_STATUS_KEYS: Record<string, string> = {
+  active: 'admin.billing.analytics.v2.ss_active',
+  grace_active: 'admin.billing.analytics.v2.ss_grace',
+  suspended: 'admin.billing.analytics.v2.ss_susp',
+  pending_installation: 'admin.billing.analytics.v2.ss_pending',
+  installation_done_awaiting_payment: 'admin.billing.analytics.v2.ss_installed',
+  cancelled: 'admin.billing.analytics.v2.ss_cancel',
+  terminated: 'admin.billing.analytics.v2.ss_term'
+};
+
+export function subscriptionStatusLabel(status: string, tt?: (k: string) => string): string {
+  if (tt && SUB_STATUS_KEYS[status]) return tt(SUB_STATUS_KEYS[status]);
   return SUBSCRIPTION_STATUS_LABELS[status] ?? status;
 }
 
@@ -220,13 +244,17 @@ export function subscriptionStatusLabel(status: string): string {
  * Ringkas rincian status jadi teks pendek untuk subjudul kartu.
  * Contoh: "542 ditangguhkan, 7 menunggu instalasi, 2 dibatalkan".
  */
-export function subscriptionSummary(analytics: BillingAnalytics, limit = 3): string {
+export function subscriptionSummary(
+  analytics: BillingAnalytics,
+  tt?: (k: string) => string,
+  limit = 3,
+): string {
   const rows = [...(analytics.subscription_breakdown ?? [])]
     .sort((a, b) => b.count - a.count)
     .slice(0, limit);
-  if (rows.length === 0) return 'Belum ada langganan';
+  if (rows.length === 0) { if (tt) return tt('admin.billing.analytics.v2.sum_none'); return 'Belum ada langganan'; }
   return rows
-    .map((row) => `${row.count} ${subscriptionStatusLabel(row.status).toLowerCase()}`)
+    .map((row) => `${row.count} ${subscriptionStatusLabel(row.status, tt).toLowerCase()}`)
     .join(', ');
 }
 

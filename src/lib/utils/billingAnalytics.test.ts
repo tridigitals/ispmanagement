@@ -283,7 +283,7 @@ describe('subscriptionSummary', () => {
   });
 
   it('menghormati batas jumlah', () => {
-    expect(subscriptionSummary(analytics(), 1)).toBe('542 ditangguhkan');
+    expect(subscriptionSummary(analytics(), undefined, 1)).toBe('542 ditangguhkan');
   });
 
   it('memberi teks jelas saat kosong', () => {
