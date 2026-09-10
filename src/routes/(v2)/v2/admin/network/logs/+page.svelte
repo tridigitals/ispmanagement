@@ -70,17 +70,16 @@
   let showClearConfirm = $state(false);
   let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
   const monthOptions = $derived([
-    { value: '', label: 'Semua bulan' },
-    ...MONTHS.map((label, i) => ({ value: String(i + 1), label })),
+    { value: '', label: $t('admin.network.logs.v2.all_months') },
+    ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: $t(`admin.network.logs.months.m${i + 1}`) })),
   ]);
   const yearOptions = $derived.by(() => {
     const y = new Date().getFullYear();
     return [{ value: '', label: 'Semua' }, ...Array.from({ length: 8 }, (_, i) => ({ value: String(y - i), label: String(y - i) }))];
   });
   const levelOptions = [
-    { value: '', label: 'Semua level' },
+    { value: '', label: $t('admin.network.logs.v2.all_levels') },
     { value: 'critical', label: 'critical' },
     { value: 'error', label: 'error' },
     { value: 'warning', label: 'warning' },
@@ -88,22 +87,22 @@
     { value: 'debug', label: 'debug' },
   ];
   const retentionOptions = [
-    { value: 'unlimited', label: 'Tanpa batas' },
-    { value: '30', label: '30 hari' },
-    { value: '90', label: '90 hari' },
-    { value: '360', label: '360 hari' },
+    { value: 'unlimited', label: $t('admin.network.logs.v2.unlimited') },
+    { value: '30', label: $t('admin.network.logs.v2.d30') },
+    { value: '90', label: $t('admin.network.logs.v2.d90') },
+    { value: '360', label: $t('admin.network.logs.v2.d360') },
   ];
   const routerOptions = $derived([
-    { value: '', label: 'Semua router' },
+    { value: '', label: $t('admin.network.logs.filters.all_routers') },
     ...routers.map((r) => ({ value: r.id, label: r.name })),
   ]);
 
   const columns: Column[] = [
-    { key: 'logged_at', label: 'Waktu' },
-    { key: 'router_id', label: 'Router' },
-    { key: 'level', label: 'Level' },
-    { key: 'topics', label: 'Topik' },
-    { key: 'message', label: 'Pesan' },
+    { key: 'logged_at', label: $t('admin.network.logs.columns.time') },
+    { key: 'router_id', label: $t('admin.network.logs.filters.router') },
+    { key: 'level', label: $t('admin.network.logs.filters.level') },
+    { key: 'topics', label: $t('admin.network.logs.filters.topic') },
+    { key: 'message', label: $t('admin.network.logs.columns.message') },
   ];
 
   onMount(() => {
@@ -180,10 +179,10 @@
     syncing = true;
     try {
       await api.mikrotik.logs.sync(routerId, FULL_SYNC_FETCH_LIMIT);
-      toast.success('Sinkronisasi log selesai.');
+      toast.success($t('admin.network.logs.v2.t_syncok'));
       await loadRowsPage(1);
     } catch (e) {
-      toast.error(`Gagal sinkronisasi log: ${extractApiErrorMessage(e)}`);
+      toast.error(`${$t('admin.network.logs.v2.t_syncfail')}${extractApiErrorMessage(e)}`);
     } finally {
       syncing = false;
     }
@@ -197,11 +196,11 @@
       const result = await Promise.allSettled(ids.map((id) => api.mikrotik.logs.sync(id, FULL_SYNC_FETCH_LIMIT)));
       const ok = result.filter((i) => i.status === 'fulfilled').length;
       const failed = result.length - ok;
-      if (ok > 0) toast.success('Sinkronisasi log selesai.');
-      if (failed > 0) toast.error(`Gagal sinkronisasi ${failed} router.`);
+      if (ok > 0) toast.success($t('admin.network.logs.v2.t_syncok'));
+      if (failed > 0) toast.error($t('admin.network.logs.v2.t_syncpart', { values: { n: failed } }));
       await loadRowsPage(1);
     } catch (e) {
-      toast.error(`Gagal sinkronisasi log: ${extractApiErrorMessage(e)}`);
+      toast.error(`${$t('admin.network.logs.v2.t_syncfail')}${extractApiErrorMessage(e)}`);
     } finally {
       syncing = false;
     }
@@ -234,7 +233,7 @@
     try {
       const res = await api.mikrotik.logs.updateRetention(routerId, retentionValue === 'unlimited' ? null : Number(retentionValue));
       retentionValue = res.retention_days ? String(res.retention_days) : 'unlimited';
-      toast.success('Retensi log diperbarui.');
+      toast.success($t('admin.network.logs.v2.t_retention'));
       await loadRowsPage(1);
     } catch (e) {
       toast.error(extractApiErrorMessage(e));
@@ -249,7 +248,7 @@
     clearingLogs = true;
     try {
       const res = await api.mikrotik.logs.clear(routerId);
-      toast.success(`Menghapus ${res.deleted} log dari ${routerName(routerId)}.`);
+      toast.success($t('admin.network.logs.v2.t_cleared', { values: { n: res.deleted, r: routerName(routerId) } }));
       showClearConfirm = false;
       await loadRowsPage(1);
     } catch (e) {
@@ -264,65 +263,65 @@
     void loadRetention(routerId);
   });
 </script>
-<AppShell title="Log jaringan">
+<AppShell title={ $t('admin.network.logs.v2.title') }>
   <PageHeader
-    title="Log jaringan"
+    title={ $t('admin.network.logs.v2.title') }
     eyebrow={ $t('admin.eyebrows.network') }
-    desc="Log router MikroTik yang tersinkron — filter, retensi, dan sinkronisasi manual."
+    desc={ $t('admin.network.logs.v2.desc') }
   >
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" onclick={() => void loadRowsPage(1)} disabled={loading || loadingMore}>
-        Segarkan
+        { $t('admin.network.logs.v2.refresh') }
       </Button>
       {#if routerId}
         <Button variant="secondary" onclick={() => void syncSelected()} disabled={syncing}>
-          {syncing ? 'Sinkron…' : 'Sinkron router ini'}
+          {syncing ? $t('admin.network.logs.v2.syncing') : $t('admin.network.logs.v2.sync_this')}
         </Button>
       {/if}
       <Button variant="secondary" onclick={() => void syncAll()} disabled={syncing || routers.length === 0}>
-        {syncing ? 'Sinkron…' : 'Sinkron semua'}
+        {syncing ? $t('admin.network.logs.v2.syncing') : $t('admin.network.logs.v2.sync_all')}
       </Button>
       <Button variant="danger" onclick={() => (showClearConfirm = true)} disabled={!routerId || clearingLogs}>
-        Hapus log
+        { $t('admin.network.logs.v2.clear_btn') }
       </Button>
     {/snippet}
   </PageHeader>
 
-  <Card title="Filter">
+  <Card title={ $t('admin.network.logs.v2.filter') }>
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-      <Field id="lg-router" label="Router" type="select" stacked value={routerId} options={routerOptions} onchange={(v) => { routerId = v; void loadRowsPage(1); }} />
-      <Field id="lg-level" label="Level" type="select" stacked value={level} options={levelOptions} onchange={(v) => { level = v; void loadRowsPage(1); }} />
-      <Field id="lg-topic" label="Topik" type="text" stacked value={topic} onchange={onTopicInput} placeholder="system,error,interface…" />
-      <Field id="lg-month" label="Bulan" type="select" stacked value={month} options={monthOptions} onchange={(v) => { month = v; void loadRowsPage(1); }} />
-      <Field id="lg-year" label="Tahun" type="select" stacked value={year} options={yearOptions} onchange={(v) => { year = v; void loadRowsPage(1); }} />
-      <Field id="lg-q" label="Cari" type="text" stacked value={q} onchange={onSearchInput} placeholder="Cari pesan…" />
+      <Field id="lg-router" label={ $t('admin.network.logs.filters.router') } type="select" stacked value={routerId} options={routerOptions} onchange={(v) => { routerId = v; void loadRowsPage(1); }} />
+      <Field id="lg-level" label={ $t('admin.network.logs.filters.level') } type="select" stacked value={level} options={levelOptions} onchange={(v) => { level = v; void loadRowsPage(1); }} />
+      <Field id="lg-topic" label={ $t('admin.network.logs.filters.topic') } type="text" stacked value={topic} onchange={onTopicInput} placeholder="system,error,interface…" />
+      <Field id="lg-month" label={ $t('admin.network.logs.v2.month') } type="select" stacked value={month} options={monthOptions} onchange={(v) => { month = v; void loadRowsPage(1); }} />
+      <Field id="lg-year" label={ $t('admin.network.logs.v2.year') } type="select" stacked value={year} options={yearOptions} onchange={(v) => { year = v; void loadRowsPage(1); }} />
+      <Field id="lg-q" label={ $t('common.search') } type="text" stacked value={q} onchange={onSearchInput} placeholder={ $t('admin.network.logs.v2.search_ph') } />
     </div>
   </Card>
 
-  <Card title="Retensi log">
+  <Card title={ $t('admin.network.logs.v2.retention') }>
     <div class="flex flex-wrap items-center gap-3">
       <div class="min-w-48 flex-1">
-        <Field id="lg-retention" label={routerId ? `Berlaku untuk ${routerName(routerId)}` : 'Pilih router dulu'} type="select" stacked value={retentionValue} options={retentionOptions} onchange={(v) => { retentionValue = v; void saveRetention(); }} disabled={!routerId || retentionLoading || retentionSaving} />
+        <Field id="lg-retention" label={routerId ? $t('admin.network.logs.v2.applies_to', { values: { name: routerName(routerId) } }) : $t('admin.network.logs.v2.pick_router')} type="select" stacked value={retentionValue} options={retentionOptions} onchange={(v) => { retentionValue = v; void saveRetention(); }} disabled={!routerId || retentionLoading || retentionSaving} />
       </div>
       {#if retentionLoading || retentionSaving}
-        <span class="text-sm text-ink-500">{retentionLoading ? 'Memuat…' : 'Menyimpan…'}</span>
+        <span class="text-sm text-ink-500">{retentionLoading ? $t('admin.network.logs.v2.loading') : $t('admin.network.logs.v2.saving')}</span>
       {/if}
     </div>
   </Card>
 
-  <Card title="Hasil" padded={false}>
+  <Card title={ $t('admin.billing_collection.columns.result') } padded={false}>
     {#if !loading && rows.length === 0}
       <div class="px-4 py-10 text-center">
-        <div class="text-sm font-medium text-ink-900">Tidak ada log</div>
-        <p class="mt-1 text-sm text-ink-500">Ubah filter atau sinkronkan dari router.</p>
+        <div class="text-sm font-medium text-ink-900">{ $t('admin.network.logs.empty') }</div>
+        <p class="mt-1 text-sm text-ink-500">{ $t('admin.network.logs.v2.empty_hint') }</p>
       </div>
     {:else}
       <DataTable
         {columns}
         rows={rows}
         {loading}
-        emptyTitle="Tidak ada log"
-        emptyHint="Ubah filter atau sinkronkan dari router."
+        emptyTitle={ $t('admin.network.logs.empty') }
+        emptyHint={ $t('admin.network.logs.v2.empty_hint') }
       >
         {#snippet cell(item, column)}
           {#if column.key === 'logged_at'}
@@ -356,14 +355,14 @@
   </Card>
 </AppShell>
 
-<Modal bind:show={showClearConfirm} title="Hapus log router?">
+<Modal bind:show={showClearConfirm} title={ $t('admin.network.logs.v2.clear_title') }>
   <p class="text-sm text-ink-700">
-    Semua log tersimpan untuk <strong>{routerName(routerId)}</strong> akan dihapus permanen. Lanjutkan?
+    { $t('admin.network.logs.v2.clear_body1') }<strong>{routerName(routerId)}</strong>{ $t('admin.network.logs.v2.clear_body2') }
   </p>
   <div class="mt-4 flex justify-end gap-2">
-    <Button variant="ghost" onclick={() => (showClearConfirm = false)}>Batal</Button>
+    <Button variant="ghost" onclick={() => (showClearConfirm = false)}>{ $t('common.cancel') }</Button>
     <Button variant="danger" onclick={() => void clearLogs()} disabled={clearingLogs}>
-      {clearingLogs ? 'Menghapus…' : 'Hapus'}
+      {clearingLogs ? $t('admin.network.logs.v2.clearing') : $t('common.delete')}
     </Button>
   </div>
 </Modal>
