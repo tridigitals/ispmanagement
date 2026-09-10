@@ -15,6 +15,7 @@
   import Button from '$lib/components/ds/Button.svelte';
   import Icon from '$lib/components/ds/Icon.svelte';
 
+  import { t } from 'svelte-i18n';
   let loading = $state(true);
   let loadError = $state('');
   let locationsCount = $state(0);
@@ -49,10 +50,10 @@
   }
 </script>
 
-<PortalShell title="Pesan Layanan">
+<PortalShell title={ $t('dashboard.services_v2.order.title') }>
   <PageHeader
-    title="Pesan Layanan Baru"
-    desc="Pilih jenis layanan untuk memulai pesanan instalasi."
+    title={ $t('dashboard.services_v2.order.title_new') }
+    desc={ $t('dashboard.services_v2.order.desc') }
   >
     {#snippet actions()}
       <Button variant="ghost" icon="chevronLeft" onclick={() => goto('/v2/dashboard/services')}>
@@ -68,14 +69,14 @@
   {#if loadError}
     <div class="banner-bad">
       <span>{loadError}</span>
-      <Button variant="ghost" size="sm" onclick={loadSummary}>Coba lagi</Button>
+      <Button variant="ghost" size="sm" onclick={loadSummary}>{ $t('common.retry') }</Button>
     </div>
   {/if}
 
   <div class="grid gap-4 md:grid-cols-2">
-    <Card title="Internet Fiber / PPPoE" class="service-card">
+    <Card title={ $t('dashboard.services_v2.order.t_fiber') } class="service-card">
       {#snippet aside()}
-        <Badge tone={internetPackageCount > 0 ? 'positive' : 'neutral'} label={internetPackageCount > 0 ? 'Tersedia' : 'Segera'} />
+        <Badge tone={internetPackageCount > 0 ? 'positive' : 'neutral'} label={internetPackageCount > 0 ? $t('dashboard.services_v2.order.available') : $t('dashboard.services_v2.order.soon')} />
       {/snippet}
       <p class="mb-4 text-sm text-ink-500">
         Alur instalasi internet fiber/kabel dengan pemilihan alamat dan paket.
@@ -93,42 +94,42 @@
       </Button>
     </Card>
 
-    <Card title="Hotspot" class="service-card">
+    <Card title={ $t('dashboard.services_v2.order.t_hotspot') } class="service-card">
       {#snippet aside()}
-        <Badge tone={hotspotPackageCount > 0 ? 'positive' : 'neutral'} label={hotspotPackageCount > 0 ? 'Tersedia' : 'Segera'} />
+        <Badge tone={hotspotPackageCount > 0 ? 'positive' : 'neutral'} label={hotspotPackageCount > 0 ? $t('dashboard.services_v2.order.available') : $t('dashboard.services_v2.order.soon')} />
       {/snippet}
-      <p class="mb-4 text-sm text-ink-500">Layanan hotspot / akses publik berbasis voucher.</p>
+      <p class="mb-4 text-sm text-ink-500">{ $t('dashboard.services_v2.order.d_hotspot') }</p>
       <div class="mb-4 flex flex-wrap gap-2 text-xs text-ink-500">
         <span class="chip-meta">{hotspotPackageCount} paket</span>
       </div>
       <Button variant="secondary" onclick={() => goto('/v2/dashboard/services/order/hotspot')}>
-        {hotspotPackageCount > 0 ? 'Buka Alur Pesanan' : 'Buka Halaman Layanan'}
+        {hotspotPackageCount > 0 ? $t('dashboard.services_v2.order.open_flow') : $t('dashboard.services_v2.order.open_page')}
       </Button>
     </Card>
 
-    <Card title="Dedicated Link" class="service-card">
+    <Card title={ $t('dashboard.services_v2.order.t_dedicated') } class="service-card">
       {#snippet aside()}
-        <Badge tone={dedicatedLinkEnabled ? 'positive' : 'neutral'} label={dedicatedLinkEnabled ? 'Tersedia' : 'Segera'} />
+        <Badge tone={dedicatedLinkEnabled ? 'positive' : 'neutral'} label={dedicatedLinkEnabled ? $t('dashboard.services_v2.order.available') : $t('dashboard.services_v2.order.soon')} />
       {/snippet}
-      <p class="mb-4 text-sm text-ink-500">Sambungan khusus berkecepatan tinggi untuk bisnis.</p>
+      <p class="mb-4 text-sm text-ink-500">{ $t('dashboard.services_v2.order.d_dedicated') }</p>
       <div class="mb-4 flex flex-wrap gap-2 text-xs text-ink-500">
-        <span class="chip-meta">Belum diaktifkan</span>
+        <span class="chip-meta">{ $t('dashboard.services_v2.order.not_enabled') }</span>
       </div>
       <Button variant="secondary" onclick={() => goto('/v2/dashboard/services/order/dedicated-link')}>
-        {dedicatedLinkEnabled ? 'Buka Alur Pesanan' : 'Buka Halaman Layanan'}
+        {dedicatedLinkEnabled ? $t('dashboard.services_v2.order.open_flow') : $t('dashboard.services_v2.order.open_page')}
       </Button>
     </Card>
 
-    <Card title="Managed VPN" class="service-card">
+    <Card title={ $t('dashboard.services_v2.order.t_vpn') } class="service-card">
       {#snippet aside()}
-        <Badge tone={vpnPackageCount > 0 ? 'positive' : 'neutral'} label={vpnPackageCount > 0 ? 'Tersedia' : 'Segera'} />
+        <Badge tone={vpnPackageCount > 0 ? 'positive' : 'neutral'} label={vpnPackageCount > 0 ? $t('dashboard.services_v2.order.available') : $t('dashboard.services_v2.order.soon')} />
       {/snippet}
-      <p class="mb-4 text-sm text-ink-500">Akses aman antar-kantor melalui jaringan terenkripsi.</p>
+      <p class="mb-4 text-sm text-ink-500">{ $t('dashboard.services_v2.order.d_vpn') }</p>
       <div class="mb-4 flex flex-wrap gap-2 text-xs text-ink-500">
         <span class="chip-meta">{vpnPackageCount} paket</span>
       </div>
       <Button variant="secondary" onclick={() => goto('/v2/dashboard/services/order/vpn')}>
-        {vpnPackageCount > 0 ? 'Buka Alur Pesanan' : 'Buka Halaman Layanan'}
+        {vpnPackageCount > 0 ? $t('dashboard.services_v2.order.open_flow') : $t('dashboard.services_v2.order.open_page')}
       </Button>
     </Card>
   </div>

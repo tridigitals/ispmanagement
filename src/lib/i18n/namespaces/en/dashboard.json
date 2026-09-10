@@ -631,7 +631,24 @@
     "step_done": "Done",
     "col_service": "Service",
     "col_status": "Status",
-    "hint_cancelled2": "Request cancelled."
+    "hint_cancelled2": "Request cancelled.",
+    "order": {
+      "title": "Order services",
+      "title_new": "New service order",
+      "desc": "Choose a service type to start an installation order.",
+      "t_fiber": "Internet Fiber / PPPoE",
+      "t_hotspot": "Hotspot",
+      "d_hotspot": "Voucher-based hotspot / public access service.",
+      "t_dedicated": "Dedicated Link",
+      "d_dedicated": "High-speed dedicated connection for business.",
+      "not_enabled": "Not enabled yet",
+      "t_vpn": "Managed VPN",
+      "d_vpn": "Secure inter-office access over an encrypted network.",
+      "available": "Available",
+      "soon": "Coming soon",
+      "open_flow": "Open order flow",
+      "open_page": "Open service page"
+    }
   },
   "tickets_v2": {
     "title": "Support Tickets",

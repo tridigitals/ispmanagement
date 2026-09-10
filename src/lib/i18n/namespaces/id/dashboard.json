@@ -630,7 +630,24 @@
     "step_done": "Selesai",
     "col_service": "Layanan",
     "col_status": "Status",
-    "hint_cancelled2": "Permintaan dibatalkan."
+    "hint_cancelled2": "Permintaan dibatalkan.",
+    "order": {
+      "title": "Pesan Layanan",
+      "title_new": "Pesan Layanan Baru",
+      "desc": "Pilih jenis layanan untuk memulai pesanan instalasi.",
+      "t_fiber": "Internet Fiber / PPPoE",
+      "t_hotspot": "Hotspot",
+      "d_hotspot": "Layanan hotspot / akses publik berbasis voucher.",
+      "t_dedicated": "Dedicated Link",
+      "d_dedicated": "Sambungan khusus berkecepatan tinggi untuk bisnis.",
+      "not_enabled": "Belum diaktifkan",
+      "t_vpn": "Managed VPN",
+      "d_vpn": "Akses aman antar-kantor melalui jaringan terenkripsi.",
+      "available": "Tersedia",
+      "soon": "Segera",
+      "open_flow": "Buka Alur Pesanan",
+      "open_page": "Buka Halaman Layanan"
+    }
   },
   "tickets_v2": {
     "title": "Tiket Dukungan",
